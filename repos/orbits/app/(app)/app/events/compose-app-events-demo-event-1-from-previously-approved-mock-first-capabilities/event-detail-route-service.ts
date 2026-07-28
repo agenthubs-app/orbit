@@ -158,6 +158,29 @@ type RouteResult =
   | Awaited<ReturnType<EventEncounterNoteService["createEncounterNote"]>>
   | Awaited<ReturnType<PostEventContactReviewService["getPostEventReview"]>>;
 
+const COMPOSED_EVENT_CONTEXT_NOT_FOUND_CODES = new Set([
+  "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND",
+  "EVENT_RECOMMENDATION_EVENT_NOT_FOUND",
+  "EVENT_GOAL_READINESS_EVENT_NOT_FOUND",
+  "WANT_CONNECT_EVENT_NOT_FOUND",
+  "EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND",
+  "POST_EVENT_REVIEW_EVENT_NOT_FOUND",
+]);
+
+export function classifyComposedEventContextFailures(
+  errorCodes: readonly string[],
+): "empty" | "failure" | null {
+  if (errorCodes.length === 0) {
+    return null;
+  }
+
+  return errorCodes.every((code) =>
+    COMPOSED_EVENT_CONTEXT_NOT_FOUND_CODES.has(code),
+  )
+    ? "empty"
+    : "failure";
+}
+
 const eventDetailServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
     capabilityId: "app-events-demo-event-1.event-detail",
@@ -386,6 +409,16 @@ function collectFailureEvidence(results: readonly RouteResult[]): string[] {
     new Set(
       results.flatMap((result) =>
         result.success === false ? result.error.evidenceIds : [],
+      ),
+    ),
+  );
+}
+
+function collectFailureCodes(results: readonly RouteResult[]): string[] {
+  return Array.from(
+    new Set(
+      results.flatMap((result) =>
+        result.success === false ? [result.error.code] : [],
       ),
     ),
   );
@@ -690,8 +723,7 @@ export async function loadAppEventDetailRoute({
     eventId,
     scenario: routeScenario,
   });
-  const baseResults = [
-    eventResult,
+  const composedContextResults = [
     attendeeRosterResult,
     recommendationResult,
     readinessResult,
@@ -699,9 +731,17 @@ export async function loadAppEventDetailRoute({
     encounterNoteResult,
     postEventReviewResult,
   ] as const;
+  const baseResults = [eventResult, ...composedContextResults] as const;
   const failureEvidence = collectFailureEvidence(baseResults);
+  const composedFailureState = classifyComposedEventContextFailures(
+    collectFailureCodes(composedContextResults),
+  );
 
-  if (failureEvidence.length > 0 || routeScenario === "failure") {
+  if (
+    eventResult.success === false ||
+    composedFailureState === "failure" ||
+    routeScenario === "failure"
+  ) {
     return createBoundaryModel("failure", failureEvidence);
   }
 
@@ -709,8 +749,14 @@ export async function loadAppEventDetailRoute({
     return createBoundaryModel("pending");
   }
 
+  if (composedFailureState === "empty") {
+    return createBoundaryModel(
+      "empty",
+      collectFailureEvidence(composedContextResults),
+    );
+  }
+
   if (
-    eventResult.success === false ||
     attendeeRosterResult.success === false ||
     recommendationResult.success === false ||
     readinessResult.success === false ||

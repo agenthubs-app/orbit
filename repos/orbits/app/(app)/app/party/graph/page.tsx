@@ -74,6 +74,7 @@ export default async function AppPartyGraphPage({
     redirect("/app/account/login?next=%2Fapp%2Fparty%2Fgraph");
   }
 
+  const language = await getPartyGraphPageLanguage();
   const routeModel = await loadAppPartyRouteViewModel({
     actor: {
       displayName:
@@ -83,10 +84,9 @@ export default async function AppPartyGraphPage({
       email: session.user.email,
       id: session.user.id,
     },
+    language,
     searchParams: await searchParams,
   });
-  const language =
-    routeModel.state === "success" ? await getPartyGraphPageLanguage() : "zh";
 
   return (
     <>

@@ -14,6 +14,7 @@ import type {
   OrbitPartyPersonView,
   OrbitPartyViewModel,
 } from "../../orbit-party-route-view-model";
+import type { OrbitLanguage } from "../../orbit-language-core";
 import {
   resolveModuleMode,
   type ModuleMode,
@@ -29,6 +30,7 @@ export type AppPartyRouteScenario = "empty" | "pending" | "failure";
 export interface AppPartyRouteInput {
   actor?: AppProfileActor | null;
   eventId?: string | null;
+  language?: OrbitLanguage;
   mode?: ModuleMode | string | null;
   scenario?: string | null;
   searchParams?: AppPartySearchParams;
@@ -113,51 +115,122 @@ function uniqueEvidenceIds(evidenceIds: readonly string[]): string[] {
   return Array.from(new Set(evidenceIds.filter(Boolean)));
 }
 
+function partyRouteText(
+  language: OrbitLanguage,
+  copy: { en: string; zh: string },
+): string {
+  return language === "zh" ? copy.zh : copy.en;
+}
+
 function routeState(input: {
   errorCode?: string | null;
   evidenceIds: readonly string[];
+  eventId: string | null;
+  language: OrbitLanguage;
   scenario: AppPartyRouteScenario;
 }): AppPartyRouteViewModel {
+  const t = (copy: { en: string; zh: string }) =>
+    partyRouteText(input.language, copy);
+  const eventSelected = Boolean(input.eventId);
+  const emptyDescription = eventSelected
+    ? t({
+        en: "The selected event is available, but no reviewed attendee or recommendation context is ready for Party mode.",
+        zh: "已找到所选活动，但还没有可供 Party 模式使用的已复核参会者或推荐上下文。",
+      })
+    : t({
+        en: "No event has been selected for Party mode.",
+        zh: "尚未选择要进入 Party 模式的活动。",
+      });
+  const emptyState = eventSelected
+    ? t({
+        en: "The Party screen stays hidden until this event has source-backed people context.",
+        zh: "在这场活动具备有来源的人物上下文前，Party 界面会保持隐藏。",
+      })
+    : t({
+        en: "The Party screen stays hidden until an event with source-backed people context is selected.",
+        zh: "在选择具备有来源人物上下文的活动前，Party 界面会保持隐藏。",
+      });
+  const emptyNextStep = eventSelected
+    ? t({
+        en: "Review or import attendee context for this event before retrying Party mode.",
+        zh: "先复核或导入这场活动的参会者上下文，再重试 Party 模式。",
+      })
+    : t({
+        en: "Open an event with reviewed attendee context before entering Party mode.",
+        zh: "先打开一场具备已复核参会者上下文的活动，再进入 Party 模式。",
+      });
   const copyByScenario = {
     empty: {
-      description:
-        "No reviewed event, attendee, recommendation, or profile context is ready for the party surface.",
-      emptyState:
-        "The party screen stays hidden until an event workspace has source-backed people context.",
+      description: emptyDescription,
+      emptyState,
       eyebrow: "Party",
-      guardrail:
-        "This route only reads event, attendee, recommendation, and profile sources. It does not check people in, create contacts, send notifications, write calendars, call AI, or contact external providers.",
-      nextStep: "Open an event with reviewed attendee context before entering party mode.",
-      purpose:
-        "Keep the party experience tied to reviewed live-capable event sources.",
-      title: "Party is not ready",
+      guardrail: t({
+        en: "This route only reads event, attendee, recommendation, and profile sources. It does not check people in, create contacts, send notifications, write calendars, call AI, or contact external providers.",
+        zh: "此入口只读取活动、参会者、推荐和个人资料来源；不会签到、创建联系人、发送通知、写入日历、调用 AI 或联系外部服务。",
+      }),
+      nextStep: emptyNextStep,
+      purpose: t({
+        en: "Keep the Party experience tied to reviewed live-capable event sources.",
+        zh: "确保 Party 体验只使用经过复核、可由真实服务读取的活动来源。",
+      }),
+      title: t({
+        en: "Party is not ready",
+        zh: "Party 尚未就绪",
+      }),
     },
     failure: {
-      description: "Party could not load event or profile context.",
-      emptyState:
-        "No check-in was recorded, no contact was created, and no external provider was contacted.",
+      description: t({
+        en: "Party could not load event or profile context.",
+        zh: "Party 无法加载活动或个人资料上下文。",
+      }),
+      emptyState: t({
+        en: "No check-in was recorded, no contact was created, and no external provider was contacted.",
+        zh: "没有记录签到、没有创建联系人，也没有联系任何外部服务。",
+      }),
       eyebrow: "Party",
-      guardrail:
-        "The failed route state stops before check-in writes, notifications, contact creation, calendar, email, AI, or outside network work.",
-      nextStep:
-        "Confirm the Events live store, event capability records, and profile sources are configured, then retry party mode.",
-      purpose:
-        "Show a recoverable party boundary without falling back to legacy hybrid route data.",
-      title: "Party could not load",
+      guardrail: t({
+        en: "The failed route state stops before check-in writes, notifications, contact creation, calendar, email, AI, or outside network work.",
+        zh: "失败边界会在签到写入、通知、联系人创建、日历、邮件、AI 或外部网络操作前停止。",
+      }),
+      nextStep: t({
+        en: "Confirm the Events live store, event capability records, and profile sources are configured, then retry Party mode.",
+        zh: "确认活动实时存储、活动能力记录和个人资料来源已配置，再重试 Party 模式。",
+      }),
+      purpose: t({
+        en: "Show a recoverable Party boundary without falling back to legacy hybrid route data.",
+        zh: "展示可恢复的 Party 边界，不回退到旧的混合路由数据。",
+      }),
+      title: t({
+        en: "Party could not load",
+        zh: "Party 无法加载",
+      }),
     },
     pending: {
-      description:
-        "Party context is waiting for reviewed event, attendee, recommendation, or profile sources.",
-      emptyState:
-        "The party screen is held until the live-capable event workspace is ready.",
+      description: t({
+        en: "Party context is waiting for reviewed event, attendee, recommendation, or profile sources.",
+        zh: "Party 上下文正在等待活动、参会者、推荐或个人资料来源完成复核。",
+      }),
+      emptyState: t({
+        en: "The Party screen is held until the live-capable event workspace is ready.",
+        zh: "在可由真实服务读取的活动工作区就绪前，Party 界面会保持等待。",
+      }),
       eyebrow: "Party",
-      guardrail:
-        "Pending party context cannot create check-ins, contacts, notifications, or external work.",
-      nextStep:
-        "Check the event again after roster and recommendation review finishes.",
-      purpose:
-        "Keep party mode stable while source review is pending.",
-      title: "Party is loading",
+      guardrail: t({
+        en: "Pending Party context cannot create check-ins, contacts, notifications, or external work.",
+        zh: "等待中的 Party 上下文不能创建签到、联系人、通知或外部操作。",
+      }),
+      nextStep: t({
+        en: "Check the event again after roster and recommendation review finishes.",
+        zh: "名单和推荐复核完成后，再次查看这场活动。",
+      }),
+      purpose: t({
+        en: "Keep Party mode stable while source review is pending.",
+        zh: "在来源复核期间保持 Party 模式稳定。",
+      }),
+      title: t({
+        en: "Party is loading",
+        zh: "Party 正在加载",
+      }),
     },
   } as const;
 
@@ -172,10 +245,19 @@ function routeState(input: {
       recoveryActions: [
         {
           id: "party-return-events",
-          href: "/app/events",
-          label: "Return to events",
-          recoveryCopy:
-            "Open an event with reviewed attendee context before retrying party mode.",
+          href: input.eventId
+            ? `/app/events/${encodeURIComponent(input.eventId)}`
+            : "/app/events",
+          label: input.eventId
+            ? t({
+                en: "Return to current event",
+                zh: "返回当前活动",
+              })
+            : t({
+                en: "Return to events",
+                zh: "返回活动",
+              }),
+          recoveryCopy: copyByScenario[input.scenario].nextStep,
         },
       ],
       scenario: input.scenario,
@@ -186,10 +268,14 @@ function routeState(input: {
 
 function routeStateFromEventBoundary(
   boundary: AppEventDetailBoundaryModel,
+  eventId: string,
+  language: OrbitLanguage,
 ): AppPartyRouteViewModel {
   return routeState({
     errorCode: boundary.evidence[0] ?? null,
     evidenceIds: boundary.evidence,
+    eventId,
+    language,
     scenario: boundary.routeState,
   });
 }
@@ -380,6 +466,7 @@ function partyViewModel(input: {
 export async function loadAppPartyRouteViewModel(
   input: AppPartyRouteInput = {},
 ): Promise<AppPartyRouteViewModel> {
+  const language = input.language ?? "en";
   const mode = input.mode ?? undefined;
   const scenario = normalizeScenario(
     input.scenario ?? readSearchParam(input.searchParams, "scenario"),
@@ -389,6 +476,8 @@ export async function loadAppPartyRouteViewModel(
   if (!eventId) {
     return routeState({
       evidenceIds: [],
+      eventId: null,
+      language,
       scenario: "empty",
     });
   }
@@ -401,7 +490,7 @@ export async function loadAppPartyRouteViewModel(
   });
 
   if (eventRoute.routeState !== "success") {
-    return routeStateFromEventBoundary(eventRoute);
+    return routeStateFromEventBoundary(eventRoute, eventId, language);
   }
 
   const profileRoute = await loadAppProfileRouteViewModel(
@@ -413,6 +502,8 @@ export async function loadAppPartyRouteViewModel(
     return routeState({
       errorCode: profileRoute.routeState.errorCode,
       evidenceIds: profileRoute.routeState.evidenceIds,
+      eventId,
+      language,
       scenario: profileRoute.routeState.scenario,
     });
   }
@@ -421,6 +512,8 @@ export async function loadAppPartyRouteViewModel(
     return routeState({
       errorCode: "PROFILE_ROUTE_FAILURE",
       evidenceIds: profileRoute.failure.evidenceIds,
+      eventId,
+      language,
       scenario: "failure",
     });
   }

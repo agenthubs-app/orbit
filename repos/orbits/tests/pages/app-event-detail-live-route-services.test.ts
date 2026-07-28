@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   buildWantConnectActionResult,
+  classifyComposedEventContextFailures,
   loadAppEventDetailRoute,
   selectWantConnectTargetContactId,
   type AppEventDetailBoundaryModel,
@@ -95,6 +96,32 @@ test("app event detail route reaches live child services instead of failing at t
       );
     }
   });
+});
+
+test("missing composed event context is empty only when every child reports event not found", () => {
+  assert.equal(
+    classifyComposedEventContextFailures([
+      "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND",
+      "EVENT_RECOMMENDATION_EVENT_NOT_FOUND",
+      "EVENT_GOAL_READINESS_EVENT_NOT_FOUND",
+      "WANT_CONNECT_EVENT_NOT_FOUND",
+      "EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND",
+      "POST_EVENT_REVIEW_EVENT_NOT_FOUND",
+    ]),
+    "empty",
+  );
+  assert.equal(classifyComposedEventContextFailures([]), null);
+  assert.equal(
+    classifyComposedEventContextFailures([
+      "EVENT_ATTENDEE_ROSTER_EVENT_NOT_FOUND",
+      "EVENT_GOAL_READINESS_LIVE_STORE_UNCONFIGURED",
+    ]),
+    "failure",
+  );
+  assert.equal(
+    classifyComposedEventContextFailures(["EVENTS_EVENT_NOT_FOUND"]),
+    "failure",
+  );
 });
 
 test("app event detail route composes the recommended event with relationship context without render-time writes", async () => {
@@ -200,9 +227,9 @@ test("app event detail route preserves empty pending and failure boundaries", as
       eventId: "event_001",
       expectedEvidence:
         /event-roster-controlled-failure|event-recommendation-controlled-failure/,
-      expectedTitle: "Event workspace could not load",
+      expectedTitle: "No event workspace is ready",
       scenario: null,
-      state: "failure",
+      state: "empty",
     },
   ] as const;
 

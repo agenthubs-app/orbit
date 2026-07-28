@@ -75,6 +75,7 @@ export default async function AppPartyCheckinPage({
     redirect("/app/account/login?next=%2Fapp%2Fparty%2Fcheckin");
   }
 
+  const language = await getPartyCheckinPageLanguage();
   const routeModel = await loadAppPartyRouteViewModel({
     actor: {
       displayName:
@@ -84,10 +85,9 @@ export default async function AppPartyCheckinPage({
       email: session.user.email,
       id: session.user.id,
     },
+    language,
     searchParams: await searchParams,
   });
-  const language =
-    routeModel.state === "success" ? await getPartyCheckinPageLanguage() : "zh";
 
   return (
     <>

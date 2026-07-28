@@ -173,11 +173,18 @@ test("app party route loader returns a real party model in mock mode", async () 
   });
 });
 
-test("/app/dashboard redirects to the canonical Party route", () => {
+test("/app/dashboard and /app/party remain separate canonical routes", () => {
   const dashboardPageSource = source("app/(app)/app/dashboard/page.tsx");
+  const partyPageSource = source("app/(app)/app/party/page.tsx");
 
-  assert.match(dashboardPageSource, /redirect\("\/app\/party"\)/);
-  assert.doesNotMatch(dashboardPageSource, /buildOrbitParty|OrbitRealParty/);
+  assert.match(dashboardPageSource, /loadAppDashboardRouteViewModel/);
+  assert.match(dashboardPageSource, /OrbitRealDashboard/);
+  assert.doesNotMatch(
+    dashboardPageSource,
+    /redirect\("\/app\/party"\)|buildOrbitParty|OrbitRealParty/,
+  );
+  assert.match(partyPageSource, /loadAppPartyRouteViewModel/);
+  assert.match(partyPageSource, /OrbitRealParty/);
 });
 
 test("party pages require an authenticated actor and pass it to the shared loader", () => {
@@ -238,7 +245,7 @@ test("party URL query mode cannot activate mock fixtures", async () => {
   });
 });
 
-test("party production composition preserves exact event identity", async () => {
+test("party treats a sourced event without reviewed people context as empty", async () => {
   await withMockParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
       "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
@@ -250,16 +257,50 @@ test("party production composition preserves exact event identity", async () => 
         id: "actor:test",
       },
       eventId: "event_001",
+      language: "zh",
       mode: "mock",
     });
 
     assert.equal(routeModel.state, "route-state");
     if (routeModel.state === "route-state") {
-      assert.equal(routeModel.routeState.scenario, "failure");
+      assert.equal(routeModel.routeState.scenario, "empty");
+      assert.equal(routeModel.routeState.copy.title, "Party 尚未就绪");
+      assert.match(routeModel.routeState.copy.description, /已找到所选活动/);
+      assert.match(routeModel.routeState.copy.description, /参会者或推荐上下文/);
+      assert.deepEqual(routeModel.routeState.recoveryActions[0], {
+        href: "/app/events/event_001",
+        id: "party-return-events",
+        label: "返回当前活动",
+        recoveryCopy:
+          "先复核或导入这场活动的参会者上下文，再重试 Party 模式。",
+      });
       assert.match(
         routeModel.routeState.evidenceIds.join(" "),
         /event-roster-controlled-failure/,
       );
     }
   });
+});
+
+test("party distinguishes a missing event selection from missing people context", async () => {
+  const { loadAppPartyRouteViewModel } = await import(
+    "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+  );
+  const routeModel = await loadAppPartyRouteViewModel({
+    language: "zh",
+    mode: "live",
+  });
+
+  assert.equal(routeModel.state, "route-state");
+  if (routeModel.state === "route-state") {
+    assert.equal(routeModel.routeState.scenario, "empty");
+    assert.equal(
+      routeModel.routeState.copy.description,
+      "尚未选择要进入 Party 模式的活动。",
+    );
+    assert.match(routeModel.routeState.copy.nextStep, /先打开一场/);
+    assert.equal(routeModel.routeState.evidenceIds.length, 0);
+    assert.equal(routeModel.routeState.recoveryActions[0]?.href, "/app/events");
+    assert.equal(routeModel.routeState.recoveryActions[0]?.label, "返回活动");
+  }
 });
