@@ -581,6 +581,7 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "post-event follow-up preserved duplicate-contact resolution, explicit confirmation, unsent draft state, and core-ID idempotency",
         "roster expand/collapse, organizer navigation, replay, Agent context, and browser-history return all preserved the exact event identity",
         "all 42 exact audit rows were deleted after verification while three unrelated pre-existing Agent runs remained",
+        "after cleanup the same actor immediately lost attendee names, matchmaking candidates, follow-up, and replay access; the ended-event boundary exposed no dead registration link",
       ],
       verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
       verificationConclusion:
@@ -2946,15 +2947,15 @@ const VERIFIED_AUDIT_CASES = [
     target:
       "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
     testData:
-      "Ended event_01/EVT01; current registered actor user_ms4tr4vi_jb4qje; two registered matchmaking actors; 50 source-backed attendees; one unique and two same-name actor-owned contacts; one stable introduction request; two follow-up runs; before/after Agent conversations",
+      "Ended event_01/EVT01; current actor user_ms4tr4vi_jb4qje before and after registration cleanup; two registered matchmaking actors; 50 source-backed attendees; one unique and two same-name actor-owned contacts; one stable introduction request; two follow-up runs; before/after Agent conversations",
     expected:
       "Every branch must preserve the exact event and actor, use source-backed people/counts, gate writes on registration and explicit confirmation, keep retries idempotent, withhold external actions, distinguish duplicate contacts, represent ended-event replay honestly, and give Agent the exact selected event instead of a fuzzy fallback",
     actual:
-      "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned to the actual catalogue history entry. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained.",
+      "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned to the actual catalogue history entry. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained. A hard refresh after cleanup immediately hid all 50 attendee names, matchmaking candidates, follow-up, and replay access. Runtime then exposed and repaired one state contradiction: the ended-event matchmaking boundary no longer links to registration and now states that registration is closed and matching is limited to participants registered before the event ended.",
     evidence:
-      "Authenticated production-browser click traversal; exact Postgres row/payload readback; focused Event Detail, Party, organizer, Agent-context, recommendation, matchmaking, and follow-up tests; two exact production builds; commits 743721b8, 55c72ef8, 3b116abe, fd1ce510, and 9bbe8c4c",
+      "Authenticated production-browser click and post-cleanup refresh traversal; exact Postgres row/payload readback; focused Event Detail, Party, organizer, Agent-context, recommendation, matchmaking, and follow-up tests; exact production builds; commits 743721b8, 55c72ef8, 3b116abe, fd1ce510, 9bbe8c4c, and 045a7ec4",
     conclusion:
-      "pass for the exercised registered ended-event lifecycle, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and browser return; voice recording/transcription, incoming decline UI, guest/login route, unregistered roster denial, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified",
+      "pass for the exercised registered ended-event lifecycle, post-cleanup unregistered roster/matchmaking/follow-up/replay denial, closed-registration terminal copy, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and browser return; voice recording/transcription, incoming decline UI, guest/login route, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified",
   },
   {
     id: "web-schedule-dynamic-event-identity-2026-07-29",
@@ -3628,6 +3629,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Agent/Event tests 32/32, exact production build, and two before/after browser conversations passed. The repaired answer used only event_01, stated its exact 2026-02-15 ended status and Osaka venue, cited one real record, suggested retrospective actions, and executed no external operation. Generic catalogue recommendation still preferred upcoming events.",
     status:
       "fixed and runtime-verified for one ended public event by exact ID/title and the unchanged generic discovery test; multiple explicit events, true cancellation semantics, other languages, provider failure, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-047",
+    severity: "P1",
+    rootCause:
+      "The matchmaking service correctly returned registration_required for an unregistered actor, but its UI interpreted that state without the parent event lifecycle. On an ended event, the main registration action and replay were disabled while the matchmaking card still promised 报名后 and linked to the registration workspace, creating a contradictory dead-end.",
+    decision:
+      "Pass the parent event's registration-open fact into the matchmaking presenter. Preserve the existing registration link for upcoming/active events, but for ended events replace both the generic privacy sentence and registration CTA with a terminal boundary: matching is limited to participants registered before the event ended, and registration is closed.",
+    files:
+      "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+    regression:
+      "Focused Event Detail/matchmaking tests 18/18, exact production build, and authenticated browser refresh passed. After all audit registration rows were deleted, attendee names, candidates, follow-up, and replay disappeared immediately; the ended-event card contained the two terminal sentences and no 完成报名资料 link.",
+    status:
+      "fixed and runtime-verified for the ended/unregistered event_01 boundary while upcoming/active registration source behavior remains covered by existing tests; guest/login, cancelled-registration, responsive, keyboard, and assistive cases remain unverified",
   },
 ];
 
