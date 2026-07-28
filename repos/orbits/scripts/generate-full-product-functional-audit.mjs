@@ -620,8 +620,11 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "an unknown public slug terminated at the public-catalogue boundary instead of entering private event storage",
         "the not-found boundary rendered complete Chinese and English copy without a verified badge, event card, or fallback organizer",
         "source details exposed the dedicated not-found evidence and the recovery action restored all 13 catalogue events",
+        "before repair, mode=mock selected an internal fixture and rendered its organizer, event, and verified badge on the public route",
+        "after repair, public mode/scenario query parameters could neither select mock data nor replace an exact catalogue organizer with a synthetic failure state",
       ],
-      verificationCase: "web-public-organizer-unknown-slug-boundary-2026-07-29",
+      verificationCase:
+        "web-public-organizer-query-control-boundary-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-public-catalogue-organizer",
     },
@@ -3169,6 +3172,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for production public/private source termination, unknown-slug classification, dedicated evidence, Chinese/English copy, no fallback identity/data, disclosure, recovery, and no-write behavior; Japanese-specific copy, guest browser session, private-store access tracing under populated unrelated actors, responsive, keyboard/screen-reader, explicit mock scenarios, and provider timeout remain unverified",
   },
   {
+    id: "web-public-organizer-query-control-boundary-2026-07-29",
+    target:
+      "Authenticated Web public Organizer untrusted query parameters → fixed public-catalogue dependency boundary",
+    testData:
+      "/app/o/demo-event-1?mode=mock and /app/o/evt01?mode=mock&scenario=failure against the exact production build; Chinese locale; approved 13-event public catalogue",
+    expected:
+      "Public URL parameters must not select internal mock/live dependencies or force empty, pending, or failure fixtures. Only the path slug may select an exact reviewed public organizer; an unknown slug must remain not found and an exact slug must preserve its catalogue projection without writes.",
+    actual:
+      "Before repair, mode=mock rendered Calendar sync fixture, Climate founders dinner, and a verified organizer badge from the internal mock event service. After repair, the identical unknown-slug URL retained its query string but rendered 未找到该主办方 with PUBLIC_ORGANIZER_NOT_FOUND and no fixture identity, event, or verified badge. The exact evt01 URL with both mode=mock and scenario=failure still rendered Orbit 人脉测试空间 with all 13 reviewed events and cumulative participantCount 500 rather than mock data or a forced route-state failure.",
+    evidence:
+      "Authenticated production-browser before/after DOM for both adversarial URLs; source trace from AppOrganizerPublicPage searchParams to loadAppOrganizerPublicRouteViewModel mode/scenario service selection; GitNexus page impact LOW with zero upstream callers; focused Organizer tests 7/7; exact production build; commit f3a0c508",
+    conclusion:
+      "pass for blocking mock dependency selection and forced failure on the exercised authenticated production public route while preserving exact and unknown catalogue semantics and no-write behavior; duplicate/array/encoded query values, empty/pending/live-only parameters, guest session, proxy/cache behavior, other public routes, and future debug parameters remain unverified",
+  },
+  {
     id: "web-public-event-detail-lifecycle-2026-07-29",
     target:
       "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
@@ -3911,6 +3929,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Organizer tests passed 7/7, including an unknown default slug under an intentionally unconfigured live private store, explicit mock success, explicit live failure, exact catalogue success/private-field stripping, and zh/en state projection. The exact production build passed. Browser runtime changed an English storage failure into a bilingual public-only not-found state, exposed both dedicated evidence IDs, showed no badge/event fallback, and recovered to all 13 events.",
     status:
       "fixed and runtime-verified for exact and unknown production public slugs, Chinese/English not-found presentation, evidence disclosure, and catalogue recovery; Japanese-specific copy, guest session, populated unrelated private-store tracing, responsive/assistive traversal, explicit scenario runtime, and timeout remain unverified",
+  },
+  {
+    id: "AUDIT-P1-051",
+    severity: "P1",
+    rootCause:
+      "AppOrganizerPublicPage accepted public URL searchParams and forwarded them unchanged to the organizer loader. The loader intentionally treats explicit mode and scenario values as internal dependency and fixture controls, so an untrusted request could select the mock event service or force synthetic route states. In production runtime, mode=mock exposed Calendar sync fixture, Climate founders dinner, and a verified organizer badge on the public organizer surface.",
+    decision:
+      "Terminate dependency selection at the public route adapter: pass only the decoded path slug to the organizer loader and do not accept or forward URL search parameters. Preserve explicit mode/scenario inputs on the loader solely for direct internal tests and controlled callers, keeping testability without making those controls part of the public HTTP contract.",
+    files:
+      "repos/orbits/app/(app)/app/o/[slug]/page.tsx; repos/orbits/tests/pages/app-organizer-public-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW risk and no upstream callers for AppOrganizerPublicPage. Focused Organizer tests passed 7/7 and assert that the page source has no searchParams dependency while the internal loader still supports explicit mock and controlled live-failure calls. The exact production build passed. Browser runtime changed demo-event-1?mode=mock from a verified mock organizer into the public not-found boundary, while evt01?mode=mock&scenario=failure continued to render the exact 13-event, 500-participant reviewed catalogue projection.",
+    status:
+      "fixed and runtime-verified for the exercised authenticated mock-selection and forced-failure URLs with exact and unknown slugs; duplicate/array/encoded values, empty/pending/live-only inputs, guest session, proxy/cache behavior, other public routes, and future debug parameters remain unverified",
   },
 ];
 
