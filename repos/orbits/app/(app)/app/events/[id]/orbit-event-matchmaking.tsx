@@ -277,6 +277,12 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
   const [unauthorized, setUnauthorized] = useState(false);
   const [error, setError] = useState("");
   const [working, setWorking] = useState<string | null>(null);
+  const visibleError = error
+    ? t({
+        en: "Matchmaking data is not available for this event yet.",
+        zh: "当前活动暂时没有可用的撮合数据。",
+      })
+    : "";
 
   const load = useCallback(async () => {
     const response = await fetch(
@@ -475,9 +481,9 @@ export function OrbitEventMatchmaking({ eventId }: { eventId: string }) {
         </div>
       ) : null}
 
-      {error ? (
+      {visibleError ? (
         <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>
-          {error}
+          {visibleError}
         </p>
       ) : null}
     </section>

@@ -302,6 +302,28 @@ test("event detail reads registration state from the registration record API", (
   );
 });
 
+test("event detail with no organizer source renders a non-link pending boundary", () => {
+  const detailSource = source(
+    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+  );
+
+  assert.match(detailSource, /if \(!organizer\)/);
+  assert.match(detailSource, /Organizer pending/);
+  assert.match(detailSource, /主办方待确认/);
+  assert.match(detailSource, /活动来源暂未提供主办方信息/);
+});
+
+test("event matchmaking hides raw service errors behind product copy", () => {
+  const matchmakingSource = source(
+    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
+  );
+
+  assert.match(matchmakingSource, /const visibleError = error/);
+  assert.match(matchmakingSource, /当前活动暂时没有可用的撮合数据/);
+  assert.match(matchmakingSource, /\{visibleError\}/);
+  assert.doesNotMatch(matchmakingSource, />\s*\{error\}\s*</);
+});
+
 test("event matchmaking returns guests to the exact app event after login", () => {
   const matchmakingSource = source(
     "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",

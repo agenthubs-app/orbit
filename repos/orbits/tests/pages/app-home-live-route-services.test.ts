@@ -122,7 +122,8 @@ test("app home does not relabel event records as registrations", () => {
   const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
 
   assert.doesNotMatch(homeRouteSource, /youRsvped: true/);
-  assert.equal(homeRouteSource.match(/youRsvped: false/g)?.length, 2);
+  assert.doesNotMatch(homeRouteSource, /function eventChoiceToLandingEvent/);
+  assert.match(homeRouteSource, /import \{ eventChoiceToLandingEvent \}/);
   assert.doesNotMatch(homeUiSource, /报名活动/);
   assert.match(homeUiSource, /en: "Events", zh: "活动"/);
 });

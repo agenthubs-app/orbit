@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
+import { eventChoiceToLandingEvent } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
 
 const liveDatabaseEnvKeys = [
@@ -61,6 +62,33 @@ test("app events route service bundle resolves all child services in live mode",
     resolution.success === false ? resolution.error.message : "",
   );
   assert.equal(resolution.mode, "live");
+});
+
+test("private event list mapping does not invent organizer, roster, or registration state", () => {
+  const event = eventChoiceToLandingEvent(
+    {
+      attendeeName: "Recommended Person",
+      detailHref: "/app/events/event%3Alive",
+      endsAt: "2026-09-29T11:00:00+09:00",
+      evidence: [],
+      id: "event:live",
+      nextAction: "Review",
+      readinessScore: 87,
+      relationshipValue: "Potential fit",
+      startsAt: "2026-09-29T10:00:00+09:00",
+      status: "confirmed",
+      title: "Private event",
+      venue: "Tokyo",
+    },
+    0,
+  );
+
+  assert.equal(event.organizer, "");
+  assert.equal(event.host, "");
+  assert.equal(event.participantCount, 0);
+  assert.deepEqual(event.stats.attendees, []);
+  assert.equal(event.stats.youRsvped, false);
+  assert.equal(event.youRsvped, false);
 });
 
 test("app events route loader returns a controlled live failure when storage is unconfigured", async () => {

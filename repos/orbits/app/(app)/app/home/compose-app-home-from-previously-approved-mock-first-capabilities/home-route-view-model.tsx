@@ -1,13 +1,10 @@
 import { StateView } from "../../../../../shared/ui/state-view";
 import type { AppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { loadAppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import type {
-  AppEventsEventChoiceViewModel,
-  AppEventsRouteViewModel,
-} from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
+import type { AppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { loadAppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
+import { eventChoiceToLandingEvent } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
-import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import type { AppProfileRouteViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { loadAppProfileRouteViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 
@@ -51,119 +48,6 @@ type ChildRouteModel =
   | AppContactsRouteViewModel
   | AppEventsRouteViewModel
   | AppProfileRouteViewModel;
-
-function eventStatusFor(
-  event: AppEventsEventChoiceViewModel,
-): OrbitLandingEventView["status"] {
-  if (event.status === "cancelled") {
-    return "ended";
-  }
-
-  const startsAt = new Date(event.startsAt).getTime();
-  const endsAt = new Date(event.endsAt).getTime();
-  const now = Date.now();
-
-  if (Number.isFinite(endsAt) && endsAt < now) {
-    return "ended";
-  }
-
-  if (
-    Number.isFinite(startsAt) &&
-    Number.isFinite(endsAt) &&
-    startsAt <= now &&
-    now <= endsAt
-  ) {
-    return "active";
-  }
-
-  return "upcoming";
-}
-
-function attendeeFor(event: AppEventsEventChoiceViewModel) {
-  const name = event.attendeeName.trim();
-
-  if (!name || /review attendee/i.test(name)) {
-    return [];
-  }
-
-  return [
-    {
-      initial: name.slice(0, 1).toUpperCase(),
-      name,
-      role: event.relationshipValue,
-    },
-  ];
-}
-
-function eventChoiceToLandingEvent(
-  event: AppEventsEventChoiceViewModel,
-): OrbitLandingEventView {
-  const attendees = attendeeFor(event);
-  const status = eventStatusFor(event);
-  const description = [event.relationshipValue, event.nextAction]
-    .filter(Boolean)
-    .join(" ");
-
-  return {
-    address: event.venue,
-    agenda: [
-      {
-        description: event.relationshipValue,
-        label: "Relationship context",
-        time: "Source",
-      },
-      {
-        description: event.nextAction,
-        label: "Next action",
-        time: "Next",
-      },
-      {
-        description: `Readiness score ${event.readinessScore}`,
-        label: "Readiness",
-        time: "Review",
-      },
-    ],
-    brandColor: "#6359E9",
-    cap: Math.max(20, attendees.length + 20),
-    code: event.id,
-    descriptionZh: description,
-    detailLogoUrl: "",
-    endsAt: event.endsAt,
-    feeLabel: "Source-backed",
-    host: "Orbit",
-    id: event.id,
-    industry: "Relationship",
-    logoUrl: "",
-    mapX: 50,
-    mapY: 50,
-    name: event.title,
-    organizer: "Orbit",
-    participantCount: attendees.length,
-    place: event.venue,
-    startsAt: event.startsAt,
-    stats: {
-      attendees,
-      authed: true,
-      count: attendees.length,
-      youRsvped: false,
-    },
-    status,
-    summaryZh: description,
-    // UI-audit fix C5. This synthesised "tags" from two values that are not
-    // topics: the raw status enum and the readiness score formatted as a slug.
-    // Both surfaces that read event.tags treat it as the card's topic row and
-    // as the topic filter chips, so /app/events offered filters reading
-    // "confirmed", "imported", "draft" and "readiness-75" — internal tokens,
-    // untranslated, and the status one duplicating the dedicated status chip
-    // group right beside it. Status stays available as event.status; readiness
-    // is a score, not a topic. No real topic data exists yet, so the row falls
-    // back to industry alone rather than inventing labels.
-    tags: [],
-    theme: "relationship",
-    venue: event.venue,
-    youRsvped: false,
-  };
-}
 
 function inProgressCount(contacts: AppContactsRouteViewModel): number {
   if (contacts.state !== "success") {

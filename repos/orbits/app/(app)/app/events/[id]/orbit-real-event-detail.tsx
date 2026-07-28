@@ -156,8 +156,28 @@ function enterAction(
 }
 
 function OrganizerRailCard({ event, mobile = false, t }: { event: OrbitLandingEventView; mobile?: boolean; t: Translate }) {
-  const initial = (event.organizer || "O").slice(0, 1).toUpperCase();
+  const organizer = event.organizer.trim();
+  const initial = organizer.slice(0, 1).toUpperCase() || "O";
   const slug = (event.code || "org").toLowerCase();
+
+  if (!organizer) {
+    return (
+      <div className="card-flat" style={{ padding: mobile ? 14 : 16, marginTop: mobile ? 6 : 18 }}>
+        <div className="eyebrow" style={{ marginBottom: 12 }}>{t({ en: "Organizer", zh: "主办方" })}</div>
+        <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
+          <Avatar letter={initial} g="g-indigo" size={mobile ? 40 : 42} />
+          <div>
+            <div style={{ color: "var(--ink)", fontSize: mobile ? 14.5 : 15, fontWeight: 600 }}>
+              {t({ en: "Organizer pending", zh: "主办方待确认" })}
+            </div>
+            <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>
+              {t({ en: "The event source did not provide organizer information.", zh: "活动来源暂未提供主办方信息。" })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card-flat" style={{ padding: mobile ? 14 : 16, marginTop: mobile ? 6 : 18 }}>
@@ -165,7 +185,7 @@ function OrganizerRailCard({ event, mobile = false, t }: { event: OrbitLandingEv
       <a href={productHref(`/o/${slug}`)} style={{ display: "flex", alignItems: "center", gap: 12, color: "inherit", textDecoration: "none" }}>
         <Avatar letter={initial} g="g-indigo" size={mobile ? 40 : 42} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: mobile ? 14.5 : 15, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{event.organizer}</div>
+          <div style={{ fontWeight: 600, fontSize: mobile ? 14.5 : 15, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{organizer}</div>
           <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 1 }}>{t({ en: `Multiple events hosted · ${event.host}`, zh: `已举办多场 · ${event.host}` })}</div>
         </div>
         <Icon name="chevR" size={18} color="var(--text-4)" />

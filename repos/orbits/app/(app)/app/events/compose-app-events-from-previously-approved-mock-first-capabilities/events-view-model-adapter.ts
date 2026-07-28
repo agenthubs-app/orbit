@@ -40,27 +40,10 @@ function eventStatusFor(
   return "upcoming";
 }
 
-function attendeeFor(event: AppEventsEventChoiceViewModel) {
-  const name = event.attendeeName.trim();
-
-  if (!name || /review attendee/i.test(name)) {
-    return [];
-  }
-
-  return [
-    {
-      initial: name.slice(0, 1).toUpperCase(),
-      name,
-      role: event.relationshipValue,
-    },
-  ];
-}
-
-function eventChoiceToLandingEvent(
+export function eventChoiceToLandingEvent(
   event: AppEventsEventChoiceViewModel,
   index: number,
 ): OrbitLandingEventView {
-  const attendees = attendeeFor(event);
   const status = eventStatusFor(event);
   const description = [event.relationshipValue, event.nextAction]
     .filter(Boolean)
@@ -87,28 +70,28 @@ function eventChoiceToLandingEvent(
       },
     ],
     brandColor: "#6359E9",
-    cap: Math.max(20, attendees.length + 20),
+    cap: 20,
     code: event.id,
     descriptionZh: description,
     detailLogoUrl: sceneAsset?.src ?? "",
     endsAt: event.endsAt,
     feeLabel: "Source-backed",
-    host: "Orbit",
+    host: "",
     id: event.id,
     industry: "Relationship",
     logoUrl: sceneAsset?.src ?? "",
     mapX: 38 + ((index * 11) % 34),
     mapY: 36 + ((index * 7) % 32),
     name: event.title,
-    organizer: "Orbit",
-    participantCount: attendees.length,
+    organizer: "",
+    participantCount: 0,
     place: event.venue,
     startsAt: event.startsAt,
     stats: {
-      attendees,
+      attendees: [],
       authed: true,
-      count: attendees.length,
-      youRsvped: true,
+      count: 0,
+      youRsvped: false,
     },
     status,
     summaryZh: description,
@@ -124,7 +107,7 @@ function eventChoiceToLandingEvent(
     tags: [],
     theme: "relationship",
     venue: event.venue,
-    youRsvped: true,
+    youRsvped: false,
   };
 }
 
