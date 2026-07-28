@@ -79,7 +79,7 @@
 | `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 2 | 65 | 8 | runtime-partially-verified-web-actor-scoped-home-event |
 | `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 2 | 65 | 4 | runtime-partially-verified-web-home-events-filter-and-detail |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 24 | 2 | runtime-partially-verified-web-public-catalogue-organizer |
+| `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 24 | 3 | runtime-partially-verified-web-public-catalogue-organizer |
 | `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 2 | 79 | 6 | runtime-partially-verified-web-party-source-context-boundary |
 | `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 2 | 79 | 5 | runtime-partially-verified-web-party-checkin-source-context-boundary |
 | `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 2 | 79 | 4 | runtime-partially-verified-web-party-graph-source-context-boundary |

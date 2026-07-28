@@ -615,8 +615,10 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the page rendered 13 approved-catalogue events and cumulative participantCount 500",
         "hard-coded 12, 4,200+, and satisfaction claims were absent",
         "the public projection stripped attendee names, actor registration state, and private roster data",
+        "the EVT01 card opened the exact event detail and its back control returned to the organizer source",
+        "返回活动 exited the organizer surface to the complete 13-event catalogue",
       ],
-      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+      verificationCase: "web-public-organizer-navigation-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-public-catalogue-organizer",
     },
@@ -1876,12 +1878,35 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#t({ en: \"Back to previous page\", zh: \"返回上一页\" })",
     {
       actualResult:
-        "返回上一页 returned from /app/events/EVT01 to the actual /app/events history entry.",
+        "返回上一页 returned EVT01 to its distinct same-origin source: /app/events from the catalogue and /app/o/evt01 from the organizer; a direct entry with no referrer safely fell back to /app/events.",
       testData:
-        "Authenticated catalogue → EVT01 detail browser navigation",
+        "Authenticated catalogue → EVT01 and organizer → EVT01 browser navigation plus an empty-referrer direct entry",
       idempotency:
         "Browser-history navigation only; no event, registration, contact, Agent, or external record was written.",
-      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+      verificationCase: "web-public-organizer-navigation-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx:50",
+    {
+      actualResult:
+        "The 东京餐饮入境客增长会 organizer card opened /app/events/EVT01 with the exact source-backed detail heading.",
+      testData:
+        "Orbit 人脉测试空间 public projection with 13 approved events and EVT01/event_01",
+      idempotency:
+        "Read-only navigation only; no organizer, event, registration, attendee, contact, or external record was written.",
+      verificationCase: "web-public-organizer-navigation-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx#t({ en: \"Back to events\", zh: \"返回活动\" })",
+    {
+      actualResult:
+        "返回活动 navigated from /app/o/evt01 to /app/events and restored the complete 13-event catalogue.",
+      testData: "Orbit 人脉测试空间 public organizer surface",
+      idempotency:
+        "Read-only navigation only; no organizer, event, registration, attendee, contact, or external record was written.",
+      verificationCase: "web-public-organizer-navigation-2026-07-29",
     },
   ],
   [
@@ -3085,6 +3110,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for the exercised desktop catalogue denominator, exact/nonexistent search, all status branches, one topic intersection, empty-state recovery, module/map switching, map rail and pin selection, localized day-token repair, exact detail navigation, and no-write behavior; guest account controls, mobile/responsive interactions, keyboard/screen-reader traversal, invalid coordinates, source-empty catalogue, and provider failure remain explicitly unverified",
   },
   {
+    id: "web-public-organizer-navigation-2026-07-29",
+    target:
+      "Authenticated Web public Organizer → exact event detail, source-preserving return, direct-detail fallback, and catalogue exit",
+    testData:
+      "Orbit 人脉测试空间 at /app/o/evt01; approved 13-event projection; EVT01/event_01; same-origin organizer/catalogue referrers plus an empty direct-entry referrer",
+    expected:
+      "Organizer cards must preserve the exact public event; a control labelled 返回上一页 must return to a distinct same-origin Orbit source instead of a fixed destination; direct or external entry must fail safely to the catalogue; organizer exit must restore the full approved catalogue without writes",
+    actual:
+      "Runtime first proved the organizer card opened the exact EVT01 detail, but 返回上一页 ignored /app/o/evt01 and always sent the user to /app/events. After repair, the detail recognized the same-origin organizer referrer and returned to /app/o/evt01; catalogue-origin navigation still returned to /app/events. An empty-referrer direct entry safely fell back to /app/events. 返回活动 independently restored the complete 13-event catalogue.",
+    evidence:
+      "Authenticated production-browser organizer/card/detail/back/exit traversal before and after repair; direct empty-referrer fallback; focused Event Detail tests 15/15; exact production build; GitNexus BackButton impact LOW; commit 12eb0514",
+    conclusion:
+      "pass for exact organizer-card identity, organizer and catalogue history return, direct-entry fallback, external/same-page rejection in tests, catalogue exit, and no-write behavior; unknown-organizer recovery controls, external-referrer browser runtime, mobile/responsive, keyboard/screen-reader traversal, and browser history with multiple identical detail entries remain unverified",
+  },
+  {
     id: "web-public-event-detail-lifecycle-2026-07-29",
     target:
       "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
@@ -3093,11 +3133,11 @@ const VERIFIED_AUDIT_CASES = [
     expected:
       "Every branch must preserve the exact event and actor, use source-backed people/counts, gate writes on registration and explicit confirmation, keep retries idempotent, withhold external actions, distinguish duplicate contacts, represent ended-event replay honestly, and give Agent the exact selected event instead of a fuzzy fallback",
     actual:
-      "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned to the actual catalogue history entry. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained. A hard refresh after cleanup immediately hid all 50 attendee names, matchmaking candidates, follow-up, and replay access. Runtime then exposed and repaired one state contradiction: the ended-event matchmaking boundary no longer links to registration and now states that registration is closed and matching is limited to participants registered before the event ended.",
+      "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned catalogue-origin navigation to /app/events; a later organizer traversal exposed its hard-coded destination and was repaired to preserve /app/o/evt01 while retaining the direct-entry catalogue fallback. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained. A hard refresh after cleanup immediately hid all 50 attendee names, matchmaking candidates, follow-up, and replay access. Runtime then exposed and repaired one state contradiction: the ended-event matchmaking boundary no longer links to registration and now states that registration is closed and matching is limited to participants registered before the event ended.",
     evidence:
       "Authenticated production-browser click and post-cleanup refresh traversal; exact Postgres row/payload readback; focused Event Detail, Party, organizer, Agent-context, recommendation, matchmaking, and follow-up tests; exact production builds; commits 743721b8, 55c72ef8, 3b116abe, fd1ce510, 9bbe8c4c, and 045a7ec4",
     conclusion:
-      "pass for the exercised registered ended-event lifecycle, post-cleanup unregistered roster/matchmaking/follow-up/replay denial, closed-registration terminal copy, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and browser return; voice recording/transcription, incoming decline UI, guest/login route, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified",
+      "pass for the exercised registered ended-event lifecycle, post-cleanup unregistered roster/matchmaking/follow-up/replay denial, closed-registration terminal copy, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and source-aware browser return; voice recording/transcription, incoming decline UI, guest/login route, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified",
   },
   {
     id: "web-schedule-dynamic-event-identity-2026-07-29",
@@ -3799,6 +3839,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW risk across four upstream symbols and no business process. Focused Events tests passed 8/8, the exact production build passed, and authenticated browser traversal changed 9月15日日 / 2月15日日 to 9月15日 / 2月15日 while preserving 13 map positions, EVT01 selection, event time, venue, participant count, and exact detail navigation.",
     status:
       "fixed and runtime-verified for the exercised Chinese desktop module/map catalogue; English token behavior is regression-tested, while mobile/responsive and other locale runtime presentation remain unverified",
+  },
+  {
+    id: "AUDIT-P2-049",
+    severity: "P2",
+    rootCause:
+      "Event Detail labelled its control 返回上一页 / Back to previous page but BackButton unconditionally assigned /app/events. Catalogue-origin traversal appeared correct only because that fixed destination happened to match its source; organizer-origin traversal proved the control discarded the actual previous surface.",
+    decision:
+      "Use browser history only when document.referrer is a distinct same-origin Orbit product path and a prior history entry exists. Reject same-page, malformed, and external referrers; keep the canonical /app/events assignment as the safe direct-entry fallback.",
+    files:
+      "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW risk across two upstream symbols and one Event Detail page flow. Focused Event Detail tests passed 15/15 and the exact production build passed. Authenticated browser traversal changed organizer → EVT01 → 返回上一页 from /app/events to /app/o/evt01, preserved catalogue → EVT01 → /app/events, and kept an empty-referrer direct entry on the safe /app/events fallback.",
+    status:
+      "fixed and runtime-verified for organizer, catalogue, and direct-entry paths; external/same-page referrers are regression-tested, while external-referrer browser runtime, mobile/responsive, keyboard/screen-reader, and repeated identical-detail history remain unverified",
   },
 ];
 

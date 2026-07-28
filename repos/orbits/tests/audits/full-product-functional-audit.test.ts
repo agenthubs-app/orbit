@@ -176,12 +176,19 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
         "web-public-event-detail-lifecycle-2026-07-29",
       ),
   );
+  const publicOrganizerNavigationInteractions =
+    runtimeVerifiedInteractions.filter((interaction) =>
+      interaction.testEvidence.includes(
+        "web-public-organizer-navigation-2026-07-29",
+      ),
+    );
 
   assert.equal(
     inventory.summary.interactionsRuntimeVerified,
     runtimeVerifiedInteractions.length,
   );
-  assert.equal(publicEventDetailInteractions.length, 21);
+  assert.equal(publicEventDetailInteractions.length, 20);
+  assert.equal(publicOrganizerNavigationInteractions.length, 3);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/profile",
