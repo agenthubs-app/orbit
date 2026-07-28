@@ -44,11 +44,9 @@ test("account auth screen is brand-first without explainer or status cards", () 
   assert.doesNotMatch(screenSource, /displayName:\s*"小雨"/u);
 });
 
-test("forgot password moves to the verification form without showing a failed reset state", () => {
-  assert.match(screenSource, /setForgotStep\(2\)/u);
-  assert.match(screenSource, /验证码邮件还没开通/u);
-  assert.doesNotMatch(
-    screenSource,
-    /重置密码暂时不能发送，请先返回登录/u
-  );
+test("forgot password fails closed without collecting reset fields", () => {
+  assert.match(screenSource, /view\.restrictionMessage/u);
+  assert.match(screenSource, /密码重置服务暂不可用/u);
+  assert.doesNotMatch(screenSource, /setForgotStep|setForgotStep\(2\)/u);
+  assert.doesNotMatch(screenSource, /验证码邮件还没开通/u);
 });

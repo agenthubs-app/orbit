@@ -22,7 +22,7 @@ test("accountAuthToView maps each auth mode to Chinese mobile copy", () => {
     }
   > = {
     forgot: {
-      primaryLabel: "发送验证码",
+      primaryLabel: "密码重置暂不可用",
       switchHref: "/account/login",
       switchLabel: "返回登录",
       title: "重置密码"
@@ -70,12 +70,8 @@ test("accountAuthToView returns the fields required by each mode", () => {
     ["email", "password"]
   );
   assert.deepEqual(
-    accountAuthToView("forgot", { forgotStep: 1 }).fields.map((field) => field.name),
-    ["email"]
-  );
-  assert.deepEqual(
-    accountAuthToView("forgot", { forgotStep: 2 }).fields.map((field) => field.name),
-    ["email", "code", "newPassword"]
+    accountAuthToView("forgot").fields.map((field) => field.name),
+    []
   );
 });
 
@@ -86,12 +82,11 @@ test("accountAuthToView exposes account recovery helper links", () => {
       label: "忘记密码"
     }
   ]);
-  assert.deepEqual(accountAuthToView("forgot").helperLinks, [
-    {
-      href: "/account/login",
-      label: "返回登录"
-    }
-  ]);
+  assert.deepEqual(accountAuthToView("forgot").helperLinks, []);
+  assert.equal(
+    accountAuthToView("forgot").restrictionMessage,
+    "系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。"
+  );
   assert.deepEqual(accountAuthToView("signup").helperLinks, []);
 });
 
@@ -132,16 +127,6 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
   assert.equal(
     nextHrefForAccountAuthSubmit({
       email: "xinyi@example.com",
-      forgotStep: 1,
-      mode: "forgot",
-      next: "/dashboard"
-    }),
-    "forgot-step-2"
-  );
-  assert.equal(
-    nextHrefForAccountAuthSubmit({
-      email: "xinyi@example.com",
-      forgotStep: 2,
       mode: "forgot",
       next: "/dashboard"
     }),

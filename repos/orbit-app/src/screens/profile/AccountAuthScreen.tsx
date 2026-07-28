@@ -40,20 +40,17 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     next?: string | string[];
   }>();
   const router = useRouter();
-  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const auth = useOrbitAuthSession();
   const [values, setValues] = useState<Record<AccountAuthFieldView["name"], string>>({
-    code: "",
     email: firstParam(params.email),
-    newPassword: "",
     password: ""
   });
   const view = useMemo(
-    () => accountAuthToView(mode, { forgotStep, googleEnabled: auth.googleEnabled }),
-    [auth.googleEnabled, forgotStep, mode]
+    () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled }),
+    [auth.googleEnabled, mode]
   );
   const next = firstParam(params.next, view.defaultNext);
   const created = firstParam(params.created) === "1";
@@ -76,12 +73,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 
     try {
       if (mode === "forgot") {
-        if (forgotStep === 1) {
-          setForgotStep(2);
-          setNotice("验证码邮件还没开通。这里先保留第二步表单，等邮件开通后可直接继续。");
-        } else {
-          router.replace(`/account/login?next=${encodeURIComponent(next)}` as Href);
-        }
+        setError(view.restrictionMessage ?? "密码重置服务暂不可用。");
         return;
       }
 
@@ -151,7 +143,27 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     >
       <OrbitAuthLogo />
       <DataCard title={view.primaryLabel}>
-        <View style={styles.form}>
+        {view.restrictionMessage ? (
+          <View style={styles.form}>
+            <Text style={styles.errorText}>{view.restrictionMessage}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                navigateTo(
+                  `${view.switchHref}?next=${encodeURIComponent(next)}`
+                )
+              }
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>{view.switchLabel}</Text>
+              <Ionicons color={colors.onAccent} name="arrow-forward" size={17} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.form}>
           {view.fields.map((field) => (
             <AuthField
               field={field}
@@ -240,7 +252,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               ))}
             </View>
           ) : null}
-        </View>
+          </View>
+        )}
       </DataCard>
     </AppScreen>
   );

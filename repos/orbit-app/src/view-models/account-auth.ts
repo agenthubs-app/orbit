@@ -1,10 +1,9 @@
 export type AccountAuthMode = "forgot" | "login" | "signup";
-export type AccountAuthSubmitResult = "forgot-step-2" | string;
 
 export interface AccountAuthFieldView {
   helper?: string;
   label: string;
-  name: "code" | "email" | "newPassword" | "password";
+  name: "email" | "password";
   placeholder: string;
   secure: boolean;
 }
@@ -29,13 +28,13 @@ export interface AccountAuthView {
   mode: AccountAuthMode;
   oauthActions: AccountAuthOauthActionView[];
   primaryLabel: string;
+  restrictionMessage?: string;
   switchHref: string;
   switchLabel: string;
   title: string;
 }
 
 interface AccountAuthOptions {
-  forgotStep?: 1 | 2;
   googleEnabled?: boolean;
 }
 
@@ -56,8 +55,10 @@ const modeCopy: Record<
 > = {
   forgot: {
     busyLabel: "处理中...",
-    description: "输入注册邮箱，先确认重置入口。",
-    primaryLabel: "发送验证码",
+    description: "当前部署尚未配置密码重置服务。",
+    primaryLabel: "密码重置暂不可用",
+    restrictionMessage:
+      "系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。",
     switchHref: "/account/login",
     switchLabel: "返回登录",
     title: "重置密码"
@@ -103,29 +104,9 @@ const signupPasswordField: AccountAuthFieldView = {
   secure: true
 };
 
-const codeField: AccountAuthFieldView = {
-  label: "验证码",
-  name: "code",
-  placeholder: "6 位验证码",
-  secure: false
-};
-
-const newPasswordField: AccountAuthFieldView = {
-  helper: "至少 8 位",
-  label: "新密码",
-  name: "newPassword",
-  placeholder: "设置新密码",
-  secure: true
-};
-
-function fieldsForMode(
-  mode: AccountAuthMode,
-  forgotStep: 1 | 2
-): AccountAuthFieldView[] {
+function fieldsForMode(mode: AccountAuthMode): AccountAuthFieldView[] {
   if (mode === "forgot") {
-    return forgotStep === 2
-      ? [emailField, codeField, newPasswordField]
-      : [emailField];
+    return [];
   }
 
   return mode === "signup"
@@ -136,10 +117,6 @@ function fieldsForMode(
 function helperLinksForMode(mode: AccountAuthMode): AccountAuthHelperLinkView[] {
   if (mode === "login") {
     return [{ href: "/account/forgot-password", label: "忘记密码" }];
-  }
-
-  if (mode === "forgot") {
-    return [{ href: "/account/login", label: "返回登录" }];
   }
 
   return [];
@@ -168,14 +145,13 @@ export function accountAuthToView(
   mode: AccountAuthMode,
   options: AccountAuthOptions = {}
 ): AccountAuthView {
-  const forgotStep = options.forgotStep ?? 1;
   const googleEnabled = options.googleEnabled === true;
 
   return {
     ...modeCopy[mode],
     boundary,
     defaultNext,
-    fields: fieldsForMode(mode, forgotStep),
+    fields: fieldsForMode(mode),
     helperLinks: helperLinksForMode(mode),
     mode,
     oauthActions: oauthActionsForMode(mode, googleEnabled)
@@ -184,15 +160,13 @@ export function accountAuthToView(
 
 export function nextHrefForAccountAuthSubmit({
   email,
-  forgotStep = 1,
   mode,
   next
 }: {
   email: string;
-  forgotStep?: 1 | 2;
   mode: AccountAuthMode;
   next?: string;
-}): AccountAuthSubmitResult {
+}): string {
   const safeNext = normalizedNext(next);
 
   if (mode === "signup") {
@@ -202,10 +176,6 @@ export function nextHrefForAccountAuthSubmit({
   }
 
   if (mode === "forgot") {
-    if (forgotStep === 1) {
-      return "forgot-step-2";
-    }
-
     return `/account/login?next=${encodeURIComponent(safeNext)}`;
   }
 
