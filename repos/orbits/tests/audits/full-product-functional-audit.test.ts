@@ -164,7 +164,7 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 81);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 82);
   assert.equal(inventory.summary.interactionsRuntimeVerified, 57);
   assert.equal(
     inventory.surfaces.find(
@@ -338,6 +338,14 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       .find((surface) => surface.surfaceId === "web:/app/chat")
       ?.runtimeEvidence.length,
     4,
+  );
+  assert.equal(
+    inventory.surfaces
+      .find(
+        (surface) => surface.surfaceId === "web:/app/contacts/all-actions",
+      )
+      ?.runtimeEvidence.length,
+    3,
   );
   assert.equal(
     inventory.surfaces

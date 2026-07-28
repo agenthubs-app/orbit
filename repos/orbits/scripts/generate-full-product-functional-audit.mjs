@@ -647,6 +647,21 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-chat-workspace-actor-isolation",
     },
   ],
+  [
+    "web:/app/contacts/all-actions",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-empty-operation-ledger-verified",
+      runtimeEvidence: [
+        "the authenticated actor rendered the canonical relationship navigation and operation-ledger page",
+        "the actor-scoped ledger contained zero entries and exposed no fallback operation, status filter, transition, draft, evidence chip, or synthetic count",
+        "the empty copy stated that future Orbit writes would appear in this ledger instead of claiming that any write had already occurred",
+      ],
+      verificationCase: "web-all-actions-empty-ledger-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-all-actions-empty-ledger",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1867,6 +1882,21 @@ const VERIFIED_AUDIT_CASES = [
       "Authenticated production browser before/after DOM, rejected legacy-ID direct navigation, and recovery-link traversal; Chat/Agent focused tests 21/21; Web lint and Next TypeScript; exact-origin production build",
     conclusion:
       "pass for the exercised empty actor graph, all four Chat service bundles, URL-selected legacy conversation denial, actor-aware prompt service composition, and recovery navigation; populated post-fix multi-account browser readback and prompt execution remain pending",
+  },
+  {
+    id: "web-all-actions-empty-ledger-2026-07-29",
+    target:
+      "Authenticated Web Contacts All Actions → actor-scoped Agent operation ledger",
+    testData:
+      "Audit actor with zero Agent ledger entries and no completed, pending, failed, deferred, canceled, rejected, or undone operations",
+    expected:
+      "The page must read the canonical server actor's ledger and keep every derived operation surface absent when the ledger is empty; it must not invent filters, counts, transitions, drafts, evidence, or prior writes",
+    actual:
+      "The page rendered 操作账本 with the authenticated relationship navigation and the explicit statement that no operation records exist. No entry row, status filter, action control, draft affordance, evidence chip, or fabricated count appeared.",
+    evidence:
+      "Authenticated production browser DOM; GitNexus AppAllActionsPage → createRuntimeBackedAgentLedgerService flow; source inspection of the server actor resolver, route view model, and empty renderer",
+    conclusion:
+      "pass for the exercised actor-scoped zero-entry ledger and absence of derived controls; populated filters, audit detail, retry/cancel/undo transitions, draft editing, and idempotent readback remain pending real actor operations",
   },
 ];
 const AUDIT_REMEDIATIONS = [

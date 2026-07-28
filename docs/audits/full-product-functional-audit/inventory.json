@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "45315934f3e9cb3bf9bdd50cb47a0dc566f394ef",
-  "deterministicSourceTime": "2026-07-29T04:50:09+09:00",
+  "generatedFromCommit": "dbc4581ac8984cefaac1b2bbaf125d00d867cdd0",
+  "deterministicSourceTime": "2026-07-29T04:53:15+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -33,10 +33,10 @@
     "interactionRouteInstances": 2792,
     "interactionsRuntimeVerified": 57,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 81,
+    "surfacesWithRuntimeEvidence": 82,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 38,
+    "documentedVerificationCases": 39,
     "documentedRemediations": 36
   },
   "surfaces": [
@@ -61700,7 +61700,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-empty-operation-ledger-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/contacts",
@@ -63618,6 +63618,7 @@
         }
       ],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts",
         "repos/orbits/tests/pages/app-agent-execution-settings.test.tsx",
@@ -63628,8 +63629,12 @@
         "repos/orbits/tests/ui/orbit-sidebar-width-constant.test.ts",
         "repos/orbits/tests/ui/orbit-top-nav-structure.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the authenticated actor rendered the canonical relationship navigation and operation-ledger page",
+        "the actor-scoped ledger contained zero entries and exposed no fallback operation, status filter, transition, draft, evidence chip, or synthetic count",
+        "the empty copy stated that future Orbit writes would appear in this ledger instead of claiming that any write had already occurred"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-all-actions-empty-ledger"
     },
     {
       "surfaceId": "web:/app/contacts/dashboard",
@@ -136585,6 +136590,15 @@
       "actual": "Runtime first rendered the deployment-wide conversation list, message bodies, relationship context, generated assist, summary, evidence count, and privacy status. After repair, the same account rendered No chat context is ready. Direct access to conversation_seed_069 returned Conversation not found and promised not to substitute another person's data. Reload returned to the unchanged empty state.",
       "evidence": "Authenticated production browser before/after DOM, rejected legacy-ID direct navigation, and recovery-link traversal; Chat/Agent focused tests 21/21; Web lint and Next TypeScript; exact-origin production build",
       "conclusion": "pass for the exercised empty actor graph, all four Chat service bundles, URL-selected legacy conversation denial, actor-aware prompt service composition, and recovery navigation; populated post-fix multi-account browser readback and prompt execution remain pending"
+    },
+    {
+      "id": "web-all-actions-empty-ledger-2026-07-29",
+      "target": "Authenticated Web Contacts All Actions → actor-scoped Agent operation ledger",
+      "testData": "Audit actor with zero Agent ledger entries and no completed, pending, failed, deferred, canceled, rejected, or undone operations",
+      "expected": "The page must read the canonical server actor's ledger and keep every derived operation surface absent when the ledger is empty; it must not invent filters, counts, transitions, drafts, evidence, or prior writes",
+      "actual": "The page rendered 操作账本 with the authenticated relationship navigation and the explicit statement that no operation records exist. No entry row, status filter, action control, draft affordance, evidence chip, or fabricated count appeared.",
+      "evidence": "Authenticated production browser DOM; GitNexus AppAllActionsPage → createRuntimeBackedAgentLedgerService flow; source inspection of the server actor resolver, route view model, and empty renderer",
+      "conclusion": "pass for the exercised actor-scoped zero-entry ledger and absence of derived controls; populated filters, audit detail, retry/cancel/undo transitions, draft editing, and idempotent readback remain pending real actor operations"
     }
   ],
   "remediations": [
