@@ -109,6 +109,132 @@ const LIVE_MOBILE_AUTH_RUNTIME_SURFACES = new Set([
   "mobile:/account/permissions",
   "mobile:/profile",
 ]);
+const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
+  [
+    "mobile:/ai",
+    {
+      entryBehavior: "expo-web-history-drawer-entry-verified",
+      runtimeEvidence: [
+        "real persisted AI history drawer opened from the Orbit AI home",
+        "history row exposed separate open and delete buttons without nested-button hydration errors",
+        "opening a history row navigated to the matching persisted conversation",
+        "repeated close and reopen produced zero new browser console errors",
+      ],
+      verificationCase: "expo-ai-history-persistence-hydration-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-ai-history-persistence",
+    },
+  ],
+  [
+    "mobile:/ai/[id]",
+    {
+      entryBehavior: "expo-web-persisted-ai-conversation-entry-verified",
+      runtimeEvidence: [
+        "real persisted conversation opened from the AI history drawer",
+        "conversation ID and saved messages were read from the live API",
+        "stale contact references remained explicit links and did not create contacts",
+      ],
+      verificationCase: "expo-ai-history-persistence-hydration-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-ai-conversation-readback",
+    },
+  ],
+  [
+    "mobile:/chat",
+    {
+      entryBehavior: "expo-web-empty-relationship-chat-entry-verified",
+      runtimeEvidence: [
+        "actor-owned relationship conversation collection returned empty",
+        "empty state rendered without a fabricated relationship conversation",
+      ],
+      verificationCase: "expo-dynamic-missing-data-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-chat-empty-boundary",
+    },
+  ],
+  [
+    "mobile:/chat/[id]",
+    {
+      entryBehavior: "expo-web-missing-chat-entry-verified",
+      runtimeEvidence: [
+        "unknown relationship conversation ID returned a localized failure boundary",
+        "no fallback conversation or draft success state was synthesized",
+      ],
+      verificationCase: "expo-dynamic-missing-data-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-chat-missing-boundary",
+    },
+  ],
+  [
+    "mobile:/contacts/[id]",
+    {
+      entryBehavior: "expo-web-missing-contact-entry-verified",
+      runtimeEvidence: [
+        "stale contact ID from persisted AI history returned NOT_FOUND",
+        "the detail route rendered no fallback contact identity or relationship data",
+      ],
+      verificationCase: "expo-dynamic-missing-data-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-contact-missing-boundary",
+    },
+  ],
+  ...[
+    "mobile:/events",
+    "mobile:/events/[id]",
+    "mobile:/events/[id]/attendees",
+    "mobile:/events/[id]/register",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-actor-owned-live-event-entry-verified",
+      runtimeEvidence: [
+        "actor-owned private event list and encoded dynamic detail opened from the live API",
+        "title, organizer, source metadata, and participant availability rendered in their own semantic fields",
+        "missing attendee source rendered an explicit no-roster boundary with import actions withheld",
+        "standard registration saved, refreshed, cancelled, and refreshed the same actor-scoped record",
+      ],
+      verificationCase:
+        "expo-live-event-registration-and-roster-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-live-event-chain",
+    },
+  ]),
+  ...[
+    "mobile:/party",
+    "mobile:/party/checkin",
+    "mobile:/party/graph",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-party-live-data-boundary-entry-verified",
+      runtimeEvidence: [
+        "party mode resolved only from the selected live event and its available roster",
+        "no fixed access code was generated",
+        "check-in exposed the missing service/write boundary instead of local success",
+        "graph center and status copy described available relationship data without claiming attendance",
+      ],
+      verificationCase: "expo-party-no-synthetic-checkin-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-party-truthful-boundary",
+    },
+  ]),
+  [
+    "mobile:/o/[slug]",
+    {
+      entryBehavior: "expo-web-public-organizer-slug-entry-verified",
+      runtimeEvidence: [
+        "known public organizer slug read only the approved public event catalogue",
+        "organizer identity used the public workspace account instead of source-note text",
+        "private actor event did not appear in the public organizer result",
+        "unknown slug rendered a zero-event not-found state without verified badge or first-event fallback",
+      ],
+      verificationCase:
+        "expo-organizer-public-private-isolation-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-organizer-public-isolation",
+    },
+  ],
+]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
     "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
@@ -239,6 +365,46 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Filter selection performed no provider sync, file parse, candidate staging, contact write, or database write.",
       verificationCase:
         "expo-live-external-source-truthfulness-2026-07-29",
+    },
+  ],
+]);
+const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "mobile:/ai|repos/orbit-app/src/screens/ai/AiScreen.tsx#onpress:onPress#`打开历史记录：${item.title}`",
+    {
+      actualResult:
+        "The open-history button navigated to the matching persisted AI conversation while the adjacent delete action remained a separate sibling control.",
+      testData:
+        "Persisted conversation agent-session-ms4a1d22-6w4xm9 in the authenticated Expo Web runtime",
+      idempotency:
+        "Opening and returning changed no conversation record; repeated drawer close/open produced no new hydration or nested-button console error.",
+      verificationCase: "expo-ai-history-persistence-hydration-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/events/[id]/register|repos/orbit-app/src/screens/events/EventRegistrationScreen.tsx#onpress:onSubmit#保存中 / {registration.confirmLabel}",
+    {
+      actualResult:
+        "The standard mobile registration submitted an actor-scoped record, rendered its saved answers, and preserved them after refresh.",
+      testData:
+        "Private event event:live-record:20260729 and the current authenticated audit actor",
+      idempotency:
+        "Refresh read the same actor/event registration record instead of creating another row.",
+      verificationCase:
+        "expo-live-event-registration-and-roster-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/events/[id]/register|repos/orbit-app/src/screens/events/EventRegistrationScreen.tsx#onpress:onCancel#取消中 / 取消报名",
+    {
+      actualResult:
+        "Cancellation updated the same actor-scoped registration and the cancelled state survived refresh.",
+      testData:
+        "The saved registration for event:live-record:20260729 in the authenticated Expo Web runtime",
+      idempotency:
+        "Cancellation changed the existing record state and did not create a second registration.",
+      verificationCase:
+        "expo-live-event-registration-and-roster-boundaries-2026-07-29",
     },
   ],
 ]);
@@ -535,7 +701,7 @@ const VERIFIED_AUDIT_CASES = [
     actual:
       "Signed-out /profile and /account rendered only authentication boundaries with no 小雨, account-C, workspace, or relationship-goal data. Account C credentials redirected to /profile, showed the exact actor identity, and survived hard navigation. Missing stored profile fields rendered as missing instead of founder/source-backed fixtures. 退出登录 expired the Auth.js cookie; hard /profile and /account stayed signed out and disclosed no actor data or raw 401.",
     evidence:
-      "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 511/511; Web full suite 1326/1326; full audit 7/7; npm run typecheck; npm run build",
+      "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 519/519; Web full suite 1328/1328; full audit 7/7; npm run typecheck; npm run build",
     conclusion:
       "pass for the exercised Expo Web credentials, profile/account privacy, refresh persistence, truthful missing-data, and sign-out invalidation chain; native iOS/Android secure-store, Google OAuth, offline, responsive, and assistive-technology cases remain pending",
   },
@@ -643,6 +809,111 @@ const VERIFIED_AUDIT_CASES = [
       "Production Next build plus Expo Web browser traversal; tests/capabilities/external-contacts-import-live-store.test.ts; tests/contact-acquisition-view-model.test.ts; npm run typecheck",
     conclusion:
       "pass for the exercised empty live-source and filter-only states; real phone/Google/CSV/customer-list connection and import success states remain externally unconfigured",
+  },
+  {
+    id: "expo-production-route-contract-traversal-2026-07-29",
+    target:
+      "All 38 Expo production routes reachable without development-only fixtures",
+    testData:
+      "Current Expo Router route tree with direct navigation, explicit dynamic IDs, legacy aliases, and missing-parameter entries",
+    expected:
+      "Every production route resolves through its declared source contract; missing IDs stay missing; dynamic routes never borrow a demo event, contact, conversation, or organizer",
+    actual:
+      "The 38-route traversal resolved every production entry. Event and invite routes without an ID rendered a selection boundary, explicit unknown dynamic IDs rendered localized missing states, and the legacy catch-all preserved only allowlisted redirects.",
+    evidence:
+      "Expo route-tree traversal; tests/initial-route.test.ts; tests/register-invite-view-model.test.ts; tests/detail-view-model.test.ts; npm run typecheck",
+    conclusion:
+      "pass-static-and-runtime-route-contract for the exercised Expo Web route tree; native custom-scheme delivery and physical-device permission routes remain pending",
+  },
+  {
+    id: "expo-manual-candidate-confirmation-truthfulness-2026-07-29",
+    target:
+      "Expo contacts/new manual candidate creation → confirmation result copy",
+    testData:
+      "A candidate response with confirmation complete but without a contact-write capability",
+    expected:
+      "Candidate confirmation must not claim that a contact was created; the UI must distinguish candidate state from a separately authorized contact write",
+    actual:
+      "The result now says the candidate is confirmed and that the current flow will not write a contact when no contact-write contract exists. The control label remains 已确认候选 instead of representing a created contact.",
+    evidence:
+      "tests/contact-acquisition-view-model.test.ts; tests/contact-acquisition-screen.test.ts; npm run typecheck",
+    conclusion:
+      "pass-source-regression for the no-contact-write confirmation branch; an authorized manual contact-write success remains a separate flow",
+  },
+  {
+    id: "expo-live-event-registration-and-roster-boundaries-2026-07-29",
+    target:
+      "Expo event list → actor-owned dynamic detail → standard registration save/cancel/readback → attendee-source boundary",
+    testData:
+      "Private event event:live-record:20260729 titled 功能审计私有活动 20260729 under the authenticated audit actor; no attendee roster source",
+    expected:
+      "Private events resolve only for their actor; title, organizer, source, and participant availability retain separate meaning; registration writes one actor/event record; absent roster data exposes no import or attendee success",
+    actual:
+      "The real private event opened from list to encoded detail with its title and semantic fields intact. Standard registration saved and refreshed exact answers, cancellation updated the same record and survived refresh, and the attendee route rendered 参会者来源尚未连接 with import actions withheld.",
+    evidence:
+      "Authenticated Expo Web production-API traversal; event detail/attendee/registration source tests; registration API actor-scope tests; Expo typecheck",
+    conclusion:
+      "pass for the exercised actor-owned event read, semantic display, registration save/cancel/readback, and missing-roster boundary; a configured attendee roster and native-device flow remain pending",
+  },
+  {
+    id: "expo-ai-history-persistence-hydration-2026-07-29",
+    target:
+      "Expo Orbit AI history drawer → accessible row actions → persisted conversation",
+    testData:
+      "Authenticated live AI history containing agent-session-ms4a1d22-6w4xm9",
+    expected:
+      "Open and delete are distinct accessible controls; opening reads the persisted conversation; repeated drawer use emits no invalid nested-button hydration error",
+    actual:
+      "The drawer rendered sibling open/delete buttons, the open control carried the conversation title in its accessible label, and opening it loaded the matching persisted messages. Repeated close/open produced zero new console errors after the fix.",
+    evidence:
+      "Expo Web browser DOM and console traversal; tests/ai-home-screen-copy.test.ts; Expo typecheck",
+    conclusion:
+      "pass for history open, persisted readback, accessible action separation, and hydration cleanliness; destructive delete was intentionally not exercised",
+  },
+  {
+    id: "expo-dynamic-missing-data-boundaries-2026-07-29",
+    target:
+      "Expo relationship chat and contact dynamic routes with no actor-owned backing record",
+    testData:
+      "Empty current relationship-conversation collection, /chat/not-a-real-thread, and stale contact ID test-contact-c788bda85b-01 referenced by historical AI text",
+    expected:
+      "The product must not invent a conversation or contact merely to make a dynamic route look populated",
+    actual:
+      "/chat rendered a truthful empty collection, the unknown chat detail rendered a localized failure boundary, and the stale contact link returned NOT_FOUND without substituting any contact or relationship data.",
+    evidence:
+      "Authenticated Expo Web direct navigation and API readback; chat/contact screen-state tests; Expo typecheck",
+    conclusion:
+      "pass for the exercised empty chat, missing chat, and missing contact states; no actor-owned relationship conversation existed to validate the populated chat-detail path",
+  },
+  {
+    id: "expo-party-no-synthetic-checkin-2026-07-29",
+    target:
+      "Expo party overview, check-in, and relationship graph derived from live event data",
+    testData:
+      "Current private event without a roster, access-code provider, or check-in writer",
+    expected:
+      "Orbit must not derive an access code from the event ID or report local check-in success without a backend write contract",
+    actual:
+      "The deterministic *-4821 access code and local 已签到 state were removed. Party overview now reports status, check-in explains that no code/write service is connected, and the graph center describes现场关系 without asserting attendance.",
+    evidence:
+      "tests/party-view-model.test.ts; tests/party-screen-source.test.ts; authenticated Expo Web no-roster traversal; Expo typecheck",
+    conclusion:
+      "pass for the exercised no-roster/no-check-in-service boundary; real access-code validation and check-in persistence require a backend contract",
+  },
+  {
+    id: "expo-organizer-public-private-isolation-2026-07-29",
+    target:
+      "Web public event catalogue → Expo organizer slug page → unknown-slug boundary",
+    testData:
+      "Known slug evtsignup02, approved public catalogue, authenticated private audit event, and unknown slug not-a-real-organizer",
+    expected:
+      "Organizer pages read only public catalogue data, honor the slug exactly, never fall back to the first event, and never leak actor-private events",
+    actual:
+      "The known slug rendered Orbit 人脉测试空间 and its public event set without the private audit event or source-note organizer. The unknown slug rendered 未找到公开主办方 with zero events and no verified badge.",
+    evidence:
+      "Production Next build; exact-origin credentialed CORS preflight; Expo Web known/unknown slug traversal; public-events route and organizer view-model tests",
+    conclusion:
+      "pass for the exercised public/private isolation, organizer identity, known slug, and unknown slug; anonymous transport is not claimed because the global API proxy still requires an authenticated session",
   },
 ];
 const AUDIT_REMEDIATIONS = [
@@ -765,7 +1036,7 @@ const AUDIT_REMEDIATIONS = [
     files:
       "repos/orbit-app/src/view-models/profile.ts; repos/orbit-app/src/view-models/account-session.ts; repos/orbit-app/src/view-models/bootstrap.ts; repos/orbit-app/src/view-models/connections-graph.ts; repos/orbit-app/src/view-models/contacts.ts; repos/orbit-app/src/screens/profile/ProfileScreen.tsx; repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/screens/profile/AccountScreen.tsx; repos/orbit-app/src/api/mobile-auth.ts; repos/orbit-app/src/api/AuthSessionProvider.tsx; repos/orbit-app/src/data/snapshot-store.ts; repos/orbit-app/src/data/snapshot-store.web.ts; repos/orbits/app/api/auth/mobile/http.ts; repos/orbits/app/api/auth/mobile/credentials/route.ts; repos/orbits/app/api/auth/mobile/google/exchange/route.ts; repos/orbits/app/api/account/session/sign-out/route.ts; repos/orbits/features/account/live-service.ts; repos/orbits/features/bootstrap/live-service.ts; repos/orbits/next.config.js",
     regression:
-      "Expo full suite: 511/511 passed; Web full suite: 1326/1326 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
+      "Expo full suite: 519/519 passed; Web full suite: 1328/1328 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
     status:
       "fixed and runtime-verified for Expo Web credentials/profile/account/sign-out; native device, Google OAuth, offline, responsive, and assistive-technology cases pending",
   },
@@ -880,6 +1151,90 @@ const AUDIT_REMEDIATIONS = [
       "Generator syntax, 94-surface/2817-interaction regeneration, and exact projection of six intended mobile contact interactions passed; the ambiguous seventh match was eliminated and the verified denominator returned to 26.",
     status:
       "fixed for the mobile contact-acquisition evidence map; older historical maps still retain line-key compatibility and must be migrated when their source changes",
+  },
+  {
+    id: "AUDIT-P1-018",
+    severity: "P1",
+    rootCause:
+      "Several Expo event and invite entries replaced a missing route parameter with demo-event-1. A user could therefore open a route with no event identity and see a plausible but unrelated event instead of a missing-selection boundary.",
+    decision:
+      "Treat a missing dynamic identity as missing input. Render an explicit selection state with a real route back to the event catalogue, and reserve event loading for a non-empty ID supplied by navigation or deep link.",
+    files:
+      "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx; repos/orbit-app/src/screens/events/EventDetailScreen.tsx; repos/orbit-app/src/view-models/bootstrap.ts; route and screen-state tests",
+    regression:
+      "Expo production-route traversal, invite/detail source regressions, initial-route tests, and Expo typecheck passed. Missing input no longer resolves demo-event-1.",
+    status:
+      "fixed for the audited Expo route tree; custom-scheme delivery remains pending on devices",
+  },
+  {
+    id: "AUDIT-P1-019",
+    severity: "P1",
+    rootCause:
+      "The mobile acquisition result called a candidate 已确认 and then said the next step was to write it into contacts even when the response contained no authorized contact-write capability. This blurred candidate confirmation with contact creation.",
+    decision:
+      "Derive result copy from both confirmation state and contact-write availability. When the write contract is absent, state explicitly that the current flow will not create a contact; keep any real contact write behind a separate explicit confirmation.",
+    files:
+      "repos/orbit-app/src/view-models/contact-acquisition.ts; repos/orbit-app/tests/contact-acquisition-view-model.test.ts",
+    regression:
+      "Acquisition view-model and screen tests plus Expo typecheck passed. The confirmed/no-write branch no longer promises contact creation.",
+    status:
+      "fixed with source regression coverage; authorized manual contact persistence remains a separate flow",
+  },
+  {
+    id: "AUDIT-P1-020",
+    severity: "P1",
+    rootCause:
+      "Mobile event display allowed source metadata to override the real title and organizer, registration loaders fetched private events without the authenticated actor, and a real event with no attendee provider surfaced raw NOT_FOUND states beside import actions.",
+    decision:
+      "Preserve event fields by business meaning; pass the authenticated actor into every registration event load; and distinguish an existing event with no roster source from a missing event. The no-roster state withholds all attendee import/write actions.",
+    files:
+      "repos/orbit-app/src/view-models/events.ts; repos/orbit-app/src/screens/events/EventDetailScreen.tsx; repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx; repos/orbits/features/events/registration/event-loader.ts; registration route handlers and tests",
+    regression:
+      "Event source tests, registration actor-scope tests, Expo typecheck, and authenticated Expo Web runtime passed. A real private event preserved its identity, one actor-scoped registration survived save/cancel refresh, and no-roster UI exposed no import action.",
+    status:
+      "fixed and runtime-verified for the current actor-owned event; configured roster import remains pending",
+  },
+  {
+    id: "AUDIT-P1-021",
+    severity: "P1",
+    rootCause:
+      "Each mobile AI history row used a Pressable row that contained a second Pressable delete action. React Native Web rendered nested HTML buttons, causing invalid HTML, hydration errors, and ambiguous accessible action structure.",
+    decision:
+      "Use a non-interactive row container with separate sibling Pressables for open and delete. Give the open action a title-specific accessible label and both actions a 44-point target.",
+    files:
+      "repos/orbit-app/src/screens/ai/AiScreen.tsx; repos/orbit-app/tests/ai-home-screen-copy.test.ts",
+    regression:
+      "AI source regression, Expo typecheck, and authenticated browser DOM/console traversal passed. A real history item opened its persisted conversation and repeated drawer use emitted no new hydration errors.",
+    status:
+      "fixed and runtime-verified for open/history hydration; destructive deletion was not exercised",
+  },
+  {
+    id: "AUDIT-P1-022",
+    severity: "P1",
+    rootCause:
+      "Party mode deterministically synthesized an event access code ending in 4821 and kept local check-in state that rendered 已签到 without calling a validation or persistence service.",
+    decision:
+      "Remove access-code generation and local success state. Describe the currently available event/roster relationship data, and surface an explicit unavailable boundary until a real code-validation and check-in-write contract exists.",
+    files:
+      "repos/orbit-app/src/view-models/party.ts; repos/orbit-app/src/screens/party/PartyModeScreen.tsx; party view-model and source tests",
+    regression:
+      "Expo full suite and typecheck passed after the removal. Source regressions prohibit synthetic codes/local success, and runtime with a no-roster event rendered only the truthful unavailable boundary.",
+    status:
+      "fixed for the current no-service state; real code validation and check-in persistence are not implemented",
+  },
+  {
+    id: "AUDIT-P1-023",
+    severity: "P1",
+    rootCause:
+      "The Expo organizer page ignored its public slug, read the authenticated actor's private /api/events collection, selected the first event as fallback, and used source-note metadata as the organizer identity. Unknown slugs could therefore look valid and private events could appear on a public-facing page.",
+    decision:
+      "Expose an approved-catalogue projection through a dedicated events/public endpoint, bind the Expo organizer view to that projection and exact slug, prefer explicit organizer identity, remove first-event fallback on both clients, and withhold verified state for unknown slugs.",
+    files:
+      "repos/orbits/app/api/events/public/route.ts; repos/orbit-app/src/api/endpoints.ts; repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx; organizer view-models and route tests",
+    regression:
+      "Public-events route tests, Expo and Web organizer tests, Expo typecheck, exact-origin CORS preflight, production build, and browser known/unknown-slug traversal passed. The private audit event did not appear.",
+    status:
+      "fixed and runtime-verified for authenticated Expo Web consumption of public catalogue data; anonymous transport is not claimed",
   },
 ];
 
@@ -1911,6 +2266,8 @@ export function buildFullProductFunctionalAuditInventory() {
       surfaceId === "mobile:/account/permissions";
     const hasLiveMobileAuthRuntimeEvidence =
       LIVE_MOBILE_AUTH_RUNTIME_SURFACES.has(surfaceId);
+    const liveMobileAdditionalRuntimeEvidence =
+      LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES.get(surfaceId);
     const interactions = [...interactionMap.values()]
       .sort((left, right) =>
         `${left.sourceFile}:${String(left.line).padStart(8, "0")}`.localeCompare(
@@ -1950,6 +2307,10 @@ export function buildFullProductFunctionalAuditInventory() {
                     LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
                       `${interaction.sourceFile}:${interaction.line}`,
                     ))
+                  : liveMobileAdditionalRuntimeEvidence
+                    ? LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                        `${surfaceId}|${stableInteractionEvidenceKey}`,
+                      )
             : undefined;
         const runtimeVerificationCase =
           runtimeEvidence?.verificationCase ??
@@ -1961,6 +2322,8 @@ export function buildFullProductFunctionalAuditInventory() {
                 ? hasLiveMobilePermissionRuntimeEvidence
                   ? "expo-web-permission-persistence-cors-isolation-2026-07-29"
                   : "expo-web-auth-profile-account-privacy-2026-07-28"
+                : liveMobileAdditionalRuntimeEvidence
+                  ? liveMobileAdditionalRuntimeEvidence.verificationCase
                 : "live-contact-list-detail-persistence-isolation-2026-07-28");
 
         return {
@@ -2030,6 +2393,8 @@ export function buildFullProductFunctionalAuditInventory() {
               ? "expo-web-auth-permission-write-readback-entry-verified"
             : hasLiveMobileAuthRuntimeEvidence
               ? "expo-web-auth-session-entry-verified"
+            : liveMobileAdditionalRuntimeEvidence
+              ? liveMobileAdditionalRuntimeEvidence.entryBehavior
           : "not-runtime-verified",
       exitBehavior:
         hasLiveBusinessCardRestrictedRuntimeEvidence ||
@@ -2149,6 +2514,8 @@ export function buildFullProductFunctionalAuditInventory() {
                 "truthful missing-profile-field presentation",
                 "server cookie invalidation and protected hard-navigation after sign-out",
               ]
+          : liveMobileAdditionalRuntimeEvidence
+            ? liveMobileAdditionalRuntimeEvidence.runtimeEvidence
           : [],
       verificationConclusion:
         surfaceId === "web:/dev/capabilities/[slug]"
@@ -2169,6 +2536,8 @@ export function buildFullProductFunctionalAuditInventory() {
               ? "runtime-partially-verified-expo-web-permission-persistence"
             : hasLiveMobileAuthRuntimeEvidence
               ? "runtime-partially-verified-expo-web-auth-profile-account"
+            : liveMobileAdditionalRuntimeEvidence
+              ? liveMobileAdditionalRuntimeEvidence.verificationConclusion
           : hasBrowserSmokeEvidence
             ? "runtime-partially-verified-browser-base-state"
           : "inventory-complete-runtime-verification-pending",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "91b425953fc2764ddbc683fc611113cf5ef35469",
-  "deterministicSourceTime": "2026-07-28T19:39:43+09:00",
+  "generatedFromCommit": "6ea326f08cc4d544ab83c4da1c7f68d33151b696",
+  "deterministicSourceTime": "2026-07-29T02:27:49+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -30,14 +30,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 47,
-    "interactionRouteInstances": 2817,
-    "interactionsRuntimeVerified": 26,
+    "interactionRouteInstances": 2816,
+    "interactionsRuntimeVerified": 29,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 33,
+    "surfacesWithRuntimeEvidence": 46,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 17,
-    "documentedRemediations": 17
+    "documentedVerificationCases": 24,
+    "documentedRemediations": 23
   },
   "surfaces": [
     {
@@ -6253,43 +6253,49 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 964,
+          "line": 955,
+          "tag": "Pressable",
+          "text": "`打开历史记录：${item.title}`"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
+          "line": 966,
           "tag": "Text",
           "text": "{item.when}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 971,
+          "line": 973,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 974,
+          "line": 976,
           "tag": "Text",
           "text": "{item.preview || \"继续问一个具体问题。\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 979,
+          "line": 982,
           "tag": "Pressable",
           "text": "删除历史记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 992,
+          "line": 995,
           "tag": "Text",
           "text": "删除中"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 994,
+          "line": 997,
           "tag": "Text",
           "text": "删除"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-history-drawer-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -7308,11 +7314,11 @@
           "interactionId": "mobile:/ai#interaction-30",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 954,
+          "line": 955,
           "controlType": "native-control",
           "tag": "Pressable",
-          "visibleName": "{item.when} {<Ionicons color={colors.amber} name=\"pin-outline\" size={12} />} / {null} {item.title} {item.preview || \"继续问一个具体问题。\"} {<Pressable accessibilityLabel=\"删除历史记录\" accessibilityRole=\"button\" disabled={deleting} onPress={onDelete} style={({ pressed }) => [ styles.historyDeleteButton, deleting ? styles.disabled : null, pressed ? styles.pressed : null ]} > <Ionicons color={colors.rose} name=\"trash-outline\" size={14} /> {deleting ? ( <Text style={styles.historyDeleteText}>删除中</Text> ) : ( <Text style={styles.historyDeleteText}>删除</Text> )} </Pressable>} / {null}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "`打开历史记录：${item.title}`",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
@@ -7323,23 +7329,25 @@
           ],
           "href": null,
           "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
+          "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Opening and returning changed no conversation record; repeated drawer close/open produced no new hydration or nested-button console error.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The open-history button navigated to the matching persisted AI conversation while the adjacent delete action remained a separate sibling control.",
+          "testData": "Persisted conversation agent-session-ms4a1d22-6w4xm9 in the authenticated Expo Web runtime",
+          "testEvidence": [
+            "expo-ai-history-persistence-hydration-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "mobile:/ai#interaction-31",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 979,
+          "line": 982,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "删除历史记录",
@@ -7417,8 +7425,13 @@
         "repos/orbit-app/tests/initial-route.test.ts",
         "repos/orbit-app/tests/relationship-chat-screen-source.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "real persisted AI history drawer opened from the Orbit AI home",
+        "history row exposed separate open and delete buttons without nested-button hydration errors",
+        "opening a history row navigated to the matching persisted conversation",
+        "repeated close and reopen produced zero new browser console errors"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-ai-history-persistence"
     },
     {
       "surfaceId": "mobile:/ai/[id]",
@@ -8086,7 +8099,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-persisted-ai-conversation-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -9028,8 +9041,12 @@
         "repos/orbit-app/tests/endpoints.test.ts",
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "real persisted conversation opened from the AI history drawer",
+        "conversation ID and saved messages were read from the live API",
+        "stale contact references remained explicit links and did not create contacts"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-ai-conversation-readback"
     },
     {
       "surfaceId": "mobile:/chat",
@@ -9235,7 +9252,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-empty-relationship-chat-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -9534,8 +9551,11 @@
         "repos/orbit-app/tests/relationship-inbox-screen-source.test.ts",
         "repos/orbit-app/tests/relationship-inbox-view-model.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned relationship conversation collection returned empty",
+        "empty state rendered without a fabricated relationship conversation"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-chat-empty-boundary"
     },
     {
       "surfaceId": "mobile:/chat/[id]",
@@ -9888,7 +9908,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-missing-chat-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -10247,8 +10267,11 @@
         "repos/orbit-app/tests/relationship-chat-view-model.test.ts",
         "repos/orbit-app/tests/relationship-inbox-view-model.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "unknown relationship conversation ID returned a localized failure boundary",
+        "no fallback conversation or draft success state was synthesized"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-chat-missing-boundary"
     },
     {
       "surfaceId": "mobile:/contacts",
@@ -12481,7 +12504,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-missing-contact-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -13173,8 +13196,11 @@
         "repos/orbit-app/tests/initial-route.test.ts",
         "repos/orbit-app/tests/screen-state.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "stale contact ID from persisted AI history returned NOT_FOUND",
+        "the detail route rendered no fallback contact identity or relationship data"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-contact-missing-boundary"
     },
     {
       "surfaceId": "mobile:/contacts/all-actions",
@@ -22726,7 +22752,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-actor-owned-live-event-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -23353,8 +23379,13 @@
         "repos/orbit-app/tests/schedule-view-model.test.ts",
         "repos/orbit-app/tests/screen-state.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned private event list and encoded dynamic detail opened from the live API",
+        "title, organizer, source metadata, and participant availability rendered in their own semantic fields",
+        "missing attendee source rendered an explicit no-roster boundary with import actions withheld",
+        "standard registration saved, refreshed, cancelled, and refreshed the same actor-scoped record"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-live-event-chain"
     },
     {
       "surfaceId": "mobile:/events/[id]",
@@ -23666,289 +23697,289 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 428,
+          "line": 432,
           "tag": "DataCard",
           "text": "主办方"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 431,
+          "line": 435,
           "tag": "Text",
           "text": "{initial}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 434,
+          "line": 438,
           "tag": "Text",
           "text": "{event.organizerName}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 437,
+          "line": 441,
           "tag": "Text",
-          "text": "{event.sourceLabel || \"活动来源和主办方信息会在这里同步。\"}"
+          "text": "{organizerDetail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 522,
+          "line": 526,
           "tag": "DataCard",
           "text": "会前准备度"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 526,
+          "line": 530,
           "tag": "Text",
           "text": "{view.goal}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 544,
+          "line": 548,
           "tag": "Text",
           "text": "{suggestion.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 553,
+          "line": 557,
           "tag": "Text",
           "text": "已选 / 用这个目标"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 562,
+          "line": 566,
           "tag": "Text",
           "text": "{suggestion.goalText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 571,
+          "line": 575,
           "tag": "Text",
           "text": "{suggestion.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 586,
+          "line": 590,
           "tag": "Text",
           "text": "自定义目标"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 587,
+          "line": 591,
           "tag": "TextInput",
           "text": "写清楚这场活动想换到什么关系结果"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 620,
+          "line": 624,
           "tag": "Text",
           "text": "确认中 / 确认目标"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 627,
+          "line": 631,
           "tag": "Text",
           "text": "{goalFeedback}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 628,
+          "line": 632,
           "tag": "Text",
           "text": "{goalError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 633,
+          "line": 637,
           "tag": "Text",
           "text": "{item.statusLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 636,
+          "line": 640,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 637,
+          "line": 641,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 638,
+          "line": 642,
           "tag": "Text",
           "text": "{item.ownerLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 643,
+          "line": 647,
           "tag": "Text",
           "text": "{view.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 710,
+          "line": 714,
           "tag": "DataCard",
           "text": "推荐认识的人"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 721,
+          "line": 725,
           "tag": "Text",
           "text": "{person.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 722,
+          "line": 726,
           "tag": "Text",
           "text": "{person.scoreLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 725,
+          "line": 729,
           "tag": "Text",
           "text": "{person.organizationRole}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 731,
+          "line": 735,
           "tag": "Text",
           "text": "{person.reason}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 735,
+          "line": 739,
           "tag": "Text",
           "text": "{openersByPersonId[person.id] ?? person.opener}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 740,
+          "line": 744,
           "tag": "Text",
           "text": "{openingLineStatus[person.id]}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 744,
+          "line": 748,
           "tag": "Text",
           "text": "可现场直接使用"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 765,
+          "line": 769,
           "tag": "Text",
           "text": "生成中 / 换一句"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 772,
+          "line": 776,
           "tag": "Text",
           "text": "{person.suggestedAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 777,
+          "line": 781,
           "tag": "Text",
           "text": "{openingLineError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 793,
+          "line": 797,
           "tag": "Text",
           "text": "{initial || \"?\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 795,
+          "line": 799,
           "tag": "Text",
           "text": "{rankLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 858,
+          "line": 862,
           "tag": "DataCard",
           "text": "会后复核"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 866,
+          "line": 870,
           "tag": "Text",
           "text": "{contact.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 867,
+          "line": 871,
           "tag": "Text",
           "text": "{contact.urgencyLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 870,
+          "line": 874,
           "tag": "Text",
           "text": "{contact.organizationRole}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 874,
+          "line": 878,
           "tag": "Text",
           "text": "{contact.headline}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 875,
+          "line": 879,
           "tag": "Text",
           "text": "{contact.whyNow}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 878,
+          "line": 882,
           "tag": "Text",
           "text": "{tag}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 889,
+          "line": 893,
           "tag": "Text",
           "text": "{contact.followUpDraft}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 908,
+          "line": 912,
           "tag": "Text",
           "text": "确认中 / 确认这些候选"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 912,
+          "line": 916,
           "tag": "Text",
           "text": "{confirmResult?.confirmedCountLabel ?? \"确认后不会发送跟进\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 918,
+          "line": 922,
           "tag": "Text",
           "text": "{confirmResult.feedback}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 930,
+          "line": 934,
           "tag": "Text",
           "text": "{confirmResult.reviewQueueLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 936,
+          "line": 940,
           "tag": "Text",
           "text": "{confirmError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 937,
+          "line": 941,
           "tag": "Text",
           "text": "{confirmResult?.nextAction ?? view.nextAction}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-actor-owned-live-event-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -24307,7 +24338,7 @@
           "interactionId": "mobile:/events/[id]#interaction-10",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 533,
+          "line": 537,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{suggestion.title} 已选 / 用这个目标 {suggestion.goalText} {<Text style={[ styles.goalSuggestionDetail, selected ? styles.goalSuggestionDetailSelected : null ]} > {suggestion.detail} </Text>} / {null}",
@@ -24340,7 +24371,7 @@
           "interactionId": "mobile:/events/[id]#interaction-11",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 587,
+          "line": 591,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "写清楚这场活动想换到什么关系结果",
@@ -24376,7 +24407,7 @@
           "interactionId": "mobile:/events/[id]#interaction-12",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 603,
+          "line": 607,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / 确认目标",
@@ -24409,7 +24440,7 @@
           "interactionId": "mobile:/events/[id]#interaction-13",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 746,
+          "line": 750,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "生成中 / 换一句",
@@ -24442,7 +24473,7 @@
           "interactionId": "mobile:/events/[id]#interaction-14",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 895,
+          "line": 899,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / 确认这些候选",
@@ -24475,7 +24506,7 @@
           "interactionId": "mobile:/events/[id]#interaction-15",
           "surfaceId": "mobile:/events/[id]",
           "sourceFile": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx",
-          "line": 919,
+          "line": 923,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{confirmResult.reviewQueueLabel}",
@@ -24519,8 +24550,13 @@
         "repos/orbit-app/tests/schedule-view-model.test.ts",
         "repos/orbit-app/tests/screen-state.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned private event list and encoded dynamic detail opened from the live API",
+        "title, organizer, source metadata, and participant availability rendered in their own semantic fields",
+        "missing attendee source rendered an explicit no-roster boundary with import actions withheld",
+        "standard registration saved, refreshed, cancelled, and refreshed the same actor-scoped record"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-live-event-chain"
     },
     {
       "surfaceId": "mobile:/events/[id]/attendees",
@@ -24546,20 +24582,24 @@
       "dataSources": {
         "api": [
           "repos/orbit-app/src/api/client.ts",
+          "repos/orbit-app/src/api/contract/events.ts",
           "repos/orbit-app/src/api/endpoints.ts",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/hooks/useOrbitApiClient.ts",
           "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
           "repos/orbit-app/src/view-models/event-attendees.ts",
+          "repos/orbit-app/src/view-models/events.ts",
           "repos/orbit-app/src/view-models/route-state.ts"
         ],
         "live": [],
         "mockOrFixture": [
-          "repos/orbit-app/src/view-models/event-attendees.ts"
+          "repos/orbit-app/src/view-models/event-attendees.ts",
+          "repos/orbit-app/src/view-models/events.ts"
         ],
         "persistence": [
           "repos/orbit-app/src/api/ApiBaseUrlProvider.tsx",
+          "repos/orbit-app/src/api/contract/events.ts",
           "repos/orbit-app/src/api/native-auth-session-storage.ts",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/view-models/event-attendees.ts"
@@ -24567,9 +24607,12 @@
         "external": [
           "repos/orbit-app/src/api/AuthSessionProvider.tsx",
           "repos/orbit-app/src/api/auth-session.ts",
+          "repos/orbit-app/src/api/contract/events.ts",
+          "repos/orbit-app/src/api/contract/source.ts",
           "repos/orbit-app/src/api/endpoints.ts",
           "repos/orbit-app/src/api/mobile-auth.ts",
-          "repos/orbit-app/src/view-models/event-attendees.ts"
+          "repos/orbit-app/src/view-models/event-attendees.ts",
+          "repos/orbit-app/src/view-models/events.ts"
         ]
       },
       "goal": "attendees product surface; exact user goal requires runtime verification",
@@ -24630,277 +24673,277 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 274,
+          "line": 302,
           "tag": "AppScreen",
           "text": "参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 287,
+          "line": 319,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 294,
+          "line": 338,
           "tag": "DataCard",
           "text": "roster.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 295,
+          "line": 339,
           "tag": "Text",
           "text": "{roster.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 311,
+          "line": 357,
           "tag": "Text",
           "text": "返回活动"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 324,
+          "line": 370,
           "tag": "Text",
           "text": "导入中 / 导入名册"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 339,
+          "line": 385,
           "tag": "Text",
           "text": "导入中 / 导入为候选"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 346,
+          "line": 394,
           "tag": "DataCard",
           "text": "现场匹配"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 350,
+          "line": 398,
           "tag": "Text",
           "text": "{match.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 351,
+          "line": 399,
           "tag": "Text",
           "text": "{match.names.join(\" · \")}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 352,
+          "line": 400,
           "tag": "Text",
           "text": "{match.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 359,
+          "line": 407,
           "tag": "ErrorState",
           "text": "现场匹配不可用"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 361,
+          "line": 409,
           "tag": "Text",
           "text": "{feedback}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 362,
+          "line": 410,
           "tag": "Text",
           "text": "{actionError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 373,
+          "line": 421,
           "tag": "EmptyState",
-          "text": "没有参会者"
+          "text": "rosterSourceMissing ? \"参会者来源尚未连接\" : \"没有参会者\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 409,
+          "line": 464,
           "tag": "DataCard",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 412,
+          "line": 467,
           "tag": "Text",
           "text": "{metric}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 417,
+          "line": 472,
           "tag": "Text",
           "text": "{view.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 418,
+          "line": 473,
           "tag": "Text",
           "text": "{view.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 431,
+          "line": 486,
           "tag": "DataCard",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 436,
+          "line": 491,
           "tag": "Text",
           "text": "{draft.statusLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 437,
+          "line": 492,
           "tag": "Text",
           "text": "{draft.writeState}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 439,
+          "line": 494,
           "tag": "Text",
           "text": "{draft.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 440,
+          "line": 495,
           "tag": "Text",
           "text": "{draft.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 441,
+          "line": 496,
           "tag": "Text",
           "text": "{draft.relationship}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 442,
+          "line": 497,
           "tag": "Text",
           "text": "{draft.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 446,
+          "line": 501,
           "tag": "Text",
           "text": "{evidence}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 464,
+          "line": 519,
           "tag": "Text",
           "text": "去复核候选"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 499,
+          "line": 554,
           "tag": "DataCard",
           "text": "attendee.name"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 508,
+          "line": 563,
           "tag": "Text",
           "text": "{attendee.statusLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 509,
+          "line": 564,
           "tag": "Text",
           "text": "{attendee.knownLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 511,
+          "line": 566,
           "tag": "Text",
           "text": "{tag}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 518,
+          "line": 573,
           "tag": "Text",
           "text": "{attendee.relationshipContext}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 522,
+          "line": 577,
           "tag": "Text",
           "text": "{reason}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 528,
+          "line": 583,
           "tag": "Text",
           "text": "{attendee.suggestedNextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 530,
+          "line": 585,
           "tag": "Text",
           "text": "现场记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 531,
+          "line": 586,
           "tag": "TextInput",
           "text": "聊到了什么、对方想找什么、下一步怎么跟。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 552,
+          "line": 607,
           "tag": "Text",
           "text": "保存中 / 保存现场记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 556,
+          "line": 611,
           "tag": "Text",
           "text": "只保存记录，不发送消息"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 561,
+          "line": 616,
           "tag": "Text",
           "text": "{savedEncounter.evidenceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 562,
+          "line": 617,
           "tag": "Text",
           "text": "{savedEncounter.noteText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 563,
+          "line": 618,
           "tag": "Text",
           "text": "{savedEncounter.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 575,
+          "line": 630,
           "tag": "Text",
           "text": "生成中 / 生成关系证据"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 593,
+          "line": 648,
           "tag": "Text",
           "text": "记录中 / 想认识"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 620,
+          "line": 675,
           "tag": "Text",
           "text": "{initial || \"?\"}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-actor-owned-live-event-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -25031,7 +25074,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-3",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 277,
+          "line": 305,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -25062,7 +25105,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-4",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 297,
+          "line": 343,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "返回活动",
@@ -25095,7 +25138,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-5",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 313,
+          "line": 359,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "导入中 / 导入名册",
@@ -25126,7 +25169,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-6",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 328,
+          "line": 374,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "导入中 / 导入为候选",
@@ -25157,7 +25200,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-7",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 367,
+          "line": 415,
           "controlType": "callback-control",
           "tag": "EventAttendeeDraftImportResultCard",
           "visibleName": null,
@@ -25190,7 +25233,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-8",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 376,
+          "line": 431,
           "controlType": "callback-control",
           "tag": "AttendeeCard",
           "visibleName": null,
@@ -25225,7 +25268,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-9",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 455,
+          "line": 510,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "去复核候选",
@@ -25256,7 +25299,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-10",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 531,
+          "line": 586,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "聊到了什么、对方想找什么、下一步怎么跟。",
@@ -25287,7 +25330,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-11",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 541,
+          "line": 596,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "保存中 / 保存现场记录",
@@ -25320,7 +25363,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-12",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 564,
+          "line": 619,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "生成中 / 生成关系证据",
@@ -25353,7 +25396,7 @@
           "interactionId": "mobile:/events/[id]/attendees#interaction-13",
           "surfaceId": "mobile:/events/[id]/attendees",
           "sourceFile": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx",
-          "line": 582,
+          "line": 637,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "记录中 / 想认识",
@@ -25385,8 +25428,13 @@
       ],
       "overlays": [],
       "testEvidence": [],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned private event list and encoded dynamic detail opened from the live API",
+        "title, organizer, source metadata, and participant availability rendered in their own semantic fields",
+        "missing attendee source rendered an explicit no-roster boundary with import actions withheld",
+        "standard registration saved, refreshed, cancelled, and refreshed the same actor-scoped record"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-live-event-chain"
     },
     {
       "surfaceId": "mobile:/events/[id]/register",
@@ -25683,7 +25731,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-actor-owned-live-event-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -25961,14 +26009,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "present-static-signal",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Refresh read the same actor/event registration record instead of creating another row.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The standard mobile registration submitted an actor-scoped record, rendered its saved answers, and preserved them after refresh.",
+          "testData": "Private event event:live-record:20260729 and the current authenticated audit actor",
+          "testEvidence": [
+            "expo-live-event-registration-and-roster-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -25992,14 +26042,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Cancellation changed the existing record state and did not create a second registration.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Cancellation updated the same actor-scoped registration and the cancelled state survived refresh.",
+          "testData": "The saved registration for event:live-record:20260729 in the authenticated Expo Web runtime",
+          "testEvidence": [
+            "expo-live-event-registration-and-roster-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -26162,8 +26214,13 @@
       ],
       "overlays": [],
       "testEvidence": [],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned private event list and encoded dynamic detail opened from the live API",
+        "title, organizer, source metadata, and participant availability rendered in their own semantic fields",
+        "missing attendee source rendered an explicit no-roster boundary with import actions withheld",
+        "standard registration saved, refreshed, cancelled, and refreshed the same actor-scoped record"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-live-event-chain"
     },
     {
       "surfaceId": "mobile:/followups",
@@ -30635,103 +30692,103 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 149,
+          "line": 150,
           "tag": "Text",
           "text": "已认证主办方"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 153,
+          "line": 155,
           "tag": "Text",
           "text": "{view.initial}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 156,
+          "line": 158,
           "tag": "Text",
           "text": "{view.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 159,
+          "line": 161,
           "tag": "Text",
           "text": "{view.handle}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 166,
+          "line": 168,
           "tag": "Text",
           "text": "{view.summary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 168,
+          "line": 170,
           "tag": "StatCell",
           "text": "活动"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 169,
+          "line": 171,
           "tag": "StatCell",
           "text": "累计参会"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 170,
+          "line": 172,
           "tag": "StatCell",
           "text": "历史"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 184,
+          "line": 186,
           "tag": "Text",
           "text": "{action.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 208,
+          "line": 210,
           "tag": "Text",
           "text": "{value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 209,
+          "line": 211,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 239,
+          "line": 241,
           "tag": "Text",
           "text": "{stateLabels[event.state]}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 242,
+          "line": 244,
           "tag": "Text",
           "text": "{event.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 245,
+          "line": 247,
           "tag": "Text",
           "text": "{event.detailLine}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 249,
+          "line": 251,
           "tag": "Text",
           "text": "{event.participantCountLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 252,
+          "line": 254,
           "tag": "Text",
           "text": "查看 / 报名"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-public-organizer-slug-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -30988,7 +31045,7 @@
           "interactionId": "mobile:/o/[slug]#interaction-7",
           "surfaceId": "mobile:/o/[slug]",
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 174,
+          "line": 176,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -31021,7 +31078,7 @@
           "interactionId": "mobile:/o/[slug]#interaction-8",
           "surfaceId": "mobile:/o/[slug]",
           "sourceFile": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx",
-          "line": 224,
+          "line": 226,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{stateLabels[event.state]} {event.title} {event.detailLine} {event.participantCountLabel} 查看 / 报名",
@@ -31055,8 +31112,13 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "known public organizer slug read only the approved public event catalogue",
+        "organizer identity used the public workspace account instead of source-note text",
+        "private actor event did not appear in the public organizer result",
+        "unknown slug rendered a zero-event not-found state without verified badge or first-event fallback"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-organizer-public-isolation"
     },
     {
       "surfaceId": "mobile:/party",
@@ -31108,6 +31170,7 @@
           "repos/orbit-app/src/api/contract/source.ts",
           "repos/orbit-app/src/api/endpoints.ts",
           "repos/orbit-app/src/api/mobile-auth.ts",
+          "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "repos/orbit-app/src/view-models/event-attendees.ts",
           "repos/orbit-app/src/view-models/events.ts"
         ]
@@ -31182,373 +31245,355 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 116,
+          "line": 104,
           "tag": "AppScreen",
           "text": "copy.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 129,
+          "line": 105,
+          "tag": "EmptyState",
+          "text": "尚未选择活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 110,
+          "tag": "ActionButton",
+          "text": "查看活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 161,
+          "tag": "AppScreen",
+          "text": "copy.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 174,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 161,
+          "line": 199,
+          "tag": "EmptyState",
+          "text": "现场数据尚未连接"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 204,
+          "tag": "ActionButton",
+          "text": "返回活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 228,
           "tag": "ErrorState",
           "text": "现场匹配不可用"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 178,
+          "line": 245,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 179,
+          "line": 246,
           "tag": "Text",
           "text": "{party.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 182,
+          "line": 249,
           "tag": "MetricPill",
           "text": "metric.label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 257,
           "tag": "ActionButton",
-          "text": "签到码"
+          "text": "签到状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
+          "line": 263,
           "tag": "ActionButton",
           "text": "关系图"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
+          "line": 268,
           "tag": "ActionButton",
           "text": "参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 212,
+          "line": 279,
           "tag": "EmptyState",
           "text": "还没有参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 219,
+          "line": 286,
           "tag": "DataCard",
           "text": "互相想认识"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 223,
+          "line": 290,
           "tag": "Text",
           "text": "{match.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 224,
+          "line": 291,
           "tag": "Text",
           "text": "{match.names}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 225,
+          "line": 292,
           "tag": "Text",
           "text": "{match.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 242,
-          "tag": "DataCard",
-          "text": "签到完毕"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 248,
-          "tag": "Text",
-          "text": "{party.eventTitle}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 249,
-          "tag": "Text",
-          "text": "现场通行码 {party.checkIn.accessCode} 已确认，可以继续看名单和关系图。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
-          "tag": "ActionButton",
-          "text": "看关系图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 268,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 277,
-          "tag": "DataCard",
-          "text": "`${party.eventTitle}签到`"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 279,
-          "tag": "Text",
-          "text": "现场通行码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 280,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 283,
-          "tag": "Text",
-          "text": "{party.checkIn.attendeeSummary}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 285,
-          "tag": "Text",
-          "text": "{party.checkIn.instruction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "tag": "ActionButton",
-          "text": "一键签到"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
-          "tag": "ActionButton",
-          "text": "看名单"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "line": 307,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 319,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 320,
+          "line": 310,
           "tag": "Text",
-          "text": "先按分组看人，再决定第一轮该聊谁。"
+          "text": "签到尚未连接"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 325,
-          "tag": "MetricPill",
-          "text": "metric.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
-          "tag": "ActionButton",
-          "text": "签到码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 348,
-          "tag": "EmptyState",
-          "text": "暂无关系分组"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 367,
-          "tag": "DataCard",
-          "text": "现场连接地图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 374,
+          "line": 311,
           "tag": "Text",
-          "text": "我"
+          "text": "{party.checkIn.attendeeSummary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 375,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 396,
-          "tag": "Text",
-          "text": "{person.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 399,
-          "tag": "Text",
-          "text": "{person.matchLabel} · {person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 407,
-          "tag": "Text",
-          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 416,
-          "tag": "DataCard",
-          "text": "现场通行"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 418,
-          "tag": "Text",
-          "text": "{party.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 421,
+          "line": 313,
           "tag": "Text",
           "text": "{party.checkIn.instruction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 435,
+          "line": 315,
+          "tag": "ActionButton",
+          "text": "看名单"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "tag": "ActionButton",
+          "text": "看关系图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 330,
           "tag": "DataCard",
-          "text": "person.name"
+          "text": "现场流程"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 446,
-          "tag": "Text",
-          "text": "{person.matchLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 447,
-          "tag": "Text",
-          "text": "{person.statusLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 448,
-          "tag": "Text",
-          "text": "{person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 449,
-          "tag": "Text",
-          "text": "{person.seatLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 451,
-          "tag": "Text",
-          "text": "{tag}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 458,
-          "tag": "Text",
-          "text": "{person.reason}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 460,
-          "tag": "Text",
-          "text": "{person.relationshipContext}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 462,
-          "tag": "Text",
-          "text": "{person.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 471,
+          "line": 342,
           "tag": "DataCard",
-          "text": "group.title"
+          "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 483,
+          "line": 343,
+          "tag": "Text",
+          "text": "先按分组看人，再决定第一轮该聊谁。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 348,
+          "tag": "MetricPill",
+          "text": "metric.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 356,
+          "tag": "ActionButton",
+          "text": "签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 362,
+          "tag": "ActionButton",
+          "text": "回现场"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 371,
+          "tag": "EmptyState",
+          "text": "暂无关系分组"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 390,
+          "tag": "DataCard",
+          "text": "现场连接地图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 397,
+          "tag": "Text",
+          "text": "我"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 398,
+          "tag": "Text",
+          "text": "现场关系"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 419,
           "tag": "Text",
           "text": "{person.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 484,
+          "line": 422,
+          "tag": "Text",
+          "text": "{person.matchLabel} · {person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 430,
+          "tag": "Text",
+          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 439,
+          "tag": "DataCard",
+          "text": "现场签到"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 441,
+          "tag": "Text",
+          "text": "未生成签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 442,
+          "tag": "Text",
+          "text": "{party.checkIn.instruction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 456,
+          "tag": "DataCard",
+          "text": "person.name"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 467,
+          "tag": "Text",
+          "text": "{person.matchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 468,
+          "tag": "Text",
+          "text": "{person.statusLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 469,
+          "tag": "Text",
+          "text": "{person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 470,
+          "tag": "Text",
+          "text": "{person.seatLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 472,
+          "tag": "Text",
+          "text": "{tag}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 479,
           "tag": "Text",
           "text": "{person.reason}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 515,
+          "line": 481,
+          "tag": "Text",
+          "text": "{person.relationshipContext}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 483,
+          "tag": "Text",
+          "text": "{person.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 492,
+          "tag": "DataCard",
+          "text": "group.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 504,
+          "tag": "Text",
+          "text": "{person.name}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 505,
+          "tag": "Text",
+          "text": "{person.reason}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 536,
           "tag": "Text",
           "text": "{name.slice(0, 1) || \"?\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 526,
+          "line": 547,
           "tag": "Text",
           "text": "{item.time}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 528,
+          "line": 549,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 529,
+          "line": 550,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 563,
+          "line": 584,
           "tag": "Text",
           "text": "{label}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-party-live-data-boundary-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -31679,7 +31724,40 @@
           "interactionId": "mobile:/party#interaction-3",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 119,
+          "line": 110,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(\"/events\" as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party#interaction-4",
+          "surfaceId": "mobile:/party",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 164,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -31707,10 +31785,43 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-4",
+          "interactionId": "mobile:/party#interaction-5",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 204,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                router.push({\n                  params: { id: eventId },\n                  pathname: \"/events/[id]\"\n                })"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party#interaction-6",
+          "surfaceId": "mobile:/party",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 257,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -31741,78 +31852,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-5",
-          "surfaceId": "mobile:/party",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party#interaction-6",
-          "surfaceId": "mobile:/party",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "encodeURIComponent"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
           "interactionId": "mobile:/party#interaction-7",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
+          "line": 263,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -31846,74 +31889,7 @@
           "interactionId": "mobile:/party#interaction-8",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party#interaction-9",
-          "surfaceId": "mobile:/party",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => setCheckedIn(true)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCheckedIn"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party#interaction-10",
-          "surfaceId": "mobile:/party",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
+          "line": 268,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -31944,10 +31920,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-11",
+          "interactionId": "mobile:/party#interaction-9",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
+          "line": 315,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -31957,7 +31933,41 @@
           "handlers": [
             {
               "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
+              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party#interaction-10",
+          "surfaceId": "mobile:/party",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
             }
           ],
           "href": null,
@@ -31978,10 +31988,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-12",
+          "interactionId": "mobile:/party#interaction-11",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
+          "line": 356,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32012,10 +32022,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-13",
+          "interactionId": "mobile:/party#interaction-12",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
+          "line": 362,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32046,10 +32056,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party#interaction-14",
+          "interactionId": "mobile:/party#interaction-13",
           "surfaceId": "mobile:/party",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 549,
+          "line": 570,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{label}",
@@ -32084,8 +32094,13 @@
         "repos/orbit-app/tests/party-screen-source.test.ts",
         "repos/orbit-app/tests/party-view-model.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "party mode resolved only from the selected live event and its available roster",
+        "no fixed access code was generated",
+        "check-in exposed the missing service/write boundary instead of local success",
+        "graph center and status copy described available relationship data without claiming attendance"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-party-truthful-boundary"
     },
     {
       "surfaceId": "mobile:/party/checkin",
@@ -32137,6 +32152,7 @@
           "repos/orbit-app/src/api/contract/source.ts",
           "repos/orbit-app/src/api/endpoints.ts",
           "repos/orbit-app/src/api/mobile-auth.ts",
+          "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "repos/orbit-app/src/view-models/event-attendees.ts",
           "repos/orbit-app/src/view-models/events.ts"
         ]
@@ -32211,373 +32227,355 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 116,
+          "line": 104,
           "tag": "AppScreen",
           "text": "copy.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 129,
+          "line": 105,
+          "tag": "EmptyState",
+          "text": "尚未选择活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 110,
+          "tag": "ActionButton",
+          "text": "查看活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 161,
+          "tag": "AppScreen",
+          "text": "copy.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 174,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 161,
+          "line": 199,
+          "tag": "EmptyState",
+          "text": "现场数据尚未连接"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 204,
+          "tag": "ActionButton",
+          "text": "返回活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 228,
           "tag": "ErrorState",
           "text": "现场匹配不可用"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 178,
+          "line": 245,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 179,
+          "line": 246,
           "tag": "Text",
           "text": "{party.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 182,
+          "line": 249,
           "tag": "MetricPill",
           "text": "metric.label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 257,
           "tag": "ActionButton",
-          "text": "签到码"
+          "text": "签到状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
+          "line": 263,
           "tag": "ActionButton",
           "text": "关系图"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
+          "line": 268,
           "tag": "ActionButton",
           "text": "参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 212,
+          "line": 279,
           "tag": "EmptyState",
           "text": "还没有参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 219,
+          "line": 286,
           "tag": "DataCard",
           "text": "互相想认识"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 223,
+          "line": 290,
           "tag": "Text",
           "text": "{match.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 224,
+          "line": 291,
           "tag": "Text",
           "text": "{match.names}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 225,
+          "line": 292,
           "tag": "Text",
           "text": "{match.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 242,
-          "tag": "DataCard",
-          "text": "签到完毕"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 248,
-          "tag": "Text",
-          "text": "{party.eventTitle}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 249,
-          "tag": "Text",
-          "text": "现场通行码 {party.checkIn.accessCode} 已确认，可以继续看名单和关系图。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
-          "tag": "ActionButton",
-          "text": "看关系图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 268,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 277,
-          "tag": "DataCard",
-          "text": "`${party.eventTitle}签到`"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 279,
-          "tag": "Text",
-          "text": "现场通行码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 280,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 283,
-          "tag": "Text",
-          "text": "{party.checkIn.attendeeSummary}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 285,
-          "tag": "Text",
-          "text": "{party.checkIn.instruction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "tag": "ActionButton",
-          "text": "一键签到"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
-          "tag": "ActionButton",
-          "text": "看名单"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "line": 307,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 319,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 320,
+          "line": 310,
           "tag": "Text",
-          "text": "先按分组看人，再决定第一轮该聊谁。"
+          "text": "签到尚未连接"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 325,
-          "tag": "MetricPill",
-          "text": "metric.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
-          "tag": "ActionButton",
-          "text": "签到码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 348,
-          "tag": "EmptyState",
-          "text": "暂无关系分组"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 367,
-          "tag": "DataCard",
-          "text": "现场连接地图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 374,
+          "line": 311,
           "tag": "Text",
-          "text": "我"
+          "text": "{party.checkIn.attendeeSummary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 375,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 396,
-          "tag": "Text",
-          "text": "{person.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 399,
-          "tag": "Text",
-          "text": "{person.matchLabel} · {person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 407,
-          "tag": "Text",
-          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 416,
-          "tag": "DataCard",
-          "text": "现场通行"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 418,
-          "tag": "Text",
-          "text": "{party.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 421,
+          "line": 313,
           "tag": "Text",
           "text": "{party.checkIn.instruction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 435,
+          "line": 315,
+          "tag": "ActionButton",
+          "text": "看名单"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "tag": "ActionButton",
+          "text": "看关系图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 330,
           "tag": "DataCard",
-          "text": "person.name"
+          "text": "现场流程"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 446,
-          "tag": "Text",
-          "text": "{person.matchLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 447,
-          "tag": "Text",
-          "text": "{person.statusLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 448,
-          "tag": "Text",
-          "text": "{person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 449,
-          "tag": "Text",
-          "text": "{person.seatLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 451,
-          "tag": "Text",
-          "text": "{tag}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 458,
-          "tag": "Text",
-          "text": "{person.reason}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 460,
-          "tag": "Text",
-          "text": "{person.relationshipContext}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 462,
-          "tag": "Text",
-          "text": "{person.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 471,
+          "line": 342,
           "tag": "DataCard",
-          "text": "group.title"
+          "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 483,
+          "line": 343,
+          "tag": "Text",
+          "text": "先按分组看人，再决定第一轮该聊谁。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 348,
+          "tag": "MetricPill",
+          "text": "metric.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 356,
+          "tag": "ActionButton",
+          "text": "签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 362,
+          "tag": "ActionButton",
+          "text": "回现场"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 371,
+          "tag": "EmptyState",
+          "text": "暂无关系分组"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 390,
+          "tag": "DataCard",
+          "text": "现场连接地图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 397,
+          "tag": "Text",
+          "text": "我"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 398,
+          "tag": "Text",
+          "text": "现场关系"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 419,
           "tag": "Text",
           "text": "{person.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 484,
+          "line": 422,
+          "tag": "Text",
+          "text": "{person.matchLabel} · {person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 430,
+          "tag": "Text",
+          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 439,
+          "tag": "DataCard",
+          "text": "现场签到"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 441,
+          "tag": "Text",
+          "text": "未生成签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 442,
+          "tag": "Text",
+          "text": "{party.checkIn.instruction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 456,
+          "tag": "DataCard",
+          "text": "person.name"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 467,
+          "tag": "Text",
+          "text": "{person.matchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 468,
+          "tag": "Text",
+          "text": "{person.statusLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 469,
+          "tag": "Text",
+          "text": "{person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 470,
+          "tag": "Text",
+          "text": "{person.seatLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 472,
+          "tag": "Text",
+          "text": "{tag}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 479,
           "tag": "Text",
           "text": "{person.reason}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 515,
+          "line": 481,
+          "tag": "Text",
+          "text": "{person.relationshipContext}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 483,
+          "tag": "Text",
+          "text": "{person.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 492,
+          "tag": "DataCard",
+          "text": "group.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 504,
+          "tag": "Text",
+          "text": "{person.name}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 505,
+          "tag": "Text",
+          "text": "{person.reason}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 536,
           "tag": "Text",
           "text": "{name.slice(0, 1) || \"?\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 526,
+          "line": 547,
           "tag": "Text",
           "text": "{item.time}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 528,
+          "line": 549,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 529,
+          "line": 550,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 563,
+          "line": 584,
           "tag": "Text",
           "text": "{label}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-party-live-data-boundary-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -32708,7 +32706,40 @@
           "interactionId": "mobile:/party/checkin#interaction-3",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 119,
+          "line": 110,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(\"/events\" as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/checkin#interaction-4",
+          "surfaceId": "mobile:/party/checkin",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 164,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -32736,10 +32767,43 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-4",
+          "interactionId": "mobile:/party/checkin#interaction-5",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 204,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                router.push({\n                  params: { id: eventId },\n                  pathname: \"/events/[id]\"\n                })"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/checkin#interaction-6",
+          "surfaceId": "mobile:/party/checkin",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 257,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32770,78 +32834,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-5",
-          "surfaceId": "mobile:/party/checkin",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/checkin#interaction-6",
-          "surfaceId": "mobile:/party/checkin",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "encodeURIComponent"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
           "interactionId": "mobile:/party/checkin#interaction-7",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
+          "line": 263,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32875,74 +32871,7 @@
           "interactionId": "mobile:/party/checkin#interaction-8",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/checkin#interaction-9",
-          "surfaceId": "mobile:/party/checkin",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => setCheckedIn(true)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCheckedIn"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/checkin#interaction-10",
-          "surfaceId": "mobile:/party/checkin",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
+          "line": 268,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32973,10 +32902,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-11",
+          "interactionId": "mobile:/party/checkin#interaction-9",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
+          "line": 315,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -32986,7 +32915,41 @@
           "handlers": [
             {
               "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
+              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/checkin#interaction-10",
+          "surfaceId": "mobile:/party/checkin",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
             }
           ],
           "href": null,
@@ -33007,10 +32970,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-12",
+          "interactionId": "mobile:/party/checkin#interaction-11",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
+          "line": 356,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -33041,10 +33004,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-13",
+          "interactionId": "mobile:/party/checkin#interaction-12",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
+          "line": 362,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -33075,10 +33038,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/checkin#interaction-14",
+          "interactionId": "mobile:/party/checkin#interaction-13",
           "surfaceId": "mobile:/party/checkin",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 549,
+          "line": 570,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{label}",
@@ -33110,8 +33073,13 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "party mode resolved only from the selected live event and its available roster",
+        "no fixed access code was generated",
+        "check-in exposed the missing service/write boundary instead of local success",
+        "graph center and status copy described available relationship data without claiming attendance"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-party-truthful-boundary"
     },
     {
       "surfaceId": "mobile:/party/graph",
@@ -33163,6 +33131,7 @@
           "repos/orbit-app/src/api/contract/source.ts",
           "repos/orbit-app/src/api/endpoints.ts",
           "repos/orbit-app/src/api/mobile-auth.ts",
+          "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "repos/orbit-app/src/view-models/event-attendees.ts",
           "repos/orbit-app/src/view-models/events.ts"
         ]
@@ -33237,373 +33206,355 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 116,
+          "line": 104,
           "tag": "AppScreen",
           "text": "copy.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 129,
+          "line": 105,
+          "tag": "EmptyState",
+          "text": "尚未选择活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 110,
+          "tag": "ActionButton",
+          "text": "查看活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 161,
+          "tag": "AppScreen",
+          "text": "copy.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 174,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 161,
+          "line": 199,
+          "tag": "EmptyState",
+          "text": "现场数据尚未连接"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 204,
+          "tag": "ActionButton",
+          "text": "返回活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 228,
           "tag": "ErrorState",
           "text": "现场匹配不可用"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 178,
+          "line": 245,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 179,
+          "line": 246,
           "tag": "Text",
           "text": "{party.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 182,
+          "line": 249,
           "tag": "MetricPill",
           "text": "metric.label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 257,
           "tag": "ActionButton",
-          "text": "签到码"
+          "text": "签到状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
+          "line": 263,
           "tag": "ActionButton",
           "text": "关系图"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
+          "line": 268,
           "tag": "ActionButton",
           "text": "参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 212,
+          "line": 279,
           "tag": "EmptyState",
           "text": "还没有参会者"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 219,
+          "line": 286,
           "tag": "DataCard",
           "text": "互相想认识"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 223,
+          "line": 290,
           "tag": "Text",
           "text": "{match.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 224,
+          "line": 291,
           "tag": "Text",
           "text": "{match.names}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 225,
+          "line": 292,
           "tag": "Text",
           "text": "{match.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 242,
-          "tag": "DataCard",
-          "text": "签到完毕"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 248,
-          "tag": "Text",
-          "text": "{party.eventTitle}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 249,
-          "tag": "Text",
-          "text": "现场通行码 {party.checkIn.accessCode} 已确认，可以继续看名单和关系图。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
-          "tag": "ActionButton",
-          "text": "看关系图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 268,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 277,
-          "tag": "DataCard",
-          "text": "`${party.eventTitle}签到`"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 279,
-          "tag": "Text",
-          "text": "现场通行码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 280,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 283,
-          "tag": "Text",
-          "text": "{party.checkIn.attendeeSummary}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 285,
-          "tag": "Text",
-          "text": "{party.checkIn.instruction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "tag": "ActionButton",
-          "text": "一键签到"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
-          "tag": "ActionButton",
-          "text": "看名单"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
           "line": 307,
-          "tag": "DataCard",
-          "text": "现场流程"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 319,
           "tag": "DataCard",
           "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 320,
+          "line": 310,
           "tag": "Text",
-          "text": "先按分组看人，再决定第一轮该聊谁。"
+          "text": "签到尚未连接"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 325,
-          "tag": "MetricPill",
-          "text": "metric.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
-          "tag": "ActionButton",
-          "text": "签到码"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
-          "tag": "ActionButton",
-          "text": "回现场"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 348,
-          "tag": "EmptyState",
-          "text": "暂无关系分组"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 367,
-          "tag": "DataCard",
-          "text": "现场连接地图"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 374,
+          "line": 311,
           "tag": "Text",
-          "text": "我"
+          "text": "{party.checkIn.attendeeSummary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 375,
-          "tag": "Text",
-          "text": "{party.checkIn.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 396,
-          "tag": "Text",
-          "text": "{person.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 399,
-          "tag": "Text",
-          "text": "{person.matchLabel} · {person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 407,
-          "tag": "Text",
-          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 416,
-          "tag": "DataCard",
-          "text": "现场通行"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 418,
-          "tag": "Text",
-          "text": "{party.accessCode}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 421,
+          "line": 313,
           "tag": "Text",
           "text": "{party.checkIn.instruction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 435,
+          "line": 315,
+          "tag": "ActionButton",
+          "text": "看名单"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "tag": "ActionButton",
+          "text": "看关系图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 330,
           "tag": "DataCard",
-          "text": "person.name"
+          "text": "现场流程"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 446,
-          "tag": "Text",
-          "text": "{person.matchLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 447,
-          "tag": "Text",
-          "text": "{person.statusLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 448,
-          "tag": "Text",
-          "text": "{person.groupLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 449,
-          "tag": "Text",
-          "text": "{person.seatLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 451,
-          "tag": "Text",
-          "text": "{tag}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 458,
-          "tag": "Text",
-          "text": "{person.reason}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 460,
-          "tag": "Text",
-          "text": "{person.relationshipContext}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 462,
-          "tag": "Text",
-          "text": "{person.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 471,
+          "line": 342,
           "tag": "DataCard",
-          "text": "group.title"
+          "text": "party.eventTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 483,
+          "line": 343,
+          "tag": "Text",
+          "text": "先按分组看人，再决定第一轮该聊谁。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 348,
+          "tag": "MetricPill",
+          "text": "metric.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 356,
+          "tag": "ActionButton",
+          "text": "签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 362,
+          "tag": "ActionButton",
+          "text": "回现场"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 371,
+          "tag": "EmptyState",
+          "text": "暂无关系分组"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 390,
+          "tag": "DataCard",
+          "text": "现场连接地图"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 397,
+          "tag": "Text",
+          "text": "我"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 398,
+          "tag": "Text",
+          "text": "现场关系"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 419,
           "tag": "Text",
           "text": "{person.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 484,
+          "line": 422,
+          "tag": "Text",
+          "text": "{person.matchLabel} · {person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 430,
+          "tag": "Text",
+          "text": "先从 1 号节点开始聊，确认对方需求、可交换资源和下一步。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 439,
+          "tag": "DataCard",
+          "text": "现场签到"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 441,
+          "tag": "Text",
+          "text": "未生成签到码"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 442,
+          "tag": "Text",
+          "text": "{party.checkIn.instruction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 456,
+          "tag": "DataCard",
+          "text": "person.name"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 467,
+          "tag": "Text",
+          "text": "{person.matchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 468,
+          "tag": "Text",
+          "text": "{person.statusLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 469,
+          "tag": "Text",
+          "text": "{person.groupLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 470,
+          "tag": "Text",
+          "text": "{person.seatLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 472,
+          "tag": "Text",
+          "text": "{tag}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 479,
           "tag": "Text",
           "text": "{person.reason}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 515,
+          "line": 481,
+          "tag": "Text",
+          "text": "{person.relationshipContext}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 483,
+          "tag": "Text",
+          "text": "{person.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 492,
+          "tag": "DataCard",
+          "text": "group.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 504,
+          "tag": "Text",
+          "text": "{person.name}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 505,
+          "tag": "Text",
+          "text": "{person.reason}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 536,
           "tag": "Text",
           "text": "{name.slice(0, 1) || \"?\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 526,
+          "line": 547,
           "tag": "Text",
           "text": "{item.time}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 528,
+          "line": 549,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 529,
+          "line": 550,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 563,
+          "line": 584,
           "tag": "Text",
           "text": "{label}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-party-live-data-boundary-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -33734,7 +33685,40 @@
           "interactionId": "mobile:/party/graph#interaction-3",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 119,
+          "line": 110,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(\"/events\" as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/graph#interaction-4",
+          "surfaceId": "mobile:/party/graph",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 164,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -33762,10 +33746,43 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-4",
+          "interactionId": "mobile:/party/graph#interaction-5",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 190,
+          "line": 204,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                router.push({\n                  params: { id: eventId },\n                  pathname: \"/events/[id]\"\n                })"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/graph#interaction-6",
+          "surfaceId": "mobile:/party/graph",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 257,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -33796,78 +33813,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-5",
-          "surfaceId": "mobile:/party/graph",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 196,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/graph#interaction-6",
-          "surfaceId": "mobile:/party/graph",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 201,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "encodeURIComponent"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
           "interactionId": "mobile:/party/graph#interaction-7",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 255,
+          "line": 263,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -33901,74 +33850,7 @@
           "interactionId": "mobile:/party/graph#interaction-8",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 261,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push",
-            "partyHref"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/graph#interaction-9",
-          "surfaceId": "mobile:/party/graph",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 287,
-          "controlType": "callback-control",
-          "tag": "ActionButton",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => setCheckedIn(true)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCheckedIn"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/party/graph#interaction-10",
-          "surfaceId": "mobile:/party/graph",
-          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 293,
+          "line": 268,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -33999,10 +33881,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-11",
+          "interactionId": "mobile:/party/graph#interaction-9",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 300,
+          "line": 315,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -34012,7 +33894,41 @@
           "handlers": [
             {
               "event": "onpress",
-              "expression": "() => router.push(partyHref(\"/party\", party.eventId))"
+              "expression": "() =>\n              router.push(`/events/${encodeURIComponent(party.eventId)}/attendees` as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/party/graph#interaction-10",
+          "surfaceId": "mobile:/party/graph",
+          "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
+          "line": 322,
+          "controlType": "callback-control",
+          "tag": "ActionButton",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(partyHref(\"/party/graph\", party.eventId))"
             }
           ],
           "href": null,
@@ -34033,10 +33949,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-12",
+          "interactionId": "mobile:/party/graph#interaction-11",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 333,
+          "line": 356,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -34067,10 +33983,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-13",
+          "interactionId": "mobile:/party/graph#interaction-12",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 339,
+          "line": 362,
           "controlType": "callback-control",
           "tag": "ActionButton",
           "visibleName": null,
@@ -34101,10 +34017,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/party/graph#interaction-14",
+          "interactionId": "mobile:/party/graph#interaction-13",
           "surfaceId": "mobile:/party/graph",
           "sourceFile": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx",
-          "line": 549,
+          "line": 570,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{label}",
@@ -34136,8 +34052,13 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "party mode resolved only from the selected live event and its available roster",
+        "no fixed access code was generated",
+        "check-in exposed the missing service/write boundary instead of local success",
+        "graph center and status copy described available relationship data without claiming attendance"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-party-truthful-boundary"
     },
     {
       "surfaceId": "mobile:/platform",
@@ -36278,6 +36199,18 @@
           "text": "{detail}"
         },
         {
+          "sourceFile": "repos/orbit-app/src/components/EmptyState.tsx",
+          "line": 12,
+          "tag": "DataCard",
+          "text": "title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/EmptyState.tsx",
+          "line": 13,
+          "tag": "Text",
+          "text": "{message}"
+        },
+        {
           "sourceFile": "repos/orbit-app/src/components/ErrorState.tsx",
           "line": 15,
           "tag": "DataCard",
@@ -36303,145 +36236,163 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 56,
+          "line": 46,
           "tag": "AppScreen",
           "text": "报名资料准备"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 69,
+          "line": 47,
+          "tag": "EmptyState",
+          "text": "尚未选择活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 59,
+          "tag": "Text",
+          "text": "查看活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 92,
+          "tag": "AppScreen",
+          "text": "报名资料准备"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 105,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 114,
+          "line": 151,
           "tag": "DataCard",
           "text": "操作边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 117,
+          "line": 154,
           "tag": "Text",
           "text": "继续报名会进入活动问题页；这一步只检查资料。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 165,
+          "line": 202,
           "tag": "DataCard",
           "text": "readiness.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 166,
+          "line": 203,
           "tag": "View",
           "text": "报名准备"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 193,
+          "line": 230,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 194,
+          "line": 231,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 206,
+          "line": 243,
           "tag": "DataCard",
           "text": "view.event.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 209,
+          "line": 246,
           "tag": "Text",
           "text": "{view.event.code}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 210,
+          "line": 247,
           "tag": "Text",
           "text": "邀请码"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 213,
+          "line": 250,
           "tag": "Text",
           "text": "{view.event.status}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 214,
+          "line": 251,
           "tag": "Text",
           "text": "{view.event.description}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 218,
+          "line": 255,
           "tag": "Text",
           "text": "{view.event.startsAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 219,
+          "line": 256,
           "tag": "Text",
           "text": "{view.event.venue}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 221,
+          "line": 258,
           "tag": "Text",
           "text": "{view.event.sourceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 231,
+          "line": 268,
           "tag": "DataCard",
           "text": "profile.name"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 232,
+          "line": 269,
           "tag": "Text",
           "text": "{profile.headline}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 234,
+          "line": 271,
           "tag": "TagSection",
           "text": "我能提供"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 235,
+          "line": 272,
           "tag": "TagSection",
           "text": "我想寻找"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 236,
+          "line": 273,
           "tag": "TagSection",
           "text": "想聊的话题"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 248,
+          "line": 285,
           "tag": "SectionHeader",
           "text": "title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 251,
+          "line": 288,
           "tag": "Text",
           "text": "{item}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 275,
+          "line": 312,
           "tag": "Text",
           "text": "{action.label}"
         }
@@ -36577,7 +36528,40 @@
           "interactionId": "mobile:/register#interaction-3",
           "surfaceId": "mobile:/register",
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 59,
+          "line": 51,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "查看活动",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(\"/events\" as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/register#interaction-4",
+          "surfaceId": "mobile:/register",
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 95,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -36605,10 +36589,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/register#interaction-4",
+          "interactionId": "mobile:/register#interaction-5",
           "surfaceId": "mobile:/register",
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 266,
+          "line": 303,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -36740,6 +36724,18 @@
           "text": "{detail}"
         },
         {
+          "sourceFile": "repos/orbit-app/src/components/EmptyState.tsx",
+          "line": 12,
+          "tag": "DataCard",
+          "text": "title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/EmptyState.tsx",
+          "line": 13,
+          "tag": "Text",
+          "text": "{message}"
+        },
+        {
           "sourceFile": "repos/orbit-app/src/components/ErrorState.tsx",
           "line": 15,
           "tag": "DataCard",
@@ -36765,145 +36761,163 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 56,
+          "line": 46,
           "tag": "AppScreen",
           "text": "报名资料准备"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 69,
+          "line": 47,
+          "tag": "EmptyState",
+          "text": "尚未选择活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 59,
+          "tag": "Text",
+          "text": "查看活动"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 92,
+          "tag": "AppScreen",
+          "text": "报名资料准备"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 105,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 114,
+          "line": 151,
           "tag": "DataCard",
           "text": "操作边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 117,
+          "line": 154,
           "tag": "Text",
           "text": "继续报名会进入活动问题页；这一步只检查资料。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 165,
+          "line": 202,
           "tag": "DataCard",
           "text": "readiness.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 166,
+          "line": 203,
           "tag": "View",
           "text": "报名准备"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 193,
+          "line": 230,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 194,
+          "line": 231,
           "tag": "Text",
           "text": "{item.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 206,
+          "line": 243,
           "tag": "DataCard",
           "text": "view.event.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 209,
+          "line": 246,
           "tag": "Text",
           "text": "{view.event.code}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 210,
+          "line": 247,
           "tag": "Text",
           "text": "邀请码"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 213,
+          "line": 250,
           "tag": "Text",
           "text": "{view.event.status}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 214,
+          "line": 251,
           "tag": "Text",
           "text": "{view.event.description}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 218,
+          "line": 255,
           "tag": "Text",
           "text": "{view.event.startsAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 219,
+          "line": 256,
           "tag": "Text",
           "text": "{view.event.venue}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 221,
+          "line": 258,
           "tag": "Text",
           "text": "{view.event.sourceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 231,
+          "line": 268,
           "tag": "DataCard",
           "text": "profile.name"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 232,
+          "line": 269,
           "tag": "Text",
           "text": "{profile.headline}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 234,
+          "line": 271,
           "tag": "TagSection",
           "text": "我能提供"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 235,
+          "line": 272,
           "tag": "TagSection",
           "text": "我想寻找"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 236,
+          "line": 273,
           "tag": "TagSection",
           "text": "想聊的话题"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 248,
+          "line": 285,
           "tag": "SectionHeader",
           "text": "title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 251,
+          "line": 288,
           "tag": "Text",
           "text": "{item}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 275,
+          "line": 312,
           "tag": "Text",
           "text": "{action.label}"
         }
@@ -37039,7 +37053,40 @@
           "interactionId": "mobile:/register/[code]#interaction-3",
           "surfaceId": "mobile:/register/[code]",
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 59,
+          "line": 51,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "查看活动",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => router.push(\"/events\" as Href)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "router.push"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/register/[code]#interaction-4",
+          "surfaceId": "mobile:/register/[code]",
+          "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
+          "line": 95,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -37067,10 +37114,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/register/[code]#interaction-4",
+          "interactionId": "mobile:/register/[code]#interaction-5",
           "surfaceId": "mobile:/register/[code]",
           "sourceFile": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx",
-          "line": 266,
+          "line": 303,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -40937,6 +40984,7 @@
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -42855,6 +42903,7 @@
         "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -137098,7 +137147,7 @@
       "testData": "Live production API at localhost:3110 with explicit CORS origin localhost:8081; account C audit-event-isolation-c-20260728-2230@example.invalid",
       "expected": "Signed-out screens reveal no person's profile; browser login establishes a validated HttpOnly session without SecureStore; Web snapshot fallback cannot block the network; refresh restores the same actor; sign-out invalidates the server cookie and protected routes remain private",
       "actual": "Signed-out /profile and /account rendered only authentication boundaries with no 小雨, account-C, workspace, or relationship-goal data. Account C credentials redirected to /profile, showed the exact actor identity, and survived hard navigation. Missing stored profile fields rendered as missing instead of founder/source-backed fixtures. 退出登录 expired the Auth.js cookie; hard /profile and /account stayed signed out and disclosed no actor data or raw 401.",
-      "evidence": "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 511/511; Web full suite 1326/1326; full audit 7/7; npm run typecheck; npm run build",
+      "evidence": "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 519/519; Web full suite 1328/1328; full audit 7/7; npm run typecheck; npm run build",
       "conclusion": "pass for the exercised Expo Web credentials, profile/account privacy, refresh persistence, truthful missing-data, and sign-out invalidation chain; native iOS/Android secure-store, Google OAuth, offline, responsive, and assistive-technology cases remain pending"
     },
     {
@@ -137163,6 +137212,69 @@
       "actual": "All four zero-candidate sources rendered 未连接, with no 已授权/已上传/已连接 text. Selecting 手机通讯录 only marked that filter active; 导入为候选 remained disabled and no write or provider action occurred.",
       "evidence": "Production Next build plus Expo Web browser traversal; tests/capabilities/external-contacts-import-live-store.test.ts; tests/contact-acquisition-view-model.test.ts; npm run typecheck",
       "conclusion": "pass for the exercised empty live-source and filter-only states; real phone/Google/CSV/customer-list connection and import success states remain externally unconfigured"
+    },
+    {
+      "id": "expo-production-route-contract-traversal-2026-07-29",
+      "target": "All 38 Expo production routes reachable without development-only fixtures",
+      "testData": "Current Expo Router route tree with direct navigation, explicit dynamic IDs, legacy aliases, and missing-parameter entries",
+      "expected": "Every production route resolves through its declared source contract; missing IDs stay missing; dynamic routes never borrow a demo event, contact, conversation, or organizer",
+      "actual": "The 38-route traversal resolved every production entry. Event and invite routes without an ID rendered a selection boundary, explicit unknown dynamic IDs rendered localized missing states, and the legacy catch-all preserved only allowlisted redirects.",
+      "evidence": "Expo route-tree traversal; tests/initial-route.test.ts; tests/register-invite-view-model.test.ts; tests/detail-view-model.test.ts; npm run typecheck",
+      "conclusion": "pass-static-and-runtime-route-contract for the exercised Expo Web route tree; native custom-scheme delivery and physical-device permission routes remain pending"
+    },
+    {
+      "id": "expo-manual-candidate-confirmation-truthfulness-2026-07-29",
+      "target": "Expo contacts/new manual candidate creation → confirmation result copy",
+      "testData": "A candidate response with confirmation complete but without a contact-write capability",
+      "expected": "Candidate confirmation must not claim that a contact was created; the UI must distinguish candidate state from a separately authorized contact write",
+      "actual": "The result now says the candidate is confirmed and that the current flow will not write a contact when no contact-write contract exists. The control label remains 已确认候选 instead of representing a created contact.",
+      "evidence": "tests/contact-acquisition-view-model.test.ts; tests/contact-acquisition-screen.test.ts; npm run typecheck",
+      "conclusion": "pass-source-regression for the no-contact-write confirmation branch; an authorized manual contact-write success remains a separate flow"
+    },
+    {
+      "id": "expo-live-event-registration-and-roster-boundaries-2026-07-29",
+      "target": "Expo event list → actor-owned dynamic detail → standard registration save/cancel/readback → attendee-source boundary",
+      "testData": "Private event event:live-record:20260729 titled 功能审计私有活动 20260729 under the authenticated audit actor; no attendee roster source",
+      "expected": "Private events resolve only for their actor; title, organizer, source, and participant availability retain separate meaning; registration writes one actor/event record; absent roster data exposes no import or attendee success",
+      "actual": "The real private event opened from list to encoded detail with its title and semantic fields intact. Standard registration saved and refreshed exact answers, cancellation updated the same record and survived refresh, and the attendee route rendered 参会者来源尚未连接 with import actions withheld.",
+      "evidence": "Authenticated Expo Web production-API traversal; event detail/attendee/registration source tests; registration API actor-scope tests; Expo typecheck",
+      "conclusion": "pass for the exercised actor-owned event read, semantic display, registration save/cancel/readback, and missing-roster boundary; a configured attendee roster and native-device flow remain pending"
+    },
+    {
+      "id": "expo-ai-history-persistence-hydration-2026-07-29",
+      "target": "Expo Orbit AI history drawer → accessible row actions → persisted conversation",
+      "testData": "Authenticated live AI history containing agent-session-ms4a1d22-6w4xm9",
+      "expected": "Open and delete are distinct accessible controls; opening reads the persisted conversation; repeated drawer use emits no invalid nested-button hydration error",
+      "actual": "The drawer rendered sibling open/delete buttons, the open control carried the conversation title in its accessible label, and opening it loaded the matching persisted messages. Repeated close/open produced zero new console errors after the fix.",
+      "evidence": "Expo Web browser DOM and console traversal; tests/ai-home-screen-copy.test.ts; Expo typecheck",
+      "conclusion": "pass for history open, persisted readback, accessible action separation, and hydration cleanliness; destructive delete was intentionally not exercised"
+    },
+    {
+      "id": "expo-dynamic-missing-data-boundaries-2026-07-29",
+      "target": "Expo relationship chat and contact dynamic routes with no actor-owned backing record",
+      "testData": "Empty current relationship-conversation collection, /chat/not-a-real-thread, and stale contact ID test-contact-c788bda85b-01 referenced by historical AI text",
+      "expected": "The product must not invent a conversation or contact merely to make a dynamic route look populated",
+      "actual": "/chat rendered a truthful empty collection, the unknown chat detail rendered a localized failure boundary, and the stale contact link returned NOT_FOUND without substituting any contact or relationship data.",
+      "evidence": "Authenticated Expo Web direct navigation and API readback; chat/contact screen-state tests; Expo typecheck",
+      "conclusion": "pass for the exercised empty chat, missing chat, and missing contact states; no actor-owned relationship conversation existed to validate the populated chat-detail path"
+    },
+    {
+      "id": "expo-party-no-synthetic-checkin-2026-07-29",
+      "target": "Expo party overview, check-in, and relationship graph derived from live event data",
+      "testData": "Current private event without a roster, access-code provider, or check-in writer",
+      "expected": "Orbit must not derive an access code from the event ID or report local check-in success without a backend write contract",
+      "actual": "The deterministic *-4821 access code and local 已签到 state were removed. Party overview now reports status, check-in explains that no code/write service is connected, and the graph center describes现场关系 without asserting attendance.",
+      "evidence": "tests/party-view-model.test.ts; tests/party-screen-source.test.ts; authenticated Expo Web no-roster traversal; Expo typecheck",
+      "conclusion": "pass for the exercised no-roster/no-check-in-service boundary; real access-code validation and check-in persistence require a backend contract"
+    },
+    {
+      "id": "expo-organizer-public-private-isolation-2026-07-29",
+      "target": "Web public event catalogue → Expo organizer slug page → unknown-slug boundary",
+      "testData": "Known slug evtsignup02, approved public catalogue, authenticated private audit event, and unknown slug not-a-real-organizer",
+      "expected": "Organizer pages read only public catalogue data, honor the slug exactly, never fall back to the first event, and never leak actor-private events",
+      "actual": "The known slug rendered Orbit 人脉测试空间 and its public event set without the private audit event or source-note organizer. The unknown slug rendered 未找到公开主办方 with zero events and no verified badge.",
+      "evidence": "Production Next build; exact-origin credentialed CORS preflight; Expo Web known/unknown slug traversal; public-events route and organizer view-model tests",
+      "conclusion": "pass for the exercised public/private isolation, organizer identity, known slug, and unknown slug; anonymous transport is not claimed because the global API proxy still requires an authenticated session"
     }
   ],
   "remediations": [
@@ -137244,7 +137356,7 @@
       "rootCause": "Expo profile/account/bootstrap view models replaced missing or named identities with a hard-coded Xiaoyu/founder profile and rendered those values while signed out; signup, relationship-preview, and contact-note helpers also inserted the same fixed identity. Expo Web then could not complete real auth because the mobile bridge returned but did not set a browser cookie, credentialed CORS was disabled, SecureStore was required on Web, and the native SQLite snapshot initialization blocked requests. Finally, the account sign-out route returned a signed-out payload without expiring Auth.js cookies, while live account/bootstrap services fabricated missing profile fields.",
       "decision": "Keep profile/account mappings faithful and sparse; render authentication boundaries before resource states; use HttpOnly browser cookies plus explicit-origin credentialed CORS on Web and SecureStore only on native; bypass native SQLite snapshots on Web; expire all standard and chunked Auth.js session cookies on sign-out; and preserve missing live profile fields as missing rather than inserting product-implementation copy.",
       "files": "repos/orbit-app/src/view-models/profile.ts; repos/orbit-app/src/view-models/account-session.ts; repos/orbit-app/src/view-models/bootstrap.ts; repos/orbit-app/src/view-models/connections-graph.ts; repos/orbit-app/src/view-models/contacts.ts; repos/orbit-app/src/screens/profile/ProfileScreen.tsx; repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/screens/profile/AccountScreen.tsx; repos/orbit-app/src/api/mobile-auth.ts; repos/orbit-app/src/api/AuthSessionProvider.tsx; repos/orbit-app/src/data/snapshot-store.ts; repos/orbit-app/src/data/snapshot-store.web.ts; repos/orbits/app/api/auth/mobile/http.ts; repos/orbits/app/api/auth/mobile/credentials/route.ts; repos/orbits/app/api/auth/mobile/google/exchange/route.ts; repos/orbits/app/api/account/session/sign-out/route.ts; repos/orbits/features/account/live-service.ts; repos/orbits/features/bootstrap/live-service.ts; repos/orbits/next.config.js",
-      "regression": "Expo full suite: 511/511 passed; Web full suite: 1326/1326 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
+      "regression": "Expo full suite: 519/519 passed; Web full suite: 1328/1328 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
       "status": "fixed and runtime-verified for Expo Web credentials/profile/account/sign-out; native device, Google OAuth, offline, responsive, and assistive-technology cases pending"
     },
     {
@@ -137318,6 +137430,60 @@
       "files": "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts; generated audit inventory",
       "regression": "Generator syntax, 94-surface/2817-interaction regeneration, and exact projection of six intended mobile contact interactions passed; the ambiguous seventh match was eliminated and the verified denominator returned to 26.",
       "status": "fixed for the mobile contact-acquisition evidence map; older historical maps still retain line-key compatibility and must be migrated when their source changes"
+    },
+    {
+      "id": "AUDIT-P1-018",
+      "severity": "P1",
+      "rootCause": "Several Expo event and invite entries replaced a missing route parameter with demo-event-1. A user could therefore open a route with no event identity and see a plausible but unrelated event instead of a missing-selection boundary.",
+      "decision": "Treat a missing dynamic identity as missing input. Render an explicit selection state with a real route back to the event catalogue, and reserve event loading for a non-empty ID supplied by navigation or deep link.",
+      "files": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx; repos/orbit-app/src/screens/events/EventDetailScreen.tsx; repos/orbit-app/src/view-models/bootstrap.ts; route and screen-state tests",
+      "regression": "Expo production-route traversal, invite/detail source regressions, initial-route tests, and Expo typecheck passed. Missing input no longer resolves demo-event-1.",
+      "status": "fixed for the audited Expo route tree; custom-scheme delivery remains pending on devices"
+    },
+    {
+      "id": "AUDIT-P1-019",
+      "severity": "P1",
+      "rootCause": "The mobile acquisition result called a candidate 已确认 and then said the next step was to write it into contacts even when the response contained no authorized contact-write capability. This blurred candidate confirmation with contact creation.",
+      "decision": "Derive result copy from both confirmation state and contact-write availability. When the write contract is absent, state explicitly that the current flow will not create a contact; keep any real contact write behind a separate explicit confirmation.",
+      "files": "repos/orbit-app/src/view-models/contact-acquisition.ts; repos/orbit-app/tests/contact-acquisition-view-model.test.ts",
+      "regression": "Acquisition view-model and screen tests plus Expo typecheck passed. The confirmed/no-write branch no longer promises contact creation.",
+      "status": "fixed with source regression coverage; authorized manual contact persistence remains a separate flow"
+    },
+    {
+      "id": "AUDIT-P1-020",
+      "severity": "P1",
+      "rootCause": "Mobile event display allowed source metadata to override the real title and organizer, registration loaders fetched private events without the authenticated actor, and a real event with no attendee provider surfaced raw NOT_FOUND states beside import actions.",
+      "decision": "Preserve event fields by business meaning; pass the authenticated actor into every registration event load; and distinguish an existing event with no roster source from a missing event. The no-roster state withholds all attendee import/write actions.",
+      "files": "repos/orbit-app/src/view-models/events.ts; repos/orbit-app/src/screens/events/EventDetailScreen.tsx; repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx; repos/orbits/features/events/registration/event-loader.ts; registration route handlers and tests",
+      "regression": "Event source tests, registration actor-scope tests, Expo typecheck, and authenticated Expo Web runtime passed. A real private event preserved its identity, one actor-scoped registration survived save/cancel refresh, and no-roster UI exposed no import action.",
+      "status": "fixed and runtime-verified for the current actor-owned event; configured roster import remains pending"
+    },
+    {
+      "id": "AUDIT-P1-021",
+      "severity": "P1",
+      "rootCause": "Each mobile AI history row used a Pressable row that contained a second Pressable delete action. React Native Web rendered nested HTML buttons, causing invalid HTML, hydration errors, and ambiguous accessible action structure.",
+      "decision": "Use a non-interactive row container with separate sibling Pressables for open and delete. Give the open action a title-specific accessible label and both actions a 44-point target.",
+      "files": "repos/orbit-app/src/screens/ai/AiScreen.tsx; repos/orbit-app/tests/ai-home-screen-copy.test.ts",
+      "regression": "AI source regression, Expo typecheck, and authenticated browser DOM/console traversal passed. A real history item opened its persisted conversation and repeated drawer use emitted no new hydration errors.",
+      "status": "fixed and runtime-verified for open/history hydration; destructive deletion was not exercised"
+    },
+    {
+      "id": "AUDIT-P1-022",
+      "severity": "P1",
+      "rootCause": "Party mode deterministically synthesized an event access code ending in 4821 and kept local check-in state that rendered 已签到 without calling a validation or persistence service.",
+      "decision": "Remove access-code generation and local success state. Describe the currently available event/roster relationship data, and surface an explicit unavailable boundary until a real code-validation and check-in-write contract exists.",
+      "files": "repos/orbit-app/src/view-models/party.ts; repos/orbit-app/src/screens/party/PartyModeScreen.tsx; party view-model and source tests",
+      "regression": "Expo full suite and typecheck passed after the removal. Source regressions prohibit synthetic codes/local success, and runtime with a no-roster event rendered only the truthful unavailable boundary.",
+      "status": "fixed for the current no-service state; real code validation and check-in persistence are not implemented"
+    },
+    {
+      "id": "AUDIT-P1-023",
+      "severity": "P1",
+      "rootCause": "The Expo organizer page ignored its public slug, read the authenticated actor's private /api/events collection, selected the first event as fallback, and used source-note metadata as the organizer identity. Unknown slugs could therefore look valid and private events could appear on a public-facing page.",
+      "decision": "Expose an approved-catalogue projection through a dedicated events/public endpoint, bind the Expo organizer view to that projection and exact slug, prefer explicit organizer identity, remove first-event fallback on both clients, and withhold verified state for unknown slugs.",
+      "files": "repos/orbits/app/api/events/public/route.ts; repos/orbit-app/src/api/endpoints.ts; repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx; organizer view-models and route tests",
+      "regression": "Public-events route tests, Expo and Web organizer tests, Expo typecheck, exact-origin CORS preflight, production build, and browser known/unknown-slug traversal passed. The private audit event did not appear.",
+      "status": "fixed and runtime-verified for authenticated Expo Web consumption of public catalogue data; anonymous transport is not claimed"
     }
   ],
   "externalLimitations": []

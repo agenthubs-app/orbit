@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "91b425953fc2764ddbc683fc611113cf5ef35469",
-  "generatedAt": "2026-07-28T19:39:43+09:00",
+  "commit": "6ea326f08cc4d544ab83c4da1c7f68d33151b696",
+  "generatedAt": "2026-07-29T02:27:49+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -1115,6 +1115,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts",
         "repos/orbits/tests/capabilities/event-live-seed.test.ts",
@@ -1623,6 +1624,7 @@
         "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -1645,8 +1647,7 @@
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-mock-aggregator.test.ts",
         "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts",
-        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts",
-        "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts"
+        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts"
       ],
       "knownRisks": []
     },
@@ -4877,6 +4878,7 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/api/account-scoped-aggregate-isolation.test.ts",
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/agent-action-ledger-contract.test.ts",
@@ -4904,8 +4906,7 @@
         "repos/orbits/tests/capabilities/network-distribution-analytics-mock.test.ts",
         "repos/orbits/tests/capabilities/orbit-agent-chat-session-api.test.ts",
         "repos/orbits/tests/capabilities/orbit-agent-chat-session-live-store.test.ts",
-        "repos/orbits/tests/capabilities/orbit-agent-conversation-mock.test.ts",
-        "repos/orbits/tests/capabilities/orbit-agent-gemini-live.test.ts"
+        "repos/orbits/tests/capabilities/orbit-agent-conversation-mock.test.ts"
       ],
       "knownRisks": []
     },
@@ -10288,6 +10289,7 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/api/authenticated-actor-context.test.ts",
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-integrations-security.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
@@ -10315,8 +10317,7 @@
         "repos/orbits/tests/capabilities/qr-scan-connect-mock.test.ts",
         "repos/orbits/tests/capabilities/referral-and-recommended-contact-confirm-mock.test.ts",
         "repos/orbits/tests/capabilities/relationship-natural-search-live-store.test.ts",
-        "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts",
-        "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts"
+        "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts"
       ],
       "knownRisks": []
     },
@@ -19089,6 +19090,7 @@
         "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -19111,8 +19113,7 @@
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-mock-aggregator.test.ts",
         "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts",
-        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts",
-        "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts"
+        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts"
       ],
       "knownRisks": []
     },
@@ -20466,6 +20467,7 @@
         "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -20488,8 +20490,7 @@
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-mock-aggregator.test.ts",
         "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts",
-        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts",
-        "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts"
+        "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts"
       ],
       "knownRisks": []
     },
@@ -23649,6 +23650,7 @@
         "repos/orbits/tests/api/event-child-owner-access.test.ts",
         "repos/orbits/tests/api/event-registration-adaptive-auth.test.ts",
         "repos/orbits/tests/api/event-registration-routes.test.ts",
+        "repos/orbits/tests/api/public-events-route.test.ts",
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
@@ -23667,8 +23669,7 @@
         "repos/orbits/tests/capabilities/business-card-review-live-store.test.ts",
         "repos/orbits/tests/capabilities/business-card-scan-ocr-live-store.test.ts",
         "repos/orbits/tests/capabilities/business-card-scan-ocr-mock.test.ts",
-        "repos/orbits/tests/capabilities/capability-debug-dashboard.test.ts",
-        "repos/orbits/tests/capabilities/contact-acquisition-draft-live-store.test.ts"
+        "repos/orbits/tests/capabilities/capability-debug-dashboard.test.ts"
       ],
       "knownRisks": []
     },
@@ -25047,6 +25048,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-party-live-route-services.test.ts",
@@ -26430,6 +26432,7 @@
       ],
       "testCoverage": [
         "repos/orbits/tests/api/authenticated-actor-context.test.ts",
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/agent-integrations-security.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
@@ -26457,8 +26460,7 @@
         "repos/orbits/tests/capabilities/qr-scan-connect-mock.test.ts",
         "repos/orbits/tests/capabilities/referral-and-recommended-contact-confirm-mock.test.ts",
         "repos/orbits/tests/capabilities/relationship-natural-search-live-store.test.ts",
-        "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts",
-        "repos/orbits/tests/capabilities/relationship-value-live-store.test.ts"
+        "repos/orbits/tests/capabilities/relationship-stage-profile-live-store.test.ts"
       ],
       "knownRisks": []
     },
@@ -27837,6 +27839,7 @@
         }
       ],
       "testCoverage": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",

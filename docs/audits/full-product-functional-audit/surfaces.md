@@ -16,12 +16,12 @@
 | `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 9 | 9 | inventory-complete-runtime-verification-pending |
-| `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 31 | 10 | inventory-complete-runtime-verification-pending |
-| `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | inventory-complete-runtime-verification-pending |
-| `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 7 | 9 | inventory-complete-runtime-verification-pending |
-| `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 9 | 4 | inventory-complete-runtime-verification-pending |
+| `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 31 | 10 | runtime-partially-verified-expo-ai-history-persistence |
+| `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | runtime-partially-verified-expo-ai-conversation-readback |
+| `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-chat-empty-boundary |
+| `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 9 | 4 | runtime-partially-verified-expo-chat-missing-boundary |
 | `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 34 | 16 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 19 | 8 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 19 | 8 | runtime-partially-verified-expo-contact-missing-boundary |
 | `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 12 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
@@ -30,30 +30,30 @@
 | `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 54 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
 | `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 7 | 0 | inventory-complete-runtime-verification-pending |
 | `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 7 | 9 | inventory-complete-runtime-verification-pending |
-| `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 20 | inventory-complete-runtime-verification-pending |
-| `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 15 | 11 | inventory-complete-runtime-verification-pending |
-| `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | inventory-complete-runtime-verification-pending |
-| `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 13 | 0 | inventory-complete-runtime-verification-pending |
+| `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 20 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 15 | 11 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 5 | inventory-complete-runtime-verification-pending |
 | `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | inventory-complete-runtime-verification-pending |
 | `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | inventory-complete-runtime-verification-pending |
 | `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 5 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 14 | 4 | inventory-complete-runtime-verification-pending |
-| `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 14 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 14 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | runtime-partially-verified-expo-organizer-public-isolation |
+| `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 13 | 4 | runtime-partially-verified-expo-party-truthful-boundary |
+| `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
+| `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 7 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/profile` | mobile | production | `/profile` | `mobile:/` |  | 0 | 24 | 17 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 4 | 5 | inventory-complete-runtime-verification-pending |
-| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 4 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 5 | 5 | inventory-complete-runtime-verification-pending |
+| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 5 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/schedule` | mobile | production | `/schedule` | `mobile:/` |  | 0 | 7 | 7 | inventory-complete-runtime-verification-pending |
 | `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 4 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | inventory-complete-runtime-verification-pending |
 | `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
-| `web:/` | web | production | `/` | — |  | 0 | 42 | 285 | runtime-partially-verified-browser-base-state |
-| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 152 | runtime-partially-verified-browser-base-state |
+| `web:/` | web | production | `/` | — |  | 0 | 42 | 286 | runtime-partially-verified-browser-base-state |
+| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 153 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 16 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 16 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 1 | runtime-partially-verified-browser-base-state |

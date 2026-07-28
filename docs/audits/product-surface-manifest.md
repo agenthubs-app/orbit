@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `91b425953fc2764ddbc683fc611113cf5ef35469`
-- Deterministic generated timestamp (commit time): 2026-07-28T19:39:43+09:00
+- Indexed commit: `6ea326f08cc4d544ab83c4da1c7f68d33151b696`
+- Deterministic generated timestamp (commit time): 2026-07-29T02:27:49+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 38
@@ -17,7 +17,7 @@
 | `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, Derived, User Confirmed | 13 | 1 | 0 |
 | `/app/account/login` | User sign in | public-auth-entry | Live, Mock, Derived, User Confirmed | 13 | 19 | 0 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, Derived, User Confirmed | 2 | 2 | 0 |
-| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, Derived, User Confirmed | 13 | 11 | 0 |
+| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, Derived, User Confirmed | 13 | 12 | 0 |
 | `/app/admin/access` | Admin access entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 29 | 0 |
 | `/app/admin/events` | Admin event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
 | `/app/admin` | Admin operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 8 | 30 | 0 |
@@ -41,9 +41,9 @@
 | `/app/login-admin` | Legacy admin sign in entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 5 | 1 | 0 |
 | `/app/o/[slug]` | Organizer public profile | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 23 | 30 | 0 |
 | `/app` | Public product entry | public-at-proxy | Live, Mock, Derived, User Confirmed | 40 | 30 | 0 |
-| `/app/party/checkin` | Party attendee check-in | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 61 | 4 | 0 |
+| `/app/party/checkin` | Party attendee check-in | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 61 | 5 | 0 |
 | `/app/party/graph` | Party relationship graph | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 61 | 30 | 0 |
-| `/app/party` | Live event party workspace | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 61 | 9 | 0 |
+| `/app/party` | Live event party workspace | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 61 | 10 | 0 |
 | `/app/platform` | Platform entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 9 | 7 | 0 |
 | `/app/profile` | User profile | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 53 | 30 | 0 |
 | `/app/register` | Legacy registration entry | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 3 | 30 | 0 |

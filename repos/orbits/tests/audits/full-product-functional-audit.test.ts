@@ -164,8 +164,8 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 33);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 26);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 46);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 29);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",
@@ -207,6 +207,57 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
     )?.verificationConclusion,
     "runtime-partially-verified-expo-contact-acquisition-live-boundaries",
   );
+  for (const [surfaceId, verificationConclusion] of [
+    [
+      "mobile:/ai",
+      "runtime-partially-verified-expo-ai-history-persistence",
+    ],
+    [
+      "mobile:/ai/[id]",
+      "runtime-partially-verified-expo-ai-conversation-readback",
+    ],
+    ["mobile:/chat", "runtime-partially-verified-expo-chat-empty-boundary"],
+    [
+      "mobile:/chat/[id]",
+      "runtime-partially-verified-expo-chat-missing-boundary",
+    ],
+    [
+      "mobile:/contacts/[id]",
+      "runtime-partially-verified-expo-contact-missing-boundary",
+    ],
+    ["mobile:/events", "runtime-partially-verified-expo-live-event-chain"],
+    [
+      "mobile:/events/[id]",
+      "runtime-partially-verified-expo-live-event-chain",
+    ],
+    [
+      "mobile:/events/[id]/attendees",
+      "runtime-partially-verified-expo-live-event-chain",
+    ],
+    [
+      "mobile:/events/[id]/register",
+      "runtime-partially-verified-expo-live-event-chain",
+    ],
+    ["mobile:/party", "runtime-partially-verified-expo-party-truthful-boundary"],
+    [
+      "mobile:/party/checkin",
+      "runtime-partially-verified-expo-party-truthful-boundary",
+    ],
+    [
+      "mobile:/party/graph",
+      "runtime-partially-verified-expo-party-truthful-boundary",
+    ],
+    [
+      "mobile:/o/[slug]",
+      "runtime-partially-verified-expo-organizer-public-isolation",
+    ],
+  ] as const) {
+    assert.equal(
+      inventory.surfaces.find((surface) => surface.surfaceId === surfaceId)
+        ?.verificationConclusion,
+      verificationConclusion,
+    );
+  }
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/contacts/[id]",
