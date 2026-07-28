@@ -409,6 +409,20 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-platform-public-readonly-boundary",
     },
   ],
+  [
+    "mobile:/agent",
+    {
+      entryBehavior: "expo-web-actor-scoped-agent-actions-entry-verified",
+      runtimeEvidence: [
+        "the actor-scoped Agent action endpoint returned zero pending actions",
+        "the page preserved the fixed safety policy and truthful empty action state",
+        "the fixed Maya, Diego, and Aiko sandbox fixtures, English rationales, confirmation buttons, and prebuilt audit history did not render",
+      ],
+      verificationCase: "expo-agent-no-fixed-sandbox-data-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-agent-actor-scoped-empty-state",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1340,6 +1354,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for public/private data separation, aggregate semantics, Chinese presentation, and removal of simulated decisions/broken navigation; authenticated platform moderation, account directory, and public detail navigation remain unimplemented",
   },
+  {
+    id: "expo-agent-no-fixed-sandbox-data-2026-07-29",
+    target:
+      "Expo Agent action center → actor-scoped action queue → fixed external-action sandbox exclusion",
+    testData:
+      "Authenticated audit actor with zero /api/agent/actions records while the production sandbox endpoint still exposes fixed Maya Chen, Diego Rivera, and Aiko Tanaka no-op fixtures",
+    expected:
+      "The production Agent center must reflect the actor's real action queue and safety policy; development sandbox fixtures must not appear as current-user actions, confirmations, or history",
+    actual:
+      "Runtime first showed 3 fixed pending actions, 9 confirmation controls, 3 prebuilt history rows, and English fixture rationales below the real zero-action queue. After removing the sandbox consumer chain, /agent rendered only 0 条待确认, the fixed safety policy, and 没有待复核动作.",
+    evidence:
+      "Authenticated Expo Web before/after DOM traversal; Agent action endpoint readback; agent screen/view-model tests 5/5; Expo full suite 524/524; Expo typecheck",
+    conclusion:
+      "pass for the exercised actor-scoped empty queue and production fixture exclusion; populated actor-owned action decisions remain source-tested but were not exercised because this actor had no pending actions",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1730,6 +1759,20 @@ const AUDIT_REMEDIATIONS = [
       "Platform focused tests 7/7, Expo full suite 524/524, and Expo typecheck passed. Runtime verified 13 public records, 3 current/10 ended counts, private-event isolation, Chinese context, zero fake moderation/account controls, and zero broken record buttons.",
     status:
       "fixed and runtime-verified for the public-catalogue read-only boundary; real platform moderation, account directory, and public detail navigation require authenticated service contracts",
+  },
+  {
+    id: "AUDIT-P1-029",
+    severity: "P1",
+    rootCause:
+      "The production Expo Agent center fetched the external-action sandbox audit alongside the real actor-scoped action queue. That sandbox's live implementation clones fixed fixture people, scenarios, evidence, timestamps, pending actions, and audit rows, so an account with zero actions still saw Maya, Diego, and Aiko as if they were current relationship work.",
+    decision:
+      "Remove the external-action sandbox API, state, decision handlers, confirmation buttons, audit history, and presentation styles from the production Agent screen. Keep only /api/agent/actions and the shared fixed safety policy; retain the sandbox service/view-model for explicit development capability testing rather than user data.",
+    files:
+      "repos/orbit-app/src/screens/ai/AgentActionsScreen.tsx; repos/orbit-app/tests/agent-actions-screen-source.test.ts",
+    regression:
+      "Agent focused tests 5/5, Expo full suite 524/524, and Expo typecheck passed. Runtime before/after evidence changed the real-zero-plus-fixed-sandbox page into a truthful zero-action state with no fixture identity, English rationale, confirmation control, or prebuilt history.",
+    status:
+      "fixed and runtime-verified for the actor-scoped empty state; decisions over populated real Agent actions remain pending runtime data",
   },
 ];
 

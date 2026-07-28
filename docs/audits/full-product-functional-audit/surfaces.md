@@ -15,7 +15,7 @@
 | `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 6 | 2 | runtime-partially-verified-expo-admin-readonly-boundary |
 | `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
 | `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
-| `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 9 | 9 | inventory-complete-runtime-verification-pending |
+| `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 5 | 10 | runtime-partially-verified-expo-agent-actor-scoped-empty-state |
 | `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 31 | 10 | runtime-partially-verified-expo-ai-history-persistence |
 | `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | runtime-partially-verified-expo-ai-conversation-readback |
 | `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-chat-empty-boundary |
