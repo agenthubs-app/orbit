@@ -3,6 +3,7 @@ import {
   type AppEventDetailBoundaryModel,
   type AppEventDetailSuccessModel,
 } from "../../events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
 import {
   loadAppProfileRouteViewModel,
   type AppProfileActor,
@@ -20,6 +21,10 @@ import {
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
 import { eventStatusFor } from "../../orbit-hybrid-route-data";
+import {
+  getOrbitLandingViewModel,
+  type OrbitLandingEventView,
+} from "../../orbit-landing-route-view-model";
 
 export type AppPartySearchParams = Record<
   string,
@@ -34,6 +39,14 @@ export interface AppPartyRouteInput {
   mode?: ModuleMode | string | null;
   scenario?: string | null;
   searchParams?: AppPartySearchParams;
+}
+
+export interface AppPartyRouteDependencies {
+  getCatalogueEvents?: () => readonly OrbitLandingEventView[];
+  getRegistrationStatus?: (
+    eventId: string,
+    actorId: string,
+  ) => Promise<"cancelled" | "rsvped" | null>;
 }
 
 export interface AppPartyRouteStateViewModel {
@@ -463,8 +476,102 @@ function partyViewModel(input: {
   };
 }
 
+function cataloguePartyPeople(
+  event: OrbitLandingEventView,
+): OrbitPartyPersonView[] {
+  return event.stats.attendees.map((attendee, index) => {
+    const [title = "Event attendee", ...organizationParts] =
+      attendee.role.split(" · ");
+    const company = organizationParts.join(" · ") || "Event attendee";
+    const topics = [event.industry, ...event.tags].filter(Boolean).slice(0, 4);
+
+    return {
+      company,
+      contactId: null,
+      g: gradientClasses[index % gradientClasses.length],
+      groupNumber: null,
+      icebreakers: [
+        "What outcome did you take from this event?",
+        "Which follow-up would be useful now?",
+      ],
+      id: `${event.id}:catalogue-attendee:${index}`,
+      industry: topics[0] ?? "Relationship",
+      initial: attendee.initial || initialFor(attendee.name),
+      name: attendee.name,
+      offering: `Source-backed attendee context from ${event.name}.`,
+      reason:
+        "This person appears in the reviewed attendee roster for the current event.",
+      score: 70,
+      seat: null,
+      seeking: "A relevant, consent-based event follow-up.",
+      summary: `${title} @ ${company}.`,
+      title,
+      topics,
+    };
+  });
+}
+
+function cataloguePartyViewModel(input: {
+  event: OrbitLandingEventView;
+  profile: ReturnType<typeof profileRouteToOrbitProfileViewModel>;
+}): OrbitPartyViewModel {
+  const people = cataloguePartyPeople(input.event);
+
+  return {
+    accessCode: null,
+    agenda: input.event.agenda,
+    checkInAvailable: false,
+    eventId: input.event.id,
+    eventPhase: input.event.status,
+    eventName: input.event.name,
+    eventVenue: input.event.venue,
+    icebreakers: [
+      "What outcome did you take from this event?",
+      "Which introduction should happen next?",
+      "What evidence should Orbit remember for follow-up?",
+    ],
+    me: meView({
+      firstAttendee: people[0] ?? null,
+      profile: input.profile,
+    }),
+    recommendations: people,
+    tableMates: people.slice(0, 4),
+  };
+}
+
+async function registeredCatalogueEvent(
+  input: AppPartyRouteInput,
+  eventId: string,
+  dependencies: AppPartyRouteDependencies,
+): Promise<OrbitLandingEventView | null> {
+  const actorId = input.actor?.id.trim();
+  if (!actorId) return null;
+
+  const catalogueEvents = (
+    dependencies.getCatalogueEvents ??
+    (() => getOrbitLandingViewModel().events)
+  )();
+  const event =
+    catalogueEvents.find(
+      (item) => item.id === eventId || item.code === eventId,
+    ) ?? null;
+  if (!event) return null;
+
+  const registrationStatus = dependencies.getRegistrationStatus
+    ? await dependencies.getRegistrationStatus(event.id, actorId)
+    : (
+        await eventRegistrationRuntimeService.get({
+          eventId: event.id,
+          userId: actorId,
+        })
+      )?.status ?? null;
+
+  return registrationStatus === "rsvped" ? event : null;
+}
+
 export async function loadAppPartyRouteViewModel(
   input: AppPartyRouteInput = {},
+  dependencies: AppPartyRouteDependencies = {},
 ): Promise<AppPartyRouteViewModel> {
   const language = input.language ?? "en";
   const mode = input.mode ?? undefined;
@@ -489,7 +596,12 @@ export async function loadAppPartyRouteViewModel(
     scenario,
   });
 
-  if (eventRoute.routeState !== "success") {
+  const catalogueEvent =
+    eventRoute.routeState === "success"
+      ? null
+      : await registeredCatalogueEvent(input, eventId, dependencies);
+
+  if (eventRoute.routeState !== "success" && !catalogueEvent) {
     return routeStateFromEventBoundary(eventRoute, eventId, language);
   }
 
@@ -518,10 +630,26 @@ export async function loadAppPartyRouteViewModel(
     });
   }
 
+  const profile = profileRouteToOrbitProfileViewModel(profileRoute);
+
+  if (catalogueEvent) {
+    return {
+      party: cataloguePartyViewModel({
+        event: catalogueEvent,
+        profile,
+      }),
+      state: "success",
+    };
+  }
+
+  if (eventRoute.routeState !== "success") {
+    return routeStateFromEventBoundary(eventRoute, eventId, language);
+  }
+
   return {
     party: partyViewModel({
       event: eventRoute,
-      profile: profileRouteToOrbitProfileViewModel(profileRoute),
+      profile,
     }),
     state: "success",
   };

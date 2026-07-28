@@ -312,6 +312,26 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
   assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
 });
 
+test("event presentation preserves the source-backed attendee roster and count", async () => {
+  const { getOrbitLandingViewModel } = await import(
+    "../../app/(app)/app/orbit-landing-route-view-model"
+  );
+  const { presentOrbitEvent } = await import(
+    "../../app/(app)/app/orbit-event-presentation"
+  );
+  const event = getOrbitLandingViewModel().events.find(
+    (item) => item.id === "event_01",
+  );
+  assert.ok(event);
+
+  const presented = presentOrbitEvent(event, "zh");
+
+  assert.equal(presented.participantCount, event.participantCount);
+  assert.equal(presented.stats.count, event.stats.count);
+  assert.deepEqual(presented.stats.attendees, event.stats.attendees);
+  assert.ok(presented.about?.length);
+});
+
 test("event detail reads registration state from the registration record API", () => {
   const detailSource = source(
     "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",

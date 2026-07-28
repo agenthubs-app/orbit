@@ -24,7 +24,6 @@ import {
   EVENT_CONTENT,
   type EventLocalizedText,
 } from "./orbit-event-content";
-import { rosterForEvent } from "./orbit-event-roster";
 
 function pick(text: EventLocalizedText, language: OrbitLanguage): string {
   return text[language] ?? text.zh;
@@ -80,10 +79,6 @@ function presentEvent(
     label: pick(section.label, language),
   }));
 
-  // Full deterministic roster (10-100) so the detail page shows a real crowd;
-  // the component reveals a subset with an expand control.
-  const attendees = rosterForEvent(event.id, language);
-
   return {
     ...event,
     name: pick(content.title, language),
@@ -96,12 +91,6 @@ function presentEvent(
     about,
     summaryZh: summary,
     descriptionZh: summary,
-    participantCount: attendees.length,
-    stats: {
-      ...event.stats,
-      attendees,
-      count: attendees.length,
-    },
   };
 }
 

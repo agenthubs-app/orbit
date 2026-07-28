@@ -173,6 +173,98 @@ test("app party route loader returns a real party model in mock mode", async () 
   });
 });
 
+test("registered catalogue attendees can open the read-only Party experience", async () => {
+  await withMockParty(async () => {
+    const { getOrbitLandingViewModel } = await import(
+      "../../app/(app)/app/orbit-landing-route-view-model"
+    );
+    const { loadAppPartyRouteViewModel } = await import(
+      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+    );
+    const event = getOrbitLandingViewModel().events.find(
+      (item) => item.id === "event_01",
+    );
+    assert.ok(event);
+    let observedRegistration: { actorId: string; eventId: string } | null =
+      null;
+
+    const routeModel = await loadAppPartyRouteViewModel(
+      {
+        actor: {
+          displayName: "Registered member",
+          email: "member@example.test",
+          id: "actor:registered",
+        },
+        eventId: event.id,
+        language: "zh",
+        mode: "mock",
+      },
+      {
+        getCatalogueEvents: () => [event],
+        getRegistrationStatus: async (eventId, actorId) => {
+          observedRegistration = { actorId, eventId };
+          return "rsvped";
+        },
+      },
+    );
+
+    assert.deepEqual(observedRegistration, {
+      actorId: "actor:registered",
+      eventId: event.id,
+    });
+    assert.equal(routeModel.state, "success");
+    if (routeModel.state === "success") {
+      assert.equal(routeModel.party.eventId, event.id);
+      assert.equal(routeModel.party.checkInAvailable, false);
+      assert.equal(
+        routeModel.party.recommendations.length,
+        event.stats.attendees.length,
+      );
+      assert.ok(
+        routeModel.party.recommendations.every(
+          (person) =>
+            person.contactId === null &&
+            person.groupNumber === null &&
+            person.seat === null,
+        ),
+      );
+    }
+  });
+});
+
+test("unregistered catalogue viewers do not receive Party attendee context", async () => {
+  await withMockParty(async () => {
+    const { getOrbitLandingViewModel } = await import(
+      "../../app/(app)/app/orbit-landing-route-view-model"
+    );
+    const { loadAppPartyRouteViewModel } = await import(
+      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+    );
+    const event = getOrbitLandingViewModel().events.find(
+      (item) => item.id === "event_01",
+    );
+    assert.ok(event);
+
+    const routeModel = await loadAppPartyRouteViewModel(
+      {
+        actor: {
+          displayName: "Unregistered member",
+          id: "actor:unregistered",
+        },
+        eventId: event.id,
+        language: "zh",
+        mode: "mock",
+      },
+      {
+        getCatalogueEvents: () => [event],
+        getRegistrationStatus: async () => null,
+      },
+    );
+
+    assert.equal(routeModel.state, "route-state");
+  });
+});
+
 test("/app/dashboard and /app/party remain separate canonical routes", () => {
   const dashboardPageSource = source("app/(app)/app/dashboard/page.tsx");
   const partyPageSource = source("app/(app)/app/party/page.tsx");
