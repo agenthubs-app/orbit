@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "89d67811ba6eba88a5f5d46c912e37bc906d0a68",
-  "deterministicSourceTime": "2026-07-29T08:32:33+09:00",
+  "generatedFromCommit": "8257e45414a5180229ab6b42e5dc194af74b4718",
+  "deterministicSourceTime": "2026-07-29T08:40:11+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -36,8 +36,8 @@
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 53,
-    "documentedRemediations": 53
+    "documentedVerificationCases": 54,
+    "documentedRemediations": 54
   },
   "surfaces": [
     {
@@ -138974,6 +138974,15 @@
       "conclusion": "pass for the exercised title identity, write/readback, refresh, cancel confirmation, cancel refresh, reactivation, offline failure/retry, idempotency, and two-account isolation cases; remaining eight-question, persona-provider failure, responsive, keyboard, and assistive-technology states pending"
     },
     {
+      "id": "web-event-registration-entry-identity-query-isolation-2026-07-29",
+      "target": "Authenticated Web public catalogue code → canonical registration interview with actor propagation and query-control isolation",
+      "testData": "Card-linked EVTSIGNUP01 for canonical event_signup_01; authenticated actor audit-permission-1785253354985; /register with no query and with mode=mock&scenario=failure; Chinese locale; exact production build",
+      "expected": "The catalogue code and canonical event ID must resolve one reviewed event, the current actor must reach live reads, public query parameters must not select mock/failure dependencies, and merely opening the interview must not persist answers or a registration.",
+      "actual": "Before repair, the normal card-linked URL rendered Registration guide could not load with EVENTS_ACTOR_REQUIRED, while mode=mock changed the service result to No mock event matches that event id. The loader only compared the public catalogue's internal ID even though cards use the canonical route code, and the page did not propagate its resolved actor. After repair, the normal URL rendered 关西跨境商务对接会, 大阪, the current actor, and question 1/8. Appending mode=mock&scenario=failure produced exactly equal final DOM. No answer, next-step, persona, cancel, or registration control was activated in this traversal.",
+      "evidence": "Authenticated production-browser before/after DOM for normal and adversarial URLs; canonical resolver regression for EVTSIGNUP01 → event_signup_01; 38/38 focused registration/detail/API/live-provider tests; exact production build; GitNexus pre-edit LOW/MEDIUM impacts and HIGH staged detection across seven registration/detail flows; commit 8257e454",
+      "conclusion": "pass for card-code identity, authenticated entry, question-set presentation, actor propagation, mock/failure query isolation, and no-write opening behavior; this traversal intentionally did not submit answers, while the separate 2026-07-28 case covers persisted registration/cancel/reactivate/offline/two-account behavior; remaining eight-question completion, persona provider failure, other codes, guest return, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
       "id": "live-business-card-unconfigured-failure-closed-2026-07-28",
       "target": "Authenticated Web contacts import hub → business-card capability readiness → restricted-state exit",
       "testData": "Production account audit-event-isolation-c-20260728-2230@example.invalid; ORBIT_MODULE_MODE=live; configured Postgres workspace; GEMINI_API_KEY and GOOGLE_API_KEY absent",
@@ -139856,6 +139865,15 @@
       "files": "repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
       "regression": "GitNexus reported LOW impact and no upstream callers for AppEventDetailPage; staged detection found no graph-level symbol changes. Focused Event Detail tests passed 15/15, including all internal scenario branches and public-before-private routing, and the exact production build passed. After repair, the encoded actor-owned event produced exactly equal final DOM with and without scenario=empty while retaining its true identity, source, venue, readiness, registration, and matchmaking states.",
       "status": "fixed and source-verified with post-repair runtime equality for one authenticated actor-owned event; no pre-repair stable UI divergence is claimed, while other scenario values, event states, duplicate/array/encoded inputs, guest routing, proxy/cache behavior, and visible registration-guide branches remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-054",
+      "severity": "P1",
+      "rootCause": "The approved catalogue generated stable public route codes in an app-layer helper, while the registration feature resolved catalogue events only by internal ID. A card-linked EVTSIGNUP01 therefore missed canonical event_signup_01. The page also resolved the authenticated session but did not pass actorId to either registration-guide or private-event reads, and forwarded public mode/scenario query values into the internal guide service. Normal production entry failed with EVENTS_ACTOR_REQUIRED; mode=mock selected a different service error.",
+      "decision": "Move the stable hash to a shared utility and the canonical public event route-code algorithm to the events feature, re-exporting both from the former app module so every existing caller retains identical behavior. Resolve registration catalogue entries by exact internal ID or the same generated route code, propagate the current actor into guide/private-event reads, and keep only language as a public query input while retaining explicit mode/scenario on internal services for tests.",
+      "files": "repos/orbits/shared/utils/stable-hash.ts; repos/orbits/features/events/public-route-code.ts; repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts; repos/orbits/features/events/registration/event-loader.ts; repos/orbits/features/events/registration-profile-guide.ts; repos/orbits/app/(app)/app/events/[id]/register/page.tsx; repos/orbits/app/(app)/app/events/[id]/page.tsx; focused registration/detail tests",
+      "regression": "GitNexus mapped eventCodeFor to four direct callers and 13 upstream symbols at LOW risk, hashString to five direct callers and 22 upstream symbols at MEDIUM risk, and the combined staged change to seven registration/detail flows at HIGH risk. After that warning, 38/38 registration page, profile-guide, adaptive-auth, route, live-provider, and Event Detail tests passed; the exact production build passed. Browser runtime changed the normal EVTSIGNUP01 entry from actor-required failure into the real 1/8 interview, and the mock/failure query URL produced identical DOM without activating a write control.",
+      "status": "fixed and runtime-verified for the exercised authenticated EVTSIGNUP01 entry, canonical identity, actor propagation, query isolation, and no-write opening; existing separate runtime evidence covers write/readback/cancel/reactivate/offline/two-account behavior, while full eight-question completion, persona-provider failure, other codes, guest return, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []
