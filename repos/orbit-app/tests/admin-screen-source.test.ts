@@ -9,16 +9,12 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("admin events screen includes a mobile event setup draft flow", () => {
-  assert.match(screenSource, /createEventDraftOpen/u);
-  assert.match(screenSource, /CreateEventDraftCard/u);
-  assert.match(screenSource, />新建活动</u);
-  assert.match(screenSource, /活动名称/u);
-  assert.match(screenSource, /时间地点/u);
-  assert.match(screenSource, /报名表单/u);
-  assert.match(screenSource, /流程自动化/u);
-  assert.match(screenSource, /开放签到/u);
-  assert.match(screenSource, /创建活动草稿/u);
+test("admin events screen does not advertise an unwired creation flow", () => {
+  assert.doesNotMatch(screenSource, /createEventDraftOpen/u);
+  assert.doesNotMatch(screenSource, /CreateEventDraftCard/u);
+  assert.doesNotMatch(screenSource, />新建活动</u);
+  assert.doesNotMatch(screenSource, /创建活动草稿/u);
+  assert.match(screenSource, /移动端这里只做核对和跳转/u);
 });
 
 test("admin events screen renders managed events as image-backed modules", () => {
@@ -35,5 +31,6 @@ test("admin events screen renders managed events as image-backed modules", () =>
 
 test("admin access copy avoids backend implementation wording", () => {
   assert.match(screenSource, /邀请成员、调整角色和撤销访问都需要再次确认。/u);
+  assert.match(screenSource, /当前不会推断或生成成员信息/u);
   assert.doesNotMatch(screenSource, /后端权限接口|权限接口/u);
 });

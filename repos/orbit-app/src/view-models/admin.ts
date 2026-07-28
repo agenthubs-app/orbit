@@ -5,15 +5,8 @@ export type AdminEventState = "active" | "ended" | "upcoming";
 
 export interface AdminLoginView {
   boundary: string;
-  directHref: "/admin";
-  field: {
-    label: string;
-    placeholder: string;
-  };
+  primaryHref: "/admin" | "/account/login?next=%2Fadmin";
   primaryLabel: string;
-  sentDescription: string;
-  sentTitle: string;
-  skipLabel: string;
   summary: string;
   title: string;
 }
@@ -102,7 +95,7 @@ function listFromPayload(data: unknown): UnknownRecord[] {
 }
 
 function containsImplementationLabel(value: string): boolean {
-  return /\b(mock|fixture|provider|source-backed|generated|live-record|source:|evidence:|implementation|command-center|database|postgres|hybrid)\b/iu.test(
+  return /\b(mock|fixture|provider|source-backed|storage-backed|generated|live-record|live-store|source:|evidence:|implementation|command-center|database|postgres|hybrid)\b/iu.test(
     value
   );
 }
@@ -284,21 +277,6 @@ function relationshipAssetCount(dashboard: unknown): number {
   return numberField(totals, "contacts");
 }
 
-function profileEmail(profile: UnknownRecord, name: string): string {
-  const direct = stringField(profile, "email");
-  if (direct) {
-    return direct;
-  }
-
-  const handle = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/giu, ".")
-    .replace(/^\.+|\.+$/gu, "");
-
-  return `${handle || "admin"}@orbit.local`;
-}
-
 function titleForSurface(surface: AdminSurface): string {
   if (surface === "events") {
     return "活动管理";
@@ -311,20 +289,20 @@ function titleForSurface(surface: AdminSurface): string {
   return "主办方后台";
 }
 
-export function adminLoginToView(): AdminLoginView {
+export function adminLoginToView({
+  signedIn = false
+}: {
+  signedIn?: boolean;
+} = {}): AdminLoginView {
   return {
-    boundary: "移动端只展示后台入口，不会发送邮件或修改管理员权限。",
-    directHref: "/admin",
-    field: {
-      label: "管理员邮箱",
-      placeholder: "admin@orbit.events"
-    },
-    primaryLabel: "发送登录邮件",
-    sentDescription: "请到邮箱点击登录链接。当前移动端只保留演示进入方式。",
-    sentTitle: "登录邮件已准备好",
-    skipLabel: "直接进入后台",
-    summary: "输入管理员邮箱后进入后台入口。邮件登录暂时请在网页端完成。",
-    title: "登录后台"
+    boundary:
+      "移动端没有独立管理员邮件登录，也不会修改管理员权限；后台数据访问由服务端按当前账号决定。",
+    primaryHref: signedIn ? "/admin" : "/account/login?next=%2Fadmin",
+    primaryLabel: signedIn ? "打开只读后台" : "登录后检查访问权限",
+    summary: signedIn
+      ? "使用当前已登录账号打开只读后台，核对该账号能够访问的活动和资料。"
+      : "请先登录个人账号；登录完成后，服务端会检查该账号可访问的后台数据。",
+    title: "后台入口"
   };
 }
 
@@ -364,6 +342,7 @@ export function adminToView({
     "后台负责人"
   );
   const role = cleanText(stringField(profileView, "title"), "管理员");
+  const ownerEmail = stringField(profileView, "email");
   const activeCount = eventViews.filter((event) => event.state === "active").length;
   const upcomingCount = eventViews.filter((event) => event.state === "upcoming").length;
 
@@ -374,15 +353,17 @@ export function adminToView({
     emptyEventMessage: "活动导入或创建后，这里会显示报名、签到和匹配状态。",
     emptyEventTitle: "暂无活动记录",
     events: eventViews,
-    members: [
-      {
-        email: profileEmail(profileView, owner),
-        id: "workspace-owner",
-        initial: owner.trim().slice(0, 1).toUpperCase() || "O",
-        name: owner,
-        role
-      }
-    ],
+    members: ownerEmail
+      ? [
+          {
+            email: ownerEmail,
+            id: "workspace-owner",
+            initial: owner.trim().slice(0, 1).toUpperCase() || "O",
+            name: owner,
+            role
+          }
+        ]
+      : [],
     nav: [
       {
         href: "/admin",

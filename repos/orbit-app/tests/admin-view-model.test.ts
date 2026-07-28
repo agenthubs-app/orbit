@@ -39,14 +39,20 @@ const eventsPayload = {
   ]
 };
 
-test("adminLoginToView mirrors the web admin magic-link entry", () => {
-  const view = adminLoginToView();
+test("adminLoginToView routes through real account auth without simulating mail", () => {
+  const signedOutView = adminLoginToView();
+  const signedInView = adminLoginToView({ signedIn: true });
 
-  assert.equal(view.title, "登录后台");
-  assert.equal(view.primaryLabel, "发送登录邮件");
-  assert.equal(view.directHref, "/admin");
-  assert.equal(view.field.placeholder, "admin@orbit.events");
-  assert.match(view.boundary, /不会发送邮件/);
+  assert.equal(signedOutView.title, "后台入口");
+  assert.equal(signedOutView.primaryLabel, "登录后检查访问权限");
+  assert.equal(
+    signedOutView.primaryHref,
+    "/account/login?next=%2Fadmin"
+  );
+  assert.equal(signedInView.primaryLabel, "打开只读后台");
+  assert.equal(signedInView.primaryHref, "/admin");
+  assert.match(signedOutView.boundary, /不会修改管理员权限/);
+  assert.doesNotMatch(flattenedText(signedOutView), /发送登录邮件|已发送/u);
 });
 
 test("adminToView builds a Chinese organizer admin dashboard", () => {
@@ -85,11 +91,40 @@ test("adminToView builds a Chinese organizer admin dashboard", () => {
     view.events[0]?.coverPath,
     "/orbit-covers/events/tokyo-ai-partner-meetup.jpg"
   );
-  assert.equal(view.members[0]?.role, "Orbit 创始人");
+  assert.deepEqual(view.members, []);
   assert.doesNotMatch(
     flattenedText(view),
     /\b(mock|fixture|provider|source-backed|implementation|command-center|live-record|database|postgres)\b/iu
   );
+});
+
+test("adminToView only exposes explicit member emails and rejects storage labels", () => {
+  const view = adminToView({
+    events: {
+      events: [
+        {
+          endsAt: "2026-08-04T16:00:00.000+09:00",
+          id: "storage-event",
+          nextAction: "Prepare relationship context for the storage-backed event.",
+          startsAt: "2026-08-04T14:00:00.000+09:00",
+          title: "功能审计私有活动",
+          venue: "Tokyo"
+        }
+      ]
+    },
+    now: new Date("2026-07-24T00:00:00.000+09:00"),
+    profile: {
+      company: "Orbit",
+      email: "owner@example.com",
+      fullName: "赵翔",
+      title: "Orbit 创始人"
+    }
+  });
+
+  assert.equal(view.members.length, 1);
+  assert.equal(view.members[0]?.email, "owner@example.com");
+  assert.equal(view.events[0]?.detail, "确认报名、签到、匹配和现场承接安排。");
+  assert.doesNotMatch(flattenedText(view), /storage-backed|orbit\.local/iu);
 });
 
 test("adminToView switches copy for events and access surfaces", () => {
