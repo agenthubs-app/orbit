@@ -7,6 +7,7 @@ import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
 import { eventChoiceToLandingEvent } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
+import { fmtDay } from "../../app/(app)/app/events/orbit-real-explore-client";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -160,6 +161,13 @@ test("the public event catalogue keeps the full previously approved demo set", a
 
   assert.equal(catalogue.events.length, 13);
   assert.equal(new Set(catalogue.events.map((event) => event.code)).size, 13);
+});
+
+test("event date tiles keep the day as a locale-neutral numeric token", () => {
+  const date = new Date("2026-09-15T10:00:00+09:00");
+
+  assert.equal(fmtDay(date, "en"), "15");
+  assert.equal(fmtDay(date, "zh"), "15");
 });
 
 test("priority business events use premium local cover assets", () => {

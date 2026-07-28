@@ -33,8 +33,9 @@ function fmtMonth(date: Date, language: "en" | "zh") {
   return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "short", ...tz }).format(date);
 }
 
-function fmtDay(date: Date, language: "en" | "zh") {
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...tz }).format(date);
+export function fmtDay(date: Date, language: "en" | "zh") {
+  const formatter = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...tz });
+  return formatter.formatToParts(date).find((part) => part.type === "day")?.value ?? formatter.format(date);
 }
 
 function formatEventDate(event: OrbitLandingEventView, language: "en" | "zh") {
