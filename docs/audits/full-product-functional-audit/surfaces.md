@@ -4,8 +4,8 @@
 
 | ID | 客户端 | 环境 | 路由 | 父界面 | 动态参数 | 可达弹层 | 控件 | 测试源码命中 | 运行时结论 |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |
-| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 91 | inventory-complete-runtime-verification-pending |
-| `mobile:/[...legacy]` | mobile | production | `/[...legacy]` | `mobile:/` | ...legacy | 0 | 0 | 0 | inventory-complete-runtime-verification-pending |
+| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 91 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
+| `mobile:/[...legacy]` | mobile | production | `/[...legacy]` | `mobile:/` | ...legacy | 0 | 0 | 0 | runtime-partially-verified-expo-legacy-allowlist-boundary |
 | `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 13 | runtime-partially-verified-expo-web-auth-profile-account |
 | `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 10 | 2 | runtime-partially-verified-expo-password-reset-restricted |
 | `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 10 | 5 | runtime-partially-verified-expo-web-auth-profile-account |
@@ -35,8 +35,8 @@
 | `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 5 | runtime-partially-verified-expo-empty-followup-generation-boundary |
-| `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | inventory-complete-runtime-verification-pending |
-| `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
+| `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | runtime-partially-verified-expo-home-events-filter-and-detail |
 | `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | runtime-partially-verified-expo-empty-inbox-compose-boundary |
 | `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 3 | 1 | runtime-partially-verified-expo-admin-account-entry |
 | `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | runtime-partially-verified-expo-organizer-public-isolation |

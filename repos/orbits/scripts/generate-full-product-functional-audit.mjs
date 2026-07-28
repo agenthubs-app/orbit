@@ -522,6 +522,52 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-empty-inbox-compose-boundary",
     },
   ],
+  ...[
+    "mobile:/",
+    "mobile:/home",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-canonical-ai-entry-redirect-verified",
+      runtimeEvidence: [
+        "direct navigation resolved to the canonical /ai route",
+        "the Orbit AI composer rendered without a duplicate home shell",
+        "the empty prompt kept the send action disabled",
+      ],
+      verificationCase: "expo-entry-alias-and-home-events-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-canonical-ai-entry-redirect",
+    },
+  ]),
+  [
+    "mobile:/[...legacy]",
+    {
+      entryBehavior: "expo-web-allowlisted-legacy-redirect-entry-verified",
+      runtimeEvidence: [
+        "the supported /app/events alias resolved to /events and preserved the actor-owned event catalogue",
+        "an unknown /app/not-a-real-destination path resolved to /ai",
+        "the unknown query marker was not surfaced as data or injected into the AI composer",
+      ],
+      verificationCase: "expo-entry-alias-and-home-events-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-legacy-allowlist-boundary",
+    },
+  ],
+  [
+    "mobile:/home/events",
+    {
+      entryBehavior: "expo-web-actor-scoped-home-events-entry-verified",
+      runtimeEvidence: [
+        "the route rendered the actor's one private event and zero historical events",
+        "selecting 历史 0 changed the local result to 0 / 1 and rendered a truthful no-match state",
+        "returning to 全部 1 restored the same event",
+        "the event card opened the matching encoded actor-owned detail",
+      ],
+      verificationCase: "expo-entry-alias-and-home-events-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-home-events-filter-and-detail",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -657,6 +703,30 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   ],
 ]);
 const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "mobile:/home/events|repos/orbit-app/src/screens/home/HomeScreen.tsx#onpress:() => onFilterChange(key)#{filterLabels[key]} {counts[key]}",
+    {
+      actualResult:
+        "Selecting 历史 0 changed the count to 0 / 1 and rendered 没有匹配的活动; selecting 全部 1 restored the private event.",
+      testData:
+        "Authenticated Expo Web audit actor with one upcoming private event and zero historical events",
+      idempotency:
+        "Both filter changes were local presentation only and wrote no event, registration, recommendation, or profile record.",
+      verificationCase: "expo-entry-alias-and-home-events-2026-07-29",
+    },
+  ],
+  [
+    `mobile:/home/events|repos/orbit-app/src/screens/home/HomeScreen.tsx#onpress:() => onPress(event.id)#{filterLabels[event.state]} {dateChip.date} {<Text numberOfLines={1} style={styles.homeEventImageDateDetail}> {dateChip.detail} </Text>} / {null} {<Text numberOfLines={1} style={styles.homeEventImageSubtitle}> {event.subtitle} </Text>} / {null} {event.title} {event.startsAt} {<View style={styles.homeEventImageMetaLine}> <Ionicons color={colors.onAccent} name="location-outline" size={14} /> <Text numberOfLines={1} style={styles.homeEventImageDetail}> {event.location} </Text> </View>} / {null} {event.participantCountLabel} {event.actionLabel}`,
+    {
+      actualResult:
+        "The 功能审计私有活动 20260729 card opened /events/event:live-record:20260729 and preserved its title, time, location, source, and actor ownership.",
+      testData:
+        "The one upcoming actor-owned private event in the authenticated Expo Web home-events list",
+      idempotency:
+        "Read-only navigation; no event, registration, attendee, recommendation, or external record was written.",
+      verificationCase: "expo-entry-alias-and-home-events-2026-07-29",
+    },
+  ],
   [
     "mobile:/followups|repos/orbit-app/src/screens/followups/FollowupsScreen.tsx#onpress:onGenerate#生成中 / 生成候选",
     {
@@ -1558,6 +1628,21 @@ const VERIFIED_AUDIT_CASES = [
       "Authenticated Expo Web DOM and click traversal across four surfaces; defaultRelationshipDraft regression test; Expo full suite 525/525; Expo typecheck",
     conclusion:
       "pass for the exercised empty ledgers, empty follow-up generation, inbox composer entry, blank-recipient validation, and default greeting; populated operation transitions, populated follow-up drafts, conversation selection, and successful thread creation remain pending real actor data",
+  },
+  {
+    id: "expo-entry-alias-and-home-events-2026-07-29",
+    target:
+      "Expo root/home canonical entry, allowlisted legacy catch-all, and actor-owned home event list",
+    testData:
+      "Direct / and /home; supported /app/events; unknown /app/not-a-real-destination?query=private-marker; one upcoming actor-owned private event and zero historical events",
+    expected:
+      "Root and retired home entries must converge on one AI shell; supported aliases must resolve exactly; unknown legacy paths must not expose or fabricate data; home event filters and cards must preserve actor scope",
+    actual:
+      "/ and /home both resolved to /ai with one Orbit AI composer. /app/events resolved to /events with the real private event; the unknown legacy path resolved to /ai without surfacing its query marker. /home/events rendered one upcoming event, produced a truthful 0 / 1 historical empty state, restored the event under 全部, and opened its matching dynamic detail.",
+    evidence:
+      "Authenticated Expo Web direct-navigation and click traversal; initial-route and home source/view-model tests; Expo full suite 525/525; Expo typecheck",
+    conclusion:
+      "pass for canonical entry convergence, one supported and one unknown legacy path, home-event filtering, and event-detail navigation; native custom-scheme legacy delivery and additional populated filter combinations remain pending",
   },
 ];
 const AUDIT_REMEDIATIONS = [
