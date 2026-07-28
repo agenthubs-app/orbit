@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "b0b52572eaa3f578d1a0f7274db6343946f47941",
-  "deterministicSourceTime": "2026-07-29T08:26:37+09:00",
+  "generatedFromCommit": "89d67811ba6eba88a5f5d46c912e37bc906d0a68",
+  "deterministicSourceTime": "2026-07-29T08:32:33+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -36,8 +36,8 @@
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 52,
-    "documentedRemediations": 52
+    "documentedVerificationCases": 53,
+    "documentedRemediations": 53
   },
   "surfaces": [
     {
@@ -87338,6 +87338,8 @@
         "roster expand/collapse, organizer navigation, replay, Agent context, and browser-history return all preserved the exact event identity",
         "all 42 exact audit rows were deleted after verification while three unrelated pre-existing Agent runs remained",
         "after cleanup the same actor immediately lost attendee names, matchmaking candidates, follow-up, and replay access; the ended-event boundary exposed no dead registration link",
+        "source inspection found that a public scenario query still reached private-detail and registration-guide fixture inputs even though production mode was already server-owned",
+        "after query isolation, the actor-owned event rendered byte-for-byte equivalent final DOM with and without scenario=empty while retaining the legitimate language query",
         "production-build transport smoke",
         "in-app browser base-state at 1440x900",
         "in-app browser base-state at 390x844",
@@ -139350,6 +139352,15 @@
       "conclusion": "pass for the exercised registered ended-event lifecycle, post-cleanup unregistered roster/matchmaking/follow-up/replay denial, closed-registration terminal copy, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and source-aware browser return; voice recording/transcription, incoming decline UI, guest/login route, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified"
     },
     {
+      "id": "web-private-event-detail-query-isolation-2026-07-29",
+      "target": "Authenticated Web actor-owned Event Detail untrusted scenario parameter → server-owned production dependencies",
+      "testData": "Actor-owned event:live-record:20260729 at its encoded dynamic route, with and without scenario=empty; Chinese locale; exact production build",
+      "expected": "The public HTTP route may accept language presentation input but must not forward a scenario fixture selector into private event-detail or registration-guide services. Actor scope, server configuration, and stored event state must determine the final page.",
+      "actual": "Source inspection proved that AppEventDetailPage forwarded readSearchParam(query, scenario) to both loadAppEventDetailRoute and loadRegistrationProfileGuideForCurrentTestUser; focused loader tests independently prove empty, pending, and failure scenario branches exist. The exercised private event did not produce a stable pre-repair final-DOM difference because its fallback and async boundaries converged on the same no-match state, so no runtime defect is claimed. After repair, both URLs produced exactly equal final DOM while preserving the event title, encoded identity, venue, source context, readiness, registration action, and matchmaking boundary.",
+      "evidence": "Authenticated production-browser final-DOM equality after repair; source trace before repair; focused Event Detail tests 15/15 including internal scenario branches and public/private routing; exact production build; GitNexus AppEventDetailPage impact LOW with zero upstream callers and no staged graph changes; commit 89d67811",
+      "conclusion": "pass for source-level removal of the two scenario injections and post-repair equality on one authenticated actor-owned event; no pre-repair stable UI divergence is claimed, and other scenario values, other private event states, duplicate/array/encoded inputs, guest routing, proxy/cache behavior, and registration-guide-visible states remain unverified"
+    },
+    {
       "id": "web-schedule-dynamic-event-identity-2026-07-29",
       "target": "Authenticated dynamic Web Schedule Event preview → encoded actor-owned event ID and both recovery destinations",
       "testData": "Audit actor's colon-delimited event:live-record:20260729, opened through /app/schedule/events/event%3Alive-record%3A20260729",
@@ -139836,6 +139847,15 @@
       "files": "repos/orbits/app/(app)/app/events/page.tsx; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
       "regression": "Pre-edit GitNexus impact was LOW with no upstream callers for AppEventsPage and one direct caller for its local reader. Staged detection reported HIGH because AppEventsPage participates in nine generated execution flows; this was reported rather than discarded. Focused Events tests passed 8/8, the exact production build passed, and browser runtime changed /app/events?scenario=empty from a synthetic no-events state into the complete 13-card catalogue with search, filter, and map controls.",
       "status": "fixed and runtime-verified for the exercised authenticated scenario=empty URL with the full catalogue and no writes; array/duplicate/encoded values, other scenarios, guest session, cache/proxy behavior, mobile/responsive, assistive traversal, and other routes remain unverified"
+    },
+    {
+      "id": "AUDIT-P2-053",
+      "severity": "P2",
+      "rootCause": "AppEventDetailPage correctly fixed production module mode to server configuration, but still read the public scenario query and forwarded it to the private event-detail composer and registration-profile guide. Those internal services intentionally implement empty, pending, and failure fixtures, leaving a public dependency-control channel even though the exercised actor-owned event's fallback path masked a stable final-UI difference.",
+      "decision": "Stop forwarding scenario from the HTTP query at the page adapter while retaining the legitimate language parameter. Keep explicit scenario inputs on both internal loaders for controlled unit tests and direct internal calls; actor scope, stored event state, and server-owned mode now determine production detail composition.",
+      "files": "repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+      "regression": "GitNexus reported LOW impact and no upstream callers for AppEventDetailPage; staged detection found no graph-level symbol changes. Focused Event Detail tests passed 15/15, including all internal scenario branches and public-before-private routing, and the exact production build passed. After repair, the encoded actor-owned event produced exactly equal final DOM with and without scenario=empty while retaining its true identity, source, venue, readiness, registration, and matchmaking states.",
+      "status": "fixed and source-verified with post-repair runtime equality for one authenticated actor-owned event; no pre-repair stable UI divergence is claimed, while other scenario values, event states, duplicate/array/encoded inputs, guest routing, proxy/cache behavior, and visible registration-guide branches remain unverified"
     }
   ],
   "externalLimitations": []
