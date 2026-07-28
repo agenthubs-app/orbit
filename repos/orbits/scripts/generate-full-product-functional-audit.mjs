@@ -423,6 +423,58 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-agent-actor-scoped-empty-state",
     },
   ],
+  [
+    "mobile:/contacts",
+    {
+      entryBehavior: "expo-web-relationship-workbench-navigation-entry-verified",
+      runtimeEvidence: [
+        "the overview rendered six distinct relationship destinations without loading a hidden fallback contact list",
+        "the primary graph card navigated to /contacts/graph",
+        "the destination preserved the actor-scoped zero-connection state",
+      ],
+      verificationCase:
+        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-relationship-workbench-navigation",
+    },
+  ],
+  ...[
+    "mobile:/dashboard",
+    "mobile:/contacts/dashboard",
+    "mobile:/contacts/graph",
+    "mobile:/contacts/intros",
+    "mobile:/contacts/pipeline",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-actor-scoped-empty-relationship-entry-verified",
+      runtimeEvidence: [
+        "the authenticated actor had no contacts, connections, introductions, pipeline records, or relationship dashboard aggregates",
+        "the surface rendered its domain-specific empty title and recovery copy",
+        "no fallback person, count, opportunity, connection, or action was synthesized",
+      ],
+      verificationCase:
+        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary",
+    },
+  ]),
+  [
+    "mobile:/contacts/list",
+    {
+      entryBehavior: "expo-web-empty-contact-list-and-suggestions-entry-verified",
+      runtimeEvidence: [
+        "all contact status counts remained zero and the list rendered 暂无联系人",
+        "runtime first reproduced three fixed live search suggestions that claimed actor evidence despite a zero-result graph",
+        "after repair the suggestion API returned an empty state and no evidence-backed recommendation card rendered",
+        "generic search intent and industry filters remained available without claiming stored evidence",
+      ],
+      verificationCase:
+        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-empty-contact-search-boundary",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -558,6 +610,19 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   ],
 ]);
 const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "mobile:/contacts|repos/orbit-app/src/screens/contacts/ContactsScreen.tsx#onpress:() => router.push(route as Href)#{metric} {title} {detail} {signal} {action}",
+    {
+      actualResult:
+        "The primary 人脉图谱 workbench card navigated to /contacts/graph, which preserved the same actor-scoped zero-connection state.",
+      testData:
+        "Authenticated Expo Web audit actor with zero contacts and zero connection graph records",
+      idempotency:
+        "Navigation only; no contact, connection, evidence, or relationship record was written.",
+      verificationCase:
+        "expo-empty-relationship-surface-boundaries-2026-07-29",
+    },
+  ],
   [
     "mobile:/login-admin|repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx#onpress:() => router.push(view.primaryHref as Href)#{view.primaryLabel}",
     {
@@ -1369,6 +1434,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised actor-scoped empty queue and production fixture exclusion; populated actor-owned action decisions remain source-tested but were not exercised because this actor had no pending actions",
   },
+  {
+    id: "expo-empty-relationship-surface-boundaries-2026-07-29",
+    target:
+      "Expo relationship workbench → dashboard, graph, introductions, pipeline, contact list, and natural-search suggestions",
+    testData:
+      "Authenticated audit actor with zero contacts, zero connection graph records, zero introductions, zero pipeline rows, and zero relationship-search results",
+    expected:
+      "Every derived relationship surface must stay empty without fallback identities or metrics; evidence-backed search suggestions must exist only when the actor graph contains evidence",
+    actual:
+      "/contacts rendered six real destinations and its graph card opened /contacts/graph. Dashboard, contact dashboard, graph, intros, and pipeline each rendered a domain-specific zero state. /contacts/list kept all five status counts at zero. Runtime first reproduced three fixed suggestions labelled as recorded evidence; after the live-store fix the same account returned no suggestion cards while generic search controls remained.",
+    evidence:
+      "Authenticated Expo Web traversal across seven surfaces and one overview-to-graph click; actor-scoped API readback; relationship live-store tests 3/3; exact-origin production build and CORS preflight; Expo typecheck",
+    conclusion:
+      "pass for the exercised zero-data surfaces, overview navigation, and no-evidence suggestion boundary; populated relationship dashboards, graph actions, introductions, pipeline transitions, and search results remain pending real actor data",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1773,6 +1853,20 @@ const AUDIT_REMEDIATIONS = [
       "Agent focused tests 5/5, Expo full suite 524/524, and Expo typecheck passed. Runtime before/after evidence changed the real-zero-plus-fixed-sandbox page into a truthful zero-action state with no fixture identity, English rationale, confirmation control, or prebuilt history.",
     status:
       "fixed and runtime-verified for the actor-scoped empty state; decisions over populated real Agent actions remain pending runtime data",
+  },
+  {
+    id: "AUDIT-P1-030",
+    severity: "P1",
+    rootCause:
+      "The actor-scoped live relationship search store generated three suggestions unconditionally, even when its graph produced zero relationship results. It then used suggestion IDs as provenance evidence, so a zero-contact account saw fixed prompts labelled as coming from recorded relationship evidence.",
+    decision:
+      "Derive live suggestions only when the same actor graph yields at least one relationship result. Preserve the three supported templates for populated graphs, but return the contract's empty suggestion state and zero evidence for an empty graph.",
+    files:
+      "repos/orbits/features/search/live-service.ts; repos/orbits/tests/capabilities/relationship-natural-search-live-store.test.ts",
+    regression:
+      "Actor-scoped live-store tests 3/3, exact-origin production build, Next TypeScript, and CORS preflight passed. Tests prove the owner graph retains suggestions while the other empty actor receives state=empty and zero suggestions; runtime /contacts/list removed the three false evidence cards.",
+    status:
+      "fixed and runtime-verified for the empty actor graph; populated actor suggestion selection and result navigation remain pending runtime data",
   },
 ];
 

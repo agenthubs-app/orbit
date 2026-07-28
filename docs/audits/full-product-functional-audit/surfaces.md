@@ -20,16 +20,16 @@
 | `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | runtime-partially-verified-expo-ai-conversation-readback |
 | `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-chat-empty-boundary |
 | `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 9 | 4 | runtime-partially-verified-expo-chat-missing-boundary |
-| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 34 | 16 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 34 | 16 | runtime-partially-verified-expo-relationship-workbench-navigation |
 | `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 19 | 8 | runtime-partially-verified-expo-contact-missing-boundary |
 | `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 12 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 14 | 0 | inventory-complete-runtime-verification-pending |
-| `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 34 | 2 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 12 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 14 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 34 | 2 | runtime-partially-verified-expo-empty-contact-search-boundary |
 | `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 54 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
-| `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 7 | 0 | inventory-complete-runtime-verification-pending |
-| `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 7 | 9 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 7 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 20 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 15 | 11 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
