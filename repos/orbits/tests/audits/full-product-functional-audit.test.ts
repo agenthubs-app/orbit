@@ -164,7 +164,7 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 87);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 89);
   assert.equal(inventory.summary.interactionsRuntimeVerified, 67);
   assert.equal(
     inventory.surfaces.find(
@@ -230,6 +230,18 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       (surface) => surface.surfaceId === "web:/app/dashboard",
     )?.verificationConclusion,
     "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
+  );
+  assert.equal(
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/followups",
+    )?.verificationConclusion,
+    "runtime-partially-verified-web-followups-today-compatibility-route",
+  );
+  assert.equal(
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/schedule",
+    )?.verificationConclusion,
+    "runtime-partially-verified-web-schedule-today-compatibility-route",
   );
   for (const [surfaceId, verificationConclusion] of [
     [

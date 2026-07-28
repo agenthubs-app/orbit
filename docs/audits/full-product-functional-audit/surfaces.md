@@ -75,7 +75,7 @@
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 28 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 24 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 30 | 5 | runtime-partially-verified-live-event-registration |
-| `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 7 | inventory-complete-runtime-verification-pending |
+| `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 8 | runtime-partially-verified-web-followups-today-compatibility-route |
 | `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 2 | 65 | 8 | runtime-partially-verified-web-actor-scoped-home-event |
 | `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 2 | 65 | 4 | runtime-partially-verified-web-home-events-filter-and-detail |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
@@ -86,7 +86,7 @@
 | `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 11 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 8 | runtime-partially-verified-live-profile-persistence |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 4 | 3 | runtime-partially-verified-browser-base-state |
-| `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 9 | inventory-complete-runtime-verification-pending |
+| `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 10 | runtime-partially-verified-web-schedule-today-compatibility-route |
 | `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 2 | 48 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 2 | 94 | 9 | inventory-complete-runtime-verification-pending |
 | `web:/app/today` | web | production | `/app/today` | `web:/app` |  | 2 | 81 | 19 | runtime-partially-verified-web-today-meeting-service-boundary |

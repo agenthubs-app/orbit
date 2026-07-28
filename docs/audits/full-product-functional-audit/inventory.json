@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "c449237998136ab3e4888030d63b2d06ea8d77e8",
-  "deterministicSourceTime": "2026-07-29T05:13:53+09:00",
+  "generatedFromCommit": "7f0322c5c18b326afb1ab18fd7fcb4c07ab3f23f",
+  "deterministicSourceTime": "2026-07-29T05:17:34+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -33,10 +33,10 @@
     "interactionRouteInstances": 2848,
     "interactionsRuntimeVerified": 67,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 87,
+    "surfacesWithRuntimeEvidence": 89,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 41,
+    "documentedVerificationCases": 42,
     "documentedRemediations": 38
   },
   "surfaces": [
@@ -88739,7 +88739,7 @@
       "goal": "followups product surface; exact user goal requires runtime verification",
       "visibleContent": [],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-canonical-today-day-view-redirect-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -88776,6 +88776,7 @@
       "interactions": [],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/agent-signals.test.ts",
@@ -88784,8 +88785,12 @@
         "repos/orbits/tests/pages/app-relationship-inbox-alerts.test.ts",
         "repos/orbits/tests/pages/app-today-merged.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the retired Follow-ups deep link returned a 307-compatible navigation into /app/today?view=day as required by the Today × Schedule merge",
+        "the destination rendered the canonical authenticated Today workspace in its day view",
+        "the destination preserved the actor's zero decision ledger and one source-backed private-event arrangement without reviving the retired Follow-ups UI"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-followups-today-compatibility-route"
     },
     {
       "surfaceId": "web:/app/home",
@@ -110184,7 +110189,7 @@
       "goal": "schedule product surface; exact user goal requires runtime verification",
       "visibleContent": [],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-canonical-today-arrangements-anchor-redirect-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -110221,6 +110226,7 @@
       "interactions": [],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
@@ -110231,8 +110237,12 @@
         "repos/orbits/tests/pages/app-today-merged.test.ts",
         "repos/orbits/tests/ui/orbit-p2-gates.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the retired Schedule deep link returned a 307-compatible navigation into /app/today#arrangements as required by the Today × Schedule merge",
+        "the arrangements anchor existed in the canonical Today DOM and the browser scrolled to it",
+        "the anchored section rendered the actor's one source-backed private-event arrangement and its existing read-only evidence boundary"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-schedule-today-compatibility-route"
     },
     {
       "surfaceId": "web:/app/schedule/events/[id]",
@@ -138971,6 +138981,15 @@
       "actual": "Runtime first redirected /app/dashboard into the unrelated Party surface. After restoring the canonical route and actor-scoping the retained live service bundle, the page rendered the relationship dashboard with every source-backed count at zero. Coverage changed from the restored service's false 100 to 0, and the action/goal regions rendered explicit Chinese no-data guidance instead of English opportunity claims.",
       "evidence": "Authenticated production browser before/after DOM; focused Dashboard aggregate, distribution, opportunity, provenance, page, and route tests 10/10; Web lint; exact-origin production build",
       "conclusion": "pass for the canonical route identity, authenticated empty actor aggregate, zero coverage denominator, and no-data action/goal presentation; populated multi-account isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor records"
+    },
+    {
+      "id": "web-today-compatibility-routes-2026-07-29",
+      "target": "Authenticated legacy Web Follow-ups and Schedule deep links → canonical merged Today views",
+      "testData": "Audit actor with zero Today decisions and one source-backed private-event arrangement",
+      "expected": "The two retired standalone routes must remain stable compatibility entries: Follow-ups must preserve the day-view intent, Schedule must preserve the arrangements intent, and neither route may revive duplicate state or lose the authenticated actor's canonical Today data",
+      "actual": "Direct /app/followups navigation resolved to /app/today?view=day and rendered the day workspace. Direct /app/schedule navigation resolved to /app/today#arrangements; the arrangements element existed, the browser scrolled to it, and it rendered the same actor-owned private-event arrangement and read-only evidence boundary.",
+      "evidence": "Authenticated production browser URL/DOM/anchor inspection; Today × Schedule merge design and implementation plan; focused Follow-ups route/services tests 10/10 including both redirect digests",
+      "conclusion": "pass for both compatibility destinations, the day query, the arrangements hash/anchor, and canonical actor-owned destination data; browser history behavior and populated follow-up/task interactions remain owned by the merged Today surface and are not separately duplicated here"
     }
   ],
   "remediations": [

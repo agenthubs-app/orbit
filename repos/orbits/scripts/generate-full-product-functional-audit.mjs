@@ -648,6 +648,21 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
     },
   ],
   [
+    "web:/app/followups",
+    {
+      entryBehavior:
+        "authenticated-browser-canonical-today-day-view-redirect-verified",
+      runtimeEvidence: [
+        "the retired Follow-ups deep link returned a 307-compatible navigation into /app/today?view=day as required by the Today × Schedule merge",
+        "the destination rendered the canonical authenticated Today workspace in its day view",
+        "the destination preserved the actor's zero decision ledger and one source-backed private-event arrangement without reviving the retired Follow-ups UI",
+      ],
+      verificationCase: "web-today-compatibility-routes-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-followups-today-compatibility-route",
+    },
+  ],
+  [
     "web:/app/contacts/all-actions",
     {
       entryBehavior:
@@ -740,6 +755,21 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
       verificationCase: "web-dashboard-route-and-zero-data-truth-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
+    },
+  ],
+  [
+    "web:/app/schedule",
+    {
+      entryBehavior:
+        "authenticated-browser-canonical-today-arrangements-anchor-redirect-verified",
+      runtimeEvidence: [
+        "the retired Schedule deep link returned a 307-compatible navigation into /app/today#arrangements as required by the Today × Schedule merge",
+        "the arrangements anchor existed in the canonical Today DOM and the browser scrolled to it",
+        "the anchored section rendered the actor's one source-backed private-event arrangement and its existing read-only evidence boundary",
+      ],
+      verificationCase: "web-today-compatibility-routes-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-schedule-today-compatibility-route",
     },
   ],
 ]);
@@ -2124,6 +2154,21 @@ const VERIFIED_AUDIT_CASES = [
       "Authenticated production browser before/after DOM; focused Dashboard aggregate, distribution, opportunity, provenance, page, and route tests 10/10; Web lint; exact-origin production build",
     conclusion:
       "pass for the canonical route identity, authenticated empty actor aggregate, zero coverage denominator, and no-data action/goal presentation; populated multi-account isolation, metric calculations, opportunity navigation, and follow-up readback remain pending real actor records",
+  },
+  {
+    id: "web-today-compatibility-routes-2026-07-29",
+    target:
+      "Authenticated legacy Web Follow-ups and Schedule deep links → canonical merged Today views",
+    testData:
+      "Audit actor with zero Today decisions and one source-backed private-event arrangement",
+    expected:
+      "The two retired standalone routes must remain stable compatibility entries: Follow-ups must preserve the day-view intent, Schedule must preserve the arrangements intent, and neither route may revive duplicate state or lose the authenticated actor's canonical Today data",
+    actual:
+      "Direct /app/followups navigation resolved to /app/today?view=day and rendered the day workspace. Direct /app/schedule navigation resolved to /app/today#arrangements; the arrangements element existed, the browser scrolled to it, and it rendered the same actor-owned private-event arrangement and read-only evidence boundary.",
+    evidence:
+      "Authenticated production browser URL/DOM/anchor inspection; Today × Schedule merge design and implementation plan; focused Follow-ups route/services tests 10/10 including both redirect digests",
+    conclusion:
+      "pass for both compatibility destinations, the day query, the arrangements hash/anchor, and canonical actor-owned destination data; browser history behavior and populated follow-up/task interactions remain owned by the merged Today surface and are not separately duplicated here",
   },
 ];
 const AUDIT_REMEDIATIONS = [
