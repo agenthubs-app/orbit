@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "fb46e6cc8027a698549afb5af4dc7579cdd91563",
-  "deterministicSourceTime": "2026-07-29T05:39:56+09:00",
+  "generatedFromCommit": "72bedab578efd73f35e7b27db23edb3bb8d94097",
+  "deterministicSourceTime": "2026-07-29T05:53:23+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -31,13 +31,13 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 49,
     "interactionRouteInstances": 2848,
-    "interactionsRuntimeVerified": 74,
+    "interactionsRuntimeVerified": 117,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 93,
+    "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 44,
-    "documentedRemediations": 40
+    "documentedVerificationCases": 45,
+    "documentedRemediations": 42
   },
   "surfaces": [
     {
@@ -112934,7 +112934,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-settings-and-playbook-lifecycle-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "`/api/integrations/${integration.provider}/authorize`",
@@ -114456,14 +114456,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The natural-language field accepted the Chinese relationship-review request and preserved it while compilation ran.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114489,14 +114491,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Generate draft first exposed the model's invalid schema instead of inventing a draft; after the bounded retry repair, the same request produced a safe daily 09:00 Asia/Tokyo draft with two explicit assumptions.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114522,14 +114526,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Review type changed from follow-up review to contact recommendations and back without a persistent write.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114555,14 +114561,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The Playbook name field accepted the temporary audit names used for lifecycle and cancel-edit verification.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114588,14 +114596,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The instruction field accepted actor-scoped read-only review instructions and persisted the edited instruction in version two.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114621,14 +114631,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Trigger selection exposed the relationship-signal controls and returned to the schedule controls without saving.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114654,14 +114666,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Frequency selection exposed weekly and one-time branches before returning to the daily default.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114687,14 +114701,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The one-time branch accepted a valid 2026-07-30T10:00 local run time before the form returned to daily mode.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114720,14 +114736,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Local time changed from 09:00 to 10:30 and returned to 09:00 without a persistent write.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114753,14 +114771,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Weekly day selection moved from Monday to Tuesday through a two-day intermediate state, then returned to Monday.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114786,14 +114806,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Signal selection added follow-up-due, removed stale-relationship, then restored the original stale-only selection.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114820,14 +114842,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Minimum importance changed from 60 to 70 and returned to 60 without enabling a Playbook.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114851,14 +114875,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Cancel edit closed a populated Playbook editor without creating a new version or changing the saved record.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114884,14 +114910,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Trial run executed the same read-only Agent path with sideEffectsExecuted=false; after actor propagation was repaired it returned the current actor's truthful empty follow-up queue with two evidence IDs.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114917,14 +114945,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Enable created one actor-scoped Playbook and Save new version persisted the edited instruction as version two.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114943,14 +114973,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Version history expanded at versions one and two and displayed the corresponding revision entries.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -114976,14 +115008,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run now completed the actor-scoped follow-up review, incremented the run count to one, and persisted a source-backed empty result.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115009,14 +115043,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Edit repopulated the form from the selected actor-scoped Playbook before both save-version and cancel-edit paths were exercised.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115042,14 +115078,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Pause survived hard reload with no next run; Resume restored the active state and scheduled next run.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115075,14 +115113,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "present-static-signal",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Delete required a second Confirm delete click and removed both temporary Playbooks; hard reload ended with zero Playbooks.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115108,14 +115148,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The rendered checkbox control changed each of the four execution preferences and preserved the explicit checked state.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115141,14 +115183,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Automatic meeting notes toggled off and back on locally without saving an intermediate value.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115174,14 +115218,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "External calendar writes changed from disabled to enabled, survived hard reload after Save, then returned to disabled and survived another hard reload.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115207,14 +115253,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Post-event reminder push toggled off and back on locally before the saved preference round-trip.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115240,14 +115288,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Pre-event brief push toggled off and back on locally before the saved preference round-trip.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115273,14 +115323,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Quiet-hours start accepted 21:30 and returned to the persisted 22:00 value.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115306,14 +115358,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Quiet-hours end accepted 07:30 and returned to the persisted 08:00 value.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115339,14 +115393,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Notification time zone accepted UTC and returned to the persisted Asia/Tokyo value.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115372,14 +115428,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Save persisted the enabled external-calendar preference, hard reload read it back, and a second save restored the original disabled state.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115405,14 +115463,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Refresh runtime status completed read-only and preserved deepseek configured, durable database, and worker-not-observed states.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115563,14 +115623,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Use memory changed from on to off, survived hard reload, then returned to on and survived the final reload.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115596,14 +115658,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Approved conversation learning changed from off to on, survived hard reload, then returned to off and survived the final reload.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115629,14 +115693,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Memory category changed from Preferences to Goals and returned to Preferences without creating a record.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115662,14 +115728,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Memory content accepted the clearly named temporary audit value used for create and reload verification.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115695,14 +115763,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Save memory created one manual actor-scoped record and cleared the composer only after the API returned it.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115728,14 +115798,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Edit memory category changed to Goals inside the editor; Cancel discarded that unsaved category.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115761,14 +115833,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Edit memory content accepted the revised audit value that later survived hard reload.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115794,14 +115868,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Save changes persisted the revised memory content and hard reload returned the same actor-scoped record.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115827,14 +115903,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Cancel closed the memory editor and discarded the unsaved category change.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115860,14 +115938,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Edit opened the selected temporary memory rather than another actor's record.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115893,14 +115973,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "present-static-signal",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Delete changed to Confirm delete on the first click and removed both temporary memories only on the second click; final reload showed zero memories.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115926,14 +116008,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Light restored the original device theme and rendered its pressed state.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -115959,14 +116043,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Dark changed the device theme and rendered its pressed state before Light restored the original.",
+          "testData": "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+          "testEvidence": [
+            "web-settings-actor-scoped-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         }
       ],
@@ -116007,8 +116093,16 @@
         "repos/orbits/tests/ui/orbit-scale-ratchet.test.ts",
         "repos/orbits/tests/ui/orbit-settings-theme.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the authenticated actor loaded empty memory, feedback, and Playbook collections plus explicit live AI, durable-storage, worker, and integration health states",
+        "appearance, memory governance, notification preferences, quiet hours, and time zone all changed through their real controls and returned to the original persisted values",
+        "a temporary memory was created, reloaded, edited, reloaded, and deleted; category changes and cancel-edit remained local until an explicit save",
+        "natural-language Playbook compilation initially failed on an invalid model schema, then succeeded after a bounded fail-closed retry without expanding the read-only capability whitelist",
+        "Playbook dry-run initially lost actor identity, then returned the current actor's truthful empty follow-up result after actor propagation was repaired",
+        "temporary Playbooks completed trial, enable, immediate run, pause, resume, version-two edit, history disclosure, cancel-edit, and double-confirm delete before final cleanup",
+        "result-learning deletion and integration connect, health, and disconnect actions remained absent because the actor had zero feedback records and all three providers were explicitly unconfigured"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-settings-actor-scoped-lifecycle"
     },
     {
       "surfaceId": "web:/app/today",
@@ -139050,6 +139144,15 @@
       "actual": "Before repair, the route passed the percent-encoded segment to the event service and rendered EVENTS_EVENT_NOT_FOUND. After repair, the same URL rendered 功能审计私有活动 20260729 with its exact venue, confirmed status, 2026-09-29 time, manual-event source, one evidence record, next action, and no-write guardrail. 返回日程 reached the real Today arrangements anchor and 查看活动列表 reached Events.",
       "evidence": "Authenticated production browser before/after DOM and both recovery traversals; focused Schedule route/services tests 10/10; Web lint; exact-origin production build",
       "conclusion": "pass for one-time dynamic ID decoding, actor-scoped private-event readback, source/guardrail presentation, and both generated recovery actions; other dynamic ID shapes, unauthenticated browser return, and populated schedule mutations remain pending"
+    },
+    {
+      "id": "web-settings-actor-scoped-lifecycle-2026-07-29",
+      "target": "Authenticated Web Settings → appearance, Agent memory, Playbook, execution preferences, health, feedback, and integration boundaries",
+      "testData": "Audit actor with zero memories, zero feedback records, zero Playbooks, zero contacts, one private event, deepseek configured, durable storage, no observed worker, and three unconfigured external integrations",
+      "expected": "Every rendered control must produce truthful local or actor-scoped readback, model-generated Playbooks must remain inside the strict read-only schema, every Agent execution must preserve the server actor, unavailable integrations must expose no authorization or disconnect action, and all reversible audit writes must be cleaned up",
+      "actual": "Theme, two memory-governance switches, memory CRUD/cancel, every Playbook trigger branch, compile, trial, enable, run, pause/resume, version, cancel, delete, four execution toggles, quiet hours, time zone, Save, and health refresh all produced visible results. Compilation initially rejected an invalid model schema and succeeded after a bounded safety retry. Dry-run initially lost actor identity and returned a false authentication summary; after actor propagation it returned the current actor's truthful empty follow-up queue. Hard reload confirmed original preferences, zero memories, and zero Playbooks after cleanup. Feedback delete and integration connect/check/disconnect were absent because their source records/providers were absent.",
+      "evidence": "Authenticated production-browser DOM across 43 stable interaction identities; focused Playbook/automation tests 12/12; full product audit 7/7; two exact production builds with TypeScript",
+      "conclusion": "pass for all 43 rendered and data-enabled settings interactions plus truthful empty/unconfigured boundaries; feedback deletion and integration connect, check, and disconnect remain explicitly unverified until real actor-owned records and configured providers exist"
     }
   ],
   "remediations": [
@@ -139412,6 +139515,24 @@
       "files": "repos/orbits/app/(app)/app/schedule/events/[id]/page.tsx; repos/orbits/app/(app)/app/schedule/events/[id]/schedule-event-route-id.ts; repos/orbits/tests/pages/app-schedule-route-services.test.ts",
       "regression": "Focused Schedule tests 10/10, Web lint, and exact-origin production build passed. Production runtime changed the encoded private-event URL from EVENTS_EVENT_NOT_FOUND to a source-backed preview, and both recovery actions reached their canonical destinations without writes.",
       "status": "fixed and runtime-verified for one colon-delimited actor-owned event and both recovery actions; malformed fallback is unit-tested, while unauthenticated browser return and other dynamic ID shapes remain pending"
+    },
+    {
+      "id": "AUDIT-P1-041",
+      "severity": "P1",
+      "rootCause": "Natural-language Playbook compilation made one unconstrained provider attempt and treated any strict-schema mismatch as terminal. In the configured production provider, a valid Chinese daily-review request returned an invalid shape, so Settings exposed an error and could not produce a reviewable draft even though the capability and safety policy were known.",
+      "decision": "Keep the existing strict parser, capability whitelist, trigger validator, and read-only instruction boundary unchanged. When the provider succeeds but the schema fails, make exactly one correction attempt with the required nested JSON shape and explicit safety reminder; fail closed after that retry or on any provider failure.",
+      "files": "repos/orbits/features/agent/playbooks/compiler.ts; repos/orbits/tests/capabilities/agent-playbooks.test.ts",
+      "regression": "Focused Playbook tests 5/5 and the exact production build passed. The same Chinese request changed from PLAYBOOK_SCHEMA_INVALID to a reviewable daily 09:00 Asia/Tokyo draft with two visible assumptions; an always-unsafe capability remains rejected after both attempts.",
+      "status": "fixed and runtime-verified for the exercised production provider/schema failure; other provider models and repeated invalid outputs remain fail-closed"
+    },
+    {
+      "id": "AUDIT-P0-042",
+      "severity": "P0",
+      "rootCause": "The Playbook runner constructed the generic live Agent conversation service without the authenticated actor even though every API and worker entry had already resolved one. Internal read-only tools therefore missed the actor-scoped artifact graph; a signed-in dry-run returned a synthesized need-authentication message as a successful trial.",
+      "decision": "Require a server-derived actor for every default Playbook execution path, construct the actor-bound live conversation/artifact service, and propagate the same actor through dry-run, manual run, signal refresh, internal scheduled execution, and the standalone worker. Fail closed before model/tool access when a caller omits actor identity; injected unit-test executors remain isolated.",
+      "files": "repos/orbits/features/agent/automations/runner.ts; repos/orbits/app/api/agent/automations/dry-run/route.ts; repos/orbits/app/api/agent/automations/[id]/run/route.ts; repos/orbits/app/api/agent/signals/route.ts; repos/orbits/app/api/internal/agent/automations/route.ts; repos/orbits/scripts/run-agent-worker.ts; repos/orbits/tests/capabilities/agent-playbooks.test.ts",
+      "regression": "Focused Playbook and automation tests 12/12 and the exact production build passed. Production dry-run changed from the false authentication summary to the current actor's source-backed empty follow-up result with two evidence IDs; immediate run persisted the same actor-scoped result. Staged change detection reported HIGH because four POST boundaries and six storage/module flows now carry actor identity, matching the intended security boundary.",
+      "status": "fixed and runtime-verified for dry-run, immediate run, empty actor readback, and missing-actor fail-closed behavior; populated multi-account browser execution and a live scheduled worker heartbeat remain pending"
     }
   ],
   "externalLimitations": []

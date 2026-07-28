@@ -164,8 +164,8 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 93);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 74);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 94);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 117);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",

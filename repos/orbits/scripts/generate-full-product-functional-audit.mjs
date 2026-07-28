@@ -838,6 +838,25 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-schedule-dynamic-event-identity",
     },
   ],
+  [
+    "web:/app/settings",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-settings-and-playbook-lifecycle-verified",
+      runtimeEvidence: [
+        "the authenticated actor loaded empty memory, feedback, and Playbook collections plus explicit live AI, durable-storage, worker, and integration health states",
+        "appearance, memory governance, notification preferences, quiet hours, and time zone all changed through their real controls and returned to the original persisted values",
+        "a temporary memory was created, reloaded, edited, reloaded, and deleted; category changes and cancel-edit remained local until an explicit save",
+        "natural-language Playbook compilation initially failed on an invalid model schema, then succeeded after a bounded fail-closed retry without expanding the read-only capability whitelist",
+        "Playbook dry-run initially lost actor identity, then returned the current actor's truthful empty follow-up result after actor propagation was repaired",
+        "temporary Playbooks completed trial, enable, immediate run, pause, resume, version-two edit, history disclosure, cancel-edit, and double-confirm delete before final cleanup",
+        "result-learning deletion and integration connect, health, and disconnect actions remained absent because the actor had zero feedback records and all three providers were explicitly unconfigured",
+      ],
+      verificationCase: "web-settings-actor-scoped-lifecycle-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-settings-actor-scoped-lifecycle",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1257,7 +1276,194 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
 ]);
+const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
+  [
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:574",
+      "The natural-language field accepted the Chinese relationship-review request and preserved it while compilation ran.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:587",
+      "Generate draft first exposed the model's invalid schema instead of inventing a draft; after the bounded retry repair, the same request produced a safe daily 09:00 Asia/Tokyo draft with two explicit assumptions.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:616",
+      "Review type changed from follow-up review to contact recommendations and back without a persistent write.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:624",
+      "The Playbook name field accepted the temporary audit names used for lifecycle and cancel-edit verification.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:628",
+      "The instruction field accepted actor-scoped read-only review instructions and persisted the edited instruction in version two.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:632",
+      "Trigger selection exposed the relationship-signal controls and returned to the schedule controls without saving.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:643",
+      "Frequency selection exposed weekly and one-time branches before returning to the daily default.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:652",
+      "The one-time branch accepted a valid 2026-07-30T10:00 local run time before the form returned to daily mode.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:657",
+      "Local time changed from 09:00 to 10:30 and returned to 09:00 without a persistent write.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:664",
+      "Weekly day selection moved from Monday to Tuesday through a two-day intermediate state, then returned to Monday.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:675",
+      "Signal selection added follow-up-due, removed stale-relationship, then restored the original stale-only selection.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:682",
+      "Minimum importance changed from 60 to 70 and returned to 60 without enabling a Playbook.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:691",
+      "Cancel edit closed a populated Playbook editor without creating a new version or changing the saved record.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:695",
+      "Trial run executed the same read-only Agent path with sideEffectsExecuted=false; after actor propagation was repaired it returned the current actor's truthful empty follow-up queue with two evidence IDs.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:698",
+      "Enable created one actor-scoped Playbook and Save new version persisted the edited instruction as version two.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:766",
+      "Version history expanded at versions one and two and displayed the corresponding revision entries.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:778",
+      "Run now completed the actor-scoped follow-up review, incremented the run count to one, and persisted a source-backed empty result.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:779",
+      "Edit repopulated the form from the selected actor-scoped Playbook before both save-version and cancel-edit paths were exercised.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:780",
+      "Pause survived hard reload with no next run; Resume restored the active state and scheduled next run.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx:783",
+      "Delete required a second Confirm delete click and removed both temporary Playbooks; hard reload ended with zero Playbooks.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:92",
+      "The rendered checkbox control changed each of the four execution preferences and preserved the explicit checked state.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:278",
+      "Automatic meeting notes toggled off and back on locally without saving an intermediate value.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:288",
+      "External calendar writes changed from disabled to enabled, survived hard reload after Save, then returned to disabled and survived another hard reload.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:298",
+      "Post-event reminder push toggled off and back on locally before the saved preference round-trip.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:308",
+      "Pre-event brief push toggled off and back on locally before the saved preference round-trip.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:328",
+      "Quiet-hours start accepted 21:30 and returned to the persisted 22:00 value.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:346",
+      "Quiet-hours end accepted 07:30 and returned to the persisted 08:00 value.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:376",
+      "Notification time zone accepted UTC and returned to the persisted Asia/Tokyo value.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:397",
+      "Save persisted the enabled external-calendar preference, hard reload read it back, and a second save restored the original disabled state.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:465",
+      "Refresh runtime status completed read-only and preserved deepseek configured, durable database, and worker-not-observed states.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:363",
+      "Use memory changed from on to off, survived hard reload, then returned to on and survived the final reload.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:383",
+      "Approved conversation learning changed from off to on, survived hard reload, then returned to off and survived the final reload.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:433",
+      "Memory category changed from Preferences to Goals and returned to Preferences without creating a record.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:450",
+      "Memory content accepted the clearly named temporary audit value used for create and reload verification.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:468",
+      "Save memory created one manual actor-scoped record and cleared the composer only after the API returned it.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:535",
+      "Edit memory category changed to Goals inside the editor; Cancel discarded that unsaved category.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:554",
+      "Edit memory content accepted the revised audit value that later survived hard reload.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:574",
+      "Save changes persisted the revised memory content and hard reload returned the same actor-scoped record.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:582",
+      "Cancel closed the memory editor and discarded the unsaved category change.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:633",
+      "Edit opened the selected temporary memory rather than another actor's record.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:641",
+      "Delete changed to Confirm delete on the first click and removed both temporary memories only on the second click; final reload showed zero memories.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:58",
+      "Light restored the original device theme and rendered its pressed state.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx:67",
+      "Dark changed the device theme and rendered its pressed state before Light restored the original.",
+    ],
+  ].map(([sourceRef, actualResult]) => [
+    `web:/app/settings|${sourceRef}`,
+    {
+      actualResult,
+      testData:
+        "Authenticated production-browser audit actor with zero memories, zero feedback records, zero Playbooks, one private event, no contacts, and unconfigured external integrations",
+      idempotency:
+        "Every temporary memory and Playbook was double-confirm deleted; theme and persisted preferences were restored to their original values and verified by hard reload.",
+      verificationCase: "web-settings-actor-scoped-lifecycle-2026-07-29",
+    },
+  ]),
+);
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
   [
     "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
     {
@@ -2350,6 +2556,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for one-time dynamic ID decoding, actor-scoped private-event readback, source/guardrail presentation, and both generated recovery actions; other dynamic ID shapes, unauthenticated browser return, and populated schedule mutations remain pending",
   },
+  {
+    id: "web-settings-actor-scoped-lifecycle-2026-07-29",
+    target:
+      "Authenticated Web Settings → appearance, Agent memory, Playbook, execution preferences, health, feedback, and integration boundaries",
+    testData:
+      "Audit actor with zero memories, zero feedback records, zero Playbooks, zero contacts, one private event, deepseek configured, durable storage, no observed worker, and three unconfigured external integrations",
+    expected:
+      "Every rendered control must produce truthful local or actor-scoped readback, model-generated Playbooks must remain inside the strict read-only schema, every Agent execution must preserve the server actor, unavailable integrations must expose no authorization or disconnect action, and all reversible audit writes must be cleaned up",
+    actual:
+      "Theme, two memory-governance switches, memory CRUD/cancel, every Playbook trigger branch, compile, trial, enable, run, pause/resume, version, cancel, delete, four execution toggles, quiet hours, time zone, Save, and health refresh all produced visible results. Compilation initially rejected an invalid model schema and succeeded after a bounded safety retry. Dry-run initially lost actor identity and returned a false authentication summary; after actor propagation it returned the current actor's truthful empty follow-up queue. Hard reload confirmed original preferences, zero memories, and zero Playbooks after cleanup. Feedback delete and integration connect/check/disconnect were absent because their source records/providers were absent.",
+    evidence:
+      "Authenticated production-browser DOM across 43 stable interaction identities; focused Playbook/automation tests 12/12; full product audit 7/7; two exact production builds with TypeScript",
+    conclusion:
+      "pass for all 43 rendered and data-enabled settings interactions plus truthful empty/unconfigured boundaries; feedback deletion and integration connect, check, and disconnect remain explicitly unverified until real actor-owned records and configured providers exist",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2908,6 +3129,34 @@ const AUDIT_REMEDIATIONS = [
       "Focused Schedule tests 10/10, Web lint, and exact-origin production build passed. Production runtime changed the encoded private-event URL from EVENTS_EVENT_NOT_FOUND to a source-backed preview, and both recovery actions reached their canonical destinations without writes.",
     status:
       "fixed and runtime-verified for one colon-delimited actor-owned event and both recovery actions; malformed fallback is unit-tested, while unauthenticated browser return and other dynamic ID shapes remain pending",
+  },
+  {
+    id: "AUDIT-P1-041",
+    severity: "P1",
+    rootCause:
+      "Natural-language Playbook compilation made one unconstrained provider attempt and treated any strict-schema mismatch as terminal. In the configured production provider, a valid Chinese daily-review request returned an invalid shape, so Settings exposed an error and could not produce a reviewable draft even though the capability and safety policy were known.",
+    decision:
+      "Keep the existing strict parser, capability whitelist, trigger validator, and read-only instruction boundary unchanged. When the provider succeeds but the schema fails, make exactly one correction attempt with the required nested JSON shape and explicit safety reminder; fail closed after that retry or on any provider failure.",
+    files:
+      "repos/orbits/features/agent/playbooks/compiler.ts; repos/orbits/tests/capabilities/agent-playbooks.test.ts",
+    regression:
+      "Focused Playbook tests 5/5 and the exact production build passed. The same Chinese request changed from PLAYBOOK_SCHEMA_INVALID to a reviewable daily 09:00 Asia/Tokyo draft with two visible assumptions; an always-unsafe capability remains rejected after both attempts.",
+    status:
+      "fixed and runtime-verified for the exercised production provider/schema failure; other provider models and repeated invalid outputs remain fail-closed",
+  },
+  {
+    id: "AUDIT-P0-042",
+    severity: "P0",
+    rootCause:
+      "The Playbook runner constructed the generic live Agent conversation service without the authenticated actor even though every API and worker entry had already resolved one. Internal read-only tools therefore missed the actor-scoped artifact graph; a signed-in dry-run returned a synthesized need-authentication message as a successful trial.",
+    decision:
+      "Require a server-derived actor for every default Playbook execution path, construct the actor-bound live conversation/artifact service, and propagate the same actor through dry-run, manual run, signal refresh, internal scheduled execution, and the standalone worker. Fail closed before model/tool access when a caller omits actor identity; injected unit-test executors remain isolated.",
+    files:
+      "repos/orbits/features/agent/automations/runner.ts; repos/orbits/app/api/agent/automations/dry-run/route.ts; repos/orbits/app/api/agent/automations/[id]/run/route.ts; repos/orbits/app/api/agent/signals/route.ts; repos/orbits/app/api/internal/agent/automations/route.ts; repos/orbits/scripts/run-agent-worker.ts; repos/orbits/tests/capabilities/agent-playbooks.test.ts",
+    regression:
+      "Focused Playbook and automation tests 12/12 and the exact production build passed. Production dry-run changed from the false authentication summary to the current actor's source-backed empty follow-up result with two evidence IDs; immediate run persisted the same actor-scoped result. Staged change detection reported HIGH because four POST boundaries and six storage/module flows now carry actor identity, matching the intended security boundary.",
+    status:
+      "fixed and runtime-verified for dry-run, immediate run, empty actor readback, and missing-actor fail-closed behavior; populated multi-account browser execution and a live scheduled worker heartbeat remain pending",
   },
 ];
 
