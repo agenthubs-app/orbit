@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "0d36c5363546071547269a98567559e219640b26",
-  "deterministicSourceTime": "2026-07-29T02:58:30+09:00",
+  "generatedFromCommit": "006d307818b32aba4135211ff73bf56cf7d5f6a9",
+  "deterministicSourceTime": "2026-07-29T03:17:56+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -30,14 +30,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 47,
-    "interactionRouteInstances": 2819,
-    "interactionsRuntimeVerified": 40,
+    "interactionRouteInstances": 2801,
+    "interactionsRuntimeVerified": 43,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 55,
+    "surfacesWithRuntimeEvidence": 60,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 28,
-    "documentedRemediations": 26
+    "documentedVerificationCases": 30,
+    "documentedRemediations": 28
   },
   "surfaces": [
     {
@@ -119,6 +119,7 @@
         "repos/orbit-app/tests/account-auth-view-model.test.ts",
         "repos/orbit-app/tests/account-permissions-screen-source.test.ts",
         "repos/orbit-app/tests/account-session-view-model.test.ts",
+        "repos/orbit-app/tests/admin-login-screen-source.test.ts",
         "repos/orbit-app/tests/admin-screen-source.test.ts",
         "repos/orbit-app/tests/admin-view-model.test.ts",
         "repos/orbit-app/tests/agent-actions-screen-source.test.ts",
@@ -888,6 +889,7 @@
         "repos/orbit-app/tests/account-auth-view-model.test.ts",
         "repos/orbit-app/tests/account-permissions-screen-source.test.ts",
         "repos/orbit-app/tests/account-session-view-model.test.ts",
+        "repos/orbit-app/tests/admin-view-model.test.ts",
         "repos/orbit-app/tests/api-client.test.ts",
         "repos/orbit-app/tests/auth-session.test.ts",
         "repos/orbit-app/tests/endpoints.test.ts",
@@ -2065,6 +2067,7 @@
       "testEvidence": [
         "repos/orbit-app/tests/account-auth-view-model.test.ts",
         "repos/orbit-app/tests/account-session-view-model.test.ts",
+        "repos/orbit-app/tests/admin-view-model.test.ts",
         "repos/orbit-app/tests/initial-route.test.ts",
         "repos/orbit-app/tests/register-invite-view-model.test.ts"
       ],
@@ -3337,79 +3340,79 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 68,
+          "line": 67,
           "tag": "AppScreen",
           "text": "title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 85,
+          "line": 84,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 91,
+          "line": 90,
           "tag": "EmptyState",
           "text": "暂无活动记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 136,
+          "line": 134,
           "tag": "DataCard",
           "text": "`${view.org.name} · ${view.org.owner}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "tag": "EventsCard",
           "text": "surface === \"events\" ? \"活动组合\" : \"近期活动\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 166,
+          "line": 157,
           "tag": "DataCard",
           "text": "移动端边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 167,
+          "line": 158,
           "tag": "Text",
           "text": "后台写操作先保留在正式管理流程中；移动端这里只做核对和跳转。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 204,
+          "line": 195,
           "tag": "Text",
           "text": "{item.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 219,
+          "line": 210,
           "tag": "Text",
           "text": "{stat.value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 222,
+          "line": 213,
           "tag": "Text",
           "text": "{stat.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 225,
+          "line": 216,
           "tag": "Text",
           "text": "{stat.note}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 252,
+          "line": 241,
           "tag": "EmptyState",
           "text": "emptyTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 256,
+          "line": 245,
           "tag": "DataCard",
           "text": "title"
         },
@@ -3417,125 +3420,89 @@
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
           "line": 267,
           "tag": "Text",
-          "text": "新建活动"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 291,
-          "tag": "Text",
           "text": "{event.title.slice(0, 1)}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 298,
+          "line": 274,
           "tag": "Text",
           "text": "{event.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 302,
+          "line": 278,
           "tag": "Text",
           "text": "{event.stateLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 308,
+          "line": 284,
           "tag": "Text",
           "text": "{event.startsAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 314,
+          "line": 290,
           "tag": "Text",
           "text": "{event.location}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 319,
+          "line": 295,
           "tag": "Text",
           "text": "{event.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 355,
-          "tag": "DataCard",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 367,
-          "tag": "Text",
-          "text": "{index + 1} . {step.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 370,
-          "tag": "Text",
-          "text": "{step.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 377,
-          "tag": "Text",
-          "text": "开放签到：活动开始前 30 分钟。运行 AI 分组：签到达到 60%。公布匹配结果：活动开始后 45 分钟。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 390,
-          "tag": "Text",
-          "text": "取消"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 401,
-          "tag": "Text",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 410,
+          "line": 308,
           "tag": "DataCard",
           "text": "团队成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 424,
+          "line": 322,
           "tag": "DataCard",
           "text": "访问成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 428,
+          "line": 326,
           "tag": "Text",
           "text": "邀请成员、调整角色和撤销访问都需要再次确认。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 442,
+          "line": 337,
+          "tag": "Text",
+          "text": "接口未返回可验证的后台成员邮箱；当前不会推断或生成成员信息。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
+          "line": 348,
           "tag": "Text",
           "text": "{member.initial}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 445,
+          "line": 351,
           "tag": "Text",
           "text": "{member.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 448,
+          "line": 354,
           "tag": "Text",
           "text": "{member.email}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 453,
+          "line": 359,
           "tag": "Text",
           "text": "{member.role}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-truthful-readonly-admin-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -3665,7 +3632,7 @@
           "interactionId": "mobile:/admin#interaction-3",
           "surfaceId": "mobile:/admin",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 71,
+          "line": 70,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -3696,7 +3663,7 @@
           "interactionId": "mobile:/admin#interaction-4",
           "surfaceId": "mobile:/admin",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "controlType": "callback-control",
           "tag": "EventsCard",
           "visibleName": "surface === \"events\" ? \"活动组合\" : \"近期活动\"",
@@ -3705,21 +3672,15 @@
           "disabledCondition": null,
           "handlers": [
             {
-              "event": "oncreateeventdraft",
-              "expression": "surface === \"events\" ? () => setCreateEventDraftOpen(true) : null"
-            },
-            {
               "event": "onopenevent",
               "expression": "(href) => navigateTo(href as Href)"
             }
           ],
           "href": null,
           "downstreamCallHints": [
-            "setCreateEventDraftOpen",
-            "null",
             "navigateTo"
           ],
-          "readWrite": "write-or-external-effect",
+          "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
@@ -3735,40 +3696,7 @@
           "interactionId": "mobile:/admin#interaction-5",
           "surfaceId": "mobile:/admin",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 161,
-          "controlType": "callback-control",
-          "tag": "CreateEventDraftCard",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclose",
-              "expression": "() => setCreateEventDraftOpen(false)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCreateEventDraftOpen"
-          ],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin#interaction-6",
-          "surfaceId": "mobile:/admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 194,
+          "line": 185,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{item.label}",
@@ -3787,52 +3715,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; no event, admin role, or workspace record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin#interaction-7",
-          "surfaceId": "mobile:/admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 258,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "新建活动",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onCreateEventDraft"
-            }
+          "actualResult": "The 活动管理 tab navigated from /admin to /admin/events while preserving the same one-event read-only dataset.",
+          "testData": "Authenticated Expo Web admin dashboard backed by the current audit actor",
+          "testEvidence": [
+            "expo-admin-truthful-boundaries-2026-07-29"
           ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "mobile:/admin#interaction-8",
+          "interactionId": "mobile:/admin#interaction-6",
           "surfaceId": "mobile:/admin",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 272,
+          "line": 248,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{<ImageBackground imageStyle={styles.eventThumbImage} source={{ uri: assetUrl(baseUrl, event.coverPath) }} style={styles.eventThumbFrame} > <View style={styles.eventThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventIcon}> <Text style={styles.eventFallbackText}> {event.title.slice(0, 1)} </Text> </View>} {event.title} {event.stateLabel} {event.startsAt} {event.location} {event.detail}",
@@ -3860,68 +3759,6 @@
           "testEvidence": [],
           "conclusion": "inventoried-static-only",
           "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin#interaction-9",
-          "surfaceId": "mobile:/admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 382,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "取消",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin#interaction-10",
-          "surfaceId": "mobile:/admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 392,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "创建活动草稿",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
         }
       ],
       "overlays": [],
@@ -3929,8 +3766,13 @@
         "repos/orbit-app/tests/admin-view-model.test.ts",
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
+        "storage implementation wording was replaced by controlled Chinese event context",
+        "no local event-creation draft or simulated write action remained",
+        "no member email was inferred when the profile API returned no explicit email"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-admin-readonly-boundary"
     },
     {
       "surfaceId": "mobile:/admin/access",
@@ -4046,79 +3888,79 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 68,
+          "line": 67,
           "tag": "AppScreen",
           "text": "title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 85,
+          "line": 84,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 91,
+          "line": 90,
           "tag": "EmptyState",
           "text": "暂无活动记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 136,
+          "line": 134,
           "tag": "DataCard",
           "text": "`${view.org.name} · ${view.org.owner}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "tag": "EventsCard",
           "text": "surface === \"events\" ? \"活动组合\" : \"近期活动\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 166,
+          "line": 157,
           "tag": "DataCard",
           "text": "移动端边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 167,
+          "line": 158,
           "tag": "Text",
           "text": "后台写操作先保留在正式管理流程中；移动端这里只做核对和跳转。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 204,
+          "line": 195,
           "tag": "Text",
           "text": "{item.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 219,
+          "line": 210,
           "tag": "Text",
           "text": "{stat.value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 222,
+          "line": 213,
           "tag": "Text",
           "text": "{stat.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 225,
+          "line": 216,
           "tag": "Text",
           "text": "{stat.note}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 252,
+          "line": 241,
           "tag": "EmptyState",
           "text": "emptyTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 256,
+          "line": 245,
           "tag": "DataCard",
           "text": "title"
         },
@@ -4126,125 +3968,89 @@
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
           "line": 267,
           "tag": "Text",
-          "text": "新建活动"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 291,
-          "tag": "Text",
           "text": "{event.title.slice(0, 1)}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 298,
+          "line": 274,
           "tag": "Text",
           "text": "{event.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 302,
+          "line": 278,
           "tag": "Text",
           "text": "{event.stateLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 308,
+          "line": 284,
           "tag": "Text",
           "text": "{event.startsAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 314,
+          "line": 290,
           "tag": "Text",
           "text": "{event.location}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 319,
+          "line": 295,
           "tag": "Text",
           "text": "{event.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 355,
-          "tag": "DataCard",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 367,
-          "tag": "Text",
-          "text": "{index + 1} . {step.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 370,
-          "tag": "Text",
-          "text": "{step.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 377,
-          "tag": "Text",
-          "text": "开放签到：活动开始前 30 分钟。运行 AI 分组：签到达到 60%。公布匹配结果：活动开始后 45 分钟。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 390,
-          "tag": "Text",
-          "text": "取消"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 401,
-          "tag": "Text",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 410,
+          "line": 308,
           "tag": "DataCard",
           "text": "团队成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 424,
+          "line": 322,
           "tag": "DataCard",
           "text": "访问成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 428,
+          "line": 326,
           "tag": "Text",
           "text": "邀请成员、调整角色和撤销访问都需要再次确认。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 442,
+          "line": 337,
+          "tag": "Text",
+          "text": "接口未返回可验证的后台成员邮箱；当前不会推断或生成成员信息。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
+          "line": 348,
           "tag": "Text",
           "text": "{member.initial}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 445,
+          "line": 351,
           "tag": "Text",
           "text": "{member.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 448,
+          "line": 354,
           "tag": "Text",
           "text": "{member.email}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 453,
+          "line": 359,
           "tag": "Text",
           "text": "{member.role}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-truthful-readonly-admin-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -4374,7 +4180,7 @@
           "interactionId": "mobile:/admin/access#interaction-3",
           "surfaceId": "mobile:/admin/access",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 71,
+          "line": 70,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -4405,7 +4211,7 @@
           "interactionId": "mobile:/admin/access#interaction-4",
           "surfaceId": "mobile:/admin/access",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "controlType": "callback-control",
           "tag": "EventsCard",
           "visibleName": "surface === \"events\" ? \"活动组合\" : \"近期活动\"",
@@ -4414,21 +4220,15 @@
           "disabledCondition": null,
           "handlers": [
             {
-              "event": "oncreateeventdraft",
-              "expression": "surface === \"events\" ? () => setCreateEventDraftOpen(true) : null"
-            },
-            {
               "event": "onopenevent",
               "expression": "(href) => navigateTo(href as Href)"
             }
           ],
           "href": null,
           "downstreamCallHints": [
-            "setCreateEventDraftOpen",
-            "null",
             "navigateTo"
           ],
-          "readWrite": "write-or-external-effect",
+          "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
@@ -4444,40 +4244,7 @@
           "interactionId": "mobile:/admin/access#interaction-5",
           "surfaceId": "mobile:/admin/access",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 161,
-          "controlType": "callback-control",
-          "tag": "CreateEventDraftCard",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclose",
-              "expression": "() => setCreateEventDraftOpen(false)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCreateEventDraftOpen"
-          ],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/access#interaction-6",
-          "surfaceId": "mobile:/admin/access",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 194,
+          "line": 185,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{item.label}",
@@ -4507,41 +4274,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/admin/access#interaction-7",
+          "interactionId": "mobile:/admin/access#interaction-6",
           "surfaceId": "mobile:/admin/access",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 258,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "新建活动",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onCreateEventDraft"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/access#interaction-8",
-          "surfaceId": "mobile:/admin/access",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 272,
+          "line": 248,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{<ImageBackground imageStyle={styles.eventThumbImage} source={{ uri: assetUrl(baseUrl, event.coverPath) }} style={styles.eventThumbFrame} > <View style={styles.eventThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventIcon}> <Text style={styles.eventFallbackText}> {event.title.slice(0, 1)} </Text> </View>} {event.title} {event.stateLabel} {event.startsAt} {event.location} {event.detail}",
@@ -4569,76 +4305,19 @@
           "testEvidence": [],
           "conclusion": "inventoried-static-only",
           "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/access#interaction-9",
-          "surfaceId": "mobile:/admin/access",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 382,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "取消",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/access#interaction-10",
-          "surfaceId": "mobile:/admin/access",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 392,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "创建活动草稿",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
         }
       ],
       "overlays": [],
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
+        "storage implementation wording was replaced by controlled Chinese event context",
+        "no local event-creation draft or simulated write action remained",
+        "no member email was inferred when the profile API returned no explicit email"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-admin-readonly-boundary"
     },
     {
       "surfaceId": "mobile:/admin/events",
@@ -4754,79 +4433,79 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 68,
+          "line": 67,
           "tag": "AppScreen",
           "text": "title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 85,
+          "line": 84,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 91,
+          "line": 90,
           "tag": "EmptyState",
           "text": "暂无活动记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 136,
+          "line": 134,
           "tag": "DataCard",
           "text": "`${view.org.name} · ${view.org.owner}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "tag": "EventsCard",
           "text": "surface === \"events\" ? \"活动组合\" : \"近期活动\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 166,
+          "line": 157,
           "tag": "DataCard",
           "text": "移动端边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 167,
+          "line": 158,
           "tag": "Text",
           "text": "后台写操作先保留在正式管理流程中；移动端这里只做核对和跳转。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 204,
+          "line": 195,
           "tag": "Text",
           "text": "{item.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 219,
+          "line": 210,
           "tag": "Text",
           "text": "{stat.value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 222,
+          "line": 213,
           "tag": "Text",
           "text": "{stat.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 225,
+          "line": 216,
           "tag": "Text",
           "text": "{stat.note}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 252,
+          "line": 241,
           "tag": "EmptyState",
           "text": "emptyTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 256,
+          "line": 245,
           "tag": "DataCard",
           "text": "title"
         },
@@ -4834,125 +4513,89 @@
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
           "line": 267,
           "tag": "Text",
-          "text": "新建活动"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 291,
-          "tag": "Text",
           "text": "{event.title.slice(0, 1)}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 298,
+          "line": 274,
           "tag": "Text",
           "text": "{event.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 302,
+          "line": 278,
           "tag": "Text",
           "text": "{event.stateLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 308,
+          "line": 284,
           "tag": "Text",
           "text": "{event.startsAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 314,
+          "line": 290,
           "tag": "Text",
           "text": "{event.location}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 319,
+          "line": 295,
           "tag": "Text",
           "text": "{event.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 355,
-          "tag": "DataCard",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 367,
-          "tag": "Text",
-          "text": "{index + 1} . {step.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 370,
-          "tag": "Text",
-          "text": "{step.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 377,
-          "tag": "Text",
-          "text": "开放签到：活动开始前 30 分钟。运行 AI 分组：签到达到 60%。公布匹配结果：活动开始后 45 分钟。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 390,
-          "tag": "Text",
-          "text": "取消"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 401,
-          "tag": "Text",
-          "text": "创建活动草稿"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 410,
+          "line": 308,
           "tag": "DataCard",
           "text": "团队成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 424,
+          "line": 322,
           "tag": "DataCard",
           "text": "访问成员"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 428,
+          "line": 326,
           "tag": "Text",
           "text": "邀请成员、调整角色和撤销访问都需要再次确认。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 442,
+          "line": 337,
+          "tag": "Text",
+          "text": "接口未返回可验证的后台成员邮箱；当前不会推断或生成成员信息。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
+          "line": 348,
           "tag": "Text",
           "text": "{member.initial}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 445,
+          "line": 351,
           "tag": "Text",
           "text": "{member.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 448,
+          "line": 354,
           "tag": "Text",
           "text": "{member.email}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 453,
+          "line": 359,
           "tag": "Text",
           "text": "{member.role}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-truthful-readonly-admin-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -5082,7 +4725,7 @@
           "interactionId": "mobile:/admin/events#interaction-3",
           "surfaceId": "mobile:/admin/events",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 71,
+          "line": 70,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -5113,7 +4756,7 @@
           "interactionId": "mobile:/admin/events#interaction-4",
           "surfaceId": "mobile:/admin/events",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 148,
+          "line": 146,
           "controlType": "callback-control",
           "tag": "EventsCard",
           "visibleName": "surface === \"events\" ? \"活动组合\" : \"近期活动\"",
@@ -5122,21 +4765,15 @@
           "disabledCondition": null,
           "handlers": [
             {
-              "event": "oncreateeventdraft",
-              "expression": "surface === \"events\" ? () => setCreateEventDraftOpen(true) : null"
-            },
-            {
               "event": "onopenevent",
               "expression": "(href) => navigateTo(href as Href)"
             }
           ],
           "href": null,
           "downstreamCallHints": [
-            "setCreateEventDraftOpen",
-            "null",
             "navigateTo"
           ],
-          "readWrite": "write-or-external-effect",
+          "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
@@ -5152,40 +4789,7 @@
           "interactionId": "mobile:/admin/events#interaction-5",
           "surfaceId": "mobile:/admin/events",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 161,
-          "controlType": "callback-control",
-          "tag": "CreateEventDraftCard",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclose",
-              "expression": "() => setCreateEventDraftOpen(false)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "setCreateEventDraftOpen"
-          ],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/events#interaction-6",
-          "surfaceId": "mobile:/admin/events",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 194,
+          "line": 185,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{item.label}",
@@ -5215,41 +4819,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/admin/events#interaction-7",
+          "interactionId": "mobile:/admin/events#interaction-6",
           "surfaceId": "mobile:/admin/events",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 258,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "新建活动",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onCreateEventDraft"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/events#interaction-8",
-          "surfaceId": "mobile:/admin/events",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 272,
+          "line": 248,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{<ImageBackground imageStyle={styles.eventThumbImage} source={{ uri: assetUrl(baseUrl, event.coverPath) }} style={styles.eventThumbFrame} > <View style={styles.eventThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventIcon}> <Text style={styles.eventFallbackText}> {event.title.slice(0, 1)} </Text> </View>} {event.title} {event.stateLabel} {event.startsAt} {event.location} {event.detail}",
@@ -5268,76 +4841,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation; no event, registration, attendee, or admin record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/events#interaction-9",
-          "surfaceId": "mobile:/admin/events",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 382,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "取消",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
+          "actualResult": "The real private event card opened /events/event:live-record:20260729 and preserved the actor-owned event identity and detail modules.",
+          "testData": "Private event 功能审计私有活动 20260729 under the authenticated Expo Web audit actor",
+          "testEvidence": [
+            "expo-admin-truthful-boundaries-2026-07-29"
           ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/admin/events#interaction-10",
-          "surfaceId": "mobile:/admin/events",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminScreen.tsx",
-          "line": 392,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "创建活动草稿",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         }
       ],
@@ -5345,8 +4858,13 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
+        "storage implementation wording was replaced by controlled Chinese event context",
+        "no local event-creation draft or simulated write action remained",
+        "no member email was inferred when the profile API returned no explicit email"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-admin-readonly-boundary"
     },
     {
       "surfaceId": "mobile:/agent",
@@ -30402,6 +29920,9 @@
       "dataSources": {
         "api": [
           "repos/orbit-app/src/api/contract/events.ts",
+          "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/data/snapshot-store.ts",
+          "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
           "repos/orbit-app/src/view-models/events.ts"
         ],
         "live": [
@@ -30412,13 +29933,19 @@
           "repos/orbit-app/src/view-models/events.ts"
         ],
         "persistence": [
+          "repos/orbit-app/src/api/ApiBaseUrlProvider.tsx",
           "repos/orbit-app/src/api/contract/events.ts",
+          "repos/orbit-app/src/api/native-auth-session-storage.ts",
+          "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/view-models/admin.ts"
         ],
         "external": [
+          "repos/orbit-app/src/api/AuthSessionProvider.tsx",
+          "repos/orbit-app/src/api/auth-session.ts",
           "repos/orbit-app/src/api/contract/events.ts",
           "repos/orbit-app/src/api/contract/source.ts",
-          "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
+          "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/api/mobile-auth.ts",
           "repos/orbit-app/src/view-models/admin.ts",
           "repos/orbit-app/src/view-models/events.ts"
         ]
@@ -30457,61 +29984,37 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 27,
+          "line": 17,
           "tag": "AppScreen",
-          "text": "sent ? view.sentTitle : view.title"
+          "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 28,
+          "line": 20,
           "tag": "DataCard",
-          "text": "后台入口"
+          "text": "账号访问"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 31,
-          "tag": "Text",
-          "text": "{view.field.label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 32,
-          "tag": "TextInput",
-          "text": "view.field.placeholder"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 45,
-          "tag": "Text",
-          "text": "已发送至 {email.trim() || view.field.placeholder}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 58,
+          "line": 30,
           "tag": "Text",
           "text": "{view.primaryLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 69,
-          "tag": "Text",
-          "text": "{view.skipLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 75,
+          "line": 41,
           "tag": "DataCard",
           "text": "当前边界"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 76,
+          "line": 42,
           "tag": "Text",
-          "text": "真实管理员登录接入后，这里再处理邮件发送、会话写入和权限刷新。"
+          "text": "这里不会显示“已发送”一类本地模拟结果，也不会绕过账号登录直接授予后台权限。"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-account-backed-admin-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -30526,9 +30029,30 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [],
+        "queryParameters": [
+          "Set-Cookie",
+          "attendeeId",
+          "calendarFit",
+          "code",
+          "code_challenge",
+          "code_challenge_method",
+          "error",
+          "industryPreference",
+          "limit",
+          "location",
+          "next",
+          "profileGoal",
+          "query",
+          "redirect_uri",
+          "scenario",
+          "sourceKind",
+          "state",
+          "status",
+          "style"
+        ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
+          "repos/orbit-app/src/api/AuthSessionProvider.tsx",
           "repos/orbit-app/src/components/AppScreen.tsx",
           "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx"
         ]
@@ -30537,11 +30061,11 @@
         "loading": true,
         "empty": true,
         "success": true,
-        "failure": false,
+        "failure": true,
         "offline": false,
         "unauthenticated": true,
-        "forbidden": false,
-        "unavailable": false,
+        "forbidden": true,
+        "unavailable": true,
         "partialFailure": false,
         "timeout": false,
         "duplicateSubmission": false
@@ -30616,38 +30140,7 @@
           "interactionId": "mobile:/login-admin#interaction-3",
           "surfaceId": "mobile:/login-admin",
           "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 32,
-          "controlType": "field",
-          "tag": "TextInput",
-          "visibleName": "view.field.placeholder",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onchangetext",
-              "expression": "setEmail"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/login-admin#interaction-4",
-          "surfaceId": "mobile:/login-admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 50,
+          "line": 22,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.primaryLabel}",
@@ -30657,54 +30150,25 @@
           "handlers": [
             {
               "event": "onpress",
-              "expression": "() => setSent(true)"
+              "expression": "() => router.push(view.primaryHref as Href)"
             }
           ],
           "href": null,
           "downstreamCallHints": [
-            "setSent"
+            "router.push"
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "present-static-signal",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/login-admin#interaction-5",
-          "surfaceId": "mobile:/login-admin",
-          "sourceFile": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx",
-          "line": 61,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "{view.skipLabel}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "enterAdmin"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; no email, session, role, event, or member record was created or changed.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "打开只读后台 navigated from the account-backed entry to /admin and rendered the same actor-owned read-only data.",
+          "testData": "Authenticated Expo Web audit actor with one private event and no explicit profile email",
+          "testEvidence": [
+            "expo-admin-truthful-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         }
       ],
@@ -30712,8 +30176,12 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the screen read the current validated account session",
+        "the signed-in action opened the read-only admin surface",
+        "no email field, local sent state, direct permission bypass, or simulated magic-link success remained"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-admin-account-entry"
     },
     {
       "surfaceId": "mobile:/o/[slug]",
@@ -34331,145 +33799,109 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 61,
+          "line": 44,
           "tag": "AppScreen",
           "text": "平台总览"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 78,
+          "line": 57,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 84,
+          "line": 63,
           "tag": "EmptyState",
-          "text": "暂无平台活动"
+          "text": "暂无近期公开活动"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 142,
+          "line": 84,
           "tag": "DataCard",
           "text": "平台健康"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 149,
-          "tag": "Text",
-          "text": "{decisionFeedback}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 160,
+          "line": 91,
           "tag": "EmptyState",
-          "text": "view.reviewQueue.length > 0 ? \"审核队列已清空\" : view.emptyReviewTitle"
+          "text": "view.emptyReviewTitle"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 183,
+          "line": 97,
+          "tag": "DataCard",
+          "text": "平台边界"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
+          "line": 98,
+          "tag": "Text",
+          "text": "当前没有具备身份校验的平台审核写接口，因此不会在移动端显示批准、驳回、发布或账号认证操作。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
+          "line": 112,
           "tag": "Text",
           "text": "{stat.value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 186,
+          "line": 115,
           "tag": "Text",
           "text": "{stat.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 189,
+          "line": 118,
           "tag": "Text",
           "text": "{stat.note}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 213,
+          "line": 135,
           "tag": "DataCard",
-          "text": "待复核活动"
+          "text": "公开活动来源核对"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 235,
+          "line": 149,
           "tag": "Text",
           "text": "{item.title.slice(0, 1)}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 242,
+          "line": 156,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 246,
+          "line": 160,
           "tag": "Text",
           "text": "{item.stateLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 252,
+          "line": 166,
           "tag": "Text",
           "text": "{item.submitted}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 258,
+          "line": 172,
           "tag": "Text",
           "text": "{item.location}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 263,
+          "line": 177,
           "tag": "Text",
           "text": "{item.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 278,
-          "tag": "Text",
-          "text": "驳回"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 289,
-          "tag": "Text",
-          "text": "批准并发布"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 301,
-          "tag": "DataCard",
-          "text": "主办方账号"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 309,
-          "tag": "Text",
-          "text": "{account.initial}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 312,
-          "tag": "Text",
-          "text": "{account.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 315,
-          "tag": "Text",
-          "text": "{account.owner} · {account.events}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 321,
-          "tag": "Text",
-          "text": "{account.statusLabel}"
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-public-catalogue-platform-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -34512,8 +33944,7 @@
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/src/api/AuthSessionProvider.tsx",
-          "repos/orbit-app/src/components/AppScreen.tsx",
-          "repos/orbit-app/src/screens/platform/PlatformScreen.tsx"
+          "repos/orbit-app/src/components/AppScreen.tsx"
         ]
       },
       "states": {
@@ -34599,7 +34030,7 @@
           "interactionId": "mobile:/platform#interaction-3",
           "surfaceId": "mobile:/platform",
           "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 64,
+          "line": 47,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -34609,144 +34040,12 @@
           "handlers": [
             {
               "event": "onrefresh",
-              "expression": "refreshAll"
+              "expression": "refreshEvents"
             }
           ],
           "href": null,
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/platform#interaction-4",
-          "surfaceId": "mobile:/platform",
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 154,
-          "controlType": "callback-control",
-          "tag": "ReviewQueueCard",
-          "visibleName": null,
-          "accessibleNameEvidence": "not-applicable-structural-boundary",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onopenevent",
-              "expression": "(href) => router.push(href)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "router.push"
-          ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/platform#interaction-5",
-          "surfaceId": "mobile:/platform",
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 217,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "{<ImageBackground imageStyle={styles.eventThumbImage} source={{ uri: assetUrl(baseUrl, item.coverPath) }} style={styles.eventThumbFrame} > <View style={styles.eventThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventIcon}> <Text style={styles.eventFallbackText}> {item.title.slice(0, 1)} </Text> </View>} {item.title} {item.stateLabel} {item.submitted} {item.location} {item.detail}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => onOpenEvent(item.href)"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "onOpenEvent"
-          ],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/platform#interaction-6",
-          "surfaceId": "mobile:/platform",
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 269,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "驳回",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => onDecideReviewItem(item, \"rejected\")"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "onDecideReviewItem"
-          ],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "mobile:/platform#interaction-7",
-          "surfaceId": "mobile:/platform",
-          "sourceFile": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx",
-          "line": 280,
-          "controlType": "native-control",
-          "tag": "Pressable",
-          "visibleName": "批准并发布",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onpress",
-              "expression": "() => onDecideReviewItem(item, \"approved\")"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [
-            "onDecideReviewItem"
-          ],
-          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
@@ -34764,8 +34063,13 @@
         "repos/orbit-app/tests/initial-route.test.ts",
         "repos/orbit-app/tests/platform-view-model.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the surface read 13 records from the dedicated public event catalogue instead of the current actor's private event collection",
+        "the private audit event and actor profile/dashboard metrics did not appear",
+        "three current public records rendered with controlled Chinese context and ten historical records remained aggregate-only",
+        "approval, rejection, publishing, verified-account state, and broken private-detail navigation were absent because no authenticated moderation/public-detail contract exists"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-platform-public-readonly-boundary"
     },
     {
       "surfaceId": "mobile:/profile",
@@ -137508,6 +136812,24 @@
       "actual": "Signup kept invalid values on the form with localized validation, changed the password toggle's accessible name, and navigated to login without creating an account. Password recovery initially reproduced a fake second-step form; after repair it displayed one explicit no-provider/no-send boundary, collected no fields, and returned to login. The invalid mobile Google callback redirected to /account/login with no success state.",
       "evidence": "Authenticated Expo Web form and deep-link traversal; account auth source/view-model tests 10/10; Expo full suite 520/520; Expo typecheck",
       "conclusion": "pass for invalid signup, password-visibility semantics, signup-to-login navigation, reset-provider restriction, and invalid Google callback fallback; successful mobile account creation and native Google provider completion were covered by earlier API/session tests but not repeated in this browser batch"
+    },
+    {
+      "id": "expo-admin-truthful-boundaries-2026-07-29",
+      "target": "Expo admin account entry → read-only dashboard → event list/detail → access-member boundary",
+      "testData": "Authenticated audit actor with one private event, no explicit profile email, no admin mail provider, and no admin write service",
+      "expected": "The entry must use the real account session; admin pages may read actor-owned data but must not simulate email delivery, event creation, member identity, or backend writes",
+      "actual": "/login-admin exposed one account-backed 打开只读后台 action. Dashboard/events/access preserved the private event and real detail navigation, removed the local draft creator, replaced storage implementation copy, and rendered an explicit no-verifiable-member-email boundary instead of admin@orbit.local.",
+      "evidence": "Authenticated Expo Web click traversal across /login-admin, /admin, /admin/events, /events/event:live-record:20260729, and /admin/access; admin screen/view-model source tests; Expo full suite 522/522; Expo typecheck",
+      "conclusion": "pass for the exercised signed-in entry, actor-owned read-only event chain, no-write boundary, and missing-email state; signed-out entry is source-tested and real admin role assignment/mail delivery remain unimplemented"
+    },
+    {
+      "id": "expo-platform-public-catalogue-boundary-2026-07-29",
+      "target": "Expo platform surface → dedicated public catalogue → truthful source-review boundary",
+      "testData": "Authenticated audit actor with one private event plus the 13-record approved public catalogue",
+      "expected": "The platform surface must not treat personal data as platform-wide data, expose private events, synthesize moderation decisions/account verification, or link public IDs into an actor-private detail API",
+      "actual": "Runtime first reproduced the private event, personal metrics, storage-backed English copy, and local approve/reject success. After repair, /platform read the dedicated 13-record public catalogue, showed 3 current and 10 ended records, excluded the private event/profile/dashboard, localized source context, exposed no decision/account state, and rendered source records as non-interactive because no compatible public-detail contract exists.",
+      "evidence": "Authenticated Expo Web before/after DOM and click traversal; public API readback; platform screen/view-model tests 7/7; Expo full suite 524/524; Expo typecheck",
+      "conclusion": "pass for public/private data separation, aggregate semantics, Chinese presentation, and removal of simulated decisions/broken navigation; authenticated platform moderation, account directory, and public detail navigation remain unimplemented"
     }
   ],
   "remediations": [
@@ -137744,6 +137066,24 @@
       "files": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/view-models/account-auth.ts; account-auth source and view-model tests",
       "regression": "Account-auth focused tests 10/10, Expo full suite 520/520, and Expo typecheck passed. Runtime before/after evidence changed the empty-email fake verification form into a field-free restricted state whose sole action returned to login.",
       "status": "fixed and runtime-verified for the unconfigured provider state; real password recovery requires an email/code/persistence provider before any input form is restored"
+    },
+    {
+      "id": "AUDIT-P1-027",
+      "severity": "P1",
+      "rootCause": "The mobile admin entry simulated magic-link delivery with local sent state; the events surface advertised a draft creator whose confirm button only closed the card; and the member mapper fabricated @orbit.local email addresses when profile data contained no email. Event context also leaked storage implementation wording.",
+      "decision": "Use the validated account session as the only mobile admin entry, remove every unwired mail/create action, preserve only actor-owned read-only event navigation, reject implementation labels at presentation time, and render no member row unless the API supplies an explicit email.",
+      "files": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx; repos/orbit-app/src/screens/admin/AdminScreen.tsx; repos/orbit-app/src/view-models/admin.ts; admin source and view-model tests",
+      "regression": "Admin source/view-model tests, Expo full suite 522/522, and Expo typecheck passed. Runtime verified the account-backed entry, real event-detail navigation, no create action, Chinese event context, and explicit empty-member boundary.",
+      "status": "fixed and runtime-verified for the signed-in read-only admin path; signed-out browser runtime, role assignment, mail delivery, event writes, and member administration remain unimplemented"
+    },
+    {
+      "id": "AUDIT-P1-028",
+      "severity": "P1",
+      "rootCause": "The mobile platform page read the current actor's private events, profile, and dashboard, relabelled them as platform-wide public/moderation/account data, marked every non-ended event pending review, generated 已认证 account state, and simulated approve/reject/publish success by hiding rows in local state. Public IDs then linked into an actor-private detail API and produced a not-found screen.",
+      "decision": "Bind the surface exclusively to the dedicated public catalogue, derive only catalogue counts and temporal states, remove personal metrics/account synthesis/local decisions, localize public source context, state the missing moderation/account contracts explicitly, and keep records non-interactive until a compatible public-detail route exists.",
+      "files": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx; repos/orbit-app/src/view-models/platform.ts; platform source and view-model tests",
+      "regression": "Platform focused tests 7/7, Expo full suite 524/524, and Expo typecheck passed. Runtime verified 13 public records, 3 current/10 ended counts, private-event isolation, Chinese context, zero fake moderation/account controls, and zero broken record buttons.",
+      "status": "fixed and runtime-verified for the public-catalogue read-only boundary; real platform moderation, account directory, and public detail navigation require authenticated service contracts"
     }
   ],
   "externalLimitations": []

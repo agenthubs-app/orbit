@@ -361,6 +361,54 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-mobile-google-fallback",
     },
   ],
+  ...[
+    "mobile:/admin",
+    "mobile:/admin/events",
+    "mobile:/admin/access",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-truthful-readonly-admin-entry-verified",
+      runtimeEvidence: [
+        "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
+        "storage implementation wording was replaced by controlled Chinese event context",
+        "no local event-creation draft or simulated write action remained",
+        "no member email was inferred when the profile API returned no explicit email",
+      ],
+      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-admin-readonly-boundary",
+    },
+  ]),
+  [
+    "mobile:/login-admin",
+    {
+      entryBehavior: "expo-web-account-backed-admin-entry-verified",
+      runtimeEvidence: [
+        "the screen read the current validated account session",
+        "the signed-in action opened the read-only admin surface",
+        "no email field, local sent state, direct permission bypass, or simulated magic-link success remained",
+      ],
+      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-admin-account-entry",
+    },
+  ],
+  [
+    "mobile:/platform",
+    {
+      entryBehavior: "expo-web-public-catalogue-platform-entry-verified",
+      runtimeEvidence: [
+        "the surface read 13 records from the dedicated public event catalogue instead of the current actor's private event collection",
+        "the private audit event and actor profile/dashboard metrics did not appear",
+        "three current public records rendered with controlled Chinese context and ten historical records remained aggregate-only",
+        "approval, rejection, publishing, verified-account state, and broken private-detail navigation were absent because no authenticated moderation/public-detail contract exists",
+      ],
+      verificationCase: "expo-platform-public-catalogue-boundary-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-platform-public-readonly-boundary",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -496,6 +544,42 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   ],
 ]);
 const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "mobile:/login-admin|repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx#onpress:() => router.push(view.primaryHref as Href)#{view.primaryLabel}",
+    {
+      actualResult:
+        "打开只读后台 navigated from the account-backed entry to /admin and rendered the same actor-owned read-only data.",
+      testData:
+        "Authenticated Expo Web audit actor with one private event and no explicit profile email",
+      idempotency:
+        "Navigation only; no email, session, role, event, or member record was created or changed.",
+      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/admin|repos/orbit-app/src/screens/admin/AdminScreen.tsx#onpress:() => onNavigate(item.href)#{item.label}",
+    {
+      actualResult:
+        "The 活动管理 tab navigated from /admin to /admin/events while preserving the same one-event read-only dataset.",
+      testData:
+        "Authenticated Expo Web admin dashboard backed by the current audit actor",
+      idempotency:
+        "Navigation only; no event, admin role, or workspace record was written.",
+      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+    },
+  ],
+  [
+    `mobile:/admin/events|repos/orbit-app/src/screens/admin/AdminScreen.tsx#onpress:() => onOpenEvent(event.href)#{<ImageBackground imageStyle={styles.eventThumbImage} source={{ uri: assetUrl(baseUrl, event.coverPath) }} style={styles.eventThumbFrame} > <View style={styles.eventThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventIcon}> <Text style={styles.eventFallbackText}> {event.title.slice(0, 1)} </Text> </View>} {event.title} {event.stateLabel} {event.startsAt} {event.location} {event.detail}`,
+    {
+      actualResult:
+        "The real private event card opened /events/event:live-record:20260729 and preserved the actor-owned event identity and detail modules.",
+      testData:
+        "Private event 功能审计私有活动 20260729 under the authenticated Expo Web audit actor",
+      idempotency:
+        "Read-only navigation; no event, registration, attendee, or admin record was written.",
+      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+    },
+  ],
   [
     "mobile:/ai|repos/orbit-app/src/screens/ai/AiScreen.tsx#onpress:onPress#`打开历史记录：${item.title}`",
     {
@@ -1226,6 +1310,36 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for invalid signup, password-visibility semantics, signup-to-login navigation, reset-provider restriction, and invalid Google callback fallback; successful mobile account creation and native Google provider completion were covered by earlier API/session tests but not repeated in this browser batch",
   },
+  {
+    id: "expo-admin-truthful-boundaries-2026-07-29",
+    target:
+      "Expo admin account entry → read-only dashboard → event list/detail → access-member boundary",
+    testData:
+      "Authenticated audit actor with one private event, no explicit profile email, no admin mail provider, and no admin write service",
+    expected:
+      "The entry must use the real account session; admin pages may read actor-owned data but must not simulate email delivery, event creation, member identity, or backend writes",
+    actual:
+      "/login-admin exposed one account-backed 打开只读后台 action. Dashboard/events/access preserved the private event and real detail navigation, removed the local draft creator, replaced storage implementation copy, and rendered an explicit no-verifiable-member-email boundary instead of admin@orbit.local.",
+    evidence:
+      "Authenticated Expo Web click traversal across /login-admin, /admin, /admin/events, /events/event:live-record:20260729, and /admin/access; admin screen/view-model source tests; Expo full suite 522/522; Expo typecheck",
+    conclusion:
+      "pass for the exercised signed-in entry, actor-owned read-only event chain, no-write boundary, and missing-email state; signed-out entry is source-tested and real admin role assignment/mail delivery remain unimplemented",
+  },
+  {
+    id: "expo-platform-public-catalogue-boundary-2026-07-29",
+    target:
+      "Expo platform surface → dedicated public catalogue → truthful source-review boundary",
+    testData:
+      "Authenticated audit actor with one private event plus the 13-record approved public catalogue",
+    expected:
+      "The platform surface must not treat personal data as platform-wide data, expose private events, synthesize moderation decisions/account verification, or link public IDs into an actor-private detail API",
+    actual:
+      "Runtime first reproduced the private event, personal metrics, storage-backed English copy, and local approve/reject success. After repair, /platform read the dedicated 13-record public catalogue, showed 3 current and 10 ended records, excluded the private event/profile/dashboard, localized source context, exposed no decision/account state, and rendered source records as non-interactive because no compatible public-detail contract exists.",
+    evidence:
+      "Authenticated Expo Web before/after DOM and click traversal; public API readback; platform screen/view-model tests 7/7; Expo full suite 524/524; Expo typecheck",
+    conclusion:
+      "pass for public/private data separation, aggregate semantics, Chinese presentation, and removal of simulated decisions/broken navigation; authenticated platform moderation, account directory, and public detail navigation remain unimplemented",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1588,6 +1702,34 @@ const AUDIT_REMEDIATIONS = [
       "Account-auth focused tests 10/10, Expo full suite 520/520, and Expo typecheck passed. Runtime before/after evidence changed the empty-email fake verification form into a field-free restricted state whose sole action returned to login.",
     status:
       "fixed and runtime-verified for the unconfigured provider state; real password recovery requires an email/code/persistence provider before any input form is restored",
+  },
+  {
+    id: "AUDIT-P1-027",
+    severity: "P1",
+    rootCause:
+      "The mobile admin entry simulated magic-link delivery with local sent state; the events surface advertised a draft creator whose confirm button only closed the card; and the member mapper fabricated @orbit.local email addresses when profile data contained no email. Event context also leaked storage implementation wording.",
+    decision:
+      "Use the validated account session as the only mobile admin entry, remove every unwired mail/create action, preserve only actor-owned read-only event navigation, reject implementation labels at presentation time, and render no member row unless the API supplies an explicit email.",
+    files:
+      "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx; repos/orbit-app/src/screens/admin/AdminScreen.tsx; repos/orbit-app/src/view-models/admin.ts; admin source and view-model tests",
+    regression:
+      "Admin source/view-model tests, Expo full suite 522/522, and Expo typecheck passed. Runtime verified the account-backed entry, real event-detail navigation, no create action, Chinese event context, and explicit empty-member boundary.",
+    status:
+      "fixed and runtime-verified for the signed-in read-only admin path; signed-out browser runtime, role assignment, mail delivery, event writes, and member administration remain unimplemented",
+  },
+  {
+    id: "AUDIT-P1-028",
+    severity: "P1",
+    rootCause:
+      "The mobile platform page read the current actor's private events, profile, and dashboard, relabelled them as platform-wide public/moderation/account data, marked every non-ended event pending review, generated 已认证 account state, and simulated approve/reject/publish success by hiding rows in local state. Public IDs then linked into an actor-private detail API and produced a not-found screen.",
+    decision:
+      "Bind the surface exclusively to the dedicated public catalogue, derive only catalogue counts and temporal states, remove personal metrics/account synthesis/local decisions, localize public source context, state the missing moderation/account contracts explicitly, and keep records non-interactive until a compatible public-detail route exists.",
+    files:
+      "repos/orbit-app/src/screens/platform/PlatformScreen.tsx; repos/orbit-app/src/view-models/platform.ts; platform source and view-model tests",
+    regression:
+      "Platform focused tests 7/7, Expo full suite 524/524, and Expo typecheck passed. Runtime verified 13 public records, 3 current/10 ended counts, private-event isolation, Chinese context, zero fake moderation/account controls, and zero broken record buttons.",
+    status:
+      "fixed and runtime-verified for the public-catalogue read-only boundary; real platform moderation, account directory, and public detail navigation require authenticated service contracts",
   },
 ];
 

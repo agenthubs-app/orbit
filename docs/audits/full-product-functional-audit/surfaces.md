@@ -4,17 +4,17 @@
 
 | ID | 客户端 | 环境 | 路由 | 父界面 | 动态参数 | 可达弹层 | 控件 | 测试源码命中 | 运行时结论 |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |
-| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 90 | inventory-complete-runtime-verification-pending |
+| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 91 | inventory-complete-runtime-verification-pending |
 | `mobile:/[...legacy]` | mobile | production | `/[...legacy]` | `mobile:/` | ...legacy | 0 | 0 | 0 | inventory-complete-runtime-verification-pending |
-| `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 12 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 13 | runtime-partially-verified-expo-web-auth-profile-account |
 | `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 10 | 2 | runtime-partially-verified-expo-password-reset-restricted |
-| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 10 | 4 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 10 | 5 | runtime-partially-verified-expo-web-auth-profile-account |
 | `mobile:/account/mobile-google` | mobile | production | `/account/mobile-google` | `mobile:/account` |  | 0 | 0 | 1 | runtime-partially-verified-expo-mobile-google-fallback |
 | `mobile:/account/permissions` | mobile | production | `/account/permissions` | `mobile:/account` |  | 0 | 5 | 1 | runtime-partially-verified-expo-web-permission-persistence |
 | `mobile:/account/signup` | mobile | production | `/account/signup` | `mobile:/account` |  | 0 | 10 | 4 | runtime-partially-verified-expo-signup-validation |
-| `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 10 | 2 | inventory-complete-runtime-verification-pending |
-| `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 6 | 2 | runtime-partially-verified-expo-admin-readonly-boundary |
+| `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
+| `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
 | `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 9 | 9 | inventory-complete-runtime-verification-pending |
 | `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 31 | 10 | runtime-partially-verified-expo-ai-history-persistence |
 | `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | runtime-partially-verified-expo-ai-conversation-readback |
@@ -38,12 +38,12 @@
 | `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | inventory-complete-runtime-verification-pending |
 | `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | inventory-complete-runtime-verification-pending |
-| `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 5 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 3 | 1 | runtime-partially-verified-expo-admin-account-entry |
 | `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | runtime-partially-verified-expo-organizer-public-isolation |
 | `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 13 | 4 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
-| `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 7 | 2 | inventory-complete-runtime-verification-pending |
+| `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 3 | 2 | runtime-partially-verified-expo-platform-public-readonly-boundary |
 | `mobile:/profile` | mobile | production | `/profile` | `mobile:/` |  | 0 | 24 | 17 | runtime-partially-verified-expo-web-auth-profile-account |
 | `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 5 | 5 | runtime-partially-verified-expo-register-missing-context |
 | `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 5 | 1 | runtime-partially-verified-expo-register-live-preview |
