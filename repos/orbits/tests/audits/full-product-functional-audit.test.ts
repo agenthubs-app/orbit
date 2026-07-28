@@ -385,11 +385,29 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
     browserEvidenceSurfaces.every(
       (surface) =>
         surface.client === "web" &&
-        surface.entryBehavior ===
-          "browser-base-state-rendered-with-non-empty-content" &&
+        surface.entryBehavior !== "not-runtime-verified" &&
         surface.responsive.desktop.includes("1440x900") &&
         surface.responsive.mobile.includes("390x844") &&
         surface.verificationConclusion.startsWith("runtime-partially-verified"),
+    ),
+    true,
+  );
+  const publicEventCatalogue = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "web:/app/events",
+  );
+  assert.equal(
+    publicEventCatalogue?.entryBehavior,
+    "authenticated-browser-public-event-catalogue-search-filter-map-verified",
+  );
+  assert.equal(
+    publicEventCatalogue?.runtimeEvidence.includes(
+      "the public catalogue rendered all 13 approved events before filtering",
+    ),
+    true,
+  );
+  assert.equal(
+    publicEventCatalogue?.runtimeEvidence.includes(
+      "in-app browser base-state at 1440x900",
     ),
     true,
   );

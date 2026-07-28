@@ -571,6 +571,23 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
 ]);
 const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
+    "web:/app/events",
+    {
+      entryBehavior:
+        "authenticated-browser-public-event-catalogue-search-filter-map-verified",
+      runtimeEvidence: [
+        "the public catalogue rendered all 13 approved events before filtering",
+        "exact-code and nonexistent searches produced one exact result and a truthful recoverable empty state",
+        "upcoming, active, ended, topic, and combined filters returned source-backed counts without fallback events",
+        "the map preserved all 13 located events, selected EVT01 from both list and pin controls, and opened its exact detail",
+        "localized date tokens rendered once as 2月15日 rather than the duplicated 2月15日日 found before repair",
+      ],
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-public-event-catalogue-controls",
+    },
+  ],
+  [
     "web:/app/events/[id]",
     {
       entryBehavior:
@@ -1601,6 +1618,116 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
 );
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#t({ en: `Show ${item.name} event`, zh: `查看活动：${item.name}` })",
+    {
+      actualResult:
+        "Selecting the EVT01 map pin updated the selected event card to 东京餐饮入境客增长会 without changing the route.",
+      testData: "13-event public catalogue map; EVT01/event_01",
+      idempotency:
+        "Local selection state only; no event, registration, contact, map, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#View / 查看",
+    {
+      actualResult:
+        "查看 opened /app/events/EVT01 with the exact 东京餐饮入境客增长会 heading; 返回上一页 then restored /app/events.",
+      testData: "Selected EVT01 map detail card",
+      idempotency:
+        "Read-only navigation only; no event, registration, contact, Agent, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#Clear filters / 清除筛选",
+    {
+      actualResult:
+        "A nonexistent Chinese query rendered 没有符合当前筛选的活动; 清除筛选 restored all 13 approved events.",
+      testData: "Public catalogue search with a nonexistent Chinese query",
+      idempotency:
+        "Client-side query reset only; no event, preference, search-history, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#Events / 内容",
+    {
+      actualResult:
+        "内容 returned from the map to the 13-event module grid without losing the public catalogue.",
+      testData: "Public catalogue after map traversal",
+      idempotency:
+        "Local view-mode state only; no event, map, preference, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#onclick:() => setMode("map")#Map / 地图',
+    {
+      actualResult:
+        "地图 replaced the module grid with 13 source-backed positions and one selected event card.",
+      testData: "Unfiltered 13-event public catalogue",
+      idempotency:
+        "Local view-mode state only; no event, map, preference, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:364",
+    {
+      actualResult:
+        "Searching EVT01 returned exactly 东京餐饮入境客增长会; a nonexistent Chinese query returned the explicit no-match state.",
+      testData: "Approved catalogue code EVT01 plus a nonexistent Chinese query",
+      idempotency:
+        "Client-side search only; no event, search-history, preference, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:369",
+    {
+      actualResult:
+        "即将开始 returned 3 events, 进行中 returned a truthful empty state, 已结束 returned 10 events, and 全部 restored 13.",
+      testData: "13 approved public events with 3 upcoming, 0 active, and 10 ended",
+      idempotency:
+        "Client-side status filtering only; no event, registration, preference, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:370",
+    {
+      actualResult:
+        "AI combined with 已结束 returned the two matching ended AI events; resetting filters restored all 13.",
+      testData: "Approved catalogue topic AI combined with ended status",
+      idempotency:
+        "Client-side topic filtering only; no event, preference, analytics, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:388",
+    {
+      actualResult:
+        "Selecting EVT01 in the map rail updated the detail card and preserved the exact source-backed date, venue, status, and participant count.",
+      testData: "EVT01/event_01 map rail entry",
+      idempotency:
+        "Local selection state only; no event, registration, contact, map, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:401",
+    {
+      actualResult:
+        "The map selection callback preserved the selected EVT01 identity while the card exposed /app/events/EVT01.",
+      testData: "13 located public catalogue events",
+      idempotency:
+        "Local map-selection state only; no event, registration, map, or external record was written.",
+      verificationCase: "web-public-event-catalogue-controls-2026-07-29",
+    },
+  ],
   [
     "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx#Calendar is not connected. Propose a time manually / 日历暂未连接，请手动提议时间",
     {
@@ -2943,6 +3070,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified",
   },
   {
+    id: "web-public-event-catalogue-controls-2026-07-29",
+    target:
+      "Authenticated Web public Events catalogue → search, combined filters, empty recovery, map selection, exact detail navigation, and localized dates",
+    testData:
+      "13 approved public events; exact code EVT01; nonexistent Chinese query; status partitions 3 upcoming / 0 active / 10 ended; ended + AI intersection; 13 located map records",
+    expected:
+      "Every control must operate only on the approved catalogue, preserve exact event identity and truthful zero results, write nothing, and render localized date components exactly once across module and map presentations",
+    actual:
+      "The base catalogue rendered 13 events. EVT01 search returned one exact event; a nonexistent query produced the explicit empty state and Clear filters restored 13. Upcoming, active, and ended returned 3, 0, and 10; ended + AI returned 2; reset restored all records. Map mode preserved 13 positions; both rail and pin selection resolved EVT01, whose card linked to the exact detail and returned through browser history. Runtime exposed 9月15日日 and 2月15日日 before repair; extracting the Intl day part as a numeric token changed both presentations to 9月15日 and 2月15日 while preserving event time, venue, count, and route.",
+    evidence:
+      "Authenticated production-browser search/filter/empty/reset/map/pin/detail/return traversal; focused Events route tests 8/8; exact production build; GitNexus impact LOW with four upstream symbols; commit 759f8577",
+    conclusion:
+      "pass for the exercised desktop catalogue denominator, exact/nonexistent search, all status branches, one topic intersection, empty-state recovery, module/map switching, map rail and pin selection, localized day-token repair, exact detail navigation, and no-write behavior; guest account controls, mobile/responsive interactions, keyboard/screen-reader traversal, invalid coordinates, source-empty catalogue, and provider failure remain explicitly unverified",
+  },
+  {
     id: "web-public-event-detail-lifecycle-2026-07-29",
     target:
       "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
@@ -3643,6 +3785,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Event Detail/matchmaking tests 18/18, exact production build, and authenticated browser refresh passed. After all audit registration rows were deleted, attendee names, candidates, follow-up, and replay disappeared immediately; the ended-event card contained the two terminal sentences and no 完成报名资料 link.",
     status:
       "fixed and runtime-verified for the ended/unregistered event_01 boundary while upcoming/active registration source behavior remains covered by existing tests; guest/login, cancelled-registration, responsive, keyboard, and assistive cases remain unverified",
+  },
+  {
+    id: "AUDIT-P2-048",
+    severity: "P2",
+    rootCause:
+      "The shared event mapper treated Intl.DateTimeFormat(..., { day: \"2-digit\" }).format() as a locale-neutral day number. In zh-CN that call returns a localized token that already includes 日, while the map rail and selected-event card correctly add their own Chinese suffix. The boundary therefore produced 9月15日日 and 2月15日日 in every map date.",
+    decision:
+      "Keep MappedEvent.day as the numeric semantic token already assumed by all consumers. Extract the day value from formatToParts at the formatter boundary, retain the existing localized month and map composition, and cover both English and Chinese tokens with one focused regression test.",
+    files:
+      "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW risk across four upstream symbols and no business process. Focused Events tests passed 8/8, the exact production build passed, and authenticated browser traversal changed 9月15日日 / 2月15日日 to 9月15日 / 2月15日 while preserving 13 map positions, EVT01 selection, event time, venue, participant count, and exact detail navigation.",
+    status:
+      "fixed and runtime-verified for the exercised Chinese desktop module/map catalogue; English token behavior is regression-tested, while mobile/responsive and other locale runtime presentation remain unverified",
   },
 ];
 
@@ -4804,9 +4960,7 @@ export function buildFullProductFunctionalAuditInventory() {
       layout: hasBrowserSmokeEvidence
         ? "browser-base-state-verified-at-1440x900-and-390x844"
         : "source-inventoried; rendered structure requires viewport verification",
-      entryBehavior: hasBrowserSmokeEvidence
-        ? "browser-base-state-rendered-with-non-empty-content"
-        : hasLiveProfileRuntimeEvidence
+      entryBehavior: hasLiveProfileRuntimeEvidence
           ? "authenticated-browser-signup-login-profile-entry-verified"
           : hasLiveEventRegistrationRuntimeEvidence
             ? "catalogue-detail-authenticated-registration-entry-verified"
@@ -4826,7 +4980,9 @@ export function buildFullProductFunctionalAuditInventory() {
               ? liveMobileAdditionalRuntimeEvidence.entryBehavior
             : liveWebAdditionalRuntimeEvidence
               ? liveWebAdditionalRuntimeEvidence.entryBehavior
-          : "not-runtime-verified",
+            : hasBrowserSmokeEvidence
+              ? "browser-base-state-rendered-with-non-empty-content"
+              : "not-runtime-verified",
       exitBehavior:
         hasLiveProfileRuntimeEvidence
           ? "back-and-cancel-navigation-to-/app/home-verified"
@@ -4874,14 +5030,7 @@ export function buildFullProductFunctionalAuditInventory() {
       interactions,
       overlays,
       testEvidence: [],
-      runtimeEvidence: hasBrowserSmokeEvidence
-        ? [
-            "production-build transport smoke",
-            "in-app browser base-state at 1440x900",
-            "in-app browser base-state at 390x844",
-            "browser console warning/error check",
-          ]
-        : hasLiveProfileRuntimeEvidence
+      runtimeEvidence: hasLiveProfileRuntimeEvidence
           ? [
               "production-build entry from /app and account menu",
               "live Postgres profile write and projected record ownership",
@@ -4964,8 +5113,25 @@ export function buildFullProductFunctionalAuditInventory() {
           : liveMobileAdditionalRuntimeEvidence
             ? liveMobileAdditionalRuntimeEvidence.runtimeEvidence
           : liveWebAdditionalRuntimeEvidence
-            ? liveWebAdditionalRuntimeEvidence.runtimeEvidence
-          : [],
+            ? [
+                ...liveWebAdditionalRuntimeEvidence.runtimeEvidence,
+                ...(hasBrowserSmokeEvidence
+                  ? [
+                      "production-build transport smoke",
+                      "in-app browser base-state at 1440x900",
+                      "in-app browser base-state at 390x844",
+                      "browser console warning/error check",
+                    ]
+                  : []),
+              ]
+          : hasBrowserSmokeEvidence
+            ? [
+                "production-build transport smoke",
+                "in-app browser base-state at 1440x900",
+                "in-app browser base-state at 390x844",
+                "browser console warning/error check",
+              ]
+            : [],
       verificationConclusion:
         surfaceId === "web:/dev/capabilities/[slug]"
           ? "runtime-partially-verified-six-ids"

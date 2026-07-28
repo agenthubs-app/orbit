@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "045a7ec46bdc72706fb08ff9259aa8d7c6e37b48",
-  "deterministicSourceTime": "2026-07-29T07:40:38+09:00",
+  "generatedFromCommit": "759f857725db97bf754af88fef2cce4a3c9fe76e",
+  "deterministicSourceTime": "2026-07-29T07:48:10+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -31,13 +31,13 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 49,
     "interactionRouteInstances": 2848,
-    "interactionsRuntimeVerified": 156,
+    "interactionsRuntimeVerified": 166,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 47,
-    "documentedRemediations": 47
+    "documentedVerificationCases": 48,
+    "documentedRemediations": 48
   },
   "surfaces": [
     {
@@ -82435,67 +82435,67 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 119,
+          "line": 120,
           "tag": "h2",
           "text": "{mapped.name}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 163,
+          "line": 164,
           "tag": "button",
           "text": "t({ en: `Show ${item.name} event`, zh: `查看活动：${item.name}` })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 189,
+          "line": 190,
           "tag": "h3",
           "text": "{item.name}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 216,
+          "line": 217,
           "tag": "h3",
           "text": "{item.name}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 268,
+          "line": 269,
           "tag": "h2",
           "text": "No events match these filters / 没有符合当前筛选的活动 / New events are on the way / 新的活动正在筹备中"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 355,
+          "line": 356,
           "tag": "h1",
           "text": "Discover events / 发现活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 357,
+          "line": 358,
           "tag": "div",
           "text": "t({ en: \"Event view\", zh: \"活动视图\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 363,
+          "line": 364,
           "tag": "input",
           "text": "t({ en: \"Search event name, code, or topic\", zh: \"搜索活动名称、编号或主题\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 382,
+          "line": 383,
           "tag": "h2",
           "text": "Discover events / 发现活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 411,
+          "line": 412,
           "tag": "h1",
           "text": "Discover events / 发现活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 416,
+          "line": 417,
           "tag": "input",
           "text": "t({ en: \"Search event name, code, or topic\", zh: \"搜索活动名称、编号或主题\" })"
         },
@@ -82579,7 +82579,7 @@
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "entryBehavior": "authenticated-browser-public-event-catalogue-search-filter-map-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "preserveHref(\"/\")",
@@ -82637,7 +82637,7 @@
           "interactionId": "web:/app/events#interaction-1",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 100,
+          "line": 101,
           "controlType": "link",
           "tag": "a",
           "visibleName": "{mapped.month} {mapped.day} {[event.theme, event.host].filter(Boolean).join(\" · \")} {mapped.name} {<div className=\"orbit-event-module-topic-row\"> {topics.map((topicItem) => ( <span key={topicItem}>{topicItem}</span> ))} </div>} / {null} {cardTime} {mapped.place} {t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })} Review event context / 回看活动背景 / Open event context / 打开活动背景 {<span role=\"button\" tabIndex={0} onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.assign(preserveHref(partyHrefForEvent(event.id))); }} className=\"btn btn-soft btn-sm\" style={{ height: 30, fontSize: 12.5 }}>{enterLabel}<Icon name=\"arrowUR\" size={14} /></span>} / {<strong>{actionLabel}<Icon name=\"chevR\" size={14} /></strong>}",
@@ -82663,7 +82663,7 @@
           "interactionId": "web:/app/events#interaction-2",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 136,
+          "line": 137,
           "controlType": "role-button",
           "tag": "span",
           "visibleName": "{enterLabel}",
@@ -82700,7 +82700,7 @@
           "interactionId": "web:/app/events#interaction-3",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 163,
+          "line": 164,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: `Show ${item.name} event`, zh: `查看活动：${item.name}` })",
@@ -82719,21 +82719,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local selection state only; no event, registration, contact, map, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting the EVT01 map pin updated the selected event card to 东京餐饮入境客增长会 without changing the route.",
+          "testData": "13-event public catalogue map; EVT01/event_01",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-4",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 197,
+          "line": 198,
           "controlType": "link",
           "tag": "a",
           "visibleName": "View / 查看",
@@ -82745,21 +82747,23 @@
           "downstreamCallHints": [],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation only; no event, registration, contact, Agent, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "查看 opened /app/events/EVT01 with the exact 东京餐饮入境客增长会 heading; 返回上一页 then restored /app/events.",
+          "testData": "Selected EVT01 map detail card",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-5",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 207,
+          "line": 208,
           "controlType": "link",
           "tag": "a",
           "visibleName": "{item.month} {<div style={{ color: \"var(--ink)\", fontFamily: \"var(--ff-display)\", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div>} / {null} {item.name} {<div style={{ color: \"var(--text-3)\", fontSize: 12, marginTop: 2 }}>{item.sub}</div>} / {null} {item.time} {item.place} {t({ en: `${item.people} people`, zh: `${item.people} 人` })} {actionLabel}",
@@ -82785,7 +82789,7 @@
           "interactionId": "web:/app/events#interaction-6",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 286,
+          "line": 287,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Clear filters / 清除筛选",
@@ -82802,21 +82806,23 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Client-side query reset only; no event, preference, search-history, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A nonexistent Chinese query rendered 没有符合当前筛选的活动; 清除筛选 restored all 13 approved events.",
+          "testData": "Public catalogue search with a nonexistent Chinese query",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-7",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 358,
+          "line": 359,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Events / 内容",
@@ -82835,21 +82841,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local view-mode state only; no event, map, preference, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "内容 returned from the map to the 13-event module grid without losing the public catalogue.",
+          "testData": "Public catalogue after map traversal",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-8",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 359,
+          "line": 360,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Map / 地图",
@@ -82868,21 +82876,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local view-mode state only; no event, map, preference, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "地图 replaced the module grid with 13 source-backed positions and one selected event card.",
+          "testData": "Unfiltered 13-event public catalogue",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-9",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 363,
+          "line": 364,
           "controlType": "field",
           "tag": "input",
           "visibleName": "t({ en: \"Search event name, code, or topic\", zh: \"搜索活动名称、编号或主题\" })",
@@ -82901,21 +82911,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Client-side search only; no event, search-history, preference, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Searching EVT01 returned exactly 东京餐饮入境客增长会; a nonexistent Chinese query returned the explicit no-match state.",
+          "testData": "Approved catalogue code EVT01 plus a nonexistent Chinese query",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-10",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 368,
+          "line": 369,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{statusLabels[key]}",
@@ -82934,21 +82946,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Client-side status filtering only; no event, registration, preference, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "即将开始 returned 3 events, 进行中 returned a truthful empty state, 已结束 returned 10 events, and 全部 restored 13.",
+          "testData": "13 approved public events with 3 upcoming, 0 active, and 10 ended",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-11",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 369,
+          "line": 370,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item}",
@@ -82967,21 +82981,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Client-side topic filtering only; no event, preference, analytics, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "AI combined with 已结束 returned the two matching ended AI events; resetting filters restored all 13.",
+          "testData": "Approved catalogue topic AI combined with ended status",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-12",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 387,
+          "line": 388,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item.name} {[item.day ? `${item.month}${language === \"zh\" ? `${item.day}日` : ` ${item.day}`}` : item.time, item.place].filter(Boolean).join(\" · \")}",
@@ -83000,21 +83016,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local selection state only; no event, registration, contact, map, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting EVT01 in the map rail updated the detail card and preserved the exact source-backed date, venue, status, and participant count.",
+          "testData": "EVT01/event_01 map rail entry",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-13",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 400,
+          "line": 401,
           "controlType": "callback-control",
           "tag": "MapCanvas",
           "visibleName": null,
@@ -83033,21 +83051,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local map-selection state only; no event, registration, map, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The map selection callback preserved the selected EVT01 identity while the card exposed /app/events/EVT01.",
+          "testData": "13 located public catalogue events",
+          "testEvidence": [
+            "web-public-event-catalogue-controls-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events#interaction-14",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 412,
+          "line": 413,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Map / 地图",
@@ -83080,7 +83100,7 @@
           "interactionId": "web:/app/events#interaction-15",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 416,
+          "line": 417,
           "controlType": "field",
           "tag": "input",
           "visibleName": "t({ en: \"Search event name, code, or topic\", zh: \"搜索活动名称、编号或主题\" })",
@@ -83113,7 +83133,7 @@
           "interactionId": "web:/app/events#interaction-16",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 419,
+          "line": 420,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{statusLabels[key]}",
@@ -83146,7 +83166,7 @@
           "interactionId": "web:/app/events#interaction-17",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 421,
+          "line": 422,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item}",
@@ -83179,7 +83199,7 @@
           "interactionId": "web:/app/events#interaction-18",
           "surfaceId": "web:/app/events",
           "sourceFile": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
-          "line": 426,
+          "line": 427,
           "controlType": "callback-control",
           "tag": "MapCanvas",
           "visibleName": null,
@@ -83752,12 +83772,17 @@
         "repos/orbits/tests/ui/orbit-top-nav-links.test.ts"
       ],
       "runtimeEvidence": [
+        "the public catalogue rendered all 13 approved events before filtering",
+        "exact-code and nonexistent searches produced one exact result and a truthful recoverable empty state",
+        "upcoming, active, ended, topic, and combined filters returned source-backed counts without fallback events",
+        "the map preserved all 13 located events, selected EVT01 from both list and pin controls, and opened its exact detail",
+        "localized date tokens rendered once as 2月15日 rather than the duplicated 2月15日日 found before repair",
         "production-build transport smoke",
         "in-app browser base-state at 1440x900",
         "in-app browser base-state at 390x844",
         "browser console warning/error check"
       ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "verificationConclusion": "runtime-partially-verified-web-public-event-catalogue-controls"
     },
     {
       "surfaceId": "web:/app/events/[id]",
@@ -84557,7 +84582,7 @@
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "entryBehavior": "authenticated-browser-source-backed-public-event-detail-lifecycle-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/contacts/new",
@@ -87304,6 +87329,12 @@
         "repos/orbits/tests/ui/orbit-form-standard.test.ts"
       ],
       "runtimeEvidence": [
+        "EVT01 resolved to canonical event_01 with the generated 50-person roster and current registration state",
+        "matchmaking request/retry/reverse-request and slot transitions converged on one stable scheduled request",
+        "post-event follow-up preserved duplicate-contact resolution, explicit confirmation, unsent draft state, and core-ID idempotency",
+        "roster expand/collapse, organizer navigation, replay, Agent context, and browser-history return all preserved the exact event identity",
+        "all 42 exact audit rows were deleted after verification while three unrelated pre-existing Agent runs remained",
+        "after cleanup the same actor immediately lost attendee names, matchmaking candidates, follow-up, and replay access; the ended-event boundary exposed no dead registration link",
         "production-build transport smoke",
         "in-app browser base-state at 1440x900",
         "in-app browser base-state at 390x844",
@@ -95272,7 +95303,7 @@
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "entryBehavior": "authenticated-browser-public-catalogue-organizer-projection-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/events",
@@ -96002,6 +96033,10 @@
         "repos/orbits/tests/pages/app-organizer-public-live-route-services.test.ts"
       ],
       "runtimeEvidence": [
+        "the exact EVT01 organizer slug resolved Orbit 人脉测试空间 instead of an empty route state",
+        "the page rendered 13 approved-catalogue events and cumulative participantCount 500",
+        "hard-coded 12, 4,200+, and satisfaction claims were absent",
+        "the public projection stripped attendee names, actor registration state, and private roster data",
         "production-build transport smoke",
         "in-app browser base-state at 1440x900",
         "in-app browser base-state at 390x844",
@@ -139244,6 +139279,15 @@
       "conclusion": "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified"
     },
     {
+      "id": "web-public-event-catalogue-controls-2026-07-29",
+      "target": "Authenticated Web public Events catalogue → search, combined filters, empty recovery, map selection, exact detail navigation, and localized dates",
+      "testData": "13 approved public events; exact code EVT01; nonexistent Chinese query; status partitions 3 upcoming / 0 active / 10 ended; ended + AI intersection; 13 located map records",
+      "expected": "Every control must operate only on the approved catalogue, preserve exact event identity and truthful zero results, write nothing, and render localized date components exactly once across module and map presentations",
+      "actual": "The base catalogue rendered 13 events. EVT01 search returned one exact event; a nonexistent query produced the explicit empty state and Clear filters restored 13. Upcoming, active, and ended returned 3, 0, and 10; ended + AI returned 2; reset restored all records. Map mode preserved 13 positions; both rail and pin selection resolved EVT01, whose card linked to the exact detail and returned through browser history. Runtime exposed 9月15日日 and 2月15日日 before repair; extracting the Intl day part as a numeric token changed both presentations to 9月15日 and 2月15日 while preserving event time, venue, count, and route.",
+      "evidence": "Authenticated production-browser search/filter/empty/reset/map/pin/detail/return traversal; focused Events route tests 8/8; exact production build; GitNexus impact LOW with four upstream symbols; commit 759f8577",
+      "conclusion": "pass for the exercised desktop catalogue denominator, exact/nonexistent search, all status branches, one topic intersection, empty-state recovery, module/map switching, map rail and pin selection, localized day-token repair, exact detail navigation, and no-write behavior; guest account controls, mobile/responsive interactions, keyboard/screen-reader traversal, invalid coordinates, source-empty catalogue, and provider failure remain explicitly unverified"
+    },
+    {
       "id": "web-public-event-detail-lifecycle-2026-07-29",
       "target": "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
       "testData": "Ended event_01/EVT01; current actor user_ms4tr4vi_jb4qje before and after registration cleanup; two registered matchmaking actors; 50 source-backed attendees; one unique and two same-name actor-owned contacts; one stable introduction request; two follow-up runs; before/after Agent conversations",
@@ -139694,6 +139738,15 @@
       "files": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
       "regression": "Focused Event Detail/matchmaking tests 18/18, exact production build, and authenticated browser refresh passed. After all audit registration rows were deleted, attendee names, candidates, follow-up, and replay disappeared immediately; the ended-event card contained the two terminal sentences and no 完成报名资料 link.",
       "status": "fixed and runtime-verified for the ended/unregistered event_01 boundary while upcoming/active registration source behavior remains covered by existing tests; guest/login, cancelled-registration, responsive, keyboard, and assistive cases remain unverified"
+    },
+    {
+      "id": "AUDIT-P2-048",
+      "severity": "P2",
+      "rootCause": "The shared event mapper treated Intl.DateTimeFormat(..., { day: \"2-digit\" }).format() as a locale-neutral day number. In zh-CN that call returns a localized token that already includes 日, while the map rail and selected-event card correctly add their own Chinese suffix. The boundary therefore produced 9月15日日 and 2月15日日 in every map date.",
+      "decision": "Keep MappedEvent.day as the numeric semantic token already assumed by all consumers. Extract the day value from formatToParts at the formatter boundary, retain the existing localized month and map composition, and cover both English and Chinese tokens with one focused regression test.",
+      "files": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+      "regression": "GitNexus reported LOW risk across four upstream symbols and no business process. Focused Events tests passed 8/8, the exact production build passed, and authenticated browser traversal changed 9月15日日 / 2月15日日 to 9月15日 / 2月15日 while preserving 13 map positions, EVT01 selection, event time, venue, participant count, and exact detail navigation.",
+      "status": "fixed and runtime-verified for the exercised Chinese desktop module/map catalogue; English token behavior is regression-tested, while mobile/responsive and other locale runtime presentation remain unverified"
     }
   ],
   "externalLimitations": []

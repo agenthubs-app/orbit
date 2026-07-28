@@ -72,7 +72,7 @@
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 2 | 77 | 4 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 2 | 95 | 3 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 2 | 51 | 9 | runtime-partially-verified-web-actor-scoped-relationship-dashboard |
-| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 29 | runtime-partially-verified-browser-base-state |
+| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 36 | 29 | runtime-partially-verified-web-public-event-catalogue-controls |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 25 | runtime-partially-verified-web-public-event-detail-lifecycle |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 30 | 5 | runtime-partially-verified-live-event-registration |
 | `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 8 | runtime-partially-verified-web-followups-today-compatibility-route |
