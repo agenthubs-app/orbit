@@ -11,13 +11,13 @@ const screenSource = readFileSync(
 
 test("party graph renders a dedicated connection map before grouped lists", () => {
   const graphStart = screenSource.indexOf("function PartyGraph");
-  const ticketStart = screenSource.indexOf("function TicketCard");
-  const graphSource = screenSource.slice(graphStart, ticketStart);
+  const boundaryStart = screenSource.indexOf("function CheckInBoundaryCard");
+  const graphSource = screenSource.slice(graphStart, boundaryStart);
   const connectionMapIndex = graphSource.indexOf("<PartyConnectionMap");
   const groupListIndex = graphSource.indexOf("party.graphGroups.map");
 
   assert.ok(graphStart > -1);
-  assert.ok(ticketStart > graphStart);
+  assert.ok(boundaryStart > graphStart);
   assert.ok(connectionMapIndex > -1);
   assert.ok(
     groupListIndex === -1 || connectionMapIndex < groupListIndex,
@@ -30,21 +30,17 @@ test("party graph renders a dedicated connection map before grouped lists", () =
   assert.match(screenSource, /styles\.connectionNode/u);
 });
 
-test("party check-in supports the web one-tap completion flow", () => {
+test("party check-in does not synthesize a code or local success state", () => {
   const checkInStart = screenSource.indexOf("function PartyCheckIn");
   const graphStart = screenSource.indexOf("function PartyGraph");
   const checkInSource = screenSource.slice(checkInStart, graphStart);
 
   assert.ok(checkInStart > -1);
   assert.ok(graphStart > checkInStart);
-  assert.match(screenSource, /useState/u);
-  assert.match(checkInSource, /checkedIn/u);
-  assert.match(checkInSource, /setCheckedIn\(true\)/u);
-  assert.match(checkInSource, /title="签到完毕"/u);
-  assert.match(checkInSource, /"一键签到"/u);
-  assert.match(checkInSource, /"已签到"/u);
-  assert.match(screenSource, /styles\.checkInCompleteCard/u);
-  assert.match(screenSource, /styles\.checkInCompleteIcon/u);
+  assert.match(checkInSource, /签到尚未连接/u);
+  assert.match(checkInSource, /party\.checkIn\.instruction/u);
+  assert.doesNotMatch(checkInSource, /useState|setCheckedIn|一键签到|签到完毕/u);
+  assert.doesNotMatch(screenSource, /4821|party\.checkIn\.accessCode/u);
 });
 
 test("party people surfaces render attendee avatar images when available", () => {

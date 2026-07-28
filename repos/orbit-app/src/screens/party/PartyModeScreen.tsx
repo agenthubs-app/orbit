@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
 import {
   Image,
   Pressable,
@@ -62,7 +61,7 @@ function assetUrl(baseUrl: string, path: string): string {
 
 function screenCopy(variant: PartyModeVariant): { eyebrow: string; title: string } {
   if (variant === "checkin") {
-    return { eyebrow: "现场签到", title: "签到码" };
+    return { eyebrow: "现场签到", title: "签到状态" };
   }
 
   if (variant === "graph") {
@@ -257,7 +256,7 @@ function PartyOverview({ party }: { party: PartyModeView }) {
         <View style={styles.actionGrid}>
           <ActionButton
             icon="ticket-outline"
-            label="签到码"
+            label="签到状态"
             onPress={() => router.push(partyHref("/party/checkin", party.eventId))}
             primary
           />
@@ -275,7 +274,7 @@ function PartyOverview({ party }: { party: PartyModeView }) {
           />
         </View>
       </DataCard>
-      <TicketCard party={party} />
+      <CheckInBoundaryCard party={party} />
       {party.priorityPeople.length === 0 ? (
         <EmptyState message="这场活动暂时没有可见名单。" title="还没有参会者" />
       ) : (
@@ -302,62 +301,17 @@ function PartyOverview({ party }: { party: PartyModeView }) {
 
 function PartyCheckIn({ party }: { party: PartyModeView }) {
   const router = useRouter();
-  const [checkedIn, setCheckedIn] = useState(false);
-
-  if (checkedIn) {
-    return (
-      <>
-        <DataCard detail="已签到" title="签到完毕">
-          <View style={styles.checkInCompleteCard}>
-            <View style={styles.checkInCompleteIcon}>
-              <Ionicons color={colors.live} name="checkmark-outline" size={30} />
-            </View>
-            <View style={styles.checkInCompleteText}>
-              <Text style={styles.checkInCompleteTitle}>{party.eventTitle}</Text>
-              <Text style={styles.checkInCompleteDetail}>
-                现场通行码 {party.checkIn.accessCode} 已确认，可以继续看名单和关系图。
-              </Text>
-            </View>
-          </View>
-          <View style={styles.actionGrid}>
-            <ActionButton
-              icon="git-network-outline"
-              label="看关系图"
-              onPress={() => router.push(partyHref("/party/graph", party.eventId))}
-              primary
-            />
-            <ActionButton
-              icon="arrow-back-outline"
-              label="回现场"
-              onPress={() => router.push(partyHref("/party", party.eventId))}
-            />
-          </View>
-        </DataCard>
-        <DataCard detail={party.eventDetail} title="现场流程">
-          <AgendaList agenda={party.agenda} />
-        </DataCard>
-      </>
-    );
-  }
 
   return (
     <>
-      <DataCard detail={party.checkIn.statusLabel} title={`${party.eventTitle}签到`}>
-        <View style={styles.ticket}>
-          <Text style={styles.ticketLabel}>现场通行码</Text>
-          <Text selectable style={styles.ticketCode}>
-            {party.checkIn.accessCode}
-          </Text>
+      <DataCard detail={party.checkIn.statusLabel} title={party.eventTitle}>
+        <View style={styles.checkInBoundary}>
+          <Ionicons color={colors.amber} name="information-circle-outline" size={28} />
+          <Text style={styles.checkInBoundaryTitle}>签到尚未连接</Text>
           <Text style={styles.ticketHint}>{party.checkIn.attendeeSummary}</Text>
         </View>
         <Text style={styles.bodyText}>{party.checkIn.instruction}</Text>
         <View style={styles.actionGrid}>
-          <ActionButton
-            icon="checkmark-circle-outline"
-            label="一键签到"
-            onPress={() => setCheckedIn(true)}
-            primary
-          />
           <ActionButton
             icon="people-outline"
             label="看名单"
@@ -366,9 +320,10 @@ function PartyCheckIn({ party }: { party: PartyModeView }) {
             }
           />
           <ActionButton
-            icon="arrow-back-outline"
-            label="回现场"
-            onPress={() => router.push(partyHref("/party", party.eventId))}
+            icon="git-network-outline"
+            label="看关系图"
+            onPress={() => router.push(partyHref("/party/graph", party.eventId))}
+            primary
           />
         </View>
       </DataCard>
@@ -440,7 +395,7 @@ function PartyConnectionMap({ party }: { party: PartyModeView }) {
         <View style={styles.connectionMapCenter}>
           <Ionicons color={colors.onAccent} name="person-outline" size={18} />
           <Text style={styles.connectionMapCenterText}>我</Text>
-          <Text style={styles.connectionMapCenterMeta}>{party.checkIn.accessCode}</Text>
+          <Text style={styles.connectionMapCenterMeta}>现场关系</Text>
         </View>
         <View style={styles.connectionMapNodes}>
           {party.priorityPeople.slice(0, 5).map((person, index) => (
@@ -479,13 +434,11 @@ function PartyConnectionMap({ party }: { party: PartyModeView }) {
   );
 }
 
-function TicketCard({ party }: { party: PartyModeView }) {
+function CheckInBoundaryCard({ party }: { party: PartyModeView }) {
   return (
-    <DataCard detail={party.checkIn.statusLabel} title="现场通行">
+    <DataCard detail={party.checkIn.statusLabel} title="现场签到">
       <View style={styles.ticketCompact}>
-        <Text selectable style={styles.ticketCompactCode}>
-          {party.accessCode}
-        </Text>
+        <Text style={styles.checkInBoundaryTitle}>未生成签到码</Text>
         <Text style={styles.mutedText}>{party.checkIn.instruction}</Text>
       </View>
     </DataCard>
@@ -683,35 +636,16 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
-  checkInCompleteCard: {
-    alignItems: "center",
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.live,
+  checkInBoundary: {
+    alignItems: "flex-start",
+    backgroundColor: colors.amberSoft,
+    borderColor: colors.amber,
     borderRadius: radius.lg,
     borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
+    gap: spacing.sm,
     padding: spacing.md
   },
-  checkInCompleteDetail: {
-    color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  checkInCompleteIcon: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: radius.pill,
-    height: 54,
-    justifyContent: "center",
-    width: 54
-  },
-  checkInCompleteText: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  checkInCompleteTitle: {
+  checkInBoundaryTitle: {
     color: colors.ink,
     fontSize: typography.body,
     fontWeight: "800",
@@ -988,20 +922,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5
   },
-  ticket: {
-    backgroundColor: colors.ink,
-    borderRadius: radius.lg,
-    gap: spacing.sm,
-    padding: spacing.lg
-  },
-  ticketCode: {
-    color: colors.onAccent,
-    fontFamily: "Courier",
-    fontSize: 30,
-    fontWeight: "800",
-    letterSpacing: 0,
-    lineHeight: 38
-  },
   ticketCompact: {
     backgroundColor: colors.bgSunken,
     borderColor: colors.border,
@@ -1010,24 +930,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md
   },
-  ticketCompactCode: {
-    color: colors.ink,
-    fontFamily: "Courier",
-    fontSize: typography.title,
-    fontWeight: "800",
-    letterSpacing: 0,
-    lineHeight: 26
-  },
   ticketHint: {
-    color: colors.accentSoft,
+    color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20
-  },
-  ticketLabel: {
-    color: colors.accentSoft,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    letterSpacing: 0,
-    lineHeight: 18
   }
 });

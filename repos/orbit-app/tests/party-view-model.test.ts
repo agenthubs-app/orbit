@@ -72,8 +72,8 @@ test("partyModeToView builds a Chinese on-site party view from event context", (
   });
 
   assert.equal(view.eventTitle, "关西跨境商务交流会");
-  assert.equal(view.accessCode, "EVEN-4821");
-  assert.equal(view.checkIn.statusLabel, "待现场确认");
+  assert.equal(view.checkIn.statusLabel, "签到尚未连接");
+  assert.doesNotMatch(view.checkIn.instruction, /通行码/u);
   assert.equal(view.metrics[0]?.label, "参会者");
   assert.equal(view.metrics[0]?.value, "2");
   assert.equal(view.metrics[1]?.label, "已签到");
@@ -111,10 +111,9 @@ test("partyModeToView keeps empty party state useful", () => {
 
   assert.equal(view.eventId, "live-event-42");
   assert.equal(view.eventTitle, "活动现场");
-  assert.equal(view.accessCode, "LIVE-4821");
   assert.deepEqual(view.priorityPeople, []);
   assert.deepEqual(view.graphGroups, []);
-  assert.equal(view.nextAction, "先打开签到码，再看这场活动最值得优先认识的人。");
+  assert.equal(view.nextAction, "先确认现场签到方式，再看这场活动最值得优先认识的人。");
 });
 
 test("partyModeToView does not duplicate relationship context as the reason", () => {

@@ -18,7 +18,6 @@ export interface PartyAgendaItemView {
 }
 
 export interface PartyCheckInView {
-  accessCode: string;
   attendeeSummary: string;
   instruction: string;
   statusLabel: string;
@@ -55,7 +54,6 @@ export interface PartyMatchView {
 }
 
 export interface PartyModeView {
-  accessCode: string;
   agenda: PartyAgendaItemView[];
   checkIn: PartyCheckInView;
   eventDetail: string;
@@ -73,16 +71,6 @@ export interface PartyModeInput {
   eventId: string;
   eventPayload: unknown;
   matchesPayload: unknown;
-}
-
-function compactId(value: string): string {
-  return value.replace(/[^a-z0-9]+/giu, "").toUpperCase();
-}
-
-export function partyAccessCode(eventId: string): string {
-  const compact = compactId(eventId) || "ORBT";
-
-  return `${compact.slice(0, 4).padEnd(4, "X")}-4821`;
 }
 
 function knownFallbackTitle(value: string): boolean {
@@ -232,7 +220,7 @@ function agenda(input: {
 
   return [
     {
-      detail: input.eventDetail || "到场后先确认这场活动和通行码。",
+      detail: input.eventDetail || "到场后向工作人员确认签到方式。",
       time: "到场",
       title: "到场签到"
     },
@@ -261,21 +249,18 @@ function matchViews(matches: EventMatchCardView[]): PartyMatchView[] {
   }));
 }
 
-function checkInView(input: {
-  accessCode: string;
-  attendees: EventAttendeeCardView[];
-}): PartyCheckInView {
-  const checkedInCount = input.attendees.filter(attendeeCheckedIn).length;
-  const attendeeCount = input.attendees.length;
+function checkInView(attendees: EventAttendeeCardView[]): PartyCheckInView {
+  const checkedInCount = attendees.filter(attendeeCheckedIn).length;
+  const attendeeCount = attendees.length;
 
   return {
-    accessCode: input.accessCode,
     attendeeSummary:
       attendeeCount > 0
         ? `${checkedInCount} 人已签到，${attendeeCount} 人在名单里。`
-        : "名单还没准备好，先出示通行码确认活动。",
-    instruction: "到场后出示通行码，工作人员确认后再继续看现场名单。",
-    statusLabel: "待现场确认"
+        : "当前没有可回读的签到名单。",
+    instruction:
+      "当前服务没有提供签到码或签到写入接口；请在现场向工作人员确认，Orbit 不会在本地生成签到结果。",
+    statusLabel: "签到尚未连接"
   };
 }
 
@@ -284,7 +269,6 @@ export function partyModeToView(input: PartyModeInput): PartyModeView {
   const roster = eventAttendeeRosterToView(input.attendeesPayload);
   const matchView = eventMatchesToView(input.matchesPayload);
   const eventId = event.id === "event" ? input.eventId : event.id;
-  const accessCode = partyAccessCode(eventId);
   const eventTitle = displayTitle(event.title, roster.eventTitle);
   const eventDetail = displayDetail(
     [event.startsAt, event.location].filter(Boolean).join(" · "),
@@ -293,16 +277,12 @@ export function partyModeToView(input: PartyModeInput): PartyModeView {
   const people = priorityPeople(roster.attendees, matchView.matches);
 
   return {
-    accessCode,
     agenda: agenda({
       eventDetail,
       eventTitle,
       priorityPeople: people
     }),
-    checkIn: checkInView({
-      accessCode,
-      attendees: roster.attendees
-    }),
+    checkIn: checkInView(roster.attendees),
     eventDetail,
     eventId,
     eventTitle,
@@ -312,7 +292,7 @@ export function partyModeToView(input: PartyModeInput): PartyModeView {
       attendees: roster.attendees,
       matches: matchView.matches
     }),
-    nextAction: "先打开签到码，再看这场活动最值得优先认识的人。",
+    nextAction: "先确认现场签到方式，再看这场活动最值得优先认识的人。",
     priorityPeople: people
   };
 }
