@@ -48,6 +48,7 @@ export interface OrbitAgentChatSessionProvider {
 }
 
 export interface StorageOrbitAgentChatSessionProviderOptions {
+  actorId: string;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -55,22 +56,19 @@ export interface StorageOrbitAgentChatSessionProviderOptions {
 }
 
 export interface ConfiguredStorageOrbitAgentChatSessionProviderOptions {
+  actorId: string;
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
-}
-
-interface CachedConfiguredStorageOrbitAgentChatSessionProvider {
-  key: string;
-  provider: OrbitAgentChatSessionProvider;
 }
 
 const MAX_SESSION_MESSAGES = 100;
 const MAX_MESSAGE_TEXT_LENGTH = 12000;
 const MAX_SESSION_TITLE_LENGTH = 120;
 const DEFAULT_SESSION_LIST_LIMIT = 12;
-let cachedDefaultProvider:
-  | CachedConfiguredStorageOrbitAgentChatSessionProvider
-  | null = null;
+const cachedDefaultProviders = new Map<
+  string,
+  OrbitAgentChatSessionProvider
+>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -90,6 +88,18 @@ function cloneJson<TValue>(value: TValue): TValue {
 
 function safeIdPart(value: string): string {
   return value.replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+export function orbitAgentChatSessionActorWorkspaceId(
+  workspaceId: string,
+  actorId: string,
+): string {
+  const normalizedActorId = actorId.trim();
+  if (!normalizedActorId) {
+    throw new Error("Orbit Agent chat sessions require an authenticated actor");
+  }
+
+  return `${workspaceId}:actor:${encodeURIComponent(normalizedActorId)}`;
 }
 
 function validTimestamp(value: string): string {
@@ -347,13 +357,21 @@ async function sessionFromRecord(
 }
 
 export function createStorageOrbitAgentChatSessionProvider({
+  actorId,
   source,
   sourceLabel = "Orbit Agent chat session live storage",
   store,
   workspaceId,
 }: StorageOrbitAgentChatSessionProviderOptions): OrbitAgentChatSessionProvider {
+  const actorWorkspaceId = orbitAgentChatSessionActorWorkspaceId(
+    workspaceId,
+    actorId,
+  );
+
   return {
-    source: source ?? `live-record-store:orbit-agent-chat-session:${workspaceId}`,
+    source:
+      source ??
+      `live-record-store:orbit-agent-chat-session:${actorWorkspaceId}`,
     sourceLabel,
 
     async deleteSession(sessionId) {
@@ -362,14 +380,14 @@ export function createStorageOrbitAgentChatSessionProvider({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         deletedAt,
         recordId: sessionId,
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
       const messages = await store.listRecords({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
         includeDeleted: true,
         targetId: sessionId,
         targetType: "conversation",
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
 
       await Promise.all(
@@ -381,7 +399,7 @@ export function createStorageOrbitAgentChatSessionProvider({
                 ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
               deletedAt,
               recordId: message.recordId,
-              workspaceId,
+              workspaceId: actorWorkspaceId,
             }),
           ),
       );
@@ -393,10 +411,12 @@ export function createStorageOrbitAgentChatSessionProvider({
       const record = await store.getRecord({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         recordId: sessionId,
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
 
-      return record ? sessionFromRecord(store, workspaceId, record) : null;
+      return record
+        ? sessionFromRecord(store, actorWorkspaceId, record)
+        : null;
     },
 
     async listSessions(options = {}) {
@@ -406,7 +426,7 @@ export function createStorageOrbitAgentChatSessionProvider({
       );
       const records = await store.listRecords({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
       const sessions = await Promise.all(
         [...records]
@@ -417,7 +437,9 @@ export function createStorageOrbitAgentChatSessionProvider({
               right.createdAt.localeCompare(left.createdAt),
           )
           .slice(0, limit)
-          .map((record) => sessionFromRecord(store, workspaceId, record)),
+          .map((record) =>
+            sessionFromRecord(store, actorWorkspaceId, record),
+          ),
       );
 
       return sessions.flatMap((session) => (session ? [session] : []));
@@ -434,7 +456,7 @@ export function createStorageOrbitAgentChatSessionProvider({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         includeDeleted: true,
         recordId: session.id,
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
       const createdAt = existingSession?.createdAt ?? session.createdAt;
       const nextMessageRecordIds = new Set<string>();
@@ -444,7 +466,7 @@ export function createStorageOrbitAgentChatSessionProvider({
           createdAt,
           session,
           sourceLabel,
-          workspaceId,
+          workspaceId: actorWorkspaceId,
         }),
       );
 
@@ -460,7 +482,7 @@ export function createStorageOrbitAgentChatSessionProvider({
               message,
               session,
               sourceLabel,
-              workspaceId,
+              workspaceId: actorWorkspaceId,
             }),
           );
         }),
@@ -471,7 +493,7 @@ export function createStorageOrbitAgentChatSessionProvider({
         includeDeleted: true,
         targetId: session.id,
         targetType: "conversation",
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
 
       await Promise.all(
@@ -487,7 +509,7 @@ export function createStorageOrbitAgentChatSessionProvider({
                 ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
               deletedAt: session.updatedAt,
               recordId: message.recordId,
-              workspaceId,
+              workspaceId: actorWorkspaceId,
             }),
           ),
       );
@@ -495,10 +517,10 @@ export function createStorageOrbitAgentChatSessionProvider({
       const restoredRecord = await store.getRecord({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         recordId: session.id,
-        workspaceId,
+        workspaceId: actorWorkspaceId,
       });
       const restored = restoredRecord
-        ? await sessionFromRecord(store, workspaceId, restoredRecord)
+        ? await sessionFromRecord(store, actorWorkspaceId, restoredRecord)
         : null;
 
       if (!restored) {
@@ -511,9 +533,10 @@ export function createStorageOrbitAgentChatSessionProvider({
 }
 
 export function createConfiguredStorageOrbitAgentChatSessionProvider({
+  actorId,
   env,
   sourceLabel = "Orbit Agent chat session Postgres live storage",
-}: ConfiguredStorageOrbitAgentChatSessionProviderOptions = {}): OrbitAgentChatSessionProvider | null {
+}: ConfiguredStorageOrbitAgentChatSessionProviderOptions): OrbitAgentChatSessionProvider | null {
   const config = resolveLiveDatabaseConnectionConfig(env);
 
   if (!config) {
@@ -523,11 +546,13 @@ export function createConfiguredStorageOrbitAgentChatSessionProvider({
   const key = [
     config.connectionString,
     config.workspaceId,
+    actorId.trim(),
     sourceLabel,
   ].join("\u0000");
 
-  if (cachedDefaultProvider?.key === key) {
-    return cachedDefaultProvider.provider;
+  const cachedProvider = cachedDefaultProviders.get(key);
+  if (cachedProvider) {
+    return cachedProvider;
   }
 
   const configuredStore = createConfiguredPostgresLiveRecordStore({
@@ -539,13 +564,14 @@ export function createConfiguredStorageOrbitAgentChatSessionProvider({
   }
 
   const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId,
     source: `postgres-live-record-store:orbit-agent-chat-session:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
   });
 
-  cachedDefaultProvider = { key, provider };
+  cachedDefaultProviders.set(key, provider);
 
   return provider;
 }

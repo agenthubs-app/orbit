@@ -4,13 +4,16 @@ import test from "node:test";
 import {
   ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS,
   createStorageOrbitAgentChatSessionProvider,
+  orbitAgentChatSessionActorWorkspaceId,
 } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 test("Orbit Agent chat session provider persists sessions and messages in live records", async () => {
   const workspaceId = "workspace:orbit-agent-chat-session-test";
+  const actorId = "account:session-owner";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId,
     store,
     workspaceId,
   });
@@ -44,13 +47,13 @@ test("Orbit Agent chat session provider persists sessions and messages in live r
   const restored = await provider.getSession(session.id);
   const sessionRecords = store.listRecords({
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-    workspaceId,
+    workspaceId: orbitAgentChatSessionActorWorkspaceId(workspaceId, actorId),
   });
   const messageRecords = store.listRecords({
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
     targetId: session.id,
     targetType: "conversation",
-    workspaceId,
+    workspaceId: orbitAgentChatSessionActorWorkspaceId(workspaceId, actorId),
   });
 
   assert.equal(listed.length, 1);
@@ -82,6 +85,7 @@ test("Orbit Agent chat session provider lists sessions by initial creation time"
   const workspaceId = "workspace:orbit-agent-chat-session-order-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:session-order-owner",
     store,
     workspaceId,
   });
@@ -131,4 +135,50 @@ test("Orbit Agent chat session provider lists sessions by initial creation time"
     listed.map((session) => session.id),
     ["pinned-oldest-session", "newer-session", "older-session"],
   );
+});
+
+test("Orbit Agent chat session provider isolates the same session id by actor", async () => {
+  const workspaceId = "workspace:orbit-agent-chat-session-isolation-test";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const alice = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:alice",
+    store,
+    workspaceId,
+  });
+  const bob = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:bob",
+    store,
+    workspaceId,
+  });
+
+  await alice.upsertSession({
+    createdAt: "2026-07-29T08:00:00.000Z",
+    id: "shared-client-session-id",
+    messages: [{ role: "user", text: "Alice private prompt" }],
+    title: "Alice private prompt",
+    updatedAt: "2026-07-29T08:00:00.000Z",
+  });
+  await bob.upsertSession({
+    createdAt: "2026-07-29T08:01:00.000Z",
+    id: "shared-client-session-id",
+    messages: [{ role: "user", text: "Bob private prompt" }],
+    title: "Bob private prompt",
+    updatedAt: "2026-07-29T08:01:00.000Z",
+  });
+
+  assert.equal((await alice.getSession("shared-client-session-id"))?.title, "Alice private prompt");
+  assert.equal((await bob.getSession("shared-client-session-id"))?.title, "Bob private prompt");
+  assert.deepEqual(
+    (await alice.listSessions()).map((session) => session.title),
+    ["Alice private prompt"],
+  );
+  assert.deepEqual(
+    (await bob.listSessions()).map((session) => session.title),
+    ["Bob private prompt"],
+  );
+
+  await bob.deleteSession("shared-client-session-id");
+
+  assert.equal(await bob.getSession("shared-client-session-id"), null);
+  assert.equal((await alice.getSession("shared-client-session-id"))?.title, "Alice private prompt");
 });

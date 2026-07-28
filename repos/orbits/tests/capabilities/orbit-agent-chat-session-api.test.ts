@@ -45,10 +45,17 @@ function withSessionApiEnv<TValue>(
 
 test("Orbit Agent chat session API is safe when live storage is unconfigured", async () => {
   await withSessionApiEnv("live", async () => {
-    const route = await importProjectModule<{
-      GET: () => Promise<Response>;
-      POST: (request: Request) => Promise<Response>;
-    }>("app/api/ai/conversations/sessions/route.ts");
+    const module = await importProjectModule<{
+      createOrbitAgentChatSessionsHandlers: (dependencies: {
+        resolveActor: () => Promise<{ id: string }>;
+      }) => {
+        GET: () => Promise<Response>;
+        POST: (request: Request) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/handler.ts");
+    const route = module.createOrbitAgentChatSessionsHandlers({
+      resolveActor: async () => ({ id: "account:live-unconfigured" }),
+    });
 
     const listResponse = await route.GET();
     const listEnvelope = await listResponse.json();
@@ -81,12 +88,19 @@ test("Orbit Agent chat session API is safe when live storage is unconfigured", a
     assert.equal(saveEnvelope.data.storage.configured, false);
     assert.equal(saveEnvelope.data.storage.persisted, false);
 
-    const byIdRoute = await importProjectModule<{
-      DELETE: (
-        request: Request,
-        context: { params: Promise<{ id: string }> },
-      ) => Promise<Response>;
-    }>("app/api/ai/conversations/sessions/[id]/route.ts");
+    const byIdModule = await importProjectModule<{
+      createOrbitAgentChatSessionHandlers: (dependencies: {
+        resolveActor: () => Promise<{ id: string }>;
+      }) => {
+        DELETE: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/[id]/handler.ts");
+    const byIdRoute = byIdModule.createOrbitAgentChatSessionHandlers({
+      resolveActor: async () => ({ id: "account:live-unconfigured" }),
+    });
     const deleteResponse = await byIdRoute.DELETE(
       new Request(
         "https://orbit.local/api/ai/conversations/sessions/agent-session-demo",
@@ -105,10 +119,17 @@ test("Orbit Agent chat session API is safe when live storage is unconfigured", a
 
 test("Orbit Agent chat session API restores mock sessions across requests", async () => {
   await withSessionApiEnv("mock", async () => {
-    const route = await importProjectModule<{
-      GET: () => Promise<Response>;
-      POST: (request: Request) => Promise<Response>;
-    }>("app/api/ai/conversations/sessions/route.ts");
+    const module = await importProjectModule<{
+      createOrbitAgentChatSessionsHandlers: (dependencies: {
+        resolveActor: () => Promise<{ id: string }>;
+      }) => {
+        GET: () => Promise<Response>;
+        POST: (request: Request) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/handler.ts");
+    const route = module.createOrbitAgentChatSessionsHandlers({
+      resolveActor: async () => ({ id: "account:mock-session-owner" }),
+    });
     const sessionId = `agent-session-mock-${Date.now()}`;
     const session = {
       createdAt: "2026-07-26T03:00:00.000Z",
@@ -157,16 +178,23 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
       "action:followup-task:session-test",
     ]);
 
-    const byIdRoute = await importProjectModule<{
-      GET: (
-        request: Request,
-        context: { params: Promise<{ id: string }> },
-      ) => Promise<Response>;
-      DELETE: (
-        request: Request,
-        context: { params: Promise<{ id: string }> },
-      ) => Promise<Response>;
-    }>("app/api/ai/conversations/sessions/[id]/route.ts");
+    const byIdModule = await importProjectModule<{
+      createOrbitAgentChatSessionHandlers: (dependencies: {
+        resolveActor: () => Promise<{ id: string }>;
+      }) => {
+        GET: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+        DELETE: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/[id]/handler.ts");
+    const byIdRoute = byIdModule.createOrbitAgentChatSessionHandlers({
+      resolveActor: async () => ({ id: "account:mock-session-owner" }),
+    });
     const routeContext = { params: Promise.resolve({ id: sessionId }) };
     const getResponse = await byIdRoute.GET(
       new Request(
@@ -195,5 +223,75 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
       { params: Promise.resolve({ id: sessionId }) },
     );
     assert.equal(deletedResponse.status, 404);
+  });
+});
+
+test("Orbit Agent chat session APIs reject unauthenticated access before storage", async () => {
+  await withSessionApiEnv("live", async () => {
+    let providerCalls = 0;
+    const collectionModule = await importProjectModule<{
+      createOrbitAgentChatSessionsHandlers: (dependencies: {
+        providerForActor: () => null;
+        resolveActor: () => Promise<null>;
+      }) => {
+        GET: () => Promise<Response>;
+        POST: (request: Request) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/handler.ts");
+    const itemModule = await importProjectModule<{
+      createOrbitAgentChatSessionHandlers: (dependencies: {
+        providerForActor: () => null;
+        resolveActor: () => Promise<null>;
+      }) => {
+        DELETE: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+        GET: (
+          request: Request,
+          context: { params: Promise<{ id: string }> },
+        ) => Promise<Response>;
+      };
+    }>("app/api/ai/conversations/sessions/[id]/handler.ts");
+    const dependencies = {
+      providerForActor: () => {
+        providerCalls += 1;
+        return null;
+      },
+      resolveActor: async () => null,
+    };
+    const collection = collectionModule.createOrbitAgentChatSessionsHandlers(dependencies);
+    const item = itemModule.createOrbitAgentChatSessionHandlers(dependencies);
+    const itemContext = { params: Promise.resolve({ id: "private-session" }) };
+
+    const responses = await Promise.all([
+      collection.GET(),
+      collection.POST(
+        new Request("https://orbit.local/api/ai/conversations/sessions", {
+          body: JSON.stringify({ session: { id: "private-session" } }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        }),
+      ),
+      item.GET(
+        new Request(
+          "https://orbit.local/api/ai/conversations/sessions/private-session",
+        ),
+        itemContext,
+      ),
+      item.DELETE(
+        new Request(
+          "https://orbit.local/api/ai/conversations/sessions/private-session",
+          { method: "DELETE" },
+        ),
+        { params: Promise.resolve({ id: "private-session" }) },
+      ),
+    ]);
+
+    assert.deepEqual(
+      responses.map((response) => response.status),
+      [401, 401, 401, 401],
+    );
+    assert.equal(providerCalls, 0);
   });
 });
