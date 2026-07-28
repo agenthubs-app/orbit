@@ -60,7 +60,6 @@ test("event matching derives actors from registrations and completes consent plu
     workspaceId: "workspace:matchmaking-context-test",
   });
   const context = createEventMatchmakingContextService({
-    id: () => "request-1",
     loadEvent: async () => event,
     matchmaking,
     registrationService,
@@ -98,6 +97,23 @@ test("event matching derives actors from registrations and completes consent plu
   assert.match(request.organizerActorId, /^event-organizer:/);
   assert.equal(request.requesterActorId, requester.userId);
   assert.equal(request.targetActorId, target.userId);
+  const repeatedRequest = await context.createRequest({
+    eventId: event.id,
+    actorId: requester.userId,
+    targetParticipantId: target.participantProfileId,
+    now: "2026-07-26T01:02:30.000Z",
+  });
+  assert.equal(repeatedRequest.requestId, request.requestId);
+  assert.equal(repeatedRequest.createdAt, request.createdAt);
+  assert.equal(
+    (
+      await matchmaking.listRequests({
+        eventId: event.id,
+        actorId: requester.userId,
+      })
+    ).length,
+    1,
+  );
 
   const incoming = await context.view({
     eventId: event.id,
@@ -105,6 +121,23 @@ test("event matching derives actors from registrations and completes consent plu
   });
   assert.equal(incoming.requests[0]?.direction, "incoming");
   assert.equal(incoming.requests[0]?.contactDetailsDisclosed, false);
+  const reverseRequest = await context.createRequest({
+    eventId: event.id,
+    actorId: target.userId,
+    targetParticipantId: requester.participantProfileId,
+    now: "2026-07-26T01:02:45.000Z",
+  });
+  assert.equal(reverseRequest.requestId, request.requestId);
+  assert.equal(reverseRequest.requesterActorId, requester.userId);
+  assert.equal(
+    (
+      await matchmaking.listRequests({
+        eventId: event.id,
+        actorId: target.userId,
+      })
+    ).length,
+    1,
+  );
 
   await matchmaking.respondToIntroduction({
     requestId: request.requestId,
@@ -118,12 +151,39 @@ test("event matching derives actors from registrations and completes consent plu
     slots: ["2026-07-27T03:00:00.000Z"],
     now: "2026-07-26T01:04:00.000Z",
   });
-  await matchmaking.selectSlot({
+  const selected = await matchmaking.selectSlot({
     requestId: request.requestId,
     actorId: target.userId,
     slot: "2026-07-27T03:00:00.000Z",
     now: "2026-07-26T01:05:00.000Z",
   });
+  const repeatedSelection = await matchmaking.selectSlot({
+    requestId: request.requestId,
+    actorId: target.userId,
+    slot: "2026-07-27T03:00:00.000Z",
+    now: "2026-07-26T01:06:00.000Z",
+  });
+  assert.equal(repeatedSelection.updatedAt, selected.updatedAt);
+  await assert.rejects(
+    () =>
+      matchmaking.selectSlot({
+        requestId: request.requestId,
+        actorId: target.userId,
+        slot: "2026-07-27T04:00:00.000Z",
+        now: "2026-07-26T01:07:00.000Z",
+      }),
+    /explicit rescheduling flow/,
+  );
+  await assert.rejects(
+    () =>
+      matchmaking.proposeSlots({
+        requestId: request.requestId,
+        actorId: requester.userId,
+        slots: ["2026-07-27T04:00:00.000Z"],
+        now: "2026-07-26T01:08:00.000Z",
+      }),
+    /accepted or actively scheduling/,
+  );
 
   const completed = await context.view({
     eventId: event.id,

@@ -143,6 +143,16 @@ function overlap(left: readonly string[], right: readonly string[]): string[] {
   return left.filter((item) => rightValues.has(item.toLowerCase()));
 }
 
+function sameValues(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
 function recordFor(
   workspaceId: string,
   request: MatchmakingIntroductionRequest,
@@ -330,9 +340,21 @@ export function createEventMatchmakingService(input: {
       if (!request.targetConsentedAt) {
         throw new Error("Both participants must consent before scheduling.");
       }
+      const proposedSlots = proposal.slots.slice(0, 5);
+      if (
+        request.status === "scheduling" &&
+        sameValues(request.proposedSlots, proposedSlots)
+      ) {
+        return request;
+      }
+      if (request.status !== "accepted" && request.status !== "scheduling") {
+        throw new Error(
+          "Only an accepted or actively scheduling introduction can propose times.",
+        );
+      }
       return save({
         ...request,
-        proposedSlots: proposal.slots.slice(0, 5),
+        proposedSlots,
         status: "scheduling",
         updatedAt: proposal.now,
       });
@@ -340,7 +362,14 @@ export function createEventMatchmakingService(input: {
     async selectSlot(selection) {
       const request = await requireRequest(selection.requestId);
       requireActor(request, selection.actorId, [request.targetActorId]);
+      if (request.status === "scheduled") {
+        if (request.selectedSlot === selection.slot) return request;
+        throw new Error(
+          "This introduction is already scheduled; use an explicit rescheduling flow to change it.",
+        );
+      }
       if (
+        request.status !== "scheduling" ||
         !request.targetConsentedAt ||
         !request.proposedSlots.includes(selection.slot)
       ) {

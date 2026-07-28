@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import type { EventRegistration } from "../registration/contract";
 import { loadEventForRegistration } from "../registration/event-loader";
@@ -97,6 +97,26 @@ function organizerPrincipal(input: {
   return `event-organizer:${subject}`;
 }
 
+function introductionRequestId(input: {
+  eventId: string;
+  requesterParticipantId: string;
+  targetParticipantId: string;
+}): string {
+  const participantPair = [
+    input.requesterParticipantId,
+    input.targetParticipantId,
+  ].sort();
+  const subject = createHash("sha256")
+    .update(
+      [
+        input.eventId,
+        ...participantPair,
+      ].join("\u0000"),
+    )
+    .digest("base64url");
+  return `intro-request:${subject}`;
+}
+
 function publicRequest(
   request: Awaited<ReturnType<EventMatchmakingService["listRequests"]>>[number],
   actorId: string,
@@ -127,11 +147,9 @@ export function createEventMatchmakingContextService(input: {
   matchmaking?: EventMatchmakingService;
   registrationService?: Pick<EventRegistrationService, "list">;
   loadEvent?: typeof loadEventForRegistration;
-  id?: () => string;
 } = {}) {
   const matchmaking =
     input.matchmaking ?? createConfiguredEventMatchmakingService();
-  const id = input.id ?? randomUUID;
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
   const loadEvent = input.loadEvent ?? loadEventForRegistration;
@@ -245,8 +263,27 @@ export function createEventMatchmakingContextService(input: {
       }
       const target = context.byParticipantId.get(input.targetParticipantId);
       if (!target) throw new Error("Matchmaking participant not found.");
+      const existingRequest = (
+        await matchmaking.listRequests({
+          eventId: context.event.id,
+          actorId: input.actorId,
+        })
+      ).find(
+        (request) =>
+          [request.requesterParticipantId, request.targetParticipantId].includes(
+            context.requester!.participantId,
+          ) &&
+          [request.requesterParticipantId, request.targetParticipantId].includes(
+            target.participantId,
+          ),
+      );
+      if (existingRequest) return existingRequest;
       return matchmaking.createIntroductionRequest({
-        requestId: `intro-request:${id()}`,
+        requestId: introductionRequestId({
+          eventId: context.event.id,
+          requesterParticipantId: context.requester.participantId,
+          targetParticipantId: target.participantId,
+        }),
         eventId: context.event.id,
         actorId: input.actorId,
         requesterParticipantId: context.requester.participantId,
