@@ -58,7 +58,7 @@ function ContactDetailRouteStateView({
         emptyState={routeModel.description}
         evidence={Array.from(routeModel.evidence)}
         eyebrow="Contact detail"
-        guardrail="No contact detail, evidence, relationship value, AI, message, notification, or external provider work is executed from this failed route state."
+        guardrail="No contact detail, evidence, relationship value, AI, message, notification, or external provider work is executed from this route state."
         nextStep={routeModel.nextStep}
         recoveryActions={routeModel.recoveryActions.map((action, index) => ({
           href: action.href,

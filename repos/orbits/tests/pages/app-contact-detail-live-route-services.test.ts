@@ -473,10 +473,12 @@ test("app contact detail live route returns a controlled boundary when the focus
   });
 
   assert.equal(graphLoads, 1);
-  assert.notEqual(routeModel.routeState, "success");
+  assert.equal(routeModel.routeState, "empty");
 
   if (routeModel.routeState !== "success") {
-    assert.ok(routeModel.evidence.length > 0);
+    assert.deepEqual(routeModel.evidence, [
+      "evidence:contact_detail_not_found",
+    ]);
   }
 });
 
@@ -490,6 +492,7 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /redirect\(/);
   assert.doesNotMatch(pageSource, /searchParams|readSearchParam/);
   assert.doesNotMatch(pageSource, /action:|mode:|scenario:/);
+  assert.doesNotMatch(pageSource, /this failed route state/);
 });
 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {

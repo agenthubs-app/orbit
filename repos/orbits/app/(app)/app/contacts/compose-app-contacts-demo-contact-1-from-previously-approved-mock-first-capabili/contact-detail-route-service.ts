@@ -515,7 +515,9 @@ async function loadComposedContactDetailRoute(input: {
 
   if (contactResult.success === false) {
     return createBoundaryModel(
-      "failure",
+      contactResult.error.code === "CONTACT_DETAIL_NOT_FOUND"
+        ? "empty"
+        : "failure",
       input.contactId,
       contactResult.error.evidenceIds,
     );
