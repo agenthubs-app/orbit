@@ -569,6 +569,37 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
     },
   ],
 ]);
+const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
+  [
+    "web:/app/home",
+    {
+      entryBehavior: "authenticated-browser-actor-scoped-home-entry-verified",
+      runtimeEvidence: [
+        "the home route rendered the authenticated actor's one private event",
+        "the summary labelled the record as one event rather than inventing a registration",
+        "the event card opened its encoded actor-owned dynamic detail",
+      ],
+      verificationCase: "web-home-private-event-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-actor-scoped-home-event",
+    },
+  ],
+  [
+    "web:/app/home/events",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-home-events-entry-verified",
+      runtimeEvidence: [
+        "the route rendered one upcoming actor-owned private event and zero historical events",
+        "selecting 历史 0 rendered a truthful empty result before 全部 restored the same event",
+        "the restored event opened the exact encoded dynamic detail",
+      ],
+      verificationCase: "web-home-private-event-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-home-events-filter-and-detail",
+    },
+  ],
+]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
     "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
@@ -984,6 +1015,44 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Navigation only; no email, verification code, password, or account record was collected or written.",
       verificationCase: "expo-account-entry-boundaries-2026-07-29",
+    },
+  ],
+]);
+const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
+    {
+      actualResult:
+        "Selecting 功能审计私有活动 20260729 opened /app/events/event%3Alive-record%3A20260729 and preserved the actor-owned event identity.",
+      testData:
+        "Authenticated browser actor with one upcoming private event whose ID contains colon separators",
+      idempotency:
+        "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
+      verificationCase: "web-home-private-event-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:238",
+    {
+      actualResult:
+        "Selecting 历史 0 changed the result to an explicit empty state; selecting 全部 restored the same one-event list.",
+      testData:
+        "Authenticated browser actor with one upcoming private event and zero historical events",
+      idempotency:
+        "Both filter changes were local presentation only and wrote no event, registration, attendee, recommendation, or profile record.",
+      verificationCase: "web-home-private-event-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
+    {
+      actualResult:
+        "After restoring 全部, selecting the event opened its exact encoded actor-owned dynamic detail.",
+      testData:
+        "The one upcoming private event in the authenticated Home Events list",
+      idempotency:
+        "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
+      verificationCase: "web-home-private-event-boundaries-2026-07-29",
     },
   ],
 ]);
@@ -1644,6 +1713,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for canonical entry convergence, one supported and one unknown legacy path, home-event filtering, and event-detail navigation; native custom-scheme legacy delivery and additional populated filter combinations remain pending",
   },
+  {
+    id: "web-home-private-event-boundaries-2026-07-29",
+    target:
+      "Authenticated Web Home and Home Events → actor-owned private event → encoded dynamic detail",
+    testData:
+      "One upcoming actor-owned private event with ID event:live-record:20260729, one cancelled registration, no organizer source, no attendee roster, and no matchmaking record",
+    expected:
+      "Home must distinguish events from registrations; dynamic IDs must survive route encoding; missing organizer, roster, and matchmaking sources must remain explicit instead of becoming product claims or raw service errors",
+    actual:
+      "Runtime first reproduced a fake registration count, a not-found dynamic detail, a synthetic Orbit organizer link, one recommendation promoted into an attendee, and raw Event not found copy. After repair, Home showed one 活动, both Home surfaces opened the encoded private detail, the detail showed 主办方待确认, 参会者 0, the actor's real 重新报名 state, and a stable Chinese no-matchmaking boundary.",
+    evidence:
+      "Authenticated production browser Home/Home Events filter and detail traversal; focused Web route-service tests 33/33; Next TypeScript; exact-origin production build",
+    conclusion:
+      "pass for the exercised actor-owned event summary, filter, encoded dynamic route, registration readback, and missing-source boundaries; populated organizer, attendee roster, and matchmaking states remain pending real source data",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2076,6 +2160,34 @@ const AUDIT_REMEDIATIONS = [
       "The regression test covers both blank and trimmed named recipients. Expo full suite 525/525 and typecheck passed; runtime composer rendered 您好： and blank-recipient creation still failed closed with 先写收件人。",
     status:
       "fixed and runtime-verified for blank and named default greetings",
+  },
+  {
+    id: "AUDIT-P1-032",
+    severity: "P1",
+    rootCause:
+      "The authenticated Web Home adapter hard-coded every actor-owned event as an RSVP and counted raw event records under a registration label. The dynamic detail page also forwarded the percent-encoded route segment directly to the live event service, so colon-delimited private IDs returned not found.",
+    decision:
+      "Reuse the shared event projection on both Home surfaces, label the summary as events unless a registration source proves otherwise, and decode the dynamic route segment exactly once at the page boundary before service lookup.",
+    files:
+      "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/app/(app)/app/events/[id]/page.tsx; focused route-service tests",
+    regression:
+      "Focused Web tests 33/33, Next TypeScript, and production build passed. Runtime Home and Home Events both opened event:live-record:20260729 through its encoded URL and the detail read the actor's real cancelled registration as 重新报名.",
+    status:
+      "fixed and runtime-verified for one colon-delimited actor-owned event and cancelled-registration readback; populated registration-summary aggregation remains source-tested",
+  },
+  {
+    id: "AUDIT-P1-033",
+    severity: "P1",
+    rootCause:
+      "The private-event projection invented Orbit as organizer/host, converted one recommendation into a confirmed attendee, and defaulted RSVP state to true. When no matchmaking record existed, the detail exposed the raw English service error Event not found.",
+    decision:
+      "Default unsupported organizer, roster, and registration claims to absent/zero/false; render a non-link pending organizer boundary; keep recommendations separate from attendees; and translate matchmaking failures into stable product copy at the presentation boundary.",
+    files:
+      "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; focused route-service tests",
+    regression:
+      "Focused Web tests 33/33, Next TypeScript, exact-origin production build, and authenticated browser refresh passed. The private detail rendered 主办方待确认 with no link, 参会者 0, 重新报名, and 当前活动暂时没有可用的撮合数据。",
+    status:
+      "fixed and runtime-verified for missing organizer, roster, and matchmaking sources; populated source-backed variants remain pending real records",
   },
 ];
 
@@ -3109,6 +3221,8 @@ export function buildFullProductFunctionalAuditInventory() {
       LIVE_MOBILE_AUTH_RUNTIME_SURFACES.has(surfaceId);
     const liveMobileAdditionalRuntimeEvidence =
       LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES.get(surfaceId);
+    const liveWebAdditionalRuntimeEvidence =
+      LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES.get(surfaceId);
     const interactions = [...interactionMap.values()]
       .sort((left, right) =>
         `${left.sourceFile}:${String(left.line).padStart(8, "0")}`.localeCompare(
@@ -3152,6 +3266,10 @@ export function buildFullProductFunctionalAuditInventory() {
                     ? LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE.get(
                         `${surfaceId}|${stableInteractionEvidenceKey}`,
                       )
+                    : liveWebAdditionalRuntimeEvidence
+                      ? LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                          `${surfaceId}|${interaction.sourceFile}:${interaction.line}`,
+                        )
             : undefined;
         const runtimeVerificationCase =
           runtimeEvidence?.verificationCase ??
@@ -3165,6 +3283,8 @@ export function buildFullProductFunctionalAuditInventory() {
                   : "expo-web-auth-profile-account-privacy-2026-07-28"
                 : liveMobileAdditionalRuntimeEvidence
                   ? liveMobileAdditionalRuntimeEvidence.verificationCase
+                  : liveWebAdditionalRuntimeEvidence
+                    ? liveWebAdditionalRuntimeEvidence.verificationCase
                 : "live-contact-list-detail-persistence-isolation-2026-07-28");
 
         return {
@@ -3236,6 +3356,8 @@ export function buildFullProductFunctionalAuditInventory() {
               ? "expo-web-auth-session-entry-verified"
             : liveMobileAdditionalRuntimeEvidence
               ? liveMobileAdditionalRuntimeEvidence.entryBehavior
+            : liveWebAdditionalRuntimeEvidence
+              ? liveWebAdditionalRuntimeEvidence.entryBehavior
           : "not-runtime-verified",
       exitBehavior:
         hasLiveBusinessCardRestrictedRuntimeEvidence ||
@@ -3357,6 +3479,8 @@ export function buildFullProductFunctionalAuditInventory() {
               ]
           : liveMobileAdditionalRuntimeEvidence
             ? liveMobileAdditionalRuntimeEvidence.runtimeEvidence
+          : liveWebAdditionalRuntimeEvidence
+            ? liveWebAdditionalRuntimeEvidence.runtimeEvidence
           : [],
       verificationConclusion:
         surfaceId === "web:/dev/capabilities/[slug]"
@@ -3379,6 +3503,8 @@ export function buildFullProductFunctionalAuditInventory() {
               ? "runtime-partially-verified-expo-web-auth-profile-account"
             : liveMobileAdditionalRuntimeEvidence
               ? liveMobileAdditionalRuntimeEvidence.verificationConclusion
+            : liveWebAdditionalRuntimeEvidence
+              ? liveWebAdditionalRuntimeEvidence.verificationConclusion
           : hasBrowserSmokeEvidence
             ? "runtime-partially-verified-browser-base-state"
           : "inventory-complete-runtime-verification-pending",

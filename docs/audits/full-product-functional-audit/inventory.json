@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "4b7d6fecf9ddbde55492ac5974e871a4ad984ecc",
-  "deterministicSourceTime": "2026-07-29T03:48:33+09:00",
+  "generatedFromCommit": "a37634bcaaa5b2ed35b0fd3831d9c510aa133806",
+  "deterministicSourceTime": "2026-07-29T04:11:42+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -31,13 +31,13 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 47,
     "interactionRouteInstances": 2797,
-    "interactionsRuntimeVerified": 50,
+    "interactionsRuntimeVerified": 53,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 76,
+    "surfacesWithRuntimeEvidence": 78,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 34,
-    "documentedRemediations": 31
+    "documentedVerificationCases": 35,
+    "documentedRemediations": 33
   },
   "surfaces": [
     {
@@ -81662,13 +81662,13 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 355,
+          "line": 361,
           "tag": "h3",
           "text": "People worth meeting / 值得认识的人"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 462,
+          "line": 468,
           "tag": "h4",
           "text": "Introduction requests / 撮合进度"
         },
@@ -81746,73 +81746,73 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 226,
+          "line": 246,
           "tag": "h3",
           "text": "{event.feeLabel}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 247,
+          "line": 267,
           "tag": "h3",
           "text": "About this event / 关于活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 253,
+          "line": 273,
           "tag": "h4",
           "text": "{section.label}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 261,
+          "line": 281,
           "tag": "h3",
           "text": "About this event / 关于活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 266,
+          "line": 286,
           "tag": "h3",
           "text": "Agenda / 当晚议程"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 286,
+          "line": 306,
           "tag": "h3",
           "text": "Attendees / 参会者 {event.stats.count}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 394,
+          "line": 414,
           "tag": "h1",
           "text": "{name}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 91,
+          "line": 99,
           "tag": "StateView",
           "text": "routeModel.title"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 121,
+          "line": 129,
           "tag": "h1",
           "text": "{routeModel.title}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 132,
+          "line": 140,
           "tag": "StateView",
           "text": "routeModel.title"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 201,
+          "line": 209,
           "tag": "h1",
           "text": "{guide.event.title}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 360,
+          "line": 368,
           "tag": "h2",
           "text": "Profile questions for this event / 这场活动的资料问题"
         },
@@ -82406,7 +82406,7 @@
           "interactionId": "web:/app/events/[id]#interaction-6",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 374,
+          "line": 380,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Sign in to use matching / 登录后使用撮合",
@@ -82432,7 +82432,7 @@
           "interactionId": "web:/app/events/[id]#interaction-7",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 391,
+          "line": 397,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Complete registration / 完成报名资料",
@@ -82458,7 +82458,7 @@
           "interactionId": "web:/app/events/[id]#interaction-8",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 439,
+          "line": 445,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Request an introduction / 申请认识",
@@ -82491,7 +82491,7 @@
           "interactionId": "web:/app/events/[id]#interaction-9",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-          "line": 466,
+          "line": 472,
           "controlType": "callback-control",
           "tag": "RequestCard",
           "visibleName": null,
@@ -83049,10 +83049,10 @@
           "interactionId": "web:/app/events/[id]#interaction-26",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 165,
+          "line": 185,
           "controlType": "link",
           "tag": "a",
-          "visibleName": "{event.organizer} {t({ en: `Multiple events hosted · ${event.host}`, zh: `已举办多场 · ${event.host}` })}",
+          "visibleName": "{organizer} {t({ en: `Multiple events hosted · ${event.host}`, zh: `已举办多场 · ${event.host}` })}",
           "accessibleNameEvidence": "dynamic-static-expression",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -83075,7 +83075,7 @@
           "interactionId": "web:/app/events/[id]#interaction-27",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 174,
+          "line": 194,
           "controlType": "link",
           "tag": "a",
           "visibleName": "View all their events / 查看 TA 的全部活动",
@@ -83101,7 +83101,7 @@
           "interactionId": "web:/app/events/[id]#interaction-28",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 293,
+          "line": 313,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Register / 报名参加",
@@ -83127,7 +83127,7 @@
           "interactionId": "web:/app/events/[id]#interaction-29",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 307,
+          "line": 327,
           "controlType": "button",
           "tag": "button",
           "visibleName": "+ {hiddenAttendeeCount} · Show all / 展开全部",
@@ -83160,7 +83160,7 @@
           "interactionId": "web:/app/events/[id]#interaction-30",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 314,
+          "line": 334,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Show less / 收起",
@@ -83193,7 +83193,7 @@
           "interactionId": "web:/app/events/[id]#interaction-31",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 395,
+          "line": 415,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Ask iOrbit about this event / 问 iOrbit 这场活动",
@@ -83219,7 +83219,7 @@
           "interactionId": "web:/app/events/[id]#interaction-32",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 284,
+          "line": 292,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Continue registration profile guide / 继续填写报名资料",
@@ -83245,7 +83245,7 @@
           "interactionId": "web:/app/events/[id]#interaction-33",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 400,
+          "line": 408,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Continue registration profile guide / 继续填写报名资料",
@@ -86717,7 +86717,7 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
-          "line": 382,
+          "line": 266,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -87143,7 +87143,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-home-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/home/events",
@@ -87227,14 +87227,16 @@
           ],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting 功能审计私有活动 20260729 opened /app/events/event%3Alive-record%3A20260729 and preserved the actor-owned event identity.",
+          "testData": "Authenticated browser actor with one upcoming private event whose ID contains colon separators",
+          "testEvidence": [
+            "web-home-private-event-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -89248,6 +89250,7 @@
         }
       ],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-account-auth-live-route-services.test.ts",
@@ -89256,8 +89259,12 @@
         "repos/orbits/tests/pages/app-home-live-route-services.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the home route rendered the authenticated actor's one private event",
+        "the summary labelled the record as one event rather than inventing a registration",
+        "the event card opened its encoded actor-owned dynamic detail"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-actor-scoped-home-event"
     },
     {
       "surfaceId": "web:/app/home/events",
@@ -89587,7 +89594,7 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
-          "line": 382,
+          "line": 266,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -90013,7 +90020,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-home-events-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/home/events",
@@ -90097,14 +90104,16 @@
           ],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "After restoring 全部, selecting the event opened its exact encoded actor-owned dynamic detail.",
+          "testData": "The one upcoming private event in the authenticated Home Events list",
+          "testEvidence": [
+            "web-home-private-event-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -90161,14 +90170,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Both filter changes were local presentation only and wrote no event, registration, attendee, recommendation, or profile record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting 历史 0 changed the result to an explicit empty state; selecting 全部 restored the same one-event list.",
+          "testData": "Authenticated browser actor with one upcoming private event and zero historical events",
+          "testEvidence": [
+            "web-home-private-event-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -92118,12 +92129,17 @@
         }
       ],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-home-events-source.test.ts",
         "repos/orbits/tests/pages/app-home-live-route-services.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the route rendered one upcoming actor-owned private event and zero historical events",
+        "selecting 历史 0 rendered a truthful empty result before 全部 restored the same event",
+        "the restored event opened the exact encoded dynamic detail"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-home-events-filter-and-detail"
     },
     {
       "surfaceId": "web:/app/login-admin",
@@ -136650,6 +136666,15 @@
       "actual": "/ and /home both resolved to /ai with one Orbit AI composer. /app/events resolved to /events with the real private event; the unknown legacy path resolved to /ai without surfacing its query marker. /home/events rendered one upcoming event, produced a truthful 0 / 1 historical empty state, restored the event under 全部, and opened its matching dynamic detail.",
       "evidence": "Authenticated Expo Web direct-navigation and click traversal; initial-route and home source/view-model tests; Expo full suite 525/525; Expo typecheck",
       "conclusion": "pass for canonical entry convergence, one supported and one unknown legacy path, home-event filtering, and event-detail navigation; native custom-scheme legacy delivery and additional populated filter combinations remain pending"
+    },
+    {
+      "id": "web-home-private-event-boundaries-2026-07-29",
+      "target": "Authenticated Web Home and Home Events → actor-owned private event → encoded dynamic detail",
+      "testData": "One upcoming actor-owned private event with ID event:live-record:20260729, one cancelled registration, no organizer source, no attendee roster, and no matchmaking record",
+      "expected": "Home must distinguish events from registrations; dynamic IDs must survive route encoding; missing organizer, roster, and matchmaking sources must remain explicit instead of becoming product claims or raw service errors",
+      "actual": "Runtime first reproduced a fake registration count, a not-found dynamic detail, a synthetic Orbit organizer link, one recommendation promoted into an attendee, and raw Event not found copy. After repair, Home showed one 活动, both Home surfaces opened the encoded private detail, the detail showed 主办方待确认, 参会者 0, the actor's real 重新报名 state, and a stable Chinese no-matchmaking boundary.",
+      "evidence": "Authenticated production browser Home/Home Events filter and detail traversal; focused Web route-service tests 33/33; Next TypeScript; exact-origin production build",
+      "conclusion": "pass for the exercised actor-owned event summary, filter, encoded dynamic route, registration readback, and missing-source boundaries; populated organizer, attendee roster, and matchmaking states remain pending real source data"
     }
   ],
   "remediations": [
@@ -136931,6 +136956,24 @@
       "files": "repos/orbit-app/src/view-models/relationship-inbox.ts; repos/orbit-app/tests/relationship-inbox-view-model.test.ts",
       "regression": "The regression test covers both blank and trimmed named recipients. Expo full suite 525/525 and typecheck passed; runtime composer rendered 您好： and blank-recipient creation still failed closed with 先写收件人。",
       "status": "fixed and runtime-verified for blank and named default greetings"
+    },
+    {
+      "id": "AUDIT-P1-032",
+      "severity": "P1",
+      "rootCause": "The authenticated Web Home adapter hard-coded every actor-owned event as an RSVP and counted raw event records under a registration label. The dynamic detail page also forwarded the percent-encoded route segment directly to the live event service, so colon-delimited private IDs returned not found.",
+      "decision": "Reuse the shared event projection on both Home surfaces, label the summary as events unless a registration source proves otherwise, and decode the dynamic route segment exactly once at the page boundary before service lookup.",
+      "files": "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/app/(app)/app/events/[id]/page.tsx; focused route-service tests",
+      "regression": "Focused Web tests 33/33, Next TypeScript, and production build passed. Runtime Home and Home Events both opened event:live-record:20260729 through its encoded URL and the detail read the actor's real cancelled registration as 重新报名.",
+      "status": "fixed and runtime-verified for one colon-delimited actor-owned event and cancelled-registration readback; populated registration-summary aggregation remains source-tested"
+    },
+    {
+      "id": "AUDIT-P1-033",
+      "severity": "P1",
+      "rootCause": "The private-event projection invented Orbit as organizer/host, converted one recommendation into a confirmed attendee, and defaulted RSVP state to true. When no matchmaking record existed, the detail exposed the raw English service error Event not found.",
+      "decision": "Default unsupported organizer, roster, and registration claims to absent/zero/false; render a non-link pending organizer boundary; keep recommendations separate from attendees; and translate matchmaking failures into stable product copy at the presentation boundary.",
+      "files": "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; focused route-service tests",
+      "regression": "Focused Web tests 33/33, Next TypeScript, exact-origin production build, and authenticated browser refresh passed. The private detail rendered 主办方待确认 with no link, 参会者 0, 重新报名, and 当前活动暂时没有可用的撮合数据。",
+      "status": "fixed and runtime-verified for missing organizer, roster, and matchmaking sources; populated source-backed variants remain pending real records"
     }
   ],
   "externalLimitations": []

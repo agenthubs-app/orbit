@@ -76,8 +76,8 @@
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 2 | 84 | 24 | runtime-partially-verified-browser-base-state |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 30 | 5 | runtime-partially-verified-live-event-registration |
 | `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 7 | inventory-complete-runtime-verification-pending |
-| `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 2 | 65 | 7 | inventory-complete-runtime-verification-pending |
-| `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 2 | 65 | 3 | inventory-complete-runtime-verification-pending |
+| `web:/app/home` | web | production | `/app/home` | `web:/app` |  | 2 | 65 | 8 | runtime-partially-verified-web-actor-scoped-home-event |
+| `web:/app/home/events` | web | production | `/app/home/events` | `web:/app/home` |  | 2 | 65 | 4 | runtime-partially-verified-web-home-events-filter-and-detail |
 | `web:/app/login-admin` | web | production | `/app/login-admin` | `web:/app` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/o/[slug]` | web | production | `/app/o/[slug]` | `web:/app` | slug | 0 | 24 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 2 | 79 | 5 | inventory-complete-runtime-verification-pending |
