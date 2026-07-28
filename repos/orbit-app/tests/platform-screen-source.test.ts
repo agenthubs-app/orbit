@@ -9,13 +9,20 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("platform screen supports mobile event review decisions like the web platform", () => {
-  assert.match(screenSource, /decidedReviewIds/u);
-  assert.match(screenSource, /decisionFeedback/u);
-  assert.match(screenSource, /onDecideReviewItem/u);
-  assert.match(screenSource, />批准并发布</u);
-  assert.match(screenSource, />驳回</u);
-  assert.match(screenSource, /"审核队列已清空"/u);
+test("platform screen is a public-catalogue source review without fake decisions", () => {
+  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
+  assert.match(screenSource, /公开活动来源核对/u);
+  assert.match(screenSource, /没有具备身份校验的平台审核写接口/u);
+  assert.doesNotMatch(screenSource, /decidedReviewIds|decisionFeedback/u);
+  assert.doesNotMatch(screenSource, />批准并发布|>驳回/u);
+  assert.doesNotMatch(
+    screenSource,
+    /ORBIT_API_ENDPOINTS\.profile|dashboardAggregatePath/u
+  );
+  assert.doesNotMatch(
+    screenSource,
+    /onOpenEvent|router\.push|accessibilityRole="button"/u
+  );
 });
 
 test("platform review activities render as image-backed event modules", () => {

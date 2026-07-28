@@ -38,29 +38,19 @@ const eventsPayload = {
 
 test("platformToView maps live app payloads into a Chinese platform overview", () => {
   const view = platformToView({
-    dashboard: {
-      relationshipAssetTotals: {
-        contacts: 42
-      }
-    },
     events: eventsPayload,
-    now: new Date("2026-07-24T00:00:00.000+09:00"),
-    profile: {
-      company: "Orbit",
-      fullName: "赵翔",
-      title: "Orbit 创始人"
-    }
+    now: new Date("2026-07-24T00:00:00.000+09:00")
   });
 
   assert.equal(view.title, "平台总览");
-  assert.equal(view.summary, "整个平台当前有 1 场即将开始的公开活动，优先确认活动质量和主办方承接能力。");
+  assert.equal(view.summary, "公开目录中有 1 场尚未结束的活动；移动端仅核对来源和公开内容。");
   assert.deepEqual(
     view.stats.map((stat) => [stat.label, stat.value]),
     [
-      ["主办方账号", "1"],
-      ["累计活动", "2"],
-      ["待复核", "1"],
-      ["关系资产", "42"]
+      ["公开活动", "2"],
+      ["即将开始", "1"],
+      ["进行中", "0"],
+      ["已结束", "1"]
     ]
   );
   assert.equal(view.reviewQueue[0]?.title, "东京 AI 落地伙伴报名会");
@@ -69,8 +59,7 @@ test("platformToView maps live app payloads into a Chinese platform overview", (
     view.reviewQueue[0]?.coverPath,
     "/orbit-covers/events/tokyo-ai-partner-meetup.jpg"
   );
-  assert.equal(view.orgAccounts[0]?.name, "Orbit");
-  assert.equal(view.orgAccounts[0]?.owner, "赵翔");
+  assert.match(view.boundary, /没有平台账号目录/);
   assert.doesNotMatch(
     flattenedText(view),
     /\b(mock|fixture|provider|source-backed|implementation|command-center|live-record|database|postgres)\b/iu
@@ -79,16 +68,14 @@ test("platformToView maps live app payloads into a Chinese platform overview", (
 
 test("platformToView falls back to a controlled empty platform state", () => {
   const view = platformToView({
-    dashboard: {},
     events: {
       events: []
-    },
-    profile: {}
+    }
   });
 
-  assert.equal(view.stats[1]?.value, "0");
+  assert.equal(view.stats[0]?.value, "0");
   assert.equal(view.reviewQueue.length, 0);
-  assert.equal(view.emptyReviewTitle, "暂无需要复核的活动");
+  assert.equal(view.emptyReviewTitle, "暂无近期公开活动");
 });
 
 test("platformToView prefers Chinese event labels over mixed-language titles", () => {
@@ -109,12 +96,51 @@ test("platformToView prefers Chinese event labels over mixed-language titles", (
         }
       ]
     },
-    now: new Date("2026-07-24T00:00:00.000+09:00"),
-    profile: {
-      company: "Orbit"
-    }
+    now: new Date("2026-07-24T00:00:00.000+09:00")
   });
 
   assert.equal(view.reviewQueue[0]?.title, "日中投资人与创业者报名沙龙");
   assert.doesNotMatch(view.reviewQueue[0]?.title ?? "", /[ぁ-ヿ]|Japan-China/u);
+});
+
+test("platformToView rejects storage implementation labels", () => {
+  const view = platformToView({
+    events: {
+      events: [
+        {
+          endsAt: "2026-08-18T20:00:00.000+09:00",
+          id: "storage-event",
+          nextAction: "Prepare relationship context for the storage-backed event.",
+          startsAt: "2026-08-18T18:00:00.000+09:00",
+          title: "公开活动",
+          venue: "Tokyo"
+        }
+      ]
+    },
+    now: new Date("2026-07-24T00:00:00.000+09:00")
+  });
+
+  assert.equal(view.reviewQueue[0]?.detail, "确认活动信息、目标人群和主办方承接安排。");
+  assert.doesNotMatch(flattenedText(view), /storage-backed|已认证/iu);
+});
+
+test("platformToView does not expose the public API English next action", () => {
+  const view = platformToView({
+    events: {
+      events: [
+        {
+          endsAt: "2026-09-01T16:00:00.000+09:00",
+          id: "public-event",
+          nextAction: "Sign in and register before viewing the attendee list.",
+          startsAt: "2026-09-01T14:00:00.000+09:00",
+          title: "东京 AI 落地伙伴对接会",
+          venue: "东京"
+        }
+      ]
+    },
+    now: new Date("2026-07-24T00:00:00.000+09:00")
+  });
+
+  assert.equal(view.reviewQueue[0]?.detail, "确认活动信息、目标人群和主办方承接安排。");
+  assert.doesNotMatch(flattenedText(view), /Sign in and register/iu);
 });

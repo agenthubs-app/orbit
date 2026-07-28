@@ -13,7 +13,6 @@ export interface PlatformStatView {
 export interface PlatformReviewItemView {
   coverPath?: string;
   detail: string;
-  href: `/events/${string}`;
   id: string;
   location: string;
   state: PlatformEventState;
@@ -22,19 +21,10 @@ export interface PlatformReviewItemView {
   title: string;
 }
 
-export interface PlatformOrgAccountView {
-  events: string;
-  id: string;
-  initial: string;
-  name: string;
-  owner: string;
-  statusLabel: string;
-}
-
 export interface PlatformView {
+  boundary: string;
   emptyReviewMessage: string;
   emptyReviewTitle: string;
-  orgAccounts: PlatformOrgAccountView[];
   reviewQueue: PlatformReviewItemView[];
   stats: PlatformStatView[];
   summary: string;
@@ -57,11 +47,6 @@ function stringField(record: UnknownRecord, fieldName: string, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function numberField(record: UnknownRecord, fieldName: string, fallback = 0) {
-  const value = record[fieldName];
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function listFromPayload(data: unknown): UnknownRecord[] {
   if (Array.isArray(data)) {
     return data.filter(isRecord);
@@ -76,7 +61,7 @@ function listFromPayload(data: unknown): UnknownRecord[] {
 }
 
 function containsImplementationLabel(value: string): boolean {
-  return /\b(mock|fixture|provider|source-backed|generated|live-record|source:|evidence:|implementation|command-center|database|postgres)\b/iu.test(
+  return /\b(mock|fixture|provider|source-backed|storage-backed|generated|live-record|live-store|source:|evidence:|implementation|command-center|database|postgres)\b/iu.test(
     value
   );
 }
@@ -210,13 +195,17 @@ function formatDateTime(value: string): string {
 }
 
 function detailForEvent(event: UnknownRecord): string {
-  return cleanText(
+  const detail = cleanText(
     stringField(event, "relationshipValue") ||
-      stringField(event, "nextAction") ||
       stringField(event, "description") ||
-      stringField(event, "summary"),
-    "确认活动信息、目标人群和主办方承接安排。"
+      stringField(event, "summary") ||
+      stringField(event, "nextAction"),
+    ""
   );
+
+  return segmentLooksChinese(detail)
+    ? detail
+    : "确认活动信息、目标人群和主办方承接安排。";
 }
 
 function eventToReviewItem(
@@ -230,7 +219,6 @@ function eventToReviewItem(
   return {
     ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
     detail: detailForEvent(event),
-    href: `/events/${encodeURIComponent(id)}`,
     id,
     location: eventLocation(event),
     state,
@@ -240,57 +228,12 @@ function eventToReviewItem(
   };
 }
 
-function profileRecord(data: unknown): UnknownRecord {
-  if (!isRecord(data)) {
-    return {};
-  }
-
-  const profile = data.profile;
-  return isRecord(profile) ? profile : data;
-}
-
-function accountFromProfile(
-  profile: UnknownRecord,
-  eventCount: number
-): PlatformOrgAccountView {
-  const name = cleanText(
-    stringField(profile, "company") || stringField(profile, "organization"),
-    "Orbit"
-  );
-  const owner = cleanText(
-    stringField(profile, "fullName") || stringField(profile, "name"),
-    "平台负责人"
-  );
-
-  return {
-    events: `${eventCount} 场活动`,
-    id: name.toLowerCase().replace(/[^a-z0-9]+/giu, "-") || "orbit",
-    initial: name.trim().slice(0, 1).toUpperCase() || "O",
-    name,
-    owner,
-    statusLabel: "已认证"
-  };
-}
-
-function relationshipAssetCount(dashboard: unknown): number {
-  if (!isRecord(dashboard)) {
-    return 0;
-  }
-
-  const totals = nestedRecord(dashboard, "relationshipAssetTotals");
-  return numberField(totals, "contacts");
-}
-
 export function platformToView({
-  dashboard,
   events,
-  now = new Date(),
-  profile
+  now = new Date()
 }: {
-  dashboard?: unknown;
   events: unknown;
   now?: Date;
-  profile?: unknown;
 }): PlatformView {
   const rawEvents = listFromPayload(events);
   const nowTime = now.getTime();
@@ -307,47 +250,48 @@ export function platformToView({
     )
     .filter((event) => event.state !== "ended")
     .slice(0, 8);
-  const profileView = profileRecord(profile);
-  const orgAccount = accountFromProfile(profileView, rawEvents.length);
   const upcomingCount = reviewQueue.filter((event) => event.state === "upcoming").length;
+  const activeCount = reviewQueue.filter((event) => event.state === "active").length;
+  const endedCount = rawEvents.length - reviewQueue.length;
   const summary =
-    upcomingCount > 0
-      ? `整个平台当前有 ${upcomingCount} 场即将开始的公开活动，优先确认活动质量和主办方承接能力。`
-      : "当前没有即将开始的公开活动，先保持主办方资料和历史活动清晰。";
+    reviewQueue.length > 0
+      ? `公开目录中有 ${reviewQueue.length} 场尚未结束的活动；移动端仅核对来源和公开内容。`
+      : "公开目录当前没有尚未结束的活动。";
 
   return {
-    emptyReviewMessage: "有新的公开活动后，这里会显示需要优先复核的内容。",
-    emptyReviewTitle: "暂无需要复核的活动",
-    orgAccounts: [orgAccount],
+    boundary:
+      "当前数据来自公开活动目录；没有平台账号目录或具备身份校验的审核写接口。",
+    emptyReviewMessage: "公开目录有新活动后，这里会展示来源和公开内容供核对。",
+    emptyReviewTitle: "暂无近期公开活动",
     reviewQueue,
     stats: [
       {
-        id: "organizers",
-        label: "主办方账号",
-        note: "已认证",
-        tone: "accent",
-        value: "1"
-      },
-      {
         id: "events",
-        label: "累计活动",
-        note: "公开记录",
-        tone: "green",
+        label: "公开活动",
+        note: "目录记录",
+        tone: "accent",
         value: String(rawEvents.length)
       },
       {
-        id: "review",
-        label: "待复核",
-        note: "活动质量",
-        tone: "amber",
-        value: String(reviewQueue.length)
+        id: "upcoming",
+        label: "即将开始",
+        note: "近期活动",
+        tone: "green",
+        value: String(upcomingCount)
       },
       {
-        id: "relationships",
-        label: "关系资产",
-        note: "人脉覆盖",
+        id: "active",
+        label: "进行中",
+        note: "当前活动",
+        tone: "amber",
+        value: String(activeCount)
+      },
+      {
+        id: "ended",
+        label: "已结束",
+        note: "目录历史",
         tone: "blue",
-        value: String(relationshipAssetCount(dashboard))
+        value: String(endedCount)
       }
     ],
     summary,
