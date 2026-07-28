@@ -821,6 +821,23 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-schedule-today-compatibility-route",
     },
   ],
+  [
+    "web:/app/schedule/events/[id]",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-dynamic-schedule-event-preview-verified",
+      runtimeEvidence: [
+        "the encoded colon-delimited dynamic segment initially failed with EVENTS_EVENT_NOT_FOUND",
+        "after one page-boundary decode the same URL rendered the actor-owned private event's exact title, venue, confirmed status, time, manual source, and one evidence record",
+        "the preview stated that it would not write calendar, registration, reminder, message, or external-service state",
+        "返回日程 resolved through the compatibility route to /app/today#arrangements with a real anchor",
+        "查看活动列表 opened the canonical event catalogue",
+      ],
+      verificationCase: "web-schedule-dynamic-event-identity-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-schedule-dynamic-event-identity",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1511,6 +1528,18 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Read-only navigation; no graph, event, contact, recommendation, notification, calendar, AI, or external record was written.",
       verificationCase: "web-party-source-context-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/schedule/events/[id]|repos/orbits/app/(app)/app/schedule/events/[id]/orbit-real-schedule-event.tsx:26",
+    {
+      actualResult:
+        "Both generated recovery links were exercised: 返回日程 resolved to /app/today#arrangements with a real anchor, and 查看活动列表 resolved to /app/events.",
+      testData:
+        "Authenticated actor-owned schedule preview for event:live-record:20260729",
+      idempotency:
+        "Both actions were read-only navigation; no event, calendar, registration, reminder, message, contact, or external record was written.",
+      verificationCase: "web-schedule-dynamic-event-identity-2026-07-29",
     },
   ],
 ]);
@@ -2306,6 +2335,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified",
   },
+  {
+    id: "web-schedule-dynamic-event-identity-2026-07-29",
+    target:
+      "Authenticated dynamic Web Schedule Event preview → encoded actor-owned event ID and both recovery destinations",
+    testData:
+      "Audit actor's colon-delimited event:live-record:20260729, opened through /app/schedule/events/event%3Alive-record%3A20260729",
+    expected:
+      "The route adapter must decode the dynamic segment exactly once before authentication return-path composition and actor-scoped service lookup; the preview must preserve source truth and all actions must remain read-only",
+    actual:
+      "Before repair, the route passed the percent-encoded segment to the event service and rendered EVENTS_EVENT_NOT_FOUND. After repair, the same URL rendered 功能审计私有活动 20260729 with its exact venue, confirmed status, 2026-09-29 time, manual-event source, one evidence record, next action, and no-write guardrail. 返回日程 reached the real Today arrangements anchor and 查看活动列表 reached Events.",
+    evidence:
+      "Authenticated production browser before/after DOM and both recovery traversals; focused Schedule route/services tests 10/10; Web lint; exact-origin production build",
+    conclusion:
+      "pass for one-time dynamic ID decoding, actor-scoped private-event readback, source/guardrail presentation, and both generated recovery actions; other dynamic ID shapes, unauthenticated browser return, and populated schedule mutations remain pending",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2850,6 +2894,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Event Detail and Party tests 22/22, Web lint, and exact-origin production build passed. Production runtime changed all three real-event entries from English Party could not load to localized Party 尚未就绪, kept the no-event state distinct, exposed the missing-context evidence, and returned each route to /app/events/event%3Alive-record%3A20260729.",
     status:
       "fixed and runtime-verified for missing selection, missing composed context, Chinese boundary, evidence disclosure, and exact recovery across Party, Check-in, and Graph; populated Party success-state controls remain pending real reviewed attendee/recommendation records",
+  },
+  {
+    id: "AUDIT-P1-040",
+    severity: "P1",
+    rootCause:
+      "The dynamic Schedule Event page forwarded Next.js's percent-encoded route segment directly into the actor-scoped event service. Colon-delimited live IDs therefore produced EVENTS_EVENT_NOT_FOUND even though the same event was visible in Today and Event Detail. The unauthenticated return path also encoded the unresolved segment, risking a second layer of encoding.",
+    decision:
+      "Decode and trim the dynamic segment exactly once in a pure route-ID helper at the page boundary. Reuse that canonical ID for both the authenticated service input and the encoded login return path; keep the route view model responsible only for semantic trimming and actor-scoped lookup.",
+    files:
+      "repos/orbits/app/(app)/app/schedule/events/[id]/page.tsx; repos/orbits/app/(app)/app/schedule/events/[id]/schedule-event-route-id.ts; repos/orbits/tests/pages/app-schedule-route-services.test.ts",
+    regression:
+      "Focused Schedule tests 10/10, Web lint, and exact-origin production build passed. Production runtime changed the encoded private-event URL from EVENTS_EVENT_NOT_FOUND to a source-backed preview, and both recovery actions reached their canonical destinations without writes.",
+    status:
+      "fixed and runtime-verified for one colon-delimited actor-owned event and both recovery actions; malformed fallback is unit-tested, while unauthenticated browser return and other dynamic ID shapes remain pending",
   },
 ];
 

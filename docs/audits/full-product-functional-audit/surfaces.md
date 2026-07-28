@@ -87,7 +87,7 @@
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 8 | runtime-partially-verified-live-profile-persistence |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 4 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 10 | runtime-partially-verified-web-schedule-today-compatibility-route |
-| `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 2 | 48 | 2 | inventory-complete-runtime-verification-pending |
+| `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 2 | 48 | 3 | runtime-partially-verified-web-schedule-dynamic-event-identity |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 2 | 94 | 9 | inventory-complete-runtime-verification-pending |
 | `web:/app/today` | web | production | `/app/today` | `web:/app` |  | 2 | 81 | 19 | runtime-partially-verified-web-today-meeting-service-boundary |
 | `web:/dev/agent-test-report` | web | development | `/dev/agent-test-report` | `web:/` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
