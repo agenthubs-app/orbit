@@ -13,14 +13,15 @@ test("healthPayloadToSummary maps ok health payloads without runtime labels", ()
   });
 
   assert.deepEqual(summary, {
-    detail: "orbit-runtime responded successfully.",
-    title: "Server reachable"
+    detail: "Orbit 服务响应正常，可以继续使用。",
+    title: "服务器可用"
   });
+  assert.doesNotMatch(JSON.stringify(summary), /orbit-runtime|server/iu);
 });
 
 test("healthPayloadToSummary maps unknown payloads safely", () => {
   assert.deepEqual(healthPayloadToSummary({}), {
-    detail: "Health details are unavailable.",
-    title: "Server responded"
+    detail: "服务器已经响应，但暂时无法读取健康详情。",
+    title: "服务器已响应"
   });
 });

@@ -17,18 +17,17 @@ function stringField(
 
 export function healthPayloadToSummary(data: unknown): HealthCheckSummary {
   const payload = isRecord(data) ? data : {};
-  const service = stringField(payload, "service") || "Orbit API";
   const status = stringField(payload, "status").toLowerCase();
 
   if (status === "ok") {
     return {
-      detail: `${service} responded successfully.`,
-      title: "Server reachable"
+      detail: "Orbit 服务响应正常，可以继续使用。",
+      title: "服务器可用"
     };
   }
 
   return {
-    detail: "Health details are unavailable.",
-    title: "Server responded"
+    detail: "服务器已经响应，但暂时无法读取健康详情。",
+    title: "服务器已响应"
   };
 }
