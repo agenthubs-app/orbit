@@ -499,7 +499,7 @@ export function OrbitPostEventFollowupCapture({
                 padding: "10px 12px",
               }}
             >
-              检测到同名重复联系人。确认笔记后会先进入合并复核，不会创建任何写操作。
+              检测到同名重复联系人。确认笔记后会先进入合并复核，不会创建任务、提醒或消息草稿。
               你也可以先到{" "}
               <a href="/app/contacts/new">联系人导入与合并</a>
               {" "}处理重复项。

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { ContactListItem } from "../../../../../../features/contacts/contract";
 import { createContactsListSearchAndFilterService } from "../../../../../../features/contacts/service-factory";
+import type { ContactsListSearchAndFilterService } from "../../../../../../features/contacts/service";
 import { createPostEventFollowupWorkflow } from "../../../../../../features/orbit-ai/workflows/post-event-followup-v1";
 import type { FeatureMode } from "../../../../../../shared/config/feature-mode";
 import {
@@ -9,9 +10,9 @@ import {
   resolveAgentRequestContext,
 } from "../../../../_shared/agent-request-context";
 import {
-  withOwnedEventAccess,
-  type OwnedEventAccessDependencies,
-} from "../../owned-event-access";
+  withRegisteredEventAccess,
+  type RegisteredEventAccessDependencies,
+} from "../../registered-event-access";
 
 interface Context {
   params: Promise<{ id: string }>;
@@ -21,6 +22,11 @@ interface VerifiedContactResolution {
   contact: ContactListItem;
   candidates: readonly ContactListItem[];
   duplicateContactIds: readonly string[];
+}
+
+interface PostEventFollowupDependencies
+  extends RegisteredEventAccessDependencies {
+  listContacts?: ContactsListSearchAndFilterService["listContacts"];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -48,13 +54,16 @@ function strings(value: unknown): string[] {
 
 async function verifiedContactResolution(
   mode: FeatureMode,
+  actorId: string,
   contactId: string,
   fallbackName: string | undefined,
   resolvedContactId: string | undefined,
+  listContacts?: ContactsListSearchAndFilterService["listContacts"],
 ): Promise<VerifiedContactResolution | null> {
-  const result = await createContactsListSearchAndFilterService(
-    mode,
-  ).listContacts({});
+  const result = await (
+    listContacts ??
+    createContactsListSearchAndFilterService(mode).listContacts
+  )({ actorId });
   if (!result.success || result.data.state !== "success") return null;
 
   const exact =
@@ -100,9 +109,9 @@ async function verifiedContactResolution(
 }
 
 export function createPostEventFollowupPostHandler(
-  dependencies: OwnedEventAccessDependencies = {},
+  dependencies: PostEventFollowupDependencies = {},
 ) {
-  return withOwnedEventAccess(async function createPostEventFollowup(
+  return withRegisteredEventAccess(async function createPostEventFollowup(
     request: Request,
     _context: Context,
     access,
@@ -156,9 +165,11 @@ export function createPostEventFollowupPostHandler(
     try {
       const contactResolution = await verifiedContactResolution(
         access.mode,
+        access.actor.id,
         contactId,
         optionalText(body.contactName, 240),
         optionalText(body.resolvedContactId, 240),
+        dependencies.listContacts,
       ).catch(() => null);
       if (!contactResolution) {
         return NextResponse.json(
@@ -184,7 +195,7 @@ export function createPostEventFollowupPostHandler(
       const workflow = createPostEventFollowupWorkflow(runtime);
       let result = await workflow.run({
         eventId: access.eventId,
-        eventTitle: access.event.event.title,
+        eventTitle: access.event.title,
         contactId: verifiedContact.id,
         contactName: verifiedContact.displayName,
         organization:
