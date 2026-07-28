@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "b6e1e011a6aba729c1b541b645ead29098f40cae",
-  "deterministicSourceTime": "2026-07-29T06:18:06+09:00",
+  "generatedFromCommit": "9bbe8c4c9df6d01d5a9ea6990e7ea4e70f642c9c",
+  "deterministicSourceTime": "2026-07-29T07:24:02+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -31,13 +31,13 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 49,
     "interactionRouteInstances": 2848,
-    "interactionsRuntimeVerified": 135,
+    "interactionsRuntimeVerified": 156,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 46,
-    "documentedRemediations": 42
+    "documentedVerificationCases": 47,
+    "documentedRemediations": 46
   },
   "surfaces": [
     {
@@ -82373,7 +82373,6 @@
           "repos/orbits/shared/storage/postgres-live-record-store.ts"
         ],
         "mockOrFixture": [
-          "repos/orbits/app/(app)/app/orbit-event-roster.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -83838,7 +83837,6 @@
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-event-roster.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
@@ -84181,7 +84179,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 414,
+          "line": 424,
           "tag": "h1",
           "text": "{name}"
         },
@@ -84717,14 +84715,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Editing the field was local only and wrote no request, slot, calendar, message, or notification record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The manual-time field accepted a future ISO timestamp after both participants had accepted the introduction.",
+          "testData": "event_01; audit actors user_ms4tr4vi_jb4qje and user_ms4o6bab_2rps63; 2026-08-01T01:30:00.000Z",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -84756,14 +84756,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "A repeated proposal reused the same request and slot value; it created no second request, calendar event, message, or notification.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "提议时间 persisted one proposed slot on the existing accepted request and refreshed the same request card.",
+          "testData": "Stable request intro-request:toy9sb2RdR9J8pjfuuHz7a01crYHhR9-R8nYGO20X_E",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -84791,14 +84793,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated selection preserved one request and the same selected slot; no calendar, message, notification, or external write occurred.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting the proposed time advanced the same request to scheduled and rendered 已确认时间 2026年8月1日 10:30 after refresh.",
+          "testData": "Accepted two-party event_01 request with one proposed slot at 2026-08-01T01:30:00.000Z",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -84876,14 +84880,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "SHA-256 request identity is directionless by participant pair; repeated and reverse requests left one persisted introduction request and sent no message.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "申请认识 created one actor-scoped request for the selected source-backed attendee; retrying from the same or reverse participant direction returned the same stable request ID.",
+          "testData": "event_01; current actor plus 审计撮合 东京伙伴 and 审计撮合 关西伙伴",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -84940,14 +84946,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Opening the dialog performed no contact, note, task, reminder, draft, message, or external write.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "记录会后跟进 opened the capture dialog with source-backed attendee suggestions and explicit no-send/no-auto-task copy.",
+          "testData": "Registered actor user_ms4tr4vi_jb4qje on ended public event event_01",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -84957,7 +84965,7 @@
           "line": 391,
           "controlType": "callback-control",
           "tag": "ModalShell",
-          "visibleName": "记录这次交流 原始录音只用于本次转写，不会保存；转写文本可编辑，只有点击确认后才成为证据。 搜索 {<div style={{ display: \"flex\", flexWrap: \"wrap\", gap: 8, marginTop: 8 }}> {attendeeNames.slice(0, 5).map((name) => ( <button className=\"btn chip\" key={name} onClick={() => { setQuery(name); setSelectedContact(null); setReviewContacts([]); setResolvedContactId(\"\"); }} type=\"button\" > {name} </button> ))} </div>} / {null} {<div aria-label=\"联系人搜索结果\" role=\"listbox\" style={{ display: \"grid\", gap: 8, marginTop: 10, maxHeight: 150, overflowY: \"auto\" }} > {contacts.map((contact) => ( <button aria-selected={selectedContact?.id === contact.id} className=\"btn btn-quiet\" key={contact.id} onClick={() => { setSelectedContact(contact); setReviewContacts([]); setResolvedContactId(\"\"); }} role=\"option\" style={{ justifyContent: \"flex-start\", textAlign: \"left\" }} type=\"button\" > {selectedContact?.id === contact.id ? \"✓ \" : \"\"} {contact.displayName} {contact.organization ? ` · ${contact.organization}` : \"\"} </button> ))} </div>} / {null} {<p role=\"status\" style={{ background: \"var(--accent-soft)\", borderRadius: \"var(--r-sm)\", color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.55, margin: \"10px 0 0\", padding: \"10px 12px\", }} > 检测到同名重复联系人。确认笔记后会先进入合并复核，不会创建任何写操作。 你也可以先到{\" \"} <a href=\"/app/contacts/new\">联系人导入与合并</a> {\" \"}处理重复项。 </p>} / {null} {<section aria-label=\"重复联系人复核\" className=\"card-flat\" style={{ display: \"grid\", gap: 10, marginTop: 12, padding: 12 }} > <div> <strong>选择本次跟进对应的联系人</strong> <p style={{ color: \"var(--text-3)\", fontSize: 13, lineHeight: 1.55, margin: \"4px 0 0\", }} > 服务端检测到同名记录。选择前不会创建任务、提醒或消息草稿；这里只确认本次关联，不会静默合并联系人。 </p> </div> <div aria-label=\"同名联系人候选\" role=\"radiogroup\"> {reviewContacts.map((contact) => ( <label key={contact.id} style={{ alignItems: \"flex-start\", display: \"flex\", gap: 8, padding: \"8px 0\", }} > <input checked={resolvedContactId === contact.id} name=\"resolved-contact\" onChange={() => setResolvedContactId(contact.id)} type=\"radio\" value={contact.id} /> <span> <strong>{contact.displayName}</strong> <span style={{ color: \"var(--text-3)\", display: \"block\", fontSize: 12, }} > {[contact.role, contact.organization] .filter(Boolean) .join(\" · \") || contact.id} </span> </span> </label> ))} </div> <div style={{ display: \"flex\", flexWrap: \"wrap\", gap: 8 }}> <button className=\"btn btn-primary\" disabled={submitting || !resolvedContactId} onClick={() => void submit(resolvedContactId)} type=\"button\" > {submitting ? \"正在继续…\" : \"使用选中的联系人继续\"} </button> <a className=\"btn btn-ghost\" href=\"/app/contacts/new\"> 前往联系人合并 </a> </div> </section>} / {null} {`停止录音 ${recordedSeconds}/15s`} / 正在转写… / 录 15 秒语音 {<span className=\"chip\">转写已生成，可编辑</span>} / {null} {<p role=\"alert\" style={{ color: \"var(--danger, #b4413c)\", fontSize: 13, margin: \"12px 0 0\" }} > {error} </p>} / {null} 取消 正在准备… / 确认笔记并准备跟进",
+          "visibleName": "记录这次交流 原始录音只用于本次转写，不会保存；转写文本可编辑，只有点击确认后才成为证据。 搜索 {<div style={{ display: \"flex\", flexWrap: \"wrap\", gap: 8, marginTop: 8 }}> {attendeeNames.slice(0, 5).map((name) => ( <button className=\"btn chip\" key={name} onClick={() => { setQuery(name); setSelectedContact(null); setReviewContacts([]); setResolvedContactId(\"\"); }} type=\"button\" > {name} </button> ))} </div>} / {null} {<div aria-label=\"联系人搜索结果\" role=\"listbox\" style={{ display: \"grid\", gap: 8, marginTop: 10, maxHeight: 150, overflowY: \"auto\" }} > {contacts.map((contact) => ( <button aria-selected={selectedContact?.id === contact.id} className=\"btn btn-quiet\" key={contact.id} onClick={() => { setSelectedContact(contact); setReviewContacts([]); setResolvedContactId(\"\"); }} role=\"option\" style={{ justifyContent: \"flex-start\", textAlign: \"left\" }} type=\"button\" > {selectedContact?.id === contact.id ? \"✓ \" : \"\"} {contact.displayName} {contact.organization ? ` · ${contact.organization}` : \"\"} </button> ))} </div>} / {null} {<p role=\"status\" style={{ background: \"var(--accent-soft)\", borderRadius: \"var(--r-sm)\", color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.55, margin: \"10px 0 0\", padding: \"10px 12px\", }} > 检测到同名重复联系人。确认笔记后会先进入合并复核，不会创建任务、提醒或消息草稿。 你也可以先到{\" \"} <a href=\"/app/contacts/new\">联系人导入与合并</a> {\" \"}处理重复项。 </p>} / {null} {<section aria-label=\"重复联系人复核\" className=\"card-flat\" style={{ display: \"grid\", gap: 10, marginTop: 12, padding: 12 }} > <div> <strong>选择本次跟进对应的联系人</strong> <p style={{ color: \"var(--text-3)\", fontSize: 13, lineHeight: 1.55, margin: \"4px 0 0\", }} > 服务端检测到同名记录。选择前不会创建任务、提醒或消息草稿；这里只确认本次关联，不会静默合并联系人。 </p> </div> <div aria-label=\"同名联系人候选\" role=\"radiogroup\"> {reviewContacts.map((contact) => ( <label key={contact.id} style={{ alignItems: \"flex-start\", display: \"flex\", gap: 8, padding: \"8px 0\", }} > <input checked={resolvedContactId === contact.id} name=\"resolved-contact\" onChange={() => setResolvedContactId(contact.id)} type=\"radio\" value={contact.id} /> <span> <strong>{contact.displayName}</strong> <span style={{ color: \"var(--text-3)\", display: \"block\", fontSize: 12, }} > {[contact.role, contact.organization] .filter(Boolean) .join(\" · \") || contact.id} </span> </span> </label> ))} </div> <div style={{ display: \"flex\", flexWrap: \"wrap\", gap: 8 }}> <button className=\"btn btn-primary\" disabled={submitting || !resolvedContactId} onClick={() => void submit(resolvedContactId)} type=\"button\" > {submitting ? \"正在继续…\" : \"使用选中的联系人继续\"} </button> <a className=\"btn btn-ghost\" href=\"/app/contacts/new\"> 前往联系人合并 </a> </div> </section>} / {null} {`停止录音 ${recordedSeconds}/15s`} / 正在转写… / 录 15 秒语音 {<span className=\"chip\">转写已生成，可编辑</span>} / {null} {<p role=\"alert\" style={{ color: \"var(--danger, #b4413c)\", fontSize: 13, margin: \"12px 0 0\" }} > {error} </p>} / {null} 取消 正在准备… / 确认笔记并准备跟进",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -85016,14 +85024,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Field edits were local only and did not create or merge a contact.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The contact field accepted Chinese multi-word and same-name queries and reset any prior selected or duplicate-review state on edit.",
+          "testData": "会后验证 唯一; 会后验证 同名; a nonexistent Chinese query",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85049,14 +85059,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Search was actor-scoped and read-only; repeated queries did not alter contact or workflow records.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "搜索 returned the exact unique contact, two distinct same-name contacts, or a truthful empty result for the nonexistent query.",
+          "testData": "One 大阪食品实验室 contact plus same-name 东京商事 and 关西商事 contacts owned by the current actor",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85120,14 +85132,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Selection changed local state only; it did not merge contacts or create a note, task, reminder, or draft.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting 会后验证 同名 exposed the duplicate warning and withheld all downstream actions until server-side contact resolution.",
+          "testData": "Two actor-owned contacts with the same display name and different organizations",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85179,14 +85193,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Radio selection was local only and did not merge either contact or create downstream work.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The duplicate-contact radio group distinguished 东京商事 from 关西商事 and enabled continuation only after one exact contact was chosen.",
+          "testData": "Duplicate-resolution response for run:post-event-followup:f33effd6",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85212,14 +85228,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The waiting branch contained only its run and resolve-contact step; continuation created one resolved run/action set and never merged contacts.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "使用选中的联系人继续 resolved the waiting run to the chosen 关西商事 record and rendered four auditable follow-up actions.",
+          "testData": "Waiting run run:post-event-followup:f33effd6 and selected contact contact:business-card:31ee54ccef893e75974ba525",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85272,14 +85290,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Editing the note was local only; persistence occurred only after explicit confirmation.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The note field preserved the entered Chinese commitment text through confirmation and into the source-backed review artifact.",
+          "testData": "会后 follow-up note for the selected 关西商事 contact",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85372,14 +85392,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Retry created no duplicate run, core action, draft, receipt, task, reminder, message, or external send; only append-only retry analytics changed.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "确认笔记并准备跟进 created one approved note, one unsent message draft, and review-only task/reminder actions; retry returned the same core run and action IDs.",
+          "testData": "Resolved run run:post-event-followup:7bce0475; actions 341178d0 and f115171b; draft externalSendRequested=false",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85403,14 +85425,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Browser-history navigation only; no event, registration, contact, Agent, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "返回上一页 returned from /app/events/EVT01 to the actual /app/events history entry.",
+          "testData": "Authenticated catalogue → EVT01 detail browser navigation",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85486,14 +85510,16 @@
           "downstreamCallHints": [],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation; the public projection omitted attendee names and wrote no organizer, event, registration, or contact record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "查看 TA 的全部活动 opened /app/o/evt01 and rendered the exact public-catalogue organizer with 13 events and source-backed cumulative count 500.",
+          "testData": "EVT01 organizer Orbit 人脉测试空间; approved 13-event public catalogue",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85545,14 +85571,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local presentation state only; no attendee, contact, registration, event, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "+38 · 展开全部 expanded the source-backed attendee preview from 12 names to all 50 records.",
+          "testData": "Registered event_01 actor with the generated 50-person attendee provider",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -85578,21 +85606,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local presentation state only; roster count and all persistent records remained unchanged.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "收起 restored the 12-person preview while the heading remained the source-backed total 参会者 50.",
+          "testData": "Expanded event_01 attendee roster",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/events/[id]#interaction-31",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-          "line": 415,
+          "line": 425,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Ask iOrbit about this event / 问 iOrbit 这场活动",
@@ -85604,14 +85634,16 @@
           "downstreamCallHints": [],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The Agent produced one local conversation and one source-backed recommendation artifact; no message, registration, calendar, contact, task, reminder, or external action occurred, and both audit conversations were deleted after verification.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "问 iOrbit 这场活动 opened Agent with event_01, exact title, venue, date, 已结束 status, and a no-external-action constraint; the terminal answer used that one record instead of an unrelated fallback.",
+          "testData": "东京餐饮入境客增长会 · event_01 · 已结束 · 大阪 · 2026-02-15",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -87277,7 +87309,7 @@
         "in-app browser base-state at 390x844",
         "browser console warning/error check"
       ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "verificationConclusion": "runtime-partially-verified-web-public-event-detail-lifecycle"
     },
     {
       "surfaceId": "web:/app/events/[id]/register",
@@ -88880,7 +88912,6 @@
           "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
           "repos/orbits/app/(app)/app/home/page.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-event-roster.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
@@ -91757,7 +91788,6 @@
           "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
           "repos/orbits/app/(app)/app/home/events/page.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-event-roster.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
@@ -94941,7 +94971,6 @@
         "mockOrFixture": [
           "repos/orbits/app/(app)/app/o/[slug]/page.tsx",
           "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts",
-          "repos/orbits/app/(app)/app/orbit-event-roster.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
@@ -95075,19 +95104,19 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx",
-          "line": 94,
+          "line": 105,
           "tag": "a",
           "text": "t({ en: \"Back to events\", zh: \"返回活动\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx",
-          "line": 100,
+          "line": 111,
           "tag": "h1",
           "text": "{viewModel.name}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx",
-          "line": 110,
+          "line": 121,
           "tag": "h2",
           "text": "Their events / TA 的活动"
         },
@@ -95330,7 +95359,7 @@
           "interactionId": "web:/app/o/[slug]#interaction-2",
           "surfaceId": "web:/app/o/[slug]",
           "sourceFile": "repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx",
-          "line": 94,
+          "line": 105,
           "controlType": "link",
           "tag": "a",
           "visibleName": "t({ en: \"Back to events\", zh: \"返回活动\" })",
@@ -95978,7 +96007,7 @@
         "in-app browser base-state at 390x844",
         "browser console warning/error check"
       ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "verificationConclusion": "runtime-partially-verified-web-public-catalogue-organizer"
     },
     {
       "surfaceId": "web:/app/party",
@@ -96031,6 +96060,8 @@
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
           "repos/orbits/features/events/goal-readiness/storage/generated-goal-readiness-live-record-provider.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/storage/generated-want-connect-live-record-provider.ts",
@@ -96083,6 +96114,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -96122,6 +96154,7 @@
         "persistence": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
+          "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-party-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -96150,6 +96183,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -96222,6 +96256,8 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/contract.ts",
+          "repos/orbits/features/events/registration/service.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
           "repos/orbits/features/events/want-connect/live-service.ts",
@@ -96908,14 +96944,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Tab and keyboard state were local only; no check-in, seat, attendee, contact, recommendation, event, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The desktop tablist switched among 现场主页, 推荐给你, 全部参会者, 关系图谱, and 流程议程 while preserving event_01.",
+          "testData": "Read-only replay for ended event_01 with 50 source-backed attendees plus the current registered participant",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -96939,14 +96977,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Read-only navigation; no check-in, registration, seat, contact, message, or external record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "退出活动 returned from /app/party?eventId=event_01 to /app/events/EVT01.",
+          "testData": "Ended-event replay for EVT01",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97037,14 +97077,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The disabled control invoked no handler and wrote no check-in or attendance record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The replay rendered 签到已结束 as disabled, so an ended event could not create a false check-in.",
+          "testData": "event_01 with ended status",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97070,14 +97112,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The disabled control invoked no handler and wrote no seat, check-in, attendee, or event record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The replay rendered 尚未分配座位 as disabled rather than inventing a seat.",
+          "testData": "Registered event_01 actor with no source-backed seat assignment",
+          "testEvidence": [
+            "web-public-event-detail-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -99407,6 +99451,8 @@
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
           "repos/orbits/features/events/goal-readiness/storage/generated-goal-readiness-live-record-provider.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/storage/generated-want-connect-live-record-provider.ts",
@@ -99459,6 +99505,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -99498,6 +99545,7 @@
         "persistence": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
+          "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-party-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -99526,6 +99574,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -99598,6 +99647,8 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/contract.ts",
+          "repos/orbits/features/events/registration/service.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
           "repos/orbits/features/events/want-connect/live-service.ts",
@@ -102781,6 +102832,8 @@
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
           "repos/orbits/features/events/goal-readiness/storage/generated-goal-readiness-live-record-provider.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/storage/generated-want-connect-live-record-provider.ts",
@@ -102833,6 +102886,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -102872,6 +102926,7 @@
         "persistence": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
+          "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-party-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -102900,6 +102955,7 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -102972,6 +103028,8 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
+          "repos/orbits/features/events/registration/contract.ts",
+          "repos/orbits/features/events/registration/service.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
           "repos/orbits/features/events/want-connect/live-service.ts",
@@ -139186,6 +139244,15 @@
       "conclusion": "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified"
     },
     {
+      "id": "web-public-event-detail-lifecycle-2026-07-29",
+      "target": "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
+      "testData": "Ended event_01/EVT01; current registered actor user_ms4tr4vi_jb4qje; two registered matchmaking actors; 50 source-backed attendees; one unique and two same-name actor-owned contacts; one stable introduction request; two follow-up runs; before/after Agent conversations",
+      "expected": "Every branch must preserve the exact event and actor, use source-backed people/counts, gate writes on registration and explicit confirmation, keep retries idempotent, withhold external actions, distinguish duplicate contacts, represent ended-event replay honestly, and give Agent the exact selected event instead of a fuzzy fallback",
+      "actual": "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned to the actual catalogue history entry. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained.",
+      "evidence": "Authenticated production-browser click traversal; exact Postgres row/payload readback; focused Event Detail, Party, organizer, Agent-context, recommendation, matchmaking, and follow-up tests; two exact production builds; commits 743721b8, 55c72ef8, 3b116abe, fd1ce510, and 9bbe8c4c",
+      "conclusion": "pass for the exercised registered ended-event lifecycle, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and browser return; voice recording/transcription, incoming decline UI, guest/login route, unregistered roster denial, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified"
+    },
+    {
       "id": "web-schedule-dynamic-event-identity-2026-07-29",
       "target": "Authenticated dynamic Web Schedule Event preview → encoded actor-owned event ID and both recovery destinations",
       "testData": "Audit actor's colon-delimited event:live-record:20260729, opened through /app/schedule/events/event%3Alive-record%3A20260729",
@@ -139582,6 +139649,42 @@
       "files": "repos/orbits/features/agent/automations/runner.ts; repos/orbits/app/api/agent/automations/dry-run/route.ts; repos/orbits/app/api/agent/automations/[id]/run/route.ts; repos/orbits/app/api/agent/signals/route.ts; repos/orbits/app/api/internal/agent/automations/route.ts; repos/orbits/scripts/run-agent-worker.ts; repos/orbits/tests/capabilities/agent-playbooks.test.ts",
       "regression": "Focused Playbook and automation tests 12/12 and the exact production build passed. Production dry-run changed from the false authentication summary to the current actor's source-backed empty follow-up result with two evidence IDs; immediate run persisted the same actor-scoped result. Staged change detection reported HIGH because four POST boundaries and six storage/module flows now carry actor identity, matching the intended security boundary.",
       "status": "fixed and runtime-verified for dry-run, immediate run, empty actor readback, and missing-actor fail-closed behavior; populated multi-account browser execution and a live scheduled worker heartbeat remain pending"
+    },
+    {
+      "id": "AUDIT-P1-043",
+      "severity": "P1",
+      "rootCause": "Matchmaking request identity included caller direction and volatile time, so retrying the same pair or requesting from the reverse participant could create parallel introductions. Slot proposal and selection also accepted state transitions without converging on the already persisted request state.",
+      "decision": "Derive one deterministic SHA-256 request ID from event plus a lexically sorted participant pair; treat the pair as directionless; and make repeated request, proposal, and selection operations return the existing request/slot when the desired state already exists.",
+      "files": "repos/orbits/features/events/matchmaking/context-service.ts; repos/orbits/features/events/matchmaking/service.ts; repos/orbits/tests/capabilities/agent-matchmaking-context.test.ts",
+      "regression": "Focused matchmaking tests, exact production build, authenticated browser traversal, and Postgres readback passed. Same-direction retry, reverse-direction request, repeated proposal, and repeated selection preserved one request ID and one selected slot while sending no message or calendar action.",
+      "status": "fixed and runtime-verified for one two-party event_01 request through scheduled state; concurrent database races, decline UI, expiry, and multi-slot negotiation remain explicitly unverified"
+    },
+    {
+      "id": "AUDIT-P1-044",
+      "severity": "P1",
+      "rootCause": "The post-event follow-up route reused an owner-only event helper even though a public-catalogue attendee legitimately owns only a registration. The duplicate-contact warning also claimed that confirmation would create no writes, while the waiting branch correctly persists an auditable run and resolution step.",
+      "decision": "Authorize the follow-up boundary with either actor-owned event access or an active actor/event registration; keep every contact lookup actor-scoped; preserve the duplicate branch as run-plus-step only until explicit selection; and describe the actual guarantee precisely: no task, reminder, message draft, contact merge, or external send before resolution.",
+      "files": "repos/orbits/app/api/events/[id]/registered-event-access.ts; repos/orbits/app/api/events/[id]/post-event/followup/handler.ts; repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx; repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+      "regression": "Route tests, production build, browser workflow, and exact Postgres readback passed. Registered actor access succeeded; unregistered/cross-actor access remained denied; the waiting branch contained only one run and one step; explicit duplicate resolution produced four auditable actions and one unsent draft; retry reused all core IDs.",
+      "status": "fixed and runtime-verified for registered access, actor-scoped search, unique/empty/duplicate queries, waiting/resolved branches, retry, and no-send persistence; voice transcription, cancel/close, provider failure, and task/reminder approval remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-045",
+      "severity": "P1",
+      "rootCause": "Event presentation replaced the source-backed attendee roster with a synthetic demo list, so Event Detail and Party disagreed about names and totals. Replay failed when composed private capability records were absent even though the registered public event and roster were valid. The organizer route could not resolve public catalogue codes, and its success view advertised fixed 12, 4,200+, and 4.8 metrics unrelated to the loaded events.",
+      "decision": "Keep the canonical 50-person provider roster intact; let registered ended-event replay use that public source without enabling check-in or seat claims; project organizer events only from the exact approved catalogue slug while stripping attendee names and private registration state; and derive organizer metrics solely from events.length and participantCount, omitting satisfaction when no source exists.",
+      "files": "repos/orbits/app/(app)/app/orbit-event-presentation.ts; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts; repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx; focused Event Detail, Party, and organizer route tests",
+      "regression": "Focused tests 26/26, two exact production builds, and authenticated browser traversal passed. Event Detail rendered 50 names with +38 expand/collapse; Party preserved the same source plus the current participant, exposed all five tabs, kept check-in/seat disabled, and returned to EVT01; /app/o/evt01 rendered 13 events and cumulative 500 without attendee names or the former hard-coded metrics.",
+      "status": "fixed and runtime-verified for the registered ended-event roster/replay and exact organizer projection; live active-event check-in, source-backed seat assignment, organizer roles, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-046",
+      "severity": "P1",
+      "rootCause": "Event Detail linked to Agent with an exact public event ID, but events.recommend applied discovery filtering first and removed all internally cancelled records. Public catalogue conversion currently uses that internal status for past events, so Agent discarded event_01, claimed it was missing, and substituted an unrelated future event. The generic prompt also asked whether to participate even when the UI already knew the event had ended.",
+      "decision": "When the query directly contains an event ID or full title, restrict the recommendation result to those exact records before generic status/token filtering; keep ordinary discovery filtering unchanged. Include the localized event status in the context prompt and ask for current status plus an appropriate next step or preparation rather than always asking whether to attend.",
+      "files": "repos/orbits/features/events/event-recommendation-tool.ts; repos/orbits/app/(app)/app/orbit-agent-context-href.ts; repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/tests/capabilities/event-crud-and-import-live-store.test.ts; repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
+      "regression": "Focused Agent/Event tests 32/32, exact production build, and two before/after browser conversations passed. The repaired answer used only event_01, stated its exact 2026-02-15 ended status and Osaka venue, cited one real record, suggested retrospective actions, and executed no external operation. Generic catalogue recommendation still preferred upcoming events.",
+      "status": "fixed and runtime-verified for one ended public event by exact ID/title and the unchanged generic discovery test; multiple explicit events, true cancellation semantics, other languages, provider failure, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []

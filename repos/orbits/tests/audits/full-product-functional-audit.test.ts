@@ -164,7 +164,24 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
 
   assert.equal(browserEvidenceSurfaces.length, 23);
   assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 94);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 135);
+  const runtimeVerifiedInteractions = inventory.surfaces.flatMap((surface) =>
+    surface.interactions.filter(
+      (interaction) =>
+        interaction.conclusion === "runtime-verified-exercised-case",
+    ),
+  );
+  const publicEventDetailInteractions = runtimeVerifiedInteractions.filter(
+    (interaction) =>
+      interaction.testEvidence.includes(
+        "web-public-event-detail-lifecycle-2026-07-29",
+      ),
+  );
+
+  assert.equal(
+    inventory.summary.interactionsRuntimeVerified,
+    runtimeVerifiedInteractions.length,
+  );
+  assert.equal(publicEventDetailInteractions.length, 21);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/profile",

@@ -571,6 +571,39 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
 ]);
 const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
+    "web:/app/events/[id]",
+    {
+      entryBehavior:
+        "authenticated-browser-source-backed-public-event-detail-lifecycle-verified",
+      runtimeEvidence: [
+        "EVT01 resolved to canonical event_01 with the generated 50-person roster and current registration state",
+        "matchmaking request/retry/reverse-request and slot transitions converged on one stable scheduled request",
+        "post-event follow-up preserved duplicate-contact resolution, explicit confirmation, unsent draft state, and core-ID idempotency",
+        "roster expand/collapse, organizer navigation, replay, Agent context, and browser-history return all preserved the exact event identity",
+        "all 42 exact audit rows were deleted after verification while three unrelated pre-existing Agent runs remained",
+      ],
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-public-event-detail-lifecycle",
+    },
+  ],
+  [
+    "web:/app/o/[slug]",
+    {
+      entryBehavior:
+        "authenticated-browser-public-catalogue-organizer-projection-verified",
+      runtimeEvidence: [
+        "the exact EVT01 organizer slug resolved Orbit 人脉测试空间 instead of an empty route state",
+        "the page rendered 13 approved-catalogue events and cumulative participantCount 500",
+        "hard-coded 12, 4,200+, and satisfaction claims were absent",
+        "the public projection stripped attendee names, actor registration state, and private roster data",
+      ],
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-public-catalogue-organizer",
+    },
+  ],
+  [
     "web:/app/home",
     {
       entryBehavior: "authenticated-browser-actor-scoped-home-entry-verified",
@@ -1567,6 +1600,255 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
 );
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx#Calendar is not connected. Propose a time manually / 日历暂未连接，请手动提议时间",
+    {
+      actualResult:
+        "The manual-time field accepted a future ISO timestamp after both participants had accepted the introduction.",
+      testData:
+        "event_01; audit actors user_ms4tr4vi_jb4qje and user_ms4o6bab_2rps63; 2026-08-01T01:30:00.000Z",
+      idempotency:
+        "Editing the field was local only and wrote no request, slot, calendar, message, or notification record.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx#Propose time / 提议时间",
+    {
+      actualResult:
+        "提议时间 persisted one proposed slot on the existing accepted request and refreshed the same request card.",
+      testData:
+        "Stable request intro-request:toy9sb2RdR9J8pjfuuHz7a01crYHhR9-R8nYGO20X_E",
+      idempotency:
+        "A repeated proposal reused the same request and slot value; it created no second request, calendar event, message, or notification.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx:193",
+    {
+      actualResult:
+        "Selecting the proposed time advanced the same request to scheduled and rendered 已确认时间 2026年8月1日 10:30 after refresh.",
+      testData:
+        "Accepted two-party event_01 request with one proposed slot at 2026-08-01T01:30:00.000Z",
+      idempotency:
+        "Repeated selection preserved one request and the same selected slot; no calendar, message, notification, or external write occurred.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx#Request an introduction / 申请认识",
+    {
+      actualResult:
+        "申请认识 created one actor-scoped request for the selected source-backed attendee; retrying from the same or reverse participant direction returned the same stable request ID.",
+      testData:
+        "event_01; current actor plus 审计撮合 东京伙伴 and 审计撮合 关西伙伴",
+      idempotency:
+        "SHA-256 request identity is directionless by participant pair; repeated and reverse requests left one persisted introduction request and sent no message.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#记录会后跟进",
+    {
+      actualResult:
+        "记录会后跟进 opened the capture dialog with source-backed attendee suggestions and explicit no-send/no-auto-task copy.",
+      testData:
+        "Registered actor user_ms4tr4vi_jb4qje on ended public event event_01",
+      idempotency:
+        "Opening the dialog performed no contact, note, task, reminder, draft, message, or external write.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#attendeeNames[0] ?? \"输入联系人姓名\"",
+    {
+      actualResult:
+        "The contact field accepted Chinese multi-word and same-name queries and reset any prior selected or duplicate-review state on edit.",
+      testData:
+        "会后验证 唯一; 会后验证 同名; a nonexistent Chinese query",
+      idempotency:
+        "Field edits were local only and did not create or merge a contact.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#搜索",
+    {
+      actualResult:
+        "搜索 returned the exact unique contact, two distinct same-name contacts, or a truthful empty result for the nonexistent query.",
+      testData:
+        "One 大阪食品实验室 contact plus same-name 东京商事 and 关西商事 contacts owned by the current actor",
+      idempotency:
+        "Search was actor-scoped and read-only; repeated queries did not alter contact or workflow records.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx:469",
+    {
+      actualResult:
+        "Selecting 会后验证 同名 exposed the duplicate warning and withheld all downstream actions until server-side contact resolution.",
+      testData:
+        "Two actor-owned contacts with the same display name and different organizations",
+      idempotency:
+        "Selection changed local state only; it did not merge contacts or create a note, task, reminder, or draft.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#{contact.displayName} {[contact.role, contact.organization] .filter(Boolean) .join(\" · \") || contact.id}",
+    {
+      actualResult:
+        "The duplicate-contact radio group distinguished 东京商事 from 关西商事 and enabled continuation only after one exact contact was chosen.",
+      testData:
+        "Duplicate-resolution response for run:post-event-followup:f33effd6",
+      idempotency:
+        "Radio selection was local only and did not merge either contact or create downstream work.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#正在继续… / 使用选中的联系人继续",
+    {
+      actualResult:
+        "使用选中的联系人继续 resolved the waiting run to the chosen 关西商事 record and rendered four auditable follow-up actions.",
+      testData:
+        "Waiting run run:post-event-followup:f33effd6 and selected contact contact:business-card:31ee54ccef893e75974ba525",
+      idempotency:
+        "The waiting branch contained only its run and resolve-contact step; continuation created one resolved run/action set and never merged contacts.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#对方关心什么、你承诺了什么、下一步是什么？",
+    {
+      actualResult:
+        "The note field preserved the entered Chinese commitment text through confirmation and into the source-backed review artifact.",
+      testData:
+        "会后 follow-up note for the selected 关西商事 contact",
+      idempotency:
+        "Editing the note was local only; persistence occurred only after explicit confirmation.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#正在准备… / 确认笔记并准备跟进",
+    {
+      actualResult:
+        "确认笔记并准备跟进 created one approved note, one unsent message draft, and review-only task/reminder actions; retry returned the same core run and action IDs.",
+      testData:
+        "Resolved run run:post-event-followup:7bce0475; actions 341178d0 and f115171b; draft externalSendRequested=false",
+      idempotency:
+        "Retry created no duplicate run, core action, draft, receipt, task, reminder, message, or external send; only append-only retry analytics changed.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#t({ en: \"Back to previous page\", zh: \"返回上一页\" })",
+    {
+      actualResult:
+        "返回上一页 returned from /app/events/EVT01 to the actual /app/events history entry.",
+      testData:
+        "Authenticated catalogue → EVT01 detail browser navigation",
+      idempotency:
+        "Browser-history navigation only; no event, registration, contact, Agent, or external record was written.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#View all their events / 查看 TA 的全部活动",
+    {
+      actualResult:
+        "查看 TA 的全部活动 opened /app/o/evt01 and rendered the exact public-catalogue organizer with 13 events and source-backed cumulative count 500.",
+      testData:
+        "EVT01 organizer Orbit 人脉测试空间; approved 13-event public catalogue",
+      idempotency:
+        "Read-only navigation; the public projection omitted attendee names and wrote no organizer, event, registration, or contact record.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#+ {hiddenAttendeeCount} · Show all / 展开全部",
+    {
+      actualResult:
+        "+38 · 展开全部 expanded the source-backed attendee preview from 12 names to all 50 records.",
+      testData:
+        "Registered event_01 actor with the generated 50-person attendee provider",
+      idempotency:
+        "Local presentation state only; no attendee, contact, registration, event, or external record was written.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#Show less / 收起",
+    {
+      actualResult:
+        "收起 restored the 12-person preview while the heading remained the source-backed total 参会者 50.",
+      testData: "Expanded event_01 attendee roster",
+      idempotency:
+        "Local presentation state only; roster count and all persistent records remained unchanged.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#Ask iOrbit about this event / 问 iOrbit 这场活动",
+    {
+      actualResult:
+        "问 iOrbit 这场活动 opened Agent with event_01, exact title, venue, date, 已结束 status, and a no-external-action constraint; the terminal answer used that one record instead of an unrelated fallback.",
+      testData:
+        "东京餐饮入境客增长会 · event_01 · 已结束 · 大阪 · 2026-02-15",
+      idempotency:
+        "The Agent produced one local conversation and one source-backed recommendation artifact; no message, registration, calendar, contact, task, reminder, or external action occurred, and both audit conversations were deleted after verification.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx:116",
+    {
+      actualResult:
+        "The desktop tablist switched among 现场主页, 推荐给你, 全部参会者, 关系图谱, and 流程议程 while preserving event_01.",
+      testData:
+        "Read-only replay for ended event_01 with 50 source-backed attendees plus the current registered participant",
+      idempotency:
+        "Tab and keyboard state were local only; no check-in, seat, attendee, contact, recommendation, event, or external record was written.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx:164",
+    {
+      actualResult:
+        "退出活动 returned from /app/party?eventId=event_01 to /app/events/EVT01.",
+      testData: "Ended-event replay for EVT01",
+      idempotency:
+        "Read-only navigation; no check-in, registration, seat, contact, message, or external record was written.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx:296",
+    {
+      actualResult:
+        "The replay rendered 签到已结束 as disabled, so an ended event could not create a false check-in.",
+      testData: "event_01 with ended status",
+      idempotency:
+        "The disabled control invoked no handler and wrote no check-in or attendance record.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/party|repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx:304",
+    {
+      actualResult:
+        "The replay rendered 尚未分配座位 as disabled rather than inventing a seat.",
+      testData:
+        "Registered event_01 actor with no source-backed seat assignment",
+      idempotency:
+        "The disabled control invoked no handler and wrote no seat, check-in, attendee, or event record.",
+      verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
+    },
+  ],
   [
     "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
     {
@@ -2660,6 +2942,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for event/context distinction, missing-context classification, localized no-write boundary, evidence disclosure, and exact recovery on all three routes; the remaining 77 success-state interactions per route require a real actor-owned event with reviewed attendee/recommendation data and remain explicitly unverified",
   },
   {
+    id: "web-public-event-detail-lifecycle-2026-07-29",
+    target:
+      "Authenticated Web public Event Detail → attendee roster, matchmaking, post-event follow-up, organizer, replay Party, Agent context, and return navigation",
+    testData:
+      "Ended event_01/EVT01; current registered actor user_ms4tr4vi_jb4qje; two registered matchmaking actors; 50 source-backed attendees; one unique and two same-name actor-owned contacts; one stable introduction request; two follow-up runs; before/after Agent conversations",
+    expected:
+      "Every branch must preserve the exact event and actor, use source-backed people/counts, gate writes on registration and explicit confirmation, keep retries idempotent, withhold external actions, distinguish duplicate contacts, represent ended-event replay honestly, and give Agent the exact selected event instead of a fuzzy fallback",
+    actual:
+      "The detail rendered the generated 50-person roster, expanded and collapsed without synthetic names, and matched two source-backed registered people. Repeated and reverse introduction requests reused one directionless request; acceptance, proposed time, and slot selection converged on one scheduled record. The duplicate-contact follow-up first persisted only a waiting run/step, then explicit resolution produced one confirmed note, one unsent draft, and review-only task/reminder actions; retry reused every core ID. Party replay kept check-in and seat disabled, exposed all five tabs, and returned to EVT01. The organizer page initially failed and then exposed hard-coded 12/4,200+/4.8 metrics; after repair it rendered 13 catalogue events, cumulative participantCount 500, and no attendee names. Agent initially claimed event_01 was missing and recommended an unrelated future event; after exact-reference repair it used one event_01 record, stated 已结束, and suggested retrospective next steps. The detail back control returned to the actual catalogue history entry. Cleanup deleted the 42 exact audit rows across 12 collections, the same target predicate returned zero residual rows, and three unrelated pre-existing Agent runs remained.",
+    evidence:
+      "Authenticated production-browser click traversal; exact Postgres row/payload readback; focused Event Detail, Party, organizer, Agent-context, recommendation, matchmaking, and follow-up tests; two exact production builds; commits 743721b8, 55c72ef8, 3b116abe, fd1ce510, and 9bbe8c4c",
+    conclusion:
+      "pass for the exercised registered ended-event lifecycle, exact source-backed roster, retry/reverse idempotency, duplicate-contact wait/resolve branches, no-send action boundary, replay tabs/disabled controls, organizer projection/metrics, exact Agent lookup, and browser return; voice recording/transcription, incoming decline UI, guest/login route, unregistered roster denial, responsive/keyboard/assistive traversal, and injected provider failures remain explicitly unverified",
+  },
+  {
     id: "web-schedule-dynamic-event-identity-2026-07-29",
     target:
       "Authenticated dynamic Web Schedule Event preview → encoded actor-owned event ID and both recovery destinations",
@@ -3275,6 +3572,62 @@ const AUDIT_REMEDIATIONS = [
       "Focused Playbook and automation tests 12/12 and the exact production build passed. Production dry-run changed from the false authentication summary to the current actor's source-backed empty follow-up result with two evidence IDs; immediate run persisted the same actor-scoped result. Staged change detection reported HIGH because four POST boundaries and six storage/module flows now carry actor identity, matching the intended security boundary.",
     status:
       "fixed and runtime-verified for dry-run, immediate run, empty actor readback, and missing-actor fail-closed behavior; populated multi-account browser execution and a live scheduled worker heartbeat remain pending",
+  },
+  {
+    id: "AUDIT-P1-043",
+    severity: "P1",
+    rootCause:
+      "Matchmaking request identity included caller direction and volatile time, so retrying the same pair or requesting from the reverse participant could create parallel introductions. Slot proposal and selection also accepted state transitions without converging on the already persisted request state.",
+    decision:
+      "Derive one deterministic SHA-256 request ID from event plus a lexically sorted participant pair; treat the pair as directionless; and make repeated request, proposal, and selection operations return the existing request/slot when the desired state already exists.",
+    files:
+      "repos/orbits/features/events/matchmaking/context-service.ts; repos/orbits/features/events/matchmaking/service.ts; repos/orbits/tests/capabilities/agent-matchmaking-context.test.ts",
+    regression:
+      "Focused matchmaking tests, exact production build, authenticated browser traversal, and Postgres readback passed. Same-direction retry, reverse-direction request, repeated proposal, and repeated selection preserved one request ID and one selected slot while sending no message or calendar action.",
+    status:
+      "fixed and runtime-verified for one two-party event_01 request through scheduled state; concurrent database races, decline UI, expiry, and multi-slot negotiation remain explicitly unverified",
+  },
+  {
+    id: "AUDIT-P1-044",
+    severity: "P1",
+    rootCause:
+      "The post-event follow-up route reused an owner-only event helper even though a public-catalogue attendee legitimately owns only a registration. The duplicate-contact warning also claimed that confirmation would create no writes, while the waiting branch correctly persists an auditable run and resolution step.",
+    decision:
+      "Authorize the follow-up boundary with either actor-owned event access or an active actor/event registration; keep every contact lookup actor-scoped; preserve the duplicate branch as run-plus-step only until explicit selection; and describe the actual guarantee precisely: no task, reminder, message draft, contact merge, or external send before resolution.",
+    files:
+      "repos/orbits/app/api/events/[id]/registered-event-access.ts; repos/orbits/app/api/events/[id]/post-event/followup/handler.ts; repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx; repos/orbits/tests/api/agent-post-event-followup-route.test.ts",
+    regression:
+      "Route tests, production build, browser workflow, and exact Postgres readback passed. Registered actor access succeeded; unregistered/cross-actor access remained denied; the waiting branch contained only one run and one step; explicit duplicate resolution produced four auditable actions and one unsent draft; retry reused all core IDs.",
+    status:
+      "fixed and runtime-verified for registered access, actor-scoped search, unique/empty/duplicate queries, waiting/resolved branches, retry, and no-send persistence; voice transcription, cancel/close, provider failure, and task/reminder approval remain unverified",
+  },
+  {
+    id: "AUDIT-P1-045",
+    severity: "P1",
+    rootCause:
+      "Event presentation replaced the source-backed attendee roster with a synthetic demo list, so Event Detail and Party disagreed about names and totals. Replay failed when composed private capability records were absent even though the registered public event and roster were valid. The organizer route could not resolve public catalogue codes, and its success view advertised fixed 12, 4,200+, and 4.8 metrics unrelated to the loaded events.",
+    decision:
+      "Keep the canonical 50-person provider roster intact; let registered ended-event replay use that public source without enabling check-in or seat claims; project organizer events only from the exact approved catalogue slug while stripping attendee names and private registration state; and derive organizer metrics solely from events.length and participantCount, omitting satisfaction when no source exists.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-event-presentation.ts; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts; repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx; focused Event Detail, Party, and organizer route tests",
+    regression:
+      "Focused tests 26/26, two exact production builds, and authenticated browser traversal passed. Event Detail rendered 50 names with +38 expand/collapse; Party preserved the same source plus the current participant, exposed all five tabs, kept check-in/seat disabled, and returned to EVT01; /app/o/evt01 rendered 13 events and cumulative 500 without attendee names or the former hard-coded metrics.",
+    status:
+      "fixed and runtime-verified for the registered ended-event roster/replay and exact organizer projection; live active-event check-in, source-backed seat assignment, organizer roles, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-046",
+    severity: "P1",
+    rootCause:
+      "Event Detail linked to Agent with an exact public event ID, but events.recommend applied discovery filtering first and removed all internally cancelled records. Public catalogue conversion currently uses that internal status for past events, so Agent discarded event_01, claimed it was missing, and substituted an unrelated future event. The generic prompt also asked whether to participate even when the UI already knew the event had ended.",
+    decision:
+      "When the query directly contains an event ID or full title, restrict the recommendation result to those exact records before generic status/token filtering; keep ordinary discovery filtering unchanged. Include the localized event status in the context prompt and ask for current status plus an appropriate next step or preparation rather than always asking whether to attend.",
+    files:
+      "repos/orbits/features/events/event-recommendation-tool.ts; repos/orbits/app/(app)/app/orbit-agent-context-href.ts; repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/tests/capabilities/event-crud-and-import-live-store.test.ts; repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
+    regression:
+      "Focused Agent/Event tests 32/32, exact production build, and two before/after browser conversations passed. The repaired answer used only event_01, stated its exact 2026-02-15 ended status and Osaka venue, cited one real record, suggested retrospective actions, and executed no external operation. Generic catalogue recommendation still preferred upcoming events.",
+    status:
+      "fixed and runtime-verified for one ended public event by exact ID/title and the unchanged generic discovery test; multiple explicit events, true cancellation semantics, other languages, provider failure, and assistive traversal remain unverified",
   },
 ];
 
@@ -4322,6 +4675,7 @@ export function buildFullProductFunctionalAuditInventory() {
         }#${interaction.handlers
           .map((handler) => `${handler.event}:${handler.expression}`)
           .join("|")}#${interaction.visibleName}`;
+        const semanticInteractionEvidenceKey = `${interaction.sourceFile}#${interaction.visibleName}`;
         const runtimeEvidence = hasLiveProfileRuntimeEvidence
           ? LIVE_PROFILE_INTERACTION_EVIDENCE.get(
               `${interaction.sourceFile}:${interaction.line}`,
@@ -4358,9 +4712,15 @@ export function buildFullProductFunctionalAuditInventory() {
                         `${surfaceId}|${stableInteractionEvidenceKey}`,
                       )
                     : liveWebAdditionalRuntimeEvidence
-                      ? LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                      ? (LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                          `${surfaceId}|${stableInteractionEvidenceKey}`,
+                        ) ??
+                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                          `${surfaceId}|${semanticInteractionEvidenceKey}`,
+                        ) ??
+                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
                           `${surfaceId}|${interaction.sourceFile}:${interaction.line}`,
-                        )
+                        ))
             : undefined;
         const runtimeVerificationCase =
           runtimeEvidence?.verificationCase ??
