@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "a37634bcaaa5b2ed35b0fd3831d9c510aa133806",
-  "deterministicSourceTime": "2026-07-29T04:11:42+09:00",
+  "generatedFromCommit": "f83182e874a8bb34f5200fc0155641a297a88b83",
+  "deterministicSourceTime": "2026-07-29T04:22:27+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -30,14 +30,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 47,
-    "interactionRouteInstances": 2797,
-    "interactionsRuntimeVerified": 53,
+    "interactionRouteInstances": 2792,
+    "interactionsRuntimeVerified": 55,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 78,
+    "surfacesWithRuntimeEvidence": 79,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 35,
-    "documentedRemediations": 33
+    "documentedVerificationCases": 36,
+    "documentedRemediations": 34
   },
   "surfaces": [
     {
@@ -114381,37 +114381,13 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 515,
+          "line": 512,
           "tag": "h2",
           "text": "Schedule a meeting / 安排约见"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 537,
-          "tag": "label",
-          "text": "Date / 日期"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 541,
-          "tag": "label",
-          "text": "Time / 时间"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 546,
-          "tag": "label",
-          "text": "Topic / 议题"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 547,
-          "tag": "input",
-          "text": "t({ en: \"What you'd like to talk about\", zh: \"想聊的事情\" })"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 653,
+          "line": 625,
           "tag": "ModalShell",
           "text": "t({ en: \"Full month\", zh: \"全月\" })"
         },
@@ -114441,7 +114417,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-today-empty-ledger-and-schedule-boundary-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "/app/contacts/new",
@@ -116290,14 +116266,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Opening the boundary changed local modal state only and wrote no meeting, relationship history, calendar, message, invitation, event, or contact record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "安排约见 opened a modal that stated the meeting service was unconfigured and exposed no selectable event/contact, date, topic, calendar write, or invitation action.",
+          "testData": "Authenticated browser actor with zero contacts and one private event projected into the read-only Today arrangement rail",
+          "testEvidence": [
+            "web-today-meeting-service-boundary-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -116882,10 +116860,10 @@
           "interactionId": "web:/app/today#interaction-77",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 514,
+          "line": 511,
           "controlType": "callback-control",
           "tag": "ModalShell",
-          "visibleName": "Schedule a meeting / 安排约见 Pick someone from your contacts, set up a meeting, and it syncs to your relationship history automatically. / 从名片夹选择一个人，约一次见面，自动同步到你们的交往记录。 Select a contact / 选择联系人 {connections.map((connection) => ( <button key={connection.id} type=\"button\" onClick={() => setCid(connection.id)} style={{ alignItems: \"center\", background: cid === connection.id ? \"var(--accent-softer)\" : \"var(--surface)\", border: `1px solid ${cid === connection.id ? \"var(--accent)\" : \"var(--border)\"}`, borderRadius: 12, cursor: \"pointer\", display: \"flex\", fontFamily: \"var(--ff)\", gap: 12, padding: 11, textAlign: \"left\" }} > <Avatar letter={connection.initial} g={connection.g} size={36} /> <div style={{ flex: 1, minWidth: 0 }}> <div style={{ color: \"var(--ink)\", fontSize: 14, fontWeight: 600 }}>{connection.displayName}</div> <div style={{ color: \"var(--text-3)\", fontSize: 12 }}>{connection.title} · {connection.company}</div> </div> {cid === connection.id ? <Icon name=\"check\" size={16} color=\"var(--accent)\" /> : null} </button> ))} Date / 日期 Time / 时间 Topic / 议题 Cancel / 取消 Send invite / 发送约见",
+          "visibleName": "Schedule a meeting / 安排约见 Meeting scheduling is not configured yet. Orbit will not create a meeting, update relationship history, write to a calendar, or send an invitation. / 约见服务暂未配置。Orbit 不会创建约见、更新交往记录、写入日历或发送邀请。 Got it / 知道了",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -116913,180 +116891,40 @@
           "interactionId": "web:/app/today#interaction-78",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 520,
+          "line": 524,
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{connection.displayName} {connection.title} · {connection.company} {<Icon name=\"check\" size={16} color=\"var(--accent)\" />} / {null}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "Got it / 知道了",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
             {
               "event": "onclick",
-              "expression": "() => setCid(connection.id)"
+              "expression": "onClose"
             }
           ],
           "href": null,
-          "downstreamCallHints": [
-            "setCid"
-          ],
+          "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Closing the explanation changed local modal state only and performed no request or persistent write.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "知道了 closed the unconfigured-service explanation and returned to the unchanged Today page.",
+          "testData": "The open meeting-service boundary on authenticated Web Today",
+          "testEvidence": [
+            "web-today-meeting-service-boundary-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/today#interaction-79",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 538,
-          "controlType": "field",
-          "tag": "input",
-          "visibleName": "Date / 日期",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/today#interaction-80",
-          "surfaceId": "web:/app/today",
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 542,
-          "controlType": "field",
-          "tag": "input",
-          "visibleName": "Time / 时间",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/today#interaction-81",
-          "surfaceId": "web:/app/today",
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 547,
-          "controlType": "field",
-          "tag": "input",
-          "visibleName": "t({ en: \"What you'd like to talk about\", zh: \"想聊的事情\" })",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/today#interaction-82",
-          "surfaceId": "web:/app/today",
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 550,
-          "controlType": "button",
-          "tag": "button",
-          "visibleName": "Cancel / 取消",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [
-            {
-              "event": "onclick",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/today#interaction-83",
-          "surfaceId": "web:/app/today",
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 551,
-          "controlType": "button",
-          "tag": "button",
-          "visibleName": "Send invite / 发送约见",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "!cid",
-          "handlers": [
-            {
-              "event": "onclick",
-              "expression": "onClose"
-            }
-          ],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "write-or-external-effect",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/today#interaction-84",
-          "surfaceId": "web:/app/today",
-          "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 632,
+          "line": 604,
           "controlType": "callback-control",
           "tag": "WeekStrip",
           "visibleName": null,
@@ -117116,10 +116954,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/today#interaction-85",
+          "interactionId": "web:/app/today#interaction-80",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
-          "line": 653,
+          "line": 625,
           "controlType": "callback-control",
           "tag": "ModalShell",
           "visibleName": null,
@@ -117149,7 +116987,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/today#interaction-86",
+          "interactionId": "web:/app/today#interaction-81",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/today-page-content.tsx",
           "line": 64,
@@ -117202,6 +117040,7 @@
         }
       ],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts",
@@ -117221,8 +117060,13 @@
         "repos/orbits/tests/ui/orbit-top-nav-links.test.ts",
         "repos/orbits/tests/ui/orbit-top-nav-structure.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the actor-scoped decision ledger rendered zero items without fallback decisions",
+        "the actor's private event remained a read-only review arrangement with an encoded detail link",
+        "opening the meeting action rendered an explicit unconfigured-service boundary",
+        "the boundary exposed no contact choice, date, topic, calendar write, or invitation action"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-today-meeting-service-boundary"
     },
     {
       "surfaceId": "web:/dev/agent-test-report",
@@ -136675,6 +136519,15 @@
       "actual": "Runtime first reproduced a fake registration count, a not-found dynamic detail, a synthetic Orbit organizer link, one recommendation promoted into an attendee, and raw Event not found copy. After repair, Home showed one 活动, both Home surfaces opened the encoded private detail, the detail showed 主办方待确认, 参会者 0, the actor's real 重新报名 state, and a stable Chinese no-matchmaking boundary.",
       "evidence": "Authenticated production browser Home/Home Events filter and detail traversal; focused Web route-service tests 33/33; Next TypeScript; exact-origin production build",
       "conclusion": "pass for the exercised actor-owned event summary, filter, encoded dynamic route, registration readback, and missing-source boundaries; populated organizer, attendee roster, and matchmaking states remain pending real source data"
+    },
+    {
+      "id": "web-today-meeting-service-boundary-2026-07-29",
+      "target": "Authenticated Web Today → meeting action → missing contact/calendar/invitation service boundary",
+      "testData": "Actor with zero contacts, zero Agent decisions, and one private event projected as a read-only review arrangement",
+      "expected": "An event arrangement must not become a contact candidate, and no meeting form or success action may appear until contact selection, calendar persistence, invitation delivery, and relationship-history readback have real contracts",
+      "actual": "Runtime first rendered the private event as the only selectable contact, a fixed past date, topic input, and a Send invite button that only closed the modal. After repair, the same action opened a status-only boundary stating that no meeting, relationship-history update, calendar write, or invitation would occur; 知道了 closed it without changing Today.",
+      "evidence": "Authenticated production browser before/after DOM and click traversal; Today/Followups/Schedule focused tests 55/55; Next TypeScript; exact-origin production build",
+      "conclusion": "pass for the exercised no-service boundary and local open/close behavior; real meeting creation remains unimplemented until all named service contracts and readback exist"
     }
   ],
   "remediations": [
@@ -136974,6 +136827,15 @@
       "files": "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; focused route-service tests",
       "regression": "Focused Web tests 33/33, Next TypeScript, exact-origin production build, and authenticated browser refresh passed. The private detail rendered 主办方待确认 with no link, 参会者 0, 重新报名, and 当前活动暂时没有可用的撮合数据。",
       "status": "fixed and runtime-verified for missing organizer, roster, and matchmaking sources; populated source-backed variants remain pending real records"
+    },
+    {
+      "id": "AUDIT-P1-034",
+      "severity": "P1",
+      "rootCause": "The shared Web meeting modal reused schedule connections as if they were contacts, so a private event appeared as the only person to meet. It also hard-coded a past date and exposed a Send invite button whose handler only closed the modal without creating a meeting, writing relationship history/calendar data, or delivering an invitation.",
+      "decision": "Remove every unsupported form field and fake success action from the shared modal. Keep the trigger as an inspectable product boundary that names the missing meeting, relationship-history, calendar, and invitation contracts, with one local close action.",
+      "files": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx; repos/orbits/tests/pages/app-today-merged.test.ts",
+      "regression": "Today/Followups/Schedule focused tests 55/55, Next TypeScript, exact-origin production build, and authenticated browser before/after traversal passed. The private event, fixed date, topic field, and Send invite action disappeared; only the explicit no-write boundary and 知道了 remained.",
+      "status": "fixed and runtime-verified for Web Today; the shared Followups legacy renderer is source-tested, while real meeting creation remains unimplemented"
     }
   ],
   "externalLimitations": []

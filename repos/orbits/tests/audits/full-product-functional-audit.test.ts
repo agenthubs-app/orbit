@@ -164,8 +164,8 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 78);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 53);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 79);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 55);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",
@@ -218,6 +218,12 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       (surface) => surface.surfaceId === "web:/app/home/events",
     )?.verificationConclusion,
     "runtime-partially-verified-web-home-events-filter-and-detail",
+  );
+  assert.equal(
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/today",
+    )?.verificationConclusion,
+    "runtime-partially-verified-web-today-meeting-service-boundary",
   );
   for (const [surfaceId, verificationConclusion] of [
     [

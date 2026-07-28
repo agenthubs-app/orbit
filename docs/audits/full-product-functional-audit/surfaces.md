@@ -89,7 +89,7 @@
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 9 | inventory-complete-runtime-verification-pending |
 | `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 2 | 48 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 2 | 94 | 9 | inventory-complete-runtime-verification-pending |
-| `web:/app/today` | web | production | `/app/today` | `web:/app` |  | 2 | 86 | 18 | inventory-complete-runtime-verification-pending |
+| `web:/app/today` | web | production | `/app/today` | `web:/app` |  | 2 | 81 | 19 | runtime-partially-verified-web-today-meeting-service-boundary |
 | `web:/dev/agent-test-report` | web | development | `/dev/agent-test-report` | `web:/` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/dev/capabilities` | web | development | `/dev/capabilities` | `web:/` |  | 0 | 3 | 52 | runtime-partially-verified-browser-base-state |
 | `web:/dev/capabilities/[slug]` | web | development | `/dev/capabilities/[slug]` | `web:/dev/capabilities` | slug | 0 | 337 | 52 | runtime-partially-verified-six-ids |

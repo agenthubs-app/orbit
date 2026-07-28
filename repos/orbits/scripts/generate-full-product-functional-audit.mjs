@@ -599,6 +599,22 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-home-events-filter-and-detail",
     },
   ],
+  [
+    "web:/app/today",
+    {
+      entryBehavior:
+        "authenticated-browser-today-empty-ledger-and-schedule-boundary-verified",
+      runtimeEvidence: [
+        "the actor-scoped decision ledger rendered zero items without fallback decisions",
+        "the actor's private event remained a read-only review arrangement with an encoded detail link",
+        "opening the meeting action rendered an explicit unconfigured-service boundary",
+        "the boundary exposed no contact choice, date, topic, calendar write, or invitation action",
+      ],
+      verificationCase: "web-today-meeting-service-boundary-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-today-meeting-service-boundary",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1053,6 +1069,29 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
       verificationCase: "web-home-private-event-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/today|repos/orbits/app/(app)/app/today/orbit-today-header-actions.tsx:36",
+    {
+      actualResult:
+        "安排约见 opened a modal that stated the meeting service was unconfigured and exposed no selectable event/contact, date, topic, calendar write, or invitation action.",
+      testData:
+        "Authenticated browser actor with zero contacts and one private event projected into the read-only Today arrangement rail",
+      idempotency:
+        "Opening the boundary changed local modal state only and wrote no meeting, relationship history, calendar, message, invitation, event, or contact record.",
+      verificationCase: "web-today-meeting-service-boundary-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/today|repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx:524",
+    {
+      actualResult:
+        "知道了 closed the unconfigured-service explanation and returned to the unchanged Today page.",
+      testData: "The open meeting-service boundary on authenticated Web Today",
+      idempotency:
+        "Closing the explanation changed local modal state only and performed no request or persistent write.",
+      verificationCase: "web-today-meeting-service-boundary-2026-07-29",
     },
   ],
 ]);
@@ -1728,6 +1767,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised actor-owned event summary, filter, encoded dynamic route, registration readback, and missing-source boundaries; populated organizer, attendee roster, and matchmaking states remain pending real source data",
   },
+  {
+    id: "web-today-meeting-service-boundary-2026-07-29",
+    target:
+      "Authenticated Web Today → meeting action → missing contact/calendar/invitation service boundary",
+    testData:
+      "Actor with zero contacts, zero Agent decisions, and one private event projected as a read-only review arrangement",
+    expected:
+      "An event arrangement must not become a contact candidate, and no meeting form or success action may appear until contact selection, calendar persistence, invitation delivery, and relationship-history readback have real contracts",
+    actual:
+      "Runtime first rendered the private event as the only selectable contact, a fixed past date, topic input, and a Send invite button that only closed the modal. After repair, the same action opened a status-only boundary stating that no meeting, relationship-history update, calendar write, or invitation would occur; 知道了 closed it without changing Today.",
+    evidence:
+      "Authenticated production browser before/after DOM and click traversal; Today/Followups/Schedule focused tests 55/55; Next TypeScript; exact-origin production build",
+    conclusion:
+      "pass for the exercised no-service boundary and local open/close behavior; real meeting creation remains unimplemented until all named service contracts and readback exist",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2188,6 +2242,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Web tests 33/33, Next TypeScript, exact-origin production build, and authenticated browser refresh passed. The private detail rendered 主办方待确认 with no link, 参会者 0, 重新报名, and 当前活动暂时没有可用的撮合数据。",
     status:
       "fixed and runtime-verified for missing organizer, roster, and matchmaking sources; populated source-backed variants remain pending real records",
+  },
+  {
+    id: "AUDIT-P1-034",
+    severity: "P1",
+    rootCause:
+      "The shared Web meeting modal reused schedule connections as if they were contacts, so a private event appeared as the only person to meet. It also hard-coded a past date and exposed a Send invite button whose handler only closed the modal without creating a meeting, writing relationship history/calendar data, or delivering an invitation.",
+    decision:
+      "Remove every unsupported form field and fake success action from the shared modal. Keep the trigger as an inspectable product boundary that names the missing meeting, relationship-history, calendar, and invitation contracts, with one local close action.",
+    files:
+      "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx; repos/orbits/tests/pages/app-today-merged.test.ts",
+    regression:
+      "Today/Followups/Schedule focused tests 55/55, Next TypeScript, exact-origin production build, and authenticated browser before/after traversal passed. The private event, fixed date, topic field, and Send invite action disappeared; only the explicit no-write boundary and 知道了 remained.",
+    status:
+      "fixed and runtime-verified for Web Today; the shared Followups legacy renderer is source-tested, while real meeting creation remains unimplemented",
   },
 ];
 
