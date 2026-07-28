@@ -40,3 +40,22 @@ export function createAppBootstrapService(
 
   return resolution.service;
 }
+
+export function createActorScopedAppBootstrapService(
+  accountId: string,
+): AppBootstrapService {
+  const provider = createConfiguredStorageAppBootstrapProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveAppBootstrapService({
+    provider:
+      normalizedAccountId && provider?.readBootstrapGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readBootstrapGraph: () =>
+              provider.readBootstrapGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}

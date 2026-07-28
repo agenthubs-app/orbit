@@ -46,6 +46,13 @@ export interface LiveEventValueRecommendationProvider {
   sourceLabel: string;
   getEvent: (eventId: string) => Promise<LiveEventValueStoreRecord | null>;
   listEvents: () => Promise<readonly LiveEventValueStoreRecord[]>;
+  getEventForAccount?: (
+    accountId: string,
+    eventId: string,
+  ) => Promise<LiveEventValueStoreRecord | null>;
+  listEventsForAccount?: (
+    accountId: string,
+  ) => Promise<readonly LiveEventValueStoreRecord[]>;
 }
 
 export interface StorageEventValueRecommendationProviderOptions {
@@ -233,21 +240,26 @@ export function createStorageEventValueRecommendationProvider({
   store,
   workspaceId,
 }: StorageEventValueRecommendationProviderOptions): LiveEventValueRecommendationProvider {
-  async function listEvents(): Promise<readonly LiveEventValueStoreRecord[]> {
+  async function listEvents(
+    accountId?: string,
+  ): Promise<readonly LiveEventValueStoreRecord[]> {
     const [eventRecords, attendeeRecords, recommendationRecords] =
       await Promise.all([
         store.listRecords({
           workspaceId,
           collectionName: EVENT_VALUE_LIVE_RECORD_COLLECTIONS.events,
+          userId: accountId,
         }),
         store.listRecords({
           workspaceId,
           collectionName: EVENT_VALUE_LIVE_RECORD_COLLECTIONS.attendees,
+          userId: accountId,
         }),
         store.listRecords({
           workspaceId,
           collectionName:
             EVENT_VALUE_LIVE_RECORD_COLLECTIONS.matchRecommendations,
+          userId: accountId,
         }),
       ]);
     const attendeeCounts = countByEventId(attendeeRecords);
@@ -270,7 +282,13 @@ export function createStorageEventValueRecommendationProvider({
 
       return events.find((event) => event.id === eventId) ?? null;
     },
-    listEvents,
+    getEventForAccount: async (accountId, eventId) => {
+      const events = await listEvents(accountId);
+
+      return events.find((event) => event.id === eventId) ?? null;
+    },
+    listEvents: () => listEvents(),
+    listEventsForAccount: (accountId) => listEvents(accountId),
   };
 }
 

@@ -52,6 +52,9 @@ export interface LiveAppBootstrapProvider {
   source: string;
   sourceLabel: string;
   readBootstrapGraph: () => LiveAppBootstrapProviderResult<LiveAppBootstrapGraph>;
+  readBootstrapGraphForAccount?: (
+    accountId: string,
+  ) => LiveAppBootstrapProviderResult<LiveAppBootstrapGraph>;
 }
 
 export const APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS = {
@@ -475,10 +478,12 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  accountId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   return store.listRecords({
     workspaceId,
     collectionName,
+    userId: accountId,
   });
 }
 
@@ -488,10 +493,7 @@ export function createStorageAppBootstrapProvider({
   store,
   workspaceId,
 }: StorageAppBootstrapProviderOptions): LiveAppBootstrapProvider {
-  return {
-    source: source ?? `live-record-store:app-bootstrap:${workspaceId}`,
-    sourceLabel,
-    async readBootstrapGraph(): Promise<LiveAppBootstrapGraph> {
+  async function readGraph(accountId?: string): Promise<LiveAppBootstrapGraph> {
       const [
         accountRecords,
         profileRecords,
@@ -504,16 +506,16 @@ export function createStorageAppBootstrapProvider({
         notificationRecords,
         evidenceRecords,
       ] = await Promise.all([
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.connections),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.events),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.tasks),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.connections, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.events, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.tasks, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications, accountId),
+        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence, accountId),
       ]);
       const records = [
         ...accountRecords,
@@ -568,7 +570,13 @@ export function createStorageAppBootstrapProvider({
           .map(taskFromRecord)
           .filter((task): task is TaskDTO => task !== null),
       };
-    },
+  }
+
+  return {
+    source: source ?? `live-record-store:app-bootstrap:${workspaceId}`,
+    sourceLabel,
+    readBootstrapGraph: () => readGraph(),
+    readBootstrapGraphForAccount: (accountId) => readGraph(accountId),
   };
 }
 

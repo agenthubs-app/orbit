@@ -140,7 +140,7 @@ const capabilityEntries: {
 const settingsEntry: (typeof capabilityEntries)[number] = {
   detail: "账号、权限和服务器",
   featured: false,
-  href: "/account" as Href,
+  href: "/settings" as Href,
   icon: "settings-outline",
   title: "设置",
   tone: "sky"

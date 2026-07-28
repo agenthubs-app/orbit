@@ -12,7 +12,14 @@ import {
   type ChatPrivacyControlsInput,
   type ChatPrivacyControlsResult,
 } from "../../../../features/chat/privacy-contract";
-import { createChatPrivacyControlsService } from "../../../../features/chat/service-factory";
+import {
+  createActorScopedChatPrivacyControlsService,
+  createChatPrivacyControlsService,
+} from "../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +60,16 @@ function responseForResult(
 export async function GET(request: Request): Promise<Response> {
   // GET 不改变任何隐私设置，只返回当前 conversation 的控制面板状态。
   const mode = resolveFeatureMode();
-  const service = createChatPrivacyControlsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatPrivacyControlsService(actor.id)
+      : createChatPrivacyControlsService(mode);
   const result = await service.getPrivacyControls(readInput(request));
 
   return responseForResult(result, mode);

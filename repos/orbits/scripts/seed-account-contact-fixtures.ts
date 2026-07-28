@@ -7,6 +7,7 @@ import type {
 } from "../shared/domain/contracts";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import { createConfiguredStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
+import { loadLocalEnv } from "./load-local-env";
 
 interface FixtureDefinition {
   displayName: string;
@@ -421,6 +422,8 @@ function interactionSourceType(
 }
 
 async function main(): Promise<void> {
+  loadLocalEnv();
+
   const email = argumentValue("--email");
   if (!email) {
     throw new Error("Usage: --email <test-account-email>");
@@ -440,11 +443,13 @@ async function main(): Promise<void> {
   const key = actorKey(actor.id);
   for (const [index, fixture] of fixtures.entries()) {
     const suffix = String(index + 1).padStart(2, "0");
-    const contactId = `test-contact-${key}-${suffix}`;
-    const connectionId = `test-connection-${key}-${suffix}`;
+    const contactId = `orbit-contact-${key}-${suffix}`;
+    const connectionId = `orbit-connection-${key}-${suffix}`;
+    const legacyContactId = `test-contact-${key}-${suffix}`;
+    const legacyConnectionId = `test-connection-${key}-${suffix}`;
     const source = {
       type: fixture.sourceType,
-      id: `test-source-${key}-${suffix}`,
+      id: `orbit-source-${key}-${suffix}`,
       label: fixture.sourceLabel,
     } as const;
     const evidenceRecords: RelationshipEvidenceDTO[] =
@@ -454,7 +459,7 @@ async function main(): Promise<void> {
           interactionIndex,
         );
         return {
-          id: `test-evidence-${key}-${suffix}-${interactionIndex + 1}`,
+          id: `orbit-evidence-${key}-${suffix}-${interactionIndex + 1}`,
           sourceType,
           sourceId: `${source.id}:interaction:${interactionIndex + 1}`,
           summary,
@@ -471,7 +476,7 @@ async function main(): Promise<void> {
     const createdAt = evidenceRecords.at(-1)?.occurredAt ?? latestTimestamp;
     const contact: ContactDTO = {
       id: contactId,
-      personId: `test-person-${key}-${suffix}`,
+      personId: `orbit-person-${key}-${suffix}`,
       displayName: fixture.displayName,
       organization: fixture.organization,
       role: fixture.role,
@@ -588,10 +593,41 @@ async function main(): Promise<void> {
       searchText: `${fixture.displayName} ${fixture.summary} ${fixture.sharedTopics.join(" ")}`,
       payload: connection as unknown as Record<string, unknown>,
     });
+
+    const migratedAt = new Date().toISOString();
+    for (const [collectionName, recordId] of [
+      ["contacts", legacyContactId],
+      ["connections", legacyConnectionId],
+      ["evidence", `test-evidence-${key}-${suffix}`],
+      ...fixture.interactionHistory.map((_, interactionIndex) => [
+        "evidence",
+        `test-evidence-${key}-${suffix}-${interactionIndex + 1}`,
+      ]),
+    ] as const) {
+      const legacyRecord = await configuredStore.store.getRecord({
+        workspaceId: configuredStore.workspaceId,
+        collectionName,
+        recordId,
+      });
+      const isOwnedFixture =
+        legacyRecord?.userId === actor.id &&
+        (collectionName === "evidence"
+          ? legacyRecord.payload.createdBy === actor.id
+          : legacyRecord.provider === "orbit-account-contact-fixtures");
+
+      if (legacyRecord && isOwnedFixture) {
+        await configuredStore.store.deleteRecord({
+          workspaceId: configuredStore.workspaceId,
+          collectionName,
+          recordId,
+          deletedAt: migratedAt,
+        });
+      }
+    }
   }
 
   // Keep the introduction fixture created during account QA aligned with the
-  // localized contact records. Only the exact known test draft is migrated;
+  // localized contact records. Only the exact known seeded draft is migrated;
   // user-authored introduction notes are never rewritten.
   const introductionRecords = await configuredStore.store.listRecords({
     workspaceId: configuredStore.workspaceId,
@@ -617,6 +653,8 @@ async function main(): Promise<void> {
       searchText: `林玫 佐藤健司 ${localizedIntroduction}`,
       payload: {
         ...record.payload,
+        contactAId: `orbit-contact-${key}-01`,
+        contactBId: `orbit-contact-${key}-02`,
         labelA: "林玫",
         labelB: "佐藤健司",
         blurb: localizedIntroduction,
@@ -634,6 +672,7 @@ async function main(): Promise<void> {
         0,
       ),
       fixtureSet: `account-network-${key}`,
+      legacyFixtureRecordsArchived: fixtures.length * 6,
     }),
   );
 }

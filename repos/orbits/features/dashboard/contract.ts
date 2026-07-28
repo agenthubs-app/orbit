@@ -7,6 +7,7 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // Dashboard contract 是首页跨模块聚合的只读 DTO。
 // 它汇总联系人、关系价值、跟进、沉睡联系人和近期活动，不执行 live analytics。
 export const DASHBOARD_AGGREGATE_ERROR_CODES = [
+  "DASHBOARD_AGGREGATE_ACTOR_REQUIRED",
   "DASHBOARD_AGGREGATE_MOCK_FAILED",
   "DASHBOARD_AGGREGATE_LIVE_FAILED",
   "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",
@@ -31,11 +32,13 @@ export type DashboardRecentActivityType =
 
 // aggregate input 允许限制近期活动数量；summary input 用于轻量概览。
 export interface DashboardAggregateInput {
+  actorId?: string | null;
   scenario?: DashboardAggregateScenario | string | null;
   activityLimit?: number | null;
 }
 
 export interface DashboardAggregateSummaryInput {
+  actorId?: string | null;
   scenario?: DashboardAggregateScenario | string | null;
 }
 
@@ -48,6 +51,13 @@ export interface DashboardAggregateErrorDefinition {
 }
 
 export const DASHBOARD_AGGREGATE_ERROR_DEFINITIONS = {
+  DASHBOARD_AGGREGATE_ACTOR_REQUIRED: {
+    code: "DASHBOARD_AGGREGATE_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated account is required for the live dashboard.",
+    recovery:
+      "Resolve the current session to an account before reading personal dashboard records.",
+  },
   DASHBOARD_AGGREGATE_MOCK_FAILED: {
     code: "DASHBOARD_AGGREGATE_MOCK_FAILED",
     appCode: "SERVICE_UNAVAILABLE",

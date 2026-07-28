@@ -15,7 +15,14 @@ import {
 import {
   CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY,
 } from "../../../../../../features/chat/fixtures";
-import { createChatConversationMessageService } from "../../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatConversationMessageService,
+  createChatConversationMessageService,
+} from "../../../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -119,8 +126,17 @@ export async function POST(
 ): Promise<Response> {
   // Next App Router 的动态 params 是 Promise，先 await 后再进入 service。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
-  const service = createChatConversationMessageService();
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatConversationMessageService(actor.id)
+      : createChatConversationMessageService(mode);
   const result = await service.sendMessage(await readInput(request, id));
 
   return responseForResult(result, mode);

@@ -12,6 +12,10 @@ import {
   connectionEvidenceFailureToAppError,
 } from "../../../../features/connections/service";
 import type { ConnectionEvidenceDetailResult } from "../../../../features/connections/contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +56,17 @@ export async function GET(
 ): Promise<Response> {
   // scenario 支持演示缺失、pending 或失败状态，默认由 service 决定正常数据。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
   const connectionService = createConnectionEvidenceService();
   const result = await connectionService.getConnection({
+    actorId: actor?.id,
     connectionId: id,
     scenario,
   });

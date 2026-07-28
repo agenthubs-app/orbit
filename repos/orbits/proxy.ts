@@ -17,6 +17,15 @@ function normalizeOrbitLanguage(value: string | null) {
   return value === "en" ? "en" : value === "zh" ? "zh" : null;
 }
 
+function isPublicApiPath(pathname: string): boolean {
+  return (
+    pathname === "/api/health" ||
+    pathname === "/api/health/error" ||
+    pathname.startsWith("/api/auth/") ||
+    /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
+  );
+}
+
 export const proxy = auth((request) => {
   // Next proxy 不能直接改原 request，因此复制 headers 后交给 NextResponse.next。
   const language = normalizeOrbitLanguage(request.nextUrl.searchParams.get("lang"));
@@ -24,6 +33,28 @@ export const proxy = auth((request) => {
 
   if (language) {
     requestHeaders.set("x-orbit-lang", language);
+  }
+
+  if (
+    request.nextUrl.pathname.startsWith("/api/") &&
+    !isPublicApiPath(request.nextUrl.pathname) &&
+    !request.auth?.user?.id
+  ) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Authentication is required for this Orbit API.",
+        },
+      },
+      {
+        headers: {
+          "cache-control": "no-store",
+        },
+        status: 401,
+      },
+    );
   }
 
   if (isOrbitPrivateAppPath(request.nextUrl.pathname) && !request.auth?.user?.id) {
@@ -65,6 +96,6 @@ export const proxy = auth((request) => {
 });
 
 export const config = {
-  // 只作用于产品 app 路由；公开落地页和 API 不通过这个语言 proxy。
-  matcher: "/app/:path*",
+  // 个人产品页面和 API 默认走统一会话边界；公开 API 由上面的窄白名单放行。
+  matcher: ["/app/:path*", "/api/:path*"],
 };

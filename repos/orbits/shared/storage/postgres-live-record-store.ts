@@ -208,6 +208,10 @@ function listQuery(input: LiveRecordListQuery): {
     addWhere(where, values, (index) => `target_id = $${index}`, input.targetId);
   }
 
+  if (input.userId !== undefined) {
+    addWhere(where, values, (index) => `user_id = $${index}`, input.userId);
+  }
+
   if (input.recordIds !== undefined) {
     addWhere(
       where,

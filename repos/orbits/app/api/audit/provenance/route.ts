@@ -11,7 +11,14 @@ import {
   sourceConsistencyProvenanceAuditFailureContext,
   sourceConsistencyProvenanceAuditFailureToAppError,
 } from "../../../../features/audit/provenance-contract";
-import { createSourceConsistencyProvenanceAuditService } from "../../../../features/audit/service-factory";
+import {
+  createActorScopedSourceConsistencyProvenanceAuditService,
+  createSourceConsistencyProvenanceAuditService,
+} from "../../../../features/audit/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,16 @@ function readInput(request: Request): SourceConsistencyProvenanceAuditInput {
 export async function GET(request: Request): Promise<Response> {
   // GET 读取最近一次/当前 mock 审计快照，不触发重新运行。
   const mode = resolveFeatureMode();
-  const auditService = createSourceConsistencyProvenanceAuditService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const auditService =
+    mode === "live" && actor
+      ? createActorScopedSourceConsistencyProvenanceAuditService(actor.id)
+      : createSourceConsistencyProvenanceAuditService(mode);
   const result = await auditService.getAuditSnapshot(readInput(request));
 
   if (result.success === false) {

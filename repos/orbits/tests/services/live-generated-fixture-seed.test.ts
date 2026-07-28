@@ -103,6 +103,7 @@ test("generated relationship live seed writes every default mock fixture collect
     contact001?.payload.displayName,
     defaultMockFixtures.contacts[0]?.displayName,
   );
+  assert.equal(contact001?.userId, defaultMockFixtures.accounts[0]?.id);
   assert.equal(contact001?.sourceType, "qr_scan");
   assert.deepEqual(contact001?.evidenceIds, ["evidence:contact:001"]);
 
@@ -227,6 +228,42 @@ test("generated fixture verification rejects corrupted key record payloads", asy
       /attendees participant_001 eventId should be event_01/,
     );
   }
+});
+
+test("generated fixture verification rejects records owned by another account", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId = "workspace:generated-fixture-live-seed-owner-test";
+  const now = () => "2026-07-01T15:00:00.000Z";
+
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now,
+    store,
+    workspaceId,
+  });
+
+  const contact = store.getRecord({
+    workspaceId,
+    collectionName: "contacts",
+    recordId: "contact_001",
+  });
+
+  assert.ok(contact);
+  store.upsertRecord({
+    ...contact,
+    userId: "account:other",
+    updatedAt: now(),
+  });
+
+  const verification = await verifyGeneratedRelationshipFixturesInLiveStore({
+    store,
+    workspaceId,
+  });
+
+  assert.equal(verification.success, false);
+  assert.match(
+    verification.failures.join(" "),
+    /contacts: 1 generated fixture records have an invalid account owner/u,
+  );
 });
 
 test("generated fixture verification rejects any corrupted generated event name", async () => {

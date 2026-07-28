@@ -38,6 +38,12 @@ export interface LiveRecordListQuery {
   sourceType?: SourceType | string;
   targetId?: string;
   targetType?: RelationshipTargetType | string;
+  /**
+   * Account owner for private records. Public/workspace-wide readers omit it;
+   * authenticated feature providers must pass it before personal records leave
+   * the storage boundary.
+   */
+  userId?: string;
 }
 
 export interface LiveRecordGetQuery {
@@ -119,6 +125,7 @@ function matchesListQuery(record: LiveRecord, query: LiveRecordListQuery): boole
     (query.sourceId === undefined || record.sourceId === query.sourceId) &&
     (query.targetType === undefined || record.targetType === query.targetType) &&
     (query.targetId === undefined || record.targetId === query.targetId) &&
+    (query.userId === undefined || record.userId === query.userId) &&
     (recordIds === null || recordIds.has(record.recordId)) &&
     isVisible(record, query.includeDeleted) &&
     includesSearchText(record, query.searchText)

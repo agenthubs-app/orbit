@@ -103,6 +103,7 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
   assert.match(serviceInterface, /getDashboardAggregate/);
   assert.match(serviceInterface, /getDashboardSummary/);
   assert.deepEqual(contract.DASHBOARD_AGGREGATE_ERROR_CODES, [
+    "DASHBOARD_AGGREGATE_ACTOR_REQUIRED",
     "DASHBOARD_AGGREGATE_MOCK_FAILED",
     "DASHBOARD_AGGREGATE_LIVE_FAILED",
     "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",

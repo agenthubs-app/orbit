@@ -17,6 +17,10 @@ import {
   agentAutonomySettingsFailureContext,
   agentAutonomySettingsFailureToAppError,
 } from "../../../../features/agent/settings-contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +73,13 @@ async function readUpdateInput(
 export async function GET(request: Request): Promise<Response> {
   // 读取当前 autonomy settings；route 不判断业务规则，只做 envelope 转换。
   const mode = resolveFeatureMode();
-  const settingsService = createAgentAutonomySettingsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const settingsService = createAgentAutonomySettingsService(mode);
   const result = settingsService.getSettings(readSettingsInput(request));
 
   if (result.success === false) {
@@ -93,7 +103,13 @@ export async function GET(request: Request): Promise<Response> {
 export async function PUT(request: Request): Promise<Response> {
   // 更新 autonomy level 仍走 service 的确认/校验逻辑，route 不直接写状态。
   const mode = resolveFeatureMode();
-  const settingsService = createAgentAutonomySettingsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const settingsService = createAgentAutonomySettingsService(mode);
   const result = settingsService.updateSettings(await readUpdateInput(request));
 
   if (result.success === false) {

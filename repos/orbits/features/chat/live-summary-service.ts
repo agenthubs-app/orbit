@@ -29,6 +29,9 @@ export interface LiveChatSummaryExtractionProvider {
   source: string;
   sourceLabel: string;
   readChatGraph: () => LiveChatSummaryProviderResult<LiveChatConversationGraph>;
+  readChatGraphForAccount?: (
+    accountId: string,
+  ) => LiveChatSummaryProviderResult<LiveChatConversationGraph>;
 }
 
 export interface LiveChatSummaryExtractionServiceOptions {

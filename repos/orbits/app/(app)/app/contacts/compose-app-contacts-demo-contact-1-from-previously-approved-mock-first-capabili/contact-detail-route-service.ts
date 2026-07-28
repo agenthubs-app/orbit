@@ -497,6 +497,7 @@ async function loadComposedContactDetailRoute(input: {
     scenario: routeScenario,
   });
   const connectionListResult = await input.services.connectionEvidence.listConnections({
+    actorId: input.actorId,
     scenario: routeScenario,
   });
   const connectionId =
@@ -504,6 +505,7 @@ async function loadComposedContactDetailRoute(input: {
       ? connectionIdForContact(connectionListResult.data, input.contactId)
       : APP_CONTACT_DETAIL_CONNECTION_ID;
   const connectionResult = await input.services.connectionEvidence.getConnection({
+    actorId: input.actorId,
     connectionId: connectionId ?? APP_CONTACT_DETAIL_CONNECTION_ID,
     scenario: routeScenario,
   });

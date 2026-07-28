@@ -51,6 +51,25 @@ export function createPermissionStateService(
   return resolution.service;
 }
 
+export function createActorScopedPermissionStateService(
+  accountId: string,
+): PermissionStateService {
+  const provider = createConfiguredStoragePermissionStateProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLivePermissionStateService({
+    provider:
+      normalizedAccountId && provider?.readPermissionGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readPermissionGraph: () =>
+              provider.readPermissionGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}
+
 export function resolveSensitiveActionConfirmationService(
   mode?: ModuleMode | string,
 ) {

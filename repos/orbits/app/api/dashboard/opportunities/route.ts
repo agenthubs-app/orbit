@@ -11,7 +11,14 @@ import {
   opportunityReminderAnalyticsFailureContext,
   opportunityReminderAnalyticsFailureToAppError,
 } from "../../../../features/dashboard/opportunity-contract";
-import { createOpportunityReminderAnalyticsService } from "../../../../features/dashboard/service-factory";
+import {
+  createActorScopedOpportunityReminderAnalyticsService,
+  createOpportunityReminderAnalyticsService,
+} from "../../../../features/dashboard/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,16 @@ function readInput(request: Request): OpportunityReminderAnalyticsInput {
 export async function GET(request: Request): Promise<Response> {
   // GET 返回当前机会提醒分析，不在 route 层重新计算或写入状态。
   const mode = resolveFeatureMode();
-  const opportunityService = createOpportunityReminderAnalyticsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const opportunityService =
+    mode === "live" && actor
+      ? createActorScopedOpportunityReminderAnalyticsService(actor.id)
+      : createOpportunityReminderAnalyticsService(mode);
   const result = await opportunityService.getOpportunityReminderAnalytics(
     readInput(request),
   );

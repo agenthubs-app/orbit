@@ -30,8 +30,13 @@ test("live dashboard aggregate reads generated relationship graph from shared li
   const service = createLiveDashboardAggregateService({
     provider,
   });
+  const actorId = defaultMockFixtures.accounts[0]?.id;
+  assert.ok(actorId);
 
-  const aggregate = await service.getDashboardAggregate({ activityLimit: 3 });
+  const aggregate = await service.getDashboardAggregate({
+    activityLimit: 3,
+    actorId,
+  });
 
   assert.equal(aggregate.success, true);
   assert.equal(
@@ -80,7 +85,7 @@ test("live dashboard aggregate reads generated relationship graph from shared li
   assert.equal(sato.organization, defaultMockFixtures.contacts[0]?.organization);
   assert.deepEqual(sato.evidenceIds, ["evidence:contact:001"]);
 
-  const summary = await service.getDashboardSummary();
+  const summary = await service.getDashboardSummary({ actorId });
 
   assert.equal(summary.success, true);
   assert.equal(summary.data.metrics[0]?.id, "relationship-assets");
@@ -88,7 +93,10 @@ test("live dashboard aggregate reads generated relationship graph from shared li
   assert.equal(summary.data.provenance.source, `live-record-store:dashboard:${workspaceId}`);
   assert.equal(summary.data.provenance.databaseReadExecuted, true);
 
-  const failure = await service.getDashboardAggregate({ scenario: "failure" });
+  const failure = await service.getDashboardAggregate({
+    actorId,
+    scenario: "failure",
+  });
 
   assert.equal(failure.success, false);
   if (!failure.success) {

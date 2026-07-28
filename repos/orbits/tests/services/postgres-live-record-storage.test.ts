@@ -15,6 +15,7 @@ const baseRecord: LiveRecord<{ title: string; startsAt: string }> = {
   workspaceId: "workspace:test",
   collectionName: "events",
   recordId: "event:live:operator-dinner",
+  userId: "account:owner",
   sourceType: "manual",
   sourceId: "source:events:operator-dinner",
   sourceLabel: "Operator entered event",
@@ -135,6 +136,7 @@ test("postgres live record store lists gets and soft deletes records", async () 
     workspaceId: "workspace:test",
     collectionName: "events",
     searchText: "operator",
+    userId: "account:owner",
   });
   const found = await store.getRecord({
     workspaceId: "workspace:test",
@@ -156,7 +158,9 @@ test("postgres live record store lists gets and soft deletes records", async () 
   assert.match(client.calls[0]?.text ?? "", /where workspace_id = \$1/i);
   assert.match(client.calls[0]?.text ?? "", /collection_name = \$2/i);
   assert.match(client.calls[0]?.text ?? "", /search_text ilike/i);
+  assert.match(client.calls[0]?.text ?? "", /user_id = \$\d+/i);
   assert.ok(client.calls[0]?.values?.includes("%operator%"));
+  assert.ok(client.calls[0]?.values?.includes("account:owner"));
   assert.match(client.calls[2]?.text ?? "", /update orbit_records/i);
   assert.match(client.calls[2]?.text ?? "", /set lifecycle_state = 'deleted'/i);
 });

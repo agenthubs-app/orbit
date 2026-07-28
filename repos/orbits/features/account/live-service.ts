@@ -6,7 +6,10 @@ import {
   type AccountSessionScenario,
   type AccountSessionSuccess,
 } from "./contract";
-import type { AccountSessionService } from "./service";
+import type {
+  AccountSessionIdentity,
+  AccountSessionService,
+} from "./service";
 import type {
   LiveAccountProfileRecord,
   LiveAccountSessionGraph,
@@ -99,12 +102,38 @@ function profileForAccount(
   );
 }
 
-function selectAccountAndProfile(graph: LiveAccountSessionGraph):
+function selectAccountAndProfile(
+  graph: LiveAccountSessionGraph,
+  identity: AccountSessionIdentity = {},
+):
   | {
       account: AccountDTO;
       profile: LiveAccountProfileRecord;
     }
   | null {
+  const requestedAccountId = identity.accountId?.trim();
+  const requestedProfileId =
+    identity.profileId?.trim() || identity.userId?.trim();
+
+  if (requestedAccountId || requestedProfileId) {
+    const profile =
+      graph.profiles.find(
+        (item) =>
+          (!requestedProfileId || item.id === requestedProfileId) &&
+          (!requestedAccountId || item.accountId === requestedAccountId),
+      ) ??
+      (requestedAccountId
+        ? graph.profiles.find(
+            (item) => item.accountId === requestedAccountId,
+          )
+        : null);
+    const account = profile
+      ? graph.accounts.find((item) => item.id === profile.accountId) ?? null
+      : null;
+
+    return account && profile ? { account, profile } : null;
+  }
+
   const sortedAccounts = [...graph.accounts].sort((left, right) =>
     left.id.localeCompare(right.id),
   );
@@ -179,8 +208,9 @@ function emptyLiveStorePayload(
 function sessionPayload(
   graph: LiveAccountSessionGraph,
   provider: LiveAccountSessionProvider,
+  identity: AccountSessionIdentity = {},
 ): AccountSessionPayload {
-  const selected = selectAccountAndProfile(graph);
+  const selected = selectAccountAndProfile(graph, identity);
 
   if (!selected) {
     return emptyLiveStorePayload(graph, provider);
@@ -234,6 +264,7 @@ function sessionPayload(
 async function currentSession(
   provider: LiveAccountSessionProvider | null,
   now: string,
+  identity: AccountSessionIdentity = {},
 ): Promise<AccountSessionResult> {
   if (!provider) {
     return failure(
@@ -242,7 +273,13 @@ async function currentSession(
     );
   }
 
-  return success(sessionPayload(await provider.readAccountSessionGraph(), provider));
+  return success(
+    sessionPayload(
+      await provider.readAccountSessionGraph(),
+      provider,
+      identity,
+    ),
+  );
 }
 
 export function createLiveAccountSessionService({
@@ -264,7 +301,7 @@ export function createLiveAccountSessionService({
           return service.requireAccount("signed-out");
         case "demo-sign-in":
         default:
-          return service.demoSignIn();
+          return currentSession(provider, now(), options);
       }
     },
 

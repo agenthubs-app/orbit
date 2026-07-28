@@ -86,6 +86,28 @@ export function createNetworkDistributionAnalyticsService(
   return resolution.service;
 }
 
+export function createActorScopedNetworkDistributionAnalyticsService(
+  accountId: string,
+): NetworkDistributionAnalyticsService {
+  const provider = createConfiguredStorageDashboardAggregateProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveNetworkDistributionAnalyticsService({
+    provider:
+      normalizedAccountId && provider?.readDashboardGraphForAccount
+        ? {
+            source: provider.source.replace(
+              "postgres-live-record-store:dashboard:",
+              "postgres-live-record-store:network-distribution:",
+            ),
+            sourceLabel: provider.sourceLabel,
+            readNetworkDistributionGraph: () =>
+              provider.readDashboardGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}
+
 export function resolveOpportunityReminderAnalyticsService(
   mode?: ModuleMode | string,
 ) {
@@ -102,4 +124,26 @@ export function createOpportunityReminderAnalyticsService(
   }
 
   return resolution.service;
+}
+
+export function createActorScopedOpportunityReminderAnalyticsService(
+  accountId: string,
+): OpportunityReminderAnalyticsService {
+  const provider = createConfiguredStorageDashboardAggregateProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveOpportunityReminderAnalyticsService({
+    provider:
+      normalizedAccountId && provider?.readDashboardGraphForAccount
+        ? {
+            source: provider.source.replace(
+              "postgres-live-record-store:dashboard:",
+              "postgres-live-record-store:opportunity-reminder:",
+            ),
+            sourceLabel: provider.sourceLabel,
+            readOpportunityGraph: () =>
+              provider.readDashboardGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
 }

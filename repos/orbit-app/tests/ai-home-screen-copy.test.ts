@@ -194,7 +194,7 @@ test("Orbit AI drawer gives every destination its own icon and tone", () => {
 test("Orbit AI drawer keeps a settings entry pinned at the bottom", () => {
   assert.match(screenSource, /const settingsEntry/u);
   assert.match(screenSource, /title: "设置"/u);
-  assert.match(screenSource, /href: "\/account" as Href/u);
+  assert.match(screenSource, /href: "\/settings" as Href/u);
   assert.match(screenSource, /styles\.drawerFooter/u);
   assert.match(screenSource, /entry=\{settingsEntry\}/u);
 });

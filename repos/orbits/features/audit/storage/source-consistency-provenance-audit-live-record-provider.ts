@@ -62,35 +62,41 @@ export function createStorageSourceConsistencyProvenanceAuditProvider({
   store,
   workspaceId,
 }: StorageSourceConsistencyProvenanceAuditProviderOptions): LiveSourceConsistencyProvenanceAuditProvider {
+  async function readAuditGraph(
+    accountId?: string,
+  ): Promise<LiveSourceConsistencyProvenanceGraph> {
+    const collections = await Promise.all(
+      Object.entries(
+        SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_RECORD_COLLECTIONS,
+      ).map(async ([entityKind, collectionName]) => {
+        const records = await store.listRecords({
+          collectionName,
+          userId: accountId,
+          workspaceId,
+        });
+
+        return {
+          collectionName,
+          entityKind,
+          records,
+        } as LiveSourceConsistencyAuditCollectionRecords;
+      }),
+    );
+    const records = collections.flatMap((collection) => collection.records);
+
+    return {
+      collections,
+      generatedAt: latestTimestamp(records),
+    };
+  }
+
   return {
     source:
       source ??
       `live-record-store:source-consistency-provenance-audit:${workspaceId}`,
     sourceLabel,
-    async readAuditGraph(): Promise<LiveSourceConsistencyProvenanceGraph> {
-      const collections = await Promise.all(
-        Object.entries(
-          SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_RECORD_COLLECTIONS,
-        ).map(async ([entityKind, collectionName]) => {
-          const records = await store.listRecords({
-            collectionName,
-            workspaceId,
-          });
-
-          return {
-            collectionName,
-            entityKind,
-            records,
-          } as LiveSourceConsistencyAuditCollectionRecords;
-        }),
-      );
-      const records = collections.flatMap((collection) => collection.records);
-
-      return {
-        collections,
-        generatedAt: latestTimestamp(records),
-      };
-    },
+    readAuditGraph: () => readAuditGraph(),
+    readAuditGraphForAccount: (accountId) => readAuditGraph(accountId),
   };
 }
 

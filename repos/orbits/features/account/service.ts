@@ -15,6 +15,12 @@ export type AccountSessionServiceResult<TResult = AccountSessionResult> =
   | TResult
   | Promise<TResult>;
 
+export interface AccountSessionIdentity {
+  accountId?: string | null;
+  profileId?: string | null;
+  userId?: string | null;
+}
+
 // AccountSessionService 定义账号会话能力边界。
 // 当前 mock-first 实现服务登录页和权限守卫；真实认证接入时应保持同一 contract。
 export interface AccountSessionService {
@@ -22,7 +28,10 @@ export interface AccountSessionService {
   demoSignIn: () => AccountSessionServiceResult<AccountSessionSuccess | AccountSessionResult>;
   // 读取当前会话，scenario 用于测试不同认证状态。
   getCurrentSession: (options?: {
+    accountId?: string | null;
+    profileId?: string | null;
     scenario?: AccountSessionScenario | string | null;
+    userId?: string | null;
   }) => AccountSessionServiceResult;
   // 返回等待 demo 登录确认的会话状态。
   getPendingDemoSignIn: () => AccountSessionServiceResult<AccountSessionSuccess>;

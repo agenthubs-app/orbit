@@ -298,65 +298,78 @@ export function createStorageDashboardAggregateProvider({
   store,
   workspaceId,
 }: StorageDashboardAggregateProviderOptions): LiveDashboardAggregateProvider {
+  async function readGraph(accountId?: string): Promise<LiveDashboardGraph> {
+    const ownerQuery = accountId ? { userId: accountId } : {};
+    const [
+      contactRecords,
+      connectionRecords,
+      eventRecords,
+      taskRecords,
+      evidenceRecords,
+    ] = await Promise.all([
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
+        ...ownerQuery,
+      }),
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
+        ...ownerQuery,
+      }),
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
+        ...ownerQuery,
+      }),
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
+        ...ownerQuery,
+      }),
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
+        ...ownerQuery,
+      }),
+    ]);
+
+    return {
+      connections: connectionRecords
+        .map(connectionFromRecord)
+        .filter((connection): connection is ConnectionDTO => connection !== null),
+      contacts: contactRecords
+        .map(contactFromRecord)
+        .filter((contact): contact is ContactDTO => contact !== null),
+      events: eventRecords
+        .map(eventFromRecord)
+        .filter((event): event is EventDTO => event !== null),
+      evidence: evidenceRecords
+        .map(evidenceFromRecord)
+        .filter(
+          (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
+        ),
+      generatedAt: latestTimestamp([
+        ...contactRecords,
+        ...connectionRecords,
+        ...eventRecords,
+        ...taskRecords,
+        ...evidenceRecords,
+      ]),
+      tasks: taskRecords
+        .map(taskFromRecord)
+        .filter((task): task is TaskDTO => task !== null),
+    };
+  }
+
   return {
     source: source ?? `live-record-store:dashboard:${workspaceId}`,
     sourceLabel,
-    async readDashboardGraph(): Promise<LiveDashboardGraph> {
-      const [
-        contactRecords,
-        connectionRecords,
-        eventRecords,
-        taskRecords,
-        evidenceRecords,
-      ] = await Promise.all([
-        store.listRecords({
-          workspaceId,
-          collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
-        }),
-        store.listRecords({
-          workspaceId,
-          collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
-        }),
-        store.listRecords({
-          workspaceId,
-          collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
-        }),
-        store.listRecords({
-          workspaceId,
-          collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
-        }),
-        store.listRecords({
-          workspaceId,
-          collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
-        }),
-      ]);
-
-      return {
-        connections: connectionRecords
-          .map(connectionFromRecord)
-          .filter((connection): connection is ConnectionDTO => connection !== null),
-        contacts: contactRecords
-          .map(contactFromRecord)
-          .filter((contact): contact is ContactDTO => contact !== null),
-        events: eventRecords
-          .map(eventFromRecord)
-          .filter((event): event is EventDTO => event !== null),
-        evidence: evidenceRecords
-          .map(evidenceFromRecord)
-          .filter(
-            (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-          ),
-        generatedAt: latestTimestamp([
-          ...contactRecords,
-          ...connectionRecords,
-          ...eventRecords,
-          ...taskRecords,
-          ...evidenceRecords,
-        ]),
-        tasks: taskRecords
-          .map(taskFromRecord)
-          .filter((task): task is TaskDTO => task !== null),
-      };
+    readDashboardGraph() {
+      return readGraph();
+    },
+    readDashboardGraphForAccount(accountId: string) {
+      return readGraph(accountId);
     },
   };
 }

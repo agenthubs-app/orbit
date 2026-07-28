@@ -16,7 +16,7 @@ import {
   createMemoryLiveRecordStore,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
-import * as meRoute from "../../app/api/account/me/route";
+import { createAccountMeGetHandler } from "../../app/api/account/me/handler";
 
 const workspaceId = "workspace:account-live-test";
 
@@ -147,7 +147,13 @@ test("account API route reports live mode and controlled unconfigured storage fa
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     process.env.ORBIT_MODULE_MODE = "live";
 
-    const response = await meRoute.GET(
+    const response = await createAccountMeGetHandler(async () => ({
+      accountId: "account:test",
+      id: "account:test",
+      profileId: "profile:test",
+      userId: "profile:test",
+      workspaceId: "workspace:test",
+    }))(
       new Request("https://orbit.local/api/account/me"),
     );
     const body = await response.json();

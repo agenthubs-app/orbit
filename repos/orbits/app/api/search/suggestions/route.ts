@@ -8,10 +8,17 @@ import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import { createRelationshipNaturalSearchService } from "../../../../features/search/service-factory";
 import {
+  createConfiguredActorScopedLiveRelationshipNaturalSearchService,
+} from "../../../../features/search/live-service";
+import {
   relationshipNaturalSearchFailureContext,
   relationshipNaturalSearchFailureToAppError,
 } from "../../../../features/search/service";
 import type { RelationshipNaturalSearchSuggestionsResult } from "../../../../features/search/contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -43,8 +50,19 @@ function responseForResult(
 export async function GET(request: Request): Promise<Response> {
   // GET 是只读建议入口，不执行实际搜索。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const scenario = new URL(request.url).searchParams.get("scenario");
-  const searchService = createRelationshipNaturalSearchService();
+  const searchService =
+    mode === "live" && actor
+      ? createConfiguredActorScopedLiveRelationshipNaturalSearchService(
+          actor.id,
+        )
+      : createRelationshipNaturalSearchService(mode);
   const result = await searchService.getSearchSuggestions({ scenario });
 
   return responseForResult(result, mode);

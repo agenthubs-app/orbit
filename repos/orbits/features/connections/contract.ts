@@ -32,6 +32,7 @@ export type ConnectionEvidenceContribution =
   (typeof CONNECTION_EVIDENCE_CONTRIBUTIONS)[number];
 
 export const CONNECTION_EVIDENCE_SERVICE_ERROR_CODES = [
+  "CONNECTION_ACTOR_REQUIRED",
   "CONNECTION_NOT_FOUND",
   "CONNECTION_EVIDENCE_INVALID_BODY",
   "CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED",
@@ -60,6 +61,13 @@ export interface ConnectionEvidenceErrorDefinition {
 }
 
 export const CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS = {
+  CONNECTION_ACTOR_REQUIRED: {
+    code: "CONNECTION_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated account is required for live connections.",
+    recovery:
+      "Resolve the current session to an account before reading relationship evidence.",
+  },
   CONNECTION_NOT_FOUND: {
     code: "CONNECTION_NOT_FOUND",
     appCode: "NOT_FOUND",
@@ -181,11 +189,13 @@ export interface ConnectionEvidenceProvenance {
 
 // lookup/list/add 输入分开定义，避免 route 在不同动作间复用不完整请求体。
 export interface ConnectionEvidenceLookupInput {
+  actorId?: string | null;
   connectionId: string;
   scenario?: ConnectionEvidenceScenario | string | null;
 }
 
 export interface ConnectionEvidenceListInput {
+  actorId?: string | null;
   scenario?: ConnectionEvidenceScenario | string | null;
 }
 

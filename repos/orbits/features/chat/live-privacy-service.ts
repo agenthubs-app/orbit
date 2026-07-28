@@ -31,6 +31,9 @@ export interface LiveChatPrivacyControlsProvider {
   source: string;
   sourceLabel: string;
   readChatGraph: () => LiveChatPrivacyControlsProviderResult<LiveChatConversationGraph>;
+  readChatGraphForAccount?: (
+    accountId: string,
+  ) => LiveChatPrivacyControlsProviderResult<LiveChatConversationGraph>;
 }
 
 export interface LiveChatPrivacyControlsServiceOptions {

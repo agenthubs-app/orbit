@@ -33,6 +33,13 @@ export interface LiveConnectionEvidenceProvider {
   readConnectionEvidenceGraphForConnection?: (
     connectionId: string,
   ) => LiveConnectionEvidenceProviderResult<LiveConnectionEvidenceGraph>;
+  readConnectionEvidenceGraphForAccount?: (
+    accountId: string,
+  ) => LiveConnectionEvidenceProviderResult<LiveConnectionEvidenceGraph>;
+  readConnectionEvidenceGraphForAccountConnection?: (
+    accountId: string,
+    connectionId: string,
+  ) => LiveConnectionEvidenceProviderResult<LiveConnectionEvidenceGraph>;
 }
 
 export interface LiveConnectionEvidenceServiceOptions {
@@ -298,10 +305,38 @@ function detailPayload(input: {
 
 async function graphOrFailure(
   provider: LiveConnectionEvidenceProvider | null,
+  actorId?: string | null,
   connectionId?: string,
 ): Promise<LiveConnectionEvidenceGraph | ConnectionEvidenceFailure> {
   if (!provider) {
     return unconfiguredFailure();
+  }
+
+  const accountId = actorId?.trim();
+
+  if (!accountId) {
+    return failure(
+      "CONNECTION_ACTOR_REQUIRED",
+      provenanceFor({
+        databaseReadExecuted: false,
+        evidenceIds: [],
+        provider,
+      }),
+    );
+  }
+
+  if (
+    connectionId &&
+    provider.readConnectionEvidenceGraphForAccountConnection
+  ) {
+    return provider.readConnectionEvidenceGraphForAccountConnection(
+      accountId,
+      connectionId,
+    );
+  }
+
+  if (provider.readConnectionEvidenceGraphForAccount) {
+    return provider.readConnectionEvidenceGraphForAccount(accountId);
   }
 
   if (connectionId && provider.readConnectionEvidenceGraphForConnection) {
@@ -322,7 +357,7 @@ export function createLiveConnectionEvidenceService({
 }: LiveConnectionEvidenceServiceOptions = {}): ConnectionEvidenceService {
   return {
     async listConnections(_input: ConnectionEvidenceListInput = {}): Promise<ConnectionEvidenceListResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, _input.actorId);
 
       if (isFailure(graph)) {
         return graph;
@@ -334,7 +369,11 @@ export function createLiveConnectionEvidenceService({
     async getConnection(
       input: ConnectionEvidenceLookupInput,
     ): Promise<ConnectionEvidenceDetailResult> {
-      const graph = await graphOrFailure(provider, input.connectionId.trim());
+      const graph = await graphOrFailure(
+        provider,
+        input.actorId,
+        input.connectionId.trim(),
+      );
 
       if (isFailure(graph)) {
         return graph;
@@ -366,7 +405,7 @@ export function createLiveConnectionEvidenceService({
     },
 
     async addEvidence(_input: ConnectionAddEvidenceInput): Promise<ConnectionEvidenceAddResult> {
-      const graph = await graphOrFailure(provider);
+      const graph = await graphOrFailure(provider, _input.actorId);
 
       if (isFailure(graph)) {
         return graph;

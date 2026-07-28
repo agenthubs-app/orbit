@@ -41,6 +41,9 @@ export interface LiveSourceConsistencyProvenanceAuditProvider {
   source: string;
   sourceLabel: string;
   readAuditGraph: () => LiveSourceConsistencyProvenanceAuditProviderResult<LiveSourceConsistencyProvenanceGraph>;
+  readAuditGraphForAccount?: (
+    accountId: string,
+  ) => LiveSourceConsistencyProvenanceAuditProviderResult<LiveSourceConsistencyProvenanceGraph>;
 }
 
 export interface LiveSourceConsistencyProvenanceAuditServiceOptions {

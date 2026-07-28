@@ -12,7 +12,14 @@ import {
   type ChatAnalysisOptInInput,
   type ChatPrivacyControlsResult,
 } from "../../../../../features/chat/privacy-contract";
-import { createChatPrivacyControlsService } from "../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatPrivacyControlsService,
+  createChatPrivacyControlsService,
+} from "../../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +128,16 @@ function responseForResult(
 export async function POST(request: Request): Promise<Response> {
   // 修改分析开关只调用 privacy service，不在 route 层启动任何 AI 分析。
   const mode = resolveFeatureMode();
-  const service = createChatPrivacyControlsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatPrivacyControlsService(actor.id)
+      : createChatPrivacyControlsService(mode);
   const result = await service.setAnalysisOptIn(await readInput(request));
 
   return responseForResult(result, mode);

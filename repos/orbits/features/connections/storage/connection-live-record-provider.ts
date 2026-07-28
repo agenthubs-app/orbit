@@ -252,6 +252,7 @@ function graphFromRecords(input: {
 }
 
 async function readFocusedConnectionGraph(input: {
+  accountId?: string;
   connectionId: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
@@ -260,6 +261,7 @@ async function readFocusedConnectionGraph(input: {
     workspaceId: input.workspaceId,
     collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
     recordIds: [input.connectionId],
+    ...(input.accountId ? { userId: input.accountId } : {}),
   });
   const connections = connectionRecords
     .map(connectionFromRecord)
@@ -325,6 +327,59 @@ export function createStorageConnectionEvidenceProvider({
         connectionRecords,
         contactRecords,
         evidenceRecords,
+      });
+    },
+    async readConnectionEvidenceGraphForAccount(
+      accountId: string,
+    ): Promise<LiveConnectionEvidenceGraph> {
+      const connectionRecords = await store.listRecords({
+        workspaceId,
+        collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
+        userId: accountId,
+      });
+      const connections = connectionRecords
+        .map(connectionFromRecord)
+        .filter((connection): connection is ConnectionDTO => connection !== null);
+      const contactIds = Array.from(
+        new Set(connections.map((connection) => connection.contactId)),
+      );
+      const evidenceRecordIds = Array.from(
+        new Set(connections.flatMap((connection) => connection.evidenceIds)),
+      );
+      const [contactRecords, evidenceRecords] = await Promise.all([
+        contactIds.length > 0
+          ? store.listRecords({
+              workspaceId,
+              collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
+              recordIds: contactIds,
+              userId: accountId,
+            })
+          : [],
+        evidenceRecordIds.length > 0
+          ? store.listRecords({
+              workspaceId,
+              collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
+              recordIds: evidenceRecordIds,
+              userId: accountId,
+            })
+          : [],
+      ]);
+
+      return graphFromRecords({
+        connectionRecords,
+        contactRecords,
+        evidenceRecords,
+      });
+    },
+    readConnectionEvidenceGraphForAccountConnection(
+      accountId: string,
+      connectionId: string,
+    ) {
+      return readFocusedConnectionGraph({
+        accountId: accountId.trim(),
+        connectionId: connectionId.trim(),
+        store,
+        workspaceId,
       });
     },
     readConnectionEvidenceGraphForConnection(connectionId: string) {

@@ -16,7 +16,7 @@ import {
   createMemoryLiveRecordStore,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
-import * as permissionsRoute from "../../app/api/permissions/route";
+import { createPermissionsGetHandler } from "../../app/api/permissions/handler";
 
 const workspaceId = "workspace:permission-live-test";
 
@@ -151,7 +151,9 @@ test("permission API route reports live mode and controlled unconfigured storage
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     process.env.ORBIT_MODULE_MODE = "live";
 
-    const response = await permissionsRoute.GET(
+    const response = await createPermissionsGetHandler(async () => ({
+      id: "account:permission-test",
+    }))(
       new Request("https://orbit.local/api/permissions"),
     );
     const body = await response.json();

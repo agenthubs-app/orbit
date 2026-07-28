@@ -26,6 +26,9 @@ export interface LiveChatWritingAssistProvider {
   source: string;
   sourceLabel: string;
   readChatGraph: () => LiveChatWritingAssistProviderResult<LiveChatConversationGraph>;
+  readChatGraphForAccount?: (
+    accountId: string,
+  ) => LiveChatWritingAssistProviderResult<LiveChatConversationGraph>;
 }
 
 export interface LiveChatWritingAssistServiceOptions {

@@ -32,6 +32,9 @@ export interface LiveDashboardAggregateProvider {
   source: string;
   sourceLabel: string;
   readDashboardGraph: () => LiveDashboardAggregateProviderResult<LiveDashboardGraph>;
+  readDashboardGraphForAccount?: (
+    accountId: string,
+  ) => LiveDashboardAggregateProviderResult<LiveDashboardGraph>;
 }
 
 export interface LiveDashboardAggregateServiceOptions {
@@ -460,7 +463,18 @@ async function aggregateFor(
     );
   }
 
-  const graph = await provider.readDashboardGraph();
+  const actorId = input.actorId?.trim();
+
+  if (!actorId) {
+    return failure(
+      "DASHBOARD_AGGREGATE_ACTOR_REQUIRED",
+      unconfiguredProvenance(),
+    );
+  }
+
+  const graph = provider.readDashboardGraphForAccount
+    ? await provider.readDashboardGraphForAccount(actorId)
+    : await provider.readDashboardGraph();
   const scenario = scenarioAggregateResult(
     graph,
     provider,

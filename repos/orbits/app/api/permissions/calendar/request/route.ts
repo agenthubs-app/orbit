@@ -7,11 +7,18 @@ import {
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-error";
 import type { PermissionRequestInput } from "../../../../../features/permissions/contract";
-import { createPermissionStateService } from "../../../../../features/permissions/service-factory";
+import {
+  createActorScopedPermissionStateService,
+  createPermissionStateService,
+} from "../../../../../features/permissions/service-factory";
 import {
   permissionStateFailureContext,
   permissionStateFailureToAppError,
 } from "../../../../../features/permissions/service";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +53,16 @@ export async function POST(request: Request): Promise<Response> {
   const mode = resolveFeatureMode(
     process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
   );
-  const permissionService = createPermissionStateService(mode);
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const permissionService =
+    mode === "live" && actor
+      ? createActorScopedPermissionStateService(actor.id)
+      : createPermissionStateService(mode);
   const result = await permissionService.requestPermission(
     await readCalendarPermissionInput(request),
   );

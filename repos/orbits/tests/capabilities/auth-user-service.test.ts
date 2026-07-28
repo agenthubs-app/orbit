@@ -4,6 +4,7 @@ import test from "node:test";
 import { createAuthUserService } from "../../features/auth/auth-user-service";
 import { resolveAuthUserService } from "../../features/auth/service-factory";
 import { createStorageAuthUserProvider } from "../../features/auth/storage/auth-user-live-record-provider";
+import { createStorageAuthAccountProvisioningProvider } from "../../features/auth/storage/auth-account-provisioning-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 function serviceWithMemoryStore() {
@@ -40,6 +41,61 @@ test("register then verify round-trips a credentials user", async () => {
   assert.equal(verified.state, "success");
   if (verified.state !== "success") return;
   assert.equal(verified.data.user.id, registered.data.user.id);
+});
+
+test("live auth provisioning creates one account and profile and preserves them on login", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId = "workspace:auth-account-provisioning";
+  const service = createAuthUserService({
+    accountProvisioner: createStorageAuthAccountProvisioningProvider({
+      store,
+      workspaceId,
+    }),
+    provider: createStorageAuthUserProvider({
+      store,
+      workspaceId,
+    }),
+  });
+  const registered = await service.registerUser({
+    email: "member@example.com",
+    password: "orbit-demo-1",
+    displayName: "Member",
+  });
+
+  assert.equal(registered.state, "success");
+  if (registered.state !== "success") return;
+
+  const userId = registered.data.user.id;
+  assert.equal(
+    store.getRecord({
+      workspaceId,
+      collectionName: "accounts",
+      recordId: userId,
+    })?.userId,
+    userId,
+  );
+  assert.equal(
+    store.getRecord({
+      workspaceId,
+      collectionName: "profiles",
+      recordId: `profile:${userId}`,
+    })?.payload.accountId,
+    userId,
+  );
+
+  await service.verifyCredentials({
+    email: "member@example.com",
+    password: "orbit-demo-1",
+  });
+
+  assert.equal(
+    store.listRecords({ workspaceId, collectionName: "accounts" }).length,
+    1,
+  );
+  assert.equal(
+    store.listRecords({ workspaceId, collectionName: "profiles" }).length,
+    1,
+  );
 });
 
 test("duplicate email registration fails with AUTH_EMAIL_TAKEN", async () => {

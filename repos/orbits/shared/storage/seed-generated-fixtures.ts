@@ -50,6 +50,7 @@ export type VerifyGeneratedRelationshipFixturesInLiveStoreResult =
     };
 
 const fixtureGeneratedAt = defaultMockFixtures.generatedAt;
+const fixtureAccountId = defaultMockFixtures.accounts[0]?.id ?? null;
 const evidenceById = new Map(
   defaultMockFixtures.evidence.map((evidence) => [evidence.id, evidence]),
 );
@@ -264,11 +265,15 @@ function liveRecordForFixture(input: {
 }): LiveRecord<Record<string, unknown>> {
   const source = sourceFor(input.record);
   const target = targetFor(input.collectionName, input.record);
+  const userId =
+    stringField(input.record, "accountId") ??
+    (input.collectionName === "accounts" ? input.record.id : fixtureAccountId);
 
   return {
     workspaceId: input.workspaceId,
     collectionName: input.collectionName,
     recordId: input.record.id,
+    userId,
     sourceType: source.sourceType,
     sourceId: source.sourceId,
     sourceLabel: source.sourceLabel,
@@ -347,6 +352,15 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
     const recordIds = records.map((record) => record.recordId).sort();
     const expectedIds = [...expected.recordIds].sort();
     const missingIds = expectedIds.filter((recordId) => !recordIds.includes(recordId));
+    const ownershipMismatches = records.filter((record) => {
+      const expectedUserId =
+        stringField(record.payload, "accountId") ??
+        (expected.collectionName === "accounts"
+          ? record.recordId
+          : fixtureAccountId);
+
+      return !expectedUserId || record.userId !== expectedUserId;
+    });
 
     if (records.length !== expectedIds.length) {
       failures.push(
@@ -357,6 +371,12 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
     if (missingIds.length > 0) {
       failures.push(
         `${expected.collectionName}: missing ${missingIds.length} generated fixture records (${formatIdSample(missingIds)})`,
+      );
+    }
+
+    if (ownershipMismatches.length > 0) {
+      failures.push(
+        `${expected.collectionName}: ${ownershipMismatches.length} generated fixture records have an invalid account owner (${formatIdSample(ownershipMismatches.map((record) => record.recordId))})`,
       );
     }
 

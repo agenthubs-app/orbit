@@ -52,6 +52,13 @@ export interface LiveChatConversationMessageProvider {
     input: LiveChatAppendMessageInput,
   ) => LiveChatProviderResult<LiveChatConversationGraph>;
   readChatGraph: () => LiveChatProviderResult<LiveChatConversationGraph>;
+  appendMessageForAccount?: (
+    accountId: string,
+    input: LiveChatAppendMessageInput,
+  ) => LiveChatProviderResult<LiveChatConversationGraph>;
+  readChatGraphForAccount?: (
+    accountId: string,
+  ) => LiveChatProviderResult<LiveChatConversationGraph>;
 }
 
 export interface LiveChatConversationMessageServiceOptions {

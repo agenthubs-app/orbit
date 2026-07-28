@@ -427,11 +427,11 @@ export function createStorageEventRecommendationProvider({
   store,
   workspaceId,
 }: StorageEventRecommendationProviderOptions): LiveEventRecommendationProvider {
-  return {
-    source: source ?? `live-record-store:event-recommendations:${workspaceId}`,
-    sourceLabel,
-    async readEventRecommendationGraph(eventId): Promise<LiveEventRecommendationGraph> {
-      const [eventRecord, recommendationRecords] = await Promise.all([
+  async function readEventRecommendationGraph(
+    eventId: string,
+    accountId?: string,
+  ): Promise<LiveEventRecommendationGraph> {
+      const [candidateEventRecord, recommendationRecords] = await Promise.all([
         store.getRecord({
           workspaceId,
           collectionName: EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.events,
@@ -443,8 +443,14 @@ export function createStorageEventRecommendationProvider({
             EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.matchRecommendations,
           targetId: eventId,
           targetType: "event",
+          userId: accountId,
         }),
       ]);
+      const eventRecord =
+        candidateEventRecord &&
+        (!accountId || candidateEventRecord.userId === accountId)
+          ? candidateEventRecord
+          : null;
       const recommendations = recommendationRecords
         .map(recommendationFromRecord)
         .filter(
@@ -481,6 +487,7 @@ export function createStorageEventRecommendationProvider({
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.attendees,
               recordIds: attendeeIds,
+              userId: accountId,
             })
           : [],
         contactIds.length > 0
@@ -489,6 +496,7 @@ export function createStorageEventRecommendationProvider({
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.contacts,
               recordIds: contactIds,
+              userId: accountId,
             })
           : [],
         connectionIds.length > 0
@@ -497,12 +505,14 @@ export function createStorageEventRecommendationProvider({
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.connections,
               recordIds: connectionIds,
+              userId: accountId,
             })
           : [],
         store.listRecords({
           workspaceId,
           collectionName:
             EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.eventParticipantIntents,
+          userId: accountId,
         }),
         personIds.length > 0
           ? store.listRecords({
@@ -510,6 +520,7 @@ export function createStorageEventRecommendationProvider({
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.networkPeople,
               recordIds: personIds,
+              userId: accountId,
             })
           : [],
         evidenceIds.length > 0
@@ -517,6 +528,7 @@ export function createStorageEventRecommendationProvider({
               workspaceId,
               collectionName: EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.evidence,
               recordIds: evidenceIds,
+              userId: accountId,
             })
           : [],
       ]);
@@ -562,7 +574,15 @@ export function createStorageEventRecommendationProvider({
           .filter((person): person is NetworkPersonDTO => person !== null),
         recommendations,
       };
-    },
+  }
+
+  return {
+    source: source ?? `live-record-store:event-recommendations:${workspaceId}`,
+    sourceLabel,
+    readEventRecommendationGraph: (eventId) =>
+      readEventRecommendationGraph(eventId),
+    readEventRecommendationGraphForAccount: (accountId, eventId) =>
+      readEventRecommendationGraph(eventId, accountId),
   };
 }
 

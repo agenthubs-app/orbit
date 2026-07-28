@@ -111,6 +111,29 @@ export function createChatConversationMessageService(
   return resolution.service;
 }
 
+export function createActorScopedChatConversationMessageService(
+  accountId: string,
+): ChatConversationMessageService {
+  const provider = createConfiguredStorageChatConversationMessageProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveChatConversationMessageService({
+    provider:
+      normalizedAccountId &&
+      provider?.readChatGraphForAccount &&
+      provider.appendMessageForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            appendMessage: (input) =>
+              provider.appendMessageForAccount!(normalizedAccountId, input),
+            readChatGraph: () =>
+              provider.readChatGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}
+
 export function resolveChatWritingAssistService(
   mode?: ModuleMode | string,
 ) {
@@ -127,6 +150,25 @@ export function createChatWritingAssistService(
   }
 
   return resolution.service;
+}
+
+export function createActorScopedChatWritingAssistService(
+  accountId: string,
+): ChatWritingAssistService {
+  const provider = createConfiguredStorageChatWritingAssistProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveChatWritingAssistService({
+    provider:
+      normalizedAccountId && provider?.readChatGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readChatGraph: () =>
+              provider.readChatGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
 }
 
 export function resolveChatSummaryExtractionService(
@@ -147,6 +189,25 @@ export function createChatSummaryExtractionService(
   return resolution.service;
 }
 
+export function createActorScopedChatSummaryExtractionService(
+  accountId: string,
+): ChatSummaryExtractionService {
+  const provider = createConfiguredStorageChatSummaryExtractionProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveChatSummaryExtractionService({
+    provider:
+      normalizedAccountId && provider?.readChatGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readChatGraph: () =>
+              provider.readChatGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}
+
 export function resolveChatPrivacyControlsService(
   mode?: ModuleMode | string,
 ) {
@@ -163,6 +224,25 @@ export function createChatPrivacyControlsService(
   }
 
   return resolution.service;
+}
+
+export function createActorScopedChatPrivacyControlsService(
+  accountId: string,
+): ChatPrivacyControlsService {
+  const provider = createConfiguredStorageChatPrivacyControlsProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveChatPrivacyControlsService({
+    provider:
+      normalizedAccountId && provider?.readChatGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readChatGraph: () =>
+              provider.readChatGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
 }
 
 export function resolveAsyncRelationshipConversationService(

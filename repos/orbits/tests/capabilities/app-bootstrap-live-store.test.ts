@@ -4,6 +4,7 @@ import test from "node:test";
 import { createLiveAppBootstrapService } from "../../features/bootstrap/live-service";
 import { createAppBootstrapService } from "../../features/bootstrap/service-factory";
 import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
+import { createAppBootstrapGetHandler } from "../../app/api/app/bootstrap/handler";
 import {
   createMemoryLiveRecordStore,
   type LiveRecord,
@@ -302,8 +303,13 @@ test("app bootstrap API resolves ORBIT_MODULE_MODE=live and returns a live envel
     delete process.env.ORBIT_LIVE_DATABASE_URL;
     delete process.env.ORBIT_DATABASE_URL;
 
-    const route = await import("../../app/api/app/bootstrap/route");
-    const response = await route.GET(
+    const response = await createAppBootstrapGetHandler(async () => ({
+      accountId: "account:bootstrap-test",
+      id: "account:bootstrap-test",
+      profileId: "profile:bootstrap-test",
+      userId: "user:bootstrap-test",
+      workspaceId: WORKSPACE_ID,
+    }))(
       new Request("https://orbit.local/api/app/bootstrap"),
     );
     const body = await response.json();

@@ -11,7 +11,14 @@ import {
   networkDistributionAnalyticsFailureContext,
   networkDistributionAnalyticsFailureToAppError,
 } from "../../../../features/dashboard/distribution-contract";
-import { createNetworkDistributionAnalyticsService } from "../../../../features/dashboard/service-factory";
+import {
+  createActorScopedNetworkDistributionAnalyticsService,
+  createNetworkDistributionAnalyticsService,
+} from "../../../../features/dashboard/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,16 @@ function readInput(request: Request): NetworkDistributionAnalyticsInput {
 export async function GET(request: Request): Promise<Response> {
   // 该接口是只读分析视图，返回标准 envelope 和 runtime boundary header。
   const mode = resolveFeatureMode();
-  const distributionService = createNetworkDistributionAnalyticsService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const distributionService =
+    mode === "live" && actor
+      ? createActorScopedNetworkDistributionAnalyticsService(actor.id)
+      : createNetworkDistributionAnalyticsService(mode);
   const result = await distributionService.getDistributions(readInput(request));
 
   if (result.success === false) {

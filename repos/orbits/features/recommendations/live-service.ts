@@ -41,6 +41,10 @@ export interface LiveEventRecommendationProvider {
   readEventRecommendationGraph: (
     eventId: string,
   ) => LiveEventRecommendationProviderResult<LiveEventRecommendationGraph>;
+  readEventRecommendationGraphForAccount?: (
+    accountId: string,
+    eventId: string,
+  ) => LiveEventRecommendationProviderResult<LiveEventRecommendationGraph>;
 }
 
 export interface LiveEventRecommendationServiceOptions {

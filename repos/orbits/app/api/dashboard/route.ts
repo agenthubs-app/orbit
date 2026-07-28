@@ -12,6 +12,10 @@ import {
   dashboardAggregateFailureContext,
   dashboardAggregateFailureToAppError,
 } from "../../../features/dashboard/service";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../_shared/authenticated-actor";
 
 // Dashboard aggregate route 提供首页/仪表盘汇总数据。
 // 指标聚合由 dashboard service 完成；route 只传递 scenario 和展示数量限制。
@@ -41,8 +45,17 @@ function readInput(request: Request): DashboardAggregateInput {
 export async function GET(request: Request): Promise<Response> {
   // activityLimit 仅限制 mock payload 展示数量，不改变底层 fixture。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const dashboardService = createDashboardAggregateService();
-  const result = await dashboardService.getDashboardAggregate(readInput(request));
+  const result = await dashboardService.getDashboardAggregate({
+    ...readInput(request),
+    actorId: actor?.id,
+  });
 
   if (result.success === false) {
     const appError = dashboardAggregateFailureToAppError(result);

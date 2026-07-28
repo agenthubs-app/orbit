@@ -6,12 +6,19 @@ import {
 } from "../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-error";
-import { createEventRecommendationService } from "../../../../../features/recommendations/service-factory";
+import {
+  createActorScopedEventRecommendationService,
+  createEventRecommendationService,
+} from "../../../../../features/recommendations/service-factory";
 import {
   eventRecommendationFailureContext,
   eventRecommendationFailureToAppError,
 } from "../../../../../features/recommendations/service";
 import type { EventRecommendationInput } from "../../../../../features/recommendations/contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +49,12 @@ export async function GET(
 ): Promise<Response> {
   // eventId 来自 path，避免 query/body 改写目标活动。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const input: EventRecommendationInput = {
@@ -49,7 +62,10 @@ export async function GET(
     limit: readLimit(searchParams),
     scenario: searchParams.get("scenario"),
   };
-  const recommendationService = createEventRecommendationService();
+  const recommendationService =
+    mode === "live" && actor
+      ? createActorScopedEventRecommendationService(actor.id)
+      : createEventRecommendationService(mode);
   const result = await recommendationService.listEventRecommendations(input);
 
   if (result.success === false) {

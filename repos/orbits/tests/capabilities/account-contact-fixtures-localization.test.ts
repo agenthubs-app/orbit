@@ -55,5 +55,9 @@ test("account contact fixtures use detailed Chinese product copy", () => {
     source,
     /林玫熟悉日本早期投资，佐藤健司正在推进机器人视觉项目/,
   );
-  assert.match(source, /Only the exact known test draft is migrated/);
+  assert.match(source, /`orbit-contact-\$\{key\}-\$\{suffix\}`/);
+  assert.match(source, /`orbit-connection-\$\{key\}-\$\{suffix\}`/);
+  assert.match(source, /legacyFixtureRecordsArchived/);
+  assert.match(source, /configuredStore\.store\.deleteRecord/);
+  assert.match(source, /Only the exact known seeded draft is migrated/);
 });

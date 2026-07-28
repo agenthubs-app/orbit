@@ -11,7 +11,14 @@ import {
   eventValueRecommendationFailureToAppError,
   type EventValueRecommendationInput,
 } from "../../../../features/recommendations/event-value-contract";
-import { createEventValueRecommendationService } from "../../../../features/recommendations/service-factory";
+import {
+  createActorScopedEventValueRecommendationService,
+  createEventValueRecommendationService,
+} from "../../../../features/recommendations/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +40,12 @@ function readLimit(searchParams: URLSearchParams): number | null {
 export async function GET(request: Request): Promise<Response> {
   // query 参数直接映射为 recommendation input，不在 route 层做推荐计算。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const searchParams = new URL(request.url).searchParams;
   const input: EventValueRecommendationInput = {
     calendarFit: searchParams.get("calendarFit"),
@@ -42,7 +55,10 @@ export async function GET(request: Request): Promise<Response> {
     profileGoal: searchParams.get("profileGoal"),
     scenario: searchParams.get("scenario"),
   };
-  const eventValueService = createEventValueRecommendationService();
+  const eventValueService =
+    mode === "live" && actor
+      ? createActorScopedEventValueRecommendationService(actor.id)
+      : createEventValueRecommendationService(mode);
   const result = await eventValueService.listRecommendedEvents(input);
 
   if (result.success === false) {

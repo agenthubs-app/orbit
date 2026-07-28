@@ -12,7 +12,14 @@ import {
   type ChatWritingAssistInput,
   type ChatWritingAssistResult,
 } from "../../../../../features/chat/assist-contract";
-import { createChatWritingAssistService } from "../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatWritingAssistService,
+  createChatWritingAssistService,
+} from "../../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +88,16 @@ function responseForResult(
 export async function POST(request: Request): Promise<Response> {
   // route 不直接调用 AI provider；是否使用 mock/live 由 ChatWritingAssistService 决定。
   const mode = resolveFeatureMode();
-  const service = createChatWritingAssistService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatWritingAssistService(actor.id)
+      : createChatWritingAssistService(mode);
   const result = await service.rewritePolitely(await readInput(request));
 
   return responseForResult(result, mode);

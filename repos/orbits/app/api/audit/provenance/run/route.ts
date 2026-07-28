@@ -11,7 +11,14 @@ import {
   sourceConsistencyProvenanceAuditFailureContext,
   sourceConsistencyProvenanceAuditFailureToAppError,
 } from "../../../../../features/audit/provenance-contract";
-import { createSourceConsistencyProvenanceAuditService } from "../../../../../features/audit/service-factory";
+import {
+  createActorScopedSourceConsistencyProvenanceAuditService,
+  createSourceConsistencyProvenanceAuditService,
+} from "../../../../../features/audit/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,16 @@ function readInput(request: Request): SourceConsistencyProvenanceAuditInput {
 export async function POST(request: Request): Promise<Response> {
   // POST 表示“执行审计动作”，但具体执行范围和副作用边界仍在 service 中。
   const mode = resolveFeatureMode();
-  const auditService = createSourceConsistencyProvenanceAuditService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const auditService =
+    mode === "live" && actor
+      ? createActorScopedSourceConsistencyProvenanceAuditService(actor.id)
+      : createSourceConsistencyProvenanceAuditService(mode);
   const result = await auditService.runAudit(readInput(request));
 
   if (result.success === false) {

@@ -20,6 +20,7 @@ function activeRecord(input: {
   payload: Record<string, unknown> & { id: string };
   searchText: string;
   targetType: string;
+  userId: string;
   workspaceId: string;
 }): LiveRecord<Record<string, unknown>> {
   const now = "2026-07-02T10:00:00.000Z";
@@ -38,6 +39,7 @@ function activeRecord(input: {
     workspaceId: input.workspaceId,
     collectionName: input.collectionName,
     recordId: input.payload.id,
+    userId: input.userId,
     sourceType:
       typeof input.payload.sourceType === "string"
         ? input.payload.sourceType
@@ -88,7 +90,9 @@ test("live connection evidence service reads generated relationship graph from s
     provider,
   });
 
-  const listResult = await service.listConnections();
+  const actorId = defaultMockFixtures.accounts[0]?.id;
+  assert.ok(actorId);
+  const listResult = await service.listConnections({ actorId });
 
   assert.equal(listResult.success, true);
   assert.equal(listResult.data.connections.length, defaultMockFixtures.connections.length);
@@ -120,6 +124,7 @@ test("live connection evidence service reads generated relationship graph from s
   assert.ok(connection.evidenceTimeline.length > 0);
 
   const detailResult = await service.getConnection({
+    actorId,
     connectionId: "connection_0012",
   });
 
@@ -135,6 +140,7 @@ test("live connection evidence service reads generated relationship graph from s
   );
 
   const missingResult = await service.getConnection({
+    actorId,
     connectionId: "missing-connection",
   });
 
@@ -195,6 +201,7 @@ test("live connection evidence marks missing evidence as source-record inference
   });
 
   const result = await service.getConnection({
+    actorId: "account:missing-evidence",
     connectionId: "connection:missing-evidence",
   });
 
@@ -307,6 +314,7 @@ test("live connection detail reads only records for the selected connection", as
         payload,
         searchText: `${payload.displayName} ${payload.organization}`,
         targetType: "contact",
+        userId: selectedConnection.accountId,
         workspaceId,
       }),
     );
@@ -319,6 +327,7 @@ test("live connection detail reads only records for the selected connection", as
         payload,
         searchText: `${payload.summary} ${payload.contactId}`,
         targetType: "connection",
+        userId: selectedConnection.accountId,
         workspaceId,
       }),
     );
@@ -331,6 +340,7 @@ test("live connection detail reads only records for the selected connection", as
         payload,
         searchText: payload.summary,
         targetType: "evidence",
+        userId: selectedConnection.accountId,
         workspaceId,
       }),
     );
@@ -346,6 +356,7 @@ test("live connection detail reads only records for the selected connection", as
   });
 
   const detail = await service.getConnection({
+    actorId: selectedConnection.accountId,
     connectionId: selectedConnection.id,
   });
 

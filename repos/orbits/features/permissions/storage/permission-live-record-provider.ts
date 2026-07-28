@@ -26,6 +26,9 @@ export interface LivePermissionStateProvider {
   source: string;
   sourceLabel: string;
   readPermissionGraph: () => LivePermissionStateProviderResult<LivePermissionStateGraph>;
+  readPermissionGraphForAccount?: (
+    accountId: string,
+  ) => LivePermissionStateProviderResult<LivePermissionStateGraph>;
 }
 
 export const PERMISSION_LIVE_RECORD_COLLECTIONS = {
@@ -122,26 +125,33 @@ export function createStoragePermissionStateProvider({
   store,
   workspaceId,
 }: StoragePermissionStateProviderOptions): LivePermissionStateProvider {
+  async function readPermissionGraph(
+    accountId?: string,
+  ): Promise<LivePermissionStateGraph> {
+    const permissionRecords = await store.listRecords({
+      workspaceId,
+      collectionName: PERMISSION_LIVE_RECORD_COLLECTIONS.permissions,
+      userId: accountId,
+    });
+
+    return {
+      evidenceIds: evidenceIdsFor(permissionRecords),
+      generatedAt: latestTimestamp(permissionRecords),
+      permissions: permissionRecords
+        .map(permissionFromRecord)
+        .filter(
+          (permission): permission is PermissionStateDTO =>
+            permission !== null,
+        ),
+    };
+  }
+
   return {
     source: source ?? `live-record-store:permissions:${workspaceId}`,
     sourceLabel,
-    async readPermissionGraph(): Promise<LivePermissionStateGraph> {
-      const permissionRecords = await store.listRecords({
-        workspaceId,
-        collectionName: PERMISSION_LIVE_RECORD_COLLECTIONS.permissions,
-      });
-
-      return {
-        evidenceIds: evidenceIdsFor(permissionRecords),
-        generatedAt: latestTimestamp(permissionRecords),
-        permissions: permissionRecords
-          .map(permissionFromRecord)
-          .filter(
-            (permission): permission is PermissionStateDTO =>
-              permission !== null,
-          ),
-      };
-    },
+    readPermissionGraph: () => readPermissionGraph(),
+    readPermissionGraphForAccount: (accountId) =>
+      readPermissionGraph(accountId),
   };
 }
 

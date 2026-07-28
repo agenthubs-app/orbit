@@ -15,6 +15,10 @@ import type {
   ConnectionAddEvidenceInput,
   ConnectionEvidenceAddResult,
 } from "../../../../../features/connections/contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +124,12 @@ export async function POST(
 ): Promise<Response> {
   // connectionId 来自 path，scenario 可由 query 覆盖 body，方便 mock 调试。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
   const connectionService = createConnectionEvidenceService();
@@ -133,6 +143,7 @@ export async function POST(
   const { body } = addEvidenceBody;
   // route 只组装 input，不在这里解释 sourceType 或 contribution 的业务含义。
   const input: ConnectionAddEvidenceInput = {
+    actorId: actor?.id,
     connectionId: id,
     contribution: body.contribution,
     evidenceId: body.evidenceId,

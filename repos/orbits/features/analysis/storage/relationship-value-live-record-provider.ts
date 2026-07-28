@@ -15,6 +15,13 @@ export interface LiveRelationshipValueProvider {
   readRelationshipGraphForConnection?: (
     connectionId: string,
   ) => LiveConnectionEvidenceGraph | Promise<LiveConnectionEvidenceGraph>;
+  readRelationshipGraphForAccount?: (
+    accountId: string,
+  ) => LiveConnectionEvidenceGraph | Promise<LiveConnectionEvidenceGraph>;
+  readRelationshipGraphForAccountConnection?: (
+    accountId: string,
+    connectionId: string,
+  ) => LiveConnectionEvidenceGraph | Promise<LiveConnectionEvidenceGraph>;
 }
 
 export type StorageRelationshipValueProviderOptions =
@@ -44,6 +51,17 @@ export function createStorageRelationshipValueProvider({
       provider.readConnectionEvidenceGraphForConnection
         ? provider.readConnectionEvidenceGraphForConnection(connectionId)
         : provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForAccount: (accountId) =>
+      provider.readConnectionEvidenceGraphForAccount
+        ? provider.readConnectionEvidenceGraphForAccount(accountId)
+        : provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForAccountConnection: (accountId, connectionId) =>
+      provider.readConnectionEvidenceGraphForAccountConnection
+        ? provider.readConnectionEvidenceGraphForAccountConnection(
+            accountId,
+            connectionId,
+          )
+        : provider.readConnectionEvidenceGraph(),
   };
 }
 
@@ -70,6 +88,17 @@ export function createConfiguredStorageRelationshipValueProvider({
     readRelationshipGraphForConnection: (connectionId) =>
       provider.readConnectionEvidenceGraphForConnection
         ? provider.readConnectionEvidenceGraphForConnection(connectionId)
+        : provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForAccount: (accountId) =>
+      provider.readConnectionEvidenceGraphForAccount
+        ? provider.readConnectionEvidenceGraphForAccount(accountId)
+        : provider.readConnectionEvidenceGraph(),
+    readRelationshipGraphForAccountConnection: (accountId, connectionId) =>
+      provider.readConnectionEvidenceGraphForAccountConnection
+        ? provider.readConnectionEvidenceGraphForAccountConnection(
+            accountId,
+            connectionId,
+          )
         : provider.readConnectionEvidenceGraph(),
   };
 }

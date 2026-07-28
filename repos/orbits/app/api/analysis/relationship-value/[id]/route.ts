@@ -6,12 +6,19 @@ import {
 } from "../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-error";
-import { createRelationshipValueScoringService } from "../../../../../features/analysis/service-factory";
+import {
+  createActorScopedRelationshipValueScoringService,
+  createRelationshipValueScoringService,
+} from "../../../../../features/analysis/service-factory";
 import {
   relationshipValueFailureContext,
   relationshipValueFailureToAppError,
 } from "../../../../../features/analysis/service-factory";
 import type { RelationshipValueResult } from "../../../../../features/analysis/value-contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +59,18 @@ export async function GET(
 ): Promise<Response> {
   // path id 在业务层是 connectionId，不在 route 里解释或校验关系数据。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
   const scenario = new URL(request.url).searchParams.get("scenario");
   const relationshipValueService =
-    createRelationshipValueScoringService();
+    mode === "live" && actor
+      ? createActorScopedRelationshipValueScoringService(actor.id)
+      : createRelationshipValueScoringService(mode);
   const result = await relationshipValueService.getRelationshipValue({
     connectionId: id,
     scenario,

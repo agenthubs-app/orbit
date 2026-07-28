@@ -40,3 +40,31 @@ export function createRelationshipValueScoringService(
 
   return resolution.service;
 }
+
+export function createActorScopedRelationshipValueScoringService(
+  accountId: string,
+): RelationshipValueScoringService {
+  const provider = createConfiguredStorageRelationshipValueProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveRelationshipValueScoringService({
+    provider:
+      normalizedAccountId && provider?.readRelationshipGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readRelationshipGraph: () =>
+              provider.readRelationshipGraphForAccount!(normalizedAccountId),
+            readRelationshipGraphForConnection: (connectionId) =>
+              provider.readRelationshipGraphForAccountConnection
+                ? provider.readRelationshipGraphForAccountConnection(
+                    normalizedAccountId,
+                    connectionId,
+                  )
+                : provider.readRelationshipGraphForAccount!(
+                    normalizedAccountId,
+                  ),
+          }
+        : null,
+  });
+}

@@ -18,10 +18,14 @@ import {
   type AuthUserStorageProvider,
   type StoredAuthUser,
 } from "./storage/auth-user-live-record-provider";
+import type {
+  AuthAccountProvisioningProvider,
+} from "./storage/auth-account-provisioning-provider";
 
 const BCRYPT_COST = 12;
 
 export interface CreateAuthUserServiceOptions {
+  accountProvisioner?: AuthAccountProvisioningProvider | null;
   provider: AuthUserStorageProvider | null;
   now?: () => Date;
 }
@@ -37,9 +41,14 @@ function newUserId(now: Date): string {
 }
 
 export function createAuthUserService({
+  accountProvisioner = null,
   provider,
   now = () => new Date(),
 }: CreateAuthUserServiceOptions): AuthUserService {
+  async function provisionAccount(user: StoredAuthUser): Promise<void> {
+    await accountProvisioner?.ensureAccountForUser(toAuthUserDTO(user));
+  }
+
   return {
     async registerUser(input: RegisterUserInput): Promise<AuthUserResult> {
       if (!provider) {
@@ -74,6 +83,7 @@ export function createAuthUserService({
       };
 
       await provider.saveUser(user);
+      await provisionAccount(user);
 
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
@@ -101,6 +111,8 @@ export function createAuthUserService({
         return authUserFailure("AUTH_INVALID_CREDENTIALS");
       }
 
+      await provisionAccount(user);
+
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
 
@@ -119,6 +131,7 @@ export function createAuthUserService({
       // 同邮箱已有账号(含密码注册的)直接复用:IdP 已验证邮箱所有权,
       // 与参考实现 allowDangerousEmailAccountLinking 的语义一致。
       if (existingUser) {
+        await provisionAccount(existingUser);
         return { data: { user: toAuthUserDTO(existingUser) }, state: "success" };
       }
 
@@ -135,6 +148,7 @@ export function createAuthUserService({
       };
 
       await provider.saveUser(user);
+      await provisionAccount(user);
 
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },

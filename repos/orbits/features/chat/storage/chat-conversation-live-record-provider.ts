@@ -279,9 +279,11 @@ async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   collectionName: string,
+  userId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   return store.listRecords({
     collectionName,
+    userId,
     workspaceId,
   });
 }
@@ -289,6 +291,7 @@ async function listCollection(
 async function readGraph(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
+  accountId?: string,
 ): Promise<LiveChatConversationGraph> {
   const [conversationRecords, messageRecords, contactRecords, connectionRecords] =
     await Promise.all([
@@ -296,21 +299,25 @@ async function readGraph(
         store,
         workspaceId,
         CHAT_CONVERSATION_LIVE_RECORD_COLLECTIONS.conversations,
+        accountId,
       ),
       listCollection(
         store,
         workspaceId,
         CHAT_CONVERSATION_LIVE_RECORD_COLLECTIONS.messages,
+        accountId,
       ),
       listCollection(
         store,
         workspaceId,
         CHAT_CONVERSATION_LIVE_RECORD_COLLECTIONS.contacts,
+        accountId,
       ),
       listCollection(
         store,
         workspaceId,
         CHAT_CONVERSATION_LIVE_RECORD_COLLECTIONS.connections,
+        accountId,
       ),
     ]);
 
@@ -410,8 +417,16 @@ async function appendMessage(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   input: LiveChatAppendMessageInput,
+  accountId?: string,
 ): Promise<LiveChatConversationGraph> {
-  const graph = await readGraph(store, workspaceId);
+  const graph = await readGraph(store, workspaceId, accountId);
+  if (
+    !graph.conversations.some(
+      (conversation) => conversation.id === input.conversationId,
+    )
+  ) {
+    return graph;
+  }
   const messageId = nextMessageId(input.conversationId, graph.messages);
   const ids =
     input.evidenceIds.length > 0
@@ -444,6 +459,7 @@ async function appendMessage(
     createdAt: payload.occurredAt,
     updatedAt: payload.occurredAt,
     lifecycleState: "active",
+    userId: accountId,
     searchText: searchTextForMessage(payload),
     payload: payload as unknown as Record<string, unknown>,
   });
@@ -454,7 +470,7 @@ async function appendMessage(
     recordId: input.conversationId,
   });
 
-  if (conversationRecord) {
+  if (conversationRecord && (!accountId || conversationRecord.userId === accountId)) {
     await store.upsertRecord({
       ...conversationRecord,
       updatedAt: input.sentAt,
@@ -465,7 +481,7 @@ async function appendMessage(
     });
   }
 
-  return readGraph(store, workspaceId);
+  return readGraph(store, workspaceId, accountId);
 }
 
 export function createStorageChatConversationMessageProvider({
@@ -478,7 +494,11 @@ export function createStorageChatConversationMessageProvider({
     source: source ?? `live-record-store:chat-conversation-message:${workspaceId}`,
     sourceLabel,
     appendMessage: (input) => appendMessage(store, workspaceId, input),
+    appendMessageForAccount: (accountId, input) =>
+      appendMessage(store, workspaceId, input, accountId),
     readChatGraph: () => readGraph(store, workspaceId),
+    readChatGraphForAccount: (accountId) =>
+      readGraph(store, workspaceId, accountId),
   };
 }
 

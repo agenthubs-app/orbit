@@ -35,3 +35,23 @@ export function createSourceConsistencyProvenanceAuditService(
 
   return resolution.service;
 }
+
+export function createActorScopedSourceConsistencyProvenanceAuditService(
+  accountId: string,
+): SourceConsistencyProvenanceAuditService {
+  const provider =
+    createConfiguredStorageSourceConsistencyProvenanceAuditProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveSourceConsistencyProvenanceAuditService({
+    provider:
+      normalizedAccountId && provider?.readAuditGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readAuditGraph: () =>
+              provider.readAuditGraphForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
+}

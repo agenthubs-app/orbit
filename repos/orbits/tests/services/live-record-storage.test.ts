@@ -11,6 +11,7 @@ const baseRecord: LiveRecord<{ title: string; startsAt: string }> = {
   workspaceId: "workspace:test",
   collectionName: "events",
   recordId: "event:live:operator-dinner",
+  userId: "account:owner",
   sourceType: "manual",
   sourceId: "source:events:operator-dinner",
   sourceLabel: "Operator entered event",
@@ -63,6 +64,28 @@ test("memory live record store isolates payloads and filters by workspace collec
       recordId: "event:live:operator-dinner",
     })?.payload.title,
     "Operator dinner",
+  );
+});
+
+test("memory live record store filters private records by account owner", () => {
+  const store = createMemoryLiveRecordStore([
+    baseRecord,
+    {
+      ...baseRecord,
+      recordId: "event:other-account",
+      userId: "account:other",
+    },
+  ]);
+
+  const ownerRecords = store.listRecords({
+    workspaceId: "workspace:test",
+    collectionName: "events",
+    userId: "account:owner",
+  });
+
+  assert.deepEqual(
+    ownerRecords.map((record) => record.recordId),
+    ["event:live:operator-dinner"],
   );
 });
 

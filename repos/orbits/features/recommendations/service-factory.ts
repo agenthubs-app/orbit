@@ -52,6 +52,29 @@ export function createEventRecommendationService(
   return resolution.service;
 }
 
+export function createActorScopedEventRecommendationService(
+  accountId: string,
+): EventRecommendationService {
+  const provider = createConfiguredStorageEventRecommendationProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveEventRecommendationService({
+    provider:
+      normalizedAccountId &&
+      provider?.readEventRecommendationGraphForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            readEventRecommendationGraph: (eventId) =>
+              provider.readEventRecommendationGraphForAccount!(
+                normalizedAccountId,
+                eventId,
+              ),
+          }
+        : null,
+  });
+}
+
 export function resolveEventValueRecommendationService(
   mode?: ModuleMode | string,
 ) {
@@ -68,4 +91,27 @@ export function createEventValueRecommendationService(
   }
 
   return resolution.service;
+}
+
+export function createActorScopedEventValueRecommendationService(
+  accountId: string,
+): EventValueRecommendationService {
+  const provider = createConfiguredStorageEventValueRecommendationProvider();
+  const normalizedAccountId = accountId.trim();
+
+  return createLiveEventValueRecommendationService({
+    provider:
+      normalizedAccountId &&
+      provider?.getEventForAccount &&
+      provider.listEventsForAccount
+        ? {
+            source: provider.source,
+            sourceLabel: provider.sourceLabel,
+            getEvent: (eventId) =>
+              provider.getEventForAccount!(normalizedAccountId, eventId),
+            listEvents: () =>
+              provider.listEventsForAccount!(normalizedAccountId),
+          }
+        : null,
+  });
 }

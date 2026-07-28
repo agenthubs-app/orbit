@@ -12,7 +12,14 @@ import {
   type ChatConversationListInput,
   type ChatConversationListResult,
 } from "../../../../features/chat/service";
-import { createChatConversationMessageService } from "../../../../features/chat/service-factory";
+import {
+  createActorScopedChatConversationMessageService,
+  createChatConversationMessageService,
+} from "../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 // 传统 chat conversation 列表 route。
 // 注意它不同于 Orbit Agent 的 `/api/ai/conversations`，这里仍是 chat mock capability。
@@ -51,7 +58,16 @@ function responseForResult(
 
 export async function GET(request: Request): Promise<Response> {
   const mode = resolveFeatureMode();
-  const service = createChatConversationMessageService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatConversationMessageService(actor.id)
+      : createChatConversationMessageService(mode);
   const result = await service.listConversations(readInput(request));
 
   return responseForResult(result, mode);

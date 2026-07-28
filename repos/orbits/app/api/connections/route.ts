@@ -11,6 +11,10 @@ import {
   connectionEvidenceFailureContext,
   connectionEvidenceFailureToAppError,
 } from "../../../features/connections/service";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +24,18 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request): Promise<Response> {
   // runtime boundary header 标明当前服务模式，便于页面和测试识别 mock/live/hybrid。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const scenario = new URL(request.url).searchParams.get("scenario");
   const connectionService = createConnectionEvidenceService();
-  const result = await connectionService.listConnections({ scenario });
+  const result = await connectionService.listConnections({
+    actorId: actor?.id,
+    scenario,
+  });
 
   if (result.success === false) {
     // connection failure 统一映射为 AppError/envelope。

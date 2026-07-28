@@ -7,7 +7,7 @@ import {
   createEventRecommendationService,
   resolveEventRecommendationService,
 } from "../../features/recommendations/service-factory";
-import { POST as composeOpeningLine } from "../../app/api/recommendations/event/[id]/opening-line/route";
+import { createEventOpeningLinePostHandler } from "../../app/api/recommendations/event/[id]/opening-line/handler";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
@@ -142,7 +142,9 @@ test("event recommendation live factory and routes fail closed without live data
     const result = await liveService.listEventRecommendations({
       eventId: "event_02",
     });
-    const routeResponse = await composeOpeningLine(
+    const routeResponse = await createEventOpeningLinePostHandler(
+      async () => ({ id: "account:event-recommendation-test" }),
+    )(
       new Request(
         "https://orbit.local/api/recommendations/event/event_02/opening-line?attendeeId=participant_453",
         { method: "POST" },

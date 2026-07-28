@@ -72,6 +72,7 @@ test("connection and evidence contract exposes records timelines source links fi
   const missing = service.getConnection({ connectionId: "missing-connection" });
 
   assert.deepEqual(contract.CONNECTION_EVIDENCE_SERVICE_ERROR_CODES, [
+    "CONNECTION_ACTOR_REQUIRED",
     "CONNECTION_NOT_FOUND",
     "CONNECTION_EVIDENCE_INVALID_BODY",
     "CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED",

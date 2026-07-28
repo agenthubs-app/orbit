@@ -46,6 +46,7 @@ export function createStorageChatSummaryExtractionProvider({
     source: chatProvider.source,
     sourceLabel: chatProvider.sourceLabel,
     readChatGraph: chatProvider.readChatGraph,
+    readChatGraphForAccount: chatProvider.readChatGraphForAccount,
   };
 }
 

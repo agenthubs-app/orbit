@@ -7,6 +7,7 @@ import {
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-error";
 import {
+  createActorScopedRelationshipValueScoringService,
   createRelationshipValueScoringService,
   relationshipValueFailureContext,
   relationshipValueFailureToAppError,
@@ -15,6 +16,10 @@ import type {
   RelationshipValueRecomputeInput,
   RelationshipValueResult,
 } from "../../../../../features/analysis/value-contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -79,9 +84,17 @@ function acceptsJsonBody(request: Request): boolean {
 export async function POST(request: Request): Promise<Response> {
   // scenario 仍从 query 读取，避免 body 中 mock 状态和目标 connection 混在一起。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const scenario = new URL(request.url).searchParams.get("scenario");
   const relationshipValueService =
-    createRelationshipValueScoringService();
+    mode === "live" && actor
+      ? createActorScopedRelationshipValueScoringService(actor.id)
+      : createRelationshipValueScoringService(mode);
 
   if (request.body === null || !acceptsJsonBody(request)) {
     // 没有 JSON body 时使用稳定默认输入，而不是让 JSON parser 抛错。

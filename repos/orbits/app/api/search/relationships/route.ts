@@ -8,6 +8,9 @@ import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import { createRelationshipNaturalSearchService } from "../../../../features/search/service-factory";
 import {
+  createConfiguredActorScopedLiveRelationshipNaturalSearchService,
+} from "../../../../features/search/live-service";
+import {
   relationshipNaturalSearchFailureContext,
   relationshipNaturalSearchFailureToAppError,
 } from "../../../../features/search/service";
@@ -15,6 +18,10 @@ import type {
   RelationshipNaturalSearchInput,
   RelationshipNaturalSearchResult,
 } from "../../../../features/search/contract";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -251,7 +258,18 @@ function responseForResult(
 export async function POST(request: Request): Promise<Response> {
   // POST 承载复杂搜索条件；route 不直接执行检索算法。
   const mode = resolveFeatureMode();
-  const searchService = createRelationshipNaturalSearchService();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
+  const searchService =
+    mode === "live" && actor
+      ? createConfiguredActorScopedLiveRelationshipNaturalSearchService(
+          actor.id,
+        )
+      : createRelationshipNaturalSearchService(mode);
   const input = await readRelationshipSearchInput(request);
   const result = input
     ? await searchService.queryRelationships(input)

@@ -10,7 +10,14 @@ import {
   eventValueRecommendationFailureContext,
   eventValueRecommendationFailureToAppError,
 } from "../../../../../../features/recommendations/event-value-contract";
-import { createEventValueRecommendationService } from "../../../../../../features/recommendations/service-factory";
+import {
+  createActorScopedEventValueRecommendationService,
+  createEventValueRecommendationService,
+} from "../../../../../../features/recommendations/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +35,18 @@ export async function POST(
 ): Promise<Response> {
   // route 不解析 body，避免调用方改写要接受的 eventId。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
   const searchParams = new URL(request.url).searchParams;
-  const eventValueService = createEventValueRecommendationService();
+  const eventValueService =
+    mode === "live" && actor
+      ? createActorScopedEventValueRecommendationService(actor.id)
+      : createEventValueRecommendationService(mode);
   const result = await eventValueService.acceptRecommendedEvent({
     eventId: id,
     scenario: searchParams.get("scenario"),

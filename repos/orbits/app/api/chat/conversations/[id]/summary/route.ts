@@ -12,7 +12,14 @@ import {
   type ChatSummaryExtractionInput,
   type ChatSummaryExtractionResult,
 } from "../../../../../../features/chat/summary-contract";
-import { createChatSummaryExtractionService } from "../../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatSummaryExtractionService,
+  createChatSummaryExtractionService,
+} from "../../../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +73,17 @@ export async function POST(
 ): Promise<Response> {
   // 生成摘要是 service 的职责，route 只处理 HTTP 边界和 envelope。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
-  const service = createChatSummaryExtractionService();
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatSummaryExtractionService(actor.id)
+      : createChatSummaryExtractionService(mode);
   const result = await service.summarizeConversation(readInput(request, id));
 
   return responseForResult(result, mode);

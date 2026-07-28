@@ -8,6 +8,9 @@ import {
   createConfiguredStorageAuthUserProvider,
   createStorageAuthUserProvider,
 } from "./storage/auth-user-live-record-provider";
+import {
+  createConfiguredAuthAccountProvisioningProvider,
+} from "./storage/auth-account-provisioning-provider";
 
 interface AuthRuntimeGlobal {
   __orbitMockAuthUserStore?: ReturnType<typeof createMemoryLiveRecordStore>;
@@ -24,6 +27,7 @@ export const authUserServiceFactory =
     implementations: {
       live: () =>
         createAuthUserService({
+          accountProvisioner: createConfiguredAuthAccountProvisioningProvider(),
           provider: createConfiguredStorageAuthUserProvider(),
         }),
       mock: () =>

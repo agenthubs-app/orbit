@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "db:migrate:live": "tsx scripts/migrate-live-records.ts",
+    "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",
     "db:seed:live-events": "tsx scripts/seed-live-events.ts",
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",

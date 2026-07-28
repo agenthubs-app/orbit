@@ -12,7 +12,14 @@ import {
   type ChatMessageThreadInput,
   type ChatMessageThreadResult,
 } from "../../../../../features/chat/service";
-import { createChatConversationMessageService } from "../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatConversationMessageService,
+  createChatConversationMessageService,
+} from "../../../../../features/chat/service-factory";
+import {
+  authenticatedApiActorRequiredResponse,
+  resolveAuthenticatedApiActor,
+} from "../../../_shared/authenticated-actor";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +73,17 @@ export async function GET(
 ): Promise<Response> {
   // 动态 params 先 await，再用统一 service 读取消息线程。
   const mode = resolveFeatureMode();
+  const actor = mode === "mock" ? null : await resolveAuthenticatedApiActor();
+
+  if (mode !== "mock" && !actor) {
+    return authenticatedApiActorRequiredResponse(mode);
+  }
+
   const { id } = await context.params;
-  const service = createChatConversationMessageService();
+  const service =
+    mode === "live" && actor
+      ? createActorScopedChatConversationMessageService(actor.id)
+      : createChatConversationMessageService(mode);
   const result = await service.getMessageThread(readInput(request, id));
 
   return responseForResult(result, mode);
