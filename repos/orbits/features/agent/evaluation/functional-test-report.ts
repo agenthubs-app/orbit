@@ -671,6 +671,22 @@ export const AGENT_RESOLVED_FINDINGS = [
     resolution:
       "规划输入增加按默认时区计算的 currentLocalDate，并明确要求所有今天/明天相对日期以该本地日期为基准。",
   },
+  {
+    id: "F-14",
+    symptom: "AI 邮件草稿声称“详见附件”，但关系记录中没有附件。",
+    rootCause:
+      "提示词声明了证据边界，但模型输出返回后只校验 JSON 结构，没有校验已发送、已预约、已完成或附件等不受支持的事实声明。",
+    resolution:
+      "模型输出增加确定性声明校验；发现不受支持的声明时携带拒绝类别受控重试一次，仍违规则失败关闭，绝不把违规内容回填到草稿。",
+  },
+  {
+    id: "F-15",
+    symptom: "人脉列表搜索“人工智能 投资”时，资料同时包含两个概念的林玫仍返回 0 条。",
+    rootCause:
+      "联系人列表、图谱和引荐选择器各自使用整句子串匹配，没有复用后端已经采用的 Unicode 规范化和多词语义。",
+    resolution:
+      "联系人页面统一为 NFKC 规范化、中文分词和多词 AND 匹配，并补充投资人、高价值等产品词义映射和页面回归。",
+  },
 ] as const;
 
 export const AGENT_EVALUATION_SUMMARY = {

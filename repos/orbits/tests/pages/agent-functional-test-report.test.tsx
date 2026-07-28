@@ -21,12 +21,23 @@ test("Agent functional report stays aligned with the capability registry", () =>
   );
   assert.equal(AGENT_FLOW_STAGES.length, 8);
   assert.equal(AGENT_EVALUATION_SUMMARY.cases, AGENT_EVALUATION_CASES.length);
-  assert.equal(AGENT_EVALUATION_SUMMARY.limited, 0);
   assert.equal(
-    AGENT_EVALUATION_SUMMARY.passed,
+    AGENT_EVALUATION_SUMMARY.passed + AGENT_EVALUATION_SUMMARY.limited,
     AGENT_EVALUATION_SUMMARY.cases,
   );
-  assert.equal(AGENT_RESOLVED_FINDINGS.length, 6);
+  assert.equal(
+    AGENT_EVALUATION_SUMMARY.limited,
+    AGENT_EVALUATION_CASES.filter((item) => item.status === "limited").length,
+  );
+  assert.ok(
+    AGENT_EVALUATION_SUMMARY.limited > 0,
+    "Known limitations must remain visible until executable evidence passes",
+  );
+  assert.equal(
+    AGENT_RESOLVED_FINDINGS.length,
+    15,
+    "The report must enumerate every currently audited root-cause finding",
+  );
 });
 
 test("Agent functional report renders every expectation and actual result", () => {

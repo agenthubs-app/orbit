@@ -4,7 +4,7 @@
  * 验证 mock/hybrid/live mode 解析、service factory 和 capability registration。
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -192,6 +192,10 @@ test("capability service lookup returns mock services by default and live invent
       mode: "mock",
       status: "mock-ready",
       source: "mock-service-factory",
+      readiness: {
+        evidence: [],
+        limitations: [],
+      },
       provenance: {
         requiresEvidence: true,
         requiresSource: true,
@@ -210,8 +214,17 @@ test("capability service lookup returns mock services by default and live invent
     service: {
       capabilityId: "agent-actions",
       mode: "live",
-      status: "live-ready",
+      status: "live-limited",
       source: "live-service-factory",
+      readiness: {
+        evidence: [
+          "tests/capabilities/orbit-agent-gemini-live.test.ts",
+          "tests/pages/agent-functional-test-report.test.tsx",
+        ],
+        limitations: [
+          "The functional report still contains limited capabilities and must not be treated as a full pass.",
+        ],
+      },
       provenance: {
         requiresEvidence: true,
         requiresSource: true,
@@ -221,26 +234,44 @@ test("capability service lookup returns mock services by default and live invent
   });
 });
 
-test("capability summaries report live-ready status for registered live capability groups", () => {
+test("capability summaries never treat a registered constructor as complete live readiness", () => {
   const liveSummaries = listCapabilitySummaries({ mode: "live" });
 
   assert.equal(liveSummaries.length, 11);
   assert.deepEqual(
     liveSummaries.map((summary) => [summary.id, summary.serviceStatus]),
     [
-      ["account-profile", "live-ready"],
-      ["permissions", "live-ready"],
-      ["contact-acquisition", "live-ready"],
-      ["contacts", "live-ready"],
-      ["connections", "live-ready"],
-      ["events", "live-ready"],
-      ["followups", "live-ready"],
-      ["chat", "live-ready"],
-      ["dashboard", "live-ready"],
-      ["agent-actions", "live-ready"],
-      ["notifications", "live-ready"],
+      ["account-profile", "live-limited"],
+      ["permissions", "live-limited"],
+      ["contact-acquisition", "live-limited"],
+      ["contacts", "live-limited"],
+      ["connections", "live-limited"],
+      ["events", "live-limited"],
+      ["followups", "live-limited"],
+      ["chat", "live-limited"],
+      ["dashboard", "live-limited"],
+      ["agent-actions", "live-limited"],
+      ["notifications", "live-limited"],
     ],
   );
+
+  for (const summary of liveSummaries) {
+    assert.ok(
+      summary.readiness.evidence.length > 0,
+      `${summary.id} must cite executable evidence`,
+    );
+    assert.ok(
+      summary.readiness.limitations.length > 0,
+      `${summary.id} must expose known limitations until fully verified`,
+    );
+    for (const evidencePath of summary.readiness.evidence) {
+      assert.equal(
+        existsSync(join(projectRoot, evidencePath)),
+        true,
+        `${summary.id} cites missing executable evidence: ${evidencePath}`,
+      );
+    }
+  }
 });
 
 test("capability registration exposes metadata needed by pages and route handlers", () => {

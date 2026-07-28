@@ -363,7 +363,7 @@ export function filterConnections(
   stage: "all" | OrbitContactPipelineStatus = "all",
   valueTag: string | null = null,
 ) {
-  const keyword = query.trim().toLowerCase();
+  const queryTokens = contactSearchTokens(query);
   const normalizedValueTag = valueTag?.trim().toLowerCase() ?? "";
 
   return connections.filter((item) => {
@@ -382,17 +382,73 @@ export function filterConnections(
       item.seeking,
       item.nextAction?.text,
       item.nextAction?.reason,
+      item.pipelineStatus,
+      item.pipelineStatus === "to_contact"
+        ? "待联系 待跟进"
+        : item.pipelineStatus === "in_progress"
+          ? "在推进"
+          : "已合作",
+      item.strength,
+      item.strength === "strong"
+        ? "强关系 高价值"
+        : item.strength === "medium"
+          ? "中关系"
+          : "弱关系",
       ...item.valueTags,
     ]
       .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+      .join(" ");
     return (
       matchesStage &&
       matchesValueTag &&
-      (!keyword || haystack.includes(keyword))
+      matchesContactSearchText(haystack, queryTokens)
     );
   });
+}
+
+function contactSearchTokens(query: string): readonly string[] {
+  const normalized = query.normalize("NFKC").trim().toLocaleLowerCase();
+
+  if (!normalized) {
+    return [];
+  }
+
+  return [
+    ...new Intl.Segmenter("zh", { granularity: "word" }).segment(normalized),
+  ]
+    .filter((segment) => segment.isWordLike)
+    .map((segment) => segment.segment.trim())
+    .filter(Boolean);
+}
+
+function alternativesForContactSearchToken(token: string): readonly string[] {
+  switch (token) {
+    case "投资人":
+      return ["投资人", "投资"];
+    case "高价值":
+      return ["高价值", "强关系", "strong"];
+    default:
+      return [token];
+  }
+}
+
+function matchesContactSearchText(
+  haystack: string,
+  queryTokens: readonly string[],
+): boolean {
+  if (queryTokens.length === 0) {
+    return true;
+  }
+
+  const normalizedHaystack = haystack
+    .normalize("NFKC")
+    .toLocaleLowerCase();
+
+  return queryTokens.every((token) =>
+    alternativesForContactSearchToken(token).some((alternative) =>
+      normalizedHaystack.includes(alternative),
+    ),
+  );
 }
 
 export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsViewModel }) {
@@ -425,12 +481,18 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
     {
       label: t({ en: "High-value to follow up", zh: "待跟进的高价值关系" }),
       query: t({ en: "High value", zh: "高价值" }),
+      stage: "to_contact" as const,
     },
   ];
   const subtitle = `${items.length} ${t({ en: "contacts", zh: "位联系人" })}${eventCount ? ` · ${t({ en: `from ${eventCount} events`, zh: `来自 ${eventCount} 场活动` })}` : ""}`;
   const clearFilters = () => {
     setQuery("");
     setStage("all");
+    setValueTag(null);
+  };
+  const applySearchSuggestion = (suggestion: (typeof searchSuggestions)[number]) => {
+    setQuery(suggestion.query);
+    setStage("stage" in suggestion ? suggestion.stage : "all");
     setValueTag(null);
   };
 
@@ -461,7 +523,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
               {searchSuggestions.map((suggestion) => (
-                <button className="chip" key={suggestion.label} onClick={() => setQuery(suggestion.query)} type="button">{suggestion.label}</button>
+                <button className="chip" key={suggestion.label} onClick={() => applySearchSuggestion(suggestion)} type="button">{suggestion.label}</button>
               ))}
             </div>
             <div style={{ alignItems: "center", display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0 16px" }}>
@@ -830,9 +892,18 @@ export function OrbitRealCardsGraph({ viewModel }: { viewModel: OrbitContactsVie
   const [scale, setScale] = useState(1);
   const graph = useMemo(() => buildConnGraph(viewModel, t), [viewModel, t]);
   const visible = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return graph;
-    const matched = graph.nodes.filter((node) => node.type === "connection" && [node.displayName, node.company, node.industry].filter(Boolean).join(" ").toLowerCase().includes(keyword));
+    const queryTokens = contactSearchTokens(query);
+    if (queryTokens.length === 0) return graph;
+    const matched = graph.nodes.filter(
+      (node) =>
+        node.type === "connection" &&
+        matchesContactSearchText(
+          [node.displayName, node.company, node.industry]
+            .filter(Boolean)
+            .join(" "),
+          queryTokens,
+        ),
+    );
     const ids = new Set(matched.map((node) => node.id));
     const keptEdges = graph.edges.filter((edge) => ids.has(edge.source));
     const eventIdsFromEdges = new Set(keptEdges.map((edge) => edge.target));
@@ -1079,11 +1150,14 @@ function IntroComposerModal({
   const [error, setError] = useState("");
   const selectedA = viewModel.connections.find((contact) => contact.id === aId) || null;
   const selectedB = viewModel.connections.find((contact) => contact.id === bId) || null;
-  const keyword = query.trim().toLowerCase();
+  const queryTokens = contactSearchTokens(query);
   const selectable = viewModel.connections.filter((item) => {
     if (picking === "a" && item.id === bId) return false;
     if (picking === "b" && item.id === aId) return false;
-    return !keyword || [item.displayName, item.company, item.title].filter(Boolean).join(" ").toLowerCase().includes(keyword);
+    return matchesContactSearchText(
+      [item.displayName, item.company, item.title].filter(Boolean).join(" "),
+      queryTokens,
+    );
   });
 
   function pick(id: string) {
@@ -1224,8 +1298,11 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
   ];
   const visible = introductions.filter((intro) => {
     const matchesFilter = filter === "all" || intro.statusBadge === filter;
-    const haystack = [intro.labelA, intro.labelB, intro.blurb].filter(Boolean).join(" ").toLowerCase();
-    return matchesFilter && (!query.trim() || haystack.includes(query.trim().toLowerCase()));
+    const haystack = [intro.labelA, intro.labelB, intro.blurb].filter(Boolean).join(" ");
+    return (
+      matchesFilter &&
+      matchesContactSearchText(haystack, contactSearchTokens(query))
+    );
   });
   const statsNode = (
     <section className="orbit-intro-stats">

@@ -48,7 +48,13 @@ export interface CapabilityDebugMetadata {
 export type CapabilityServiceStatus =
   | "mock-ready"
   | "hybrid-mock-ready"
-  | "live-ready";
+  | "live-ready"
+  | "live-limited";
+
+export interface CapabilityReadiness {
+  evidence: readonly string[];
+  limitations: readonly string[];
+}
 
 export interface CapabilityService {
   capabilityId: CapabilityId;
@@ -58,6 +64,7 @@ export interface CapabilityService {
     | "mock-service-factory"
     | "hybrid-service-factory"
     | "live-service-factory";
+  readiness: CapabilityReadiness;
   provenance: {
     requiresEvidence: true;
     requiresSource: true;
@@ -81,6 +88,7 @@ export interface CapabilitySummary {
   description: string;
   currentMode: ModuleMode;
   serviceStatus: CapabilityServiceStatus | "not-implemented";
+  readiness: CapabilityReadiness;
   defaultMode: ModuleMode;
   api: CapabilityApiMetadata;
   debug: CapabilityDebugMetadata;
@@ -95,11 +103,124 @@ interface CapabilityDefinition {
   debugDescription: string;
 }
 
+// Capability group readiness must describe the complete user-facing group, not
+// merely whether this metadata factory has a constructor. A group is
+// "live-ready" only when every advertised route and provider boundary has
+// executable replacement evidence and no known blocker.
+const liveReadinessByCapability: Record<CapabilityId, CapabilityReadiness> = {
+  "account-profile": {
+    evidence: [
+      "tests/capabilities/account-live-store.test.ts",
+      "tests/capabilities/profile-live-store.test.ts",
+      "tests/pages/app-account-auth-live-route-services.test.ts",
+    ],
+    limitations: [
+      "Password reset is not implemented.",
+      "External identity providers remain configuration-dependent.",
+    ],
+  },
+  permissions: {
+    evidence: ["tests/capabilities/permission-state-live-store.test.ts"],
+    limitations: [
+      "Provider authorization remains staged until a real OAuth provider is configured.",
+    ],
+  },
+  "contact-acquisition": {
+    evidence: [
+      "tests/capabilities/business-card-ocr-evaluation.test.ts",
+      "tests/capabilities/business-card-cloud-ocr.test.ts",
+      "tests/capabilities/business-card-scan-ocr-live-store.test.ts",
+      "tests/capabilities/contact-acquisition-draft-live-store.test.ts",
+    ],
+    limitations: [
+      "QR, event-attendee, external-contact, and referral imports are not all connected in the product UI.",
+      "OCR has provider-contract coverage but no representative image quality benchmark.",
+    ],
+  },
+  contacts: {
+    evidence: [
+      "tests/capabilities/contacts-live-store.test.ts",
+      "tests/pages/app-contact-detail-live-route-services.test.ts",
+    ],
+    limitations: [
+      "Some relationship actions still depend on unconfigured external providers.",
+    ],
+  },
+  connections: {
+    evidence: [
+      "tests/capabilities/relationship-natural-search-live-store.test.ts",
+      "tests/capabilities/relationship-value-live-store.test.ts",
+    ],
+    limitations: [
+      "Relationship search is lexical rules rather than semantic retrieval.",
+      "Relationship value scoring is calibrated against local deterministic cases, not observed production outcomes.",
+    ],
+  },
+  events: {
+    evidence: [
+      "tests/capabilities/event-registration-live.test.ts",
+      "tests/capabilities/event-crud-and-import-live-store.test.ts",
+    ],
+    limitations: [
+      "External calendar sync requires a configured provider and explicit permission.",
+    ],
+  },
+  followups: {
+    evidence: [
+      "tests/capabilities/followup-task-generation-live-store.test.ts",
+      "tests/capabilities/message-draft-generator-live-rules.test.ts",
+    ],
+    limitations: [
+      "Drafts and reminders are internal review records; external delivery is not configured.",
+    ],
+  },
+  chat: {
+    evidence: [
+      "tests/capabilities/chat-conversation-message-live-store.test.ts",
+      "tests/capabilities/async-relationship-conversation-live-store.test.ts",
+      "tests/capabilities/ai-email-draft-service.test.ts",
+      "tests/capabilities/chat-writing-assist-live-store.test.ts",
+      "tests/capabilities/chat-summary-extraction-live-store.test.ts",
+      "tests/pages/app-relationship-inbox-threads.test.ts",
+    ],
+    limitations: [
+      "Writing assist and summaries are rule-based even when live mode is selected.",
+    ],
+  },
+  dashboard: {
+    evidence: [
+      "tests/capabilities/dashboard-aggregate-live-store.test.ts",
+      "tests/capabilities/relationship-value-live-store.test.ts",
+    ],
+    limitations: [
+      "Some insight labels are rule-derived and lack golden semantic evaluation.",
+    ],
+  },
+  "agent-actions": {
+    evidence: [
+      "tests/capabilities/orbit-agent-gemini-live.test.ts",
+      "tests/pages/agent-functional-test-report.test.tsx",
+    ],
+    limitations: [
+      "The functional report still contains limited capabilities and must not be treated as a full pass.",
+    ],
+  },
+  notifications: {
+    evidence: [
+      "tests/capabilities/reminder-schedule-notification-live-store.test.ts",
+    ],
+    limitations: [
+      "Notification records are an in-app review queue; no external delivery provider is configured.",
+    ],
+  },
+};
+
 function createServiceConstructor(
   mode: ModuleMode,
   source: CapabilityService["source"],
   status: CapabilityServiceStatus,
   sensitiveActionsRequireConfirmation: boolean,
+  readiness: CapabilityReadiness,
 ) {
   // registry 里的 service 是元数据 service，用来展示某个 capability 在当前 mode 下是否可用。
   // 真正的 feature service 仍由各 features/*/service-factory.ts 提供。
@@ -113,6 +234,7 @@ function createServiceConstructor(
     mode,
     status,
     source,
+    readiness,
     provenance: {
       requiresEvidence: true,
       requiresSource: true,
@@ -126,6 +248,12 @@ function createRegistration(
 ): CapabilityRegistration {
   // registry 只展示 capability group 的运行时目录状态；具体业务实现仍由各 feature factory 负责。
   const defaultMode = DEFAULT_MODULE_MODE;
+  const liveReadiness = liveReadinessByCapability[definition.id];
+  const completeLiveCapability = liveReadiness.limitations.length === 0;
+  const mockReadiness = {
+    evidence: [] as readonly string[],
+    limitations: [] as readonly string[],
+  };
 
   return {
     id: definition.id,
@@ -150,18 +278,21 @@ function createRegistration(
           "mock-service-factory",
           "mock-ready",
           definition.sensitiveActionsRequireConfirmation,
+          mockReadiness,
         ),
         hybrid: createServiceConstructor(
           "hybrid",
           "hybrid-service-factory",
           "hybrid-mock-ready",
           definition.sensitiveActionsRequireConfirmation,
+          liveReadiness,
         ),
         live: createServiceConstructor(
           "live",
           "live-service-factory",
-          "live-ready",
+          completeLiveCapability ? "live-ready" : "live-limited",
           definition.sensitiveActionsRequireConfirmation,
+          liveReadiness,
         ),
       },
     }),
@@ -452,6 +583,14 @@ export function listCapabilitySummaries(
       serviceStatus: resolutionHasService
         ? resolution.service.status
         : "not-implemented",
+      readiness: resolutionHasService
+        ? resolution.service.readiness
+        : {
+            evidence: [],
+            limitations: [
+              resolution.error.message,
+            ],
+          },
       defaultMode: registration.defaultMode,
       api: registration.api,
       debug: registration.debug,

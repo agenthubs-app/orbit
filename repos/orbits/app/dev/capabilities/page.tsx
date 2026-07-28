@@ -26,6 +26,9 @@ const liveBlockedCount = liveModePreview.filter(
 const liveReadyCount = liveModePreview.filter(
   (capability) => capability.serviceStatus === "live-ready",
 ).length;
+const liveLimitedCount = liveModePreview.filter(
+  (capability) => capability.serviceStatus === "live-limited",
+).length;
 const capabilityDebugDashboardRoute =
   "/dev/capabilities/capability-debug-dashboard";
 const liveImplementationNotesPath =
@@ -115,10 +118,11 @@ export default function CapabilitiesPage() {
             <div>
               <dt>Live inventory</dt>
               <dd>
-                {liveReadyCount} live service groups are registered as{" "}
-                <code>live-ready</code>; {liveBlockedCount} remain controlled{" "}
-                <code>NOT_IMPLEMENTED</code> entries for future capability
-                groups.
+                {liveReadyCount} complete groups are verified as{" "}
+                <code>live-ready</code>; {liveLimitedCount} are explicitly{" "}
+                <code>live-limited</code>; {liveBlockedCount} remain controlled{" "}
+                <code>NOT_IMPLEMENTED</code> entries. A registered constructor
+                alone never counts as product readiness.
               </dd>
             </div>
           </dl>

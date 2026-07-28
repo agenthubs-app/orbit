@@ -137,7 +137,7 @@ const EXEMPTIONS: {
   {
     count: 1,
     file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "setQuery(suggestion.query)",
+    marker: "applySearchSuggestion(suggestion)",
     reason: "suggested-query chip",
   },
   {

@@ -88,3 +88,42 @@ test("contact list combines stage and data-derived value-tag filters", () => {
     ["active-investor"],
   );
 });
+
+test("contact list search normalizes Unicode and matches every Chinese search term", () => {
+  const investor = contact("lin-mei", {
+    company: "港湾创投",
+    note: "长期关注日本人工智能早期项目",
+    title: "投资合伙人",
+    offering: "人工智能 AI 项目筛选",
+    strength: "strong",
+  });
+  const operator = contact("operator", {
+    company: "云端机器人",
+    title: "创始人",
+  });
+
+  assert.deepEqual(
+    filterConnections([investor, operator], "人工智能 投资").map(
+      (item) => item.id,
+    ),
+    ["lin-mei"],
+  );
+  assert.deepEqual(
+    filterConnections([investor, operator], "投资人").map((item) => item.id),
+    ["lin-mei"],
+  );
+  assert.deepEqual(
+    filterConnections([investor, operator], "ＡＩ").map((item) => item.id),
+    ["lin-mei"],
+  );
+});
+
+test("high-value contact search uses relationship strength semantics", () => {
+  const strong = contact("strong", { strength: "strong" });
+  const medium = contact("medium", { strength: "medium" });
+
+  assert.deepEqual(
+    filterConnections([strong, medium], "高价值").map((item) => item.id),
+    ["strong"],
+  );
+});
