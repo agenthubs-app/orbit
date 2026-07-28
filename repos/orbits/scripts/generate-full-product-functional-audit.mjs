@@ -475,6 +475,53 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-empty-contact-search-boundary",
     },
   ],
+  ...[
+    "mobile:/today",
+    "mobile:/contacts/all-actions",
+  ].map((surfaceId) => [
+    surfaceId,
+    {
+      entryBehavior: "expo-web-actor-scoped-empty-agent-ledger-entry-verified",
+      runtimeEvidence: [
+        "the unified Agent ledger returned zero actor-owned operations",
+        "the surface rendered its route-specific title and explicit empty state",
+        "no operation, transition, audit history, or success state was synthesized",
+      ],
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-empty-agent-ledger-boundary",
+    },
+  ]),
+  [
+    "mobile:/followups",
+    {
+      entryBehavior: "expo-web-actor-scoped-empty-followup-entry-verified",
+      runtimeEvidence: [
+        "the actor-owned task, reminder, and message-draft queues all returned zero records",
+        "task-candidate and reminder-candidate generation were exercised independently",
+        "both generation paths returned explicit empty review results without claiming a write or external action",
+        "no fallback task, reminder, recipient, or message draft was synthesized",
+      ],
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-empty-followup-generation-boundary",
+    },
+  ],
+  [
+    "mobile:/inbox",
+    {
+      entryBehavior: "expo-web-actor-scoped-empty-inbox-entry-verified",
+      runtimeEvidence: [
+        "the actor-owned inbox rendered zero alerts, signals, reminders, and conversations",
+        "the new-followup action opened a review-only composer without sending or scheduling anything",
+        "the blank recipient path stayed on the composer with 先写收件人 and created no thread",
+        "the default body used one truthful generic greeting after the duplicate-greeting repair",
+      ],
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-empty-inbox-compose-boundary",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -610,6 +657,54 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   ],
 ]);
 const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
+  [
+    "mobile:/followups|repos/orbit-app/src/screens/followups/FollowupsScreen.tsx#onpress:onGenerate#生成中 / 生成候选",
+    {
+      actualResult:
+        "生成候选 completed against the actor-owned empty queue and rendered an explicit zero-candidate review result without creating a task.",
+      testData:
+        "Authenticated Expo Web audit actor with zero follow-up tasks",
+      idempotency:
+        "The generation read produced zero candidates and wrote no task, reminder, message, contact, or external action.",
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/followups|repos/orbit-app/src/screens/followups/FollowupsScreen.tsx#onpress:onGenerateReminders#生成中 / 生成提醒候选",
+    {
+      actualResult:
+        "生成提醒候选 completed against the same empty actor queue and rendered an explicit zero-reminder result without creating a reminder.",
+      testData:
+        "Authenticated Expo Web audit actor with zero follow-up tasks and reminders",
+      idempotency:
+        "The generation read produced zero candidates and wrote no reminder, task, message, contact, or external action.",
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/inbox|repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx#onpress:() => setComposing(true)#null",
+    {
+      actualResult:
+        "写一段新跟进 opened the review-only composer with one generic 您好： greeting and explicit no-send/no-schedule copy.",
+      testData:
+        "Authenticated Expo Web audit actor with zero inbox conversations and no seeded recipient",
+      idempotency:
+        "Opening the composer changed local presentation only and wrote no thread, message, contact, or calendar record.",
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/inbox|repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx#onpress:createThread#null",
+    {
+      actualResult:
+        "Creating with a blank recipient stayed on the composer and rendered 先写收件人。 without creating a thread or claiming success.",
+      testData:
+        "Blank recipient and organization with the generated default subject/body",
+      idempotency:
+        "Client validation performed no API request and wrote no thread, message, contact, or calendar record.",
+      verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
+    },
+  ],
   [
     "mobile:/contacts|repos/orbit-app/src/screens/contacts/ContactsScreen.tsx#onpress:() => router.push(route as Href)#{metric} {title} {detail} {signal} {action}",
     {
@@ -1449,6 +1544,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised zero-data surfaces, overview navigation, and no-evidence suggestion boundary; populated relationship dashboards, graph actions, introductions, pipeline transitions, and search results remain pending real actor data",
   },
+  {
+    id: "expo-empty-work-queue-boundaries-2026-07-29",
+    target:
+      "Expo follow-up queue, Today ledger, All Actions ledger, and relationship inbox under an actor with no work records",
+    testData:
+      "Authenticated audit actor with zero Agent operations, follow-up tasks, reminders, message drafts, alerts, signals, and inbox conversations",
+    expected:
+      "Every queue must preserve actor-scoped zero data; candidate generation may return a review-only empty result; a blank inbox composer must send nothing, create nothing, and use a single generic greeting",
+    actual:
+      "/today and /contacts/all-actions rendered zero-operation Agent ledgers. /followups rendered zero tasks/reminders/drafts; both candidate generators returned explicit empty review results without writes. /inbox rendered zero counts, opened a review-only composer, blocked blank-recipient creation with 先写收件人。, and after repair generated 您好： instead of 您好，您好：.",
+    evidence:
+      "Authenticated Expo Web DOM and click traversal across four surfaces; defaultRelationshipDraft regression test; Expo full suite 525/525; Expo typecheck",
+    conclusion:
+      "pass for the exercised empty ledgers, empty follow-up generation, inbox composer entry, blank-recipient validation, and default greeting; populated operation transitions, populated follow-up drafts, conversation selection, and successful thread creation remain pending real actor data",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1867,6 +1977,20 @@ const AUDIT_REMEDIATIONS = [
       "Actor-scoped live-store tests 3/3, exact-origin production build, Next TypeScript, and CORS preflight passed. Tests prove the owner graph retains suggestions while the other empty actor receives state=empty and zero suggestions; runtime /contacts/list removed the three false evidence cards.",
     status:
       "fixed and runtime-verified for the empty actor graph; populated actor suggestion selection and result navigation remain pending runtime data",
+  },
+  {
+    id: "AUDIT-P2-031",
+    severity: "P2",
+    rootCause:
+      "The mobile inbox default-draft helper used 您好 as a fallback participant name and then appended ，您好： unconditionally, producing 您好，您好： whenever the composer had no seeded recipient.",
+    decision:
+      "Build the greeting as its own semantic branch: use 姓名，您好： only for a non-empty trimmed participant name, otherwise use one generic 您好：. Keep subject and body defaults unchanged.",
+    files:
+      "repos/orbit-app/src/view-models/relationship-inbox.ts; repos/orbit-app/tests/relationship-inbox-view-model.test.ts",
+    regression:
+      "The regression test covers both blank and trimmed named recipients. Expo full suite 525/525 and typecheck passed; runtime composer rendered 您好： and blank-recipient creation still failed closed with 先写收件人。",
+    status:
+      "fixed and runtime-verified for blank and named default greetings",
   },
 ];
 

@@ -22,7 +22,7 @@
 | `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 9 | 4 | runtime-partially-verified-expo-chat-missing-boundary |
 | `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 34 | 16 | runtime-partially-verified-expo-relationship-workbench-navigation |
 | `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 19 | 8 | runtime-partially-verified-expo-contact-missing-boundary |
-| `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
+| `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 8 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
 | `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 12 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 14 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
@@ -34,10 +34,10 @@
 | `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 15 | 11 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
 | `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
-| `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 5 | inventory-complete-runtime-verification-pending |
+| `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 5 | runtime-partially-verified-expo-empty-followup-generation-boundary |
 | `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | inventory-complete-runtime-verification-pending |
 | `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | inventory-complete-runtime-verification-pending |
+| `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | runtime-partially-verified-expo-empty-inbox-compose-boundary |
 | `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 3 | 1 | runtime-partially-verified-expo-admin-account-entry |
 | `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | runtime-partially-verified-expo-organizer-public-isolation |
 | `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 13 | 4 | runtime-partially-verified-expo-party-truthful-boundary |
@@ -51,7 +51,7 @@
 | `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 4 | 2 | runtime-partially-verified-expo-live-schedule-preview |
 | `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | runtime-partially-verified-expo-settings-destinations |
 | `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | runtime-partially-verified-expo-api-settings-persistence |
-| `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
+| `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
 | `web:/` | web | production | `/` | — |  | 0 | 42 | 286 | runtime-partially-verified-browser-base-state |
 | `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 153 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 16 | 1 | runtime-partially-verified-browser-base-state |
