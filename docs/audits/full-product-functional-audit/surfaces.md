@@ -45,12 +45,12 @@
 | `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
 | `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 7 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/profile` | mobile | production | `/profile` | `mobile:/` |  | 0 | 24 | 17 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 5 | 5 | inventory-complete-runtime-verification-pending |
-| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 5 | 1 | inventory-complete-runtime-verification-pending |
-| `mobile:/schedule` | mobile | production | `/schedule` | `mobile:/` |  | 0 | 7 | 7 | inventory-complete-runtime-verification-pending |
-| `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 4 | 2 | inventory-complete-runtime-verification-pending |
-| `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | inventory-complete-runtime-verification-pending |
-| `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 5 | 5 | runtime-partially-verified-expo-register-missing-context |
+| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 5 | 1 | runtime-partially-verified-expo-register-live-preview |
+| `mobile:/schedule` | mobile | production | `/schedule` | `mobile:/` |  | 0 | 7 | 7 | runtime-partially-verified-expo-live-schedule |
+| `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 4 | 2 | runtime-partially-verified-expo-live-schedule-preview |
+| `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | runtime-partially-verified-expo-settings-destinations |
+| `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | runtime-partially-verified-expo-api-settings-persistence |
 | `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | inventory-complete-runtime-verification-pending |
 | `web:/` | web | production | `/` | — |  | 0 | 42 | 286 | runtime-partially-verified-browser-base-state |
 | `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 153 | runtime-partially-verified-browser-base-state |

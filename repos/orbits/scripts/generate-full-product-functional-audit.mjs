@@ -234,6 +234,90 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-organizer-public-isolation",
     },
   ],
+  [
+    "mobile:/register",
+    {
+      entryBehavior: "expo-web-missing-register-context-entry-verified",
+      runtimeEvidence: [
+        "direct registration entry with no event code rendered a missing-selection state",
+        "no demo event or registration payload was synthesized",
+        "the visible exit navigated to the live event catalogue",
+      ],
+      verificationCase: "expo-register-invite-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-register-missing-context",
+    },
+  ],
+  [
+    "mobile:/register/[code]",
+    {
+      entryBehavior: "expo-web-live-register-preview-entry-verified",
+      runtimeEvidence: [
+        "encoded actor-owned event ID loaded the matching registration preview",
+        "preview preserved the event title, time, location, invite code, and operation boundary",
+        "continue navigated to the matching standard registration route",
+      ],
+      verificationCase: "expo-register-invite-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-register-live-preview",
+    },
+  ],
+  [
+    "mobile:/schedule",
+    {
+      entryBehavior: "expo-web-live-schedule-entry-verified",
+      runtimeEvidence: [
+        "actor-owned event rendered in both highlight and timeline groups",
+        "the canonical event title remained separate from source-note metadata",
+        "event card navigated to the matching encoded schedule preview",
+      ],
+      verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-live-schedule",
+    },
+  ],
+  [
+    "mobile:/schedule/events/[id]",
+    {
+      entryBehavior: "expo-web-live-schedule-preview-entry-verified",
+      runtimeEvidence: [
+        "encoded actor-owned event ID loaded a read-only schedule preview",
+        "preview preserved title, status, time, location, provenance, and no-external-write boundary",
+        "return actions navigated independently to schedule and event catalogue",
+      ],
+      verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-live-schedule-preview",
+    },
+  ],
+  [
+    "mobile:/settings",
+    {
+      entryBehavior: "expo-web-settings-destination-entry-verified",
+      runtimeEvidence: [
+        "settings rendered account, permission, and server destinations",
+        "server destination navigated to the API settings route",
+      ],
+      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-settings-destinations",
+    },
+  ],
+  [
+    "mobile:/settings/api",
+    {
+      entryBehavior: "expo-web-api-settings-write-readback-entry-verified",
+      runtimeEvidence: [
+        "current API URL loaded from persisted Web settings",
+        "saving the same normalized URL returned explicit Chinese success feedback",
+        "hard navigation read back the same URL",
+        "health check reached the configured production server and rendered localized success without internal service names",
+      ],
+      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-api-settings-persistence",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -405,6 +489,86 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Cancellation changed the existing record state and did not create a second registration.",
       verificationCase:
         "expo-live-event-registration-and-roster-boundaries-2026-07-29",
+    },
+  ],
+  [
+    'mobile:/register|repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx#onpress:() => router.push("/events" as Href)#查看活动',
+    {
+      actualResult:
+        "The missing-context registration entry navigated to the live event catalogue without constructing a demo event.",
+      testData: "Direct authenticated Expo Web navigation to /register with no code",
+      idempotency:
+        "Navigation only; no event, invite, or registration record was written.",
+      verificationCase: "expo-register-invite-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/register/[code]|repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx#onpress:() => router.push(action.href as Href)#{action.label}",
+    {
+      actualResult:
+        "继续填写活动问题 opened /events/event:live-record:20260729/register and preserved the selected actor-owned event.",
+      testData:
+        "Encoded private event event:live-record:20260729 in the authenticated Expo Web runtime",
+      idempotency:
+        "The preview step performed no registration write; it only navigated to the standard form.",
+      verificationCase: "expo-register-invite-boundaries-2026-07-29",
+    },
+  ],
+  [
+    'mobile:/schedule|repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx#onpress:onPress#{<ImageBackground imageStyle={styles.eventTimelineThumbImage} source={{ uri: assetUrl(baseUrl, imagePath) }} style={styles.eventTimelineThumbFrame} > <View style={styles.eventTimelineThumbOverlay} /> </ImageBackground>} / {<View style={styles.eventTimelineFallbackThumb}> <Ionicons color={colors.amber} name="calendar-outline" size={19} /> </View>} {item.statusLabel} {item.title} {item.timeLabel || "时间待定"} {<View style={styles.eventTimelineMetaLine}> <Ionicons color={colors.text3} name="location-outline" size={14} /> <Text numberOfLines={1} style={styles.itemMeta}> {item.location} </Text> </View>} / {null} {<View style={styles.eventTimelineMetaLine}> <Ionicons color={colors.text3} name="people-outline" size={14} /> <Text numberOfLines={1} style={styles.itemMeta}> {item.participantCountLabel} </Text> </View>} / {null} 打开活动背景 {item.actionLabel}',
+    {
+      actualResult:
+        "The event highlight displayed 功能审计私有活动 20260729 and opened its encoded read-only schedule preview.",
+      testData:
+        "Actor-owned private event whose source note intentionally differs from its title",
+      idempotency:
+        "Opening the preview made no calendar, registration, reminder, or message write.",
+      verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/schedule/events/[id]|repos/orbit-app/src/screens/schedule/ScheduleEventPreviewScreen.tsx#onpress:() => router.push(action.href as Href)#{action.label}",
+    {
+      actualResult:
+        "The two preview exits were exercised independently: 返回日程 opened /schedule and 查看活动列表 opened /events.",
+      testData:
+        "Read-only preview for event:live-record:20260729",
+      idempotency:
+        "Both exits were navigation-only and preserved the event and registration records.",
+      verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/settings|repos/orbit-app/src/screens/settings/SettingsScreen.tsx#onpress:() => router.push(destination.href as Href)#destination.title",
+    {
+      actualResult:
+        "The 服务器 destination opened /settings/api while the account and permission destinations remained separately named.",
+      testData: "Authenticated Expo Web settings root",
+      idempotency: "Navigation only; no settings value was changed.",
+      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/settings/api|repos/orbit-app/src/screens/settings/ApiSettingsScreen.tsx#onpress:saveBaseUrl#保存",
+    {
+      actualResult:
+        "Saving the already configured http://localhost:3110 returned 服务器地址已保存 and hard navigation read the same normalized value back.",
+      testData: "Existing Expo Web API base URL http://localhost:3110",
+      idempotency:
+        "Saving the same normalized URL did not change the target or create an additional settings record.",
+      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/settings/api|repos/orbit-app/src/screens/settings/ApiSettingsScreen.tsx#onpress:checkServerHealth#检查中 / 检查",
+    {
+      actualResult:
+        "The health request reached the configured production server and rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。",
+      testData:
+        "Configured API http://localhost:3110 with authenticated production health response",
+      idempotency:
+        "Health check was read-only and changed no server URL, session, or business record.",
+      verificationCase: "expo-api-settings-health-runtime-2026-07-29",
     },
   ],
 ]);
@@ -701,7 +865,7 @@ const VERIFIED_AUDIT_CASES = [
     actual:
       "Signed-out /profile and /account rendered only authentication boundaries with no 小雨, account-C, workspace, or relationship-goal data. Account C credentials redirected to /profile, showed the exact actor identity, and survived hard navigation. Missing stored profile fields rendered as missing instead of founder/source-backed fixtures. 退出登录 expired the Auth.js cookie; hard /profile and /account stayed signed out and disclosed no actor data or raw 401.",
     evidence:
-      "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 519/519; Web full suite 1328/1328; full audit 7/7; npm run typecheck; npm run build",
+      "Expo Web Metro runtime in the in-app browser; production Next build with credentialed explicit-origin CORS; Expo full suite 520/520; Web full suite 1328/1328; full audit 7/7; npm run typecheck; npm run build",
     conclusion:
       "pass for the exercised Expo Web credentials, profile/account privacy, refresh persistence, truthful missing-data, and sign-out invalidation chain; native iOS/Android secure-store, Google OAuth, offline, responsive, and assistive-technology cases remain pending",
   },
@@ -915,6 +1079,51 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised public/private isolation, organizer identity, known slug, and unknown slug; anonymous transport is not claimed because the global API proxy still requires an authenticated session",
   },
+  {
+    id: "expo-register-invite-boundaries-2026-07-29",
+    target:
+      "Expo registration compatibility entry with no code → live event preview with encoded actor-owned code → standard registration",
+    testData:
+      "Direct /register plus /register/event%3Alive-record%3A20260729 under the authenticated audit actor",
+    expected:
+      "Missing context must stay missing; a real code must resolve exactly one actor-owned event; preview must remain read-only and continue to the matching standard registration route",
+    actual:
+      "/register rendered 尚未选择活动 and 查看活动 returned to the live catalogue without a fallback. The encoded private event preview preserved title, time, location, invite code, and no-external-action copy; 继续填写活动问题 opened the matching /events/.../register route.",
+    evidence:
+      "Authenticated Expo Web click traversal; register screen/view-model tests; Expo full suite 520/520; Expo typecheck",
+    conclusion:
+      "pass for missing-context exit, actor-owned preview readback, and preview-to-form navigation; invite delivery through native custom schemes remains pending",
+  },
+  {
+    id: "expo-schedule-title-preview-runtime-2026-07-29",
+    target:
+      "Expo relationship schedule → canonical event title → encoded read-only event preview → both exit routes",
+    testData:
+      "Private event 功能审计私有活动 20260729 with a deliberately different sourceMetadata.label",
+    expected:
+      "Schedule must reuse the canonical event title instead of source notes; preview must preserve event identity and perform no external writes; exits must return to the intended surfaces",
+    actual:
+      "Runtime first reproduced the source-note-as-title defect. After removing the duplicate schedule title mapper, both highlight and timeline rendered 功能审计私有活动 20260729. The card opened the encoded preview, which preserved status/time/location/provenance and stated its no-write boundary; its exits opened /schedule and /events.",
+    evidence:
+      "Authenticated Expo Web before/after traversal; tests/schedule-view-model.test.ts; tests/schedule-event-preview-view-model.test.ts; Expo full suite 520/520; Expo typecheck",
+    conclusion:
+      "pass for the exercised live schedule title, event preview, and two exits; follow-up-item navigation and partial-source runtime states remain pending",
+  },
+  {
+    id: "expo-api-settings-health-runtime-2026-07-29",
+    target:
+      "Expo settings root → API server settings → idempotent save → hard-navigation readback → live health check",
+    testData:
+      "Existing Web setting http://localhost:3110 and the running production Orbit server",
+    expected:
+      "The settings destination must navigate correctly; saving must persist a normalized URL; health feedback must be Chinese and must not expose internal service identifiers",
+    actual:
+      "设置/服务器 opened /settings/api with the persisted URL. Saving the same value returned 服务器地址已保存, and hard navigation read back http://localhost:3110. The health request reached the server and, after fixing the presentation mapper, rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。 without orbit-runtime or English copy.",
+    evidence:
+      "Authenticated Expo Web click/save/reload/health traversal; tests/health-view-model.test.ts; Expo typecheck",
+    conclusion:
+      "pass for settings navigation, idempotent same-value persistence, hard-navigation readback, and live success feedback; invalid URL, unreachable server, reset confirmation, and native-device LAN configuration remain pending",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1036,7 +1245,7 @@ const AUDIT_REMEDIATIONS = [
     files:
       "repos/orbit-app/src/view-models/profile.ts; repos/orbit-app/src/view-models/account-session.ts; repos/orbit-app/src/view-models/bootstrap.ts; repos/orbit-app/src/view-models/connections-graph.ts; repos/orbit-app/src/view-models/contacts.ts; repos/orbit-app/src/screens/profile/ProfileScreen.tsx; repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/screens/profile/AccountScreen.tsx; repos/orbit-app/src/api/mobile-auth.ts; repos/orbit-app/src/api/AuthSessionProvider.tsx; repos/orbit-app/src/data/snapshot-store.ts; repos/orbit-app/src/data/snapshot-store.web.ts; repos/orbits/app/api/auth/mobile/http.ts; repos/orbits/app/api/auth/mobile/credentials/route.ts; repos/orbits/app/api/auth/mobile/google/exchange/route.ts; repos/orbits/app/api/account/session/sign-out/route.ts; repos/orbits/features/account/live-service.ts; repos/orbits/features/bootstrap/live-service.ts; repos/orbits/next.config.js",
     regression:
-      "Expo full suite: 519/519 passed; Web full suite: 1328/1328 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
+      "Expo full suite: 520/520 passed; Web full suite: 1328/1328 passed; full audit: 7/7 passed; Expo typecheck and production Next build passed. A fresh Expo Web bundle loaded /profile without resolving expo-sqlite or emitting the prior wasm-worker failure. Runtime verified signed-out privacy, account-C login/readback, hard-navigation session restore, truthful missing fields, real cookie invalidation, and private hard navigation after sign-out.",
     status:
       "fixed and runtime-verified for Expo Web credentials/profile/account/sign-out; native device, Google OAuth, offline, responsive, and assistive-technology cases pending",
   },
@@ -1235,6 +1444,34 @@ const AUDIT_REMEDIATIONS = [
       "Public-events route tests, Expo and Web organizer tests, Expo typecheck, exact-origin CORS preflight, production build, and browser known/unknown-slug traversal passed. The private audit event did not appear.",
     status:
       "fixed and runtime-verified for authenticated Expo Web consumption of public catalogue data; anonymous transport is not claimed",
+  },
+  {
+    id: "AUDIT-P1-024",
+    severity: "P1",
+    rootCause:
+      "The mobile schedule view-model duplicated event title normalization and always preferred sourceMetadata.label. Manual events use that label for provenance notes, so the schedule replaced a real title with an audit/source description even though the event list and detail were correct.",
+    decision:
+      "Delete the schedule-specific title parser and consume the canonical EventSummary.title already produced by eventsToSummaries. Keep raw event records only for timestamps and filtering; do not maintain a second field-precedence policy.",
+    files:
+      "repos/orbit-app/src/view-models/schedule.ts; repos/orbit-app/tests/schedule-view-model.test.ts",
+    regression:
+      "Focused schedule tests 4/4, Expo full suite 520/520, and Expo typecheck passed. Runtime before/after evidence proved that the same live private event changed from its source note back to 功能审计私有活动 20260729 on both schedule cards and in the detail preview.",
+    status:
+      "fixed and runtime-verified for the actor-owned event schedule chain",
+  },
+  {
+    id: "AUDIT-P2-025",
+    severity: "P2",
+    rootCause:
+      "The mobile health presentation mapper generated English success/fallback copy and included the internal service identifier orbit-runtime, so a successful check broke the Chinese settings experience and leaked an implementation label.",
+    decision:
+      "Keep the health API contract unchanged and localize only the mobile presentation boundary. Map status=ok to stable Chinese user feedback and map unknown payloads to a controlled Chinese response without exposing service names.",
+    files:
+      "repos/orbit-app/src/view-models/health.ts; repos/orbit-app/tests/health-view-model.test.ts",
+    regression:
+      "Focused health tests 2/2 and Expo typecheck passed. Runtime health check against http://localhost:3110 rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。 with no English or orbit-runtime copy.",
+    status:
+      "fixed and runtime-verified for the reachable-server state; unreachable and malformed-response runtime cases remain pending",
   },
 ];
 
