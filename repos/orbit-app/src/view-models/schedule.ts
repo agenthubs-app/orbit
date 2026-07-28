@@ -99,15 +99,6 @@ function listFromPayload(value: unknown, fieldName: string): readonly unknown[] 
   return Array.isArray(field) ? field : [];
 }
 
-function nestedStringField(
-  record: Record<string, unknown>,
-  parentField: string,
-  fieldName: string
-): string {
-  const parent = record[parentField];
-  return isRecord(parent) ? stringField(parent, fieldName) : "";
-}
-
 function dueLabel(task: Record<string, unknown>): string {
   const dueAt = taskField(task, "dueAt");
   if (dueAt) {
@@ -283,34 +274,6 @@ export function tasksToScheduleItems(data: unknown): ScheduleItem[] {
     .map(taskToScheduleItem);
 }
 
-function segmentLooksChinese(value: string): boolean {
-  return /[\u4e00-\u9fff]/u.test(value) && !/[\u3040-\u30ff]/u.test(value);
-}
-
-function preferredChineseSegment(value: string): string {
-  const markerMatch = /ZH:\s*([^/]+?)(?:\s+EN:|\s+JA:|$)/u.exec(value);
-  if (markerMatch?.[1]?.trim()) {
-    return markerMatch[1].trim();
-  }
-
-  const segments = value
-    .split(/\s*\/\s*/u)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-
-  return segments.find(segmentLooksChinese) ?? value.trim();
-}
-
-function cleanEventDisplayText(value: string): string {
-  return value.replace(/报名测试会/gu, "报名会").trim();
-}
-
-function eventTitle(event: Record<string, unknown>): string {
-  const sourceLabel = nestedStringField(event, "sourceMetadata", "label");
-  const rawTitle = sourceLabel || stringField(event, "title") || stringField(event, "name");
-  return cleanEventDisplayText(preferredChineseSegment(rawTitle)) || "活动";
-}
-
 function eventStatusLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
 
@@ -395,8 +358,8 @@ function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] 
       const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
       const startsAt = timestamp(rawStartsAt) ?? Number.MAX_SAFE_INTEGER;
       const id = stringField(event, "id", "event");
-      const title = eventTitle(event);
       const summary = summaryById.get(id);
+      const title = summary?.title ?? "活动";
       const location =
         summary?.location ||
         stringField(event, "venue") ||

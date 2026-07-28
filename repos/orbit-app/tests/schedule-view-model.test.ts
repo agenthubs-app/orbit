@@ -155,6 +155,42 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
   );
 });
 
+test("scheduleToTimelineView keeps a manual event title separate from source notes", () => {
+  const toTimeline = scheduleTimeline();
+  const view = toTimeline({
+    events: {
+      events: [
+        {
+          id: "event:live-record:20260729",
+          sourceMetadata: {
+            label:
+              "本地全产品功能审计创建，仅用于动态路由与账号隔离验证。"
+          },
+          startsAt: "2026-09-29T10:00:00+09:00",
+          status: "confirmed",
+          title: "功能审计私有活动 20260729",
+          venue: "Orbit 本地开发环境"
+        }
+      ]
+    },
+    now: new Date("2026-07-29T03:00:00+09:00"),
+    tasks: { tasks: [] }
+  });
+
+  assert.equal(
+    view.sections[0]?.items[0]?.title,
+    "功能审计私有活动 20260729"
+  );
+  assert.equal(
+    view.eventHighlights[0]?.title,
+    "功能审计私有活动 20260729"
+  );
+  assert.doesNotMatch(
+    view.sections[0]?.items[0]?.title ?? "",
+    /本地全产品功能审计创建/u
+  );
+});
+
 test("scheduleToTimelineView keeps an empty schedule useful", () => {
   const toTimeline = scheduleTimeline();
   const view = toTimeline({
