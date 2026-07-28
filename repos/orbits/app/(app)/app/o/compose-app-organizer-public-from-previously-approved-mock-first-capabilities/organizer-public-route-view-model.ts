@@ -4,6 +4,7 @@ import type {
 } from "../../../../../features/events/event-crud-and-import/contract";
 import { resolveEventCrudAndImportService } from "../../../../../features/events/service-factory";
 import type { ModuleMode } from "../../../../../shared/services/module-mode";
+import type { OrbitLanguage } from "../../orbit-language-core";
 import {
   getOrbitLandingViewModel,
   type OrbitLandingEventView,
@@ -81,13 +82,10 @@ function compactEventId(eventId: string): string {
   return eventId.replace(/[^a-z0-9]+/giu, "").toLowerCase();
 }
 
-function routeState(input: {
-  errorCode?: string | null;
-  evidenceIds: readonly string[];
-  scenario: AppOrganizerPublicRouteScenario;
-}): AppOrganizerPublicRouteViewModel {
-  const copyByScenario = {
-    empty: {
+const PUBLIC_ORGANIZER_NOT_FOUND = "PUBLIC_ORGANIZER_NOT_FOUND";
+const organizerRouteStateCopy = {
+  empty: {
+    en: {
       description:
         "No source-backed organizer events are ready for this public page.",
       emptyState:
@@ -96,14 +94,24 @@ function routeState(input: {
       guardrail:
         "This route only reads event records. It does not create registrations, notify attendees, write calendars, or contact outside providers.",
       nextStep: "Return to events and open an organizer from a reviewed event.",
-      purpose:
-        "Keep public organizer pages tied to reviewed event sources.",
+      purpose: "Keep public organizer pages tied to reviewed event sources.",
       title: "Organizer page is empty",
     },
-    failure: {
+    zh: {
+      description: "这个公开主办方页面暂时没有可展示的来源活动。",
+      emptyState: "目前没有已审核的主办方活动可供展示。",
+      eyebrow: "主办方",
+      guardrail:
+        "该页面只读取活动记录，不会创建报名、通知参会者、写入日历或联系外部服务。",
+      nextStep: "返回活动目录，从已审核活动进入主办方页面。",
+      purpose: "公开主办方页面只展示已审核的活动来源。",
+      title: "主办方页面暂无活动",
+    },
+  },
+  failure: {
+    en: {
       description: "Organizer page could not load event context.",
-      emptyState:
-        "No organizer page was generated from fallback mock data.",
+      emptyState: "No organizer page was generated from fallback mock data.",
       eyebrow: "Organizer",
       guardrail:
         "The failed route state stops before registration writes, notifications, calendar, email, AI, or outside network work.",
@@ -113,9 +121,45 @@ function routeState(input: {
         "Show a recoverable public organizer boundary without falling back to legacy landing data.",
       title: "Organizer page could not load",
     },
-    pending: {
+    zh: {
+      description: "主办方页面暂时无法读取活动上下文。",
+      emptyState: "页面没有使用模拟数据生成主办方信息。",
+      eyebrow: "主办方",
+      guardrail:
+        "失败状态会在报名写入、通知、日历、邮件、AI 或外部网络操作之前停止。",
+      nextStep: "确认活动数据源已配置后，再重试主办方页面。",
+      purpose: "在不回退旧版或模拟数据的前提下提供可恢复边界。",
+      title: "主办方页面暂时无法加载",
+    },
+  },
+  notFound: {
+    en: {
       description:
-        "Organizer events are waiting for reviewed source context.",
+        "This public organizer identifier does not match a reviewed catalogue event.",
+      emptyState:
+        "No first event, private event, or mock organizer was used as a fallback.",
+      eyebrow: "Organizer",
+      guardrail:
+        "This boundary reads only the public catalogue. It does not read private events, create registrations, or trigger outside work.",
+      nextStep: "Return to events and open an organizer from a reviewed event.",
+      purpose:
+        "Keep public organizer identity bound to an exact reviewed event source.",
+      title: "Organizer not found",
+    },
+    zh: {
+      description: "这个公开主办方标识没有匹配到已审核的目录活动。",
+      emptyState: "页面没有用首场活动、私有活动或模拟主办方作为兜底。",
+      eyebrow: "主办方",
+      guardrail:
+        "该边界只读取公共活动目录，不会读取私有活动、创建报名或触发外部操作。",
+      nextStep: "返回活动目录，从已审核活动进入主办方页面。",
+      purpose: "公开主办方身份必须精确绑定到已审核的活动来源。",
+      title: "未找到该主办方",
+    },
+  },
+  pending: {
+    en: {
+      description: "Organizer events are waiting for reviewed source context.",
       emptyState:
         "The public organizer page is held until event sources are ready.",
       eyebrow: "Organizer",
@@ -126,12 +170,49 @@ function routeState(input: {
         "Keep public organizer pages stable while source review is pending.",
       title: "Organizer page is loading",
     },
-  } as const;
+    zh: {
+      description: "主办方活动正在等待来源审核完成。",
+      emptyState: "活动来源就绪前，公开主办方页面会保持等待状态。",
+      eyebrow: "主办方",
+      guardrail: "等待中的主办方上下文不能创建报名或触发外部操作。",
+      nextStep: "活动来源审核完成后，再查看这个主办方。",
+      purpose: "来源审核期间保持公开主办方页面状态稳定。",
+      title: "主办方页面正在加载",
+    },
+  },
+} as const;
+const organizerRecoveryCopy = {
+  en: {
+    label: "Return to events",
+    recoveryCopy:
+      "Open an event with reviewed source context before retrying the organizer page.",
+  },
+  zh: {
+    label: "返回活动",
+    recoveryCopy: "从已审核活动进入主办方页面后再重试。",
+  },
+} as const;
+
+function organizerRouteStateKind(input: {
+  errorCode?: string | null;
+  scenario: AppOrganizerPublicRouteScenario;
+}) {
+  return input.errorCode === PUBLIC_ORGANIZER_NOT_FOUND
+    ? "notFound"
+    : input.scenario;
+}
+
+function routeState(input: {
+  errorCode?: string | null;
+  evidenceIds: readonly string[];
+  scenario: AppOrganizerPublicRouteScenario;
+}): AppOrganizerPublicRouteViewModel {
+  const kind = organizerRouteStateKind(input);
 
   return {
     state: "route-state",
     routeState: {
-      copy: copyByScenario[input.scenario],
+      copy: organizerRouteStateCopy[kind].en,
       errorCode: input.errorCode ?? null,
       evidenceIds: uniqueEvidenceIds([
         input.errorCode ?? "",
@@ -141,13 +222,28 @@ function routeState(input: {
         {
           id: "organizer-public-return-events",
           href: "/app/events",
-          label: "Return to events",
-          recoveryCopy:
-            "Open an event with reviewed source context before retrying the organizer page.",
+          ...organizerRecoveryCopy.en,
         },
       ],
       scenario: input.scenario,
     },
+  };
+}
+
+export function presentAppOrganizerPublicRouteState(
+  routeState: AppOrganizerPublicRouteStateViewModel,
+  language: OrbitLanguage,
+): AppOrganizerPublicRouteStateViewModel {
+  const presentationLanguage = language === "zh" ? "zh" : "en";
+  const kind = organizerRouteStateKind(routeState);
+
+  return {
+    ...routeState,
+    copy: organizerRouteStateCopy[kind][presentationLanguage],
+    recoveryActions: routeState.recoveryActions.map((action) => ({
+      ...action,
+      ...organizerRecoveryCopy[presentationLanguage],
+    })),
   };
 }
 
@@ -326,16 +422,21 @@ export async function loadAppOrganizerPublicRouteViewModel(
   const scenario = normalizeScenario(
     input.scenario ?? readSearchParam(input.searchParams, "scenario"),
   );
-  const publicOrganizer =
-    !requestedMode && !scenario
-      ? publicCatalogueOrganizerViewModel(input.slug)
-      : null;
+  const usePublicCatalogue = !requestedMode && !scenario;
 
-  if (publicOrganizer) {
-    return {
-      organizer: publicOrganizer,
-      state: "success",
-    };
+  if (usePublicCatalogue) {
+    const publicOrganizer = publicCatalogueOrganizerViewModel(input.slug);
+
+    return publicOrganizer
+      ? {
+          organizer: publicOrganizer,
+          state: "success",
+        }
+      : routeState({
+          errorCode: PUBLIC_ORGANIZER_NOT_FOUND,
+          evidenceIds: ["public-catalogue-organizer-not-found"],
+          scenario: "empty",
+        });
   }
 
   const mode = requestedMode ?? undefined;

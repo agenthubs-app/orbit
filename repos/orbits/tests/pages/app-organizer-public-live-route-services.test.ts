@@ -91,6 +91,7 @@ test("app organizer public route loader returns organizer events in mock mode", 
       "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
     );
     const routeModel = await loadAppOrganizerPublicRouteViewModel({
+      mode: "mock",
       slug: "demo-event-1",
     });
 
@@ -157,8 +158,8 @@ test("public catalogue event codes resolve to an organizer without exposing atte
   }
 });
 
-test("app organizer public route loader does not fall back for an unknown slug", async () => {
-  await withMockOrganizer(async () => {
+test("app organizer public route loader does not enter private storage for an unknown public slug", async () => {
+  await withUnconfiguredLiveOrganizer(async () => {
     const { loadAppOrganizerPublicRouteViewModel } = await import(
       "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
     );
@@ -170,8 +171,48 @@ test("app organizer public route loader does not fall back for an unknown slug",
 
     if (routeModel.state === "route-state") {
       assert.equal(routeModel.routeState.scenario, "empty");
+      assert.equal(
+        routeModel.routeState.errorCode,
+        "PUBLIC_ORGANIZER_NOT_FOUND",
+      );
+      assert.deepEqual(routeModel.routeState.evidenceIds, [
+        "PUBLIC_ORGANIZER_NOT_FOUND",
+        "public-catalogue-organizer-not-found",
+      ]);
+      assert.equal(routeModel.routeState.copy.title, "Organizer not found");
     }
   });
+});
+
+test("app organizer public route state presents the active language without changing its boundary", async () => {
+  const {
+    loadAppOrganizerPublicRouteViewModel,
+    presentAppOrganizerPublicRouteState,
+  } = await import(
+    "../../app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model"
+  );
+  const routeModel = await loadAppOrganizerPublicRouteViewModel({
+    slug: "unknown-organizer",
+  });
+
+  assert.equal(routeModel.state, "route-state");
+  if (routeModel.state === "route-state") {
+    const zh = presentAppOrganizerPublicRouteState(
+      routeModel.routeState,
+      "zh",
+    );
+    const en = presentAppOrganizerPublicRouteState(
+      routeModel.routeState,
+      "en",
+    );
+
+    assert.equal(zh.scenario, "empty");
+    assert.equal(zh.errorCode, "PUBLIC_ORGANIZER_NOT_FOUND");
+    assert.equal(zh.copy.title, "未找到该主办方");
+    assert.equal(zh.recoveryActions[0]?.label, "返回活动");
+    assert.equal(en.copy.title, "Organizer not found");
+    assert.equal(en.recoveryActions[0]?.label, "Return to events");
+  }
 });
 
 test("app organizer public page renders the mock success page without client-only helper calls", async () => {
@@ -184,7 +225,7 @@ test("app organizer public page renders the mock success page without client-onl
     const html = renderToStaticMarkup(
       await Page({
         params: Promise.resolve({ slug: "demo-event-1" }),
-        searchParams: Promise.resolve({}),
+        searchParams: Promise.resolve({ mode: "mock" }),
       }),
     );
 
@@ -208,7 +249,8 @@ test("app organizer public page renders a controlled live failure when event sto
       }),
     );
 
-    assert.match(html, /Organizer page could not load/);
+    assert.match(html, /主办方页面暂时无法加载/);
+    assert.match(html, /页面没有使用模拟数据生成主办方信息/);
     assert.match(
       html,
       /EVENTS_LIVE_STORE_UNCONFIGURED|events-live-store-unconfigured/,

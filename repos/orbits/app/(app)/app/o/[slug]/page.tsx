@@ -12,6 +12,7 @@ import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
   loadAppOrganizerPublicRouteViewModel,
+  presentAppOrganizerPublicRouteState,
   type AppOrganizerPublicRouteStateViewModel,
   type AppOrganizerPublicSearchParams,
 } from "../compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model";
@@ -70,8 +71,7 @@ export default async function AppOrganizerPublicPage({
     searchParams: await searchParams,
     slug,
   });
-  const language =
-    routeModel.state === "success" ? await getOrganizerPageLanguage() : "zh";
+  const language = await getOrganizerPageLanguage();
 
   return (
     <>
@@ -90,7 +90,12 @@ export default async function AppOrganizerPublicPage({
           />
         </div>
       ) : (
-        <OrganizerPublicRouteStateBoundary routeState={routeModel.routeState} />
+        <OrganizerPublicRouteStateBoundary
+          routeState={presentAppOrganizerPublicRouteState(
+            routeModel.routeState,
+            language,
+          )}
+        />
       )}
       <OrbitVisualFreezeRuntime />
     </>
