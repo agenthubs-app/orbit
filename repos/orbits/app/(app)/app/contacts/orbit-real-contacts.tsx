@@ -1242,25 +1242,53 @@ function IntroComposerModal({
   }
 
   if (picking) {
+    const hasContacts = viewModel.connections.length > 0;
+
     return (
       <ModalShell maxW={520} onClose={() => setPicking("")} step={t({ en: "Pick a contact", zh: "选择联系人" })}>
         <h2 className="h-title" style={{ margin: "4px 0 14px" }}>{picking === "a" ? t({ en: "Pick the first contact", zh: "选择第一位联系人" }) : t({ en: "Pick the second contact", zh: "选择第二位联系人" })}</h2>
-        <div style={{ marginBottom: 14, position: "relative" }}>
-          <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
-          <input aria-label={t({ en: "Search contacts", zh: "搜索名片夹" })} autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search contacts", zh: "搜索名片夹" })} style={{ paddingLeft: 40 }} type="search" value={query} />
-        </div>
-        <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-          {selectable.map((item) => (
-            <button className="card-hover" key={item.id} onClick={() => pick(item.id)} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }} type="button">
-              <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={38} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{item.displayName}</div>
-                <div style={{ color: "var(--text-3)", fontSize: 12 }}>{crmRole(item, t)}</div>
-              </div>
-              <Icon name="chevR" size={16} color="var(--text-4)" />
-            </button>
-          ))}
-        </div>
+        {hasContacts ? (
+          <>
+            <div style={{ marginBottom: 14, position: "relative" }}>
+              <Icon name="search" size={17} color="var(--text-3)" style={{ left: 13, position: "absolute", top: 14 }} />
+              <input aria-label={t({ en: "Search contacts", zh: "搜索名片夹" })} autoFocus className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search contacts", zh: "搜索名片夹" })} style={{ paddingLeft: 40 }} type="search" value={query} />
+            </div>
+            <div className="scroll" style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+              {selectable.length > 0 ? selectable.map((item) => (
+                <button className="card-hover" key={item.id} onClick={() => pick(item.id)} style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: 11, textAlign: "left" }} type="button">
+                  <Avatar letter={crmInitial(item.displayName)} g="g-violet" size={38} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{item.displayName}</div>
+                    <div style={{ color: "var(--text-3)", fontSize: 12 }}>{crmRole(item, t)}</div>
+                  </div>
+                  <Icon name="chevR" size={16} color="var(--text-4)" />
+                </button>
+              )) : (
+                <div role="status" style={{ color: "var(--text-2)", padding: "22px 10px", textAlign: "center" }}>
+                  {t({
+                    en: "No contacts match this search.",
+                    zh: "没有符合当前搜索的联系人。",
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div role="status" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: 20, textAlign: "center" }}>
+            <strong style={{ color: "var(--ink)", display: "block", fontSize: 15 }}>
+              {t({ en: "No contacts are available yet", zh: "还没有可选择的联系人" })}
+            </strong>
+            <p style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, margin: "8px auto 14px", maxWidth: 360 }}>
+              {t({
+                en: "Add at least two source-backed contacts before creating an introduction draft.",
+                zh: "至少添加两位有来源记录的联系人后，才能创建引荐草稿。",
+              })}
+            </p>
+            <a className="btn btn-primary btn-sm" href="/app/contacts/new">
+              {t({ en: "Add contacts", zh: "添加联系人" })}
+            </a>
+          </div>
+        )}
       </ModalShell>
     );
   }

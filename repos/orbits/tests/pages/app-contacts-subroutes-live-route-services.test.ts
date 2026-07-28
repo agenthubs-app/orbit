@@ -78,6 +78,9 @@ test("contacts introductions use stored actor-scoped records, not contact-derive
   assert.match(componentSource, /查看详情/);
   assert.match(pageSource, /contactAId: introduction\.contactAId/);
   assert.match(pageSource, /createdAt: introduction\.createdAt/);
+  assert.match(componentSource, /No contacts are available yet/);
+  assert.match(componentSource, /No contacts match this search/);
+  assert.match(componentSource, /href="\/app\/contacts\/new"/);
 });
 
 test("contacts sidebars expose one import hub entry without a duplicate scan-card destination", () => {
