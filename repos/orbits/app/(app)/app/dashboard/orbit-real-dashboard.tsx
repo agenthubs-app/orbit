@@ -537,6 +537,18 @@ function RecentActivityPanel({
 export function OrbitRealDashboard({ viewModel }: OrbitRealDashboardProps) {
   const { t } = useOrbitLanguage();
   const progressWidth = formatPercent(viewModel.coverageScore);
+  const nextAction = viewModel.hasRelationshipData
+    ? viewModel.nextAction
+    : t({
+        en: "Add source-backed contacts before reviewing relationship trends or creating follow-up actions.",
+        zh: "先添加有来源的联系人，再复核关系趋势或创建跟进动作。",
+      });
+  const currentGoal = viewModel.hasRelationshipData
+    ? viewModel.currentGoal
+    : t({
+        en: "No sourced relationship data yet",
+        zh: "还没有有来源的关系数据",
+      });
 
   return (
     <div className="orbit-dashboard-page" data-orbit-real-page="dashboard">
@@ -551,7 +563,7 @@ export function OrbitRealDashboard({ viewModel }: OrbitRealDashboardProps) {
             <h1 className="orbit-dashboard-title">
               {t({ en: "Keep the right relationships moving.", zh: "让关键关系持续推进。" })}
             </h1>
-            <p className="orbit-dashboard-subtitle">{viewModel.nextAction}</p>
+            <p className="orbit-dashboard-subtitle">{nextAction}</p>
           </div>
           <aside className="orbit-dashboard-score" aria-label={t({ en: "Network coverage score", zh: "网络覆盖评分" })}>
             <div className="orbit-dashboard-score-row">
@@ -559,7 +571,7 @@ export function OrbitRealDashboard({ viewModel }: OrbitRealDashboardProps) {
                 <span className="orbit-dashboard-kicker">
                   {t({ en: "Coverage Score", zh: "覆盖评分" })}
                 </span>
-                <p>{viewModel.currentGoal}</p>
+                <p>{currentGoal}</p>
               </div>
               <strong className="orbit-dashboard-score-value">
                 {viewModel.coverageScore}

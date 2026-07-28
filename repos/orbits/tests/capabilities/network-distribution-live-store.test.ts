@@ -151,6 +151,21 @@ test("live network distribution analytics reads generated graph and remains read
   assert.equal(empty.data.state, "empty");
   assert.equal(empty.data.industryDistribution.length, 0);
 
+  const emptyStore = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const emptyService = createLiveNetworkDistributionAnalyticsService({
+    provider: createStorageNetworkDistributionAnalyticsProvider({
+      sourceLabel: "Empty network distribution memory storage",
+      store: emptyStore,
+      workspaceId: "workspace:network-distribution-empty",
+    }),
+  });
+  const emptyGaps = await emptyService.getNetworkGaps();
+
+  assert.equal(emptyGaps.success, true);
+  assert.equal(emptyGaps.data.state, "empty");
+  assert.equal(emptyGaps.data.coverageScore, 0);
+  assert.deepEqual(emptyGaps.data.gaps, []);
+
   const unconfigured = await createLiveNetworkDistributionAnalyticsService({
     provider: null,
   }).getDistributions();

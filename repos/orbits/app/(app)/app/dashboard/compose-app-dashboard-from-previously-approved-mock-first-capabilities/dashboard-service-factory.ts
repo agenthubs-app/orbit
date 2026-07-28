@@ -1,6 +1,13 @@
-import { createSourceConsistencyProvenanceAuditService } from "../../../../../features/audit/service-factory";
+import {
+  createActorScopedSourceConsistencyProvenanceAuditService,
+  createSourceConsistencyProvenanceAuditService,
+} from "../../../../../features/audit/service-factory";
 import type { SourceConsistencyProvenanceAuditService } from "../../../../../features/audit/provenance-contract";
-import { createDashboardAggregateService } from "../../../../../features/dashboard/service-factory";
+import {
+  createActorScopedNetworkDistributionAnalyticsService,
+  createActorScopedOpportunityReminderAnalyticsService,
+  createDashboardAggregateService,
+} from "../../../../../features/dashboard/service-factory";
 import type { DashboardAggregateService } from "../../../../../features/dashboard/service";
 import { createNetworkDistributionAnalyticsService } from "../../../../../features/dashboard/service-factory";
 import type { NetworkDistributionAnalyticsService } from "../../../../../features/dashboard/distribution-contract";
@@ -125,4 +132,38 @@ export function createAppDashboardRouteServices(): AppDashboardRouteServices {
   }
 
   return resolution.service;
+}
+
+export function createActorScopedAppDashboardRouteServices(
+  actorId: string,
+): AppDashboardRouteServices {
+  const normalizedActorId = actorId.trim();
+
+  if (!normalizedActorId) {
+    throw new Error(
+      "Authenticated actor is required for the Dashboard workspace.",
+    );
+  }
+
+  const resolution = resolveAppDashboardRouteServices();
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  if (resolution.mode !== "live") {
+    return resolution.service;
+  }
+
+  return {
+    auditService:
+      createActorScopedSourceConsistencyProvenanceAuditService(
+        normalizedActorId,
+      ),
+    dashboardService: resolution.service.dashboardService,
+    distributionService:
+      createActorScopedNetworkDistributionAnalyticsService(normalizedActorId),
+    opportunityService:
+      createActorScopedOpportunityReminderAnalyticsService(normalizedActorId),
+  };
 }

@@ -160,6 +160,23 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
   assert.equal(empty.data.state, "empty");
   assert.equal(empty.data.highPriorityOpportunities.length, 0);
 
+  const emptyStore = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const emptyService = createLiveOpportunityReminderAnalyticsService({
+    provider: createStorageOpportunityReminderAnalyticsProvider({
+      sourceLabel: "Empty opportunity reminder memory storage",
+      store: emptyStore,
+      workspaceId: "workspace:opportunity-reminder-empty",
+    }),
+  });
+  const emptyGraphResult =
+    await emptyService.getOpportunityReminderAnalytics();
+
+  assert.equal(emptyGraphResult.success, true);
+  assert.equal(emptyGraphResult.data.state, "empty");
+  assert.deepEqual(emptyGraphResult.data.currentGoalMatches, []);
+  assert.deepEqual(emptyGraphResult.data.highPriorityOpportunities, []);
+  assert.deepEqual(emptyGraphResult.data.dormantHighValueContacts, []);
+
   const unconfigured = await createLiveOpportunityReminderAnalyticsService({
     provider: null,
   }).getOpportunityReminderAnalytics();

@@ -555,7 +555,7 @@ function coverageScore(gaps: readonly NetworkGapAnalysisItem[]): number {
   );
 
   if (totalTarget === 0) {
-    return 100;
+    return 0;
   }
 
   return Math.max(0, Math.round(100 - (totalDeficit / totalTarget) * 125));

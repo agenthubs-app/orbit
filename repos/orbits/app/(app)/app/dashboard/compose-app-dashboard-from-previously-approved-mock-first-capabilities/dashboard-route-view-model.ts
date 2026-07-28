@@ -34,13 +34,20 @@ import type {
   OpportunityReminderAnalyticsServiceResult,
   OpportunityReminderRecomputeResult,
 } from "../../../../../features/dashboard/opportunity-contract";
-import { createAppDashboardRouteServices } from "./dashboard-service-factory";
+import {
+  createActorScopedAppDashboardRouteServices,
+  createAppDashboardRouteServices,
+} from "./dashboard-service-factory";
 
 export type AppDashboardSearchParams = Record<
   string,
   string | string[] | undefined
 >;
 export type AppDashboardRouteScenario = "empty" | "pending" | "failure";
+
+export interface AppDashboardRouteRequestContext {
+  actorId?: string | null;
+}
 
 export type AppDashboardAggregateViewModel = DashboardAggregatePayload;
 export type AppDashboardAuditCollectionViewModel =
@@ -371,8 +378,12 @@ function actionResultViewModel(
 
 export async function loadAppDashboardRouteViewModel(
   searchParams?: AppDashboardSearchParams,
+  context: AppDashboardRouteRequestContext = {},
 ): Promise<AppDashboardRouteViewModel> {
-  const services = createAppDashboardRouteServices();
+  const actorId = context.actorId?.trim() || null;
+  const services = actorId
+    ? createActorScopedAppDashboardRouteServices(actorId)
+    : createAppDashboardRouteServices();
   const requestedScenario = readRouteScenario(searchParams);
 
   if (requestedScenario) {
@@ -386,11 +397,13 @@ export async function loadAppDashboardRouteViewModel(
     ] = await Promise.all([
       resolveDashboardAggregateResult(
         services.dashboardService.getDashboardAggregate({
+          actorId,
           scenario: requestedScenario,
         }),
       ),
       resolveDashboardAggregateSummaryResult(
         services.dashboardService.getDashboardSummary({
+          actorId,
           scenario: requestedScenario,
         }),
       ),
@@ -441,10 +454,11 @@ export async function loadAppDashboardRouteViewModel(
     resolveDashboardAggregateResult(
       services.dashboardService.getDashboardAggregate({
         activityLimit: 4,
+        actorId,
       }),
     ),
     resolveDashboardAggregateSummaryResult(
-      services.dashboardService.getDashboardSummary(),
+      services.dashboardService.getDashboardSummary({ actorId }),
     ),
     resolveNetworkDistributionResult(
       services.distributionService.getDistributions(),

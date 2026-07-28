@@ -59,6 +59,7 @@ export interface OrbitDashboardViewModel {
   };
   coverageScore: number;
   currentGoal: string;
+  hasRelationshipData: boolean;
   industries: readonly OrbitDashboardIndustryView[];
   metrics: readonly OrbitDashboardMetricView[];
   nextAction: string;
@@ -145,6 +146,12 @@ export function dashboardRouteToOrbitDashboardViewModel(
   model: AppDashboardSuccessRouteViewModel,
 ): OrbitDashboardViewModel {
   const workspace = model.workspace;
+  const totals = workspace.aggregate.relationshipAssetTotals;
+  const hasRelationshipData =
+    totals.contacts > 0 ||
+    totals.connections > 0 ||
+    totals.evidenceBackedRelationships > 0 ||
+    totals.eventsRepresented > 0;
   const readyCollections = workspace.audit.auditedCollections.filter(
     (collection) => collection.provenanceComplete,
   ).length;
@@ -161,6 +168,7 @@ export function dashboardRouteToOrbitDashboardViewModel(
     },
     coverageScore: workspace.gaps.coverageScore,
     currentGoal,
+    hasRelationshipData,
     industries: workspace.distributions.industryDistribution
       .slice(0, 4)
       .map(industryView),
@@ -177,6 +185,6 @@ export function dashboardRouteToOrbitDashboardViewModel(
     priority: priorityView(workspace.opportunities.highPriorityOpportunities),
     recentActivity: workspace.aggregate.recentActivity.slice(0, 5).map(activityView),
     topGaps: workspace.gaps.gaps.slice(0, 3).map(gapView),
-    totals: workspace.aggregate.relationshipAssetTotals,
+    totals,
   };
 }

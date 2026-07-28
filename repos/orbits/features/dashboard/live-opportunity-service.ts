@@ -423,8 +423,10 @@ function currentGoalMatchesFor(input: {
   dormantContacts: readonly DormantHighValueContact[];
   opportunities: readonly HighPriorityOpportunity[];
 }): readonly CurrentGoalMatch[] {
-  return [
-    {
+  const matches: CurrentGoalMatch[] = [];
+
+  if (input.opportunities.length > 0) {
+    matches.push({
       goalId: "goal:live-top-followups",
       label: "Follow up top live opportunities",
       targetOutcome:
@@ -440,8 +442,11 @@ function currentGoalMatchesFor(input: {
       evidenceIds: uniqueStrings(
         input.opportunities.flatMap((opportunity) => opportunity.evidenceIds),
       ),
-    },
-    {
+    });
+  }
+
+  if (input.dormantContacts.length > 0) {
+    matches.push({
       goalId: "goal:live-dormant-recovery",
       label: "Recover dormant high-value relationships",
       targetOutcome:
@@ -457,8 +462,10 @@ function currentGoalMatchesFor(input: {
       evidenceIds: uniqueStrings(
         input.dormantContacts.flatMap((contact) => contact.evidenceIds),
       ),
-    },
-  ];
+    });
+  }
+
+  return matches;
 }
 
 function dormantMatchId(contact: DormantHighValueContact): string {

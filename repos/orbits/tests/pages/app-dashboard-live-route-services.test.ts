@@ -86,7 +86,9 @@ test("app dashboard route service bundle resolves all child services in live mod
 
 test("app dashboard route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveDashboard(async () => {
-    const viewModel = await loadAppDashboardRouteViewModel();
+    const viewModel = await loadAppDashboardRouteViewModel(undefined, {
+      actorId: "account:test-dashboard-live",
+    });
 
     assert.equal(viewModel.state, "route-state");
 
@@ -104,17 +106,42 @@ test("app dashboard route loader returns a controlled live failure when storage 
   });
 });
 
-test("/app/dashboard redirects to the single canonical Party workspace", () => {
+test("/app/dashboard authenticates and renders the actor-scoped relationship dashboard", () => {
   const pageSource = source("app/(app)/app/dashboard/page.tsx");
+  const routeSource = source(
+    "app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts",
+  );
+  const serviceSource = source(
+    "app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts",
+  );
 
-  assert.match(pageSource, /redirect\("\/app\/party"\)/);
-  assert.doesNotMatch(
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(
     pageSource,
-    /loadAppDashboardRouteViewModel|dashboardRouteToOrbitDashboardViewModel|OrbitRealDashboard|OrbitRealParty/,
+    /redirect\("\/app\/account\/login\?next=%2Fapp%2Fdashboard"\)/,
+  );
+  assert.match(pageSource, /loadAppDashboardRouteViewModel/);
+  assert.match(pageSource, /dashboardRouteToOrbitDashboardViewModel/);
+  assert.match(pageSource, /OrbitRealDashboard/);
+  assert.doesNotMatch(pageSource, /redirect\("\/app\/party"\)|OrbitRealParty/);
+  assert.match(routeSource, /createActorScopedAppDashboardRouteServices\(actorId\)/);
+  assert.match(routeSource, /getDashboardAggregate\(\{\s*actorId,/);
+  assert.match(routeSource, /getDashboardSummary\(\{\s*actorId,/);
+  assert.match(
+    serviceSource,
+    /createActorScopedNetworkDistributionAnalyticsService\(normalizedActorId\)/,
+  );
+  assert.match(
+    serviceSource,
+    /createActorScopedOpportunityReminderAnalyticsService\(normalizedActorId\)/,
+  );
+  assert.match(
+    serviceSource,
+    /createActorScopedSourceConsistencyProvenanceAuditService\(\s*normalizedActorId/,
   );
 });
 
-test("the retired relationship dashboard component still hides command-center provenance details", async () => {
+test("the relationship dashboard component hides command-center provenance details", async () => {
   await withModuleMode("mock", async () => {
     const { loadAppDashboardRouteViewModel } = await import(
       "../../app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model"
