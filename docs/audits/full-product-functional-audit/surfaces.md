@@ -84,7 +84,7 @@
 | `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 2 | 79 | 5 | runtime-partially-verified-web-party-checkin-source-context-boundary |
 | `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 2 | 79 | 4 | runtime-partially-verified-web-party-graph-source-context-boundary |
 | `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 11 | 3 | runtime-partially-verified-browser-base-state |
-| `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 8 | runtime-partially-verified-live-profile-persistence |
+| `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 8 | runtime-partially-verified-web-profile-complete-lifecycle |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 4 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 10 | runtime-partially-verified-web-schedule-today-compatibility-route |
 | `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 2 | 48 | 3 | runtime-partially-verified-web-schedule-dynamic-event-identity |

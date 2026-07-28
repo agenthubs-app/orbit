@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "5889bc293d97b680f50060390ae0acc1f7cd8a7a",
-  "deterministicSourceTime": "2026-07-29T06:08:31+09:00",
+  "generatedFromCommit": "b6e1e011a6aba729c1b541b645ead29098f40cae",
+  "deterministicSourceTime": "2026-07-29T06:18:06+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -31,12 +31,12 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 49,
     "interactionRouteInstances": 2848,
-    "interactionsRuntimeVerified": 117,
+    "interactionsRuntimeVerified": 135,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 45,
+    "documentedVerificationCases": 46,
     "documentedRemediations": 42
   },
   "surfaces": [
@@ -107583,7 +107583,7 @@
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
       "entryBehavior": "authenticated-browser-signup-login-profile-entry-verified",
-      "exitBehavior": "not-runtime-verified",
+      "exitBehavior": "back-and-cancel-navigation-to-/app/home-verified",
       "nextSurfaces": [
         "/app/contacts/new",
         "action.href",
@@ -107598,14 +107598,14 @@
         "preserveHref(meHref)",
         "preserveHref(productHref(href))"
       ],
-      "backCloseBehavior": "not-runtime-verified",
+      "backCloseBehavior": "back-and-cancel-discarded-unsaved-state-and-opened-/app/home",
       "responsive": {
-        "desktop": "not-runtime-verified",
+        "desktop": "full-profile-lifecycle-verified-at-default-desktop-width",
         "tablet": "not-runtime-verified",
-        "mobile": "not-runtime-verified"
+        "mobile": "full-profile-form-save-and-hard-navigation-readback-verified-at-390x844"
       },
       "accessibility": {
-        "keyboard": "not-runtime-verified",
+        "keyboard": "custom-topic-enter-addition-runtime-verified; full-keyboard-traversal-pending",
         "screenReader": "not-runtime-verified",
         "focusManagement": "not-runtime-verified"
       },
@@ -109110,14 +109110,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Method selection changed local presentation only and did not write a profile.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Manual entry and structured text extraction each became the pressed fill method and exposed only the controls belonging to that method.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109136,14 +109138,16 @@
           "downstreamCallHints": [],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; the profile, contact collection, and acquisition drafts were unchanged.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Scan/import in Import hub opened /app/contacts/new, which truthfully rendered every unconfigured acquisition source as unavailable and performed no upload or contact write.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109169,14 +109173,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Typing changed local form state only and did not write a profile.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The structured-text field preserved eight explicit Chinese profile lines before extraction.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109200,14 +109206,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Extraction produced a local draft only; it made no profile write until the separate save action.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Extract to form first rejected an empty input with 请先粘贴档案文本再提取。; the labeled Chinese input then populated name, company, title, market, relationship goal, two offering tags, and two seeking tags while requiring review before save.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109233,14 +109241,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Field edits remained local until save; the readonly email could not be changed by the editor.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109266,14 +109276,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Textarea edits remained local until save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109299,14 +109311,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Tag toggles changed local form state only until save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Pressed offering, seeking, and topic chips each toggled off without affecting another tag group.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109336,14 +109350,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Draft input and Enter handling changed local tag state only until save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "All three custom-tag fields accepted distinct audit values; pressing Enter in the topic field added 审计话题-可信数据 and cleared the draft.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109367,14 +109383,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Add changed local tag state only until save and did not create duplicate profile records.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The enabled Add controls appended 活动, 审计能力-API持久化, and 审计目标-企业AI合作 to their exact groups; empty Add controls stayed disabled.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109398,14 +109416,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The callback updated only the offering array before the explicit save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The offering callback added and removed source-extracted and custom offering tags without changing seeking or topics.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109429,14 +109449,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The callback updated only the seeking array before the explicit save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The seeking callback added and removed source-extracted and custom relationship targets without changing offering or topics.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109460,14 +109482,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The callback updated only the topics array before the explicit save.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The topics callback added 审计话题-可信数据 through Enter and later removed it during cleanup without changing offering or seeking.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109491,14 +109515,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109524,14 +109550,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; no profile or relationship record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Back navigated from /app/profile to /app/home after cleanup and the home surface rendered the restored actor profile.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109557,14 +109585,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Cancel performed no PUT and preserved the previously saved profile.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Cancel discarded the visible unsaved title 未保存的临时职位, opened /app/home, and a new Edit universal profile entry restored the last saved 产品验证负责人 value.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109583,14 +109613,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Save profile persisted every desktop scalar and list field, displayed 档案已保存并完成复读核验。, and survived a fresh entry from /app.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109614,14 +109646,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The mobile form updated the same actor-owned profile instead of creating a platform-specific duplicate.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "At 390x844 the mobile form rendered the complete editor, submitted a distinct mobile headline, and preserved it after hard navigation.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109640,14 +109674,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The mobile save updated the same profile once; final desktop cleanup restored the original 20% profile.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The mobile Save control persisted 移动端保存验证-20260729, displayed the verified-save status, and hard navigation read the same value back.",
+          "testData": "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+          "testEvidence": [
+            "web-profile-complete-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -109792,13 +109828,17 @@
         "repos/orbits/tests/pages/mobile-auth-routes.test.ts"
       ],
       "runtimeEvidence": [
-        "production-build credentials sign-up and sign-in",
+        "production-build entry from /app and account menu",
         "live Postgres profile write and projected record ownership",
-        "browser save response and full page refresh readback",
+        "structured extraction empty and success boundaries",
+        "desktop validation, save, GET readback, and hard-navigation persistence",
+        "cancelled unsaved edit and verified /app/home profile consumption",
+        "390x844 mobile save and hard-navigation readback",
         "two-account isolation",
-        "duplicate-signup and invalid-password failure paths"
+        "duplicate-signup and invalid-password failure paths",
+        "final UI cleanup and original 20% profile readback"
       ],
-      "verificationConclusion": "runtime-partially-verified-live-profile-persistence"
+      "verificationConclusion": "runtime-partially-verified-web-profile-complete-lifecycle"
     },
     {
       "surfaceId": "web:/app/register",
@@ -138802,6 +138842,15 @@
       "actual": "Account A persisted name, company, role, industry, WeChat, auth email, bio, opener, offering, seeking, and topic values and rendered 100% completion after refresh. Account B rendered its own 20% onboarding profile with none of A's markers. Duplicate sign-up showed the taken-email error and left one auth record; incorrect password showed the credential error and did not open a session.",
       "evidence": "Production-build in-app browser traversal from /app/account/signup and /app/account/login to /app/profile; direct Postgres projection of auth_users/profiles ownership and saved publicProfile/handles fields; tests/pages/app-profile-live-route-services.test.ts",
       "conclusion": "pass for the exercised live profile success, refresh, duplicate-signup, invalid-password, and two-account isolation cases; remaining profile failure/offline/mobile/responsive/assistive-technology states pending"
+    },
+    {
+      "id": "web-profile-complete-lifecycle-2026-07-29",
+      "target": "Authenticated Web profile entry → structured extraction → manual editing → validation → desktop/mobile save → API readback → Home consumption → cancellation → cleanup",
+      "testData": "Production actor audit-permission-1785253354985 with an initial 20% profile; eight labeled Chinese extraction lines; distinct scalar, textarea, and custom-tag values at desktop and 390x844",
+      "expected": "Extraction must remain a review-only local draft; invalid names must not write; every explicit save must update one actor-owned profile and survive hard navigation; Cancel must discard unsaved edits; import must fail closed when acquisition providers are unavailable; cleanup must restore the exact original profile",
+      "actual": "Empty extraction and whitespace-only name each produced explicit Chinese errors. Labeled extraction populated only supported fields. Desktop save persisted a 100% profile and all three tag groups; /app/home consumed the same data. Cancel discarded an unsaved title. Mobile Save persisted a distinct headline and survived hard navigation. The import link rendered the unconfigured no-upload/no-write boundary. Final UI cleanup restored the original name, company, auth email, 20% completion, empty optional fields, and zero tags after hard navigation.",
+      "evidence": "Production-build in-app browser traversal from /app → 我的 and from the account menu; desktop and 390x844 DOM snapshots; actor-scoped PUT /api/profile followed by GET readback; fresh /app/home and /app/profile entries; tests/pages/app-profile-live-route-services.test.ts",
+      "conclusion": "pass for every rendered Profile-specific control in the exercised authenticated desktop/mobile lifecycle; offline/server-error, tablet, screen-reader, and a second current-session browser actor remain pending"
     },
     {
       "id": "live-event-registration-persistence-cancellation-isolation-2026-07-28",

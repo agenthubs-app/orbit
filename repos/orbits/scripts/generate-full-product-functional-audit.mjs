@@ -1276,6 +1276,109 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
 ]);
+const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
+  [
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:296",
+      "Manual entry and structured text extraction each became the pressed fill method and exposed only the controls belonging to that method.",
+      "Method selection changed local presentation only and did not write a profile.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:323",
+      "Scan/import in Import hub opened /app/contacts/new, which truthfully rendered every unconfigured acquisition source as unavailable and performed no upload or contact write.",
+      "Navigation only; the profile, contact collection, and acquisition drafts were unchanged.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:335",
+      "The structured-text field preserved eight explicit Chinese profile lines before extraction.",
+      "Typing changed local form state only and did not write a profile.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:336",
+      "Extract to form first rejected an empty input with 请先粘贴档案文本再提取。; the labeled Chinese input then populated name, company, title, market, relationship goal, two offering tags, and two seeking tags while requiring review before save.",
+      "Extraction produced a local draft only; it made no profile write until the separate save action.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:362",
+      "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
+      "Field edits remained local until save; the readonly email could not be changed by the editor.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:400",
+      "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
+      "Textarea edits remained local until save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:449",
+      "Pressed offering, seeking, and topic chips each toggled off without affecting another tag group.",
+      "Tag toggles changed local form state only until save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:457",
+      "All three custom-tag fields accepted distinct audit values; pressing Enter in the topic field added 审计话题-可信数据 and cleared the draft.",
+      "Draft input and Enter handling changed local tag state only until save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:473",
+      "The enabled Add controls appended 活动, 审计能力-API持久化, and 审计目标-企业AI合作 to their exact groups; empty Add controls stayed disabled.",
+      "Add changed local tag state only until save and did not create duplicate profile records.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:540",
+      "The offering callback added and removed source-extracted and custom offering tags without changing seeking or topics.",
+      "The callback updated only the offering array before the explicit save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:541",
+      "The seeking callback added and removed source-extracted and custom relationship targets without changing offering or topics.",
+      "The callback updated only the seeking array before the explicit save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:542",
+      "The topics callback added 审计话题-可信数据 through Enter and later removed it during cleanup without changing offering or seeking.",
+      "The callback updated only the topics array before the explicit save.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:773",
+      "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
+      "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:776",
+      "Back navigated from /app/profile to /app/home after cleanup and the home surface rendered the restored actor profile.",
+      "Navigation only; no profile or relationship record was written.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:793",
+      "Cancel discarded the visible unsaved title 未保存的临时职位, opened /app/home, and a new Edit universal profile entry restored the last saved 产品验证负责人 value.",
+      "Cancel performed no PUT and preserved the previously saved profile.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:794",
+      "Save profile persisted every desktop scalar and list field, displayed 档案已保存并完成复读核验。, and survived a fresh entry from /app.",
+      "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:800",
+      "At 390x844 the mobile form rendered the complete editor, submitted a distinct mobile headline, and preserved it after hard navigation.",
+      "The mobile form updated the same actor-owned profile instead of creating a platform-specific duplicate.",
+    ],
+    [
+      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:801",
+      "The mobile Save control persisted 移动端保存验证-20260729, displayed the verified-save status, and hard navigation read the same value back.",
+      "The mobile save updated the same profile once; final desktop cleanup restored the original 20% profile.",
+    ],
+  ].map(([sourceRef, actualResult, idempotency]) => [
+    sourceRef,
+    {
+      actualResult,
+      testData:
+        "Authenticated production-browser actor audit-permission-1785253354985; original 20% profile; labeled Chinese extraction source; distinct desktop/mobile values and three custom tags",
+      idempotency,
+      verificationCase: "web-profile-complete-lifecycle-2026-07-29",
+    },
+  ]),
+);
 const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
   [
     [
@@ -1985,6 +2088,21 @@ const VERIFIED_AUDIT_CASES = [
       "Production-build in-app browser traversal from /app/account/signup and /app/account/login to /app/profile; direct Postgres projection of auth_users/profiles ownership and saved publicProfile/handles fields; tests/pages/app-profile-live-route-services.test.ts",
     conclusion:
       "pass for the exercised live profile success, refresh, duplicate-signup, invalid-password, and two-account isolation cases; remaining profile failure/offline/mobile/responsive/assistive-technology states pending",
+  },
+  {
+    id: "web-profile-complete-lifecycle-2026-07-29",
+    target:
+      "Authenticated Web profile entry → structured extraction → manual editing → validation → desktop/mobile save → API readback → Home consumption → cancellation → cleanup",
+    testData:
+      "Production actor audit-permission-1785253354985 with an initial 20% profile; eight labeled Chinese extraction lines; distinct scalar, textarea, and custom-tag values at desktop and 390x844",
+    expected:
+      "Extraction must remain a review-only local draft; invalid names must not write; every explicit save must update one actor-owned profile and survive hard navigation; Cancel must discard unsaved edits; import must fail closed when acquisition providers are unavailable; cleanup must restore the exact original profile",
+    actual:
+      "Empty extraction and whitespace-only name each produced explicit Chinese errors. Labeled extraction populated only supported fields. Desktop save persisted a 100% profile and all three tag groups; /app/home consumed the same data. Cancel discarded an unsaved title. Mobile Save persisted a distinct headline and survived hard navigation. The import link rendered the unconfigured no-upload/no-write boundary. Final UI cleanup restored the original name, company, auth email, 20% completion, empty optional fields, and zero tags after hard navigation.",
+    evidence:
+      "Production-build in-app browser traversal from /app → 我的 and from the account menu; desktop and 390x844 DOM snapshots; actor-scoped PUT /api/profile followed by GET readback; fresh /app/home and /app/profile entries; tests/pages/app-profile-live-route-services.test.ts",
+    conclusion:
+      "pass for every rendered Profile-specific control in the exercised authenticated desktop/mobile lifecycle; offline/server-error, tablet, screen-reader, and a second current-session browser actor remain pending",
   },
   {
     id: "live-event-registration-persistence-cancellation-isolation-2026-07-28",
@@ -4204,8 +4322,12 @@ export function buildFullProductFunctionalAuditInventory() {
         }#${interaction.handlers
           .map((handler) => `${handler.event}:${handler.expression}`)
           .join("|")}#${interaction.visibleName}`;
-        const runtimeEvidence = hasLiveEventRegistrationRuntimeEvidence
-          ? LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE.get(
+        const runtimeEvidence = hasLiveProfileRuntimeEvidence
+          ? LIVE_PROFILE_INTERACTION_EVIDENCE.get(
+              `${interaction.sourceFile}:${interaction.line}`,
+            )
+          : hasLiveEventRegistrationRuntimeEvidence
+            ? LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE.get(
               `${interaction.sourceFile}:${interaction.line}`,
             )
           : hasLiveBusinessCardRestrictedRuntimeEvidence
@@ -4242,8 +4364,10 @@ export function buildFullProductFunctionalAuditInventory() {
             : undefined;
         const runtimeVerificationCase =
           runtimeEvidence?.verificationCase ??
-          (hasLiveEventRegistrationRuntimeEvidence
-            ? "live-event-registration-persistence-cancellation-isolation-2026-07-28"
+          (hasLiveProfileRuntimeEvidence
+            ? "web-profile-complete-lifecycle-2026-07-29"
+            : hasLiveEventRegistrationRuntimeEvidence
+              ? "live-event-registration-persistence-cancellation-isolation-2026-07-28"
             : hasLiveBusinessCardRestrictedRuntimeEvidence
               ? "live-business-card-unconfigured-failure-closed-2026-07-28"
               : hasLiveMobileAuthRuntimeEvidence
@@ -4329,7 +4453,9 @@ export function buildFullProductFunctionalAuditInventory() {
               ? liveWebAdditionalRuntimeEvidence.entryBehavior
           : "not-runtime-verified",
       exitBehavior:
-        hasLiveBusinessCardRestrictedRuntimeEvidence ||
+        hasLiveProfileRuntimeEvidence
+          ? "back-and-cancel-navigation-to-/app/home-verified"
+          : hasLiveBusinessCardRestrictedRuntimeEvidence ||
         hasLiveContactDetailRuntimeEvidence
           ? "browser-return-to-contacts-verified"
           : "not-runtime-verified",
@@ -4337,24 +4463,34 @@ export function buildFullProductFunctionalAuditInventory() {
         ...new Set(interactions.map((item) => item.href).filter(Boolean)),
       ].sort(),
       backCloseBehavior:
-        hasLiveBusinessCardRestrictedRuntimeEvidence
+        hasLiveProfileRuntimeEvidence
+          ? "back-and-cancel-discarded-unsaved-state-and-opened-/app/home"
+          : hasLiveBusinessCardRestrictedRuntimeEvidence
           ? "restricted-state-return-link-navigated-to-/app/contacts"
           : hasLiveContactDetailRuntimeEvidence
             ? "detail-return-link-navigated-to-/app/contacts"
             : "not-runtime-verified",
       responsive: {
-        desktop: hasBrowserSmokeEvidence
+        desktop: hasLiveProfileRuntimeEvidence
+          ? "full-profile-lifecycle-verified-at-default-desktop-width"
+          : hasBrowserSmokeEvidence
           ? "base-state-no-horizontal-overflow-at-1440x900"
           : entry.client === "web"
             ? "not-runtime-verified"
             : "not-applicable",
         tablet: "not-runtime-verified",
-        mobile: hasBrowserSmokeEvidence
+        mobile: hasLiveProfileRuntimeEvidence
+          ? "full-profile-form-save-and-hard-navigation-readback-verified-at-390x844"
+          : hasBrowserSmokeEvidence
           ? "base-state-no-horizontal-overflow-at-390x844"
           : "not-runtime-verified",
       },
       accessibility: {
-        keyboard: entry.client === "web" ? "not-runtime-verified" : "platform-native",
+        keyboard: hasLiveProfileRuntimeEvidence
+          ? "custom-topic-enter-addition-runtime-verified; full-keyboard-traversal-pending"
+          : entry.client === "web"
+            ? "not-runtime-verified"
+            : "platform-native",
         screenReader: "not-runtime-verified",
         focusManagement: "not-runtime-verified",
       },
@@ -4372,11 +4508,15 @@ export function buildFullProductFunctionalAuditInventory() {
           ]
         : hasLiveProfileRuntimeEvidence
           ? [
-              "production-build credentials sign-up and sign-in",
+              "production-build entry from /app and account menu",
               "live Postgres profile write and projected record ownership",
-              "browser save response and full page refresh readback",
+              "structured extraction empty and success boundaries",
+              "desktop validation, save, GET readback, and hard-navigation persistence",
+              "cancelled unsaved edit and verified /app/home profile consumption",
+              "390x844 mobile save and hard-navigation readback",
               "two-account isolation",
               "duplicate-signup and invalid-password failure paths",
+              "final UI cleanup and original 20% profile readback",
             ]
           : hasLiveEventRegistrationRuntimeEvidence
             ? [
@@ -4455,7 +4595,7 @@ export function buildFullProductFunctionalAuditInventory() {
         surfaceId === "web:/dev/capabilities/[slug]"
           ? "runtime-partially-verified-six-ids"
           : hasLiveProfileRuntimeEvidence
-            ? "runtime-partially-verified-live-profile-persistence"
+            ? "runtime-partially-verified-web-profile-complete-lifecycle"
             : hasLiveEventRegistrationRuntimeEvidence
               ? "runtime-partially-verified-live-event-registration"
             : hasLiveBusinessCardRestrictedRuntimeEvidence

@@ -164,7 +164,13 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
 
   assert.equal(browserEvidenceSurfaces.length, 23);
   assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 94);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 117);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 135);
+  assert.equal(
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/profile",
+    )?.verificationConclusion,
+    "runtime-partially-verified-web-profile-complete-lifecycle",
+  );
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",
@@ -407,6 +413,15 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       .find((surface) => surface.surfaceId === "web:/app/profile")
       ?.runtimeEvidence.includes("two-account isolation"),
     true,
+  );
+  assert.equal(
+    inventory.surfaces
+      .find((surface) => surface.surfaceId === "web:/app/profile")
+      ?.interactions.filter(
+        (interaction) =>
+          interaction.actualResult !== "not-runtime-verified",
+      ).length,
+    18,
   );
 });
 
