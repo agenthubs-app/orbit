@@ -631,6 +631,22 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-agent-session-actor-isolation",
     },
   ],
+  [
+    "web:/app/chat",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-chat-empty-and-not-found-states-verified",
+      runtimeEvidence: [
+        "the authenticated zero-contact actor rendered a truthful no-chat-context state instead of the 40-plus deployment-global conversations previously exposed",
+        "the empty boundary named conversations, assists, summaries, profile updates, privacy controls, and sharing previews as unavailable without source evidence",
+        "direct navigation to the previously leaked conversation_seed_069 rendered Conversation not found and explicitly refused to substitute another person's thread, summary, context, or suggestion",
+        "Reload Orbit AI returned to the same actor-scoped empty state without creating a conversation or message",
+      ],
+      verificationCase: "web-chat-workspace-actor-isolation-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-chat-workspace-actor-isolation",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1120,6 +1136,18 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Read-only refresh; no chat session, message, operation, relationship, follow-up, calendar, or external record was written.",
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "Reload Orbit AI removed the rejected legacy conversation query and returned to the same actor-scoped no-chat-context state.",
+      testData:
+        "Authenticated audit actor with zero actor-scoped conversations after direct navigation to the previously leaked conversation_seed_069",
+      idempotency:
+        "Read-only navigation; no conversation, message, writing assist, summary, extraction, privacy setting, profile, Agent operation, or external record was written.",
+      verificationCase: "web-chat-workspace-actor-isolation-2026-07-29",
     },
   ],
 ]);
@@ -1825,6 +1853,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for actor-isolated list/get/save/delete semantics, unauthenticated list/delete denial, empty-history rendering, and workspace refresh; authenticated multi-browser account switching and populated post-fix conversation creation remain pending",
   },
+  {
+    id: "web-chat-workspace-actor-isolation-2026-07-29",
+    target:
+      "Authenticated Web Chat workspace → conversation list, message thread, writing assist, summary/extraction, privacy context, and URL-selected conversation",
+    testData:
+      "Audit actor with zero contacts and zero actor-scoped chat records; more than 40 deployment-workspace conversations and full message threads from unrelated identities; previously visible conversation_seed_069",
+    expected:
+      "The server page must resolve the canonical authenticated actor before composing every Chat service; the actor's empty graph must stay empty; an arbitrary conversation query must not bypass list ownership; URL prompt handling must use the same actor",
+    actual:
+      "Runtime first rendered the deployment-wide conversation list, message bodies, relationship context, generated assist, summary, evidence count, and privacy status. After repair, the same account rendered No chat context is ready. Direct access to conversation_seed_069 returned Conversation not found and promised not to substitute another person's data. Reload returned to the unchanged empty state.",
+    evidence:
+      "Authenticated production browser before/after DOM, rejected legacy-ID direct navigation, and recovery-link traversal; Chat/Agent focused tests 21/21; Web lint and Next TypeScript; exact-origin production build",
+    conclusion:
+      "pass for the exercised empty actor graph, all four Chat service bundles, URL-selected legacy conversation denial, actor-aware prompt service composition, and recovery navigation; populated post-fix multi-account browser readback and prompt execution remain pending",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2313,6 +2356,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Agent tests 6/6, Web lint, Next TypeScript, and exact-origin production build passed. The authenticated audit actor changed from 13 unrelated histories to an empty actor-scoped sidebar; unauthenticated GET and DELETE returned 401; Alice/Bob same-ID isolation and deletion safety passed.",
     status:
       "fixed and runtime-verified for the exercised actor, unauthenticated list/delete boundary, and same-ID provider isolation; populated post-fix multi-account browser readback remains pending",
+  },
+  {
+    id: "AUDIT-P0-036",
+    severity: "P0",
+    rootCause:
+      "The authenticated Web Chat page composed its conversation, writing-assist, summary/extraction, privacy, and URL-prompt services without the signed-in actor. Although the HTTP Chat routes already authenticated and selected actor-scoped providers, the server-rendered page bypassed those boundaries and read the deployment-wide workspace directly.",
+    decision:
+      "Authenticate in the Chat server page, redirect before data access when no actor exists, and pass the canonical actor through one page-level bundle that scopes all four Chat services together. Use the same actor for Chat-triggered Agent prompts, preserve mock-mode fixtures for tests, and resolve requested conversation IDs only inside the actor-scoped list.",
+    files:
+      "repos/orbits/app/(app)/app/chat/page.tsx; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts; focused Chat page/route tests",
+    regression:
+      "Chat/Agent focused tests 21/21, Web lint, Next TypeScript, and exact-origin production build passed. Runtime changed from more than 40 unrelated conversations with full message/context/summary/privacy data to the actor's empty state; conversation_seed_069 was rejected and Reload preserved the empty state.",
+    status:
+      "fixed and runtime-verified for the exercised empty actor, legacy conversation ID denial, and recovery navigation; populated post-fix multi-account browser readback remains pending",
   },
 ];
 

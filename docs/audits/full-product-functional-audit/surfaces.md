@@ -62,7 +62,7 @@
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 9 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 2 | 92 | 28 | runtime-partially-verified-web-agent-session-actor-isolation |
-| `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 2 | 54 | 11 | inventory-complete-runtime-verification-pending |
+| `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 2 | 54 | 12 | runtime-partially-verified-web-chat-workspace-actor-isolation |
 | `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 2 | 93 | 34 | runtime-partially-verified-live-contact-list |
 | `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 2 | 100 | 30 | runtime-partially-verified-live-contact-detail |
 | `web:/app/contacts/all-actions` | web | production | `/app/contacts/all-actions` | `web:/app/contacts` |  | 2 | 60 | 9 | inventory-complete-runtime-verification-pending |
