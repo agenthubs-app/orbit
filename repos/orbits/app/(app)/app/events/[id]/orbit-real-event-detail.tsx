@@ -48,9 +48,37 @@ function eventTime(event: OrbitLandingEventView, t: Translate, language: OrbitLa
   };
 }
 
+export function canUseEventDetailHistoryBack(referrer: string, currentHref: string) {
+  if (!referrer) return false;
+
+  try {
+    const current = new URL(currentHref);
+    const previous = new URL(referrer);
+    const isOrbitProductPath =
+      previous.pathname === "/" || previous.pathname.startsWith("/app/");
+
+    return (
+      previous.origin === current.origin &&
+      isOrbitProductPath &&
+      `${previous.pathname}${previous.search}${previous.hash}` !==
+        `${current.pathname}${current.search}${current.hash}`
+    );
+  } catch {
+    return false;
+  }
+}
+
 function BackButton({ mobile = false, style, t }: { mobile?: boolean; style: CSSProperties; t: Translate }) {
   const goBack = () => {
-    window.location.href = productHref("/events");
+    if (
+      window.history.length > 1 &&
+      canUseEventDetailHistoryBack(document.referrer, window.location.href)
+    ) {
+      window.history.back();
+      return;
+    }
+
+    window.location.assign(productHref("/events"));
   };
 
   return (

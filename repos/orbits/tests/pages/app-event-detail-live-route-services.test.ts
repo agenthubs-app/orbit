@@ -16,6 +16,7 @@ import {
   eventDetailRouteToOrbitLandingEventView,
   eventDetailRouteToRelationshipContextView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
+import { canUseEventDetailHistoryBack } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
 import { createLiveWantConnectService } from "../../features/events/want-connect/live-service";
 import { createGeneratedWantConnectProvider } from "../../features/events/want-connect/storage/generated-want-connect-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
@@ -358,6 +359,32 @@ test("event detail with no organizer source renders a non-link pending boundary"
   assert.match(detailSource, /Organizer pending/);
   assert.match(detailSource, /主办方待确认/);
   assert.match(detailSource, /活动来源暂未提供主办方信息/);
+});
+
+test("event detail returns only to a distinct same-origin Orbit product page", () => {
+  const current = "http://localhost:3110/app/events/EVT01";
+
+  assert.equal(
+    canUseEventDetailHistoryBack(
+      "http://localhost:3110/app/o/evt01",
+      current,
+    ),
+    true,
+  );
+  assert.equal(
+    canUseEventDetailHistoryBack(
+      "http://localhost:3110/app/events?status=ended",
+      current,
+    ),
+    true,
+  );
+  assert.equal(canUseEventDetailHistoryBack(current, current), false);
+  assert.equal(
+    canUseEventDetailHistoryBack("https://example.com/app/events", current),
+    false,
+  );
+  assert.equal(canUseEventDetailHistoryBack("", current), false);
+  assert.equal(canUseEventDetailHistoryBack("not a valid url", current), false);
 });
 
 test("event matchmaking hides raw service errors behind product copy", () => {
