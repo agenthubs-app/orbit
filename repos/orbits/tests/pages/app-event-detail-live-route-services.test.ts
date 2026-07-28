@@ -40,6 +40,7 @@ test("event detail production route does not silently force a canonical id into 
   assert.doesNotMatch(pageSource, /has\(input\.eventId\)\s*\?\s*"mock"/);
   assert.match(pageSource, /const routeMode = undefined/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
+  assert.doesNotMatch(pageSource, /readSearchParam\(query, "scenario"\)/);
   assert.doesNotMatch(pageSource, /action: readSearchParam/);
   assert.doesNotMatch(pageSource, /targetContactId: readSearchParam/);
 });

@@ -539,14 +539,12 @@ export default async function AppEventDetailPage({
     actorId: session.user.id,
     eventId: id,
     mode: routeMode,
-    scenario: readSearchParam(query, "scenario"),
   });
   const registrationGuideResult =
     await loadRegistrationProfileGuideForCurrentTestUser({
       eventId: id,
       languagePreference: language,
       mode: routeMode,
-      scenario: readSearchParam(query, "scenario"),
     });
   const registrationGuide =
     registrationGuideResult.state === "success"
