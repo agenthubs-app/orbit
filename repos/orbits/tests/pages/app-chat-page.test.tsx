@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -31,10 +32,26 @@ async function withModuleMode<T>(
 
 test("/app/chat renders the source-backed conversation workspace", async () => {
   await withModuleMode("mock", async () => {
-    const Page = (await import("../../app/(app)/app/chat/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const { loadAppChatRouteViewModel } = await import(
+      "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+    );
+    const { ChatWorkspace } = await import(
+      "../../app/(app)/app/chat/chat-workspace"
+    );
+    const routeModel = await loadAppChatRouteViewModel(undefined, {
+      actorId: "account:test-chat-mock",
+    });
 
-    assert.match(html, /data-orbit-route="app-chat-route"/);
+    assert.equal(routeModel.state, "success");
+    if (routeModel.state !== "success") return;
+
+    const html = renderToStaticMarkup(
+      React.createElement(ChatWorkspace, {
+        language: "zh",
+        workspace: routeModel.workspace,
+      }),
+    );
+
     assert.match(html, /data-orbit-real-page="chat"/);
     assert.match(html, /会话|Conversations/);
     assert.match(html, /消息线程|Message thread/);
@@ -90,12 +107,21 @@ test("/app/chat fails closed when live chat storage is unavailable", async () =>
 
   await withModuleMode("live", async () => {
     delete process.env.ORBIT_EVENT_DATABASE_URL;
-    const Page = (await import("../../app/(app)/app/chat/page")).default;
-    const html = renderToStaticMarkup(await Page());
+    const { loadAppChatRouteViewModel } = await import(
+      "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+    );
+    const routeModel = await loadAppChatRouteViewModel(undefined, {
+      actorId: "account:test-chat-live",
+    });
 
-    assert.match(html, /data-orbit-route="app-chat-route-state"/);
-    assert.match(html, /Chat workspace could not load/);
-    assert.doesNotMatch(html, /Relationship inbox|Aoba Mori/);
+    assert.equal(routeModel.state, "route-state");
+    if (routeModel.state === "route-state") {
+      assert.equal(routeModel.routeState.scenario, "failure");
+      assert.equal(
+        routeModel.routeState.errorCode,
+        "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
+      );
+    }
   });
 
   if (previousDatabaseUrl === undefined) {

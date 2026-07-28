@@ -24,14 +24,25 @@ import {
   selectPrimaryOrbitAgentArtifactSurface,
   type OrbitAgentArtifactSurfaceViewModel,
 } from "../../../../../features/orbit-ai/artifact-view-model";
-import { createOrbitAgentConversationService } from "../../../../../features/orbit-ai/service-factory";
-import { createAppChatRouteServices } from "./chat-service-factory";
+import {
+  createOrbitAgentConversationService,
+  createOrbitAgentConversationServiceForActor,
+} from "../../../../../features/orbit-ai/service-factory";
+import {
+  createActorScopedAppChatRouteServices,
+  createAppChatRouteServices,
+  type AppChatRouteServices,
+} from "./chat-service-factory";
 
 // Chat route view-model 是传统 chat 页的总装层。
 // 它同时读取 chat、writing assist、summary、privacy 和 Orbit Agent conversation service，
 // 再把多个 feature contract 合并成一个页面可渲染的 workspace。
 export type AppChatSearchParams = Record<string, string | string[] | undefined>;
 export type AppChatRouteScenario = "empty" | "pending" | "failure";
+
+export interface AppChatRouteRequestContext {
+  actorId?: string | null;
+}
 
 type ChatRouteResult =
   | ChatConversationListResult
@@ -528,12 +539,15 @@ function readAgentPrompt(
 // 服务具体走 mock 还是 live 由 ORBIT_AGENT_CONVERSATION_MODE/.env 决定，UI 只消费 contract。
 async function agentTurnViewModel(
   prompt: string | null,
+  actorId: string | null,
 ): Promise<AppChatAgentTurnViewModel | null> {
   if (!prompt) {
     return null;
   }
 
-  const orbitAgentService = createOrbitAgentConversationService();
+  const orbitAgentService = actorId
+    ? createOrbitAgentConversationServiceForActor(actorId)
+    : createOrbitAgentConversationService();
   const result = await orbitAgentService.sendMessage({ message: prompt });
 
   if (result.success === false) {
@@ -594,8 +608,8 @@ function workspaceViewModel(input: {
 // 加载固定 route-state，用于测试 empty/pending/failure 分支和恢复路径。
 export async function loadAppChatRouteStateViewModel(
   scenario: AppChatRouteScenario,
+  services: AppChatRouteServices = createAppChatRouteServices(),
 ): Promise<AppChatRouteStateViewModel> {
-  const services = createAppChatRouteServices();
   const conversationResult = await resolveChatResult(
     services.conversationService.listConversations({
       scenario,
@@ -650,24 +664,31 @@ export async function loadAppChatRouteStateViewModel(
 // 主加载函数：先处理 scenario，再读 conversation/thread/assist/summary/privacy，最后按需跑 agent。
 export async function loadAppChatRouteViewModel(
   searchParams?: AppChatSearchParams,
+  context: AppChatRouteRequestContext = {},
 ): Promise<AppChatRouteViewModel> {
   const requestedScenario = readAppChatRouteScenario(searchParams);
+  const actorId = context.actorId?.trim() || null;
+  const services = actorId
+    ? createActorScopedAppChatRouteServices(actorId)
+    : createAppChatRouteServices();
 
   if (requestedScenario) {
     return {
-      routeState: await loadAppChatRouteStateViewModel(requestedScenario),
+      routeState: await loadAppChatRouteStateViewModel(
+        requestedScenario,
+        services,
+      ),
       state: "route-state",
     };
   }
 
-  const services = createAppChatRouteServices();
   const conversationsResult = await resolveChatResult(
     services.conversationService.listConversations(),
   );
 
   if (conversationsResult.success === false) {
     return {
-      routeState: await loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure", services),
       state: "route-state",
     };
   }
@@ -747,7 +768,7 @@ export async function loadAppChatRouteViewModel(
 
   if (firstFailure(results)) {
     return {
-      routeState: await loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure", services),
       state: "route-state",
     };
   }
@@ -760,12 +781,15 @@ export async function loadAppChatRouteViewModel(
     privacyResult.success === false
   ) {
     return {
-      routeState: await loadAppChatRouteStateViewModel("failure"),
+      routeState: await loadAppChatRouteStateViewModel("failure", services),
       state: "route-state",
     };
   }
 
-  const agentTurn = await agentTurnViewModel(readAgentPrompt(searchParams));
+  const agentTurn = await agentTurnViewModel(
+    readAgentPrompt(searchParams),
+    actorId,
+  );
 
   return {
     state: "success",

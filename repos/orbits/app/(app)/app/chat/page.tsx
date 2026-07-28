@@ -6,6 +6,8 @@
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
+import { redirect } from "next/navigation";
+import { auth } from "../../../../auth";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../shared/ui/state-view";
@@ -76,8 +78,16 @@ export default async function AppChatPage({
 }: {
   searchParams?: Promise<AppChatSearchParams>;
 } = {}) {
+  const session = await auth();
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect("/app/account/login?next=%2Fapp%2Fchat");
+  }
+
   const resolvedSearchParams = await searchParams;
-  const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams);
+  const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
+    actorId,
+  });
   const language =
     routeModel.state === "success" ? await getChatPageLanguage() : "zh";
 

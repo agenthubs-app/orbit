@@ -1,7 +1,13 @@
-import { createChatWritingAssistService } from "../../../../../features/chat/service-factory";
-import { createChatPrivacyControlsService } from "../../../../../features/chat/service-factory";
-import { createChatConversationMessageService } from "../../../../../features/chat/service-factory";
-import { createChatSummaryExtractionService } from "../../../../../features/chat/service-factory";
+import {
+  createActorScopedChatConversationMessageService,
+  createActorScopedChatPrivacyControlsService,
+  createActorScopedChatSummaryExtractionService,
+  createActorScopedChatWritingAssistService,
+  createChatConversationMessageService,
+  createChatPrivacyControlsService,
+  createChatSummaryExtractionService,
+  createChatWritingAssistService,
+} from "../../../../../features/chat/service-factory";
 import type { ChatWritingAssistService } from "../../../../../features/chat/assist-contract";
 import type { ChatPrivacyControlsService } from "../../../../../features/chat/privacy-contract";
 import type { ChatSummaryExtractionService } from "../../../../../features/chat/summary-contract";
@@ -129,4 +135,35 @@ export function createAppChatRouteServices(): AppChatRouteServices {
   }
 
   return resolution.service;
+}
+
+export function createActorScopedAppChatRouteServices(
+  actorId: string,
+): AppChatRouteServices {
+  const normalizedActorId = actorId.trim();
+
+  if (!normalizedActorId) {
+    throw new Error("Authenticated actor is required for the Chat workspace.");
+  }
+
+  const resolution = resolveAppChatRouteServices();
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  if (resolution.mode !== "live") {
+    return resolution.service;
+  }
+
+  return {
+    conversationService:
+      createActorScopedChatConversationMessageService(normalizedActorId),
+    privacyControlsService:
+      createActorScopedChatPrivacyControlsService(normalizedActorId),
+    summaryExtractionService:
+      createActorScopedChatSummaryExtractionService(normalizedActorId),
+    writingAssistService:
+      createActorScopedChatWritingAssistService(normalizedActorId),
+  };
 }

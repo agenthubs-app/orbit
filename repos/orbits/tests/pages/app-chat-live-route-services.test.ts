@@ -107,7 +107,9 @@ test("app chat route state renders a controlled live failure when storage is unc
 
 test("app chat route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveChat(async () => {
-    const viewModel = await loadAppChatRouteViewModel();
+    const viewModel = await loadAppChatRouteViewModel(undefined, {
+      actorId: "account:test-chat-live",
+    });
 
     assert.equal(viewModel.state, "route-state");
     if (viewModel.state === "route-state") {
@@ -143,9 +145,18 @@ test("chat adjunct live storage adapters reuse the configured chat record store"
   }
 });
 
-test("/app/chat page renders the real Orbit chat route adapter", async () => {
+test("/app/chat page authenticates before loading the actor-scoped route adapter", () => {
   const pageSource = source("app/(app)/app/chat/page.tsx");
+  const routeSource = source(
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
+  );
+  const serviceSource = source(
+    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
+  );
 
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fchat"\)/);
+  assert.match(pageSource, /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /ChatWorkspace/);
   assert.match(pageSource, /StateView/);
@@ -155,15 +166,16 @@ test("/app/chat page renders the real Orbit chat route adapter", async () => {
     /ChatCommandCenter|chatRouteToOrbitAgentViewModel|OrbitRealAgent/,
   );
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
-
-  await withUnconfiguredLiveChat(async () => {
-    const Page = (await import("../../app/(app)/app/chat/page")).default;
-    const html = renderToStaticMarkup(await Page());
-
-    assert.match(html, /data-orbit-route="app-chat-route-state"/);
-    assert.match(html, /Chat workspace could not load/);
-    assert.doesNotMatch(html, /app-chat-command-center|Relationship inbox/);
-  });
+  assert.match(routeSource, /createActorScopedAppChatRouteServices\(actorId\)/);
+  assert.match(routeSource, /createOrbitAgentConversationServiceForActor\(actorId\)/);
+  for (const factoryName of [
+    "createActorScopedChatConversationMessageService",
+    "createActorScopedChatPrivacyControlsService",
+    "createActorScopedChatSummaryExtractionService",
+    "createActorScopedChatWritingAssistService",
+  ]) {
+    assert.match(serviceSource, new RegExp(`${factoryName}\\(normalizedActorId\\)`));
+  }
 });
 
 test("chat route adapter feeds live conversation context into OrbitRealAgent", async () => {
