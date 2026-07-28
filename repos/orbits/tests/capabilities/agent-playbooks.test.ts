@@ -96,6 +96,59 @@ test("Playbook compiler rejects model-created write capabilities", async () => {
   });
 });
 
+test("Playbook compiler retries one schema-invalid response without relaxing safety", async () => {
+  let attempts = 0;
+  const compiler = createAgentPlaybookCompiler(async (input) => {
+    attempts += 1;
+    if (attempts === 1) {
+      return {
+        model: "deepseek-chat",
+        provider: "deepseek",
+        source: "provider:deepseek-chat-completions-api",
+        success: true,
+        text: JSON.stringify({
+          capabilityId: "followups.reviewQueue",
+          instruction: "Review follow-ups.",
+          title: "Daily follow-up review",
+        }),
+      };
+    }
+    assert.match(input.systemInstruction, /failed the strict safety schema/);
+    return {
+      model: "deepseek-chat",
+      provider: "deepseek",
+      source: "provider:deepseek-chat-completions-api",
+      success: true,
+      text: JSON.stringify({
+        assumptions: ["Use the supplied Asia/Tokyo time zone."],
+        capabilityId: "followups.reviewQueue",
+        explanation: "A daily review keeps follow-up priorities visible.",
+        instruction:
+          "Review due relationships, rank them by supported priority, and explain the evidence.",
+        title: "Daily follow-up review",
+        trigger: {
+          kind: "schedule",
+          schedule: {
+            kind: "daily",
+            time: "09:00",
+            timeZone: "Asia/Tokyo",
+          },
+        },
+      }),
+    };
+  });
+
+  const result = await compiler.compile({
+    currentTimeIso: "2026-07-29T00:00:00.000Z",
+    request: "每天复核需要跟进的关系，按依据说明优先级",
+    timeZone: "Asia/Tokyo",
+  });
+
+  assert.equal(attempts, 2);
+  assert.equal(result.success, true);
+  assert.equal(result.draft.definition.capabilityId, "followups.reviewQueue");
+});
+
 test("Playbook configuration edits create versions while pause and resume do not", async () => {
   let now = "2026-07-27T00:00:00.000Z";
   const service = createStorageAgentAutomationService({

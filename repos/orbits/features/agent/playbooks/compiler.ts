@@ -200,15 +200,16 @@ export function createAgentPlaybookCompiler(
           success: false,
         };
       }
-      const result = await modelRunner({
+      const userText = JSON.stringify({
+        currentTimeIso:
+          input.currentTimeIso ?? new Date().toISOString(),
+        locale: input.locale ?? "zh",
+        request,
+        timeZone: input.timeZone,
+      });
+      let result = await modelRunner({
         systemInstruction: compilerInstruction(),
-        userText: JSON.stringify({
-          currentTimeIso:
-            input.currentTimeIso ?? new Date().toISOString(),
-          locale: input.locale ?? "zh",
-          request,
-          timeZone: input.timeZone,
-        }),
+        userText,
       });
       if (result.success === false) {
         return {
@@ -219,7 +220,29 @@ export function createAgentPlaybookCompiler(
           success: false,
         };
       }
-      const parsed = parseAgentPlaybookDraft(result.text);
+      let parsed = parseAgentPlaybookDraft(result.text);
+      if (!parsed) {
+        result = await modelRunner({
+          systemInstruction: [
+            compilerInstruction(),
+            "A previous response failed the strict safety schema. Regenerate the draft once.",
+            "Return every required key and use valid JSON with double quotes.",
+            'For a daily schedule, use exactly: "trigger":{"kind":"schedule","schedule":{"kind":"daily","time":"09:00","timeZone":"Asia/Tokyo"}}.',
+            "Do not add capabilities or actions outside the allowed read-only list.",
+          ].join("\n"),
+          userText,
+        });
+        if (result.success === false) {
+          return {
+            error: {
+              code: "PLAYBOOK_PROVIDER_FAILED",
+              message: result.error.message,
+            },
+            success: false,
+          };
+        }
+        parsed = parseAgentPlaybookDraft(result.text);
+      }
       if (!parsed) {
         return {
           error: {
