@@ -349,7 +349,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           </div>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
-          {([[t({ en: "Events", zh: "报名活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "In progress", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+          {([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "In progress", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
             <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
           ))}
         </div>
@@ -389,7 +389,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
           <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOut({ callbackUrl: "/app" }); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
-          {([[t({ en: "Events", zh: "报名" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Active", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+          {([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Active", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
             <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
           ))}
         </div>

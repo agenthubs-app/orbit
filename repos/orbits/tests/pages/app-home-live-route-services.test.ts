@@ -115,6 +115,18 @@ test("app home keeps separate desktop and mobile hub layouts", () => {
   assert.match(homeUiSource, /gridTemplateColumns: "1fr 320px"/);
 });
 
+test("app home does not relabel event records as registrations", () => {
+  const homeRouteSource = source(
+    "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
+  );
+  const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
+
+  assert.doesNotMatch(homeRouteSource, /youRsvped: true/);
+  assert.equal(homeRouteSource.match(/youRsvped: false/g)?.length, 2);
+  assert.doesNotMatch(homeUiSource, /报名活动/);
+  assert.match(homeUiSource, /en: "Events", zh: "活动"/);
+});
+
 test("app home mobile event rows keep long event titles readable", () => {
   const homeUiSource = source("app/(app)/app/home/orbit-real-home.tsx");
 

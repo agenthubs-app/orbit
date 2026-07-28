@@ -280,6 +280,8 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
   assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
   assert.match(pageSource, /attendees: registered \?/);
   assert.match(pageSource, /auth\(\)/);
+  assert.match(pageSource, /const id = eventRouteId\(routeId\)/);
+  assert.match(pageSource, /decodeURIComponent\(value\)/);
   assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
 });
 

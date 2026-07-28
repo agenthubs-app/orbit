@@ -145,7 +145,7 @@ function eventChoiceToLandingEvent(
       attendees,
       authed: true,
       count: attendees.length,
-      youRsvped: true,
+      youRsvped: false,
     },
     status,
     summaryZh: description,
@@ -161,7 +161,7 @@ function eventChoiceToLandingEvent(
     tags: [],
     theme: "relationship",
     venue: event.venue,
-    youRsvped: true,
+    youRsvped: false,
   };
 }
 

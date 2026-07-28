@@ -50,6 +50,14 @@ function readSearchParam(
   return Array.isArray(value) ? value[0] : value;
 }
 
+function eventRouteId(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 async function getEventDetailPageLanguage(): Promise<OrbitLanguage> {
   try {
     return await getOrbitServerLanguage();
@@ -432,11 +440,12 @@ export default async function AppEventDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<AppEventDetailPageSearchParams>;
 }) {
-  const [{ id }, query, session] = await Promise.all([
+  const [{ id: routeId }, query, session] = await Promise.all([
     params,
     searchParams,
     auth(),
   ]);
+  const id = eventRouteId(routeId);
   const language = normalizeRegistrationProfileGuideLanguage(
     readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
   );
