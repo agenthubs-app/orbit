@@ -318,6 +318,49 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-api-settings-persistence",
     },
   ],
+  [
+    "mobile:/account/signup",
+    {
+      entryBehavior: "expo-web-signup-validation-entry-verified",
+      runtimeEvidence: [
+        "mobile signup rendered email/password fields and explicit Google/login alternatives",
+        "invalid email plus short password stayed on the form with localized validation feedback",
+        "password visibility toggle changed its accessible name from 显示密码 to 隐藏密码",
+        "existing-account action navigated to the login route without creating an account",
+      ],
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-signup-validation",
+    },
+  ],
+  [
+    "mobile:/account/forgot-password",
+    {
+      entryBehavior: "expo-web-password-reset-restricted-entry-verified",
+      runtimeEvidence: [
+        "password recovery disclosed that the deployment has no reset service",
+        "the screen collected no email, verification code, or replacement password",
+        "the screen stated that no email or code was sent",
+        "the only action navigated back to login with the return path",
+      ],
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-password-reset-restricted",
+    },
+  ],
+  [
+    "mobile:/account/mobile-google",
+    {
+      entryBehavior: "expo-web-mobile-google-fallback-entry-verified",
+      runtimeEvidence: [
+        "direct broker callback navigation with invalid code/state redirected to mobile login",
+        "no session, provider success, or account identity was synthesized",
+      ],
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-expo-mobile-google-fallback",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -569,6 +612,50 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Health check was read-only and changed no server URL, session, or business record.",
       verificationCase: "expo-api-settings-health-runtime-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/account/signup|repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx#onpress:submit#{view.busyLabel} / {view.primaryLabel}",
+    {
+      actualResult:
+        "Submitting not-an-email with a three-character password stayed on signup and rendered 请输入邮箱，并设置至少 8 位密码。",
+      testData:
+        "Invalid email not-an-email and password 123 in the mobile signup form",
+      idempotency:
+        "Client validation created no account, session, profile, or external provider request.",
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+    },
+  ],
+  [
+    'mobile:/account/signup|repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx#onpress:() => setPasswordVisible((current) => !current)#passwordVisible ? "隐藏密码" : "显示密码"',
+    {
+      actualResult:
+        "The password visibility action changed its accessible name from 显示密码 to 隐藏密码 while preserving the typed value.",
+      testData: "Signup password value 123",
+      idempotency:
+        "Visibility changed only local presentation and performed no request or persistent write.",
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/account/signup|repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx#onpress:() => navigateTo(`${view.switchHref}?next=${encodeURIComponent(next)}`)#{view.switchLabel}",
+    {
+      actualResult:
+        "已有账号，去登录 navigated to /account/login with the normalized return path.",
+      testData: "Mobile signup default return path",
+      idempotency: "Navigation only; no account or session was created.",
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "mobile:/account/forgot-password|repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx#onpress:() =>\n                navigateTo(\n                  `${view.switchHref}?next=${encodeURIComponent(next)}`\n                )#{view.switchLabel}",
+    {
+      actualResult:
+        "The sole 返回登录 action left the explicit restricted state and opened /account/login?next=%2Fdashboard.",
+      testData: "Password recovery with no configured reset provider",
+      idempotency:
+        "Navigation only; no email, verification code, password, or account record was collected or written.",
+      verificationCase: "expo-account-entry-boundaries-2026-07-29",
     },
   ],
 ]);
@@ -1124,6 +1211,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for settings navigation, idempotent same-value persistence, hard-navigation readback, and live success feedback; invalid URL, unreachable server, reset confirmation, and native-device LAN configuration remain pending",
   },
+  {
+    id: "expo-account-entry-boundaries-2026-07-29",
+    target:
+      "Expo signup validation and navigation → password-recovery restricted state → mobile Google callback fallback",
+    testData:
+      "Invalid signup values not-an-email / 123; no configured password-reset provider; fake Google callback code/state",
+    expected:
+      "Invalid signup must create nothing; unavailable password recovery must collect nothing and claim no email/code; invalid Google callback must return to login without a session",
+    actual:
+      "Signup kept invalid values on the form with localized validation, changed the password toggle's accessible name, and navigated to login without creating an account. Password recovery initially reproduced a fake second-step form; after repair it displayed one explicit no-provider/no-send boundary, collected no fields, and returned to login. The invalid mobile Google callback redirected to /account/login with no success state.",
+    evidence:
+      "Authenticated Expo Web form and deep-link traversal; account auth source/view-model tests 10/10; Expo full suite 520/520; Expo typecheck",
+    conclusion:
+      "pass for invalid signup, password-visibility semantics, signup-to-login navigation, reset-provider restriction, and invalid Google callback fallback; successful mobile account creation and native Google provider completion were covered by earlier API/session tests but not repeated in this browser batch",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -1472,6 +1574,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused health tests 2/2 and Expo typecheck passed. Runtime health check against http://localhost:3110 rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。 with no English or orbit-runtime copy.",
     status:
       "fixed and runtime-verified for the reachable-server state; unreachable and malformed-response runtime cases remain pending",
+  },
+  {
+    id: "AUDIT-P1-026",
+    severity: "P1",
+    rootCause:
+      "Mobile password recovery had no email provider, verification-code service, or password-reset persistence, but pressing 发送验证码 unconditionally advanced local forgotStep state—even with an empty email—and rendered code/new-password inputs. A test explicitly locked in this fake second step.",
+    decision:
+      "Align mobile recovery with the already fail-closed Web boundary. Remove forgotStep, code, and new-password models; collect no email when no provider exists; render one explicit statement that nothing was sent; and expose exactly one return-to-login action.",
+    files:
+      "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/view-models/account-auth.ts; account-auth source and view-model tests",
+    regression:
+      "Account-auth focused tests 10/10, Expo full suite 520/520, and Expo typecheck passed. Runtime before/after evidence changed the empty-email fake verification form into a field-free restricted state whose sole action returned to login.",
+    status:
+      "fixed and runtime-verified for the unconfigured provider state; real password recovery requires an email/code/persistence provider before any input form is restored",
   },
 ];
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "d942308353b6d3d1822af1912ffea7fce1e80b30",
-  "deterministicSourceTime": "2026-07-29T02:48:58+09:00",
+  "generatedFromCommit": "0d36c5363546071547269a98567559e219640b26",
+  "deterministicSourceTime": "2026-07-29T02:58:30+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -30,14 +30,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 47,
-    "interactionRouteInstances": 2816,
-    "interactionsRuntimeVerified": 36,
+    "interactionRouteInstances": 2819,
+    "interactionsRuntimeVerified": 40,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 52,
+    "surfacesWithRuntimeEvidence": 55,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 27,
-    "documentedRemediations": 25
+    "documentedVerificationCases": 28,
+    "documentedRemediations": 26
   },
   "surfaces": [
     {
@@ -981,103 +981,115 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 148,
+          "line": 140,
           "tag": "AppScreen",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 153,
+          "line": 145,
           "tag": "DataCard",
           "text": "view.primaryLabel"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 164,
+          "line": 148,
           "tag": "Text",
-          "text": "账号已创建。请用刚才的邮箱继续登录。"
+          "text": "{view.restrictionMessage}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 166,
-          "tag": "Text",
-          "text": "{notice}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 167,
-          "tag": "Text",
-          "text": "{error}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 178,
-          "tag": "Text",
-          "text": "{view.busyLabel} / {view.primaryLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 187,
-          "tag": "Text",
-          "text": "或"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 203,
-          "tag": "Text",
-          "text": "{action.label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 218,
+          "line": 161,
           "tag": "Text",
           "text": "{view.switchLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 238,
+          "line": 176,
+          "tag": "Text",
+          "text": "账号已创建。请用刚才的邮箱继续登录。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 178,
+          "tag": "Text",
+          "text": "{notice}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 179,
+          "tag": "Text",
+          "text": "{error}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 190,
+          "tag": "Text",
+          "text": "{view.busyLabel} / {view.primaryLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 199,
+          "tag": "Text",
+          "text": "或"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 215,
+          "tag": "Text",
+          "text": "{action.label}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 230,
+          "tag": "Text",
+          "text": "{view.switchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 250,
           "tag": "Text",
           "text": "{helperLink.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 252,
+          "line": 265,
           "tag": "View",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 257,
+          "line": 270,
           "tag": "Text",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 276,
+          "line": 289,
           "tag": "Text",
           "text": "{field.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 277,
+          "line": 290,
           "tag": "Text",
           "text": "{field.helper}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "tag": "TextInput",
           "text": "field.placeholder"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "tag": "Pressable",
           "text": "passwordVisible ? \"隐藏密码\" : \"显示密码\""
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-password-reset-restricted-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -1205,7 +1217,43 @@
           "interactionId": "mobile:/account/forgot-password#interaction-3",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 156,
+          "line": 149,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "{view.switchLabel}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                navigateTo(\n                  `${view.switchHref}?next=${encodeURIComponent(next)}`\n                )"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "navigateTo",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "Navigation only; no email, verification code, password, or account record was collected or written.",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "The sole 返回登录 action left the explicit restricted state and opened /account/login?next=%2Fdashboard.",
+          "testData": "Password recovery with no configured reset provider",
+          "testEvidence": [
+            "expo-account-entry-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/account/forgot-password#interaction-4",
+          "surfaceId": "mobile:/account/forgot-password",
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 168,
           "controlType": "callback-control",
           "tag": "AuthField",
           "visibleName": null,
@@ -1235,10 +1283,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-4",
+          "interactionId": "mobile:/account/forgot-password#interaction-5",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 168,
+          "line": 180,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.busyLabel} / {view.primaryLabel}",
@@ -1266,10 +1314,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-5",
+          "interactionId": "mobile:/account/forgot-password#interaction-6",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 191,
+          "line": 203,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -1297,10 +1345,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-6",
+          "interactionId": "mobile:/account/forgot-password#interaction-7",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 208,
+          "line": 220,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.switchLabel}",
@@ -1331,10 +1379,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-7",
+          "interactionId": "mobile:/account/forgot-password#interaction-8",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 223,
+          "line": 235,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{helperLink.label}",
@@ -1365,10 +1413,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-8",
+          "interactionId": "mobile:/account/forgot-password#interaction-9",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "field.placeholder",
@@ -1396,10 +1444,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/forgot-password#interaction-9",
+          "interactionId": "mobile:/account/forgot-password#interaction-10",
           "surfaceId": "mobile:/account/forgot-password",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "passwordVisible ? \"隐藏密码\" : \"显示密码\"",
@@ -1434,8 +1482,13 @@
         "repos/orbit-app/tests/account-auth-view-model.test.ts",
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "password recovery disclosed that the deployment has no reset service",
+        "the screen collected no email, verification code, or replacement password",
+        "the screen stated that no email or code was sent",
+        "the only action navigated back to login with the return path"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-password-reset-restricted"
     },
     {
       "surfaceId": "mobile:/account/login",
@@ -1512,97 +1565,109 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 148,
+          "line": 140,
           "tag": "AppScreen",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 153,
+          "line": 145,
           "tag": "DataCard",
           "text": "view.primaryLabel"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 164,
+          "line": 148,
           "tag": "Text",
-          "text": "账号已创建。请用刚才的邮箱继续登录。"
+          "text": "{view.restrictionMessage}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 166,
-          "tag": "Text",
-          "text": "{notice}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 167,
-          "tag": "Text",
-          "text": "{error}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 178,
-          "tag": "Text",
-          "text": "{view.busyLabel} / {view.primaryLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 187,
-          "tag": "Text",
-          "text": "或"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 203,
-          "tag": "Text",
-          "text": "{action.label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 218,
+          "line": 161,
           "tag": "Text",
           "text": "{view.switchLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 238,
+          "line": 176,
+          "tag": "Text",
+          "text": "账号已创建。请用刚才的邮箱继续登录。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 178,
+          "tag": "Text",
+          "text": "{notice}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 179,
+          "tag": "Text",
+          "text": "{error}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 190,
+          "tag": "Text",
+          "text": "{view.busyLabel} / {view.primaryLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 199,
+          "tag": "Text",
+          "text": "或"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 215,
+          "tag": "Text",
+          "text": "{action.label}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 230,
+          "tag": "Text",
+          "text": "{view.switchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 250,
           "tag": "Text",
           "text": "{helperLink.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 252,
+          "line": 265,
           "tag": "View",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 257,
+          "line": 270,
           "tag": "Text",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 276,
+          "line": 289,
           "tag": "Text",
           "text": "{field.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 277,
+          "line": 290,
           "tag": "Text",
           "text": "{field.helper}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "tag": "TextInput",
           "text": "field.placeholder"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "tag": "Pressable",
           "text": "passwordVisible ? \"隐藏密码\" : \"显示密码\""
         }
@@ -1736,7 +1801,41 @@
           "interactionId": "mobile:/account/login#interaction-3",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 156,
+          "line": 149,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "{view.switchLabel}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                navigateTo(\n                  `${view.switchHref}?next=${encodeURIComponent(next)}`\n                )"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "navigateTo",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/account/login#interaction-4",
+          "surfaceId": "mobile:/account/login",
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 168,
           "controlType": "callback-control",
           "tag": "AuthField",
           "visibleName": null,
@@ -1755,21 +1854,23 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated sign-in replaced the browser session without creating another auth user or profile.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Submitting account C credentials issued a browser-managed HttpOnly Auth.js cookie, validated the session, and returned to the actor-owned /profile.",
+          "testData": "audit-event-isolation-c-20260728-2230@example.invalid against the live production API",
+          "testEvidence": [
+            "expo-web-auth-profile-account-privacy-2026-07-28"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-4",
+          "interactionId": "mobile:/account/login#interaction-5",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 168,
+          "line": 180,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.busyLabel} / {view.primaryLabel}",
@@ -1786,23 +1887,21 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "Repeated sign-in replaced the browser session without creating another auth user or profile.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "Submitting account C credentials issued a browser-managed HttpOnly Auth.js cookie, validated the session, and returned to the actor-owned /profile.",
-          "testData": "audit-event-isolation-c-20260728-2230@example.invalid against the live production API",
-          "testEvidence": [
-            "expo-web-auth-profile-account-privacy-2026-07-28"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-5",
+          "interactionId": "mobile:/account/login#interaction-6",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 191,
+          "line": 203,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -1830,10 +1929,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-6",
+          "interactionId": "mobile:/account/login#interaction-7",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 208,
+          "line": 220,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.switchLabel}",
@@ -1864,10 +1963,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-7",
+          "interactionId": "mobile:/account/login#interaction-8",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 223,
+          "line": 235,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{helperLink.label}",
@@ -1898,10 +1997,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-8",
+          "interactionId": "mobile:/account/login#interaction-9",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "field.placeholder",
@@ -1929,10 +2028,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/login#interaction-9",
+          "interactionId": "mobile:/account/login#interaction-10",
           "surfaceId": "mobile:/account/login",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "passwordVisible ? \"隐藏密码\" : \"显示密码\"",
@@ -2009,7 +2108,7 @@
       "goal": "mobile google product surface; exact user goal requires runtime verification",
       "visibleContent": [],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-mobile-google-fallback-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -2048,8 +2147,11 @@
       "testEvidence": [
         "repos/orbit-app/tests/initial-route.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "direct broker callback navigation with invalid code/state redirected to mobile login",
+        "no session, provider success, or account identity was synthesized"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-mobile-google-fallback"
     },
     {
       "surfaceId": "mobile:/account/permissions",
@@ -2606,103 +2708,115 @@
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 148,
+          "line": 140,
           "tag": "AppScreen",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 153,
+          "line": 145,
           "tag": "DataCard",
           "text": "view.primaryLabel"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 164,
+          "line": 148,
           "tag": "Text",
-          "text": "账号已创建。请用刚才的邮箱继续登录。"
+          "text": "{view.restrictionMessage}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 166,
-          "tag": "Text",
-          "text": "{notice}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 167,
-          "tag": "Text",
-          "text": "{error}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 178,
-          "tag": "Text",
-          "text": "{view.busyLabel} / {view.primaryLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 187,
-          "tag": "Text",
-          "text": "或"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 203,
-          "tag": "Text",
-          "text": "{action.label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 218,
+          "line": 161,
           "tag": "Text",
           "text": "{view.switchLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 238,
+          "line": 176,
+          "tag": "Text",
+          "text": "账号已创建。请用刚才的邮箱继续登录。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 178,
+          "tag": "Text",
+          "text": "{notice}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 179,
+          "tag": "Text",
+          "text": "{error}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 190,
+          "tag": "Text",
+          "text": "{view.busyLabel} / {view.primaryLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 199,
+          "tag": "Text",
+          "text": "或"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 215,
+          "tag": "Text",
+          "text": "{action.label}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 230,
+          "tag": "Text",
+          "text": "{view.switchLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 250,
           "tag": "Text",
           "text": "{helperLink.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 252,
+          "line": 265,
           "tag": "View",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 257,
+          "line": 270,
           "tag": "Text",
           "text": "Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 276,
+          "line": 289,
           "tag": "Text",
           "text": "{field.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 277,
+          "line": 290,
           "tag": "Text",
           "text": "{field.helper}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "tag": "TextInput",
           "text": "field.placeholder"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "tag": "Pressable",
           "text": "passwordVisible ? \"隐藏密码\" : \"显示密码\""
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "expo-web-signup-validation-entry-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [],
       "backCloseBehavior": "not-runtime-verified",
@@ -2830,7 +2944,41 @@
           "interactionId": "mobile:/account/signup#interaction-3",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 156,
+          "line": 149,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "{view.switchLabel}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() =>\n                navigateTo(\n                  `${view.switchHref}?next=${encodeURIComponent(next)}`\n                )"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "navigateTo",
+            "encodeURIComponent"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/account/signup#interaction-4",
+          "surfaceId": "mobile:/account/signup",
+          "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
+          "line": 168,
           "controlType": "callback-control",
           "tag": "AuthField",
           "visibleName": null,
@@ -2860,10 +3008,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-4",
+          "interactionId": "mobile:/account/signup#interaction-5",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 168,
+          "line": 180,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.busyLabel} / {view.primaryLabel}",
@@ -2880,21 +3028,23 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Client validation created no account, session, profile, or external provider request.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Submitting not-an-email with a three-character password stayed on signup and rendered 请输入邮箱，并设置至少 8 位密码。",
+          "testData": "Invalid email not-an-email and password 123 in the mobile signup form",
+          "testEvidence": [
+            "expo-account-entry-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-5",
+          "interactionId": "mobile:/account/signup#interaction-6",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 191,
+          "line": 203,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{action.label}",
@@ -2922,10 +3072,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-6",
+          "interactionId": "mobile:/account/signup#interaction-7",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 208,
+          "line": 220,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.switchLabel}",
@@ -2945,21 +3095,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; no account or session was created.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "已有账号，去登录 navigated to /account/login with the normalized return path.",
+          "testData": "Mobile signup default return path",
+          "testEvidence": [
+            "expo-account-entry-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-7",
+          "interactionId": "mobile:/account/signup#interaction-8",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 223,
+          "line": 235,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{helperLink.label}",
@@ -2990,10 +3142,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-8",
+          "interactionId": "mobile:/account/signup#interaction-9",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 280,
+          "line": 293,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "field.placeholder",
@@ -3021,10 +3173,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/account/signup#interaction-9",
+          "interactionId": "mobile:/account/signup#interaction-10",
           "surfaceId": "mobile:/account/signup",
           "sourceFile": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx",
-          "line": 291,
+          "line": 304,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "passwordVisible ? \"隐藏密码\" : \"显示密码\"",
@@ -3043,14 +3195,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Visibility changed only local presentation and performed no request or persistent write.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The password visibility action changed its accessible name from 显示密码 to 隐藏密码 while preserving the typed value.",
+          "testData": "Signup password value 123",
+          "testEvidence": [
+            "expo-account-entry-boundaries-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         }
       ],
@@ -3061,8 +3215,13 @@
         "repos/orbit-app/tests/initial-route.test.ts",
         "repos/orbit-app/tests/register-invite-view-model.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "mobile signup rendered email/password fields and explicit Google/login alternatives",
+        "invalid email plus short password stayed on the form with localized validation feedback",
+        "password visibility toggle changed its accessible name from 显示密码 to 隐藏密码",
+        "existing-account action navigated to the login route without creating an account"
+      ],
+      "verificationConclusion": "runtime-partially-verified-expo-signup-validation"
     },
     {
       "surfaceId": "mobile:/admin",
@@ -137340,6 +137499,15 @@
       "actual": "设置/服务器 opened /settings/api with the persisted URL. Saving the same value returned 服务器地址已保存, and hard navigation read back http://localhost:3110. The health request reached the server and, after fixing the presentation mapper, rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。 without orbit-runtime or English copy.",
       "evidence": "Authenticated Expo Web click/save/reload/health traversal; tests/health-view-model.test.ts; Expo typecheck",
       "conclusion": "pass for settings navigation, idempotent same-value persistence, hard-navigation readback, and live success feedback; invalid URL, unreachable server, reset confirmation, and native-device LAN configuration remain pending"
+    },
+    {
+      "id": "expo-account-entry-boundaries-2026-07-29",
+      "target": "Expo signup validation and navigation → password-recovery restricted state → mobile Google callback fallback",
+      "testData": "Invalid signup values not-an-email / 123; no configured password-reset provider; fake Google callback code/state",
+      "expected": "Invalid signup must create nothing; unavailable password recovery must collect nothing and claim no email/code; invalid Google callback must return to login without a session",
+      "actual": "Signup kept invalid values on the form with localized validation, changed the password toggle's accessible name, and navigated to login without creating an account. Password recovery initially reproduced a fake second-step form; after repair it displayed one explicit no-provider/no-send boundary, collected no fields, and returned to login. The invalid mobile Google callback redirected to /account/login with no success state.",
+      "evidence": "Authenticated Expo Web form and deep-link traversal; account auth source/view-model tests 10/10; Expo full suite 520/520; Expo typecheck",
+      "conclusion": "pass for invalid signup, password-visibility semantics, signup-to-login navigation, reset-provider restriction, and invalid Google callback fallback; successful mobile account creation and native Google provider completion were covered by earlier API/session tests but not repeated in this browser batch"
     }
   ],
   "remediations": [
@@ -137567,6 +137735,15 @@
       "files": "repos/orbit-app/src/view-models/health.ts; repos/orbit-app/tests/health-view-model.test.ts",
       "regression": "Focused health tests 2/2 and Expo typecheck passed. Runtime health check against http://localhost:3110 rendered 服务器可用 / Orbit 服务响应正常，可以继续使用。 with no English or orbit-runtime copy.",
       "status": "fixed and runtime-verified for the reachable-server state; unreachable and malformed-response runtime cases remain pending"
+    },
+    {
+      "id": "AUDIT-P1-026",
+      "severity": "P1",
+      "rootCause": "Mobile password recovery had no email provider, verification-code service, or password-reset persistence, but pressing 发送验证码 unconditionally advanced local forgotStep state—even with an empty email—and rendered code/new-password inputs. A test explicitly locked in this fake second step.",
+      "decision": "Align mobile recovery with the already fail-closed Web boundary. Remove forgotStep, code, and new-password models; collect no email when no provider exists; render one explicit statement that nothing was sent; and expose exactly one return-to-login action.",
+      "files": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx; repos/orbit-app/src/view-models/account-auth.ts; account-auth source and view-model tests",
+      "regression": "Account-auth focused tests 10/10, Expo full suite 520/520, and Expo typecheck passed. Runtime before/after evidence changed the empty-email fake verification form into a field-free restricted state whose sole action returned to login.",
+      "status": "fixed and runtime-verified for the unconfigured provider state; real password recovery requires an email/code/persistence provider before any input form is restored"
     }
   ],
   "externalLimitations": []

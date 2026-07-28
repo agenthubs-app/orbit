@@ -164,8 +164,8 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
   );
 
   assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 52);
-  assert.equal(inventory.summary.interactionsRuntimeVerified, 36);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 55);
+  assert.equal(inventory.summary.interactionsRuntimeVerified, 40);
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/events/[id]/register",
@@ -271,6 +271,18 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
     [
       "mobile:/settings/api",
       "runtime-partially-verified-expo-api-settings-persistence",
+    ],
+    [
+      "mobile:/account/signup",
+      "runtime-partially-verified-expo-signup-validation",
+    ],
+    [
+      "mobile:/account/forgot-password",
+      "runtime-partially-verified-expo-password-reset-restricted",
+    ],
+    [
+      "mobile:/account/mobile-google",
+      "runtime-partially-verified-expo-mobile-google-fallback",
     ],
   ] as const) {
     assert.equal(

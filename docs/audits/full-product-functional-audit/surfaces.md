@@ -7,11 +7,11 @@
 | `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 90 | inventory-complete-runtime-verification-pending |
 | `mobile:/[...legacy]` | mobile | production | `/[...legacy]` | `mobile:/` | ...legacy | 0 | 0 | 0 | inventory-complete-runtime-verification-pending |
 | `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 12 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 9 | 2 | inventory-complete-runtime-verification-pending |
-| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 9 | 4 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/account/mobile-google` | mobile | production | `/account/mobile-google` | `mobile:/account` |  | 0 | 0 | 1 | inventory-complete-runtime-verification-pending |
+| `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 10 | 2 | runtime-partially-verified-expo-password-reset-restricted |
+| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 10 | 4 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/account/mobile-google` | mobile | production | `/account/mobile-google` | `mobile:/account` |  | 0 | 0 | 1 | runtime-partially-verified-expo-mobile-google-fallback |
 | `mobile:/account/permissions` | mobile | production | `/account/permissions` | `mobile:/account` |  | 0 | 5 | 1 | runtime-partially-verified-expo-web-permission-persistence |
-| `mobile:/account/signup` | mobile | production | `/account/signup` | `mobile:/account` |  | 0 | 9 | 4 | inventory-complete-runtime-verification-pending |
+| `mobile:/account/signup` | mobile | production | `/account/signup` | `mobile:/account` |  | 0 | 10 | 4 | runtime-partially-verified-expo-signup-validation |
 | `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 10 | 2 | inventory-complete-runtime-verification-pending |
 | `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
 | `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 10 | 1 | inventory-complete-runtime-verification-pending |
