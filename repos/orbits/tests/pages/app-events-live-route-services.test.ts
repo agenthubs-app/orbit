@@ -149,6 +149,7 @@ test("/app/events renders the public event catalogue without requiring authentic
   assert.match(pageSource, /getOrbitLandingViewModel/);
   assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
   assert.match(pageSource, /attendees: \[\]/);
+  assert.doesNotMatch(pageSource, /searchParams|scenario/);
   assert.doesNotMatch(pageSource, /redirect\("\/app\/account\/login/);
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
 });
