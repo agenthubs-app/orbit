@@ -67,7 +67,13 @@ export function getDemoPersonAvatarAsset(input: {
   if (input.recordId) {
     const asset = personAssetsByRecordId.get(input.recordId);
 
-    if (asset) {
+    if (
+      asset &&
+      (!input.displayName ||
+        !asset.displayName ||
+        normalizeDisplayName(asset.displayName) ===
+          normalizeDisplayName(input.displayName))
+    ) {
       return asset;
     }
   }

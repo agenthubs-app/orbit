@@ -82,7 +82,10 @@ test("generated relationship live seed writes every default mock fixture collect
     recordId: "event_01",
   });
   assert.equal(event01?.payload.name, defaultMockFixtures.events[0].name);
-  assert.match(event01?.searchText ?? "", /東京インバウンド飲食店成長会/);
+  assert.match(
+    event01?.searchText ?? "",
+    new RegExp(defaultMockFixtures.events[0].name),
+  );
 
   const signup01 = store.getRecord({
     workspaceId,
@@ -96,7 +99,10 @@ test("generated relationship live seed writes every default mock fixture collect
     collectionName: "contacts",
     recordId: "contact_001",
   });
-  assert.equal(contact001?.payload.displayName, "佐藤 健一");
+  assert.equal(
+    contact001?.payload.displayName,
+    defaultMockFixtures.contacts[0]?.displayName,
+  );
   assert.equal(contact001?.sourceType, "qr_scan");
   assert.deepEqual(contact001?.evidenceIds, ["evidence:contact:001"]);
 
@@ -132,15 +138,19 @@ test("generated relationship live seed writes every default mock fixture collect
     recordId: "task_001",
   });
   assert.equal(task001?.targetType, "task");
-  assert.equal(task001?.payload.contactId, "contact_021");
+  const expectedTask001 = defaultMockFixtures.tasks.find(
+    (task) => task.id === "task_001",
+  );
+  assert.equal(task001?.payload.contactId, expectedTask001?.contactId);
+  assert.ok(
+    defaultMockFixtures.contacts.some(
+      (contact) => contact.id === task001?.payload.contactId,
+    ),
+  );
 
-  const conversation001 = store.getRecord({
-    workspaceId,
-    collectionName: "conversations",
-    recordId: "conversation_001",
-  });
-  assert.equal(conversation001?.targetType, "conversation");
-
+  const expectedMessage001 = defaultMockFixtures.messages.find(
+    (message) => message.id === "message_0001",
+  );
   const message001 = store.getRecord({
     workspaceId,
     collectionName: "messages",
@@ -148,7 +158,17 @@ test("generated relationship live seed writes every default mock fixture collect
   });
   assert.equal(message001?.targetType, "message");
   assert.equal(message001?.targetId, "message_0001");
-  assert.equal(message001?.payload.conversationId, "conversation_001");
+  assert.equal(
+    message001?.payload.conversationId,
+    expectedMessage001?.conversationId,
+  );
+
+  const referencedConversation = store.getRecord({
+    workspaceId,
+    collectionName: "conversations",
+    recordId: expectedMessage001?.conversationId ?? "",
+  });
+  assert.equal(referencedConversation?.targetType, "conversation");
 
   const agentAction001 = store.getRecord({
     workspaceId,

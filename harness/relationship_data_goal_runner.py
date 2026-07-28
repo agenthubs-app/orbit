@@ -34,6 +34,7 @@ class MockdataCountRanges:
     participants: tuple[int, int] = (400, 600)
     connections: tuple[int, int] = (800, 1200)
     interactions: tuple[int, int] = (1000, 1500)
+    messages: tuple[int, int] = (300, 600)
     recommendations: tuple[int, int] = (300, 500)
     golden_matches: tuple[int, int] = (100, 200)
 
@@ -45,6 +46,7 @@ CORE_JSON_FILES = {
     "contacts": "seed/contacts.seed.json",
     "connections": "seed/connections.seed.json",
     "interactions": "seed/interactions.seed.json",
+    "messages": "seed/messages.seed.json",
     "ai_analyses": "seed/ai_analyses.seed.json",
     "recommendations": "seed/match_recommendations.seed.json",
     "golden_matches": "tests/golden_matches.json",
@@ -313,6 +315,70 @@ def _check_generated_multilingual_contacts_and_events(mockdata_dir: Path, issues
             )
 
 
+def _contains_han_text(value: object) -> bool:
+    return isinstance(value, str) and any("\u4e00" <= character <= "\u9fff" for character in value)
+
+
+def _evaluate_recommendation_quality(
+    recommendations: list[dict[str, Any]],
+    golden_matches: list[dict[str, Any]],
+    negative_cases: list[dict[str, Any]],
+    *,
+    top_k: int = 3,
+) -> dict[str, float | int]:
+    ranked_by_query: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for recommendation in recommendations:
+        event_id = recommendation.get("event_id")
+        user_id = recommendation.get("user_id")
+        if not isinstance(event_id, str) or not isinstance(user_id, str):
+            continue
+        ranked_by_query.setdefault((event_id, user_id), []).append(recommendation)
+    for candidates in ranked_by_query.values():
+        candidates.sort(
+            key=lambda record: (
+                -float(record.get("score", 0)),
+                str(record.get("recommended_user_id", "")),
+            )
+        )
+
+    top_pairs = {
+        (event_id, user_id, candidate.get("recommended_user_id"))
+        for (event_id, user_id), candidates in ranked_by_query.items()
+        for candidate in candidates[:top_k]
+    }
+    golden_pairs = {
+        (
+            record.get("event_id"),
+            record.get("user_id"),
+            record.get("recommended_user_id"),
+        )
+        for record in golden_matches
+    }
+    negative_pairs = {
+        (
+            record.get("event_id"),
+            record.get("user_id"),
+            record.get("recommended_user_id"),
+        )
+        for record in negative_cases
+    }
+    golden_hits = len(golden_pairs & top_pairs)
+    negative_leaks = len(negative_pairs & top_pairs)
+
+    return {
+        "top_k": top_k,
+        "query_count": len(ranked_by_query),
+        "golden_case_count": len(golden_pairs),
+        "golden_hits": golden_hits,
+        "recall_at_k": golden_hits / len(golden_pairs) if golden_pairs else 0.0,
+        "negative_case_count": len(negative_pairs),
+        "negative_leaks": negative_leaks,
+        "negative_leak_rate": (
+            negative_leaks / len(negative_pairs) if negative_pairs else 0.0
+        ),
+    }
+
+
 def validate_relationship_mockdata(
     mockdata_dir: Path,
     *,
@@ -336,6 +402,7 @@ def validate_relationship_mockdata(
     contacts = data["contacts"]
     connections = data["connections"]
     interactions = data["interactions"]
+    messages = data["messages"]
     ai_analyses = data["ai_analyses"]
     recommendations = data["recommendations"]
     golden_matches = data["golden_matches"]
@@ -349,6 +416,7 @@ def validate_relationship_mockdata(
         "participants": len(participants),
         "connections": len(connections),
         "interactions": len(interactions),
+        "messages": len(messages),
         "recommendations": len(recommendations),
         "golden_matches": len(golden_matches),
         "negative_cases": len(negative_cases),
@@ -401,6 +469,54 @@ def validate_relationship_mockdata(
     for record in interactions:
         if record.get("connection_id") not in connection_ids:
             issues.append(f"interaction {record.get('id')} references missing connection {record.get('connection_id')}.")
+    interaction_summaries = [
+        record.get("summary")
+        for record in interactions
+        if isinstance(record.get("summary"), str) and record["summary"].strip()
+    ]
+    if interactions and len(set(interaction_summaries)) / len(interactions) < 0.9:
+        issues.append("interaction summaries must be at least 90% unique.")
+    interaction_channels = {
+        record.get("channel")
+        for record in interactions
+        if isinstance(record.get("channel"), str)
+    }
+    if interactions and len(interaction_channels) < 5:
+        issues.append("interactions must cover at least five realistic channels.")
+
+    for record in messages:
+        if record.get("connection_id") not in connection_ids:
+            issues.append(f"message {record.get('id')} references missing connection {record.get('connection_id')}.")
+        missing = _missing_string_fields(
+            record,
+            [
+                "conversation_id",
+                "sender_role",
+                "direction",
+                "channel",
+                "occurred_at",
+                "message_type",
+                "body",
+            ],
+        )
+        if missing:
+            issues.append(f"message {record.get('id')} lacks conversation semantics: {missing}.")
+    message_bodies = [
+        record.get("body")
+        for record in messages
+        if isinstance(record.get("body"), str) and record["body"].strip()
+    ]
+    if messages and len(set(message_bodies)) / len(messages) < 0.9:
+        issues.append("message bodies must be at least 90% unique.")
+    if messages and sum(_contains_han_text(body) for body in message_bodies) / len(messages) < 0.8:
+        issues.append("at least 80% of message bodies must contain Chinese relationship context.")
+    messages_per_conversation: dict[str, int] = {}
+    for record in messages:
+        conversation_id = record.get("conversation_id")
+        if isinstance(conversation_id, str) and conversation_id:
+            messages_per_conversation[conversation_id] = messages_per_conversation.get(conversation_id, 0) + 1
+    if messages_per_conversation and min(messages_per_conversation.values()) < 3:
+        issues.append("every generated relationship conversation must contain at least three messages.")
 
     target_ids = {
         "user": user_ids,
@@ -431,6 +547,20 @@ def validate_relationship_mockdata(
             if "score" in record and not _score_in_range(record["score"]):
                 issues.append(f"{label} {record.get('id')} has invalid score {record['score']!r}.")
 
+    recommendation_quality = _evaluate_recommendation_quality(
+        recommendations,
+        golden_matches,
+        negative_cases,
+    )
+    if recommendation_quality["recall_at_k"] < 0.95:
+        issues.append(
+            f"recommendation golden recall@3 {recommendation_quality['recall_at_k']:.3f} is below 0.95."
+        )
+    if recommendation_quality["negative_leaks"] > 0:
+        issues.append(
+            f"recommendation top-3 contains {recommendation_quality['negative_leaks']} negative cases."
+        )
+
     if require_scenarios and len(dirty_cases) < 20:
         issues.append("dirty_data_cases should include at least 20 cases for v1 demo validation.")
     if require_scenarios and not evidence_ids:
@@ -443,6 +573,7 @@ def validate_relationship_mockdata(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mockdata_dir": str(mockdata_dir),
         "counts": counts,
+        "recommendation_quality": recommendation_quality,
         "issues": issues,
     }
 
@@ -567,7 +698,38 @@ def _build_hybrid_runtime_fixture(
         return evidence_id
 
     contacts_by_user_id = {contact["user_id"]: contact for contact in contacts}
+    contacts_by_id = {contact["id"]: contact for contact in contacts}
     users_by_id = {user["id"]: user for user in users}
+    city_labels_zh = {
+        "Tokyo": "东京",
+        "Osaka": "大阪",
+        "Shanghai": "上海",
+        "Shenzhen": "深圳",
+        "Taipei": "台北",
+        "Singapore": "新加坡",
+    }
+    contact_source_labels_zh = {
+        "business_card": "名片录入",
+        "business_card_ocr": "名片识别",
+        "manual": "手动录入",
+        "qr_scan": "二维码录入",
+        "referral": "引荐录入",
+    }
+    relationship_next_actions_zh = [
+        "邀请对方进行一次 15 分钟的需求澄清",
+        "根据最近互动中的具体话题发送一份相关案例",
+        "请共同联系人确认双方意愿后再发起引荐",
+        "先复核已有互动证据，再决定是否继续跟进",
+        "约定下一次交流时间，并提前确认一个明确议题",
+    ]
+    relationship_stage_labels_zh = {
+        "captured": "待复核",
+        "reviewing": "复核中",
+        "active": "积极联系",
+        "needs_follow_up": "待跟进",
+        "nurture": "持续培育",
+        "archived": "已归档",
+    }
 
     runtime_contacts = []
     for index, contact in enumerate(contacts, start=1):
@@ -576,24 +738,27 @@ def _build_hybrid_runtime_fixture(
             evidence_id,
             source_type=contact["source"],
             source_id=contact["id"],
-            summary=(
-                f"{contact['display_name']} / {contact['name_en']} at {contact['company_name_en']}. "
-                f"JA: {contact['profile_ja']} ZH: {contact['profile_zh']} EN: {contact['profile_en']}"
-            ),
+            summary=f"{contact['name_zh']}：{contact['profile_zh']}",
         )
         runtime_contacts.append(
             {
                 "id": contact["id"],
-                "displayName": contact["display_name"],
-                "organization": contact["company_name_en"],
-                "role": contact["role_en"],
-                "location": users_by_id[contact["user_id"]]["city"],
-                "profileSnippet": f"{contact['profile_ja']} / {contact['profile_zh']} / {contact['profile_en']}",
+                "displayName": contact["name_zh"],
+                "organization": contact["company_name_zh"],
+                "role": contact["role_zh"],
+                "location": city_labels_zh.get(
+                    users_by_id[contact["user_id"]]["city"],
+                    users_by_id[contact["user_id"]]["city"],
+                ),
+                "profileSnippet": contact["profile_zh"],
                 "stage": _relationship_stage(index),
                 "source": {
                     "type": _source_type(contact["source"]),
                     "id": f"source:{contact['id']}",
-                    "label": f"{contact['name_ja']} / {contact['name_zh']} / {contact['name_en']}",
+                    "label": (
+                        f"{contact_source_labels_zh.get(contact['source'], '联系人录入')}"
+                        f"：{contact['name_zh']}"
+                    ),
                 },
                 "evidenceIds": [evidence_id],
                 "createdAt": generated_at,
@@ -615,14 +780,14 @@ def _build_hybrid_runtime_fixture(
         runtime_events.append(
             {
                 "id": event["id"],
-                "name": f"{event['title_ja']} / {event['title_en']}",
-                "location": event["city"],
+                "name": event["title_zh"],
+                "location": city_labels_zh.get(event["city"], event["city"]),
                 "startsAt": event["starts_at"],
                 "endsAt": _ends_at(event["starts_at"]),
                 "source": {
                     "type": "event_import",
                     "id": f"source:{event['id']}",
-                    "label": f"{event['title_ja']} / {event['title_zh']} / {event['title_en']}",
+                    "label": f"活动导入：{event['title_zh']}",
                 },
                 "evidenceIds": [evidence_id],
             }
@@ -639,25 +804,24 @@ def _build_hybrid_runtime_fixture(
             source_type="event_import",
             source_id=participant["id"],
             summary=(
-                f"{contact['display_name']} joined {participant['event_id']} looking for "
-                f"{', '.join(participant['looking_for_at_event'])}; can offer "
-                f"{', '.join(participant['can_offer_at_event'])}."
+                f"{contact['name_zh']}参加了{participant['event_id']}；"
+                f"需求：{user['profile_zh']}"
             ),
             confidence=0.86,
         )
         source = {
             "type": "event_import",
             "id": f"source:{participant['id']}",
-            "label": f"{contact['display_name']} event intent",
+            "label": f"{contact['name_zh']}的活动意向",
         }
         runtime_attendees.append(
             {
                 "id": participant["id"],
                 "eventId": participant["event_id"],
                 "contactId": contact["id"],
-                "displayName": contact["display_name"],
-                "organization": contact["company_name_en"],
-                "role": contact["role_en"],
+                "displayName": contact["name_zh"],
+                "organization": contact["company_name_zh"],
+                "role": contact["role_zh"],
                 "status": "reviewed" if index % 3 == 0 else "imported",
                 "source": source,
                 "evidenceIds": [evidence_id],
@@ -694,27 +858,38 @@ def _build_hybrid_runtime_fixture(
             source_type="manual",
             source_id=connection["id"],
             summary=(
-                f"Relationship context for {contact['display_name']}: "
-                f"{', '.join(connection['shared_topics'])}; next action {', '.join(connection['suggested_actions'])}."
+                f"{contact['name_zh']}的人脉关系证据：{contact['profile_zh']} "
+                f"关系强度 {strength}，业务相关度 {relevance}。"
             ),
             confidence=0.82,
         )
+        next_action = relationship_next_actions_zh[
+            (index - 1) % len(relationship_next_actions_zh)
+        ]
         runtime_connection = {
             "id": connection["id"],
             "accountId": account_id,
             "contactId": connection["contact_id"],
             "stage": _relationship_stage(index + 1),
             "valueTypes": _relationship_value_types(index),
-            "summary": f"{contact['display_name']} matches {connection['shared_topics'][0]} through {connection['shared_topics'][1]}.",
+            "summary": (
+                f"{contact['name_zh']}目前处于"
+                f"{relationship_stage_labels_zh[_relationship_stage(index + 1)]}阶段。"
+                f"{contact['profile_zh']} 已有关系强度 {strength}，业务相关度 {relevance}。"
+            ),
             "relationshipStrength": strength,
             "trustLevel": _relationship_trust_level(connection["trust_level"]),
             "businessRelevanceScore": relevance,
-            "sharedTopics": connection["shared_topics"],
-            "suggestedActions": connection["suggested_actions"],
+            "sharedTopics": [
+                contact["role_zh"],
+                contact["company_name_zh"],
+                contact["profile_zh"],
+            ],
+            "suggestedActions": [next_action],
             "source": {
                 "type": "manual",
                 "id": f"source:{connection['id']}",
-                "label": "Generated relationship graph edge",
+                "label": "基于已记录证据生成的人脉关系",
             },
             "evidenceIds": [evidence_id],
             "createdAt": generated_at,
@@ -736,8 +911,16 @@ def _build_hybrid_runtime_fixture(
             evidence_id,
             source_type="agent_action",
             source_id=recommendation["id"],
-            summary=f"{recommendation['reason']} Recommended contact: {recommended_contact['display_name']}.",
+            summary=(
+                f"推荐联系人：{recommended_contact['name_zh']}。"
+                f"{recommended_contact['profile_zh']}"
+            ),
             confidence=0.8,
+        )
+        reason_zh = (
+            f"推荐认识{recommended_contact['name_zh']}："
+            f"{recommended_contact['profile_zh']} "
+            f"当前证据匹配分为 {score}，建议先核对共同目标再推进。"
         )
         runtime_recommendations.append(
             {
@@ -751,11 +934,11 @@ def _build_hybrid_runtime_fixture(
                 "businessRelevanceScore": max(50, score),
                 "sharedTopics": connection["sharedTopics"] if connection else ["relationship context"],
                 "suggestedActions": connection["suggestedActions"] if connection else ["review source evidence before follow-up"],
-                "reason": recommendation["reason"],
+                "reason": reason_zh,
                 "source": {
                     "type": "agent_action",
                     "id": f"source:{recommendation['id']}",
-                    "label": "Generated match recommendation",
+                    "label": "基于关系证据生成的推荐",
                 },
                 "evidenceIds": [evidence_id],
                 "createdAt": generated_at,
@@ -766,10 +949,14 @@ def _build_hybrid_runtime_fixture(
     runtime_conversations = []
     runtime_messages = []
     conversation_by_contact_id: dict[str, str] = {}
-    for index, message in enumerate(messages[:160], start=1):
-        connection = connections[(index - 1) % len(connections)]
+    runtime_conversation_by_id: dict[str, dict[str, Any]] = {}
+    connection_by_id = {connection["id"]: connection for connection in connections}
+    for message in messages:
+        connection = connection_by_id[message["connection_id"]]
         contact_id = connection["contact_id"]
-        conversation_id = conversation_by_contact_id.setdefault(contact_id, f"conversation_{len(conversation_by_contact_id) + 1:03d}")
+        contact = contacts_by_id[contact_id]
+        conversation_id = message["conversation_id"]
+        conversation_by_contact_id.setdefault(contact_id, conversation_id)
         evidence_id = message["evidence_ids"][0]
         add_evidence(
             evidence_id,
@@ -778,33 +965,44 @@ def _build_hybrid_runtime_fixture(
             summary=message["body"],
             confidence=0.78,
         )
-        if len(runtime_conversations) < len(conversation_by_contact_id):
-            runtime_conversations.append(
-                {
-                    "id": conversation_id,
-                    "participantContactIds": [contact_id],
-                    "channel": "email" if message["language"] == "en" else "chat",
-                    "source": {
-                        "type": "chat_summary",
-                        "id": f"source:{conversation_id}",
-                        "label": "Generated relationship conversation",
-                    },
-                    "evidenceIds": [evidence_id],
-                    "updatedAt": generated_at,
-                }
-            )
+        conversation = runtime_conversation_by_id.get(conversation_id)
+        if conversation is None:
+            conversation = {
+                "id": conversation_id,
+                "participantContactIds": [contact_id],
+                "channel": "email" if message["channel"] == "email" else "chat",
+                "subject": f"与{contact['name_zh']}的关系跟进",
+                "source": {
+                    "type": "chat_summary",
+                    "id": f"source:{conversation_id}",
+                    "label": "已记录的人脉互动会话",
+                },
+                "evidenceIds": [],
+                "updatedAt": message["occurred_at"],
+            }
+            runtime_conversation_by_id[conversation_id] = conversation
+            runtime_conversations.append(conversation)
+        conversation["evidenceIds"].append(evidence_id)
+        conversation["updatedAt"] = max(
+            conversation["updatedAt"],
+            message["occurred_at"],
+        )
         runtime_messages.append(
             {
                 "id": message["id"],
                 "conversationId": conversation_id,
-                "direction": "outbound" if index % 3 == 0 else "internal_note",
+                "direction": message["direction"],
                 "body": message["body"],
-                "occurredAt": f"2026-06-{(index % 28) + 1:02d}T13:00:00+09:00",
-                "createdBy": profile_id,
+                "occurredAt": message["occurred_at"],
+                "createdBy": (
+                    profile_id
+                    if message["sender_role"] == "orbit_user"
+                    else message["sender_name"]
+                ),
                 "source": {
                     "type": "chat_summary",
                     "id": f"source:{message['id']}",
-                    "label": "Generated follow-up message",
+                    "label": "已记录的人脉跟进消息",
                 },
                 "evidenceIds": [evidence_id],
             }
@@ -883,6 +1081,14 @@ def _build_hybrid_runtime_fixture(
         )
 
     recommendation_by_id = {recommendation["id"]: recommendation for recommendation in runtime_recommendations}
+    recommendation_id_by_pair = {
+        (
+            recommendation["event_id"],
+            recommendation["user_id"],
+            recommendation["recommended_user_id"],
+        ): recommendation["id"]
+        for recommendation in recommendations
+    }
 
     runtime_recommendation_tests = []
 
@@ -898,7 +1104,13 @@ def _build_hybrid_runtime_fixture(
         index = len(runtime_recommendation_tests) + 1
         contact = contacts_by_user_id.get(record.get("recommended_user_id") or record.get("user_id"), contacts[index % len(contacts)])
         participant = participant_by_user_id.get(record.get("user_id"), participants[index % len(participants)])
-        recommendation_id = runtime_recommendations[index % len(runtime_recommendations)]["id"]
+        recommendation_id = recommendation_id_by_pair.get(
+            (
+                record.get("event_id"),
+                record.get("user_id"),
+                record.get("recommended_user_id"),
+            )
+        )
         connection = first_connection_by_contact_id.get(contact["id"])
         evidence_id = record["evidence_ids"][0]
         add_evidence(
@@ -916,7 +1128,11 @@ def _build_hybrid_runtime_fixture(
                 "attendeeId": participant["id"],
                 "contactId": contact["id"],
                 **({"connectionId": connection["id"]} if connection else {}),
-                **({"recommendationId": recommendation_id} if recommendation_id in recommendation_by_id else {}),
+                **(
+                    {"recommendationId": recommendation_id}
+                    if recommendation_id in recommendation_by_id
+                    else {}
+                ),
                 "expectedOutcome": expected_outcome,
                 "reason": reason,
                 "confidence": confidence,
@@ -971,7 +1187,11 @@ def _build_hybrid_runtime_fixture(
         runtime_tasks.append(
             {
                 "id": f"task_{index:03d}",
-                "title": f"Review follow-up for {recommendation['contactId']}",
+                "title": (
+                    f"复核与"
+                    f"{contacts_by_id[recommendation['contactId']]['name_zh']}"
+                    f"的下一步"
+                ),
                 "status": "open" if index % 4 else "scheduled",
                 "contactId": recommendation["contactId"],
                 **({"connectionId": recommendation["connectionId"]} if "connectionId" in recommendation else {}),
@@ -979,7 +1199,7 @@ def _build_hybrid_runtime_fixture(
                 "source": {
                     "type": "agent_action",
                     "id": f"source:task:{index:03d}",
-                    "label": "Generated recommendation follow-up task",
+                    "label": "基于推荐生成的待复核跟进任务",
                 },
                 "evidenceIds": [evidence_id],
                 "createdAt": generated_at,
@@ -1023,7 +1243,11 @@ def _build_hybrid_runtime_fixture(
             "items": [
                 {
                     "id": f"dashboard_item_{index:03d}",
-                    "title": f"Review {recommendation['recommendationType']} for {recommendation['contactId']}",
+                    "title": (
+                        f"复核与"
+                        f"{contacts_by_id[recommendation['contactId']]['name_zh']}"
+                        f"的人脉机会"
+                    ),
                     "summary": recommendation["reason"],
                     "valueType": recommendation["sharedTopics"] and _relationship_value_types(index)[0],
                     "source": recommendation["source"],
@@ -1051,7 +1275,7 @@ def _build_hybrid_runtime_fixture(
                 "id": f"notification_{index:03d}",
                 "channel": "in_app",
                 "title": task["title"],
-                "body": "Generated relationship follow-up is ready for review.",
+                "body": "人脉跟进建议已准备好，请先复核证据再决定是否执行。",
                 "status": "pending",
                 "scheduledFor": task.get("dueAt"),
                 "source": system_source,
@@ -1104,11 +1328,11 @@ def _build_hybrid_runtime_fixture(
 
     def contact_source_label(source_type: str) -> str:
         return {
-            "business_card_ocr": "Business card exchange",
-            "qr_scan": "Direct QR scan",
-            "referral": "Warm referral",
-            "manual": "Confirmed offline meeting note",
-        }.get(source_type, "Confirmed relationship source")
+            "business_card_ocr": "名片识别记录",
+            "qr_scan": "二维码交换记录",
+            "referral": "双方同意的引荐记录",
+            "manual": "已确认的线下会面记录",
+        }.get(source_type, "已确认的人脉来源")
 
     network_people = []
     platform_person_ids: list[str] = []
@@ -1134,13 +1358,13 @@ def _build_hybrid_runtime_fixture(
                 {
                     "type": "manual",
                     "id": f"source:external-person:{person_id}",
-                    "label": "Current-user external contact record",
+                    "label": "当前用户的外部联系人记录",
                 }
                 if is_external
                 else {
                     "type": "system",
                     "id": f"source:platform-user:{person_id}",
-                    "label": "Generated platform user profile",
+                    "label": "平台用户档案",
                 }
             ),
             "evidenceIds": contact["evidenceIds"],
@@ -1169,7 +1393,7 @@ def _build_hybrid_runtime_fixture(
             "source": {
                 "type": source_type,
                 "id": f"source:{source_type}:{contact['id']}",
-                "label": f"{contact_source_label(source_type)} for {contact['displayName']}",
+                "label": f"{contact_source_label(source_type)}：{contact['displayName']}",
             },
         }
         for contact in runtime_contacts
@@ -1207,8 +1431,8 @@ def _build_hybrid_runtime_fixture(
                 source_type=source_type_for_method(method),
                 source_id=f"person_edge_{edge_number:04d}",
                 summary=(
-                    f"{from_person['displayName']} has a {method.replace('_', ' ')} "
-                    f"relationship path to {to_person['displayName']}."
+                    f"{from_person['displayName']}与{to_person['displayName']}"
+                    f"存在一条已记录的人脉路径，连接方式为 {method}。"
                 ),
                 confidence=0.78,
             )
@@ -1233,7 +1457,7 @@ def _build_hybrid_runtime_fixture(
                     "source": {
                         "type": source_type_for_method(method),
                         "id": f"source:person_edge_{edge_number:04d}",
-                        "label": "Generated platform person relationship edge",
+                        "label": "基于已记录证据的平台人脉关系",
                     },
                     "evidenceIds": [evidence_id],
                     "createdAt": generated_at,
@@ -1259,8 +1483,8 @@ def _build_hybrid_runtime_fixture(
             source_type=contact["source"]["type"],
             source_id=connection_id,
             summary=(
-                f"{contact['displayName']} is a current-user contact backed by "
-                f"{contact['source'].get('label') or contact['source']['type']}."
+                f"{contact['displayName']}是当前用户的联系人；"
+                f"来源为{contact['source'].get('label') or contact['source']['type']}。"
             ),
             confidence=0.82,
             occurred_at=contact["updatedAt"],
@@ -1273,14 +1497,18 @@ def _build_hybrid_runtime_fixture(
                 "stage": contact["stage"],
                 "valueTypes": [value_types[contact_index(contact["id"]) % len(value_types)]],
                 "summary": (
-                    f"{contact['displayName']} has a concrete current-user relationship record "
-                    f"from {contact['source'].get('label') or contact['source']['type']}."
+                    f"{contact['displayName']}有一条可追溯的当前用户关系记录，"
+                    f"来源为{contact['source'].get('label') or contact['source']['type']}。"
                 ),
                 "relationshipStrength": 58 + (contact_index(contact["id"]) % 35),
                 "trustLevel": ["emerging", "warm", "trusted"][contact_index(contact["id"]) % 3],
                 "businessRelevanceScore": 55 + (contact_index(contact["id"]) % 40),
                 "sharedTopics": [contact.get("organization") or "relationship context", contact.get("role") or "business context"],
-                "suggestedActions": ["review evidence before follow-up"],
+                "suggestedActions": [
+                    relationship_next_actions_zh[
+                        contact_index(contact["id"]) % len(relationship_next_actions_zh)
+                    ]
+                ],
                 "source": contact["source"],
                 "evidenceIds": [evidence_id],
                 "createdAt": contact["createdAt"],
@@ -1290,18 +1518,67 @@ def _build_hybrid_runtime_fixture(
         first_connection_by_contact_id[contact["id"]] = connection_id
     connection_ids = {connection["id"] for connection in runtime_connections}
 
-    runtime_tasks = [
-        {
-            **task,
-            **(
-                {"connectionId": first_connection_by_contact_id[task["contactId"]]}
-                if task.get("contactId") in first_connection_by_contact_id
-                else {}
-            ),
-        }
-        for task in runtime_tasks
-        if not task.get("contactId") or task["contactId"] in contact_ids
-    ]
+    generated_at_datetime = datetime.fromisoformat(generated_at)
+    runtime_tasks = []
+    for index in range(1, 81):
+        contact = runtime_contacts[(index - 1) % len(runtime_contacts)]
+        connection_id = first_connection_by_contact_id.get(contact["id"])
+        due_at = (
+            generated_at_datetime
+            + timedelta(days=1 + round(((index - 1) * 89) / 79))
+        ).replace(hour=9, minute=0, second=0, microsecond=0)
+        evidence_id = f"evidence:task:{index:03d}"
+        add_evidence(
+            evidence_id,
+            source_type="agent_action",
+            source_id=f"task_{index:03d}",
+            summary=f"复核与{contact['displayName']}的下一步人脉行动。",
+            confidence=0.8,
+            occurred_at=due_at.isoformat(),
+        )
+        runtime_tasks.append(
+            {
+                "id": f"task_{index:03d}",
+                "title": f"复核与{contact['displayName']}的下一步",
+                "status": "scheduled" if index % 4 == 0 else "open",
+                "contactId": contact["id"],
+                **({"connectionId": connection_id} if connection_id else {}),
+                "dueAt": due_at.isoformat(),
+                "source": {
+                    "type": "agent_action",
+                    "id": f"source:task:{index:03d}",
+                    "label": "基于关系证据生成的待复核跟进任务",
+                },
+                "evidenceIds": [evidence_id],
+                "createdAt": generated_at,
+                "updatedAt": generated_at,
+            }
+        )
+
+    runtime_notifications = []
+    for index, task in enumerate(runtime_tasks[:40], start=1):
+        evidence_id = f"evidence:notification:{index:03d}"
+        add_evidence(
+            evidence_id,
+            source_type="system",
+            source_id=f"notification_{index:03d}",
+            summary=f"任务 {task['id']} 的应用内提醒，尚未发送到外部渠道。",
+            confidence=0.8,
+            occurred_at=task["dueAt"],
+        )
+        runtime_notifications.append(
+            {
+                "id": f"notification_{index:03d}",
+                "channel": "in_app",
+                "title": task["title"],
+                "body": "人脉跟进建议已准备好，请先复核证据再决定是否执行。",
+                "status": "pending",
+                "scheduledFor": task["dueAt"],
+                "source": system_source,
+                "evidenceIds": [evidence_id],
+                "createdAt": generated_at,
+            }
+        )
     runtime_conversations = [
         conversation
         for conversation in runtime_conversations
@@ -1407,7 +1684,7 @@ def _build_hybrid_runtime_fixture(
         "accounts": [
             {
                 "id": account_id,
-                "name": "Orbit Generated Relationship Workspace",
+                "name": "Orbit 人脉测试空间",
                 "createdAt": generated_at,
                 "updatedAt": generated_at,
             }
@@ -1416,8 +1693,8 @@ def _build_hybrid_runtime_fixture(
             {
                 "id": profile_id,
                 "accountId": account_id,
-                "displayName": "結城 航太郎",
-                "role": "Relationship Operations Lead",
+                "displayName": "结城航太郎",
+                "role": "人脉运营负责人",
                 "timezone": "Asia/Tokyo",
                 "createdAt": generated_at,
                 "updatedAt": generated_at,
@@ -1451,6 +1728,8 @@ def _build_hybrid_runtime_fixture(
             }
         ],
         "notifications": runtime_notifications,
+        "meetings": [],
+        "organizers": [],
     }
 
 
@@ -2145,7 +2424,7 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         {
             "id": f"connection_{index:04d}",
             "user_id": users[(index * 5) % len(users)]["id"],
-            "contact_id": contacts[(index * 11) % len(contacts)]["id"],
+            "contact_id": contacts[(index - 1) % len(contacts)]["id"],
             "relationship_type": dictionaries["relationship_types.json"][index % len(dictionaries["relationship_types.json"])],
             "relationship_strength": round(0.35 + (index % 60) / 100, 2),
             "trust_level": round(0.4 + (index % 50) / 100, 2),
@@ -2157,56 +2436,149 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         for index in range(1, 901)
     ]
 
-    interactions = [
-        {
-            "id": f"interaction_{index:04d}",
-            "connection_id": connections[(index * 13) % len(connections)]["id"],
-            "occurred_at": f"2026-06-{(index % 28) + 1:02d}T{(index % 10) + 9:02d}:00:00+09:00",
-            "channel": ["event", "chat", "email", "meeting"][index % 4],
-            "summary": f"Discussed {needs[index % len(needs)]} and {offers[index % len(offers)]}.",
-            "evidence_ids": [f"evidence:interaction:{index:04d}"],
-        }
-        for index in range(1, 1201)
+    primary_connection_by_contact_id: dict[str, dict[str, Any]] = {}
+    for connection in connections:
+        primary_connection_by_contact_id.setdefault(connection["contact_id"], connection)
+    interaction_channels = [
+        "event",
+        "chat",
+        "email",
+        "meeting",
+        "call",
+        "referral",
+        "business_card",
+        "calendar",
     ]
+    interaction_actions = [
+        "确认了对方最关心的业务指标，并约定补充一页数据说明",
+        "交换了项目现状，明确先介绍一位具备落地经验的伙伴",
+        "复核了上次会面的承诺，决定本周只推进一个具体下一步",
+        "讨论了预算与决策人范围，暂不扩大方案边界",
+        "对齐了试点时间和成功标准，等待对方内部确认",
+        "补充了共同联系人背景，确认引荐前先征得双方同意",
+        "核对了名片信息和来源，没有把推断字段当作已确认事实",
+        "回顾了最近一次互动，决定在下周二前发送简短资料",
+    ]
+    interactions: list[dict[str, Any]] = []
+    interaction_index = 0
+    for contact_index, contact in enumerate(contacts):
+        connection = primary_connection_by_contact_id[contact["id"]]
+        for timeline_step in range(8):
+            interaction_index += 1
+            need_zh = needs_i18n[(contact_index + timeline_step) % len(needs_i18n)][1]
+            offer_zh = offers_i18n[(contact_index * 2 + timeline_step) % len(offers_i18n)][1]
+            occurred_at = (
+                generated_at_datetime.astimezone(timezone(timedelta(hours=9)))
+                - timedelta(days=56 - timeline_step * 7 - (contact_index % 5))
+            ).replace(
+                hour=9 + ((contact_index + timeline_step) % 9),
+                minute=(contact_index * 7 + timeline_step * 11) % 60,
+                second=0,
+                microsecond=0,
+            ).isoformat()
+            interactions.append(
+                {
+                    "id": f"interaction_{interaction_index:04d}",
+                    "connection_id": connection["id"],
+                    "contact_id": contact["id"],
+                    "occurred_at": occurred_at,
+                    "channel": interaction_channels[timeline_step],
+                    "interaction_type": [
+                        "first_meeting",
+                        "context_exchange",
+                        "follow_up",
+                        "qualification",
+                        "pilot_planning",
+                        "introduction_consent",
+                        "profile_verification",
+                        "commitment_review",
+                    ][timeline_step],
+                    "direction": "inbound" if timeline_step in {0, 3, 5} else "outbound",
+                    "summary": (
+                        f"与{contact['display_name']}第{timeline_step + 1}次互动：围绕“{need_zh}”和"
+                        f"“{offer_zh}”展开；{interaction_actions[timeline_step]}。"
+                    ),
+                    "evidence_ids": [f"evidence:interaction:{interaction_index:04d}"],
+                }
+            )
 
-    recommendations = [
-        {
-            "id": f"recommendation_{index:04d}",
-            "event_id": relationship_events[index % len(relationship_events)]["id"],
-            "user_id": users[(index * 3) % len(users)]["id"],
-            "recommended_user_id": users[((index * 3) + 17) % len(users)]["id"],
-            "score": round(0.5 + (index % 45) / 100, 2),
-            "reason": f"Need/offer fit: {needs[index % len(needs)]} ↔ {offers[(index + 5) % len(offers)]}.",
-            "evidence_ids": [f"evidence:recommendation:{index:04d}"],
-        }
-        for index in range(1, 351)
-    ]
+    recommendations: list[dict[str, Any]] = []
+    for index in range(1, 351):
+        query_index = (index - 1) % 50
+        candidate_rank = (index - 1) // 50
+        user_index = (query_index * 3) % len(users)
+        recommended_index = (
+            user_index + 17 + candidate_rank * 17
+        ) % len(users)
+        recommendations.append(
+            {
+                "id": f"recommendation_{index:04d}",
+                "event_id": relationship_events[
+                    query_index % len(relationship_events)
+                ]["id"],
+                "user_id": users[user_index]["id"],
+                "recommended_user_id": users[recommended_index]["id"],
+                "score": round(
+                    0.93
+                    - candidate_rank * 0.07
+                    + (query_index % 3) * 0.005,
+                    3,
+                ),
+                "reason": (
+                    f"需求与供给匹配：{needs_i18n[query_index % len(needs_i18n)][1]} ↔ "
+                    f"{offers_i18n[(query_index + candidate_rank + 5) % len(offers_i18n)][1]}；"
+                    "建议先复核双方当前目标，再决定是否引荐。"
+                ),
+                "evidence_ids": [
+                    f"evidence:recommendation:{index:04d}"
+                ],
+            }
+        )
 
-    golden_matches = [
-        {
-            "id": f"golden_match_{index:03d}",
-            "event_id": recommendations[index % len(recommendations)]["event_id"],
-            "user_id": recommendations[index % len(recommendations)]["user_id"],
-            "recommended_user_id": recommendations[index % len(recommendations)]["recommended_user_id"],
-            "score": 0.9,
-            "label": "golden_positive",
-            "evidence_ids": [f"evidence:golden:{index:03d}"],
-        }
-        for index in range(1, 151)
-    ]
+    recommendation_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for recommendation in recommendations:
+        recommendation_groups.setdefault(
+            (recommendation["event_id"], recommendation["user_id"]),
+            [],
+        ).append(recommendation)
+    for candidates in recommendation_groups.values():
+        candidates.sort(
+            key=lambda record: (-float(record["score"]), record["recommended_user_id"])
+        )
 
-    negative_cases = [
-        {
-            "id": f"negative_case_{index:03d}",
-            "event_id": relationship_events[index % len(relationship_events)]["id"],
-            "user_id": users[(index * 2) % len(users)]["id"],
-            "recommended_user_id": users[((index * 2) + 53) % len(users)]["id"],
-            "score": round(0.05 + (index % 20) / 100, 2),
-            "reason": "Low-context or conflicting event intent; should be filtered.",
-            "evidence_ids": [f"evidence:negative:{index:03d}"],
-        }
-        for index in range(1, 61)
-    ]
+    golden_matches: list[dict[str, Any]] = []
+    for event_user, candidates in sorted(recommendation_groups.items()):
+        for expected_rank, recommendation in enumerate(candidates[:3], start=1):
+            index = len(golden_matches) + 1
+            golden_matches.append(
+                {
+                    "id": f"golden_match_{index:03d}",
+                    "event_id": event_user[0],
+                    "user_id": event_user[1],
+                    "recommended_user_id": recommendation["recommended_user_id"],
+                    "score": recommendation["score"],
+                    "expected_rank": expected_rank,
+                    "label": "golden_positive",
+                    "evidence_ids": [f"evidence:golden:{index:03d}"],
+                }
+            )
+
+    negative_cases: list[dict[str, Any]] = []
+    grouped_items = sorted(recommendation_groups.items())
+    for index in range(1, 61):
+        (event_id, user_id), candidates = grouped_items[(index - 1) % len(grouped_items)]
+        candidate = candidates[3 + ((index - 1) % max(1, len(candidates) - 3))]
+        negative_cases.append(
+            {
+                "id": f"negative_case_{index:03d}",
+                "event_id": event_id,
+                "user_id": user_id,
+                "recommended_user_id": candidate["recommended_user_id"],
+                "score": candidate["score"],
+                "reason": "该候选存在表面主题重合，但在同一查询中未进入前三名，应被 Top-3 结果过滤。",
+                "evidence_ids": [f"evidence:negative:{index:03d}"],
+            }
+        )
 
     dirty_cases = [
         {
@@ -2243,16 +2615,60 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         for index in range(1, 241)
     ]
 
-    messages = [
-        {
-            "id": f"message_{index:04d}",
-            "connection_id": connections[index % len(connections)]["id"],
-            "body": f"Follow up about {needs[index % len(needs)]} with a concrete next step.",
-            "language": ["ja", "zh-Hans", "en"][index % 3],
-            "evidence_ids": [f"evidence:message:{index:04d}"],
-        }
-        for index in range(1, 401)
+    message_templates = [
+        "你好，我把上次活动里提到的“{need}”整理成了两个问题：目前最急的是获客、交付还是决策流程？",
+        "谢谢你记得这件事。我们现在更需要“{need}”，如果能先看到你们在“{offer}”上的一个真实案例会更容易判断。",
+        "明白。我会只准备一页案例，重点写清适用条件和不适用范围，不先推进会议邀请。",
+        "这个安排合适。案例里请补充一个可量化结果，并说明是否需要我们提供内部数据。",
+        "已记录：本周四前发一页资料；你确认内容相关后，我们再决定是否约二十分钟继续聊。",
     ]
+    message_types = [
+        "context_question",
+        "requirement_reply",
+        "scope_confirmation",
+        "evidence_request",
+        "next_step_commitment",
+    ]
+    sender_roles = ["orbit_user", "contact", "orbit_user", "contact", "orbit_user"]
+    messages: list[dict[str, Any]] = []
+    message_index = 0
+    for conversation_index, contact in enumerate(contacts[:80], start=1):
+        connection = primary_connection_by_contact_id[contact["id"]]
+        conversation_id = f"conversation_seed_{conversation_index:03d}"
+        need_zh = needs_i18n[conversation_index % len(needs_i18n)][1]
+        offer_zh = offers_i18n[(conversation_index + 3) % len(offers_i18n)][1]
+        for turn_index, template in enumerate(message_templates):
+            message_index += 1
+            sender_role = sender_roles[turn_index]
+            occurred_at = (
+                generated_at_datetime.astimezone(timezone(timedelta(hours=9)))
+                - timedelta(days=12 - (conversation_index % 7))
+                + timedelta(minutes=turn_index * 37 + conversation_index)
+            ).replace(second=0, microsecond=0).isoformat()
+            messages.append(
+                {
+                    "id": f"message_{message_index:04d}",
+                    "conversation_id": conversation_id,
+                    "connection_id": connection["id"],
+                    "contact_id": contact["id"],
+                    "sender_role": sender_role,
+                    "sender_name": (
+                        "Orbit 测试用户"
+                        if sender_role == "orbit_user"
+                        else contact["display_name"]
+                    ),
+                    "direction": "outbound" if sender_role == "orbit_user" else "inbound",
+                    "channel": "email" if conversation_index % 3 == 0 else "chat",
+                    "occurred_at": occurred_at,
+                    "message_type": message_types[turn_index],
+                    "body": (
+                        f"{contact['display_name']}："
+                        + template.format(need=need_zh, offer=offer_zh)
+                    ),
+                    "language": "zh-Hans",
+                    "evidence_ids": [f"evidence:message:{message_index:04d}"],
+                }
+            )
 
     seed_files = {
         "users.seed.json": users,
@@ -2339,16 +2755,88 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
     _write_hybrid_runtime_fixture(mockdata_dir, hybrid_fixture)
 
     (mockdata_dir / "validators/validate_relationship_mockdata.mjs").write_text(
-        "#!/usr/bin/env node\n"
-        "import { existsSync, readFileSync } from 'node:fs';\n"
-        "const root = new URL('../', import.meta.url);\n"
-        "const required = ['seed/users.seed.json','seed/events.seed.json','seed/event_participants.seed.json','seed/connections.seed.json','seed/match_recommendations.seed.json','tests/golden_matches.json'];\n"
-        "for (const rel of required) {\n"
-        "  const url = new URL(rel, root);\n"
-        "  if (!existsSync(url)) throw new Error(`Missing ${rel}`);\n"
-        "  JSON.parse(readFileSync(url, 'utf8'));\n"
-        "}\n"
-        "console.log('relationship mockdata files are present and parseable');\n"
+        """#!/usr/bin/env node
+import { existsSync, readFileSync } from 'node:fs';
+const root = new URL('../', import.meta.url);
+const required = [
+  'seed/users.seed.json',
+  'seed/events.seed.json',
+  'seed/event_participants.seed.json',
+  'seed/connections.seed.json',
+  'seed/interactions.seed.json',
+  'seed/messages.seed.json',
+  'seed/match_recommendations.seed.json',
+  'tests/golden_matches.json',
+  'tests/negative_cases.json',
+];
+const data = new Map();
+for (const rel of required) {
+  const url = new URL(rel, root);
+  if (!existsSync(url)) throw new Error(`Missing ${rel}`);
+  const value = JSON.parse(readFileSync(url, 'utf8'));
+  if (!Array.isArray(value)) throw new Error(`${rel} must contain an array`);
+  data.set(rel, value);
+}
+const messages = data.get('seed/messages.seed.json');
+const messageBodies = messages.map((record) => record.body);
+if (new Set(messageBodies).size / messages.length < 0.9) {
+  throw new Error('message body uniqueness must be at least 90%');
+}
+if (messageBodies.filter((body) => /[\\u3400-\\u9fff]/u.test(body)).length / messages.length < 0.8) {
+  throw new Error('at least 80% of message bodies must contain Chinese context');
+}
+for (const record of messages) {
+  for (const field of ['conversation_id', 'sender_role', 'direction', 'channel', 'occurred_at', 'message_type', 'body']) {
+    if (typeof record[field] !== 'string' || !record[field].trim()) {
+      throw new Error(`message ${record.id} is missing ${field}`);
+    }
+  }
+}
+const conversationCounts = new Map();
+for (const record of messages) {
+  conversationCounts.set(record.conversation_id, (conversationCounts.get(record.conversation_id) ?? 0) + 1);
+}
+if ([...conversationCounts.values()].some((count) => count < 3)) {
+  throw new Error('every conversation must contain at least three messages');
+}
+const interactions = data.get('seed/interactions.seed.json');
+if (new Set(interactions.map((record) => record.summary)).size / interactions.length < 0.9) {
+  throw new Error('interaction summary uniqueness must be at least 90%');
+}
+if (new Set(interactions.map((record) => record.channel)).size < 5) {
+  throw new Error('interactions must cover at least five channels');
+}
+const recommendations = data.get('seed/match_recommendations.seed.json');
+const ranked = new Map();
+for (const record of recommendations) {
+  const key = `${record.event_id}\\u0000${record.user_id}`;
+  const values = ranked.get(key) ?? [];
+  values.push(record);
+  ranked.set(key, values);
+}
+const topPairs = new Set();
+for (const [key, values] of ranked) {
+  values.sort((left, right) => right.score - left.score || left.recommended_user_id.localeCompare(right.recommended_user_id));
+  for (const value of values.slice(0, 3)) {
+    topPairs.add(`${key}\\u0000${value.recommended_user_id}`);
+  }
+}
+const golden = data.get('tests/golden_matches.json');
+const goldenHits = golden.filter((record) => topPairs.has(`${record.event_id}\\u0000${record.user_id}\\u0000${record.recommended_user_id}`)).length;
+const recallAt3 = goldenHits / golden.length;
+if (recallAt3 < 0.95) throw new Error(`golden recall@3 ${recallAt3.toFixed(3)} is below 0.95`);
+const negative = data.get('tests/negative_cases.json');
+const negativeLeaks = negative.filter((record) => topPairs.has(`${record.event_id}\\u0000${record.user_id}\\u0000${record.recommended_user_id}`)).length;
+if (negativeLeaks > 0) throw new Error(`${negativeLeaks} negative cases leaked into top-3`);
+console.log(JSON.stringify({
+  passed: true,
+  conversations: conversationCounts.size,
+  interactionChannels: new Set(interactions.map((record) => record.channel)).size,
+  messageUniqueness: new Set(messageBodies).size / messages.length,
+  recallAt3,
+  negativeLeaks,
+}, null, 2));
+"""
     )
     (mockdata_dir / "generation/README.md").write_text(
         "# Orbit Relationship Mockdata Generation\n\n"
@@ -2360,7 +2848,10 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         "hybrid local-remote database path. Feature services should read that DTO-shaped fixture "
         "through `createOrbitLocalRemoteDatabase()`, not parse these snake_case JSON exports directly.\n\n"
         "The generator writes stable IDs, source/evidence references, conservative low-confidence AI "
-        "analysis flags, negative cases, dirty data cases, and export bundles for future importers.\n"
+        "analysis flags, negative cases, dirty data cases, and export bundles for future importers. "
+        "Every generated conversation contains multiple role-aware Chinese messages, every contact has "
+        "a multi-channel interaction timeline, and the validator executes golden recall@3 plus negative "
+        "top-3 leakage checks instead of only checking that JSON files parse.\n"
     )
 
     return {
@@ -2370,6 +2861,7 @@ def generate_relationship_mockdata(mockdata_dir: Path, *, minimax_plan_text: str
         "participants": len(participants),
         "connections": len(connections),
         "interactions": len(interactions),
+        "messages": len(messages),
         "recommendations": len(recommendations),
         "golden_matches": len(golden_matches),
     }

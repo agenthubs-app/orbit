@@ -471,10 +471,20 @@ async function verifyKeyGeneratedFixtureRecords({
     failures,
     recordId: "contact_001",
     store,
-    verify: (record) =>
-      stringField(record.payload, "displayName") === "佐藤 健一"
+    verify: (record) => {
+      const expectedContact = defaultMockFixtures.contacts.find(
+        (contact) => contact.id === "contact_001",
+      );
+
+      if (!expectedContact) {
+        return "generated fixture is missing key contact contact_001";
+      }
+
+      return stringField(record.payload, "displayName") ===
+        expectedContact.displayName
         ? null
-        : "contacts contact_001 displayName should be 佐藤 健一",
+        : "contacts contact_001 displayName should match defaultMockFixtures";
+    },
     workspaceId,
   });
 
@@ -526,29 +536,37 @@ async function verifyKeyGeneratedFixtureRecords({
     workspaceId,
   });
 
-  await verifyRecord({
-    collectionName: "conversations",
-    failures,
-    recordId: "conversation_001",
-    store,
-    verify: (record) =>
-      record.targetType === "conversation"
-        ? null
-        : "conversations conversation_001 targetType should be conversation",
-    workspaceId,
-  });
+  const expectedMessage = defaultMockFixtures.messages.find(
+    (message) => message.id === "message_0001",
+  );
+  if (!expectedMessage) {
+    failures.push("generated fixture is missing key message message_0001");
+  } else {
+    await verifyRecord({
+      collectionName: "conversations",
+      failures,
+      recordId: expectedMessage.conversationId,
+      store,
+      verify: (record) =>
+        record.targetType === "conversation"
+          ? null
+          : `conversations ${expectedMessage.conversationId} targetType should be conversation`,
+      workspaceId,
+    });
 
-  await verifyRecord({
-    collectionName: "messages",
-    failures,
-    recordId: "message_0001",
-    store,
-    verify: (record) =>
-      stringField(record.payload, "conversationId") === "conversation_001"
-        ? null
-        : "messages message_0001 conversationId should be conversation_001",
-    workspaceId,
-  });
+    await verifyRecord({
+      collectionName: "messages",
+      failures,
+      recordId: expectedMessage.id,
+      store,
+      verify: (record) =>
+        stringField(record.payload, "conversationId") ===
+        expectedMessage.conversationId
+          ? null
+          : `messages ${expectedMessage.id} conversationId should be ${expectedMessage.conversationId}`,
+      workspaceId,
+    });
+  }
 
   await verifyRecord({
     collectionName: "agentActions",

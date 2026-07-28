@@ -4,4 +4,4 @@ This dataset was expanded deterministically from a compact MiniMax Claude SDK pl
 
 The same generator also writes `../orbits/shared/mock/generated-relationship-fixtures.ts`, which satisfies the app's `MockRuntimeFixtures` contract and is consumed by the existing hybrid local-remote database path. Feature services should read that DTO-shaped fixture through `createOrbitLocalRemoteDatabase()`, not parse these snake_case JSON exports directly.
 
-The generator writes stable IDs, source/evidence references, conservative low-confidence AI analysis flags, negative cases, dirty data cases, and export bundles for future importers.
+The generator writes stable IDs, source/evidence references, conservative low-confidence AI analysis flags, negative cases, dirty data cases, and export bundles for future importers. Every generated conversation contains multiple role-aware Chinese messages, every contact has a multi-channel interaction timeline, and the validator executes golden recall@3 plus negative top-3 leakage checks instead of only checking that JSON files parse.

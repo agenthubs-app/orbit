@@ -6039,16 +6039,42 @@ def test_relationship_mockdata_generator_produces_valid_demo_scale(tmp_path):
     result = validate_relationship_mockdata(mockdata)
     contacts = json.loads((mockdata / "generated/contacts.generated.json").read_text())
     events = json.loads((mockdata / "generated/events.generated.json").read_text())
+    interactions = json.loads((mockdata / "seed/interactions.seed.json").read_text())
+    messages = json.loads((mockdata / "seed/messages.seed.json").read_text())
 
     assert result["passed"], result["issues"][:10]
     assert 120 <= result["counts"]["users"] <= 150
-    assert 10 <= result["counts"]["events"] <= 12
+    assert 13 <= result["counts"]["events"] <= 15
     assert 80 <= result["counts"]["companies"] <= 100
     assert 400 <= result["counts"]["participants"] <= 600
     assert 800 <= result["counts"]["connections"] <= 1200
     assert 1000 <= result["counts"]["interactions"] <= 1500
+    assert 300 <= result["counts"]["messages"] <= 600
     assert 300 <= result["counts"]["recommendations"] <= 500
     assert 100 <= result["counts"]["golden_matches"] <= 200
+    assert result["recommendation_quality"]["recall_at_k"] >= 0.95
+    assert result["recommendation_quality"]["negative_leaks"] == 0
+    assert len({message["body"] for message in messages}) / len(messages) >= 0.9
+    assert all(
+        field in message
+        for message in messages
+        for field in [
+            "conversation_id",
+            "sender_role",
+            "direction",
+            "channel",
+            "occurred_at",
+            "message_type",
+        ]
+    )
+    conversation_counts = {}
+    for message in messages:
+        conversation_counts[message["conversation_id"]] = (
+            conversation_counts.get(message["conversation_id"], 0) + 1
+        )
+    assert min(conversation_counts.values()) >= 3
+    assert len({interaction["summary"] for interaction in interactions}) / len(interactions) >= 0.9
+    assert len({interaction["channel"] for interaction in interactions}) >= 5
     assert (mockdata / "exports/local_seed.json").exists()
     assert (mockdata / "validators/validate_relationship_mockdata.mjs").exists()
     assert (mockdata / "generation/README.md").exists()
@@ -6112,6 +6138,8 @@ def test_relationship_mockdata_generator_emits_hybrid_runtime_fixture(tmp_path):
     assert "matchRecommendations" in fixture_text
     assert "interactionMemories" in fixture_text
     assert "recommendationTests" in fixture_text
+    assert '"meetings": []' in fixture_text
+    assert '"organizers": []' in fixture_text
     assert "display_name" not in fixture_text
     assert "event_participants" not in fixture_text
     assert "evidence_ids" not in fixture_text

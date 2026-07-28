@@ -43,19 +43,28 @@ function assertEventAsset(recordId: string): void {
   assertLocalAssetFile(asset.src);
 }
 
-function assertPersonAsset(input: {
+function assertPersonVisualSafety(input: {
   displayName?: string;
   recordId?: string;
 }): void {
   const asset = getDemoPersonAvatarAsset(input);
-  const label = input.recordId ?? input.displayName;
 
-  assert.ok(asset, `missing avatar asset for ${label}`);
+  if (!asset) {
+    return;
+  }
+
   assert.equal(asset.kind, "avatar");
   assert.equal(asset.recordType, "person");
   assert.ok(asset.assetId.startsWith("orbit-demo-avatar-"));
   assert.ok(asset.alt.trim().length > 12);
   assert.ok(asset.sourceLabel.trim().length > 0);
+  if (input.displayName && asset.displayName) {
+    assert.equal(
+      asset.displayName.trim().replace(/\s+/g, " ").toLowerCase(),
+      input.displayName.trim().replace(/\s+/g, " ").toLowerCase(),
+      `avatar ${asset.assetId} must not be reused for a different person`,
+    );
+  }
   assertLocalAssetFile(asset.src);
 }
 
@@ -105,7 +114,7 @@ test("asset manifest covers every displayed demo event across root, events, and 
   }
 });
 
-test("asset manifest covers every displayed demo user or contact across root, contacts, and event detail surfaces", async () => {
+test("displayed people only receive an exact curated avatar; others safely use the initials fallback", async () => {
   const rootLanding = getOrbitLandingViewModel();
   const contacts = await loadAppContactsRouteViewModel();
   const eventDetail = await loadAppEventDetailRoute({
@@ -133,45 +142,54 @@ test("asset manifest covers every displayed demo user or contact across root, co
     eventDetailRouteToRelationshipContextView(eventDetail);
 
   for (const connection of rootLanding.connections) {
-    assertPersonAsset({
+    assertPersonVisualSafety({
       displayName: connection.displayName,
       recordId: connection.id,
     });
   }
 
   for (const contact of contacts.payload.contacts) {
-    assertPersonAsset({
+    assertPersonVisualSafety({
       displayName: contact.displayName,
       recordId: contact.id,
     });
   }
 
-  assertPersonAsset({
+  assertPersonVisualSafety({
     displayName: contactDetail.contact.displayName,
     recordId: contactDetail.contact.id,
   });
 
   for (const attendee of eventDetail.attendeeRoster.attendees) {
-    assertPersonAsset({
+    assertPersonVisualSafety({
       displayName: attendee.displayName,
       recordId: attendee.attendeeId,
     });
   }
 
   for (const recommendation of eventDetail.recommendations.recommendations) {
-    assertPersonAsset({
+    assertPersonVisualSafety({
       displayName: recommendation.attendee.displayName,
       recordId: recommendation.attendee.attendeeId,
     });
   }
 
-  assertPersonAsset({
+  assertPersonVisualSafety({
     displayName: relationshipContext.primaryPerson.name,
   });
 
   for (const person of relationshipContext.recommendedPeople) {
-    assertPersonAsset({
+    assertPersonVisualSafety({
       displayName: person.name,
     });
   }
+
+  assert.equal(
+    getDemoPersonAvatarAsset({
+      displayName: "佐藤健一",
+      recordId: "contact_001",
+    }),
+    null,
+    "a stale record-id avatar must not be shown for a newly generated person",
+  );
 });
