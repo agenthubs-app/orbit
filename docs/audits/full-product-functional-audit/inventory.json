@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "e87f35b526ce20bd4e98274f52e67ef6da3bbfdf",
-  "deterministicSourceTime": "2026-07-29T08:45:23+09:00",
+  "generatedFromCommit": "f3e2d5dd06dea29a3c57da1dd81e73e608ae913d",
+  "deterministicSourceTime": "2026-07-29T08:50:25+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -36,8 +36,8 @@
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 55,
-    "documentedRemediations": 55
+    "documentedVerificationCases": 56,
+    "documentedRemediations": 56
   },
   "surfaces": [
     {
@@ -139005,7 +139005,16 @@
       "expected": "A private contact route must resolve only the authenticated actor's live contact graph. Public query values must not select mock identity data, force fixture states, or execute an action branch during GET rendering; a missing actor-owned contact must expose no fallback person or relationship.",
       "actual": "Before repair, mode=mock rendered the full Kenji Watanabe fixture despite the actor having no matching contact: Aster Grid role, relationship background, bio, topics, conversation prompts, recent interaction, tags, bidirectional value, timeline, evidence IDs, next step, and draft-email control. After repair, the strongest combined query returned an actor-scoped boundary whose expanded source evidence was evidence:contact_detail_not_found. No Kenji identity, company, profile, contact field, enrichment, timeline, evidence detail, draft, message, notification, AI, or outside-provider result appeared. The boundary currently labels not-found as could not load; that separate semantic defect remains open for the next repair.",
       "evidence": "Authenticated production-browser before/after DOM and source-details expansion; source trace from AppContactDetailPage query parameters into mode/scenario/action loader inputs; 16/16 focused live-detail, auth, mock-contract, and visual tests; exact production build; GitNexus page/reader impacts LOW and no staged graph changes; commit e87f35b5",
-      "conclusion": "pass for blocking the exercised authenticated mock identity leak, scenario injection, and GET action branch while preserving actor-scoped live lookup and no-write behavior; not-found classification remains incorrect, and guest return, valid current-actor enriched contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+      "conclusion": "pass for blocking the exercised authenticated mock identity leak, scenario injection, and GET action branch while preserving actor-scoped live lookup and no-write behavior; the separately observed not-found classification was subsequently fixed under web-contact-detail-not-found-classification-2026-07-29, while guest return, valid current-actor enriched contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "web-contact-detail-not-found-classification-2026-07-29",
+      "target": "Authenticated Web missing Contact Detail → truthful empty state, source evidence, and non-looping recovery",
+      "testData": "Missing actor-scoped demo-contact-1 after fixture-query isolation; strongest stale URL retaining mode=mock&scenario=failure&action=prepare-follow-up; Chinese shell locale; exact production build",
+      "expected": "A live CONTACT_DETAIL_NOT_FOUND result must be classified as empty rather than provider failure, retain its evidence, avoid implying a system outage, and recover to the sourced contacts list without offering a retry to the same absent contact.",
+      "actual": "Before repair, evidence:contact_detail_not_found rendered Contact detail could not load, described a controlled failure, and offered Retry contact detail back to the same missing ID. After repair, the same URL rendered No contact detail is available, explained that a sourced contact must be selected, used a route-state-neutral no-side-effects guardrail, and offered only Return to contacts list. The mock identity remained absent.",
+      "evidence": "Authenticated production-browser before/after DOM and source evidence; focused Contact Detail tests 13/13; exact production build; GitNexus loadComposedContactDetailRoute impact LOW with three upstream symbols and staged detection MEDIUM across three Contact Detail flows; commit f3e2d5dd",
+      "conclusion": "pass for CONTACT_DETAIL_NOT_FOUND → empty classification, retained evidence, truthful guardrail, dead-retry removal, list recovery, and no-write behavior on the exercised actor; Chinese localization of route-specific copy, guest return, other missing IDs, provider/config/actor failure copy, responsive, keyboard, and assistive traversal remain unverified"
     },
     {
       "id": "expo-web-auth-profile-account-privacy-2026-07-28",
@@ -139889,7 +139898,16 @@
       "decision": "Make the production HTTP adapter depend only on the decoded contact path ID and authenticated actor. Remove searchParams plus all action/mode/scenario forwarding from the page, while retaining those explicit inputs on the internal loader for deterministic unit tests and capability demos. Missing live contacts now fail closed without any mock identity or relationship projection.",
       "files": "repos/orbits/app/(app)/app/contacts/[id]/page.tsx; repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
       "regression": "GitNexus reported LOW impact with no upstream callers for AppContactDetailPage and one direct page caller for its query reader; staged detection found no graph-level change. Focused contact detail, auth, mock-contract, and visual tests passed 16/16, and the exact production build passed. Browser runtime changed the mock URL from a complete Kenji Watanabe relationship profile into an actor-scoped contact-detail-not-found evidence boundary; the combined mock/failure/action URL exposed no fixture or draft data.",
-      "status": "fixed and runtime-verified for the exercised authenticated mock/scenario/action query leak and no-write boundary; the not-found state is still misclassified as a generic failure, while guest return, a valid enriched live contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+      "status": "fixed and runtime-verified for the exercised authenticated mock/scenario/action query leak and no-write boundary; the separately observed not-found misclassification was subsequently fixed under AUDIT-P2-056, while guest return, a valid enriched live contact under adversarial query, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "AUDIT-P2-056",
+      "severity": "P2",
+      "rootCause": "loadComposedContactDetailRoute mapped every unsuccessful contact-detail service result to the generic failure boundary even though the contract explicitly defines CONTACT_DETAIL_NOT_FOUND with appCode NOT_FOUND. The page's shared guardrail also called every non-success state failed. A normal actor-scoped miss therefore looked like a provider outage and offered a retry loop to the same absent contact.",
+      "decision": "Map only CONTACT_DETAIL_NOT_FOUND to the existing empty boundary while preserving all actor, configuration, validation, and provider errors as failure. Carry the service evidence through unchanged, use route-state-neutral guardrail copy, and rely on the empty boundary's single recovery to the sourced contacts list.",
+      "files": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts; repos/orbits/app/(app)/app/contacts/[id]/page.tsx; repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts",
+      "regression": "GitNexus reported LOW upstream impact for loadComposedContactDetailRoute and staged detection MEDIUM across NormalizeScenario, ContactOnlySuccess, and ConnectionIdForContact flows. Focused Contact Detail tests passed 13/13 and the exact production build passed. Browser runtime changed contact_detail_not_found from generic failure plus same-ID retry into a truthful empty state with neutral no-side-effects copy and one contacts-list recovery.",
+      "status": "fixed and runtime-verified for the exercised actor-scoped not-found classification, evidence retention, dead-retry removal, and no-write recovery; Chinese route-copy localization, guest return, other missing IDs, provider/config/actor failure copy, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []
