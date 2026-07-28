@@ -615,6 +615,22 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-web-today-meeting-service-boundary",
     },
   ],
+  [
+    "web:/app/agent",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-isolated-agent-entry-verified",
+      runtimeEvidence: [
+        "the authenticated actor loaded an empty chat-history sidebar instead of the 13 sessions previously leaked from the deployment-wide workspace",
+        "the relationship workspace preserved the actor's truthful zero-change state",
+        "refreshing the workspace kept the same actor-scoped zero state without creating a session or operation",
+        "unauthenticated session-list and session-delete requests both failed with 401 before storage access",
+      ],
+      verificationCase: "web-agent-session-actor-isolation-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-agent-session-actor-isolation",
+    },
+  ],
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
@@ -1092,6 +1108,18 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Closing the explanation changed local modal state only and performed no request or persistent write.",
       verificationCase: "web-today-meeting-service-boundary-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-agent-today-workspace.tsx:258",
+    {
+      actualResult:
+        "刷新 reloaded the relationship workspace and preserved the authenticated actor's empty, truthful zero-change state without restoring any deployment-global chat history.",
+      testData:
+        "Authenticated audit actor with zero contacts, follow-ups, calendar changes, Agent operations, and actor-scoped chat sessions",
+      idempotency:
+        "Read-only refresh; no chat session, message, operation, relationship, follow-up, calendar, or external record was written.",
+      verificationCase: "web-agent-session-actor-isolation-2026-07-29",
     },
   ],
 ]);
@@ -1782,6 +1810,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for the exercised no-service boundary and local open/close behavior; real meeting creation remains unimplemented until all named service contracts and readback exist",
   },
+  {
+    id: "web-agent-session-actor-isolation-2026-07-29",
+    target:
+      "Authenticated Web Agent chat history and unauthenticated conversation-session API boundaries",
+    testData:
+      "Audit actor whose contacts and relationship ledger were empty; 13 pre-existing deployment-workspace sessions naming unrelated people and events; isolated Alice/Bob providers using the same session ID; unauthenticated list and delete requests",
+    expected:
+      "Persisted Agent sessions must be partitioned by the canonical authenticated actor; unauthenticated reads and deletes must fail before provider access; one actor must never read or delete another actor's same-ID session",
+    actual:
+      "Runtime first exposed all 13 deployment-global sessions to the audit actor. After repair, the same account rendered an empty history while keeping its truthful zero-change workspace. Direct unauthenticated GET and DELETE requests returned 401. Provider tests proved Alice and Bob could persist the same session ID independently and that deleting Alice's copy left Bob's copy intact.",
+    evidence:
+      "Authenticated production browser before/after DOM plus workspace refresh; unauthenticated production HTTP GET/DELETE probes; focused Agent session API/live-store tests 6/6; Web lint; Next TypeScript; exact-origin production build",
+    conclusion:
+      "pass for actor-isolated list/get/save/delete semantics, unauthenticated list/delete denial, empty-history rendering, and workspace refresh; authenticated multi-browser account switching and populated post-fix conversation creation remain pending",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -2256,6 +2299,20 @@ const AUDIT_REMEDIATIONS = [
       "Today/Followups/Schedule focused tests 55/55, Next TypeScript, exact-origin production build, and authenticated browser before/after traversal passed. The private event, fixed date, topic field, and Send invite action disappeared; only the explicit no-write boundary and 知道了 remained.",
     status:
       "fixed and runtime-verified for Web Today; the shared Followups legacy renderer is source-tested, while real meeting creation remains unimplemented",
+  },
+  {
+    id: "AUDIT-P0-035",
+    severity: "P0",
+    rootCause:
+      "The Agent conversation-session routes accepted unauthenticated list, save, read, and delete requests, while the live provider stored every account under one deployment-wide workspace ID. Any caller could therefore enumerate or delete shared histories, and authenticated users saw sessions belonging to unrelated actors.",
+    decision:
+      "Resolve the canonical authenticated API actor before any provider access and derive an injective actor subworkspace for every session and message operation. Cache configured providers by actor, keep mock storage shared only beneath the same actor partition, and leave legacy unscoped records invisible rather than guessing ownership.",
+    files:
+      "repos/orbits/app/api/ai/conversations/sessions/route.ts; repos/orbits/app/api/ai/conversations/sessions/handler.ts; repos/orbits/app/api/ai/conversations/sessions/[id]/route.ts; repos/orbits/app/api/ai/conversations/sessions/[id]/handler.ts; repos/orbits/features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts; repos/orbits/features/orbit-ai/storage/orbit-agent-chat-session-provider-factory.ts; focused Agent session API/live-store tests",
+    regression:
+      "Focused Agent tests 6/6, Web lint, Next TypeScript, and exact-origin production build passed. The authenticated audit actor changed from 13 unrelated histories to an empty actor-scoped sidebar; unauthenticated GET and DELETE returned 401; Alice/Bob same-ID isolation and deletion safety passed.",
+    status:
+      "fixed and runtime-verified for the exercised actor, unauthenticated list/delete boundary, and same-ID provider isolation; populated post-fix multi-account browser readback remains pending",
   },
 ];
 
