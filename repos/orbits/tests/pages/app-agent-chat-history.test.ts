@@ -336,6 +336,9 @@ test("agent home starts fresh unless the URL explicitly selects a session", () =
 
 test("agent sidebar exposes deletion and width resizing controls for history", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const styles = readProjectFile(
+    "app/(app)/app/orbit-reference-styles.tsx",
+  );
 
   assert.match(source, /deleteStoredAgentChatSession/);
   assert.match(source, /method: "DELETE"/);
@@ -382,6 +385,14 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /aria-labelledby="orbit-agent-mobile-history-title"/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /role="dialog"/);
+  assert.match(
+    styles,
+    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \{\s*display: contents;/,
+  );
+  assert.match(
+    styles,
+    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \.ri-trigger \{\s*display: none;/,
+  );
 });
 
 test("agent history uses a flat, left-aligned navigation list", () => {

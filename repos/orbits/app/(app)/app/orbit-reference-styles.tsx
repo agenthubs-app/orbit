@@ -2356,6 +2356,16 @@ html:has([data-orbit-real-page]) {
   [data-orbit-real-page] .orbit-nav-account-slot {
     display: none;
   }
+  /* Agent already supplies a route-specific history action through the
+     contextual nav slot. Keep that one mobile control reachable while the
+     global relationship-inbox trigger remains in the hamburger-era desktop
+     extras boundary. */
+  [data-orbit-real-page="agent"] .orbit-nav-extra {
+    display: contents;
+  }
+  [data-orbit-real-page="agent"] .orbit-nav-extra .ri-trigger {
+    display: none;
+  }
 
   [data-orbit-real-page] .orbit-lang-toggle {
     background: var(--surface-2);
