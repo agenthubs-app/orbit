@@ -887,6 +887,11 @@ function AgentHistoryList({
     setRenamingHistoryTitle("");
   };
 
+  const cancelRename = () => {
+    setRenamingHistoryId(null);
+    setRenamingHistoryTitle("");
+  };
+
   useEffect(() => {
     if (!historyMenuOpenId) {
       return undefined;
@@ -949,19 +954,17 @@ function AgentHistoryList({
                           event.preventDefault();
                           finishRename(item);
                         }}
-                        style={{ alignItems: "center", display: "flex", flex: 1, minWidth: 0, padding: "4px 0" }}
+                        style={{ alignItems: "center", display: "flex", flex: 1, gap: 4, minWidth: 0, padding: "4px 0" }}
                       >
                         <input
                           aria-label={t({ en: "Rename conversation", zh: "重命名对话" })}
                           autoFocus
                           data-orbit-agent-history-rename-input={item.sessionId}
-                          onBlur={() => finishRename(item)}
                           onChange={(event) => setRenamingHistoryTitle(event.target.value)}
                           onKeyDown={(event) => {
                             if (event.key === "Escape") {
                               event.preventDefault();
-                              setRenamingHistoryId(null);
-                              setRenamingHistoryTitle("");
+                              cancelRename();
                             }
                           }}
                           value={renamingHistoryTitle}
@@ -979,6 +982,28 @@ function AgentHistoryList({
                             padding: "0 8px",
                           }}
                         />
+                        <button
+                          aria-label={t({ en: "Save conversation name", zh: "保存对话名称" })}
+                          className="btn btn-icon btn-quiet"
+                          data-orbit-agent-history-save-rename={item.sessionId}
+                          disabled={!renamingHistoryTitle.trim()}
+                          title={t({ en: "Save", zh: "保存" })}
+                          type="submit"
+                          style={{ height: 30, width: 30 }}
+                        >
+                          <Icon name="check" size={14} />
+                        </button>
+                        <button
+                          aria-label={t({ en: "Cancel conversation rename", zh: "取消重命名对话" })}
+                          className="btn btn-icon btn-quiet"
+                          data-orbit-agent-history-cancel-rename={item.sessionId}
+                          onClick={cancelRename}
+                          title={t({ en: "Cancel", zh: "取消" })}
+                          type="button"
+                          style={{ height: 30, width: 30 }}
+                        >
+                          <Icon name="x" size={14} />
+                        </button>
                       </form>
                     ) : (
                       <button

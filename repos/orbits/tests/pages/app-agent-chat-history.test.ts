@@ -306,6 +306,12 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
     source,
     /aria-label=\{t\(\{ en: "Rename conversation", zh: "重命名对话" \}\)\}/,
   );
+  assert.match(source, /data-orbit-agent-history-save-rename/);
+  assert.match(source, /data-orbit-agent-history-cancel-rename/);
+  assert.doesNotMatch(
+    source,
+    /data-orbit-agent-history-rename-input=\{item\.sessionId\}[\s\S]{0,180}onBlur=/,
+  );
   assert.match(source, /<Icon name="more"/);
   assert.doesNotMatch(
     source,
