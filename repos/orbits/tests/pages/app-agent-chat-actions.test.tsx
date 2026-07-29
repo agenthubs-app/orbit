@@ -311,6 +311,24 @@ test("Agent chat keeps run and action ids in persisted assistant messages", asyn
   assert.match(source, /agentRetryRequestForAssistant/);
 });
 
+test("Agent run cancellation uses user-facing request language", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/(app)/app/agent/agent-action-status-card.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(source, /取消本次请求/);
+  assert.match(source, /正在取消…/);
+  assert.match(source, /Cancel this request/);
+  assert.match(source, /Canceling…/);
+  assert.doesNotMatch(source, /取消 Run|Cancel run/);
+});
+
 test("Agent run transition API exposes cancellation only, not a fake in-place retry", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(

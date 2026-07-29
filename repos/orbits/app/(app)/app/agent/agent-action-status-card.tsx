@@ -391,8 +391,8 @@ export function AgentActionStatusCard({
     } catch {
       setError(
         language === "zh"
-          ? "网络错误，Run 状态没有改变。"
-          : "Network error. The run was not changed.",
+          ? "本次请求没有取消，请检查网络后重试。"
+          : "This request was not canceled. Check your connection and try again.",
       );
     } finally {
       setPendingActionId(null);
@@ -570,7 +570,13 @@ export function AgentActionStatusCard({
                   onClick={() => void cancelRun()}
                   type="button"
                 >
-                  {language === "zh" ? "取消 Run" : "Cancel run"}
+                  {pendingActionId === "run:cancel"
+                    ? language === "zh"
+                      ? "正在取消…"
+                      : "Canceling…"
+                    : language === "zh"
+                      ? "取消本次请求"
+                      : "Cancel this request"}
                 </button>
               ) : null}
               {runView.progress.canRetry && onRetryRequest ? (
