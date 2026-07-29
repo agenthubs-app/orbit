@@ -3356,6 +3356,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source-level separation of public contacts filters from internal scenario/action controls with full Web regression coverage; authenticated browser DOM, valid-filter browser behavior, each affected route independently, duplicate/array/encoded query values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-home-route-control-isolation-2026-07-29",
+    target:
+      "Authenticated Web personal Home and Home Events → actor-only child-route composition",
+    testData:
+      "/app/home and /app/home/events page adapters; arbitrary public scenario/action query values; shared Home loader composing Events, Contacts, and Profile child models",
+    expected:
+      "Personal Home has no server-side query filter contract, so URL parameters must not select child-service fixtures or actions. Only the authenticated actor and server-owned configuration may determine the composite payload.",
+    actual:
+      "Before repair, both page adapters forwarded the entire public searchParams object into loadAppHomeRouteViewModel, which passed it to Events, Contacts, and Profile loaders with active scenario/action branches. After repair, neither page declares or reads searchParams; both call the same loader with undefined query input and the unchanged authenticated actor.",
+    evidence:
+      "Source trace across both page adapters and the three-child Home composer; Home focused tests 20/20; exact production build; preceding shared Contacts boundary full Web suite 1353/1353; GitNexus pre-edit impacts LOW for both pages and staged CRITICAL detection across 16 Home composition flows; commit 774b332e",
+    conclusion:
+      "pass for source-level removal of public query injection at both personal Home adapters with focused/build coverage; authenticated browser DOM, other query shapes, cache/proxy behavior, child provider failures, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4180,6 +4195,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported HIGH pre-edit impact with seven direct callers, nine upstream symbols, and four process groups. Staged detection reported CRITICAL across 22 generated Contacts/Home flows, so the change was held for expanded verification. Contacts/Home focused tests passed 38/38, the complete Web suite passed 1353/1353 with no skips, and the exact production build passed. Regression proves public scenario/action are inert while explicit internal scenario remains available.",
     status:
       "fixed and source/build/full-suite-verified for the shared Contacts loader boundary; authenticated browser runtime, legitimate filter combinations, each caller independently, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-060",
+    severity: "P1",
+    rootCause:
+      "AppPersonalHomePage and AppPersonalHomeEventsPage accepted unrestricted searchParams despite having no legitimate server-side query contract, then forwarded the object to the Home composer. The composer propagated it to Events, Contacts, and Profile route models, allowing one public URL parameter to reach multiple internal fixture/action branches.",
+    decision:
+      "Remove searchParams from both production Home page adapters and pass undefined explicitly to the existing Home loader. Preserve its internal searchParams argument for controlled composition tests; keep authenticated actor propagation, child service ordering, presentation, and recovery behavior unchanged.",
+    files:
+      "repos/orbits/app/(app)/app/home/page.tsx; repos/orbits/app/(app)/app/home/events/page.tsx; repos/orbits/tests/pages/app-home-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW pre-edit upstream impact for both page functions. Staged detection reported CRITICAL because they participate in 16 Home-to-child execution flows; the warning was surfaced before commit. Home-focused tests passed 20/20, the exact production build passed, and the immediately preceding shared boundary had passed the full Web suite 1353/1353. Source assertions require undefined query input and forbid searchParams in both adapters.",
+    status:
+      "fixed and source/build-verified for both authenticated personal Home adapters; authenticated browser runtime, other query shapes, cache/proxy behavior, provider failures, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
