@@ -105,6 +105,8 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /function AgentPeopleCard/);
   assert.match(agentSource, /navigate\(`\/home\/cards\/\$\{connection\.id\}`\)/);
   assert.match(agentSource, /<AgentEvidenceSources/);
+  assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
+  assert.match(agentSource, /details\.open = !details\.open/);
 });
 
 test("/app/agent makes contact and event discovery explicit before submission", () => {

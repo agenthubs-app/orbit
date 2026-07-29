@@ -860,6 +860,22 @@ function AgentMessageCopyButton({ text }: { text: string }) {
   );
 }
 
+function toggleAgentEvidenceSourcesFromKeyboard(
+  event: ReactKeyboardEvent<HTMLElement>,
+) {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  const details = event.currentTarget.parentElement;
+  if (!(details instanceof HTMLDetailsElement)) {
+    return;
+  }
+
+  event.preventDefault();
+  details.open = !details.open;
+}
+
 function AgentEvidenceSources({
   references,
 }: {
@@ -883,7 +899,10 @@ function AgentEvidenceSources({
         paddingTop: 8,
       }}
     >
-      <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+      <summary
+        onKeyDown={toggleAgentEvidenceSourcesFromKeyboard}
+        style={{ cursor: "pointer", fontWeight: 600 }}
+      >
         {t({
           en: `Sources · ${totalItems} records`,
           zh: `查看依据 · ${totalItems} 条真实记录`,
