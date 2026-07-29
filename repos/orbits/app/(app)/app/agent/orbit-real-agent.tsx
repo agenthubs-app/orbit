@@ -15,6 +15,7 @@ import type {
 import { AccountTopNav } from "../orbit-account-shell";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { useOrbitLanguage } from "../orbit-language-context";
+import { useOrbitModalA11y } from "../orbit-modal-a11y";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
@@ -66,6 +67,10 @@ export function agentRetryRequestForAssistant(
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
+type AgentHistoryFeedback = {
+  kind: "error" | "success";
+  text: string;
+};
 
 interface AgentEvidenceRef {
   evidenceIds: readonly string[];
@@ -610,6 +615,18 @@ async function readJsonResponse(response: Response): Promise<unknown> {
   }
 }
 
+export function agentChatHistoryMutationWasPersisted(
+  value: unknown,
+): boolean {
+  return (
+    isRecord(value) &&
+    value.success === true &&
+    isRecord(value.data) &&
+    isRecord(value.data.storage) &&
+    value.data.storage.persisted === true
+  );
+}
+
 async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
   try {
     const response = await fetch(agentChatSessionsApiPath(), {
@@ -655,7 +672,7 @@ async function persistStoredAgentChatSession(
     });
     const payload = await readJsonResponse(response);
 
-    return response.ok && isRecord(payload) && payload.success === true;
+    return response.ok && agentChatHistoryMutationWasPersisted(payload);
   } catch {
     return false;
   }
@@ -670,7 +687,7 @@ async function deleteStoredAgentChatSession(
     });
     const payload = await readJsonResponse(response);
 
-    return response.ok && isRecord(payload) && payload.success === true;
+    return response.ok && agentChatHistoryMutationWasPersisted(payload);
   } catch {
     return false;
   }
@@ -835,6 +852,7 @@ function AgentHistoryList({
   onPick,
   onRename,
   onTogglePin,
+  pendingSessionId,
 }: {
   activeQ: string;
   activeSessionId: string | null;
@@ -843,6 +861,7 @@ function AgentHistoryList({
   onPick: (history: OrbitAgentHistoryView) => void;
   onRename: (history: OrbitAgentHistoryView, title: string) => void;
   onTogglePin: (history: OrbitAgentHistoryView) => void;
+  pendingSessionId: string | null;
 }) {
   const { t } = useOrbitLanguage();
   const [historyMenuOpenId, setHistoryMenuOpenId] = useState<string | null>(null);
@@ -901,10 +920,12 @@ function AgentHistoryList({
                 );
                 const menuOpen = historyMenuOpenId === item.id;
                 const renaming = renamingHistoryId === item.id;
+                const pending = item.sessionId === pendingSessionId;
                 const controlsVisible = active || menuOpen || hoveredHistoryId === item.id;
 
                 return (
                   <div
+                    aria-busy={pending}
                     className={`orbit-agent-history-row${active ? " is-active" : ""}`}
                     key={item.id}
                     onMouseEnter={() => setHoveredHistoryId(item.id)}
@@ -984,6 +1005,7 @@ function AgentHistoryList({
                           aria-label={t({ en: "More actions", zh: "更多操作" })}
                           className="btn btn-icon btn-quiet orbit-agent-history-more"
                           data-orbit-agent-history-menu-button={item.sessionId}
+                          disabled={pending}
                           onClick={() => setHistoryMenuOpenId(menuOpen ? null : item.id)}
                           title={t({ en: "More actions", zh: "更多操作" })}
                           type="button"
@@ -1017,6 +1039,7 @@ function AgentHistoryList({
                           >
                             <button
                               data-orbit-agent-history-pin={item.sessionId}
+                              disabled={pending}
                               onClick={() => {
                                 setHistoryMenuOpenId(null);
                                 onTogglePin(item);
@@ -1031,6 +1054,7 @@ function AgentHistoryList({
                             </button>
                             <button
                               data-orbit-agent-history-rename={item.sessionId}
+                              disabled={pending}
                               onClick={() => startRename(item)}
                               role="menuitem"
                               type="button"
@@ -1043,6 +1067,7 @@ function AgentHistoryList({
                             <div style={{ background: "var(--border)", height: 1, margin: "5px 4px" }} />
                             <button
                               data-orbit-agent-history-delete={item.sessionId}
+                              disabled={pending}
                               onClick={() => {
                                 setHistoryMenuOpenId(null);
                                 onDelete(item);
@@ -1064,6 +1089,108 @@ function AgentHistoryList({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AgentHistoryDeleteDialog({
+  error,
+  history,
+  onCancel,
+  onConfirm,
+  pending,
+}: {
+  error: string | null;
+  history: OrbitAgentHistoryView;
+  onCancel: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  const { t } = useOrbitLanguage();
+  const dialogRef = useOrbitModalA11y(() => {
+    if (!pending) {
+      onCancel();
+    }
+  });
+
+  return (
+    <div
+      data-orbit-agent-history-delete-confirmation
+      role="presentation"
+      style={{
+        alignItems: "center",
+        background: "var(--scrim)",
+        display: "flex",
+        inset: 0,
+        justifyContent: "center",
+        padding: 20,
+        position: "fixed",
+        zIndex: ORBIT_Z.modal,
+      }}
+    >
+      <div
+        aria-describedby="orbit-agent-history-delete-description"
+        aria-labelledby="orbit-agent-history-delete-title"
+        aria-modal="true"
+        ref={dialogRef}
+        role="alertdialog"
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)",
+          boxShadow: "var(--sh-pop)",
+          display: "grid",
+          gap: 14,
+          maxWidth: 440,
+          padding: 24,
+          width: "100%",
+        }}
+        tabIndex={-1}
+      >
+        <h2
+          id="orbit-agent-history-delete-title"
+          style={{ color: "var(--ink)", fontSize: 21, margin: 0 }}
+        >
+          {t({ en: "Delete this conversation?", zh: "删除这个对话？" })}
+        </h2>
+        <p
+          id="orbit-agent-history-delete-description"
+          style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.6, margin: 0 }}
+        >
+          {t({
+            en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`,
+            zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`,
+          })}
+        </p>
+        {error ? (
+          <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>
+            {error}
+          </p>
+        ) : null}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+          <button
+            autoFocus
+            className="btn btn-secondary"
+            disabled={pending}
+            onClick={onCancel}
+            type="button"
+          >
+            {t({ en: "Keep conversation", zh: "保留对话" })}
+          </button>
+          <button
+            aria-busy={pending}
+            className="btn btn-danger"
+            data-orbit-agent-history-confirm-delete
+            disabled={pending}
+            onClick={onConfirm}
+            type="button"
+          >
+            {pending
+              ? t({ en: "Deleting…", zh: "正在删除…" })
+              : t({ en: "Delete conversation", zh: "删除对话" })}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1432,8 +1559,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     HISTORY_SIDEBAR_DEFAULT_WIDTH,
   );
   const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
+  const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
+  const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
+  const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
+  const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
+  const historyMutationSessionIdRef = useRef<string | null>(null);
   const languageRef = useRef(language);
   const messagesRef = useRef<AgentMessage[]>(messages);
   const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
@@ -1448,6 +1580,15 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     () => agentChatHistorySessionsToHistory(storedSessions, language),
     [language, storedSessions],
   );
+
+  useEffect(() => {
+    if (historyFeedback?.kind !== "success") {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => setHistoryFeedback(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [historyFeedback]);
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
@@ -1518,7 +1659,17 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     setActiveSessionId(sessionId);
     storedSessionsRef.current = nextSessions;
     setStoredSessions(nextSessions);
-    void persistStoredAgentChatSession(session);
+    void persistStoredAgentChatSession(session).then((persisted) => {
+      if (!persisted) {
+        setHistoryFeedback({
+          kind: "error",
+          text:
+            languageRef.current === "zh"
+              ? "对话已显示在当前页面，但未能保存到历史记录。请检查存储配置后重试。"
+              : "This conversation is visible for now but could not be saved to history. Check storage and try again.",
+        });
+      }
+    });
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
@@ -1849,30 +2000,57 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     navigate("/agent");
   };
 
-  const updateHistorySession = (
+  const updateHistorySession = async (
     sessionId: string,
     update: (session: AgentStoredChatSession) => AgentStoredChatSession,
-  ) => {
+    successText: string,
+  ): Promise<boolean> => {
+    if (historyMutationSessionIdRef.current) {
+      return false;
+    }
+
     const currentSession = storedSessionsRef.current.find(
       (session) => session.id === sessionId,
     );
 
     if (!currentSession) {
-      return;
+      return false;
     }
 
     const nextSession = {
       ...update(currentSession),
       updatedAt: new Date().toISOString(),
     };
-    const nextSessions = upsertAgentChatSession(
-      storedSessionsRef.current,
-      nextSession,
-    );
 
-    storedSessionsRef.current = nextSessions;
-    setStoredSessions(nextSessions);
-    void persistStoredAgentChatSession(nextSession);
+    historyMutationSessionIdRef.current = sessionId;
+    setHistoryMutationSessionId(sessionId);
+    setHistoryFeedback(null);
+
+    try {
+      const persisted = await persistStoredAgentChatSession(nextSession);
+      if (!persisted) {
+        setHistoryFeedback({
+          kind: "error",
+          text:
+            languageRef.current === "zh"
+              ? "未能保存对话历史更改，页面保持原状态。请稍后重试。"
+              : "The history change could not be saved, so nothing changed. Please try again.",
+        });
+        return false;
+      }
+
+      const nextSessions = upsertAgentChatSession(
+        storedSessionsRef.current,
+        nextSession,
+      );
+      storedSessionsRef.current = nextSessions;
+      setStoredSessions(nextSessions);
+      setHistoryFeedback({ kind: "success", text: successText });
+      return true;
+    } finally {
+      historyMutationSessionIdRef.current = null;
+      setHistoryMutationSessionId(null);
+    }
   };
 
   const togglePinnedHistorySession = (item: OrbitAgentHistoryView) => {
@@ -1880,10 +2058,16 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       return;
     }
 
-    updateHistorySession(item.sessionId, (session) => ({
-      ...session,
-      pinned: !session.pinned,
-    }));
+    void updateHistorySession(
+      item.sessionId,
+      (session) => ({
+        ...session,
+        pinned: !session.pinned,
+      }),
+      item.pinned
+        ? t({ en: "Conversation unpinned", zh: "已取消置顶" })
+        : t({ en: "Conversation pinned", zh: "对话已置顶" }),
+    );
   };
 
   const renameHistorySession = (
@@ -1899,11 +2083,15 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       return;
     }
 
-    updateHistorySession(item.sessionId, (session) => ({
-      ...session,
-      customTitle,
-      title: customTitle,
-    }));
+    void updateHistorySession(
+      item.sessionId,
+      (session) => ({
+        ...session,
+        customTitle,
+        title: customTitle,
+      }),
+      t({ en: "Conversation renamed", zh: "对话已重命名" }),
+    );
   };
 
   const deleteHistorySession = (item: OrbitAgentHistoryView) => {
@@ -1911,31 +2099,64 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       return;
     }
 
-    const sessionId = item.sessionId;
-    const nextSessions = storedSessionsRef.current.filter(
-      (session) => session.id !== sessionId,
-    );
+    setHistoryDeleteError(null);
+    setPendingDeleteHistory(item);
+  };
 
-    storedSessionsRef.current = nextSessions;
-    setStoredSessions(nextSessions);
-    void deleteStoredAgentChatSession(sessionId);
-
-    if (activeSessionIdRef.current !== sessionId) {
+  const confirmDeleteHistorySession = async () => {
+    const item = pendingDeleteHistory;
+    const sessionId = item?.sessionId;
+    if (!item || !sessionId || historyMutationSessionIdRef.current) {
       return;
     }
 
-    setHistOpen(false);
-    setMessages([]);
-    setPanel(null);
-    setText("");
-    setThinking(false);
-    setActiveQ("");
-    setActiveSessionId(null);
-    activeSessionIdRef.current = null;
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
+    historyMutationSessionIdRef.current = sessionId;
+    setHistoryMutationSessionId(sessionId);
+    setHistoryDeleteError(null);
+    setHistoryFeedback(null);
+
+    try {
+      const persisted = await deleteStoredAgentChatSession(sessionId);
+      if (!persisted) {
+        setHistoryDeleteError(
+          languageRef.current === "zh"
+            ? "未能删除这个对话，历史记录保持不变。请稍后重试。"
+            : "This conversation could not be deleted, so your history is unchanged. Please try again.",
+        );
+        return;
+      }
+
+      const nextSessions = storedSessionsRef.current.filter(
+        (session) => session.id !== sessionId,
+      );
+      storedSessionsRef.current = nextSessions;
+      setStoredSessions(nextSessions);
+      setPendingDeleteHistory(null);
+      setHistoryFeedback({
+        kind: "success",
+        text: t({ en: "Conversation deleted", zh: "对话已删除" }),
+      });
+
+      if (activeSessionIdRef.current !== sessionId) {
+        return;
+      }
+
+      setHistOpen(false);
+      setMessages([]);
+      setPanel(null);
+      setText("");
+      setThinking(false);
+      setActiveQ("");
+      setActiveSessionId(null);
+      activeSessionIdRef.current = null;
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
+      }
+      navigate("/agent");
+    } finally {
+      historyMutationSessionIdRef.current = null;
+      setHistoryMutationSessionId(null);
     }
-    navigate("/agent");
   };
 
   const renderBubbles = (inlinePanel: boolean) => (
@@ -2072,7 +2293,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
           <div className="scroll orbit-agent-history-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} />
+            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} />
           </div>
         </aside>
         <button
@@ -2180,9 +2401,56 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
               <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
             </div>
             <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
-              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} />
+              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} />
             </div>
           </div>
+        </div>
+      ) : null}
+      {pendingDeleteHistory ? (
+        <AgentHistoryDeleteDialog
+          error={historyDeleteError}
+          history={pendingDeleteHistory}
+          onCancel={() => {
+            setHistoryDeleteError(null);
+            setPendingDeleteHistory(null);
+          }}
+          onConfirm={() => {
+            void confirmDeleteHistorySession();
+          }}
+          pending={historyMutationSessionId === pendingDeleteHistory.sessionId}
+        />
+      ) : null}
+      {historyFeedback ? (
+        <div
+          className="nc-toast show"
+          data-orbit-agent-history-feedback={historyFeedback.kind}
+          role={historyFeedback.kind === "error" ? "alert" : "status"}
+          style={{
+            bottom: 24,
+            left: "50%",
+            maxWidth: "min(520px, calc(100vw - 32px))",
+            opacity: 1,
+            pointerEvents: "auto",
+            position: "fixed",
+            transform: "translateX(-50%)",
+            zIndex: ORBIT_Z.toast,
+          }}
+        >
+          <Icon
+            color={historyFeedback.kind === "error" ? "var(--danger)" : "var(--accent)"}
+            name={historyFeedback.kind === "error" ? "x" : "check"}
+            size={15}
+          />
+          <span>{historyFeedback.text}</span>
+          <button
+            aria-label={t({ en: "Dismiss", zh: "关闭提示" })}
+            className="btn btn-icon btn-quiet"
+            onClick={() => setHistoryFeedback(null)}
+            style={{ height: 24, marginLeft: 4, width: 24 }}
+            type="button"
+          >
+            <Icon name="x" size={13} />
+          </button>
         </div>
       ) : null}
     </div>

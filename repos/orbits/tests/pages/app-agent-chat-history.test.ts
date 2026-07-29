@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  agentChatHistoryMutationWasPersisted,
   agentChatHistorySessionsToHistory,
   parseAgentChatHistoryStorage,
   titleFromMessages,
@@ -250,6 +251,30 @@ test("agent sidebar persists sessions through the Orbit Agent sessions API", () 
   assert.doesNotMatch(source, /history=\{viewModel\.history\}/);
 });
 
+test("agent history mutations require explicit persisted storage evidence", () => {
+  assert.equal(
+    agentChatHistoryMutationWasPersisted({
+      data: { storage: { configured: true, persisted: true } },
+      success: true,
+    }),
+    true,
+  );
+  assert.equal(
+    agentChatHistoryMutationWasPersisted({
+      data: { storage: { configured: false, persisted: false } },
+      success: true,
+    }),
+    false,
+  );
+  assert.equal(
+    agentChatHistoryMutationWasPersisted({
+      error: { code: "SERVICE_UNAVAILABLE" },
+      success: false,
+    }),
+    false,
+  );
+});
+
 test("agent home starts fresh unless the URL explicitly selects a session", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
 
@@ -270,6 +295,11 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /data-orbit-agent-history-menu-button/);
   assert.match(source, /data-orbit-agent-history-menu/);
   assert.match(source, /data-orbit-agent-history-delete/);
+  assert.match(source, /data-orbit-agent-history-delete-confirmation/);
+  assert.match(source, /data-orbit-agent-history-confirm-delete/);
+  assert.match(source, /role="alertdialog"/);
+  assert.match(source, /agentChatHistoryMutationWasPersisted/);
+  assert.match(source, /historyMutationSessionIdRef/);
   assert.match(source, /data-orbit-agent-history-pin/);
   assert.match(source, /data-orbit-agent-history-rename/);
   assert.match(
