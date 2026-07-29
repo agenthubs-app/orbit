@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GET as listLedger } from "../../app/api/agent/ledger/route";
 import { POST as applyTransition } from "../../app/api/agent/ledger/[id]/transition/route";
+import { shouldProcessAgentLedgerOutbox } from "../../app/api/agent/ledger/[id]/transition/transition-execution-policy";
 import { PATCH as updateDraft } from "../../app/api/agent/ledger/[id]/draft/route";
 import { resetSharedMockAgentLedgerServiceForTests } from "../../features/agent/ledger/mock-runtime-service";
 import {
@@ -48,6 +49,13 @@ test("POST transition confirm executes selected operations", async () => {
   const body = await response.json();
   assert.equal(body.success, true);
   assert.equal(body.data.entry.status, "completed");
+});
+
+test("live transition processes outbox after confirmation or explicit action retry", () => {
+  assert.equal(shouldProcessAgentLedgerOutbox("live", "confirm"), true);
+  assert.equal(shouldProcessAgentLedgerOutbox("live", "retry"), true);
+  assert.equal(shouldProcessAgentLedgerOutbox("live", "undo"), false);
+  assert.equal(shouldProcessAgentLedgerOutbox("mock", "retry"), false);
 });
 
 test("POST transition applies draft edits and confirms a runtime action in one request", async () => {

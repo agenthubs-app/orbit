@@ -17,6 +17,7 @@ import {
   createAgentLedgerForRequest,
   resolveAgentRequestContext,
 } from "../../../../_shared/agent-request-context";
+import { shouldProcessAgentLedgerOutbox } from "./transition-execution-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -110,12 +111,12 @@ export async function POST(
     );
   }
 
-  // In live mode a confirmed internal action must not remain indefinitely in
-  // "approved" merely because no separately scheduled worker happened to run.
-  // Process this action's durable outbox now, then return the authoritative
-  // post-execution entry. The runtime still enforces permission, idempotency,
-  // receipts, retries, and compensation for every operation.
-  if (mode === "live" && input.transition === "confirm") {
+  // In live mode a confirmed or explicitly retried internal action must not
+  // remain indefinitely in "approved" merely because no separately scheduled
+  // worker happened to run. Process this action's durable outbox now, then
+  // return the authoritative post-execution entry. The runtime still enforces
+  // permission, idempotency, receipts, retries, and compensation.
+  if (shouldProcessAgentLedgerOutbox(mode, input.transition)) {
     await agentContext.runtime.processOutbox({
       actionId: id,
       limit: 20,
