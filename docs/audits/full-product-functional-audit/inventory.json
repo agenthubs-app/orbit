@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "c113dc86335f3429fa6583cb930e7f7612047848",
-  "deterministicSourceTime": "2026-07-29T14:41:08+09:00",
+  "generatedFromCommit": "a1b62edb6a966dd8a9ab577db0ca49acda05b489",
+  "deterministicSourceTime": "2026-07-29T14:44:34+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -37,9 +37,9 @@
     "overlayImplementations": 7,
     "overlayRouteInstances": 29,
     "interactionRouteInstances": 2326,
-    "interactionsRuntimeVerified": 170,
+    "interactionsRuntimeVerified": 178,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 91,
+    "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
     "documentedVerificationCases": 87,
@@ -44990,7 +44990,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-admin-dashboard-navigation-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href"
@@ -45059,14 +45059,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Route navigation only; no event, profile, registration, attendance, matching, team, or platform record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Desktop 活动管理 opened /app/admin/events and 仪表盘 returned to /app/admin with the same actor-owned source record.",
+          "testData": "Authenticated browser actor with one actor-owned event and one persisted profile",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45092,14 +45094,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Route navigation only; the authenticated session and all actor-owned records were preserved.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "退出后台 opened the authenticated personal /app entry.",
+          "testData": "Authenticated Admin dashboard",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45125,14 +45129,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Responsive route navigation only; no source or operational record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "At 390x844 the visible 活动管理 tab opened /app/admin/events and 仪表盘 returned to /app/admin.",
+          "testData": "Authenticated Admin dashboard at a 390x844 browser viewport",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45197,8 +45203,12 @@
         "repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
         "repos/orbits/tests/ui/orbit-modal-standard.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the dashboard rendered one actor-owned event and the authenticated profile without unsupported operational metrics",
+        "desktop Events opened /app/admin/events, Dashboard returned to /app/admin, and Exit admin opened /app",
+        "at 390x844 the visible mobile Events and Dashboard tabs preserved the exact routes without a horizontal-overflow signal"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-actor-scoped-admin-dashboard"
     },
     {
       "surfaceId": "web:/app/admin/access",
@@ -45670,7 +45680,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-actor-scoped-admin-events-navigation-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href"
@@ -45739,14 +45749,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Route navigation only; no event, profile, registration, attendance, matching, team, or platform record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Desktop 仪表盘 opened /app/admin and 活动管理 returned to /app/admin/events with the same actor-owned source record.",
+          "testData": "Authenticated browser actor with one actor-owned event and one persisted profile",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45772,14 +45784,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Route navigation only; the authenticated session and actor-owned records were preserved.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The shared desktop 退出后台 control was exercised from the Admin shell and resolved to /app.",
+          "testData": "Authenticated shared Admin shell",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45805,14 +45819,16 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Responsive route navigation only; no source or operational record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "At 390x844 the visible 仪表盘 tab opened /app/admin and 活动管理 returned to /app/admin/events.",
+          "testData": "Authenticated Admin Events route at a 390x844 browser viewport",
+          "testEvidence": [
+            "web-admin-navigation-capability-truth-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -45874,8 +45890,12 @@
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the events route rendered the same one actor-owned event and authenticated profile as the dashboard",
+        "desktop Dashboard and Events navigation round-tripped between the two exact Admin routes",
+        "at 390x844 the visible mobile Dashboard and Events tabs round-tripped without replacing the actor-owned source record"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-actor-scoped-admin-events"
     },
     {
       "surfaceId": "web:/app/agent",
@@ -87417,7 +87437,7 @@
         }
       ],
       "layout": "source-inventoried; rendered structure requires viewport verification",
-      "entryBehavior": "not-runtime-verified",
+      "entryBehavior": "authenticated-browser-platform-provider-and-role-fail-closed-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href"
@@ -87473,14 +87493,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Local disclosure state only; no personal, organizer, moderation, role, or platform record was read as success or written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Expanding 来源详情 exposed the unavailable platform provider and unverified platform-admin role evidence.",
+          "testData": "Authenticated personal account without a platform-wide provider or persisted platform-admin role",
+          "testEvidence": [
+            "web-admin-platform-truth-boundary-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -87499,14 +87521,16 @@
           "downstreamCallHints": [],
           "readWrite": "navigation",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Navigation only; no platform access, moderation, organizer verification, or personal record was written.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Return to personal workspace opened /app/home; Open organizer admin opened /app/admin.",
+          "testData": "Authenticated Platform unavailable state with both source-backed recovery actions",
+          "testEvidence": [
+            "web-admin-platform-truth-boundary-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         }
       ],
@@ -87517,8 +87541,12 @@
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts"
       ],
-      "runtimeEvidence": [],
-      "verificationConclusion": "inventory-complete-runtime-verification-pending"
+      "runtimeEvidence": [
+        "the route displayed Platform admin is unavailable before presenting any personal record as platform-wide data",
+        "expanding source details exposed PLATFORM_ADMIN_PROVIDER_UNAVAILABLE, platform-wide-provider:unavailable, and platform-admin-role:unverified",
+        "Return to personal workspace opened /app/home and Open organizer admin opened /app/admin"
+      ],
+      "verificationConclusion": "runtime-partially-verified-web-platform-provider-role-boundary"
     },
     {
       "surfaceId": "web:/app/profile",

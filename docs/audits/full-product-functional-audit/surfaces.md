@@ -58,9 +58,9 @@
 | `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 13 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/signup` | web | production | `/app/account/signup` | `web:/app` |  | 1 | 13 | 2 | runtime-partially-verified-browser-base-state |
-| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 6 | inventory-complete-runtime-verification-pending |
+| `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 6 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 1 | 2 | runtime-partially-verified-browser-base-state |
-| `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 3 | inventory-complete-runtime-verification-pending |
+| `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 3 | runtime-partially-verified-web-actor-scoped-admin-events |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 1 | 87 | 27 | runtime-partially-verified-web-agent-session-actor-isolation |
 | `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 1 | 48 | 11 | runtime-partially-verified-web-chat-workspace-actor-isolation |
 | `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 1 | 61 | 34 | runtime-partially-verified-live-contact-list |
@@ -83,7 +83,7 @@
 | `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 1 | 39 | 5 | runtime-partially-verified-web-party-source-context-boundary |
 | `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 0 | 4 | 5 | runtime-partially-verified-web-party-checkin-source-context-boundary |
 | `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 1 | 12 | 4 | runtime-partially-verified-web-party-graph-source-context-boundary |
-| `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 2 | 4 | inventory-complete-runtime-verification-pending |
+| `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 2 | 4 | runtime-partially-verified-web-platform-provider-role-boundary |
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 1 | 64 | 7 | runtime-partially-verified-web-profile-complete-lifecycle |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 2 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 9 | runtime-partially-verified-web-schedule-today-compatibility-route |

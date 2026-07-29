@@ -568,6 +568,51 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
 ]);
 const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
+    "web:/app/admin",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-admin-dashboard-navigation-verified",
+      runtimeEvidence: [
+        "the dashboard rendered one actor-owned event and the authenticated profile without unsupported operational metrics",
+        "desktop Events opened /app/admin/events, Dashboard returned to /app/admin, and Exit admin opened /app",
+        "at 390x844 the visible mobile Events and Dashboard tabs preserved the exact routes without a horizontal-overflow signal",
+      ],
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-actor-scoped-admin-dashboard",
+    },
+  ],
+  [
+    "web:/app/admin/events",
+    {
+      entryBehavior:
+        "authenticated-browser-actor-scoped-admin-events-navigation-verified",
+      runtimeEvidence: [
+        "the events route rendered the same one actor-owned event and authenticated profile as the dashboard",
+        "desktop Dashboard and Events navigation round-tripped between the two exact Admin routes",
+        "at 390x844 the visible mobile Dashboard and Events tabs round-tripped without replacing the actor-owned source record",
+      ],
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-actor-scoped-admin-events",
+    },
+  ],
+  [
+    "web:/app/platform",
+    {
+      entryBehavior:
+        "authenticated-browser-platform-provider-and-role-fail-closed-verified",
+      runtimeEvidence: [
+        "the route displayed Platform admin is unavailable before presenting any personal record as platform-wide data",
+        "expanding source details exposed PLATFORM_ADMIN_PROVIDER_UNAVAILABLE, platform-wide-provider:unavailable, and platform-admin-role:unverified",
+        "Return to personal workspace opened /app/home and Open organizer admin opened /app/admin",
+      ],
+      verificationCase: "web-admin-platform-truth-boundary-2026-07-29",
+      verificationConclusion:
+        "runtime-partially-verified-web-platform-provider-role-boundary",
+    },
+  ],
+  [
     "web:/app/events",
     {
       entryBehavior:
@@ -1628,6 +1673,99 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
 );
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
+  [
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
+    {
+      actualResult:
+        "Desktop 活动管理 opened /app/admin/events and 仪表盘 returned to /app/admin with the same actor-owned source record.",
+      testData:
+        "Authenticated browser actor with one actor-owned event and one persisted profile",
+      idempotency:
+        "Route navigation only; no event, profile, registration, attendance, matching, team, or platform record was written.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:41",
+    {
+      actualResult: "退出后台 opened the authenticated personal /app entry.",
+      testData: "Authenticated Admin dashboard",
+      idempotency:
+        "Route navigation only; the authenticated session and all actor-owned records were preserved.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:47",
+    {
+      actualResult:
+        "At 390x844 the visible 活动管理 tab opened /app/admin/events and 仪表盘 returned to /app/admin.",
+      testData:
+        "Authenticated Admin dashboard at a 390x844 browser viewport",
+      idempotency:
+        "Responsive route navigation only; no source or operational record was written.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
+    {
+      actualResult:
+        "Desktop 仪表盘 opened /app/admin and 活动管理 returned to /app/admin/events with the same actor-owned source record.",
+      testData:
+        "Authenticated browser actor with one actor-owned event and one persisted profile",
+      idempotency:
+        "Route navigation only; no event, profile, registration, attendance, matching, team, or platform record was written.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:41",
+    {
+      actualResult:
+        "The shared desktop 退出后台 control was exercised from the Admin shell and resolved to /app.",
+      testData: "Authenticated shared Admin shell",
+      idempotency:
+        "Route navigation only; the authenticated session and actor-owned records were preserved.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/admin/events|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:47",
+    {
+      actualResult:
+        "At 390x844 the visible 仪表盘 tab opened /app/admin and 活动管理 returned to /app/admin/events.",
+      testData:
+        "Authenticated Admin Events route at a 390x844 browser viewport",
+      idempotency:
+        "Responsive route navigation only; no source or operational record was written.",
+      verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/platform|repos/orbits/shared/ui/state-view.tsx:217",
+    {
+      actualResult:
+        "Expanding 来源详情 exposed the unavailable platform provider and unverified platform-admin role evidence.",
+      testData:
+        "Authenticated personal account without a platform-wide provider or persisted platform-admin role",
+      idempotency:
+        "Local disclosure state only; no personal, organizer, moderation, role, or platform record was read as success or written.",
+      verificationCase: "web-admin-platform-truth-boundary-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/platform|repos/orbits/shared/ui/state-view.tsx:249",
+    {
+      actualResult:
+        "Return to personal workspace opened /app/home; Open organizer admin opened /app/admin.",
+      testData:
+        "Authenticated Platform unavailable state with both source-backed recovery actions",
+      idempotency:
+        "Navigation only; no platform access, moderation, organizer verification, or personal record was written.",
+      verificationCase: "web-admin-platform-truth-boundary-2026-07-29",
+    },
+  ],
   [
     "web:/app/events|repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx#t({ en: `Show ${item.name} event`, zh: `查看活动：${item.name}` })",
     {
