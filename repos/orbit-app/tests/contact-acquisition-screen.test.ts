@@ -172,6 +172,15 @@ test("contact acquisition can open the written business card contact", () => {
   assert.match(screenSource, /view\.openContactLabel/u);
 });
 
+test("contact acquisition can open a contact written by manual confirmation", () => {
+  assert.match(screenSource, /confirmedSummary\.contactId/u);
+  assert.match(
+    screenSource,
+    /onPress=\{\(\) => onOpenContact\(result\.contactId!\)\}/u
+  );
+  assert.match(screenSource, />打开联系人</u);
+});
+
 test("contact acquisition can locally dismiss review candidates without claiming backend archive", () => {
   assert.match(screenSource, /dismissedDraftIds/u);
   assert.match(screenSource, /dismissDraft/u);

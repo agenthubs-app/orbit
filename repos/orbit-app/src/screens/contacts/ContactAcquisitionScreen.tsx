@@ -436,7 +436,11 @@ export function ContactAcquisitionScreen() {
       const response = await client.post<unknown>(contactDraftConfirmPath(draftId));
 
       if (response.success) {
-        setResult(acquisitionResultToSummary(response.data));
+        const confirmedSummary = acquisitionResultToSummary(response.data);
+        setResult(confirmedSummary);
+        if (confirmedSummary.contactId) {
+          setContactsRefreshToken(Date.now().toString());
+        }
         refreshReviewSurfaces();
       } else {
         setError(response.error.message);
@@ -1395,6 +1399,19 @@ function AcquisitionResultCard({
       ) : null}
       {result.canConfirm ? (
         <DismissDraftButton onPress={() => onDismiss(result.draftId)} />
+      ) : null}
+      {result.contactId ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onOpenContact(result.contactId!)}
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.accent} name="person-outline" size={18} />
+          <Text style={styles.secondaryButtonText}>打开联系人</Text>
+        </Pressable>
       ) : null}
       <Pressable
         accessibilityRole="button"

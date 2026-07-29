@@ -1115,3 +1115,48 @@ test("acquisitionResultToSummary maps confirmed drafts as candidates, not writte
     writeState: "候选已确认"
   });
 });
+
+test("acquisitionResultToSummary exposes a confirmed manual contact write", () => {
+  const summary = acquisitionResultToSummary({
+    confirmedDraft: {
+      contactId: "contact:manual:mobile-1",
+      contactWriteExecuted: true,
+      displayName: "测试联系人",
+      id: "manual-draft:live:1",
+      organization: "Orbit",
+      role: "AI 导入负责人",
+      source: {
+        label: "Live manual contact note"
+      },
+      status: "confirmed"
+    },
+    contactCandidate: {
+      candidateId: "contact-candidate:manual-draft:live:1",
+      contactId: "contact:manual:mobile-1",
+      contactWriteExecuted: true,
+      displayName: "测试联系人",
+      duplicateLookupExecuted: true,
+      organization: "Orbit",
+      readyForContactWrite: false,
+      role: "AI 导入负责人"
+    },
+    nextAction:
+      "Open the saved actor-owned contact to continue the relationship workflow.",
+    state: "confirmed"
+  });
+
+  assert.deepEqual(summary, {
+    canConfirm: false,
+    contactId: "contact:manual:mobile-1",
+    confirmLabel: "已确认候选",
+    confirmationText: "候选已确认，联系人已写入。",
+    detail: "Orbit · AI 导入负责人",
+    draftId: "manual-draft:live:1",
+    evidenceExcerpts: [],
+    nextAction: "打开已保存的联系人，继续补充关系。",
+    sourceLabel: "手动记录",
+    stateLabel: "已确认",
+    title: "测试联系人",
+    writeState: "联系人已写入"
+  });
+});

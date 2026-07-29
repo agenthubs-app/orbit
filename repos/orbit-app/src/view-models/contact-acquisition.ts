@@ -35,6 +35,7 @@ export interface ContactAcquisitionFormState {
 
 export interface ContactAcquisitionSummary {
   canConfirm: boolean;
+  contactId?: string;
   contactWrite?: ContactBusinessCardWriteCandidate;
   contactWriteLabel?: string;
   confirmLabel: string;
@@ -613,9 +614,14 @@ function businessCardWriteCandidate(
 function confirmationText(
   confirmation: Record<string, unknown>,
   confirmed: boolean,
+  contactWritten: boolean,
   contactWriteAvailable: boolean
 ): string {
   if (confirmed) {
+    if (contactWritten) {
+      return "候选已确认，联系人已写入。";
+    }
+
     return contactWriteAvailable
       ? "候选已确认；请再次明确确认后再写入联系人。"
       : "候选已确认；当前流程仍不会写入联系人。";
@@ -632,7 +638,15 @@ function fallbackNextAction(confirmed: boolean): string {
     : "先核对来源证据，再决定是否加入联系人。";
 }
 
-function summaryNextAction(value: string, confirmed: boolean): string {
+function summaryNextAction(
+  value: string,
+  confirmed: boolean,
+  contactWritten: boolean
+): string {
+  if (contactWritten) {
+    return "打开已保存的联系人，继续补充关系。";
+  }
+
   const nextAction = preferredChineseSegment(value);
 
   if (
@@ -1098,9 +1112,16 @@ export function acquisitionResultToSummary(
     draft,
     nestedRecord(payload, "capture")
   );
+  const contactId =
+    stringField(contactCandidate, "contactId") || stringField(draft, "contactId");
+  const contactWritten =
+    Boolean(contactId) &&
+    (draft.contactWriteExecuted === true ||
+      contactCandidate.contactWriteExecuted === true);
 
   return {
     canConfirm: Boolean(draftId) && !confirmed,
+    ...(contactWritten ? { contactId } : {}),
     ...(contactWrite
       ? {
           contactWrite,
@@ -1111,6 +1132,7 @@ export function acquisitionResultToSummary(
     confirmationText: confirmationText(
       confirmation,
       confirmed,
+      contactWritten,
       Boolean(contactWrite)
     ),
     detail,
@@ -1119,7 +1141,8 @@ export function acquisitionResultToSummary(
     nextAction: summaryNextAction(
       stringField(draft, "suggestedNextAction") ||
         stringField(payload, "nextAction"),
-      confirmed
+      confirmed,
+      contactWritten
     ),
     ...(reviewFields.length > 0
       ? {
