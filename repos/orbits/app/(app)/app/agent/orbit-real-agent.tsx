@@ -38,6 +38,7 @@ type AgentMessage =
       kind: OrbitAgentScenarioView["kind"];
       note?: string;
       panelTitle: string;
+      retryRequest?: string;
       role: "assistant";
       runId?: string;
       text: string;
@@ -341,6 +342,8 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
     (value.kind === "people" || value.kind === "events" || value.kind === "todos") &&
     typeof value.panelTitle === "string" &&
     (typeof value.runId === "undefined" || typeof value.runId === "string") &&
+    (typeof value.retryRequest === "undefined" ||
+      typeof value.retryRequest === "string") &&
     (typeof value.actionIds === "undefined" ||
       (Array.isArray(value.actionIds) &&
         value.actionIds.every((actionId) => typeof actionId === "string"))) &&
@@ -1569,7 +1572,14 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
         setMessages((current) => [
           ...current,
-          { items: [], kind: "people", panelTitle: "", role: "assistant", text: errorText },
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            retryRequest: query,
+            role: "assistant",
+            text: errorText,
+          },
         ]);
         return;
       }
@@ -1651,7 +1661,14 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     } catch {
       setMessages((current) => [
         ...current,
-        { items: [], kind: "people", panelTitle: "", role: "assistant", text: failureText },
+        {
+          items: [],
+          kind: "people",
+          panelTitle: "",
+          retryRequest: query,
+          role: "assistant",
+          text: failureText,
+        },
       ]);
     } finally {
       setThinking(false);
@@ -1973,6 +1990,18 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                       }}
                       runId={message.runId}
                     />
+                  ) : null}
+                  {message.retryRequest ? (
+                    <button
+                      className="btn btn-quiet"
+                      data-agent-message-retry-request
+                      disabled={thinking}
+                      onClick={() => void ask(message.retryRequest!)}
+                      style={{ marginTop: 10 }}
+                      type="button"
+                    >
+                      {language === "zh" ? "重新提交请求" : "Retry request"}
+                    </button>
                   ) : null}
                 </div>
                 <AgentMessageCopyButton text={message.text} />

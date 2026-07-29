@@ -97,6 +97,39 @@ test("agent chat history parser keeps refreshable sessions under the older group
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
 });
 
+test("agent chat history preserves a failed message's retry request", () => {
+  const sessions = parseAgentChatHistoryStorage(
+    JSON.stringify([
+      {
+        createdAt: "2026-07-29T09:00:00.000Z",
+        id: "failed-session",
+        messages: [
+          { role: "user", text: "重新检查这段关系" },
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            retryRequest: "重新检查这段关系",
+            role: "assistant",
+            text: "Agent 暂时无法完成这次回复，请稍后再试。",
+          },
+        ],
+        title: "关系检查",
+        updatedAt: "2026-07-29T09:01:00.000Z",
+      },
+    ]),
+  );
+  const failedMessage = sessions[0]?.messages[1];
+
+  assert.equal(failedMessage?.role, "assistant");
+  assert.equal(
+    failedMessage?.role === "assistant"
+      ? failedMessage.retryRequest
+      : undefined,
+    "重新检查这段关系",
+  );
+});
+
 test("agent chat history keeps initial message order after a previous session is reopened", () => {
   const history = agentChatHistorySessionsToHistory(
     [
