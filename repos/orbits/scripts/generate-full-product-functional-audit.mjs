@@ -3926,6 +3926,36 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for stable actor-scoped draft/contact identity, duplicate guard, explicit confirmation write, persisted detail/list readback, hard reload, replay idempotency, truthful mobile copy, and direct navigation; the two pre-fix legacy drafts are retained as audit evidence and did not create contacts",
   },
+  {
+    id: "expo-qr-relationship-write-idempotency-2026-07-29",
+    target:
+      "Expo /contacts/new Orbit QR source → actor-scoped draft → contact, connection, evidence, detail, list, and graph readback",
+    testData:
+      "Authenticated live Expo Web actor; operator-supplied orbit-qr payload with distinct name, role, organization, email, event, mutual contact, and topics; repeated scan before confirmation; queue confirmation; hard detail reload; Contacts library; relationship graph; post-confirmation replay",
+    expected:
+      "The live service must parse the submitted QR text rather than select an unrelated stored contact. Scan must stage one stable actor-owned draft without contact or connection writes. Explicit confirmation must persist one stable contact, one stable connection, and source/confirmation evidence; retries, partial failures, duplicates, and cross-account access must fail or recover without duplicate records. Expo must disclose that the unsigned payload is not signature-validated and expose the real saved contact.",
+    actual:
+      "Before repair, the valid QR text was ignored and the UI returned a generic 待确认联系人 derived from whichever existing qr_scan contact appeared first; confirmation returned candidates with both write flags false and persisted no draft, contact, connection, or evidence. After repair, the submitted fields appeared exactly in the pending card, the queue increased from three to four, and an identical scan kept it at four. Queue confirmation displayed 联系人已写入 and 打开联系人, opened contact:qr:8534f1acf38423d4eab2c584, survived hard reload, appeared in the Contacts library, and produced a graph card with 1 段连接. Replaying the confirmed payload returned the same confirmed/open-contact state and kept the queue at four.",
+    evidence:
+      "QR service/mock tests passed 14/14; manual/QR mobile view-model tests passed 23/23; Web lint/typecheck passed; Expo typecheck passed; complete Web suite passed 1364/1364; complete Expo suite passed 529/529; production build completed 39/39 static pages. In-app browser verified pending truth copy, unsigned-payload disclosure, stable queue count, confirmation write, exact detail URL, hard reload, Contacts library readback, graph connection readback, and post-confirmation replay. Commits 2f47e28c and f3416d6b. Required staged detection was LOW for the 12-file server change and MEDIUM for the four-file mobile truth-copy change, with only the reviewed ContactAcquisitionScreen flows affected.",
+    conclusion:
+      "pass for submitted-input fidelity, actor isolation, stable draft/contact/connection identity, duplicate guard, partial-write retry, explicit confirmation, evidence persistence, detail/list/graph readback, hard reload, replay idempotency, unsigned-input disclosure, lint, build, and full Web/Expo suites; camera decoding and cryptographic signature validation remain explicitly unclaimed",
+  },
+  {
+    id: "expo-contact-detail-evidence-key-deduplication-2026-07-29",
+    target:
+      "Expo contact detail relationship-value evidence → unique localized rows and stable React reconciliation",
+    testData:
+      "The persisted QR contact above; two different evidence ids that localize to the same 业务背景 line; relationship-value card; hard-loaded Expo Web contact detail",
+    expected:
+      "Distinct backend evidence records may share a user-facing localized sentence, but the view-model must not emit duplicate display rows or give React siblings the same key. Equivalent lines should be collapsed before the three-row presentation limit without changing the underlying stored evidence.",
+    actual:
+      "The persisted QR contact detail rendered the same localized business-context sentence twice and surfaced the React warning Encountered two children with the same key. readyEvidence sliced raw records before localization and returned duplicate strings, while the component used each string as its key. The repaired view-model localizes all candidate rows, deduplicates the final strings, and then applies the three-row limit. Browser readback retained the contact and relationship analysis, showed one equivalent business-context row, and no longer exposed the warning.",
+    evidence:
+      "GitNexus impact was LOW: readyEvidence reached four upstream symbols and zero indexed processes. Focused relationship-value tests passed 3/3, Expo typecheck passed, and the complete Expo suite passed 529/529. Browser reproduction and post-fix reload used the same persisted contact and proved duplicateKeyWarning changed from true to false while the equivalent businessEvidenceCount changed to one. Commit 900c1058; required staged detection was LOW for two files, two symbols, and zero flows.",
+    conclusion:
+      "pass for final-presentation deduplication, stable React keys, retained relationship-value evidence, focused/full Expo regression, typecheck, and live browser reload; backend evidence records remain intact and independently auditable",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5156,6 +5186,34 @@ const AUDIT_REMEDIATIONS = [
       "Server-focused tests passed 17/17, repository lint/typecheck passed, full Web tests passed 1360/1360, and production build completed 39/39; commit 31ebdeab. Expo-focused tests passed 38/38, Expo typecheck passed, and the full Expo suite passed 527/527; commit 0c414649. GitNexus staged detection was LOW for the 10-file server change (33 symbols, zero flows) and MEDIUM for the four-file Expo change (10 symbols, five ContactAcquisitionScreen flows). In the authenticated Expo Web runtime, the first new submission changed the persisted draft queue from two legacy records to three; two identical resubmissions and a later confirmed replay kept it at three. Confirmation displayed 联系人已写入 and 打开联系人, opened the exact contact:manual:* detail, survived a hard reload, and changed the Contacts list from zero to exactly one; replay kept the list at one.",
     status:
       "fixed and actor-isolated/stable-id/duplicate-guard/fail-closed/write/readback/reload/replay/browser/lint/build/full-Web/full-Expo-verified; two pre-fix legacy audit drafts remain as evidence and are not counted as contacts",
+  },
+  {
+    id: "AUDIT-P1-089",
+    severity: "P1",
+    rootCause:
+      "The live QR service ignored input.qrText and reverse-derived a draft from the first existing contact whose source type was qr_scan. Confirmation returned contact and connection candidates with both write flags false, so a valid operator submission could display an unrelated person and never persist the submitted draft, contact, connection, or evidence.",
+    decision:
+      "Make the submitted orbit-qr text the only scan input, parse a bounded documented field set, and derive stable actor-plus-normalized-payload ids. Persist one actor-scoped pending draft before confirmation. On explicit confirmation, duplicate-check the actor's contacts and upsert stable evidence, contact, and connection records so partial failures and retries converge. Return current-request write flags and saved ids truthfully. Expose the unsigned/no-signature boundary and write targets to Expo instead of claiming camera, decoder, signature, network, AI, or notification work.",
+    files:
+      "repos/orbits/features/acquisition/contract.ts; repos/orbits/features/acquisition/live-qr-service.ts; repos/orbits/features/acquisition/qr-contract.ts; repos/orbits/features/acquisition/qr-fixtures.ts; repos/orbits/features/acquisition/service-factory.ts; repos/orbits/features/contacts/contact-write-contract.ts; repos/orbits/features/contacts/storage/contact-write-live-record-provider.ts; repos/orbits/tests/capabilities/qr-scan-connect-live-store.test.ts; repos/orbits/tests/capabilities/qr-scan-connect-mock.test.ts; repos/orbit-app/src/view-models/contact-acquisition.ts; repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx; repos/orbit-app/tests/contact-acquisition-view-model.test.ts",
+    regression:
+      "QR focused tests passed 14/14; mobile acquisition tests passed 23/23; Web lint/typecheck and Expo typecheck passed; full Web passed 1364/1364; full Expo passed 529/529; production build completed 39/39; commits 2f47e28c and f3416d6b. Browser runtime proved queue 3→4→4, exact parsed fields, confirmed stable contact URL, hard reload, Contacts library readback, one graph connection, and confirmed replay at queue four. Staged detection was LOW for the server rewrite and MEDIUM for the scoped mobile truth-copy change.",
+    status:
+      "fixed and submitted-input/actor-isolation/stable-id/duplicate/partial-retry/write/evidence/detail/list/graph/reload/replay/browser/lint/build/full-Web/full-Expo-verified; device decoding and signature verification remain explicitly unsupported",
+  },
+  {
+    id: "AUDIT-P1-090",
+    severity: "P1",
+    rootCause:
+      "Relationship-value evidence was truncated before localization and was not deduplicated after different evidence records mapped to the same display line. Contact detail rendered those strings with key={line}, producing duplicate visible evidence and a React duplicate-key warning for the persisted QR relationship.",
+    decision:
+      "Keep backend evidence records intact, but localize every presentation candidate first, deduplicate the final user-facing strings, and only then apply the three-row display limit. This removes redundant rows and guarantees the existing string key is unique without hiding distinct localized facts.",
+    files:
+      "repos/orbit-app/src/view-models/relationship-value.ts; repos/orbit-app/tests/relationship-value-view-model.test.ts",
+    regression:
+      "GitNexus impact was LOW for readyEvidence. Focused tests passed 3/3, Expo typecheck passed, and full Expo passed 529/529. On the same hard-loaded QR contact detail, browser evidence changed from two identical business-context rows plus Encountered two children with the same key to one row and no warning; commit 900c1058. Staged detection was LOW for two files, two symbols, and zero flows.",
+    status:
+      "fixed and localized-row-deduplication/React-key/browser-reload/typecheck/full-Expo-verified; stored evidence remains unchanged",
   },
 ];
 
