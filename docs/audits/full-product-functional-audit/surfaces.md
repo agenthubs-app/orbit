@@ -61,7 +61,7 @@
 | `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 6 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 1 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 3 | runtime-partially-verified-web-actor-scoped-admin-events |
-| `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 1 | 87 | 27 | runtime-partially-verified-web-agent-session-actor-isolation |
+| `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 1 | 89 | 27 | runtime-partially-verified-web-agent-session-actor-isolation |
 | `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 1 | 48 | 11 | runtime-partially-verified-web-chat-workspace-actor-isolation |
 | `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 1 | 61 | 34 | runtime-partially-verified-live-contact-list |
 | `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 1 | 54 | 31 | runtime-partially-verified-live-contact-detail |

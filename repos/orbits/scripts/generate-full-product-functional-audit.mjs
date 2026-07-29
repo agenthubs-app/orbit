@@ -2246,6 +2246,30 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#重新提交请求 / Retry request",
+    {
+      actualResult:
+        "A formally persisted 6/7 failed run rendered its exact timeout evidence; 重新提交请求 replayed the nearest preceding user request and produced a distinct 6/6 completed run while preserving the old failed run.",
+      testData:
+        "Authenticated live actor, Retry Audit 20260729 read-only request, formally seeded RETRY_AUDIT_PROVIDER_TIMEOUT step, and two distinct persisted conversation run ids",
+      idempotency:
+        "The recovery control was disabled while replaying; the old run remained failed, the new run contained zero actions, and hard reload/history reopen retained both attempts.",
+      verificationCase: "web-agent-failed-request-replay-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#重新提交请求 / Retry request",
+    {
+      actualResult:
+        "Stopping the production server caused a real conversation fetch failure with a retry control; after restart the control replayed the exact Network Retry Audit request and completed a new 6/6 run.",
+      testData:
+        "Authenticated live actor, read-only Network Retry Audit 20260729 request, deliberate production-server outage followed by restart",
+      idempotency:
+        "The message-level control was disabled during replay, generated no proposed action or write, and the failure plus successful retry survived hard reload/history reopen.",
+      verificationCase: "web-agent-failed-request-replay-2026-07-29",
+    },
+  ],
+  [
     "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
     {
       actualResult:
@@ -3969,7 +3993,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent/Chat tests passed 30/30; repository lint/typecheck passed; the complete Web suite passed 1366/1366; production build completed 39/39 static pages. In-app browser traversal covered the initial blocked state, repaired empty-actor welcome, real prompt, 7/7 progress, awaiting confirmation, defer, hard reload/history reopen, confirm, action completion, Today action readback, and due-date task readback. Commit 7379d840. GitNexus could not resolve the edited TSX/adapter symbols and staged detection returned No changes detected, so no unsupported graph risk is claimed.",
     conclusion:
-      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-ignore-action-today-terminal-activity-2026-07-29",
@@ -3984,7 +4008,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Today/Agent/All Actions tests passed 51/51; repository lint/typecheck passed; the complete Web suite passed 1368/1368; production build completed 39/39 static pages. In-app browser verified both ignore transitions, hard-reload persistence, the empty 2026-08-12 schedule, absent target name, coherent English Recent activity / Create follow-up task / Create reminder / Ignored, and coherent Chinese 最近动态 / 创建跟进任务 / 创建提醒 / 已忽略. Commit 39d9bf87. Pre-edit impact was LOW for DecisionEntryCard, OrbitRealToday, and AppTodayPageContent, while the shared SECTION_TITLES index result was corrupt/CRITICAL and was deliberately not edited. Staged detection reported HIGH because AppTodayPageContent participates in nine reviewed Today loading flows.",
     conclusion:
-      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-cancel-run-no-write-2026-07-29",
@@ -3999,7 +4023,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "The exact source baseline had already passed the complete Web suite at 1368/1368, repository lint/typecheck, and a 39/39 production build. In-app browser traversal covered the real prompt, two-operation proposal, run-level cancel, immediate terminal rendering, hard reload, persisted history reopen, control removal, and task/reminder no-write checks on both dates. No source defect or code change was found.",
     conclusion:
-      "pass for multi-operation run cancellation, atomic terminal state, confirmation-control removal, hard reload/history persistence, task no-write, reminder no-write, and two-date Today readback; retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for multi-operation run cancellation, atomic terminal state, confirmation-control removal, hard reload/history persistence, task no-write, reminder no-write, and two-date Today readback; undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
+  {
+    id: "web-agent-failed-request-replay-2026-07-29",
+    target:
+      "Authenticated Web /app/agent persisted failed run and no-run network failure → request replay → completed run → hard reload/history readback",
+    testData:
+      "Authenticated live actor user_ms5llhof_wrbpuq; read-only prompt 请确认这是 Retry Audit 20260729，只回复一句说明，不要创建任务、提醒或任何写入。; formal live AgentRuntimeService failure seed RETRY_AUDIT_PROVIDER_TIMEOUT; old run run:conversation:9c22fbc8-55d6-4c88-a5db-532c0058726a; new run run:conversation:aa176da4-fcb7-4d1b-8d68-332d87817637; exact production build",
+    expected:
+      "A failed run must keep its error and completed-step evidence. Recovery must not claim to resume an execution step unless a real step executor exists. The UI must replay the nearest preceding user request as a new run, disable duplicate recovery while pending, preserve the failed run for audit, create no write action for this read-only request, and retain both attempts after reload. Network or provider failures that return no run id must expose the same retry affordance and persist its original request.",
+    actual:
+      "Code tracing found no production caller that writes a real failed step and no worker that consumes the queued step produced by runtime.retryRun. The public transition endpoint merely changed failed → running and failed step → queued, after which the card would poll forever. The repair removed that public/in-memory fake transition and labels recovery 重新提交请求 / Retry request. A formal live runtime seed added one failed provider step to a real persisted conversation. The browser showed 6/7, 86%, the exact timeout error, and the recovery control. Clicking it replayed the original prompt verbatim and rendered a second 6/6 completed run. Store readback retained the old run as failed with one failed step and the new run as completed with six steps and zero actions. A completion audit then found ordinary conversation failures had no run id and therefore no control; a second repair persists retryRequest on the assistant failure message and renders a message-level recovery button. With the production server deliberately stopped, a real fetch failure displayed the button; after restart it replayed the exact Network Retry Audit prompt, disabled during processing, completed 6/6 with no write request, and survived hard reload/history reopen.",
+    evidence:
+      "Focused Agent/runtime tests passed 30/30 and focused history/action tests passed 23/23; repository lint/typecheck passed; the complete Web suite passed 1371/1371; production build completed 39/39 static pages. Browser and live-store evidence covered the authenticated account, real read-only conversation, formal failed-step seed, exact error rendering, one-click request replay, distinct run ids, old/new run statuses, zero actions, deliberate server outage, message-level recovery, disabled pending state, hard reload, and persisted history reopen. Commits 6f4583f1 and ca575f31. Exact retryRun impact was LOW, but Agent TSX types were corrupted in the GitNexus index: the first staged detection reported CRITICAL with hundreds of unrelated mobile/event/storage flows while omitting the runtime/API symbols; the second scoped message-recovery change detected LOW with zero affected flows.",
+    conclusion:
+      "pass for truthful failed-run and no-run network recovery, original-request selection, new-run identity, immutable failure evidence, pending disablement, zero-write replay, store readback, hard reload/history persistence, focused/full tests, lint, and build; direct provider-failure injection remains separately unverified, while undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
@@ -5287,6 +5326,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused tests passed 51/51, lint/typecheck passed, the complete Web suite passed 1368/1368, and production build completed 39/39; commit 39d9bf87. Browser runtime proved two ignored operations survived hard reload, created no 2026-08-12 arrangement, and rendered coherent terminal section/action/status copy in English and Chinese. Staged detection was HIGH for six files because AppTodayPageContent reaches nine reviewed Today load flows; shared localization was intentionally unchanged.",
     status:
       "fixed and ignore/no-write/reload/terminal-semantics/English/Chinese/lint/build/full-suite-verified; broader mixed-language Today arrangement prose is recorded as a separate open defect",
+  },
+  {
+    id: "AUDIT-P1-093",
+    severity: "P1",
+    rootCause:
+      "Agent exposed 从失败步骤重试 and a public retry transition, but production never registered a resumable step executor. retryRun only changed the failed run to running and failed steps to queued; no worker consumed those queued steps, so a seeded failure would enter permanent polling while falsely implying recovery. Ordinary conversation failures returned no run id at all and only appended passive error text, leaving the user to retype the request.",
+    decision:
+      "Treat persisted run steps as immutable observability evidence, not executable workflow instructions. Remove the unused generic retryRun mutation and reject retry on the run transition API. When a failed run advertises recovery, locate the nearest preceding user message and submit it through the normal conversation endpoint as a new run. For failures without a run id, persist the original retry request on the assistant failure message and expose the same disabled-while-pending recovery control. Keep old failure evidence visible and label both actions 重新提交请求 / Retry request so the scope is truthful.",
+    files:
+      "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/api/ai/runs/[id]/transition/route.ts; repos/orbits/features/agent/runtime/service.ts; repos/orbits/tests/capabilities/agent-runtime-evolution.test.ts; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+    regression:
+      "Focused tests passed 30/30 and 23/23, lint/typecheck passed, full Web passed 1371/1371, and production build completed 39/39; commits 6f4583f1 and ca575f31. A formal live runtime failure seed drove the real browser from a persisted 6/7 failed run through 重新提交请求 to a distinct 6/6 completed run. Store readback preserved the old failed step and the new run had zero actions. A deliberate production-server outage then proved a no-run network failure rendered a persisted retry button, disabled during replay, recovered after restart, and survived hard reload/history reopen. The first GitNexus staged result was corrupt/CRITICAL; the second scoped change was LOW.",
+    status:
+      "fixed and truthful-run/no-run-replay/new-run/immutable-failure/no-write/live-store/network-outage/browser/reload/lint/build/full-suite-verified; direct provider-failure injection remains an open audit case",
   },
 ];
 
