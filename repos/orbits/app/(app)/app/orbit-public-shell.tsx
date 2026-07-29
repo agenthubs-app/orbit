@@ -302,11 +302,13 @@ export function OrbitTopNav({
   active = "events",
   agentActive,
   meHref,
+  mobileRightExtra,
   rightExtra,
 }: {
   active?: OrbitNavActive;
   agentActive?: boolean;
   meHref: string;
+  mobileRightExtra?: ReactNode;
   rightExtra?: ReactNode;
 }) {
   const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
@@ -376,6 +378,7 @@ export function OrbitTopNav({
 
         <div className="orbit-top-actions">
           <OrbitLangToggle />
+          <span className="orbit-nav-mobile-extra">{mobileRightExtra}</span>
           <span className="orbit-nav-extra">{rightExtra}</span>
           <span className="orbit-nav-account-slot"><OrbitNavAccountControl /></span>
           <button

@@ -14,6 +14,10 @@ const shell = readFileSync(
   join(projectRoot, "app/(app)/app/orbit-public-shell.tsx"),
   "utf8",
 );
+const accountShell = readFileSync(
+  join(projectRoot, "app/(app)/app/orbit-account-shell.tsx"),
+  "utf8",
+);
 
 test("the nav renders the unified three-segment skeleton", () => {
   assert.ok(shell.includes('"orbit-top-nav orbit-nav-menu"'), "orbit-nav-menu class");
@@ -93,9 +97,17 @@ test("session account control and inbox extras stay in the actions segment", () 
   const headerEnd = shell.indexOf("</header>", actionsIdx);
   const actions = shell.slice(actionsIdx, headerEnd);
   assert.ok(actions.includes("OrbitNavAccountControl"));
+  assert.ok(actions.includes("{mobileRightExtra}"));
   assert.ok(actions.includes("{rightExtra}"));
+  assert.ok(actions.includes("orbit-nav-mobile-extra"));
   assert.ok(actions.includes("orbit-nav-account-slot"));
   assert.ok(actions.includes("orbit-nav-extra"));
+  assert.ok(accountShell.includes("mobileRightExtra={mobileRightExtra}"));
+  assert.ok(
+    accountShell.indexOf("{rightExtra}") <
+      accountShell.indexOf("<RelationshipInboxTrigger />"),
+    "desktop extras keep page actions and the global inbox together",
+  );
 });
 
 test("theme controls are absent from global navigation", () => {

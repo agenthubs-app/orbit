@@ -22,11 +22,13 @@ export function orbitNavigate(prototypeHref: string) {
 export function AccountTopNav({
   active = "me",
   agentTone,
+  mobileRightExtra,
   rightExtra,
 }: {
   accountInitial?: string;
   active?: "agent" | "today" | "events" | "schedule" | "cards" | "me" | "settings";
   agentTone?: "default" | "selected";
+  mobileRightExtra?: ReactNode;
   rightExtra?: ReactNode;
 }) {
   return (
@@ -34,6 +36,7 @@ export function AccountTopNav({
       active={active}
       agentActive={agentTone ? agentTone === "selected" : active === "agent"}
       meHref="/app/profile"
+      mobileRightExtra={mobileRightExtra}
       rightExtra={
         // 关系收件箱入口在所有 /app/** 顶栏默认出现；页面传入的 rightExtra 仍保留。
         <>

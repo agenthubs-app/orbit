@@ -2498,7 +2498,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       <div className="orbit-mobile-only" style={{ flexShrink: 0 }}>
         <AccountTopNav
           active="agent"
-          rightExtra={(
+          mobileRightExtra={(
             <button aria-label={t({ en: "Chat history", zh: "对话历史" })} className="orbit-top-icon-btn orbit-agent-history-btn" onClick={() => setHistOpen(true)} type="button">
               <Icon name="clock" size={16} />
             </button>

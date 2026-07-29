@@ -336,6 +336,8 @@ test("agent home starts fresh unless the URL explicitly selects a session", () =
 
 test("agent sidebar exposes deletion and width resizing controls for history", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const accountShell = readProjectFile("app/(app)/app/orbit-account-shell.tsx");
+  const publicShell = readProjectFile("app/(app)/app/orbit-public-shell.tsx");
   const styles = readProjectFile(
     "app/(app)/app/orbit-reference-styles.tsx",
   );
@@ -385,13 +387,17 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /aria-labelledby="orbit-agent-mobile-history-title"/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /role="dialog"/);
+  assert.match(source, /mobileRightExtra=\{\(/);
+  assert.doesNotMatch(source, /rightExtra=\{\([\s\S]{0,240}orbit-agent-history-btn/);
+  assert.match(accountShell, /mobileRightExtra=\{mobileRightExtra\}/);
+  assert.match(publicShell, /className="orbit-nav-mobile-extra"/);
   assert.match(
     styles,
-    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \{\s*display: contents;/,
+    /\[data-orbit-real-page\] \.orbit-nav-mobile-extra \{\s*display: none;/,
   );
   assert.match(
     styles,
-    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \.ri-trigger \{\s*display: none !important;/,
+    /@media \(max-width: 640px\)[\s\S]*\[data-orbit-real-page\] \.orbit-nav-extra,[\s\S]*display: none;[\s\S]*\[data-orbit-real-page\] \.orbit-nav-mobile-extra \{\s*display: contents;/,
   );
 });
 
