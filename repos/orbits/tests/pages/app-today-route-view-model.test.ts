@@ -70,7 +70,9 @@ test("an unknown ?entry= falls back to the default selection", async () => {
 });
 
 test("the failure scenario yields a typed failure view model", async () => {
-  const model = await loadAppTodayRouteViewModel({ scenario: "failure" });
+  const model = await loadAppTodayRouteViewModel(undefined, undefined, {
+    scenario: "failure",
+  });
 
   assert.equal(model.state, "failure");
   assert.equal(model.errorCode, "AGENT_LEDGER_MOCK_FAILED");
@@ -90,7 +92,9 @@ test("an explicitly missing live actor fails closed instead of showing mock deci
 });
 
 test("the empty scenario yields an empty view model with no sections", async () => {
-  const model = await loadAppTodayRouteViewModel({ scenario: "empty" });
+  const model = await loadAppTodayRouteViewModel(undefined, undefined, {
+    scenario: "empty",
+  });
 
   assert.equal(model.state, "empty");
   assert.equal(model.sections.length, 0);

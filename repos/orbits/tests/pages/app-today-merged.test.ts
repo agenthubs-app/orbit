@@ -58,14 +58,17 @@ test("Today server route authenticates once and passes that actor through every 
   assert.match(routeSource, /const session = await auth\(\)/);
   assert.match(routeSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Ftoday"\)/);
   assert.match(routeSource, /actorId,/);
-  assert.match(contentSource, /createAppTodayMergedLoaders\(resolvedLedgerService, actorId\)/);
   assert.match(
-    mergedSource,
-    /loadAppFollowupsRouteViewModel\(searchParams, undefined, actorId\)/,
+    contentSource,
+    /createAppTodayMergedLoaders\(\s*resolvedLedgerService,\s*actorId,\s*routeControls,\s*\)/,
   );
   assert.match(
     mergedSource,
-    /loadAppScheduleRouteViewModel\(searchParams, undefined, actorId\)/,
+    /loadAppFollowupsRouteViewModel\(\s*controls\.followups,\s*undefined,\s*actorId,\s*\)/,
+  );
+  assert.match(
+    mergedSource,
+    /loadAppScheduleRouteViewModel\(controls\.schedule, undefined, actorId\)/,
   );
 });
 
@@ -109,6 +112,23 @@ test("?view= defaults to day and accepts month", async () => {
 
   const invalid = await loadAppTodayMergedViewModel({ view: "week" });
   assert.equal(invalid.calendar.view, "day");
+});
+
+test("public Today query input cannot activate internal child route controls", async () => {
+  const merged = await loadAppTodayMergedViewModel(
+    {
+      action: "complete-top-followup",
+      scenario: "failure",
+    } as unknown as Parameters<typeof loadAppTodayMergedViewModel>[0],
+    realLoaders,
+  );
+
+  assert.equal(merged.today.state, "success");
+  assert.equal(merged.schedule.state, "success");
+  assert.equal(merged.followups.state, "success");
+  if (merged.followups.state === "success") {
+    assert.equal("actionResult" in merged.followups.workspace, false);
+  }
 });
 
 // ---- three-source assembly: one source failing only degrades its own section ----
@@ -213,9 +233,14 @@ test("with ?date= set to an unrelated date, dimmedArrangementIds is non-empty", 
 test("a degraded arrangements card shows the guardrail and a recovery link", async () => {
   const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
+    routeControls?: {
+      schedule?: { scenario: "failure" };
+    };
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
-    await Page({ searchParams: Promise.resolve({ scenario: "failure" }) }),
+    await Page({
+      routeControls: { schedule: { scenario: "failure" } },
+    }),
   );
 
   const cardMatch = html.match(/data-orbit-today-arrangements-error="true"[\s\S]*?<\/div><\/div>/);
@@ -223,15 +248,20 @@ test("a degraded arrangements card shows the guardrail and a recovery link", asy
   const card = cardMatch![0];
 
   assert.match(card, /不可用期间，Orbit 只显示恢复入口，不会写入日历、提醒、消息或外部系统。/);
-  assert.match(card, /href="\/app\/schedule"/);
+  assert.match(card, /href="\/app\/today#arrangements"/);
 });
 
 test("a degraded time-spine card shows the guardrail and a recovery link", async () => {
   const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
+    routeControls?: {
+      followups?: { scenario: "failure" };
+    };
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
-    await Page({ searchParams: Promise.resolve({ scenario: "failure" }) }),
+    await Page({
+      routeControls: { followups: { scenario: "failure" } },
+    }),
   );
 
   const cardMatch = html.match(/data-orbit-today-time-spine-error="true"[\s\S]*?<\/div><\/div>/);
@@ -239,7 +269,7 @@ test("a degraded time-spine card shows the guardrail and a recovery link", async
   const card = cardMatch![0];
 
   assert.match(card, /不可用期间，Orbit 不会保存记录、安排提醒、发送消息或投递通知。/);
-  assert.match(card, /href="\/app\/followups"/);
+  assert.match(card, /href="\/app\/today"/);
 });
 
 // ---- full-page render: structural markers that don't depend on which

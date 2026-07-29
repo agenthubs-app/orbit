@@ -30,11 +30,10 @@ import {
   scheduleEventVenue,
 } from "./schedule-event-display";
 
-export type AppScheduleSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
 export type AppScheduleRouteScenario = "empty" | "pending" | "failure";
+export interface AppScheduleRouteControls {
+  scenario?: AppScheduleRouteScenario;
+}
 
 export interface AppScheduleRouteServices {
   contacts: ContactsListSearchAndFilterService;
@@ -103,35 +102,6 @@ interface ScheduleSourceResults {
   ];
 }
 
-function readSearchParam(
-  searchParams: AppScheduleSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppScheduleSearchParams | undefined,
-): AppScheduleRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (
-    scenario === "empty" ||
-    scenario === "pending" ||
-    scenario === "failure"
-  ) {
-    return scenario;
-  }
-
-  return null;
-}
-
 function isFailure(result: ScheduleSourceResult) {
   return result.success === false;
 }
@@ -178,13 +148,13 @@ const routeRecoveryActions: Record<
 > = {
   empty: [
     { href: "/app/contacts/new", label: "添加关系来源" },
-    { href: "/app/schedule", label: "查看已有安排" },
+    { href: "/app/today#arrangements", label: "查看已有安排" },
   ],
   failure: [
-    { href: "/app/schedule", label: "重新加载日程" },
-    { href: "/app/schedule?scenario=pending", label: "检查来源状态" },
+    { href: "/app/today#arrangements", label: "重新加载日程" },
+    { href: "/app/settings", label: "检查来源设置" },
   ],
-  pending: [{ href: "/app/schedule", label: "返回可用安排" }],
+  pending: [{ href: "/app/today#arrangements", label: "返回可用安排" }],
 };
 
 function routeStateCopy(scenario: AppScheduleRouteScenario) {
@@ -538,11 +508,11 @@ export function createAppScheduleRouteServices(
 }
 
 export async function loadAppScheduleRouteViewModel(
-  searchParams?: AppScheduleSearchParams,
+  controls: AppScheduleRouteControls = {},
   services?: AppScheduleRouteServices,
   actorId?: string | null,
 ): Promise<AppScheduleRouteViewModel> {
-  const requestedScenario = readRouteScenario(searchParams);
+  const requestedScenario = controls.scenario;
   const scenario = requestedScenario ?? undefined;
   const servicesWereProvided = services !== undefined;
   const sourceResults = await loadScheduleSourceResults({

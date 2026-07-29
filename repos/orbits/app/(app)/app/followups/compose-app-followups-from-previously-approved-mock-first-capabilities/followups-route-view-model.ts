@@ -27,11 +27,10 @@ import {
 } from "./followups-service-factory";
 import { contactIdFromConnectionIdentity } from "../../../../../shared/relationship-identity";
 
-export type AppFollowupsSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
 export type AppFollowupsRouteScenario = "empty" | "pending" | "failure";
+export interface AppFollowupsRouteControls {
+  scenario?: AppFollowupsRouteScenario;
+}
 
 type RouteStateResult =
   | FollowupTaskGenerationResult
@@ -107,21 +106,7 @@ export interface AppFollowupsReminderQueueViewModel {
   evidenceIds: readonly string[];
 }
 
-export interface AppFollowupsActionResultViewModel {
-  draftSubject: string;
-  draftWindow: string;
-  evidenceIds: readonly string[];
-  messageSent: boolean;
-  notificationDelivered: boolean;
-  reminderDueLabel: string;
-  reminderTitle: string;
-  schedulerChanged: boolean;
-  selectedTitle: string;
-  state: "success" | "empty";
-}
-
 export interface AppFollowupsSuccessViewModel {
-  actionResult: AppFollowupsActionResultViewModel | null;
   ledger: AppFollowupsLedgerViewModel;
   priority: AppFollowupsPriorityViewModel | null;
   reminderQueue: AppFollowupsReminderQueueViewModel;
@@ -140,31 +125,6 @@ export type AppFollowupsRouteViewModel =
 
 function bilingualText(chinese: string, english: string): string {
   return `${chinese} / ${english}`;
-}
-
-function readSearchParam(
-  searchParams: AppFollowupsSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppFollowupsSearchParams | undefined,
-): AppFollowupsRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function isRouteStateSuccess(result: RouteStateResult): result is RouteStateSuccess {
@@ -334,23 +294,23 @@ const routeRecoveryActions: Record<
       label: bilingualText("添加关系来源", "Add a relationship source"),
     },
     {
-      href: "/app/followups",
+      href: "/app/today",
       label: bilingualText("显示可用跟进", "Show ready follow-ups"),
     },
   ],
   failure: [
     {
-      href: "/app/followups",
+      href: "/app/today",
       label: bilingualText("重新加载跟进", "Reload follow-ups"),
     },
     {
-      href: "/app/followups?scenario=pending",
-      label: bilingualText("检查来源状态", "Check source status"),
+      href: "/app/settings",
+      label: bilingualText("检查来源设置", "Check source settings"),
     },
   ],
   pending: [
     {
-      href: "/app/followups",
+      href: "/app/today",
       label: bilingualText("返回可用跟进", "Return to ready follow-ups"),
     },
   ],
@@ -474,62 +434,6 @@ function priorityViewModel(
   };
 }
 
-function actionResultViewModel(
-  task: FollowupTask | null,
-  draft: MessageDraft | null,
-  notifications: ReminderScheduleNotificationPayload,
-): AppFollowupsActionResultViewModel {
-  if (!task) {
-    return {
-      draftSubject: "",
-      draftWindow: "",
-      evidenceIds: [],
-      messageSent: false,
-      notificationDelivered: false,
-      reminderDueLabel: "",
-      reminderTitle: "",
-      schedulerChanged: false,
-      selectedTitle: "",
-      state: "empty",
-    };
-  }
-
-  const topReminder = notifications.reminders[0] ?? null;
-  const messageSent = Boolean(
-    draft?.externalSendRequested ||
-      draft?.emailProviderRequested ||
-      draft?.externalNetworkRequested,
-  );
-  const schedulerChanged = Boolean(
-    task.backgroundSchedulerRequested ||
-      topReminder?.cronJobRequested ||
-      topReminder?.liveDatabaseWriteExecuted,
-  );
-  const notificationDelivered = Boolean(
-    task.notificationDelivered ||
-      draft?.notificationDelivered ||
-      topReminder?.pushNotificationRequested ||
-      topReminder?.emailDeliveryRequested ||
-      topReminder?.smsDeliveryRequested,
-  );
-
-  return {
-    draftSubject: draft?.subject ?? bilingualText("未选择草稿", "No draft selected"),
-    draftWindow: draft?.recommendedSendWindow ?? bilingualText("无发送窗口", "no send window"),
-    evidenceIds: task.evidenceIds,
-    messageSent,
-    notificationDelivered,
-    reminderDueLabel: topReminder
-      ? bilingualText(`到期 ${dueLabel(topReminder.dueInDays)}`, `due ${dueLabel(topReminder.dueInDays)}`)
-      : bilingualText("未定时", "not timed"),
-    reminderTitle:
-      topReminder?.title ?? bilingualText("未选择提醒", "No reminder selected"),
-    schedulerChanged,
-    selectedTitle: task.title,
-    state: "success",
-  };
-}
-
 function workflowCardsViewModel(input: {
   draft: MessageDraft | null;
   tasks: readonly FollowupTask[];
@@ -619,19 +523,13 @@ function reminderQueueViewModel(
 }
 
 function successViewModel(input: {
-  action: string | null;
   draft: MessageDraft | null;
   notifications: ReminderScheduleNotificationPayload;
   task: FollowupTask | null;
   taskResult: RouteStateSuccess & { data: { tasks: readonly FollowupTask[] } };
   draftResult: RouteStateSuccess & { data: { drafts: readonly MessageDraft[] } };
 }): AppFollowupsSuccessViewModel {
-  const actionRequested = input.action === "complete-top-followup";
-
   return {
-    actionResult: actionRequested
-      ? actionResultViewModel(input.task, input.draft, input.notifications)
-      : null,
     ledger: {
       draftCount: input.draftResult.data.drafts.length,
       dueTodayCount: input.notifications.reminders.filter(
@@ -650,11 +548,11 @@ function successViewModel(input: {
 }
 
 export async function loadAppFollowupsRouteViewModel(
-  searchParams?: AppFollowupsSearchParams,
+  controls: AppFollowupsRouteControls = {},
   services: AppFollowupsRouteServices = createAppFollowupsRouteServices(),
   actorId?: string | null,
 ): Promise<AppFollowupsRouteViewModel> {
-  const requestedScenario = readRouteScenario(searchParams);
+  const requestedScenario = controls.scenario;
 
   if (requestedScenario) {
     const [taskResult, notificationResult] = await Promise.all([
@@ -727,7 +625,6 @@ export async function loadAppFollowupsRouteViewModel(
   return {
     state: "success",
     workspace: successViewModel({
-      action: readSearchParam(searchParams, "action"),
       draft: draftResult.data.drafts[0] ?? null,
       draftResult,
       notifications: notificationResult.data,

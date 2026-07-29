@@ -17,10 +17,12 @@ import { createAgentLedgerService } from "../../../../../features/agent/service-
 import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
 import { isUnviewedPreEventBriefEntry } from "../../../../../features/agent/ledger/pre-event-brief";
 
-export type AppTodaySearchParams = Record<
-  string,
-  string | string[] | undefined
->;
+export interface AppTodaySearchParams {
+  entry?: string | string[];
+}
+export interface AppTodayRouteControls {
+  scenario?: "empty" | "failure";
+}
 
 export type TodaySectionKey = "decide" | "prepared" | "recent";
 
@@ -92,6 +94,7 @@ function readParam(
 export async function loadAppTodayRouteViewModel(
   searchParams?: AppTodaySearchParams,
   dependencies: AppTodayRouteDependencies = {},
+  controls: AppTodayRouteControls = {},
 ): Promise<AppTodayRouteViewModel> {
   if (dependencies.ledgerService === null) {
     return {
@@ -109,7 +112,7 @@ export async function loadAppTodayRouteViewModel(
   const service =
     dependencies.ledgerService ?? createAgentLedgerService();
   const result = await service.listEntries({
-    scenario: readParam(searchParams, "scenario"),
+    scenario: controls.scenario,
   });
 
   if (result.success === false) {

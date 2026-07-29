@@ -24,6 +24,7 @@ import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
   createAppTodayMergedLoaders,
   loadAppTodayMergedViewModel,
+  type AppTodayMergedRouteControls,
   type AppTodayMergedSearchParams,
   type AppTodayMergedViewModel,
 } from "./compose-app-today-from-agent-ledger/today-merged-view-model";
@@ -139,10 +140,12 @@ export default async function AppTodayPageContent({
   searchParams,
   actorId = "test:today-page-content",
   ledgerService,
+  routeControls,
 }: {
   searchParams?: Promise<AppTodayMergedSearchParams>;
   actorId?: string;
   ledgerService?: AgentLedgerService | null;
+  routeControls?: AppTodayMergedRouteControls;
 } = {}) {
   const resolvedSearchParams = await searchParams;
   const resolvedLedgerService =
@@ -151,7 +154,11 @@ export default async function AppTodayPageContent({
       : ledgerService;
   const merged = await loadAppTodayMergedViewModel(
     resolvedSearchParams,
-    createAppTodayMergedLoaders(resolvedLedgerService, actorId),
+    createAppTodayMergedLoaders(
+      resolvedLedgerService,
+      actorId,
+      routeControls,
+    ),
   );
   const language = await getTodayPageLanguage();
   const localizedToday = localizeOrbitTree(merged.today, language);

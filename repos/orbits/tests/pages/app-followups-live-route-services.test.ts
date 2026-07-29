@@ -573,7 +573,6 @@ test("followups product schedule adapter keeps duplicate source ids unique for R
   const schedule = followupsRouteToOrbitScheduleViewModel({
     state: "success",
     workspace: {
-      actionResult: null,
       ledger: {
         draftCount: 0,
         dueTodayCount: 2,
@@ -633,7 +632,6 @@ test("followup schedules preserve real contact ids instead of display-name slugs
   const schedule = followupsRouteToOrbitScheduleViewModel({
     state: "success",
     workspace: {
-      actionResult: null,
       ledger: {
         draftCount: 0,
         dueTodayCount: 1,

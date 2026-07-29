@@ -11,10 +11,10 @@
  */
 import {
   loadAppFollowupsRouteViewModel,
+  type AppFollowupsRouteControls,
   type AppFollowupsRouteScenario,
   type AppFollowupsRouteStateViewModel,
   type AppFollowupsRouteViewModel,
-  type AppFollowupsSearchParams,
 } from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
 import { followupsRouteToOrbitScheduleViewModel } from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
 import type {
@@ -24,6 +24,7 @@ import type {
 } from "../../orbit-schedule-route-view-model";
 import {
   loadAppScheduleRouteViewModel,
+  type AppScheduleRouteControls,
   type AppScheduleArrangementViewModel,
   type AppScheduleRouteStateViewModel,
   type AppScheduleRouteViewModel,
@@ -35,13 +36,16 @@ import {
 } from "../orbit-today-time-spine-helpers";
 import {
   loadAppTodayRouteViewModel,
+  type AppTodayRouteControls,
   type AppTodayRouteViewModel,
   type AppTodaySearchParams,
 } from "./today-route-view-model";
 import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
 
-export type AppTodayMergedSearchParams = AppTodaySearchParams &
-  AppFollowupsSearchParams;
+export type AppTodayMergedSearchParams = AppTodaySearchParams & {
+  date?: string | string[];
+  view?: string | string[];
+};
 
 export interface AppTodayMergedCalendarState {
   selected: CalendarView;
@@ -59,13 +63,15 @@ export interface AppTodayMergedViewModel {
   today: AppTodayRouteViewModel;
 }
 
+export interface AppTodayMergedRouteControls {
+  followups?: AppFollowupsRouteControls;
+  schedule?: AppScheduleRouteControls;
+  today?: AppTodayRouteControls;
+}
+
 export interface AppTodayMergedLoaders {
-  loadFollowups: (
-    searchParams?: AppFollowupsSearchParams,
-  ) => Promise<AppFollowupsRouteViewModel>;
-  loadSchedule: (
-    searchParams?: AppTodayMergedSearchParams,
-  ) => Promise<AppScheduleRouteViewModel>;
+  loadFollowups: () => Promise<AppFollowupsRouteViewModel>;
+  loadSchedule: () => Promise<AppScheduleRouteViewModel>;
   loadToday: (
     searchParams?: AppTodaySearchParams,
   ) => Promise<AppTodayRouteViewModel>;
@@ -80,15 +86,24 @@ const defaultLoaders: AppTodayMergedLoaders = {
 export function createAppTodayMergedLoaders(
   ledgerService: AgentLedgerService | null,
   actorId: string,
+  controls: AppTodayMergedRouteControls = {},
 ): AppTodayMergedLoaders {
   return {
     ...defaultLoaders,
-    loadFollowups: (searchParams) =>
-      loadAppFollowupsRouteViewModel(searchParams, undefined, actorId),
-    loadSchedule: (searchParams) =>
-      loadAppScheduleRouteViewModel(searchParams, undefined, actorId),
+    loadFollowups: () =>
+      loadAppFollowupsRouteViewModel(
+        controls.followups,
+        undefined,
+        actorId,
+      ),
+    loadSchedule: () =>
+      loadAppScheduleRouteViewModel(controls.schedule, undefined, actorId),
     loadToday: (searchParams) =>
-      loadAppTodayRouteViewModel(searchParams, { ledgerService }),
+      loadAppTodayRouteViewModel(
+        searchParams,
+        { ledgerService },
+        controls.today,
+      ),
   };
 }
 
@@ -210,22 +225,20 @@ async function loadTodaySection(
 }
 
 async function loadScheduleSection(
-  searchParams: AppTodayMergedSearchParams | undefined,
   loadSchedule: AppTodayMergedLoaders["loadSchedule"],
 ): Promise<AppScheduleRouteViewModel> {
   try {
-    return await loadSchedule(searchParams);
+    return await loadSchedule();
   } catch (error) {
     return scheduleLoadFailureViewModel(errorMessage(error));
   }
 }
 
 async function loadFollowupsSection(
-  searchParams: AppTodayMergedSearchParams | undefined,
   loadFollowups: AppTodayMergedLoaders["loadFollowups"],
 ): Promise<AppFollowupsRouteViewModel> {
   try {
-    return await loadFollowups(searchParams);
+    return await loadFollowups();
   } catch (error) {
     return followupsLoadFailureViewModel(errorMessage(error));
   }
@@ -375,10 +388,14 @@ export async function loadAppTodayMergedViewModel(
   searchParams?: AppTodayMergedSearchParams,
   loaders: AppTodayMergedLoaders = defaultLoaders,
 ): Promise<AppTodayMergedViewModel> {
+  const requestedEntry = readParam(searchParams, "entry");
+  const todaySearchParams = requestedEntry
+    ? { entry: requestedEntry }
+    : undefined;
   const [today, schedule, followups] = await Promise.all([
-    loadTodaySection(searchParams, loaders.loadToday),
-    loadScheduleSection(searchParams, loaders.loadSchedule),
-    loadFollowupsSection(searchParams, loaders.loadFollowups),
+    loadTodaySection(todaySearchParams, loaders.loadToday),
+    loadScheduleSection(loaders.loadSchedule),
+    loadFollowupsSection(loaders.loadFollowups),
   ]);
 
   const followupsSchedule =
