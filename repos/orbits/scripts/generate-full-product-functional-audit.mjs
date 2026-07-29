@@ -3548,6 +3548,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the orphan deterministic registration-guide architecture; the real adaptive registration browser lifecycle retains the runtime gaps listed in web-event-registration-fixture-isolation-2026-07-29",
   },
+  {
+    id: "web-agent-page-actor-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web Agent → actor-scoped shared Chat composition separated from obsolete URL action/scenario/mode inputs",
+    testData:
+      "Production /app/agent and /app/chat server pages; shared Chat route loader; signed-out Agent entry; explicit actor service resolution; adversarial action=review-top-agent-action, scenario=failure, mode=mock, and proactive fixture query values",
+    expected:
+      "The Agent page must enforce its own authenticated server boundary and pass the canonical session actor into the shared Chat loader. URL input may select only conversation identity, language, and a submitted query; it must not select fixtures, execute Agent actions, or switch service mode. Writes remain behind explicit authenticated client/API actions.",
+    actual:
+      "The proxy classified /app/agent as private, but unlike /app/chat the page called loadAppChatRouteViewModel without a session actor. The shared loader could therefore resolve generic non-actor services despite the private route. action, scenario, mode, and proactive inputs were already inert, while the manual acceptance guide incorrectly described review-top-agent-action as a page-load command-center preview. After repair, the server page resolves auth, redirects a missing actor to the canonical login return, passes actorId to the shared loader, and regressions prove the obsolete query values remain unread.",
+    evidence:
+      "Pre-edit GitNexus impact was LOW for AppAgentPage and the affected tests, with zero upstream callers. Focused Agent/Chat regressions passed 16/16, repository lint passed, the complete Web suite passed 1352/1352, and production build passed. Staged detection reported HIGH because the page is the common entry to eight existing Chat service, result, language, state-copy, and decoding flows; context inspection confirmed no incoming callers and no changed downstream call set. Commit 46666e68.",
+    conclusion:
+      "pass for source/lint/build/full-suite enforcement of the Agent server auth boundary, actor propagation, and obsolete action/scenario/mode query isolation; authenticated browser redirect and populated conversation runtime, two-account isolation, explicit Agent action lifecycle/readback, cache/proxy behavior, duplicate/array/encoded inputs, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4554,6 +4569,20 @@ const AUDIT_REMEDIATIONS = [
       "Repository search found zero production imports after P1-071. GitNexus file-level impact was LOW with two direct graph references and zero processes, although stale symbol results still listed removed page callers. Focused remaining registration/detail tests passed 34/34, lint passed, the full suite passed 1352/1352 after five orphan-only cases disappeared, and production build passed. Staged detect reported LOW and zero processes but did not map either deleted file, so no unsupported deletion-risk claim is made.",
     status:
       "fixed and source/lint/build/full-suite-verified for complete retirement of the deterministic test-user registration guide; real adaptive-registration runtime gaps remain tracked under AUDIT-P1-071",
+  },
+  {
+    id: "AUDIT-P1-073",
+    severity: "P1",
+    rootCause:
+      "The proxy treated /app/agent as private, but the server page itself did not resolve the authenticated session and called the shared Chat route loader without actorId. The sibling /app/chat page already supplied that scope. Tests exercised generic service fallback and even invoked the protected page outside a Next request context, masking the missing page-level identity boundary. The manual acceptance guide also claimed an action query produced a command-center preview even though action, scenario, mode, and proactive query inputs were inert.",
+    decision:
+      "Give /app/agent the same explicit server identity boundary as /app/chat: resolve auth, redirect a missing actor to the canonical login return, and pass the actor into shared Chat composition. Keep URL input limited to conversation identity, language, and submitted query. Leave Agent action review, acceptance, dismissal, ledger transitions, and external-action work behind their explicit authenticated client/API boundaries; document obsolete action/scenario/mode values as no-ops instead of inventing page-load behavior.",
+    files:
+      "repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/app-agent-todo-summary.test.tsx; repos/orbits/tests/pages/app-proactive-agent-message.test.tsx; repos/orbits/scripts/manual-acceptance.md",
+    regression:
+      "GitNexus pre-edit impact was LOW with no upstream callers. Focused Agent/Chat tests passed 16/16, lint passed, the complete Web suite passed 1352/1352, and production build passed. Regression covers page auth, signed-out redirect source, canonical actor propagation, real Agent rendering, submitted-query hydration, proactive fixture isolation, and absence of action/scenario/mode query reads. Staged detect was HIGH across eight existing flows because AppAgentPage is their common entry; context review found no incoming callers and no changed downstream call set.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for Agent page auth, actor propagation, and obsolete query isolation; authenticated browser runtime, populated two-account conversation isolation, explicit Agent action/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 

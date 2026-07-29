@@ -79,8 +79,12 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
     - Confirm dashboard update, opportunity prompts, network coverage, and provenance warnings render.
     - Confirm no compliance report, production audit storage, or external delivery is written.
 11. Open `/app/agent?action=review-top-agent-action`.
-    - Confirm the agent command center lists an action requiring review.
-    - Confirm agent action confirmation is previewed and the external action sandbox reports a no-op preview.
+    - Confirm the authenticated actor-scoped Agent chat renders exactly as it
+      does at `/app/agent`; the obsolete `action` value must not select a
+      fixture, run an action, or render a simulated command-center result.
+    - Confirm action review, acceptance, dismissal, ledger transitions, and
+      external-action work occur only after an explicit authenticated client or
+      API action, never during this page GET.
 
 ## Required API Probes
 

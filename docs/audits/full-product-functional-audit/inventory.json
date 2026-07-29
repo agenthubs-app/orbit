@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "b6a2f0eb894e9f5d508c2e7205ae3c177223b6e8",
-  "deterministicSourceTime": "2026-07-29T12:00:25+09:00",
+  "generatedFromCommit": "46666e685274ac5cd9e66d4fa2a490293077e12b",
+  "deterministicSourceTime": "2026-07-29T12:10:46+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42,8 +42,8 @@
     "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 72,
-    "documentedRemediations": 72
+    "documentedVerificationCases": 73,
+    "documentedRemediations": 73
   },
   "surfaces": [
     {
@@ -46816,6 +46816,7 @@
           "repos/orbits/app/(app)/app/agent/orbit-agent-today-workspace.tsx",
           "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/chat/assist-contract.ts",
           "repos/orbits/features/chat/contract.ts",
           "repos/orbits/features/chat/privacy-contract.ts",
@@ -46825,6 +46826,12 @@
           "repos/orbits/shared/contract/envelope.ts"
         ],
         "live": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/chat/live-assist-service.ts",
           "repos/orbits/features/chat/live-async-service.ts",
           "repos/orbits/features/chat/live-privacy-service.ts",
@@ -46845,6 +46852,9 @@
           "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/chat/assist-contract.ts",
           "repos/orbits/features/chat/assist-fixtures.ts",
           "repos/orbits/features/chat/chat-conversation-and-message-mock/hybrid-service.ts",
@@ -46876,6 +46886,11 @@
           "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/chat/assist-contract.ts",
           "repos/orbits/features/chat/assist-fixtures.ts",
           "repos/orbits/features/chat/chat-conversation-and-message-mock/hybrid-service.ts",
@@ -46916,6 +46931,13 @@
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/oauth-providers.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/chat/assist-contract.ts",
           "repos/orbits/features/chat/assist-fixtures.ts",
           "repos/orbits/features/chat/chat-conversation-and-message-mock/hybrid-service.ts",
@@ -47061,7 +47083,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/page.tsx",
-          "line": 51,
+          "line": 53,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -47451,7 +47473,9 @@
           "repos/orbits/app/(app)/app/orbit-language-context.tsx",
           "repos/orbits/app/(app)/app/orbit-language-core.ts"
         ],
-        "deepLinkEvidenceFiles": []
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/agent/page.tsx"
+        ]
       },
       "states": {
         "loading": true,
@@ -138471,6 +138495,15 @@
       "actual": "After P1-071 removed both production consumers, repository search found the 728-line guide imported only by its own 187-line capability test. The guide still bundled mock events, mockManualProfile, mock completeness, route scenarios, deterministic questions, and a loader named for the current test user; its handoff note incorrectly claimed degraded Event Detail still used it. The module and five self-validating tests are now deleted, and the implementation note describes only the real question-generation and idempotent registration boundaries.",
       "evidence": "GitNexus file-level impact reported LOW with two direct graph references and zero processes, while symbol-level results still named already-deleted page callers from a stale index. Exact repository search found no production import. The remaining focused Event Registration/Event Detail/API/capability suite passed 34/34, repository lint passed, the full Web suite passed 1352/1352 after exactly five orphan tests were removed, and production build passed; commit b6a2f0eb. Required staged detection reported LOW and zero processes but indexed only the documentation edit, so its deletion blind spot is recorded.",
       "conclusion": "pass for source/lint/build/full-suite retirement of the orphan deterministic registration-guide architecture; the real adaptive registration browser lifecycle retains the runtime gaps listed in web-event-registration-fixture-isolation-2026-07-29"
+    },
+    {
+      "id": "web-agent-page-actor-query-isolation-2026-07-29",
+      "target": "Authenticated Web Agent → actor-scoped shared Chat composition separated from obsolete URL action/scenario/mode inputs",
+      "testData": "Production /app/agent and /app/chat server pages; shared Chat route loader; signed-out Agent entry; explicit actor service resolution; adversarial action=review-top-agent-action, scenario=failure, mode=mock, and proactive fixture query values",
+      "expected": "The Agent page must enforce its own authenticated server boundary and pass the canonical session actor into the shared Chat loader. URL input may select only conversation identity, language, and a submitted query; it must not select fixtures, execute Agent actions, or switch service mode. Writes remain behind explicit authenticated client/API actions.",
+      "actual": "The proxy classified /app/agent as private, but unlike /app/chat the page called loadAppChatRouteViewModel without a session actor. The shared loader could therefore resolve generic non-actor services despite the private route. action, scenario, mode, and proactive inputs were already inert, while the manual acceptance guide incorrectly described review-top-agent-action as a page-load command-center preview. After repair, the server page resolves auth, redirects a missing actor to the canonical login return, passes actorId to the shared loader, and regressions prove the obsolete query values remain unread.",
+      "evidence": "Pre-edit GitNexus impact was LOW for AppAgentPage and the affected tests, with zero upstream callers. Focused Agent/Chat regressions passed 16/16, repository lint passed, the complete Web suite passed 1352/1352, and production build passed. Staged detection reported HIGH because the page is the common entry to eight existing Chat service, result, language, state-copy, and decoding flows; context inspection confirmed no incoming callers and no changed downstream call set. Commit 46666e68.",
+      "conclusion": "pass for source/lint/build/full-suite enforcement of the Agent server auth boundary, actor propagation, and obsolete action/scenario/mode query isolation; authenticated browser redirect and populated conversation runtime, two-account isolation, explicit Agent action lifecycle/readback, cache/proxy behavior, duplicate/array/encoded inputs, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "remediations": [
@@ -139121,6 +139154,15 @@
       "files": "repos/orbits/features/events/registration-profile-guide.ts; repos/orbits/tests/capabilities/event-registration-profile-guide.test.ts; repos/orbits/features/events/REGISTRATION_PROFILE_GUIDE_LIVE_IMPLEMENTATION.md",
       "regression": "Repository search found zero production imports after P1-071. GitNexus file-level impact was LOW with two direct graph references and zero processes, although stale symbol results still listed removed page callers. Focused remaining registration/detail tests passed 34/34, lint passed, the full suite passed 1352/1352 after five orphan-only cases disappeared, and production build passed. Staged detect reported LOW and zero processes but did not map either deleted file, so no unsupported deletion-risk claim is made.",
       "status": "fixed and source/lint/build/full-suite-verified for complete retirement of the deterministic test-user registration guide; real adaptive-registration runtime gaps remain tracked under AUDIT-P1-071"
+    },
+    {
+      "id": "AUDIT-P1-073",
+      "severity": "P1",
+      "rootCause": "The proxy treated /app/agent as private, but the server page itself did not resolve the authenticated session and called the shared Chat route loader without actorId. The sibling /app/chat page already supplied that scope. Tests exercised generic service fallback and even invoked the protected page outside a Next request context, masking the missing page-level identity boundary. The manual acceptance guide also claimed an action query produced a command-center preview even though action, scenario, mode, and proactive query inputs were inert.",
+      "decision": "Give /app/agent the same explicit server identity boundary as /app/chat: resolve auth, redirect a missing actor to the canonical login return, and pass the actor into shared Chat composition. Keep URL input limited to conversation identity, language, and submitted query. Leave Agent action review, acceptance, dismissal, ledger transitions, and external-action work behind their explicit authenticated client/API boundaries; document obsolete action/scenario/mode values as no-ops instead of inventing page-load behavior.",
+      "files": "repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/app-agent-todo-summary.test.tsx; repos/orbits/tests/pages/app-proactive-agent-message.test.tsx; repos/orbits/scripts/manual-acceptance.md",
+      "regression": "GitNexus pre-edit impact was LOW with no upstream callers. Focused Agent/Chat tests passed 16/16, lint passed, the complete Web suite passed 1352/1352, and production build passed. Regression covers page auth, signed-out redirect source, canonical actor propagation, real Agent rendering, submitted-query hydration, proactive fixture isolation, and absence of action/scenario/mode query reads. Staged detect was HIGH across eight existing flows because AppAgentPage is their common entry; context review found no incoming callers and no changed downstream call set.",
+      "status": "fixed and source/lint/build/full-suite-verified for Agent page auth, actor propagation, and obsolete query isolation; authenticated browser runtime, populated two-account conversation isolation, explicit Agent action/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []
