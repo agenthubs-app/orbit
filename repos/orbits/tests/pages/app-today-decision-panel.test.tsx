@@ -45,13 +45,18 @@ test("the body never renders a voice-recording evidence chip", () => {
   }
 });
 
-test("awaiting_confirmation and deferred entries render the confirm form (checkboxes + 确认执行/稍后处理)", () => {
+test("awaiting and deferred entries render only transitions valid for their current status", () => {
   for (const entry of agentLedgerEntryFixtures) {
     if (entry.status !== "awaiting_confirmation" && entry.status !== "deferred") continue;
 
     const html = renderToStaticMarkup(<OrbitTodayDecisionPanelBody entry={entry} />);
     assert.ok(html.includes("确认执行"), entry.entryId);
-    assert.ok(html.includes("稍后处理"), entry.entryId);
+    assert.equal(
+      html.includes("稍后处理"),
+      entry.status === "awaiting_confirmation",
+      entry.entryId,
+    );
+    assert.ok(html.includes("忽略"), entry.entryId);
     assert.ok(html.includes("data-orbit-today-decision-form"), entry.entryId);
   }
 });

@@ -10,6 +10,10 @@ import {
   parseAgentChatRunActions,
   parseAgentChatRunView,
 } from "../../app/(app)/app/agent/agent-action-status-card";
+import {
+  agentLedgerErrorMessage,
+  agentLedgerReviewTransitionsForStatus,
+} from "../../features/agent/ledger/presentation";
 import { agentRetryRequestForAssistant } from "../../app/(app)/app/agent/orbit-real-agent";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
@@ -95,6 +99,48 @@ test("chat action state labels are product-readable in Chinese and English", () 
   assert.equal(agentChatActionStatusLabel("awaiting_confirmation", "zh"), "等待确认");
   assert.equal(agentChatActionStatusLabel("completed", "en"), "Completed");
   assert.equal(agentChatActionStatusLabel("new-server-state", "zh"), "正在同步");
+});
+
+test("review controls follow the ledger state machine and localize stale-state errors", () => {
+  assert.deepEqual(agentLedgerReviewTransitionsForStatus("awaiting_confirmation"), [
+    "confirm",
+    "defer",
+    "reject",
+  ]);
+  assert.deepEqual(agentLedgerReviewTransitionsForStatus("deferred"), [
+    "confirm",
+    "reject",
+  ]);
+  assert.deepEqual(agentLedgerReviewTransitionsForStatus("rejected"), []);
+  assert.equal(
+    agentLedgerErrorMessage(
+      {
+        success: false,
+        error: {
+          code: "CONFLICT",
+          context: {
+            agentLedgerErrorCode: "AGENT_LEDGER_TRANSITION_INVALID",
+          },
+          message: "That transition is not allowed from the entry's current status.",
+        },
+      },
+      "zh",
+    ),
+    "操作状态已经变化，请刷新后再试。",
+  );
+  assert.equal(
+    agentLedgerErrorMessage(
+      {
+        success: false,
+        error: {
+          code: "CONFLICT",
+          message: "That transition is not allowed from the entry's current status.",
+        },
+      },
+      "zh",
+    ),
+    "操作没有完成，请刷新状态后重试。",
+  );
 });
 
 test("chat derives ordered Run progress and retry controls from the server envelope", () => {

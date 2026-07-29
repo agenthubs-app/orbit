@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  agentLedgerErrorMessage,
+  agentLedgerReviewTransitionsForStatus,
+} from "../../../../features/agent/ledger/presentation";
+
 type AgentActionStatusLanguage = "en" | "zh";
 
 export interface AgentChatLinkedAction {
@@ -260,20 +265,6 @@ function actionRiskLabel(
   })[language];
 }
 
-function transitionError(value: unknown, language: AgentActionStatusLanguage) {
-  if (
-    isRecord(value) &&
-    isRecord(value.error) &&
-    typeof value.error.message === "string"
-  ) {
-    return value.error.message;
-  }
-
-  return language === "zh"
-    ? "操作没有完成，请重试。"
-    : "The action did not complete. Please try again.";
-}
-
 export function AgentActionStatusCard({
   actionIds,
   language,
@@ -392,7 +383,7 @@ export function AgentActionStatusCard({
       const body = (await response.json().catch(() => null)) as unknown;
       const updated = parseAgentChatRunView(body);
       if (!response.ok || !updated) {
-        setError(transitionError(body, language));
+        setError(agentLedgerErrorMessage(body, language));
         return;
       }
       setRunView(updated);
@@ -449,7 +440,7 @@ export function AgentActionStatusCard({
       const updated = parseTransitionedAction(body);
 
       if (!response.ok || !updated) {
-        setError(transitionError(body, language));
+        setError(agentLedgerErrorMessage(body, language));
         return;
       }
 
@@ -599,9 +590,11 @@ export function AgentActionStatusCard({
       ) : null}
 
       {visibleActions.map((action) => {
-        const editable =
-          action.status === "awaiting_confirmation" ||
-          action.status === "deferred";
+        const reviewTransitions =
+          agentLedgerReviewTransitionsForStatus(action.status);
+        const editable = reviewTransitions.length > 0;
+        const canDefer = reviewTransitions.includes("defer");
+        const canReject = reviewTransitions.includes("reject");
         const confirmableInChat = agentChatActionCanConfirm(action);
         const pending = pendingActionId === action.actionId;
 
@@ -681,25 +674,25 @@ export function AgentActionStatusCard({
                     : "Review external action details in Today before confirming"}
                 </span>
               ) : null}
-              {editable ? (
-                <>
-                  <button
-                    className="btn btn-quiet"
-                    disabled={pending}
-                    onClick={() => void applyTransition(action, "defer")}
-                    type="button"
-                  >
-                    {language === "zh" ? "稍后处理" : "Later"}
-                  </button>
-                  <button
-                    className="btn btn-quiet"
-                    disabled={pending}
-                    onClick={() => void applyTransition(action, "reject")}
-                    type="button"
-                  >
-                    {language === "zh" ? "忽略" : "Ignore"}
-                  </button>
-                </>
+              {canDefer ? (
+                <button
+                  className="btn btn-quiet"
+                  disabled={pending}
+                  onClick={() => void applyTransition(action, "defer")}
+                  type="button"
+                >
+                  {language === "zh" ? "稍后处理" : "Later"}
+                </button>
+              ) : null}
+              {canReject ? (
+                <button
+                  className="btn btn-quiet"
+                  disabled={pending}
+                  onClick={() => void applyTransition(action, "reject")}
+                  type="button"
+                >
+                  {language === "zh" ? "忽略" : "Ignore"}
+                </button>
               ) : null}
             </div>
           </article>

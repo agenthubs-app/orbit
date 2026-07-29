@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { AgentLedgerOperation } from "../../../../features/agent/ledger/contract";
+import type {
+  AgentLedgerEntryStatus,
+  AgentLedgerOperation,
+} from "../../../../features/agent/ledger/contract";
+import {
+  agentLedgerErrorMessage,
+  agentLedgerReviewTransitionsForStatus,
+} from "../../../../features/agent/ledger/presentation";
 
 type EditableOperationValues = {
   text?: string;
@@ -21,14 +28,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isLedgerSuccess(body: unknown): boolean {
   return isRecord(body) && body.success === true;
-}
-
-function readLedgerError(body: unknown): string {
-  if (isRecord(body) && isRecord(body.error) && typeof body.error.message === "string") {
-    return body.error.message;
-  }
-
-  return "操作没有完成，请重试。";
 }
 
 function toLocalDateTimeValue(value: unknown): string {
@@ -79,10 +78,13 @@ function editableOperationValues(
 export function OrbitTodayDecisionForm({
   entryId,
   operations,
+  status,
 }: {
   entryId: string;
   operations: readonly AgentLedgerOperation[];
+  status: AgentLedgerEntryStatus;
 }) {
+  const reviewTransitions = agentLedgerReviewTransitionsForStatus(status);
   const [selected, setSelected] = useState<readonly string[]>(
     operations
       .filter((operation) => operation.selectedByDefault)
@@ -182,7 +184,7 @@ export function OrbitTodayDecisionForm({
       const body = (await response.json()) as unknown;
 
       if (!isLedgerSuccess(body)) {
-        setError(readLedgerError(body));
+        setError(agentLedgerErrorMessage(body, "zh"));
         setPending(false);
         return;
       }
@@ -353,30 +355,36 @@ export function OrbitTodayDecisionForm({
       ) : null}
 
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          className="btn btn-primary"
-          disabled={pending || selected.length === 0}
-          onClick={() => void applyTransition("confirm")}
-          type="button"
-        >
-          确认执行
-        </button>
-        <button
-          className="btn btn-quiet"
-          disabled={pending}
-          onClick={() => void applyTransition("defer")}
-          type="button"
-        >
-          稍后处理
-        </button>
-        <button
-          className="btn btn-quiet"
-          disabled={pending}
-          onClick={() => void applyTransition("reject")}
-          type="button"
-        >
-          忽略
-        </button>
+        {reviewTransitions.includes("confirm") ? (
+          <button
+            className="btn btn-primary"
+            disabled={pending || selected.length === 0}
+            onClick={() => void applyTransition("confirm")}
+            type="button"
+          >
+            确认执行
+          </button>
+        ) : null}
+        {reviewTransitions.includes("defer") ? (
+          <button
+            className="btn btn-quiet"
+            disabled={pending}
+            onClick={() => void applyTransition("defer")}
+            type="button"
+          >
+            稍后处理
+          </button>
+        ) : null}
+        {reviewTransitions.includes("reject") ? (
+          <button
+            className="btn btn-quiet"
+            disabled={pending}
+            onClick={() => void applyTransition("reject")}
+            type="button"
+          >
+            忽略
+          </button>
+        ) : null}
       </div>
     </div>
   );

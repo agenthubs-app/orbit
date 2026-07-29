@@ -88,7 +88,11 @@ export function OrbitTodayDecisionPanelBody({
       </p>
 
       {editable ? (
-        <OrbitTodayDecisionForm entryId={entry.entryId} operations={entry.operations} />
+        <OrbitTodayDecisionForm
+          entryId={entry.entryId}
+          operations={entry.operations}
+          status={entry.status}
+        />
       ) : null}
     </div>
   );
