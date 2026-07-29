@@ -744,6 +744,8 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
         "one actor-owned internal task proposal moved from awaiting confirmation to deferred to rejected while task storage, outbox, and receipts stayed unchanged",
         "a repeated Later control on the deferred action exposed a conflict and raw English error; shared ledger presentation rules removed the invalid control and localized stale-state errors across Agent Chat and Today",
+        "two actor-owned awaiting-confirmation task proposals each moved both Run and action to canceled while outbox, receipts, and matching task records remained zero for actor A and both Runs were absent for actor B",
+        "the cancellation control used request-language copy and a pending label, disappeared after completion, survived exact-session reload, and both temporary sessions were removed from the provider",
       ],
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
       verificationConclusion:
@@ -2397,6 +2399,18 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "All three controls converged on one feedback record keyed by the actor-owned Run; no duplicate outcome or feedback record was created.",
       verificationCase:
         "web-agent-evidence-source-disclosure-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#onclick:() => void cancelRun()#正在取消… / Canceling… / 取消本次请求 / Cancel this request',
+    {
+      actualResult:
+        "Clicking the user-facing 取消本次请求 control changed each independently created awaiting-confirmation task proposal into 已取消, removed the run-cancel and Confirm/Later/Ignore controls, and survived exact-session reload. Formal readback returned Run=canceled and action=canceled for actor A, null for actor B, zero outbox/receipts, and zero matching task records.",
+      testData:
+        "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; sessions agent-session-ms60pyvu-9pflqn and agent-session-ms60zisb-gs4wz4; Runs run:natural-language:effb1b4d and run:natural-language:5d28297a; actions action:natural-language:5365bb78 and action:natural-language:e1cd343e; unexecuted task proposals for Cancel Transition Audit Person and Cancel Label Audit Person",
+      idempotency:
+        "Each cancellation converged its Run and action on the terminal canceled state before any outbox event or receipt existed. Terminal rendering exposed no repeat cancellation or review control; both temporary conversations were independently deleted while the audit ledger retained the terminal records.",
+      verificationCase: "web-agent-run-cancellation-2026-07-29",
     },
   ],
   [
@@ -4526,6 +4540,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for ambiguous-request fail-closed behavior, internal pending proposal, Later persistence, deferred refresh, duplicate-control removal, shared Chat/Today state rules, Chinese stable-error mapping, Ignore from deferred, terminal control removal, Run completion, actor isolation, zero task/outbox/receipt/external writes, refresh readback, session cleanup, focused/full tests, lint, and build; cancellation during a genuinely running Run, network failure during the first transition, rapid concurrent clicks, Today browser rendering of a deferred entry, and independent mobile runtime traversal remain separately unverified",
   },
+  {
+    id: "web-agent-run-cancellation-2026-07-29",
+    target:
+      "Live Agent awaiting-confirmation task proposal → request cancellation → terminal UI/provider readback → exact-session reload → cleanup",
+    testData:
+      "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; sessions agent-session-ms60pyvu-9pflqn and agent-session-ms60zisb-gs4wz4; Runs run:natural-language:effb1b4d and run:natural-language:5d28297a; actions action:natural-language:5365bb78 and action:natural-language:e1cd343e; titles Cancel Transition Audit Person and Cancel Label Audit Person; due times 2026-09-11T09:00:00+09:00 and 2026-09-12T09:00:00+09:00",
+    expected:
+      "A pending internal proposal may be canceled before confirmation without executing its operation. Cancellation must atomically terminate the actor-owned Run and action, remove every review-write control, remain invisible to another actor, enqueue no work, create no task, and survive exact-session reload. The control must describe the user's request rather than expose the internal Run model and must announce its in-flight state. Deleting the temporary conversation must not delete or alter the terminal audit ledger.",
+    actual:
+      "The first real prompt produced one waiting-for-confirmation Run and one awaiting-confirmation create_followup_task action with zero outbox and receipts; actor B returned null. Clicking the original 取消 Run control rendered 已取消 and removed Cancel/Confirm/Later/Ignore. Formal readback returned Run=canceled, action=canceled, zero outbox/receipts, actor B null, and zero tasks containing Cancel Transition Audit Person; the bound session URL retained the result after reload. Product review identified the mixed internal term Run and its unchanged disabled label as immature copy. The repair renders 取消本次请求 / Cancel this request and switches to 正在取消… / Canceling… while pending. A second independent production prompt exposed the new label; clicking it again produced Run/action canceled, actor B null, zero outbox/receipts, zero matching tasks, and a persisted exact-session terminal UI. Both temporary sessions were deleted through the irreversible-action dialog, and both actor-scoped session providers returned null.",
+    evidence:
+      "In-app production browser traversed both real prompts, 7/7 proposal completion, exact run/action ids, original and repaired cancel controls, immediate terminal card/control removal, history binding, hard reload, and confirmed session deletion. Configured live runtime services proved both actor-A Run/action pairs were canceled and both actor-B reads were null; configured task storage found zero matching records; each Run contained zero outbox events and receipts; configured session providers returned null after cleanup. Focused Agent tests passed 11/11, the complete Web suite passed 1383/1383, lint/typecheck passed, and production build completed 39/39. Commit 9b61e620; AgentActionStatusCard was absent from the GitNexus index, the separately resolved runtime cancelRun symbol was LOW with zero affected processes/modules, and staged detection found no indexed symbol changes.",
+    conclusion:
+      "pass for awaiting-confirmation Run/action cancellation, terminal control removal, user-facing bilingual copy, pending feedback copy, actor isolation, zero task/outbox/receipt/external writes, exact-session reload, independent repeat scenario, session cleanup, focused/full tests, lint, and build; cancellation after an outbox operation has begun, forced network failure, rapid concurrent activation, mobile width, keyboard, and assistive-technology announcement timing remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5980,6 +6009,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Agent/Today tests passed 15/15 and lock awaiting, deferred, rejected, domain-error, and unknown-error behavior. The complete Web suite passed 1382/1382, lint/typecheck passed, and production build completed 39/39. The production browser reproduced the old duplicate Later plus English conflict, then proved the rebuilt deferred UI had zero Later and one Ignore. Ignore produced a persisted rejected terminal state with no remaining write controls; actor B remained null, outbox/receipts and matching task records remained zero, reload preserved the result, and temporary session cleanup returned null for both actors. Commit a57dc7bf; pre-edit symbols were absent from the GitNexus index and staged detection was LOW.",
     status:
       "fixed and shared-state-map/Chat/Today/deferred-no-Later/rejected-terminal/localized-error/actor-isolation/no-domain-write/reload/cleanup/focused/full-suite/lint/build-verified; mobile runtime parity and concurrent-click traversal remain open",
+  },
+  {
+    id: "AUDIT-P2-105",
+    severity: "P2",
+    rootCause:
+      "The Agent cancellation control exposed the internal execution-model term Run inside an otherwise Chinese user flow, and disabling the control during its request left the same imperative label visible instead of communicating that cancellation was in progress. The operation was functionally safe but its copy required users to understand an implementation concept and offered weak pending feedback.",
+    decision:
+      "Name the action by its user-visible scope: 取消本次请求 / Cancel this request. While the request is pending, keep the existing disabled duplicate-submit guard and replace the label with 正在取消… / Canceling…. Keep the four literals directly in the JSX so the whole-product interaction scanner can retain the actual accessible names instead of an opaque helper expression.",
+    files:
+      "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx",
+    regression:
+      "Focused Agent tests passed 11/11, the complete Web suite passed 1383/1383, lint/typecheck passed, and production build completed 39/39. The rebuilt production page exposed 取消本次请求 on a second independently created pending action; clicking it produced the same canceled Run/action, actor isolation, zero task/outbox/receipt writes, terminal control removal, and reload persistence as the first scenario. The generated interaction inventory resolves all four idle/pending Chinese/English labels. Commit 9b61e620; pre-edit component indexing was UNKNOWN, the runtime cancelRun symbol was LOW, and staged detection found no indexed symbol changes.",
+    status:
+      "fixed and user-scope-copy/bilingual/pending-label/duplicate-submit-guard/auditable-accessible-name/production-browser/actor-isolation/no-write/reload/focused/full-suite/lint/build-verified; forced network failure and assistive-technology announcement timing remain open",
   },
 ];
 
