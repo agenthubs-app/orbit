@@ -3,7 +3,6 @@ import type {
   SourceConsistencyAuditFinding,
   SourceConsistencyProvenanceAuditPayload,
   SourceConsistencyProvenanceAuditResult,
-  SourceConsistencyProvenanceAuditRunResult,
 } from "../../../../../features/audit/provenance-contract";
 import type {
   DashboardAggregatePayload,
@@ -32,18 +31,17 @@ import type {
   OpportunityReminderAnalyticsPayload,
   OpportunityReminderAnalyticsResult,
   OpportunityReminderAnalyticsServiceResult,
-  OpportunityReminderRecomputeResult,
 } from "../../../../../features/dashboard/opportunity-contract";
 import {
   createActorScopedAppDashboardRouteServices,
   createAppDashboardRouteServices,
 } from "./dashboard-service-factory";
 
-export type AppDashboardSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
 export type AppDashboardRouteScenario = "empty" | "pending" | "failure";
+
+export interface AppDashboardRouteControls {
+  scenario?: AppDashboardRouteScenario;
+}
 
 export interface AppDashboardRouteRequestContext {
   actorId?: string | null;
@@ -96,20 +94,7 @@ export interface AppDashboardRouteStateViewModel {
   scenario: AppDashboardRouteScenario;
 }
 
-export type AppDashboardActionResultViewModel =
-  | {
-      state: "failure";
-      errorCode: string;
-    }
-  | {
-      deliveryChanged: boolean;
-      generatedFindingCount: number;
-      generatedOpportunityCount: number;
-      state: "success";
-    };
-
 export interface AppDashboardSuccessViewModel {
-  actionResult: AppDashboardActionResultViewModel | null;
   aggregate: AppDashboardAggregateViewModel;
   audit: AppDashboardAuditViewModel;
   distributions: AppDashboardDistributionViewModel;
@@ -147,8 +132,8 @@ const routeRecoveryActions: Record<
       label: bilingualText("显示活跃仪表盘", "Show active dashboard"),
     },
     {
-      href: "/app/dashboard?action=run-dashboard-review",
-      label: bilingualText("预览仪表盘复核", "Preview dashboard review"),
+      href: "/app/contacts/new",
+      label: bilingualText("添加有来源的联系人", "Add a sourced contact"),
     },
   ],
   failure: [
@@ -157,8 +142,8 @@ const routeRecoveryActions: Record<
       label: bilingualText("重新加载仪表盘", "Reload dashboard"),
     },
     {
-      href: "/app/dashboard?scenario=pending",
-      label: bilingualText("检查来源状态", "Check source status"),
+      href: "/app/settings",
+      label: bilingualText("检查数据源设置", "Check source settings"),
     },
   ],
   pending: [
@@ -168,31 +153,6 @@ const routeRecoveryActions: Record<
     },
   ],
 };
-
-function readSearchParam(
-  searchParams: AppDashboardSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppDashboardSearchParams | undefined,
-): AppDashboardRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
-}
 
 function isRouteStateFailure(result: RouteStateResult): result is RouteStateFailure {
   return result.success === false;
@@ -243,12 +203,6 @@ async function resolveNetworkGapAnalysisResult(
 async function resolveOpportunityReminderResult(
   result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderAnalyticsResult>,
 ): Promise<OpportunityReminderAnalyticsResult> {
-  return await result;
-}
-
-async function resolveOpportunityRecomputeResult(
-  result: OpportunityReminderAnalyticsServiceResult<OpportunityReminderRecomputeResult>,
-): Promise<OpportunityReminderRecomputeResult> {
   return await result;
 }
 
@@ -343,48 +297,15 @@ function routeStateViewModel(input: {
   };
 }
 
-function actionResultViewModel(
-  recompute: OpportunityReminderRecomputeResult,
-  auditRun: SourceConsistencyProvenanceAuditRunResult,
-): AppDashboardActionResultViewModel {
-  if (auditRun.success === false || recompute.success === false) {
-    if (auditRun.success === false) {
-      return { errorCode: auditRun.error.code, state: "failure" };
-    }
-
-    if (recompute.success === false) {
-      return { errorCode: recompute.error.code, state: "failure" };
-    }
-
-    return { errorCode: "unavailable", state: "failure" };
-  }
-
-  const deliveryChanged = Boolean(
-    recompute.data.provenance.externalNetworkRequested ||
-      recompute.data.provenance.emailProviderRequested ||
-      recompute.data.provenance.notificationProviderRequested ||
-      auditRun.data.provenance.externalNetworkRequested ||
-      auditRun.data.provenance.emailProviderRequested ||
-      auditRun.data.provenance.notificationProviderRequested,
-  );
-
-  return {
-    deliveryChanged,
-    generatedFindingCount: auditRun.data.generatedFindingIds.length,
-    generatedOpportunityCount: recompute.data.generatedOpportunityCount,
-    state: "success",
-  };
-}
-
 export async function loadAppDashboardRouteViewModel(
-  searchParams?: AppDashboardSearchParams,
   context: AppDashboardRouteRequestContext = {},
+  controls: AppDashboardRouteControls = {},
 ): Promise<AppDashboardRouteViewModel> {
   const actorId = context.actorId?.trim() || null;
   const services = actorId
     ? createActorScopedAppDashboardRouteServices(actorId)
     : createAppDashboardRouteServices();
-  const requestedScenario = readRouteScenario(searchParams);
+  const requestedScenario = controls.scenario ?? null;
 
   if (requestedScenario) {
     const [
@@ -495,24 +416,9 @@ export async function loadAppDashboardRouteViewModel(
     };
   }
 
-  const actionRequested =
-    readSearchParam(searchParams, "action") === "run-dashboard-review";
-  const recomputeResult = actionRequested
-    ? await resolveOpportunityRecomputeResult(
-        services.opportunityService.recomputeOpportunityReminderAnalytics(),
-      )
-    : null;
-  const auditRunResult = actionRequested
-    ? await services.auditService.runAudit()
-    : null;
-
   return {
     state: "success",
     workspace: {
-      actionResult:
-        recomputeResult && auditRunResult
-          ? actionResultViewModel(recomputeResult, auditRunResult)
-          : null,
       aggregate: aggregateResult.data,
       audit: auditResult.data,
       distributions: distributionResult.data,

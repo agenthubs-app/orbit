@@ -18,7 +18,6 @@ import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
   loadAppDashboardRouteViewModel,
   type AppDashboardRouteStateViewModel,
-  type AppDashboardSearchParams,
 } from "./compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model";
 import { dashboardRouteToOrbitDashboardViewModel } from "./compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-view-model-adapter";
 import { OrbitRealDashboard } from "./orbit-real-dashboard";
@@ -50,21 +49,14 @@ function DashboardRouteStateBoundary({
   );
 }
 
-export default async function AppDashboardPage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppDashboardSearchParams>;
-} = {}) {
+export default async function AppDashboardPage() {
   const session = await auth();
   const actorId = session?.user?.id;
   if (!actorId) {
     redirect("/app/account/login?next=%2Fapp%2Fdashboard");
   }
 
-  const routeModel = await loadAppDashboardRouteViewModel(
-    await searchParams,
-    { actorId },
-  );
+  const routeModel = await loadAppDashboardRouteViewModel({ actorId });
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 

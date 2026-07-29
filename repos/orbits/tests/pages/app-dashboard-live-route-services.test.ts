@@ -86,7 +86,7 @@ test("app dashboard route service bundle resolves all child services in live mod
 
 test("app dashboard route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveDashboard(async () => {
-    const viewModel = await loadAppDashboardRouteViewModel(undefined, {
+    const viewModel = await loadAppDashboardRouteViewModel({
       actorId: "account:test-dashboard-live",
     });
 
@@ -123,6 +123,12 @@ test("/app/dashboard authenticates and renders the actor-scoped relationship das
   assert.match(pageSource, /loadAppDashboardRouteViewModel/);
   assert.match(pageSource, /dashboardRouteToOrbitDashboardViewModel/);
   assert.match(pageSource, /OrbitRealDashboard/);
+  assert.doesNotMatch(pageSource, /searchParams/);
+  assert.doesNotMatch(routeSource, /run-dashboard-review|scenario=/);
+  assert.doesNotMatch(
+    routeSource,
+    /recomputeOpportunityReminderAnalytics\(\)|auditService\.runAudit\(\)/,
+  );
   assert.doesNotMatch(pageSource, /redirect\("\/app\/party"\)|OrbitRealParty/);
   assert.match(routeSource, /createActorScopedAppDashboardRouteServices\(actorId\)/);
   assert.match(routeSource, /getDashboardAggregate\(\{\s*actorId,/);
@@ -139,6 +145,26 @@ test("/app/dashboard authenticates and renders the actor-scoped relationship das
     serviceSource,
     /createActorScopedSourceConsistencyProvenanceAuditService\(\s*normalizedActorId/,
   );
+});
+
+test("dashboard scenarios require explicit internal controls", async () => {
+  await withModuleMode("mock", async () => {
+    const normal = await loadAppDashboardRouteViewModel();
+    const internalEmpty = await loadAppDashboardRouteViewModel(
+      {},
+      { scenario: "empty" },
+    );
+
+    assert.equal(normal.state, "success");
+    assert.equal(internalEmpty.state, "route-state");
+    if (internalEmpty.state === "route-state") {
+      assert.equal(internalEmpty.routeState.scenario, "empty");
+      assert.deepEqual(
+        internalEmpty.routeState.recoveryActions.map((action) => action.href),
+        ["/app/dashboard", "/app/contacts/new"],
+      );
+    }
+  });
 });
 
 test("the relationship dashboard component hides command-center provenance details", async () => {
