@@ -14,7 +14,7 @@ import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
 } from "../compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
-import { OrbitRealAdminEvents } from "../orbit-real-admin";
+import { OrbitRealAdminEvents } from "../orbit-real-admin-events";
 
 async function getAdminEventsPageLanguage(): Promise<OrbitLanguage> {
   try {

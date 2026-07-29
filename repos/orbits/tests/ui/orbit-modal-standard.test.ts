@@ -25,7 +25,12 @@ function source(path: string): string {
 const MODAL_SHELL_PATH = "app/(app)/app/orbit-account-shell.tsx";
 const ACCOUNT_AUTH_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
 const PARTY_PATH = "app/(app)/app/dashboard/orbit-real-party.tsx";
-const ADMIN_PATH = "app/(app)/app/admin/orbit-real-admin.tsx";
+const ADMIN_PATHS = [
+  "app/(app)/app/admin/orbit-real-admin-login.tsx",
+  "app/(app)/app/admin/orbit-real-admin-shell.tsx",
+  "app/(app)/app/admin/orbit-real-admin-workspace.tsx",
+  "app/(app)/app/admin/orbit-real-admin-events.tsx",
+];
 const INBOX_PATH = "app/(app)/app/inbox/relationship-inbox-panel.tsx";
 
 const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, PARTY_PATH];
@@ -89,7 +94,7 @@ test("party PersonDetailOverlay is migrated onto ModalShell in bottom-sheet vari
 });
 
 test("admin does not retain the unpersisted CreateEventModal", () => {
-  const text = source(ADMIN_PATH);
+  const text = ADMIN_PATHS.map(source).join("\n");
   assert.doesNotMatch(
     text,
     /CreateEventModal|<ModalShell\b|useOrbitModalA11y/,

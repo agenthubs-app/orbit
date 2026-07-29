@@ -5,7 +5,7 @@
  */
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import { OrbitRealAdminLogin } from "../orbit-real-admin";
+import { OrbitRealAdminLogin } from "../orbit-real-admin-login";
 
 export default function AdminAccessPage() {
   return (

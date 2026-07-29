@@ -8,7 +8,8 @@ import { fileURLToPath } from "node:url";
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 const files: Array<[string, number]> = [
-  ["app/(app)/app/admin/orbit-real-admin.tsx", 2],
+  ["app/(app)/app/admin/orbit-real-admin-workspace.tsx", 1],
+  ["app/(app)/app/admin/orbit-real-admin-events.tsx", 1],
 ];
 
 for (const [file, minCoverSites] of files) {

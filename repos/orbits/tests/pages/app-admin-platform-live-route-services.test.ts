@@ -91,7 +91,9 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
 });
 
 test("admin only renders sourced records and platform fails closed without a provider", () => {
-  const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
+  const adminSource = source(
+    "app/(app)/app/admin/orbit-real-admin-workspace.tsx",
+  );
   const platformPageSource = source("app/(app)/app/platform/page.tsx");
   const routeModelSource = source(
     "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
@@ -126,16 +128,25 @@ test("admin only renders sourced records and platform fails closed without a pro
 });
 
 test("admin entry and event management do not claim unexecuted email or writes", () => {
-  const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
+  const loginSource = source(
+    "app/(app)/app/admin/orbit-real-admin-login.tsx",
+  );
+  const shellSource = source(
+    "app/(app)/app/admin/orbit-real-admin-shell.tsx",
+  );
+  const eventsSource = source(
+    "app/(app)/app/admin/orbit-real-admin-events.tsx",
+  );
+  const adminSource = [loginSource, shellSource, eventsSource].join("\n");
 
-  assert.match(adminSource, /Continue to secure sign in/);
-  assert.match(adminSource, /actor-scoped event source records/);
-  assert.match(adminSource, /dedicated providers are connected/);
+  assert.match(loginSource, /Continue to secure sign in/);
+  assert.match(loginSource, /actor-scoped event source records/);
+  assert.match(loginSource, /dedicated providers are connected/);
   assert.match(
-    adminSource,
+    loginSource,
     /\/app\/account\/login\?next=\$\{encodeURIComponent\(dest\)\}/,
   );
-  assert.match(adminSource, /Source events · read only/);
+  assert.match(eventsSource, /Source events · read only/);
   assert.doesNotMatch(
     adminSource,
     /Login email sent|Send sign-in email|Enter admin \(demo\)|Skip · enter admin directly \(demo\)/,
