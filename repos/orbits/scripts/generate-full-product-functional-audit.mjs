@@ -3593,6 +3593,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the orphan legacy Register hybrid model while preserving reviewed public code resolution and the canonical adaptive registration workspace; browser registration lifecycle gaps remain tracked under the existing Event Registration audit cases",
   },
+  {
+    id: "web-organizer-legacy-hybrid-model-retirement-2026-07-29",
+    target:
+      "Retired public Organizer hybrid-data constructor → type-only UI contract backed by the canonical public Organizer loader",
+    testData:
+      "Repository imports and symbol references for getOrbitOrganizerPublicViewModel; real /app/o/[slug] page, loader, and component; public event code, unknown slug, mock/live controlled states, language, attendee-name privacy, and the hybrid-route self-validation test",
+    expected:
+      "The public Organizer route must obtain its event aggregate from its canonical loader and expose only reviewed organizer statistics. The shared model file may retain the UI type consumed by the loader and component, but it must not synchronously read landing hybrid data, choose a fallback event, or fabricate a default organizer solely for a legacy test.",
+    actual:
+      "The production page already rejected search parameters and called loadAppOrganizerPublicRouteViewModel, while its loader handled public catalogue codes, unknown slugs, controlled service states, language, and aggregate privacy. The 30-line shared model file nevertheless retained getOrbitOrganizerPublicViewModel, which read getOrbitLandingViewModel, silently fell back to the first event, and generated an organizer aggregate. Only orbit-hybrid-route-view-models.test.ts called it. After repair, the file exports only OrbitOrganizerPublicViewModel, the legacy invocation is removed, and the focused route regression rejects both old symbols from returning.",
+    evidence:
+      "GitNexus reported LOW upstream impact for getOrbitOrganizerPublicViewModel with one direct test-file caller and zero production execution flows. Focused Organizer and hybrid-route tests passed 9/9, repository lint passed, the complete Web suite passed 1352/1352, and production build passed; commit 9a6bc1ca. Required staged detection returned No changes detected for the three-file deletion-heavy diff, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the legacy Organizer hybrid constructor while preserving the public loader, aggregate privacy, and shared UI type contract; authenticated organizer administration remains a separate product boundary",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4641,6 +4656,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact with one direct test caller and zero execution flows. Focused tests passed 7/7, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains reviewed EVTSIGNUP01 resolution, canonical adaptive-registration redirect, language propagation, public mode/scenario isolation, unknown-code failure, and absence of pre-redirect profile form composition. Staged detect returned No changes detected despite the deleted file and removed test reference, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified for retirement of the legacy Register hybrid constructor; real adaptive-registration runtime gaps remain tracked under AUDIT-P1-071",
+  },
+  {
+    id: "AUDIT-P1-076",
+    severity: "P1",
+    rootCause:
+      "The real public Organizer page had migrated to a dedicated loader, but orbit-organizer-route-view-model.ts still exported a synchronous hybrid constructor. It read the landing model, silently selected the first event when a slug did not match, derived organizer events and participant totals, and was invoked only by the broad legacy hybrid-route test. This kept an unreviewed fallback architecture next to the canonical privacy-aware public loader.",
+    decision:
+      "Keep orbit-organizer-route-view-model.ts as a type-only boundary for the real loader and component. Delete getOrbitOrganizerPublicViewModel and its runtime landing import, remove the test-only call, and extend the focused Organizer regression to prohibit both the legacy getter and getOrbitLandingViewModel import. Preserve unknown-slug handling, public catalogue resolution, localization, aggregate-only statistics, and attendee-name privacy in the canonical loader.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts; repos/orbits/tests/pages/app-organizer-public-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus reported LOW impact with one direct test caller and zero execution flows. Focused tests passed 9/9, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains public code resolution, unknown-slug isolation from private storage, language-stable controlled states, URL control isolation, aggregate-only output, and absence of attendee names. Staged detect returned No changes detected despite the getter removal and test changes, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for retirement of the legacy Organizer hybrid constructor; the canonical public Organizer loader remains the single data architecture",
   },
 ];
 
