@@ -64,7 +64,10 @@ export function eventChoiceToLandingEvent(
         time: "Next",
       },
       {
-        description: `Readiness score ${event.readinessScore}`,
+        description:
+          event.readinessScore === null
+            ? "Readiness unavailable"
+            : `Readiness score ${event.readinessScore}`,
         label: "Readiness",
         time: "Review",
       },

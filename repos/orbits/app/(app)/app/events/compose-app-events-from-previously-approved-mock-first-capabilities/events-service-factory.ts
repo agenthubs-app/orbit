@@ -2,9 +2,15 @@ import { createEventGoalAndReadinessService } from "../../../../../features/even
 import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
 import type { EventCrudAndImportService } from "../../../../../features/events/event-crud-and-import/service";
 import type { EventGoalAndReadinessService } from "../../../../../features/events/goal-readiness/contract";
-import { createEventRecommendationService } from "../../../../../features/recommendations/service-factory";
+import {
+  createActorScopedEventRecommendationService,
+  createEventRecommendationService,
+} from "../../../../../features/recommendations/service-factory";
 import type { EventRecommendationService } from "../../../../../features/recommendations/service";
-import { createEventValueRecommendationService } from "../../../../../features/recommendations/service-factory";
+import {
+  createActorScopedEventValueRecommendationService,
+  createEventValueRecommendationService,
+} from "../../../../../features/recommendations/service-factory";
 import type { EventValueRecommendationService } from "../../../../../features/recommendations/event-value-contract";
 import {
   createModuleServiceFactory,
@@ -21,6 +27,11 @@ export interface AppEventsRouteServices {
   readiness: EventGoalAndReadinessService;
 }
 
+export interface AppEventsRouteServiceOptions {
+  actorId?: string | null;
+  mode?: ModuleMode | string;
+}
+
 // 每个 capabilityId 对应页面中的一个功能块，后续可按块替换 live 实现。
 const appEventsCrudServiceFactory =
   createModuleServiceFactory<EventCrudAndImportService>({
@@ -31,25 +42,35 @@ const appEventsCrudServiceFactory =
     },
   });
 
-const appEventsAttendeeRecommendationServiceFactory =
-  createModuleServiceFactory<EventRecommendationService>({
+function appEventsAttendeeRecommendationServiceFactory(
+  actorId?: string | null,
+) {
+  const normalizedActorId = actorId?.trim() ?? "";
+
+  return createModuleServiceFactory<EventRecommendationService>({
     capabilityId: "app-events:event-recommendations",
     implementations: {
-      live: ({ requestedMode }) => createEventRecommendationService(requestedMode),
-      mock: ({ requestedMode }) => createEventRecommendationService(requestedMode),
+      live: () =>
+        createActorScopedEventRecommendationService(normalizedActorId),
+      mock: ({ requestedMode }) =>
+        createEventRecommendationService(requestedMode),
     },
   });
+}
 
-const appEventsValueRecommendationServiceFactory =
-  createModuleServiceFactory<EventValueRecommendationService>({
+function appEventsValueRecommendationServiceFactory(actorId?: string | null) {
+  const normalizedActorId = actorId?.trim() ?? "";
+
+  return createModuleServiceFactory<EventValueRecommendationService>({
     capabilityId: "app-events:event-value-recommendations",
     implementations: {
-      live: ({ requestedMode }) =>
-        createEventValueRecommendationService(requestedMode),
+      live: () =>
+        createActorScopedEventValueRecommendationService(normalizedActorId),
       mock: ({ requestedMode }) =>
         createEventValueRecommendationService(requestedMode),
     },
   });
+}
 
 const appEventsReadinessServiceFactory =
   createModuleServiceFactory<EventGoalAndReadinessService>({
@@ -74,13 +95,17 @@ function unwrapService<TService>(
 }
 
 export function resolveAppEventsRouteServices(
-  mode?: ModuleMode | string,
+  options: AppEventsRouteServiceOptions = {},
 ): ServiceResolution<AppEventsRouteServices> {
   const attendeeRecommendations =
-    appEventsAttendeeRecommendationServiceFactory.create(mode);
-  const eventValues = appEventsValueRecommendationServiceFactory.create(mode);
-  const events = appEventsCrudServiceFactory.create(mode);
-  const readiness = appEventsReadinessServiceFactory.create(mode);
+    appEventsAttendeeRecommendationServiceFactory(options.actorId).create(
+      options.mode,
+    );
+  const eventValues = appEventsValueRecommendationServiceFactory(
+    options.actorId,
+  ).create(options.mode);
+  const events = appEventsCrudServiceFactory.create(options.mode);
+  const readiness = appEventsReadinessServiceFactory.create(options.mode);
 
   if (attendeeRecommendations.success === false) {
     return attendeeRecommendations;
@@ -111,8 +136,8 @@ export function resolveAppEventsRouteServices(
 }
 
 export function createAppEventsRouteServices(
-  mode?: ModuleMode | string,
+  options: AppEventsRouteServiceOptions = {},
 ): AppEventsRouteServices {
   // 返回一个页面级 bundle，页面只关心“活动页需要哪些服务”，不关心每个服务怎么创建。
-  return unwrapService(resolveAppEventsRouteServices(mode));
+  return unwrapService(resolveAppEventsRouteServices(options));
 }

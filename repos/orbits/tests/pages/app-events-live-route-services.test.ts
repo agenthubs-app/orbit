@@ -55,7 +55,10 @@ async function withUnconfiguredLiveEvents<T>(
 }
 
 test("app events route service bundle resolves all child services in live mode", () => {
-  const resolution = resolveAppEventsRouteServices("live");
+  const resolution = resolveAppEventsRouteServices({
+    actorId: "actor:events-service-bundle",
+    mode: "live",
+  });
 
   assert.equal(
     resolution.success,
@@ -90,6 +93,104 @@ test("private event list mapping does not invent organizer, roster, or registrat
   assert.deepEqual(event.stats.attendees, []);
   assert.equal(event.stats.youRsvped, false);
   assert.equal(event.youRsvped, false);
+});
+
+test("private event composition rejects recommendation and readiness data from another event", async () => {
+  const resolution = resolveAppEventsRouteServices({ mode: "mock" });
+
+  assert.equal(resolution.success, true);
+  const services = resolution.service;
+  const [eventResult, valueResult] = await Promise.all([
+    services.events.listEvents({ actorId: "actor:isolated-events" }),
+    services.eventValues.listRecommendedEvents({ limit: 3 }),
+  ]);
+
+  assert.equal(eventResult.success, true);
+  assert.equal(valueResult.success, true);
+  const foreignValue = valueResult.data.recommendations[0];
+  const actorEvent = eventResult.data.events.find(
+    (event) => event.id !== foreignValue?.eventId,
+  );
+
+  assert.ok(foreignValue);
+  assert.ok(actorEvent);
+  if (!foreignValue || !actorEvent) {
+    throw new Error("Isolation test requires two distinct mock events.");
+  }
+
+  const [foreignAttendeeResult, foreignReadinessResult] = await Promise.all([
+    services.attendeeRecommendations.listEventRecommendations({
+      eventId: foreignValue.eventId,
+      limit: 3,
+    }),
+    services.readiness.getReadiness({ eventId: foreignValue.eventId }),
+  ]);
+
+  assert.equal(foreignAttendeeResult.success, true);
+  assert.equal(foreignReadinessResult.success, true);
+
+  const model = await loadAppEventsRouteViewModel(
+    "actor:isolated-events",
+    {},
+    {
+      attendeeRecommendations: {
+        ...services.attendeeRecommendations,
+        listEventRecommendations: () => foreignAttendeeResult,
+      },
+      eventValues: {
+        ...services.eventValues,
+        listRecommendedEvents: () => ({
+          ...valueResult,
+          data: {
+            ...valueResult.data,
+            recommendations: [foreignValue],
+          },
+        }),
+      },
+      events: {
+        ...services.events,
+        listEvents: () => ({
+          ...eventResult,
+          data: {
+            ...eventResult.data,
+            events: [actorEvent],
+          },
+        }),
+      },
+      readiness: {
+        ...services.readiness,
+        getReadiness: () => foreignReadinessResult,
+      },
+    },
+  );
+
+  assert.equal(model.state, "success");
+  if (model.state !== "success") {
+    throw new Error("Actor event must remain visible when optional data is foreign.");
+  }
+
+  assert.deepEqual(
+    model.workspace.eventChoices.map((event) => event.id),
+    [actorEvent.id],
+  );
+  assert.equal(model.workspace.eventChoices[0]?.readinessScore, null);
+  assert.equal(model.workspace.attendeePanel.recommendation, null);
+  assert.equal(model.workspace.readiness, null);
+  assert.equal(model.workspace.topCandidate, null);
+
+  const landingEvent = eventChoiceToLandingEvent(
+    model.workspace.eventChoices[0]!,
+    0,
+  );
+  assert.equal(
+    landingEvent.agenda.find((item) => item.label === "Readiness")
+      ?.description,
+    "Readiness unavailable",
+  );
+  assert.doesNotMatch(
+    JSON.stringify(model),
+    new RegExp(foreignValue.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
 });
 
 test("app events route loader returns a controlled live failure when storage is unconfigured", async () => {

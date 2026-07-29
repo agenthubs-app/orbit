@@ -16,7 +16,10 @@ import type {
   EventValueRecommendationsPayload,
   EventValueRecommendationsResult,
 } from "../../../../../features/recommendations/event-value-contract";
-import { createAppEventsRouteServices } from "./events-service-factory";
+import {
+  createAppEventsRouteServices,
+  type AppEventsRouteServices,
+} from "./events-service-factory";
 
 export type AppEventsRouteScenario = "empty" | "pending" | "failure";
 export interface AppEventsRouteControls {
@@ -68,7 +71,7 @@ export interface AppEventsCurrentPriorityViewModel {
   detailActionLabel: string;
   detailHref: string;
   eventTitle: string;
-  readinessScore: number;
+  readinessScore: number | null;
   recommendedAction: string;
   relationshipValue: string;
   venue: string;
@@ -82,7 +85,7 @@ export interface AppEventsEventChoiceViewModel {
   evidence: readonly AppEventsEvidenceViewModel[];
   id: string;
   nextAction: string;
-  readinessScore: number;
+  readinessScore: number | null;
   relationshipValue: string;
   startsAt: string;
   status: EventRecord["status"];
@@ -133,7 +136,7 @@ export interface AppEventsSuccessViewModel {
   eventChoices: readonly AppEventsEventChoiceViewModel[];
   eventSummary: string;
   ledger: AppEventsLedgerViewModel;
-  readiness: AppEventsReadinessViewModel;
+  readiness: AppEventsReadinessViewModel | null;
   topCandidate: {
     title: string;
     valueScore: number;
@@ -166,15 +169,6 @@ function firstFailure(results: readonly RouteResult[]): RouteFailure | null {
   }
 
   return null;
-}
-
-function anyResultState(
-  results: readonly RouteResult[],
-  state: "empty" | "pending",
-): boolean {
-  return results.some(
-    (result) => result.success === true && result.data.state === state,
-  );
 }
 
 const productCopyReplacements: readonly [RegExp, string][] = [
@@ -386,7 +380,7 @@ function routeStateViewModel(input: {
 function eventChoiceViewModel(input: {
   attendeeName: string;
   event: EventRecord;
-  readinessScore: number;
+  readinessScore: number | null;
 }): AppEventsEventChoiceViewModel {
   return {
     attendeeName: input.attendeeName,
@@ -424,17 +418,32 @@ function readinessViewModel(
 }
 
 function successViewModel(input: {
-  attendeePayload: EventRecommendationsPayload;
+  attendeePayload: EventRecommendationsPayload | null;
   eventPayload: EventListPayload;
   primaryEventId: string;
-  readinessPayload: EventGoalReadinessPayload;
-  valuePayload: EventValueRecommendationsPayload;
+  readinessPayload: EventGoalReadinessPayload | null;
+  valuePayload: EventValueRecommendationsPayload | null;
 }): AppEventsSuccessViewModel {
-  const currentEvent =
-    input.eventPayload.events.find((event) => event.id === input.primaryEventId) ??
-    input.eventPayload.events[0];
-  const topAttendee = input.attendeePayload.recommendations[0];
-  const topValueEvent = input.valuePayload.recommendations[0];
+  const actorEventIds = new Set(
+    input.eventPayload.events.map((event) => event.id),
+  );
+  const currentEvent = input.eventPayload.events.find(
+    (event) => event.id === input.primaryEventId,
+  );
+  const topAttendee =
+    input.attendeePayload?.event.id === input.primaryEventId
+      ? input.attendeePayload.recommendations.find(
+          (recommendation) =>
+            recommendation.eventId === input.primaryEventId,
+        )
+      : undefined;
+  const topValueEvent = input.valuePayload?.recommendations.find(
+    (recommendation) => actorEventIds.has(recommendation.eventId),
+  );
+  const readinessPayload =
+    input.readinessPayload?.event.id === input.primaryEventId
+      ? input.readinessPayload
+      : null;
   const detailActionLabel = currentEvent
     ? bilingualText(
         `打开 ${currentEvent.title} 工作区`,
@@ -455,7 +464,12 @@ function successViewModel(input: {
             score: topAttendee.score,
           }
         : null,
-      summary: productCopy(input.attendeePayload.summary),
+      summary: input.attendeePayload
+        ? productCopy(input.attendeePayload.summary)
+        : bilingualText(
+            "当前活动暂无可用参会人推荐。",
+            "No attendee recommendation is available for this event.",
+          ),
     },
     currentPriority:
       currentEvent && topAttendee
@@ -465,7 +479,7 @@ function successViewModel(input: {
             detailHref: eventDetailHref(currentEvent),
             eventTitle: currentEvent.title,
             readinessScore:
-              input.readinessPayload.preparationState.readinessScore,
+              readinessPayload?.preparationState.readinessScore ?? null,
             recommendedAction: productCopy(topAttendee.recommendedAction),
             relationshipContext: productCopy(currentEvent.relationshipContext),
             relationshipValue: relationshipValueCopy(currentEvent),
@@ -475,10 +489,14 @@ function successViewModel(input: {
     eventChoices: input.eventPayload.events.map((event) =>
       eventChoiceViewModel({
         attendeeName:
-          topAttendee?.attendee.displayName ??
-          bilingualText("复核参会人名单", "review attendee roster"),
+          event.id === input.primaryEventId && topAttendee
+            ? topAttendee.attendee.displayName
+            : bilingualText("复核参会人名单", "review attendee roster"),
         event,
-        readinessScore: input.readinessPayload.preparationState.readinessScore,
+        readinessScore:
+          event.id === input.primaryEventId
+            ? readinessPayload?.preparationState.readinessScore ?? null
+            : null,
       }),
     ),
     eventSummary: productCopy(input.eventPayload.summary),
@@ -492,7 +510,9 @@ function successViewModel(input: {
         currentEvent?.title ??
         bilingualText("没有有来源活动", "No sourced event"),
     },
-    readiness: readinessViewModel(input.readinessPayload),
+    readiness: readinessPayload
+      ? readinessViewModel(readinessPayload)
+      : null,
     topCandidate: topValueEvent
       ? {
           title: topValueEvent.title,
@@ -510,7 +530,12 @@ function successViewModel(input: {
             valueScore: topValueEvent.valueScore,
           }
         : null,
-      summary: productCopy(input.valuePayload.summary),
+      summary: input.valuePayload
+        ? productCopy(input.valuePayload.summary)
+        : bilingualText(
+            "当前账户暂无可用活动价值推荐。",
+            "No event value recommendation is available for this account.",
+          ),
     },
   };
 }
@@ -518,9 +543,9 @@ function successViewModel(input: {
 export async function loadAppEventsRouteViewModel(
   actorId?: string | null,
   controls: AppEventsRouteControls = {},
+  services: AppEventsRouteServices = createAppEventsRouteServices({ actorId }),
 ): Promise<AppEventsRouteViewModel> {
   const scenario = controls.scenario ?? null;
-  const services = createAppEventsRouteServices();
   const eventResult = await services.events.listEvents({ actorId, scenario });
   const eventFailure = firstFailure([eventResult]);
 
@@ -562,44 +587,20 @@ export async function loadAppEventsRouteViewModel(
     limit: 3,
     scenario,
   });
-  const valueFailure = firstFailure([valueResult]);
-
-  if (valueFailure) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({
-        failure: valueFailure,
-        scenario: "failure",
-      }),
-    };
-  }
-
-  if (valueResult.success === false) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({
-        failure: valueResult.error,
-        scenario: "failure",
-      }),
-    };
-  }
-
-  if (valueResult.data.state === "empty") {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ scenario: "empty" }),
-    };
-  }
-
-  if (valueResult.data.state === "pending") {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ scenario: "pending" }),
-    };
-  }
-
+  const actorEventIds = new Set(
+    eventResult.data.events.map((event) => event.id),
+  );
+  const valuePayload =
+    valueResult.success === true && valueResult.data.state === "success"
+      ? {
+          ...valueResult.data,
+          recommendations: valueResult.data.recommendations.filter(
+            (recommendation) => actorEventIds.has(recommendation.eventId),
+          ),
+        }
+      : null;
   const primaryEventId =
-    valueResult.data.recommendations[0]?.eventId ??
+    valuePayload?.recommendations[0]?.eventId ??
     eventResult.data.events[0]?.id;
 
   if (!primaryEventId) {
@@ -617,53 +618,27 @@ export async function loadAppEventsRouteViewModel(
     }),
     services.readiness.getReadiness({ eventId: primaryEventId, scenario }),
   ]);
-  const results = [
-    eventResult,
-    attendeeResult,
-    valueResult,
-    readinessResult,
-  ] as const;
-  const failure = firstFailure(results);
-
-  if (failure) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ failure, scenario: "failure" }),
-    };
-  }
-
-  if (anyResultState(results, "empty")) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ scenario: "empty" }),
-    };
-  }
-
-  if (anyResultState(results, "pending")) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ scenario: "pending" }),
-    };
-  }
-
-  if (
-    attendeeResult.success === false ||
-    readinessResult.success === false
-  ) {
-    return {
-      state: "route-state",
-      routeState: routeStateViewModel({ scenario: "failure" }),
-    };
-  }
+  const attendeePayload =
+    attendeeResult.success === true &&
+    attendeeResult.data.state === "success" &&
+    attendeeResult.data.event.id === primaryEventId
+      ? attendeeResult.data
+      : null;
+  const readinessPayload =
+    readinessResult.success === true &&
+    readinessResult.data.state === "success" &&
+    readinessResult.data.event.id === primaryEventId
+      ? readinessResult.data
+      : null;
 
   return {
     state: "success",
     workspace: successViewModel({
-      attendeePayload: attendeeResult.data,
+      attendeePayload,
       eventPayload: eventResult.data,
       primaryEventId,
-      readinessPayload: readinessResult.data,
-      valuePayload: valueResult.data,
+      readinessPayload,
+      valuePayload,
     }),
   };
 }
