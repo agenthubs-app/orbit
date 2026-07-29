@@ -3416,6 +3416,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build/full-suite separation of public Today navigation from three child fixture/action controls and removal of the invisible completion preview; authenticated browser DOM, explicit write/readback actions, provider failures, cache/proxy behavior, duplicate/array/encoded query values, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-all-actions-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web All Actions ledger → legitimate status/entry navigation separated from internal ledger scenarios",
+    testData:
+      "/app/contacts/all-actions with status, entry, and adversarial scenario=failure query values; authenticated ledger service boundary",
+    expected:
+      "Public query input may filter by a known ledger status and expand one entry, but it must not force mock empty/failure states. Tests must retain a typed internal path to those states, and the authenticated server ledger service must remain unchanged.",
+    actual:
+      "Before repair, the loader read status, entry, and scenario from one unrestricted search-parameter record and forwarded scenario to listEntries. After repair, the public contract contains only status and entry, listEntries receives scenario solely from explicit internal controls, valid/invalid filters and entry expansion are unchanged, and an adversarial public scenario returns the normal six-entry success model.",
+    evidence:
+      "Required GitNexus pre-edit impacts were run but current symbols remained unresolved after the earlier incremental-index UTF-8 failure, so risk was treated as UNKNOWN. All Actions, audit-detail, and execution-settings focused tests passed 20/20; exact production build passed; the immediately preceding same-ledger full Web suite passed 1356/1356; staged detection returned LOW for three files and one recognized symbol; commit 22d3b882",
+    conclusion:
+      "pass for source/build separation of public All Actions filters/selection from internal ledger scenarios while preserving authenticated service resolution; authenticated browser DOM, filter/entry combinations, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4296,6 +4311,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus incremental analysis failed with LOWER: Invalid UTF-8 and left current loader symbols unresolved; all required pre-edit impact commands were nevertheless run and returned UNKNOWN/not found, so the change was treated conservatively. Focused Today/Followups/Schedule tests passed 59/59, the complete Web suite passed 1356/1356, and the exact production build passed. Staged detection returned LOW for eight files and two recognized merged-view symbols. Regression proves adversarial public scenario/action input leaves all three child models successful while explicit internal controls still render degraded states.",
     status:
       "fixed and source/build/full-suite-verified for the Today aggregate and its three child control boundaries; GitNexus current-symbol graph coverage, authenticated browser runtime, explicit mutation/readback paths, provider failures, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-064",
+    severity: "P1",
+    rootCause:
+      "All Actions used one unrestricted query object for legitimate status filtering and entry expansion plus the internal ledger scenario selector. A production URL could therefore replace the authenticated ledger with mock empty/failure states.",
+    decision:
+      "Define the public All Actions query contract as status and entry only, keep their existing validation and selection behavior, and move scenario into a typed third controls argument used only by controlled tests. Preserve the existing authenticated ledger-service dependency.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/all-actions/compose-app-all-actions-from-agent-ledger/all-actions-route-view-model.ts; repos/orbits/tests/pages/app-all-actions-route-view-model.test.ts; repos/orbits/tests/pages/app-agent-execution-settings.test.tsx",
+    regression:
+      "Current GitNexus symbols were unresolved after the incremental-index UTF-8 failure, so both required pre-edit impacts returned UNKNOWN/not found and the change was verified conservatively. Three focused test files passed 20/20, including valid filters, unknown filters, entry expansion, explicit internal empty/failure states, actor-required failure, and public scenario isolation. The exact production build passed; the immediately preceding same-ledger full Web suite passed 1356/1356; staged detection returned LOW for three files and one recognized symbol.",
+    status:
+      "fixed and source/build-verified for the All Actions public query boundary; GitNexus current-symbol graph coverage, authenticated browser runtime, filter/entry combinations, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
