@@ -12,23 +12,16 @@ import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import {
   HomeRouteStateBoundary,
   loadAppHomeRouteViewModel,
-  type AppHomeSearchParams,
 } from "../compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { OrbitRealHome } from "../orbit-real-home";
 
-interface AppPersonalHomeEventsPageProps {
-  searchParams?: Promise<AppHomeSearchParams>;
-}
-
-export default async function AppPersonalHomeEventsPage({
-  searchParams,
-}: AppPersonalHomeEventsPageProps = {}) {
+export default async function AppPersonalHomeEventsPage() {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fhome%2Fevents");
   }
 
-  const routeModel = await loadAppHomeRouteViewModel(await searchParams, {
+  const routeModel = await loadAppHomeRouteViewModel(undefined, {
     displayName:
       session.user.name?.trim() ||
       session.user.email?.trim() ||

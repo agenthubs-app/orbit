@@ -100,6 +100,8 @@ for (const route of personalHomeRoutes) {
     assert.match(pageSource, /await auth\(\)/);
     assert.match(pageSource, /redirect\("\/app\/account\/login/);
     assert.match(pageSource, /id: session\.user\.id/);
+    assert.match(pageSource, /loadAppHomeRouteViewModel\(undefined,/);
+    assert.doesNotMatch(pageSource, /searchParams/);
     assert.doesNotMatch(pageSource, /getOrbitHomeViewModel/);
     assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
   });
