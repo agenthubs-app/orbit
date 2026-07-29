@@ -5,6 +5,7 @@ import {
   parseAgentFeedbackInput,
   resolveAgentFeedbackRequest,
 } from "./request";
+import { saveAgentFeedback } from "./handler";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,5 @@ export async function POST(request: Request): Promise<Response> {
       new Error("A valid runId, rating, or outcome is required."),
     );
   }
-  try {
-    return NextResponse.json({
-      success: true,
-      data: { feedback: await context.service.upsert(input) },
-    });
-  } catch (error) {
-    return agentFeedbackErrorResponse(error);
-  }
+  return saveAgentFeedback(context, input);
 }

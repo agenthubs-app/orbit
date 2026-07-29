@@ -9,19 +9,26 @@ import {
   type UpsertAgentFeedbackInput,
 } from "../../../../features/agent/feedback/contract";
 import { createAgentFeedbackService } from "../../../../features/agent/feedback/service-factory";
+import type { AgentRuntimeService } from "../../../../features/agent/runtime/service";
+import { createOrbitAgentRuntimeService } from "../../../../features/agent/runtime/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
 
-export async function resolveAgentFeedbackRequest(): Promise<{
+export interface AgentFeedbackRequestContext {
+  runtime: AgentRuntimeService;
   service: AgentFeedbackService;
-} | null> {
+}
+
+export async function resolveAgentFeedbackRequest(): Promise<AgentFeedbackRequestContext | null> {
   const session = await auth();
   const actorId = session?.user?.id?.trim();
   if (!actorId) return null;
+  const mode = resolveModuleMode();
   return {
     service: createAgentFeedbackService({
       actorId,
-      mode: resolveModuleMode(),
+      mode,
     }),
+    runtime: createOrbitAgentRuntimeService(mode, { actorId }),
   };
 }
 
