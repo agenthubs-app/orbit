@@ -69,6 +69,13 @@ test("relationshipValueToView maps a success payload into a Chinese card", () =>
             evidenceId: "evidence:connection-storage-pilot",
             label: "Storage pilot note",
             sourceType: "manual"
+          },
+          {
+            capturedAt: "2026-06-25T19:06:00.000Z",
+            contribution: "business_context",
+            evidenceId: "evidence:connection-storage-pilot-duplicate",
+            label: "Storage pilot note",
+            sourceType: "manual"
           }
         ],
         limitations: [

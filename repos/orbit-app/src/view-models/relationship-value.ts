@@ -211,15 +211,20 @@ function readyFactors(priorityScore: UnknownRecord): RelationshipValueReadyFacto
 }
 
 function readyEvidence(rationale: UnknownRecord): string[] {
-  return listField(rationale, "evidence")
+  const lines = listField(rationale, "evidence")
     .filter(isRecord)
-    .slice(0, 3)
     .map((evidence) => {
-      const contribution = contributionLabel(stringField(evidence, "contribution"));
-      const label = evidenceLabel(stringField(evidence, "label", "来源记录"));
+      const contribution = contributionLabel(
+        stringField(evidence, "contribution")
+      );
+      const label = evidenceLabel(
+        stringField(evidence, "label", "来源记录")
+      );
 
       return `${contribution}：${label}`;
     });
+
+  return [...new Set(lines)].slice(0, 3);
 }
 
 function readyNextAction(assessment: UnknownRecord, fallback: string): string {
