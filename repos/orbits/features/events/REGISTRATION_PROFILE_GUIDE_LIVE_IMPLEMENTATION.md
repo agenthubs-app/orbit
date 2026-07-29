@@ -1,11 +1,15 @@
 # Event Registration Live Implementation
 
-Orbit event registration now has two separate boundaries:
+Orbit event registration has two production boundaries:
 
 - `features/events/registration/question-generator.ts` builds up to four optional, event-specific participant-profile questions.
 - `features/events/registration/service.ts` owns the idempotent registration, cancellation, and reactivation lifecycle.
 
-The older deterministic guide in `features/events/registration-profile-guide.ts` remains available for degraded event-detail routes. It is no longer the write path for `/app/events/[id]/register`.
+The former deterministic test-user guide has been retired. Event Detail no
+longer renders a second fixture-backed question preview, and the registration
+page no longer reads demo profile completeness or identity. Unknown,
+unauthorized, ended, and cancelled events stop at a no-write boundary before
+question generation.
 
 ## Shared Orbit AI Model
 
