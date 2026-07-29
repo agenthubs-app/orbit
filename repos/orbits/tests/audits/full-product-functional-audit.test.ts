@@ -229,7 +229,10 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     );
     assert.equal(surface.access.policy, "public-admin-auth-entry", route);
   }
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 91);
+  assert.equal(
+    inventory.summary.surfacesWithRuntimeEvidence,
+    inventory.summary.routeSurfaces,
+  );
   const runtimeVerifiedInteractions = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
       (interaction) =>
