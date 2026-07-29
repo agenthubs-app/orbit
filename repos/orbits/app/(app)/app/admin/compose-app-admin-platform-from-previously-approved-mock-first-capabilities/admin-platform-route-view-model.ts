@@ -10,11 +10,8 @@ import {
 import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
 import type {
   OrbitAdminEventView,
-  OrbitAdminFeedView,
   OrbitAdminMemberView,
   OrbitAdminViewModel,
-  OrbitPlatformReviewView,
-  OrbitPlatformViewModel,
 } from "../../orbit-admin-platform-route-view-model";
 
 export type AppAdminPlatformRouteScenario = "empty" | "pending" | "failure";
@@ -57,12 +54,16 @@ export type AppAdminPlatformRouteViewModel =
   | {
       state: "success";
       admin: OrbitAdminViewModel;
-      platform: OrbitPlatformViewModel;
     }
   | {
       state: "route-state";
       routeState: AppAdminPlatformRouteStateViewModel;
     };
+
+export type AppPlatformUnavailableRouteViewModel = Extract<
+  AppAdminPlatformRouteViewModel,
+  { state: "route-state" }
+>;
 
 type ProfileView = ReturnType<typeof profileRouteToOrbitProfileViewModel>;
 
@@ -115,18 +116,6 @@ function statusFor(
   return "upcoming";
 }
 
-function phaseForStatus(status: string): number {
-  if (status === "ended") {
-    return 4;
-  }
-
-  if (status === "active") {
-    return 3;
-  }
-
-  return 1;
-}
-
 function evidenceIdsFromEventsRouteState(
   routeState: AppEventsRouteStateViewModel,
 ): string[] {
@@ -142,17 +131,33 @@ function routeStateCopy(input: {
   scenario: AppAdminPlatformRouteScenario;
   surface: AppAdminPlatformSurface;
 }) {
+  if (input.surface === "platform") {
+    return {
+      description:
+        "No platform-wide moderation provider or verified platform-admin role is configured.",
+      emptyState:
+        "Personal profile and event records are not platform-wide organizer, user, verification, or review data.",
+      eyebrow: "Platform",
+      guardrail:
+        "This route fails closed before reading personal workspace data or claiming platform statistics, moderation state, organizer verification, or platform access.",
+      nextStep:
+        "Connect a platform-wide read provider and enforce a persisted platform-admin role before enabling this route.",
+      purpose:
+        "Prevent an authenticated personal account from being presented as a platform administrator.",
+      title: "Platform admin is unavailable",
+    };
+  }
+
   const surfaceName =
-    input.surface === "platform" ? "Platform workspace" : "Admin workspace";
-  const lowerSurfaceName =
-    input.surface === "platform" ? "platform workspace" : "admin workspace";
+    "Admin workspace";
+  const lowerSurfaceName = "admin workspace";
 
   if (input.scenario === "empty") {
     return {
       description: `${surfaceName} has no reviewed event or profile context yet.`,
       emptyState:
         "Admin and platform tools stay hidden until sourced events and a workspace profile are available.",
-      eyebrow: input.surface === "platform" ? "Platform" : "Admin",
+      eyebrow: "Admin",
       guardrail:
         "This route only reads event and profile sources. It does not approve events, notify organizers, run AI matching, write calendars, or contact external providers.",
       nextStep:
@@ -168,7 +173,7 @@ function routeStateCopy(input: {
       description: `${surfaceName} is waiting for reviewed event or profile context.`,
       emptyState:
         "Operator views remain paused until source review finishes.",
-      eyebrow: input.surface === "platform" ? "Platform" : "Admin",
+      eyebrow: "Admin",
       guardrail:
         "Pending operator context cannot approve events, send notifications, run AI matching, write calendars, or contact external providers.",
       nextStep:
@@ -183,7 +188,7 @@ function routeStateCopy(input: {
     description: `${surfaceName} could not load event or profile context.`,
     emptyState:
       "No admin action was applied, no organizer was notified, and no external provider was contacted.",
-    eyebrow: input.surface === "platform" ? "Platform" : "Admin",
+    eyebrow: "Admin",
     guardrail:
       "The failed route state stops before event approval, organizer notification, AI matching, calendar writes, email, or outside network work.",
     nextStep:
@@ -211,22 +216,40 @@ function routeState(input: {
       evidenceIds: Array.from(
         new Set([input.errorCode ?? "", ...input.evidenceIds].filter(Boolean)),
       ),
-      recoveryActions: [
-        {
-          id: `${input.surface}-return-events`,
-          href: "/app/events",
-          label: "Return to events",
-          recoveryCopy:
-            "Open sourced events before retrying the operator workspace.",
-        },
-        {
-          id: `${input.surface}-return-profile`,
-          href: "/app/profile",
-          label: "Review profile",
-          recoveryCopy:
-            "Confirm the workspace profile before retrying admin tools.",
-        },
-      ],
+      recoveryActions:
+        input.surface === "platform"
+          ? [
+              {
+                id: "platform-return-home",
+                href: "/app/home",
+                label: "Return to personal workspace",
+                recoveryCopy:
+                  "Continue in the authenticated personal workspace without platform-wide claims.",
+              },
+              {
+                id: "platform-open-admin",
+                href: "/app/admin",
+                label: "Open organizer admin",
+                recoveryCopy:
+                  "Use the actor-scoped organizer view for sourced personal events.",
+              },
+            ]
+          : [
+              {
+                id: "admin-return-events",
+                href: "/app/events",
+                label: "Return to events",
+                recoveryCopy:
+                  "Open sourced events before retrying the operator workspace.",
+              },
+              {
+                id: "admin-return-profile",
+                href: "/app/profile",
+                label: "Review profile",
+                recoveryCopy:
+                  "Confirm the workspace profile before retrying admin tools.",
+              },
+            ],
       scenario: input.scenario,
     },
     state: "route-state",
@@ -245,40 +268,18 @@ function routeStateFromEventsBoundary(input: {
   });
 }
 
-function ownerEmail(profile: ProfileView): string {
-  const name = profile.profile.fullName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.+|\.+$/g, "");
-
-  return `${name || "workspace.owner"}@orbit.local`;
-}
-
 function adminEvent(input: {
   event: AppEventsSuccessViewModel["eventChoices"][number];
   index: number;
-  workspace: AppEventsSuccessViewModel;
 }): OrbitAdminEventView {
   const status = statusFor(input.event);
-  const registered = Math.max(1, input.event.evidence.length + 1);
-  const matched =
-    input.workspace.attendeePanel.recommendation &&
-    input.workspace.currentPriority?.eventTitle === input.event.title
-      ? 1
-      : 0;
 
   return {
-    cap: Math.max(20, registered + 20),
-    checkedin: status === "ended" ? registered : status === "active" ? matched : 0,
     code: compactId(input.event.id).slice(0, 8) || input.event.id,
     endsAt: input.event.endsAt,
     g: gradientFor(input.event.id, input.index),
     id: input.event.id,
-    matched,
     name: input.event.title,
-    phase: phaseForStatus(status),
-    registered,
     startsAt: input.event.startsAt,
     status,
     summary: [input.event.relationshipValue, input.event.nextAction]
@@ -289,207 +290,109 @@ function adminEvent(input: {
   };
 }
 
-function adminMembers(profile: ProfileView): OrbitAdminMemberView[] {
-  return [
-    {
-      email: ownerEmail(profile),
-      g: gradientFor(profile.profile.fullName),
-      initial: initialFor(profile.profile.fullName),
-      name: profile.profile.fullName,
-      role: profile.profile.title || "Workspace owner",
-    },
-  ];
-}
+function adminAccount(input: {
+  actor?: AppAdminPlatformActor | null;
+  profile: ProfileView;
+}): OrbitAdminMemberView {
+  const name =
+    input.profile.profile.fullName ||
+    input.actor?.displayName ||
+    "Authenticated account";
 
-function adminFeed(input: {
-  events: readonly OrbitAdminEventView[];
-  workspace: AppEventsSuccessViewModel;
-}): OrbitAdminFeedView[] {
-  const recommendation = input.workspace.attendeePanel.recommendation;
-
-  if (recommendation) {
-    return [
-      {
-        company: recommendation.organization,
-        g: gradientFor(recommendation.attendeeName),
-        id: `${input.workspace.currentPriority?.eventTitle ?? "event"}-${recommendation.attendeeName}`,
-        initial: initialFor(recommendation.attendeeName),
-        kind: "匹配",
-        name: recommendation.attendeeName,
-        t: "source-backed",
-        title: recommendation.role,
-      },
-      ...input.events.slice(0, 5).map((event, index) => ({
-        company: event.venue,
-        g: event.g,
-        id: event.id,
-        initial: initialFor(event.name),
-        kind: event.status === "active" ? "签到" : "活动",
-        name: event.name,
-        t: index === 0 ? "current" : "events",
-        title: event.summary,
-      })),
-    ];
-  }
-
-  return input.events.slice(0, 6).map((event, index) => ({
-    company: event.venue,
-    g: event.g,
-    id: event.id,
-    initial: initialFor(event.name),
-    kind: event.status === "active" ? "签到" : "活动",
-    name: event.name,
-    t: index === 0 ? "current" : "events",
-    title: event.summary,
-  }));
+  return {
+    email: input.profile.profile.email || input.actor?.email?.trim() || "",
+    g: gradientFor(name),
+    initial: initialFor(name),
+    name,
+    role: input.profile.profile.title || "Authenticated account",
+  };
 }
 
 function adminViewModel(input: {
+  actor?: AppAdminPlatformActor | null;
   profile: ProfileView;
   workspace: AppEventsSuccessViewModel;
 }): OrbitAdminViewModel {
   const events = input.workspace.eventChoices.map((event, index) =>
-    adminEvent({ event, index, workspace: input.workspace }),
+    adminEvent({ event, index }),
   );
-  const totalRegistered = events.reduce((sum, event) => sum + event.registered, 0);
-  const totalCheckedIn = events.reduce((sum, event) => sum + event.checkedin, 0);
-  const totalMatched = events.reduce((sum, event) => sum + event.matched, 0);
+  const upcomingCount = events.filter(
+    (event) => event.status === "upcoming",
+  ).length;
   const activeCount = events.filter((event) => event.status === "active").length;
-  const orgName = input.profile.profile.company || "Orbit Workspace";
+  const endedCount = events.filter((event) => event.status === "ended").length;
+  const account = adminAccount({ actor: input.actor, profile: input.profile });
+  const orgName =
+    input.profile.profile.company ||
+    input.profile.profile.fullName ||
+    "Orbit workspace";
 
   return {
     adminEvents: events,
-    adminFeed: adminFeed({ events, workspace: input.workspace }),
-    adminFunnel: [
-      ["活动记录", events.length, 1],
-      [
-        "报名记录",
-        totalRegistered,
-        events.length ? totalRegistered / Math.max(totalRegistered, events.length) : 0,
-      ],
-      [
-        "匹配记录",
-        totalMatched,
-        totalRegistered ? totalMatched / totalRegistered : 0,
-      ],
-    ],
-    adminMembers: adminMembers(input.profile),
+    adminAccount: account,
     adminOrg: {
       g: gradientFor(orgName),
       initial: initialFor(orgName),
       name: orgName,
-      owner: ownerEmail(input.profile),
-      sub: "Live-capable workspace",
+      owner: account.email,
+      sub: "Actor-scoped source records",
     },
-    adminPhases: ["创建", "报名", "签到", "匹配", "复盘"],
     adminStats: [
       {
-        delta: "source-backed",
+        delta: "source records",
         g: "g-indigo",
-        icon: "users",
-        label: "总报名",
-        value: String(totalRegistered),
+        icon: "calendar",
+        label: "活动记录",
+        value: String(events.length),
       },
       {
-        delta: `${events.length} events`,
+        delta: "derived from dates",
         g: "g-emerald",
-        icon: "checkCircle",
-        label: "已签到",
-        value: String(totalCheckedIn),
+        icon: "clock",
+        label: "即将开始",
+        value: String(upcomingCount),
       },
       {
-        delta: "reviewed matches",
+        delta: "derived from dates",
         g: "g-violet",
-        icon: "sparkle",
-        label: "完成匹配",
-        value: String(totalMatched),
-      },
-      {
-        delta: "computed status",
-        g: "g-amber",
         icon: "zap",
-        label: "进行中活动",
+        label: "进行中",
         value: String(activeCount),
       },
-    ],
-  };
-}
-
-function reviewQueue(
-  admin: OrbitAdminViewModel,
-): OrbitPlatformReviewView[] {
-  return admin.adminEvents.slice(0, 8).map((event, index) => ({
-    desc: event.summary,
-    facts: [
-      ["预计人数", String(event.cap)],
-      ["场地", event.venue],
-      ["阶段", admin.adminPhases[Math.min(event.phase, admin.adminPhases.length - 1)] ?? "来源复核"],
-    ],
-    flags: ["source-backed", event.status],
-    g: event.g,
-    id: event.id,
-    letter: initialFor(event.name),
-    name: event.name,
-    org: admin.adminOrg.name,
-    submitted: event.startsAt,
-  }));
-}
-
-function platformViewModel(input: {
-  admin: OrbitAdminViewModel;
-  profile: ProfileView;
-}): OrbitPlatformViewModel {
-  const queue = reviewQueue(input.admin);
-
-  return {
-    orgAccounts: [
       {
-        events: input.admin.adminEvents.length,
-        g: input.admin.adminOrg.g,
-        letter: input.admin.adminOrg.initial,
-        name: input.admin.adminOrg.name,
-        owner: ownerEmail(input.profile),
-        status: "已认证",
-      },
-    ],
-    platformStats: [
-      {
-        icon: "building",
-        label: "主办方账号",
-        note: "profile source",
-        tone: "indigo",
-        value: "1",
-      },
-      {
-        icon: "calendar",
-        label: "累计活动",
-        note: "events source",
-        tone: "live",
-        value: String(input.admin.adminEvents.length),
-      },
-      {
+        delta: "derived from dates",
+        g: "g-amber",
         icon: "checkCircle",
-        label: "待审核",
-        note: "review queue",
-        tone: "amber",
-        value: String(queue.length),
-      },
-      {
-        icon: "users",
-        label: "平台用户",
-        note: "workspace members",
-        tone: "sky",
-        value: String(input.admin.adminMembers.length),
+        label: "已结束",
+        value: String(endedCount),
       },
     ],
-    reviewQueue: queue,
   };
 }
 
+export function loadAppAdminPlatformRouteViewModel(
+  input: AppAdminPlatformRouteInput & { surface: "platform" },
+): Promise<AppPlatformUnavailableRouteViewModel>;
+export function loadAppAdminPlatformRouteViewModel(
+  input?: AppAdminPlatformRouteInput,
+): Promise<AppAdminPlatformRouteViewModel>;
 export async function loadAppAdminPlatformRouteViewModel(
   input: AppAdminPlatformRouteInput = {},
 ): Promise<AppAdminPlatformRouteViewModel> {
   const surface = input.surface ?? "admin";
+
+  if (surface === "platform") {
+    return routeState({
+      errorCode: "PLATFORM_ADMIN_PROVIDER_UNAVAILABLE",
+      evidenceIds: [
+        "platform-wide-provider:unavailable",
+        "platform-admin-role:unverified",
+      ],
+      scenario: "failure",
+      surface,
+    });
+  }
+
   const [eventsRoute, profileRoute] = await Promise.all([
     loadAppEventsRouteViewModel(input.actor?.id, input.controls),
     loadAppProfileRouteViewModel(input.actor),
@@ -521,11 +424,14 @@ export async function loadAppAdminPlatformRouteViewModel(
   }
 
   const profile = profileRouteToOrbitProfileViewModel(profileRoute);
-  const admin = adminViewModel({ profile, workspace: eventsRoute.workspace });
+  const admin = adminViewModel({
+    actor: input.actor,
+    profile,
+    workspace: eventsRoute.workspace,
+  });
 
   return {
     admin,
-    platform: platformViewModel({ admin, profile }),
     state: "success",
   };
 }

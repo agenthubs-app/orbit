@@ -10,26 +10,8 @@ import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
 } from "../admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
-import type { OrbitLanguage } from "../orbit-language-core";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { OrbitRealPlatform } from "./orbit-real-platform";
-
-async function getPlatformPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
-
-    throw error;
-  }
-}
 
 function PlatformRouteStateBoundary({
   routeState,
@@ -76,21 +58,11 @@ export default async function PlatformPage() {
     },
     surface: "platform",
   });
-  const language =
-    routeModel.state === "success" ? await getPlatformPageLanguage() : "zh";
 
   return (
     <>
       <OrbitReferenceStyles />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-platform-route">
-          <OrbitRealPlatform
-            viewModel={localizeOrbitTree(routeModel.platform, language)}
-          />
-        </div>
-      ) : (
-        <PlatformRouteStateBoundary routeState={routeModel.routeState} />
-      )}
+      <PlatformRouteStateBoundary routeState={routeModel.routeState} />
       <OrbitVisualFreezeRuntime />
     </>
   );

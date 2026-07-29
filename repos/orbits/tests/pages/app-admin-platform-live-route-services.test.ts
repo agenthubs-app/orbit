@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -90,28 +90,39 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
   );
 });
 
-test("admin and platform success surfaces do not expose unbacked write controls", () => {
+test("admin only renders sourced records and platform fails closed without a provider", () => {
   const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
-  const platformSource = source(
-    "app/(app)/app/platform/orbit-real-platform.tsx",
+  const platformPageSource = source("app/(app)/app/platform/page.tsx");
+  const routeModelSource = source(
+    "app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
   );
   const adminDashboardSource = adminSource.slice(
     adminSource.indexOf("function AdminDashContent"),
     adminSource.indexOf("function MemberRow"),
   );
 
-  assert.match(adminDashboardSource, /Source metrics · read only/);
+  assert.match(adminDashboardSource, /Source records · read only/);
+  assert.match(adminDashboardSource, /Data boundary/);
   assert.doesNotMatch(
     adminDashboardSource,
-    /Run AI matching|Export|Invite/,
+    /Registration funnel|Live activity|Total registered|Checked in|Matched|Capacity|Run AI matching|Export|Invite/,
   );
-  assert.match(platformSource, /Source review only/);
-  assert.match(platformSource, /authenticated moderation write service/);
   assert.doesNotMatch(
-    platformSource,
-    /Approve & publish|Rejected and explanation sent|organizer notified/,
+    routeModelSource,
+    /ownerEmail|platformViewModel|reviewQueue|adminFeed|totalRegistered|totalCheckedIn|totalMatched/,
   );
-  assert.doesNotMatch(platformSource, /function decide|More actions/);
+  assert.match(
+    routeModelSource,
+    /PLATFORM_ADMIN_PROVIDER_UNAVAILABLE/,
+  );
+  assert.match(routeModelSource, /platform-admin-role:unverified/);
+  assert.doesNotMatch(platformPageSource, /OrbitRealPlatform|routeModel\.platform/);
+  assert.equal(
+    existsSync(
+      join(projectRoot, "app/(app)/app/platform/orbit-real-platform.tsx"),
+    ),
+    false,
+  );
 });
 
 test("admin entry and event management do not claim unexecuted email or writes", () => {
@@ -133,7 +144,7 @@ test("admin entry and event management do not claim unexecuted email or writes",
   );
 });
 
-test("app admin-platform route loader returns admin and platform models in mock mode", async () => {
+test("admin returns actor-scoped source records while platform remains unavailable in mock mode", async () => {
   await withMockAdminPlatform(async () => {
     const { loadAppAdminPlatformRouteViewModel } = await import(
       "../../app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model"
@@ -150,11 +161,41 @@ test("app admin-platform route loader returns admin and platform models in mock 
 
     if (routeModel.state === "success") {
       assert.equal(routeModel.admin.adminEvents[0]?.name, "Climate founders dinner");
-      assert.ok(routeModel.admin.adminStats.length > 0);
-      assert.ok(routeModel.admin.adminMembers.length > 0);
-      assert.equal(routeModel.platform.reviewQueue[0]?.name, "Climate founders dinner");
-      assert.ok(routeModel.platform.orgAccounts.length > 0);
+      assert.deepEqual(
+        routeModel.admin.adminStats.map((stat) => stat.label),
+        ["活动记录", "即将开始", "进行中", "已结束"],
+      );
+      assert.ok(routeModel.admin.adminAccount.name);
+      assert.doesNotMatch(routeModel.admin.adminAccount.email, /@orbit\.local$/);
+      assert.equal("adminFunnel" in routeModel.admin, false);
+      assert.equal("adminFeed" in routeModel.admin, false);
+      assert.equal("adminMembers" in routeModel.admin, false);
+      assert.ok(
+        routeModel.admin.adminEvents.every(
+          (event) =>
+            !("registered" in event) &&
+            !("checkedin" in event) &&
+            !("matched" in event) &&
+            !("cap" in event),
+        ),
+      );
     }
+
+    const platformModel = await loadAppAdminPlatformRouteViewModel({
+      actor: {
+        displayName: "Admin test actor",
+        email: "admin@example.invalid",
+        id: "actor:admin-platform-test",
+      },
+      surface: "platform",
+    });
+
+    assert.equal(platformModel.state, "route-state");
+    assert.equal(
+      platformModel.routeState.errorCode,
+      "PLATFORM_ADMIN_PROVIDER_UNAVAILABLE",
+    );
+    assert.match(platformModel.routeState.copy.title, /Platform admin is unavailable/);
   });
 });
 
@@ -179,9 +220,15 @@ test("admin and platform loaders fail visibly when live storage is unconfigured"
         assert.match(
           routeModel.routeState.copy.title,
           surface === "platform"
-            ? /Platform workspace could not load/
+            ? /Platform admin is unavailable/
             : /Admin workspace could not load/,
         );
+        if (surface === "platform") {
+          assert.equal(
+            routeModel.routeState.errorCode,
+            "PLATFORM_ADMIN_PROVIDER_UNAVAILABLE",
+          );
+        }
       }
     }
   });

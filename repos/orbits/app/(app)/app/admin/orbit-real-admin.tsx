@@ -1,6 +1,7 @@
 "use client";
 
-import type { OrbitAdminEventView, OrbitAdminFeedView, OrbitAdminMemberView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
+import type { OrbitAdminEventView, OrbitAdminMemberView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
+import { formatOrbitDateTime } from "../orbit-datetime";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import { Cover, Icon, Logo, StatusBadge } from "../orbit-reference-primitives";
@@ -81,28 +82,50 @@ function StatTile({ s }: { s: OrbitAdminViewModel["adminStats"][number] }) {
   return <div className="card orbit-host-stat-tile"><div className="orbit-host-stat-head"><span className={`avatar ${s.g}`}><Icon color="var(--on-dark)" name={s.icon} size={18} /></span><span className="badge badge-soon" style={{ height: 22 }}>{s.delta}</span></div><div className="orbit-host-stat-value">{s.value}</div><div className="orbit-host-muted" style={{ marginTop: 2 }}>{s.label}</div></div>;
 }
 
-function PhaseRail({ phase, viewModel }: { phase: number; viewModel: OrbitAdminViewModel }) {
-  return <div className="orbit-host-mini-phase-rail">{viewModel.adminPhases.map((phaseLabel, index) => <div className="orbit-host-mini-phase-part" key={phaseLabel}><div className="orbit-host-mini-phase"><span className={index < phase ? "is-done" : index === phase ? "is-current" : ""}>{index < phase ? <Icon color="var(--on-dark)" name="check" size={9} /> : index === phase ? <i /> : null}</span><em>{phaseLabel}</em></div>{index < viewModel.adminPhases.length - 1 ? <b className={index < phase ? "is-done" : ""} /> : null}</div>)}</div>;
-}
-
-function FeedRow({ f }: { f: OrbitAdminFeedView }) {
-  return <div className="orbit-host-member-row"><span className={`avatar ${f.g}`} style={{ fontSize: 15, height: 38, width: 38 }}>{f.initial}</span><div className="orbit-host-member-main"><strong>{f.name}</strong><span>{f.title} · {f.company}</span></div><div style={{ flexShrink: 0, textAlign: "right" }}><span className={`badge ${f.kind === "签到" || f.kind === "Check-in" ? "badge-live" : "badge-soon"}`} style={{ height: 22 }}>{f.kind}</span><div className="orbit-host-muted" style={{ fontSize: 11, marginTop: 4 }}>{f.t}</div></div></div>;
+function EventSourceRow({
+  event,
+  language,
+}: {
+  event: OrbitAdminEventView;
+  language: OrbitLanguage;
+}) {
+  return (
+    <div className="orbit-host-event-stat-row">
+      <Cover
+        className="orbit-host-event-stat-cover"
+        g={event.g}
+        imageAlt={event.name}
+        imageUrl={eventCoverPhoto(event.code)}
+        monogram={
+          eventCoverPhoto(event.code)
+            ? null
+            : { text: event.name.slice(0, 1), size: 20 }
+        }
+      />
+      <div className="orbit-host-event-stat-main">
+        <div className="orbit-host-title-row">
+          <strong>{event.name}</strong>
+          <StatusBadge language={language} status={event.status} />
+        </div>
+        <span className="orbit-host-muted">
+          {formatOrbitDateTime(event.startsAt, language)} · {event.venue}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function AdminDashContent({ viewModel }: { viewModel: OrbitAdminViewModel }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
   return (
     <>
-      <div className="orbit-host-page-head"><div><div className="eyebrow">DASHBOARD</div><h1 className="h-display">{t({ en: "Dashboard", zh: "仪表盘" })}</h1></div><span className="badge badge-soon">{t({ en: "Source metrics · read only", zh: "来源指标 · 只读" })}</span></div>
+      <div className="orbit-host-page-head"><div><div className="eyebrow">DASHBOARD</div><h1 className="h-display">{t({ en: "Dashboard", zh: "仪表盘" })}</h1></div><span className="badge badge-soon">{t({ en: "Source records · read only", zh: "来源记录 · 只读" })}</span></div>
       <div className="orbit-host-stat-grid">{viewModel.adminStats.map((stat) => <StatTile key={stat.label} s={stat} />)}</div>
       <div className="orbit-host-dashboard-grid">
+        <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Event source records", zh: "活动来源记录" })}</h2><span className="orbit-host-muted">{viewModel.adminEvents.length} {t({ en: "records", zh: "条" })}</span></div><div className="orbit-host-event-stats">{viewModel.adminEvents.map((event) => <EventSourceRow event={event} key={event.id} language={language} />)}</div></div>
         <div>
-          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Registration funnel", zh: "报名漏斗" })}</h2><span className="orbit-host-muted">TBC Spring · 2026</span></div><div className="orbit-host-funnel">{viewModel.adminFunnel.map(([label, value, percent], index) => <div key={label}><span className="orbit-host-muted">{label}</span><span className="orbit-host-mini-value">{value.toLocaleString()}</span><div className="orbit-host-bar"><span style={{ background: ["var(--accent)", "var(--sky)", "var(--live)"][index], width: `${percent * 100}%` }} /></div></div>)}</div></div>
-          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Per-event metrics", zh: "各活动数据" })}</h2></div><div className="orbit-host-event-stats">{viewModel.adminEvents.map((event) => <div className="orbit-host-event-stat-row" key={event.id}><Cover className="orbit-host-event-stat-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 20 }} /><div className="orbit-host-event-stat-main"><div className="orbit-host-title-row"><strong>{event.name}</strong></div><div className="orbit-host-bar"><span style={{ background: "var(--accent)", width: `${(event.registered / event.cap) * 100}%` }} /></div></div><div className="orbit-host-event-stat-metrics"><div><span className="orbit-host-muted">{t({ en: "Registered", zh: "报名" })}</span><span className="orbit-host-mini-value">{event.registered}</span></div><div><span className="orbit-host-muted">{t({ en: "Checked in", zh: "签到" })}</span><span className="orbit-host-mini-value">{event.checkedin}</span></div><div><span className="orbit-host-muted">{t({ en: "Matched", zh: "匹配" })}</span><span className="orbit-host-mini-value">{event.matched}</span></div><div><span className="orbit-host-muted">{t({ en: "Capacity", zh: "容量" })}</span><span className="orbit-host-mini-value">{event.cap}</span></div></div></div>)}</div></div>
-        </div>
-        <div>
-          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Live activity", zh: "实时动态" })}</h2><span className="badge badge-live" style={{ height: 22 }}><span className="dot dot-live" />LIVE</span></div>{viewModel.adminFeed.map((feed) => <FeedRow f={feed} key={feed.id} />)}</div>
-          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Team members", zh: "团队成员" })}</h2></div>{viewModel.adminMembers.map((member) => <MemberRow key={member.email} member={member} />)}</div>
+          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Authenticated account profile", zh: "已登录账户资料" })}</h2><span className="orbit-host-muted">{t({ en: "Profile source", zh: "资料来源" })}</span></div><MemberRow member={viewModel.adminAccount} /></div>
+          <div className="card orbit-host-card"><div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Data boundary", zh: "数据边界" })}</h2></div><p className="orbit-host-muted">{t({ en: "Registration, attendance, capacity, matching, team membership, and live activity metrics are hidden until dedicated actor-scoped providers are connected.", zh: "在接入专用且按账户隔离的数据服务前，不展示报名、签到、容量、匹配、团队成员或实时动态指标。" })}</p></div>
         </div>
       </div>
     </>
@@ -110,15 +133,16 @@ function AdminDashContent({ viewModel }: { viewModel: OrbitAdminViewModel }) {
 }
 
 function MemberRow({ member }: { member: OrbitAdminMemberView }) {
-  return <div className="orbit-host-member-row"><span className={`avatar ${member.g}`} style={{ fontSize: 15, height: 38, width: 38 }}>{member.initial}</span><div className="orbit-host-member-main"><strong>{member.name}</strong><span>{member.email}</span></div><span className="orbit-host-role-pill">{member.role}</span></div>;
+  const { t } = useOrbitLanguage();
+  return <div className="orbit-host-member-row"><span className={`avatar ${member.g}`} style={{ fontSize: 15, height: 38, width: 38 }}>{member.initial}</span><div className="orbit-host-member-main"><strong>{member.name}</strong><span>{member.email || t({ en: "Email unavailable", zh: "邮箱不可用" })}</span></div><span className="orbit-host-role-pill">{member.role}</span></div>;
 }
 
 export function OrbitRealAdminWorkspace({ viewModel }: { viewModel: OrbitAdminViewModel }) {
   return <HostShell active="dash" viewModel={viewModel}><AdminDashContent viewModel={viewModel} /></HostShell>;
 }
 
-function HostPortfolioCard({ event, language, t, viewModel }: { event: OrbitAdminEventView; language: OrbitLanguage; t: OrbitT; viewModel: OrbitAdminViewModel }) {
-  return <div className="card orbit-host-portfolio-card"><div className="orbit-host-portfolio-card-main"><Cover className="orbit-host-portfolio-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 24 }} /><div className="orbit-host-portfolio-info"><div className="orbit-host-title-row"><strong>{event.name}</strong><StatusBadge language={language} status={event.status} /></div><div className="orbit-host-portfolio-count"><span><b>{event.registered}</b> / {event.cap} {t({ en: "registered", zh: "报名" })}</span><div className="orbit-host-bar"><span style={{ background: "var(--accent)", width: `${(event.registered / event.cap) * 100}%` }} /></div></div></div></div><div className="orbit-host-portfolio-rail"><PhaseRail phase={event.phase} viewModel={viewModel} /></div></div>;
+function HostPortfolioCard({ event, language, t }: { event: OrbitAdminEventView; language: OrbitLanguage; t: OrbitT }) {
+  return <div className="card orbit-host-portfolio-card"><div className="orbit-host-portfolio-card-main"><Cover className="orbit-host-portfolio-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 24 }} /><div className="orbit-host-portfolio-info"><div className="orbit-host-title-row"><strong>{event.name}</strong><StatusBadge language={language} status={event.status} /></div><div className="orbit-host-portfolio-count"><span>{formatOrbitDateTime(event.startsAt, language)}</span><span>{event.venue}</span></div><p className="orbit-host-muted">{event.summary || t({ en: "No source summary", zh: "暂无来源摘要" })}</p></div></div></div>;
 }
 
 export function OrbitRealAdminEvents({ viewModel }: { viewModel: OrbitAdminViewModel }) {
@@ -130,10 +154,10 @@ export function OrbitRealAdminEvents({ viewModel }: { viewModel: OrbitAdminViewM
     <HostShell active="events" viewModel={viewModel}>
       <div className="orbit-host-page-head"><div><div className="eyebrow">EVENTS</div><h1 className="h-display">{t({ en: "Events", zh: "活动管理" })}</h1></div><span className="badge badge-soon">{t({ en: "Source events · read only", zh: "来源活动 · 只读" })}</span></div>
       <div className="orbit-host-chip-row"><span className="chip is-active">{t({ en: "All", zh: "全部" })} {viewModel.adminEvents.length}</span><span className="chip">{t({ en: "Live", zh: "进行中" })} {liveCount}</span><span className="chip">{t({ en: "Upcoming", zh: "即将" })} {upcomingCount}</span><span className="chip">{t({ en: "Ended", zh: "已结束" })} {endedCount}</span></div>
-      <div className="orbit-host-event-grid">{viewModel.adminEvents.map((event) => <HostPortfolioCard event={event} key={event.id} language={language} t={t} viewModel={viewModel} />)}</div>
+      <div className="orbit-host-event-grid">{viewModel.adminEvents.map((event) => <HostPortfolioCard event={event} key={event.id} language={language} t={t} />)}</div>
       <div className="card orbit-host-card" style={{ marginTop: 18 }}>
-        <div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Access · team & roles", zh: "访问管理 · 团队与角色" })}</h2><span className="orbit-host-muted">{t({ en: "Read only", zh: "只读" })}</span></div>
-        <div className="orbit-host-access-notes">{viewModel.adminMembers.map((member) => <div className="card-flat orbit-host-access-note" key={member.email}><span className={`avatar ${member.g}`} style={{ flexShrink: 0, fontSize: 15, height: 38, width: 38 }}>{member.initial}</span><div><strong>{member.name} · {member.role}</strong><span>{member.email}</span></div></div>)}</div>
+        <div className="orbit-host-section-head"><h2 className="h-section">{t({ en: "Authenticated account", zh: "已登录账户" })}</h2><span className="orbit-host-muted">{t({ en: "Profile source · read only", zh: "资料来源 · 只读" })}</span></div>
+        <div className="orbit-host-access-notes"><div className="card-flat orbit-host-access-note"><span className={`avatar ${viewModel.adminAccount.g}`} style={{ flexShrink: 0, fontSize: 15, height: 38, width: 38 }}>{viewModel.adminAccount.initial}</span><div><strong>{viewModel.adminAccount.name} · {viewModel.adminAccount.role}</strong><span>{viewModel.adminAccount.email || t({ en: "Email unavailable", zh: "邮箱不可用" })}</span></div></div></div>
       </div>
     </HostShell>
   );
