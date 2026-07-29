@@ -20,9 +20,14 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
    - Change preferred intro channels and use the explicit save control.
    - Confirm the saved profile is read back after refresh and no outside
      messaging or notification service is contacted.
-3. Open `/app/contacts/new?action=confirm-manual-draft`.
-   - Confirm contact acquisition renders manual add, business-card OCR, QR, external contact import, email-calendar signal, referral, and merge sections.
-   - Confirm Kenji Watanabe is staged for contact review without a contact write.
+3. Open `/app/contacts/new?scenario=failure&mode=mock&action=confirm-manual-draft`.
+   - Confirm the normal authenticated import workspace renders unchanged and
+     the URL does not select mock mode, fixture states, or draft confirmation.
+   - Confirm no OCR, QR, attendee import, address-book import, signal read,
+     referral generation, merge analysis, or contact write runs on page load.
+   - Confirm unavailable sources stay disabled. If business-card OCR is
+     configured, verify it runs only after the explicit scan/upload action and
+     persists a contact only after the explicit confirmation action.
 4. Open `/app/contacts?action=review-filtered-contact&query=storage&tag=topic:storage-pilots&value=commercial_opportunity`.
    - Confirm the contacts relationship console shows Kenji Watanabe and a storage-pilot review.
    - Confirm outside services contacted is `none`.

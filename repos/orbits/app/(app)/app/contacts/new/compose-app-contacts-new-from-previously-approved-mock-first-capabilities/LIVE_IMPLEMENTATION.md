@@ -24,12 +24,13 @@ evidence ids, captured fields, and confirmation state; local previews keep
 `data-action-evidence` and `data-side-effects="none"` until a confirmation guard
 records explicit approval.
 
-Replacement tests: preserve the route test for the page heading, domain datum,
-mock action result, success/empty/loading/failure state checks, and fixture-free
-adapter imports; add live-mode service contract tests, mock/live API envelope
-tests, route state checks after factory switching, and privacy regressions that
-fail when provider reads, writes, AI, messages, notifications, merges, or
-contact persistence run without permission and confirmation.
+Replacement tests: preserve the production route test for authentication,
+business-card availability, the action workspace, disabled unavailable sources,
+and absence of page-load acquisition calls. Exercise live-mode service
+contracts and mock/live API envelopes at their authenticated API boundaries,
+and keep privacy regressions that fail when provider reads, writes, AI,
+messages, notifications, merges, or contact persistence run without permission
+and confirmation.
 
 ## Live Service/Provider Files
 
@@ -46,22 +47,26 @@ contact persistence run without permission and confirmation.
 
 ## Switch Mechanism
 
-The page renders the acquisition shell after authentication without preflighting
-every child capability. Loading `/app/contacts/new` must not run OCR, QR,
-attendee import, external contact import, email/calendar reads, referral
-generation, or merge analysis. Each available source invokes its API only after
-an explicit user action and owns its own error state.
+The page renders the acquisition shell after authentication without accepting
+search parameters or preflighting every child capability. Loading
+`/app/contacts/new` must not run OCR, QR, attendee import, external contact
+import, email/calendar reads, referral generation, merge analysis, or draft
+confirmation. Each available source invokes its authenticated API only after an
+explicit user action and owns its own error state.
 
-`loadAppContactsNewRouteViewModel()` remains a capability-composition test
-utility, but it is not used to gate the page shell. Sources without a connected
-and actor-scoped live provider are visibly disabled rather than behaving like
-successful buttons.
+The former `loadAppContactsNewRouteViewModel()` capability aggregator is
+retired. It had no production caller, but retained URL-selected mock mode and
+fixture scenarios, parallel page-load capability calls, and a
+`action=confirm-manual-draft` GET confirmation branch. The historical module
+path now exports nothing because the typed lint manifest still names it.
+Sources without a connected and actor-scoped live provider are visibly disabled
+rather than behaving like successful buttons.
 
 Verification:
 
-- `tests/pages/app-contacts-new-live-route-services.test.ts` proves the
-  capability-composition utility still fails closed when live storage is
-  missing and the page itself performs no acquisition preflight.
+- `tests/pages/app-contacts-new-live-route-services.test.ts` proves the page
+  requires authentication, does not accept search parameters, performs no
+  acquisition preflight, and cannot regain the retired query-driven aggregator.
 
 ## Required Env Vars Or Permissions
 
@@ -79,8 +84,8 @@ Every contact candidate must retain source type, source label, evidence ids, cap
 
 ## Replacement Tests
 
-- Keep `tests/pages/app-contacts-acquisition-page.test.tsx` asserting the route heading, one domain datum, the local action result, route state checks, and fixture-free adapter imports.
+- Keep `tests/pages/app-contacts-new-live-route-services.test.ts` asserting the authenticated route shell, business-card availability boundary, disabled unavailable sources, and absence of query-driven or page-load acquisition composition.
 - Add live-mode service contract tests for each provider file proving envelope parity with the current contracts.
 - Add API tests for `GET /api/contact-drafts` and `GET /api/permissions` in mock and live modes.
-- Add route state checks for success, empty, pending, and failure states after factory switching.
+- Add source-specific UI state checks at the explicit action boundary rather than one aggregate route scenario switch.
 - Add privacy tests that fail if live scans, imports, email/calendar reads, referral discovery, merge writes, messages, notifications, AI calls, or contact persistence run without permission and confirmation.

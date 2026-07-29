@@ -3473,6 +3473,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build/full-suite enforcement of authenticated operator composition, actor propagation, public sign-in exceptions, explicit-only Event scenarios, and removal of GET acceptance; authenticated browser redirect/return/data-isolation runtime, admin role authorization beyond a generic session, populated multi-account operator data, POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-contacts-new-get-action-isolation-2026-07-29",
+    target:
+      "Authenticated Web Contact Import Hub → action-specific APIs separated from page-load capability composition",
+    testData:
+      "Production /app/contacts/new source, retired route-composition module, adversarial scenario=failure/mode=mock/action=confirm-manual-draft query, and explicit business-card scan/confirm API boundaries",
+    expected:
+      "Loading the import workspace may resolve authentication and capability availability only. URL parameters must not switch module mode, select fixture states, invoke acquisition providers, or confirm a draft; each supported source must start from an explicit authenticated user action.",
+    actual:
+      "The production page had already stopped accepting searchParams and rendered only the authenticated action workspace, but a test-only production module still retained the old unrestricted query loader. It could select mode/scenario, run nine acquisition/permission capabilities in parallel, and call confirmManualContactDraft for action=confirm-manual-draft. The test imported that latent aggregator and the live implementation notes described it as intentional. After repair, the historical lint-manifest path exports nothing, the test asserts the page and module cannot regain query/preflight behavior, and the real business-card scan/confirm flow remains behind explicit authenticated API actions.",
+    evidence:
+      "Fresh GitNexus context found no indexed production process for loadAppContactsNewRouteViewModel. Upstream impact was LOW for all eleven module functions: the loader had one direct test-file caller and zero affected processes. Focused regression passed 1/1; the complete Web suite passed 1357/1357; the exact production build passed; staged GitNexus returned LOW for two files, two test symbols, and zero processes; commit 6da55f15. Global typed lint reached an unrelated pre-existing TS2367 in tests/pages/app-contact-detail-live-route-services.test.ts:478.",
+    conclusion:
+      "pass for source/build/full-suite removal of the latent query-driven Contact Import aggregator while preserving explicit authenticated action APIs; configured OCR success/readback, other source connections, API permission failures, authenticated browser DOM, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4409,6 +4424,20 @@ const AUDIT_REMEDIATIONS = [
       "After a successful full GitNexus re-index, pre-edit impact was HIGH for the shared Events loader and action helpers across Home and Event Detail, while operator pages and the auth predicate were LOW. Seven focused test files passed 55/55, the complete Web suite passed 1358/1358, and the exact production build passed. Tests cover public sign-in exceptions, private workspace paths, safe auth return normalization, page-level auth/redirect/actor source, live failure, adversarial public scenario/action isolation, explicit internal empty state, and absence of the GET acceptance chain. Staged detection was CRITICAL across 16 expected flows.",
     status:
       "fixed and source/build/full-suite-verified for session gating, actor propagation, query isolation, and GET acceptance removal; browser runtime, a dedicated admin/organizer role authorization model, populated multi-account isolation, authenticated POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-068",
+    severity: "P1",
+    rootCause:
+      "The real Contact Import page had been simplified into an authenticated action workspace, but its former route aggregator remained in production source as a test utility. The orphan accepted unrestricted query input for module mode, fixture scenario, event identity, and action. Its default branch preflighted acquisition capabilities, while action=confirm-manual-draft could call draft confirmation during a GET composition. No production page called it, so this risk was latent and maintained only by a test and stale documentation.",
+    decision:
+      "Retire the orphan aggregator completely instead of preserving a second acquisition architecture. Keep the historical file as an empty module only because the typed lint manifest names the path. Make the regression prove that /app/contacts/new has no searchParams or page-load acquisition calls and that the retired module cannot regain service composition. Preserve business-card scan, contact confirmation, invitation, and every future source behind explicit authenticated API actions.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services.ts; repos/orbits/tests/pages/app-contacts-new-live-route-services.test.ts; repos/orbits/app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md; repos/orbits/scripts/manual-acceptance.md",
+    regression:
+      "GitNexus context and upstream impact found one test caller, zero production processes, and LOW risk for every function in the retired module. The focused page regression passed 1/1, the complete Web suite passed 1357/1357, and the production build passed. The regression checks authentication, the availability boundary, action-workspace rendering, absence of searchParams/preflight calls, and absence of the retired loader/service/query/confirmation symbols. Staged detection was LOW for two files and zero processes. The repository-wide typed lint remains blocked by an unrelated pre-existing TS2367 in the contact-detail route test.",
+    status:
+      "fixed and source/build/full-suite-verified for removal of the latent GET/query acquisition aggregator; explicit configured provider action/readback, broader source integrations, browser runtime, permission failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
