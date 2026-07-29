@@ -3969,7 +3969,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent/Chat tests passed 30/30; repository lint/typecheck passed; the complete Web suite passed 1366/1366; production build completed 39/39 static pages. In-app browser traversal covered the initial blocked state, repaired empty-actor welcome, real prompt, 7/7 progress, awaiting confirmation, defer, hard reload/history reopen, confirm, action completion, Today action readback, and due-date task readback. Commit 7379d840. GitNexus could not resolve the edited TSX/adapter symbols and staged detection returned No changes detected, so no unsupported graph risk is claimed.",
     conclusion:
-      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; cancel, retry, ignore, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-ignore-action-today-terminal-activity-2026-07-29",
@@ -3984,7 +3984,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Today/Agent/All Actions tests passed 51/51; repository lint/typecheck passed; the complete Web suite passed 1368/1368; production build completed 39/39 static pages. In-app browser verified both ignore transitions, hard-reload persistence, the empty 2026-08-12 schedule, absent target name, coherent English Recent activity / Create follow-up task / Create reminder / Ignored, and coherent Chinese 最近动态 / 创建跟进任务 / 创建提醒 / 已忽略. Commit 39d9bf87. Pre-edit impact was LOW for DecisionEntryCard, OrbitRealToday, and AppTodayPageContent, while the shared SECTION_TITLES index result was corrupt/CRITICAL and was deliberately not edited. Staged detection reported HIGH because AppTodayPageContent participates in nine reviewed Today loading flows.",
     conclusion:
-      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while cancel, retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
+  {
+    id: "web-agent-cancel-run-no-write-2026-07-29",
+    target:
+      "Authenticated Web /app/agent multi-operation proposal → cancel run → reload/history reopen → two-date Today no-write readback",
+    testData:
+      "Same authenticated live audit actor; prompt 8月20日提醒我联系 Cancel Audit Person，先创建待办和提醒，等我确认。; one create_followup_task proposal due 2026-08-19 plus one create_reminder proposal scheduled 2026-08-20; exact production build",
+    expected:
+      "Canceling a run that has only awaiting-confirmation operations must atomically move every remaining operation to canceled, remove confirmation controls, survive hard reload and history reopen, and execute no task or reminder write on either relevant date.",
+    actual:
+      "The prompt completed a 7/7 run and staged two awaiting-confirmation operations. 取消 Run changed both cards to 已取消 and removed the run-cancel and per-operation confirmation controls. A hard reload returned to the Agent starter, and reopening the persisted conversation restored both canceled cards with no actionable controls. Today on both 2026-08-19 and 2026-08-20 rendered 这一天暂无安排 and contained no Cancel Audit Person.",
+    evidence:
+      "The exact source baseline had already passed the complete Web suite at 1368/1368, repository lint/typecheck, and a 39/39 production build. In-app browser traversal covered the real prompt, two-operation proposal, run-level cancel, immediate terminal rendering, hard reload, persisted history reopen, control removal, and task/reminder no-write checks on both dates. No source defect or code change was found.",
+    conclusion:
+      "pass for multi-operation run cancellation, atomic terminal state, confirmation-control removal, hard reload/history persistence, task no-write, reminder no-write, and two-date Today readback; retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
