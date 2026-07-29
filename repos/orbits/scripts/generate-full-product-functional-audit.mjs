@@ -3683,6 +3683,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source, persistence, identity isolation, cross-surface, lint, build, and full-suite verification of the public catalogue roster boundary; browser click-through for all 13 catalogue details remains part of the broader runtime route matrix",
   },
+  {
+    id: "web-public-event-catalogue-feature-boundary-2026-07-29",
+    target:
+      "Public event catalogue consumers → one feature-owned aggregate and registration-gated attendee boundary",
+    testData:
+      "All production imports and calls of getOrbitHybridRouteData; public Events list and API; Event detail; Organizer public; Party and check-in; Agent/Admin cover-photo consumers; approved event evidence, participant counts, persisted registration lifecycle, and public organizer identity",
+    expected:
+      "Production event surfaces must read public event aggregates through the Events feature boundary rather than importing the whole hybrid fixture graph. Evidence and participant totals must remain source-derived without exposing attendee identity. Attendee rows must remain behind exact actor/event registration verification. Client presentation utilities must not create a dependency from Agent or Admin bundles into server data, and the public API must not select an organizer from the first private account record.",
+    actual:
+      "The public-safe Landing model still bypassed readPublicEventCatalogue and called getOrbitHybridRouteData directly for events, evidence, counts, and generated time. Its cover-photo helper lived in the same server-data module and was imported by client Agent/Admin components. The public Events API independently opened the local-remote database and exposed the first account name as organizer. After repair, readPublicEventCatalogue owns events, per-event evidence summaries, participant counts, and generated time; a feature-owned readRegisteredCatalogueAttendees boundary owns registration-gated roster access; Landing, Event detail, and Party consume those contracts; the cover helper is presentation-only; and the API exposes the neutral Orbit organizer. Exact repository search finds no production caller of getOrbitHybridRouteData.",
+    evidence:
+      "GitNexus warned HIGH before editing getOrbitLandingViewModel: eight upstream symbols and three production processes. readPublicEventCatalogue reached seven upstream symbols and one registration flow; eventCoverPhoto reached ten Agent/Admin symbols, while the registered attendee mapper and public API were separately reviewed. Focused cross-surface/API/asset tests passed 50/50, repository lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 8625f4e5. Required staged detection reported HIGH for 10 changed symbols and six existing public event catalogue/registration execution flows, all within the reviewed Events list and registration boundary.",
+    conclusion:
+      "pass for source-boundary, privacy, persisted-registration, client-bundle, API, lint, build, and full-suite verification; the remaining orbit-hybrid-route-data pure helper module is a separate retirement/refactoring review",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4815,6 +4830,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus warned HIGH before the public catalogue edit across three production processes. Focused tests passed 45/45 and include a real registration live-record lifecycle: unregistered and cross-actor reads return null, registration returns the exact event with all 50 source-backed attendees, cancellation removes access, and unknown/empty inputs fail closed. Public seed substitution still changes event content but cannot change the exposed account label or inject contacts/attendee names. Lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages after separating the server registration module from client-consumed Landing code. Staged detect reported medium risk and only the expected Event detail execution flow.",
     status:
       "fixed and source/persistence/lint/build/full-suite-verified; public catalogue identity and attendee access now fail closed by default",
+  },
+  {
+    id: "AUDIT-P1-082",
+    severity: "P1",
+    rootCause:
+      "Even after the public roster was made fail-closed, production Landing still called getOrbitHybridRouteData for the catalogue, evidence, counts, and generated time instead of the existing Events feature boundary. The public Events API separately selected the first private local account as organizer. eventCoverPhoto also lived beside server data, so client Agent/Admin imports made future server-only dependencies easy to pull into browser bundles.",
+    decision:
+      "Make readPublicEventCatalogue the single public aggregate contract and extend it with source-derived per-event evidence summaries and participant counts. Put exact actor/event registration verification and approved attendee projection in a feature-owned server boundary used by Event detail and Party. Move event cover selection into a data-free presentation module, expose the neutral Orbit organizer from the public API, and prohibit production getOrbitHybridRouteData calls.",
+    files:
+      "repos/orbits/features/events/public-catalogue.ts; repos/orbits/features/events/registered-catalogue-attendees.ts; repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts; repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts; repos/orbits/app/(app)/app/orbit-event-cover-photo.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/api/events/public/route.ts; repos/orbits/tests/api/public-events-route.test.ts; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+    regression:
+      "GitNexus warned HIGH before the Landing edit across eight upstream symbols and three production processes; the catalogue boundary reached seven upstream symbols and one registration flow, and the cover helper reached ten Agent/Admin symbols. Exact source search finds no production getOrbitHybridRouteData caller. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 8625f4e5. Staged detection reported HIGH for 10 changed symbols and six reviewed public event catalogue/registration flows.",
+    status:
+      "fixed and source/persistence/privacy/client-bundle/API/lint/build/full-suite-verified; remaining pure hybrid helper retirement is tracked as a separate bounded review",
   },
 ];
 
