@@ -2484,7 +2484,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:2335",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:newChat#New chat / 新对话",
     {
       actualResult:
         "After selecting the real Undo Audit conversation, desktop 新对话 returned the URL to /app/agent, removed the old prompt and transcript, restored the welcome workspace and active composer, and retained all six persisted history rows.",
@@ -5725,6 +5725,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused history tests passed 11/11 and production build completed 39/39. The real production browser read min=180, max=380, current=212, and vertical orientation; ArrowRight produced 228, Home produced 180, and End produced 380. Commit 8d53505d; impact and staged detection were LOW with zero affected processes.",
     status:
       "fixed and keyboard-separator/ARIA-range/ArrowLeft/ArrowRight/Home/End/clamped-layout/no-write/browser/focused/build-verified; pointer-drag and screen-reader announcement timing remain separately unverified",
+  },
+  {
+    id: "AUDIT-P1-099",
+    severity: "P1",
+    rootCause:
+      "The mobile Agent history drawer visually covered the application as a modal surface but remained an ordinary div. It exposed no dialog name or aria-modal boundary, did not trap Tab, did not restore focus to the history trigger, and used a page-level Escape listener that did not stop the event from reaching other shortcuts.",
+    decision:
+      "Extract the conditionally mounted drawer into its own component and use the shared Orbit modal accessibility behavior rather than adding another focus implementation. Mark the drawer as a labelled modal dialog, focus its first control on mount, trap forward and reverse Tab, make Escape exclusively close the drawer, and restore the previously focused trigger on unmount. Keep the scrim and explicit close control on the same onClose boundary.",
+    files:
+      "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+    regression:
+      "Focused Agent history tests passed 11/11 and production build completed 39/39. Source regression binds the drawer to useOrbitModalA11y and requires data-orbit-agent-history-drawer, a labelled role=dialog, and aria-modal=true. Commit 2e4a487b; staged detection was LOW with zero affected processes.",
+    status:
+      "fixed with shared-modal/focus-entry/Tab-trap/Escape-exclusive/focus-restore/dialog-name/static-source/focused/build evidence; mobile-width browser and real assistive-technology verification remain open",
   },
 ];
 
