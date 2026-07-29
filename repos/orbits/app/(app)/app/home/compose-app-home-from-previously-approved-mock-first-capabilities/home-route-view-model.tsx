@@ -184,7 +184,7 @@ export async function loadAppHomeRouteViewModel(
   const [events, contacts, profile] = await Promise.all([
     loadAppEventsRouteViewModel(searchParams, actor?.id),
     loadAppContactsRouteViewModel(searchParams, actor?.id),
-    loadAppProfileRouteViewModel(searchParams, actor),
+    loadAppProfileRouteViewModel(actor),
   ]);
   const routeState = firstRouteState({ contacts, events, profile });
 

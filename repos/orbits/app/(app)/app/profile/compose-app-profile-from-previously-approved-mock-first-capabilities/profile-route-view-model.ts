@@ -15,16 +15,15 @@ import type {
 } from "../../../../../features/profile/signal-contract";
 import { createAppProfileRouteServices } from "./profile-service-factory";
 
-export type AppProfileSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
 export interface AppProfileActor {
   displayName: string;
   email?: string | null;
   id: string;
 }
 export type AppProfileRouteScenario = "empty" | "pending" | "failure";
+export interface AppProfileRouteControls {
+  scenario?: AppProfileRouteScenario;
+}
 
 type EvidenceResult =
   | ProfileResult
@@ -74,25 +73,9 @@ export interface AppProfileSuggestionViewModel {
   suggestedValue: string;
 }
 
-export interface AppProfileActionViewModel {
-  actionSourceEvidence: string;
-  preferredChannels: string;
-  preferredChannelsChineseSentence: string;
-  preferredChannelsSentence: string;
-  requested: boolean;
-}
-
-export interface AppProfileIntroChoiceViewModel {
-  checked: boolean;
-  label: string;
-  value: string;
-}
-
 export interface AppProfileSuccessViewModel {
-  action: AppProfileActionViewModel;
   completenessScore: number;
   documentSummary: string;
-  introChoices: readonly AppProfileIntroChoiceViewModel[];
   nextProfileFieldLabel: string;
   profile: Pick<
     ManualProfile,
@@ -137,50 +120,6 @@ export type AppProfileRouteViewModel =
 
 function bilingualText(chinese: string, english: string): string {
   return `${chinese} / ${english}`;
-}
-
-function readSearchParam(
-  searchParams: AppProfileSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readSearchParamList(
-  searchParams: AppProfileSearchParams | undefined,
-  key: string,
-): readonly string[] | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    const values = value.map((item) => item.trim()).filter(Boolean);
-
-    return values.length ? Array.from(new Set(values)) : null;
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    return [value.trim()];
-  }
-
-  return null;
-}
-
-function readRouteScenario(
-  searchParams: AppProfileSearchParams | undefined,
-): AppProfileRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function firstEvidence(evidenceIds: readonly string[] | undefined): string {
@@ -241,53 +180,6 @@ function profileFieldLabel(
   return field && field in labels
     ? labels[field as ProfileCompletenessField]
     : bilingualText("个人资料细节", "profile details");
-}
-
-function formatNaturalList(items: readonly string[] | undefined): string {
-  if (!items?.length) {
-    return "not selected";
-  }
-
-  if (items.length === 1) {
-    return items[0] ?? "not selected";
-  }
-
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`;
-  }
-
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-function formatIntroChannelLabel(channel: string): string {
-  const labels: Record<string, string> = {
-    "event follow-up": bilingualText("活动后跟进", "event follow-up"),
-    "warm intro": bilingualText("暖介绍", "warm intro"),
-  };
-
-  return labels[channel] ?? channel;
-}
-
-function formatIntroChannelList(items: readonly string[] | undefined): string {
-  return items?.length
-    ? items.map(formatIntroChannelLabel).join(", ")
-    : bilingualText("未选择", "not selected");
-}
-
-function formatNaturalChineseList(items: readonly string[] | undefined): string {
-  const labels =
-    items?.map((item) => formatIntroChannelLabel(item).split(" / ")[0] ?? item) ??
-    [];
-
-  if (!labels.length) {
-    return "未选择";
-  }
-
-  if (labels.length === 1) {
-    return labels[0] ?? "未选择";
-  }
-
-  return labels.join("和");
 }
 
 function personalizeReviewSummary(summary: string, displayName: string): string {
@@ -467,8 +359,6 @@ async function routeStateViewModel(
   };
 }
 
-const suggestedIntroChannels = ["warm intro", "event follow-up"] as const;
-
 function actorOnboardingProfile(
   actor: AppProfileActor,
   updatedAt: string,
@@ -495,10 +385,8 @@ function actorOnboardingProfile(
 }
 
 function successViewModel(input: {
-  actionRequested: boolean;
   actor?: AppProfileActor | null;
   profileState: Extract<ProfileResult, { success: true }>;
-  requestedIntroChannels: readonly string[] | null;
   resumeState: Extract<ProfileDocumentExtractionResult, { success: true }>;
   suggestionState: Extract<ProfileSignalReviewQueueResult, { success: true }>;
 }): AppProfileSuccessViewModel {
@@ -517,32 +405,8 @@ function successViewModel(input: {
           email: profile.handles?.email || actorEmail,
         }
       : undefined;
-  const selectedIntroChannels =
-    input.actionRequested && input.requestedIntroChannels
-      ? input.requestedIntroChannels
-      : suggestedIntroChannels;
-  const editorProfile: ManualProfile = {
-    ...profile,
-    preferredIntroChannels: selectedIntroChannels,
-  };
 
   return {
-    action: {
-      actionSourceEvidence:
-        input.actionRequested
-          ? "evidence:profile-editor-preview"
-          : firstEvidence(input.profileState.data.provenance.evidenceIds),
-      preferredChannels: formatIntroChannelList(
-        editorProfile.preferredIntroChannels,
-      ),
-      preferredChannelsChineseSentence: formatNaturalChineseList(
-        editorProfile.preferredIntroChannels,
-      ),
-      preferredChannelsSentence: formatNaturalList(
-        editorProfile.preferredIntroChannels,
-      ),
-      requested: input.actionRequested,
-    },
     completenessScore: input.profileState.data.completeness.score,
     documentSummary: resumeDraft
       ? bilingualText("简历草稿已准备", "Resume draft ready")
@@ -560,18 +424,6 @@ function successViewModel(input: {
           ),
         }
       : null,
-    introChoices: [
-      {
-        checked: selectedIntroChannels.includes("warm intro"),
-        label: formatIntroChannelLabel("warm intro"),
-        value: "warm intro",
-      },
-      {
-        checked: selectedIntroChannels.includes("event follow-up"),
-        label: formatIntroChannelLabel("event follow-up"),
-        value: "event follow-up",
-      },
-    ],
     nextProfileFieldLabel: profileFieldLabel(
       input.profileState.data.completeness.nextBestField,
     ),
@@ -612,10 +464,10 @@ function successViewModel(input: {
 }
 
 export async function loadAppProfileRouteViewModel(
-  searchParams?: AppProfileSearchParams,
   actor?: AppProfileActor | null,
+  controls: AppProfileRouteControls = {},
 ): Promise<AppProfileRouteViewModel> {
-  const requestedScenario = readRouteScenario(searchParams);
+  const requestedScenario = controls.scenario;
 
   if (requestedScenario) {
     return {
@@ -689,10 +541,8 @@ export async function loadAppProfileRouteViewModel(
     return {
       state: "success",
       profile: successViewModel({
-        actionRequested: false,
         actor,
         profileState: onboardingState,
-        requestedIntroChannels: null,
         resumeState,
         suggestionState,
       }),
@@ -702,14 +552,8 @@ export async function loadAppProfileRouteViewModel(
   return {
     state: "success",
     profile: successViewModel({
-      actionRequested:
-        readSearchParam(searchParams, "action") === "complete-profile-field",
       actor,
       profileState,
-      requestedIntroChannels: readSearchParamList(
-        searchParams,
-        "preferredIntroChannels",
-      ),
       resumeState,
       suggestionState,
     }),

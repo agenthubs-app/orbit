@@ -8,7 +8,6 @@ import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
   loadAppProfileRouteViewModel,
   type AppProfileRouteStateViewModel,
-  type AppProfileSearchParams,
 } from "./compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileRouteToOrbitProfileViewModel } from "./compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
 import { OrbitRealProfile } from "./orbit-real-profile";
@@ -48,11 +47,7 @@ function ProfileRouteStateBoundary({
   );
 }
 
-export default async function AppProfilePage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppProfileSearchParams>;
-} = {}) {
+export default async function AppProfilePage() {
   // 个人资料是登录后的页面:未登录跳登录页,带回跳地址。
   const session = await auth();
 
@@ -60,7 +55,7 @@ export default async function AppProfilePage({
     redirect("/app/account/login?next=%2Fapp%2Fprofile");
   }
 
-  const routeModel = await loadAppProfileRouteViewModel(await searchParams, {
+  const routeModel = await loadAppProfileRouteViewModel({
     displayName:
       session.user.name?.trim() ||
       session.user.email?.trim() ||

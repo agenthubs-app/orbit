@@ -7,7 +7,6 @@ import { eventRegistrationRuntimeService } from "../../../../../features/events/
 import {
   loadAppProfileRouteViewModel,
   type AppProfileActor,
-  type AppProfileSearchParams,
 } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
 import type {
@@ -605,10 +604,7 @@ export async function loadAppPartyRouteViewModel(
     return routeStateFromEventBoundary(eventRoute, eventId, language);
   }
 
-  const profileRoute = await loadAppProfileRouteViewModel(
-    input.searchParams as AppProfileSearchParams | undefined,
-    input.actor,
-  );
+  const profileRoute = await loadAppProfileRouteViewModel(input.actor);
 
   if (profileRoute.state === "route-state") {
     return routeState({

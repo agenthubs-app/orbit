@@ -6,7 +6,6 @@ import type {
 import { loadAppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import {
   loadAppProfileRouteViewModel,
-  type AppProfileSearchParams,
 } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
 import type {
@@ -487,9 +486,7 @@ export async function loadAppAdminPlatformRouteViewModel(
   const surface = input.surface ?? "admin";
   const [eventsRoute, profileRoute] = await Promise.all([
     loadAppEventsRouteViewModel(input.searchParams),
-    loadAppProfileRouteViewModel(
-      input.searchParams as AppProfileSearchParams | undefined,
-    ),
+    loadAppProfileRouteViewModel(),
   ]);
 
   if (eventsRoute.state === "route-state") {

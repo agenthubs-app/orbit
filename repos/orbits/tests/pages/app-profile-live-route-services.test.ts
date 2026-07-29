@@ -87,7 +87,7 @@ test("app profile route service bundle resolves all child services in live mode"
 
 test("app profile route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveProfile(async () => {
-    const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    const viewModel = await loadAppProfileRouteViewModel({
       displayName: "Live profile test actor",
       id: "account:live-profile-test",
     });
@@ -111,6 +111,9 @@ test("app profile route loader returns a controlled live failure when storage is
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const routeSource = source(
+    "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
+  );
 
   assert.match(pageSource, /loadAppProfileRouteViewModel/);
   assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
@@ -118,6 +121,21 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   assert.match(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /AppProfileCommandCenter/);
   assert.match(profileSource, /data-orbit-real-page="profile"/);
+  assert.doesNotMatch(pageSource, /searchParams/);
+  assert.doesNotMatch(routeSource, /readSearchParam/);
+  assert.doesNotMatch(routeSource, /complete-profile-field/);
+  assert.doesNotMatch(routeSource, /AppProfileActionViewModel/);
+});
+
+test("app profile route scenarios are available only through explicit internal controls", async () => {
+  const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    scenario: "empty",
+  });
+
+  assert.equal(viewModel.state, "route-state");
+  if (viewModel.state === "route-state") {
+    assert.equal(viewModel.routeState.scenario, "empty");
+  }
 });
 
 test("profile editor uses API extraction and save readback instead of timed success", () => {
@@ -221,7 +239,7 @@ test("/app/profile maps actor-scoped profile data without hardcoded founder iden
 
 test("profile adapter does not mix relationship goals or markets into editable tag fields", async () => {
   await withMockProfile(async () => {
-    const routeModel = await loadAppProfileRouteViewModel(undefined, {
+    const routeModel = await loadAppProfileRouteViewModel({
       displayName: "Audit Actor",
       email: "audit.actor@example.invalid",
       id: "account:audit-actor",
@@ -243,7 +261,7 @@ test("profile adapter does not mix relationship goals or markets into editable t
 
 test("app profile success model keeps editable identity fields for the real profile UI", async () => {
   await withMockProfile(async () => {
-    const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    const viewModel = await loadAppProfileRouteViewModel({
       displayName: "Audit Actor",
       email: "audit.actor@example.invalid",
       id: "account:audit-actor",
