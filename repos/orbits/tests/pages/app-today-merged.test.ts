@@ -27,7 +27,9 @@ import {
   type AppTodayMergedLoaders,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model";
 import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
+import { OrbitRealToday } from "../../app/(app)/app/today/orbit-real-today";
 import { OrbitTodayTimeSpine } from "../../app/(app)/app/today/orbit-today-time-spine";
+import { presentTodaySectionTitles } from "../../app/(app)/app/today/today-section-presentation";
 import { mockOrbitAiRecommendedEventDetailRecord } from "../../features/events/event-crud-and-import/fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -303,6 +305,46 @@ test("/app/today renders the merged workspace shell", async () => {
 
   // mobile single-column breakpoint stays intact (existing structural gate)
   assert.match(html, /data-orbit-real-page="today"/);
+});
+
+test("Today renders ignored natural-language actions with coherent English copy", async () => {
+  const loaded = await loadAppTodayRouteViewModel();
+  const sourceEntry = loaded.sections
+    .flatMap((section) => section.entries)
+    .find((entry) => entry.status === "completed");
+
+  assert.ok(sourceEntry);
+  const viewModel = presentTodaySectionTitles(
+    {
+      ...loaded,
+      sections: [
+        {
+          entries: [
+            {
+              ...sourceEntry,
+              status: "rejected",
+              title: "创建跟进任务",
+            },
+          ],
+          key: "recent",
+          title: "最近动态",
+        },
+      ],
+      state: "success",
+    },
+    "en",
+  );
+  const html = renderToStaticMarkup(
+    createElement(OrbitRealToday, {
+      language: "en",
+      viewModel,
+    }),
+  );
+
+  assert.match(html, /Recent activity/);
+  assert.match(html, /Create follow-up task/);
+  assert.match(html, /Ignored/);
+  assert.doesNotMatch(html, /最近完成|已忽略|Create跟进任务/);
 });
 
 // T2 (today-schedule 合并 P2): "只保存为草稿" used to live in a right-column

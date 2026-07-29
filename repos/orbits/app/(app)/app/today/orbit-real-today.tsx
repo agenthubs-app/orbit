@@ -14,6 +14,7 @@ import { Icon } from "../orbit-reference-primitives";
 import type {
   AgentLedgerEntry,
 } from "../../../../features/agent/ledger/contract";
+import type { OrbitLanguage } from "../orbit-language-core";
 import type {
   AppTodayRouteViewModel,
   TodaySectionKey,
@@ -22,17 +23,46 @@ import { OrbitTodayDecisionPanelBody } from "./orbit-today-decision-panel";
 import { OrbitTodayEscapeToCollapse } from "./orbit-today-escape-to-collapse";
 import { OrbitTodayItemOpened } from "./orbit-today-item-opened";
 
-const STATUS_LABELS: Record<AgentLedgerEntry["status"], string> = {
-  approved: "已确认",
-  awaiting_confirmation: "等待确认",
-  canceled: "已取消",
-  completed: "已完成",
-  deferred: "稍后处理",
-  executing: "正在执行",
-  failed: "失败",
-  partially_failed: "部分失败",
-  rejected: "已忽略",
-  undone: "已撤销",
+const STATUS_LABELS: Record<
+  OrbitLanguage,
+  Record<AgentLedgerEntry["status"], string>
+> = {
+  en: {
+    approved: "Confirmed",
+    awaiting_confirmation: "Awaiting confirmation",
+    canceled: "Canceled",
+    completed: "Completed",
+    deferred: "Later",
+    executing: "Executing",
+    failed: "Failed",
+    partially_failed: "Partially failed",
+    rejected: "Ignored",
+    undone: "Undone",
+  },
+  ja: {
+    approved: "確認済み",
+    awaiting_confirmation: "確認待ち",
+    canceled: "キャンセル済み",
+    completed: "完了",
+    deferred: "後で対応",
+    executing: "実行中",
+    failed: "失敗",
+    partially_failed: "一部失敗",
+    rejected: "見送り",
+    undone: "取り消し済み",
+  },
+  zh: {
+    approved: "已确认",
+    awaiting_confirmation: "等待确认",
+    canceled: "已取消",
+    completed: "已完成",
+    deferred: "稍后处理",
+    executing: "正在执行",
+    failed: "失败",
+    partially_failed: "部分失败",
+    rejected: "已忽略",
+    undone: "已撤销",
+  },
 };
 
 const SECTION_ICONS: Record<TodaySectionKey, string> = {
@@ -71,10 +101,12 @@ function buildTodayHref(
 function DecisionEntryCard({
   entry,
   expanded,
+  language,
   preserveParams,
 }: {
   entry: AgentLedgerEntry;
   expanded: boolean;
+  language: OrbitLanguage;
   preserveParams: Readonly<Record<string, string>>;
 }) {
   const href = buildTodayHref(
@@ -97,11 +129,13 @@ function DecisionEntryCard({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="orbit-today-card-title">{entry.title}</div>
           <div className="orbit-today-card-subtitle">
-            {entry.organization ?? entry.contactName ?? STATUS_LABELS[entry.status]}
+            {entry.organization ??
+              entry.contactName ??
+              STATUS_LABELS[language][entry.status]}
           </div>
         </div>
         <span className="chip" style={{ flexShrink: 0 }}>
-          {STATUS_LABELS[entry.status]}
+          {STATUS_LABELS[language][entry.status]}
         </span>
         <Icon name={expanded ? "chevD" : "chevR"} size={16} />
       </a>
@@ -119,6 +153,7 @@ function DecisionEntryCard({
 
 export function OrbitRealToday({
   expandedEntryId,
+  language = "zh",
   onlyKeys,
   preserveParams,
   suppressStateBoundary,
@@ -130,6 +165,7 @@ export function OrbitRealToday({
    *  view-model contract/tests). Accordion expansion must stay literally
    *  absent when the URL has no `?entry=` (design doc §2, T2 requirement). */
   expandedEntryId?: string | null;
+  language?: OrbitLanguage;
   /** Render only the listed sections (still in canonical decide/prepared/
    *  recent order). Omit to render all of them — used by the merged Today
    *  page to slot "可复核安排" between the decide section and the
@@ -214,13 +250,14 @@ export function OrbitRealToday({
                 entry={entry}
                 expanded={expandedEntryId === entry.entryId}
                 key={entry.entryId}
+                language={language}
                 preserveParams={params}
               />
             ))}
           </div>
         );
 
-        // "需要你决定" stays expanded; "ORBIT 已准备"/"最近完成" default to
+        // "需要你决定" stays expanded; "ORBIT 已准备"/"最近动态" default to
         // collapsed (content-priority — completed/queued work shouldn't
         // compete with pending decisions for attention). A native
         // disclosure element needs no client state and adds no hand-rolled

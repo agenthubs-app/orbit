@@ -5,7 +5,7 @@
  * 三个来源（账本 / 关系安排 / 跟进日程）并行加载，任一失败只降级它自己的区块
  * （见 today-merged-view-model.ts）。左栏是时间脊柱（月历+当日|本月+时间轴，
  * 抽自旧日历页）；右栏是行动流：需要你决定（原位展开的决策卡）→ 可复核安排
- * （抽自关系安排页）→ ORBIT 已准备/最近完成（默认折叠）。
+ * （抽自关系安排页）→ ORBIT 已准备/最近动态（默认折叠）。
  *
  * T2 把右栏"决策卡列表 + 常驻详情面板"两块拆分布局，改成一块 accordion 列表
  * ——详情面板 `OrbitTodayDecisionPanel` 不再作为独立栏渲染，它的内容现在内嵌
@@ -32,6 +32,7 @@ import { resolveAgentLedgerForServerPage } from "../../../api/_shared/agent-requ
 import { OrbitRealToday } from "./orbit-real-today";
 import { OrbitTodayArrangements } from "./orbit-today-arrangements";
 import { OrbitTodayHeaderActions } from "./orbit-today-header-actions";
+import { presentTodaySectionTitles } from "./today-section-presentation";
 import { OrbitTodayTimeSpine } from "./orbit-today-time-spine";
 
 function readRawParam(
@@ -161,7 +162,10 @@ export default async function AppTodayPageContent({
     ),
   );
   const language = await getTodayPageLanguage();
-  const localizedToday = localizeOrbitTree(merged.today, language);
+  const localizedToday = localizeOrbitTree(
+    presentTodaySectionTitles(merged.today, language),
+    language,
+  );
   const localizedSchedule = localizeOrbitTree(merged.schedule, language);
   const localizedTimeSpine = merged.timeSpine
     ? localizeOrbitTree(merged.timeSpine, language)
@@ -255,6 +259,7 @@ export default async function AppTodayPageContent({
             <div data-orbit-today-decide-column>
               <OrbitRealToday
                 expandedEntryId={expandedEntryId}
+                language={language}
                 onlyKeys={["decide"]}
                 preserveParams={preserveParams}
                 viewModel={localizedToday}
@@ -276,6 +281,7 @@ export default async function AppTodayPageContent({
             <div data-orbit-today-collapsed-column>
               <OrbitRealToday
                 expandedEntryId={expandedEntryId}
+                language={language}
                 onlyKeys={["prepared", "recent"]}
                 preserveParams={preserveParams}
                 suppressStateBoundary

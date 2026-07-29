@@ -2,7 +2,7 @@
  * Today route view-model 测试。
  *
  * Today 是操作账本的一个视图：awaiting_confirmation → 需要你决定，
- * executing → ORBIT 已准备，completed/failed/partially_failed/undone → 最近完成。
+ * executing → ORBIT 已准备，全部终态 → 最近动态。
  * deferred（稍后处理）不在 Today 出现，只在 All actions 可见。
  */
 import assert from "node:assert/strict";
@@ -12,6 +12,7 @@ import {
   loadAppTodayRouteViewModel,
   TODAY_SECTION_BY_STATUS,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
+import { presentTodaySectionTitles } from "../../app/(app)/app/today/today-section-presentation";
 
 test("today buckets ledger entries into decide, prepared, and recent", async () => {
   const model = await loadAppTodayRouteViewModel();
@@ -40,6 +41,29 @@ test("each section only contains entries whose status belongs to it", async () =
       );
     }
   }
+});
+
+test("today presents terminal ledger outcomes as recent activity in every language", async () => {
+  const model = await loadAppTodayRouteViewModel();
+
+  assert.deepEqual(
+    presentTodaySectionTitles(model, "zh").sections.map(
+      (section) => section.title,
+    ),
+    ["需要你决定", "ORBIT 已准备", "最近动态"],
+  );
+  assert.deepEqual(
+    presentTodaySectionTitles(model, "en").sections.map(
+      (section) => section.title,
+    ),
+    ["Needs your decision", "Prepared by Orbit", "Recent activity"],
+  );
+  assert.deepEqual(
+    presentTodaySectionTitles(model, "ja").sections.map(
+      (section) => section.title,
+    ),
+    ["判断が必要", "Orbit が準備済み", "最近の動き"],
+  );
 });
 
 test("deferred entries never surface on Today", async () => {
