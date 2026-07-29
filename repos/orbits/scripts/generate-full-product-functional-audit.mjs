@@ -742,6 +742,8 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "at 390x844 the Agent top bar exposed Chat history and Open menu while keeping the global inbox trigger hidden",
         "the mobile history drawer exposed a named modal dialog, focused Close, wrapped Shift+Tab and Tab, and restored focus to Chat history after Escape",
         "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
+        "one actor-owned internal task proposal moved from awaiting confirmation to deferred to rejected while task storage, outbox, and receipts stayed unchanged",
+        "a repeated Later control on the deferred action exposed a conflict and raw English error; shared ledger presentation rules removed the invalid control and localized stale-state errors across Agent Chat and Today",
       ],
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
       verificationConclusion:
@@ -2395,6 +2397,32 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "All three controls converged on one feedback record keyed by the actor-owned Run; no duplicate outcome or feedback record was created.",
       verificationCase:
         "web-agent-evidence-source-disclosure-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#onclick:() => void applyTransition(action, "defer")#稍后处理 / Later',
+    {
+      actualResult:
+        "Clicking 稍后处理 changed action:natural-language:ed36fb20 from 等待确认 to 稍后处理, removed its Today shortcut, retained 确认执行 and 忽略, and survived exact session reload. Formal actor-A readback returned status=deferred with zero outbox and receipts while actor B returned null.",
+      testData:
+        "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; session agent-session-ms6020sv-r84o50; Run run:natural-language:82c9cc7d; action action:natural-language:ed36fb20; one unexecuted create_followup_task proposal for Transition Audit Person",
+      idempotency:
+        "The first transition persisted one deferred status and no domain side effect. A second Later click originally returned the stable transition conflict; after repair the invalid control is absent for deferred actions, so duplicate submission cannot be initiated from the current UI.",
+      verificationCase:
+        "web-agent-review-transition-state-machine-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#onclick:() => void applyTransition(action, "reject")#忽略 / Ignore',
+    {
+      actualResult:
+        "From the persisted deferred state, clicking 忽略 changed the action to 已忽略, removed Confirm/Later/Ignore controls, completed the waiting Run, and survived reload. Formal readback returned rejected for actor A, null for actor B, zero outbox/receipts, and zero matching task records.",
+      testData:
+        "The same actor-owned deferred action action:natural-language:ed36fb20 and Run run:natural-language:82c9cc7d, with configured live task storage queried for Transition Audit Person",
+      idempotency:
+        "Rejected is terminal in the review state map, so the UI exposes no repeat Ignore or other write control. No task, reminder, message, contact, outbox event, receipt, or external write was created.",
+      verificationCase:
+        "web-agent-review-transition-state-machine-2026-07-29",
     },
   ],
   [
@@ -4483,6 +4511,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for live source generation, unique-record counting, equivalent-artifact suppression, overlapping-evidence union, persisted-history repair, source module/time/id disclosure, pointer open/close, Enter open, Space close, no-write disclosure, both rating values, all later outcomes, actor isolation, reload readback, cleanup, focused tests, lint, and build; feedback UI network-failure rendering, mobile source layout, screen-reader announcement timing, and independent manual assistive-technology verification remain separately unverified",
   },
+  {
+    id: "web-agent-review-transition-state-machine-2026-07-29",
+    target:
+      "Live Agent internal task proposal → Later → refresh → duplicate-transition guard → Ignore → terminal readback → session cleanup",
+    testData:
+      "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; temporary session agent-session-ms6020sv-r84o50; Run run:natural-language:82c9cc7d; action action:natural-language:ed36fb20; due time 2026-09-10T09:00:00+09:00; title Transition Audit Person",
+    expected:
+      "An ambiguous request that both asks for a pending write and forbids every write must stop safely without creating an action. An explicit internal proposal may create one awaiting-confirmation ledger action but no task. Later must persist deferred, retain only transitions valid from deferred, survive refresh, stay actor-scoped, and never enqueue work. The UI must not offer a duplicate invalid Later transition or expose an English transport error in Chinese. Ignore from deferred must persist rejected, remove all review-write controls, complete the waiting Run, survive refresh, and still create no task or external side effect. The temporary chat session must be removable independently of the audit ledger.",
+    actual:
+      "The first contradictory prompt stopped at the local confirmation boundary with a one-step completed response and no action. The clarified prompt generated one awaiting-confirmation create_followup_task action without executing it. Clicking 稍后处理 rendered 稍后处理, hid the Today shortcut, kept Confirm and Ignore, and formal readback returned deferred, zero outbox, zero receipts, and actor B null. Reload preserved the exact deferred status. The page still exposed Later; clicking it returned the server's transition conflict verbatim in English on the Chinese page. Source tracing found that Agent Chat treated awaiting and deferred as one editable state, and Today rendered the same unconditional control set, while the mobile view model already used the correct state map. A shared ledger presentation layer now defines awaiting as confirm/defer/reject and deferred as confirm/reject, and maps stable ledger error context to localized copy. On the rebuilt production page, deferred retained its status but had zero Later controls and one Ignore. Clicking Ignore rendered 已忽略, removed Confirm/Later/Ignore, and formal readback returned Run completed plus action rejected for actor A, actor B null, zero outbox/receipts, and zero task records containing Transition Audit Person. Reload retained the terminal UI. Confirmed session deletion returned the Agent welcome workspace and both actor-scoped session providers returned null.",
+    evidence:
+      "In-app production browser traversed the safe contradictory prompt, clarified pending action, exact action/run ids, Later, deferred control set, repeated invalid Later and English conflict, session-bound refresh, rebuilt deferred state, Ignore, terminal control removal, terminal refresh, and confirmed session deletion. Configured runtime services proved actor-A awaiting/deferred/rejected states, actor-B null, zero outbox/receipts, and final Run completion; configured task storage returned zero matching records; configured session providers returned null after cleanup. Focused Agent/Today tests passed 15/15, the complete Web suite passed 1382/1382, lint/typecheck passed, and production build completed 39/39. Commit a57dc7bf; AgentActionStatusCard, OrbitTodayDecisionForm, and OrbitTodayDecisionPanelBody were not present in the GitNexus index, while staged detection was LOW with one detected type symbol and zero affected processes.",
+    conclusion:
+      "pass for ambiguous-request fail-closed behavior, internal pending proposal, Later persistence, deferred refresh, duplicate-control removal, shared Chat/Today state rules, Chinese stable-error mapping, Ignore from deferred, terminal control removal, Run completion, actor isolation, zero task/outbox/receipt/external writes, refresh readback, session cleanup, focused/full tests, lint, and build; cancellation during a genuinely running Run, network failure during the first transition, rapid concurrent clicks, Today browser rendering of a deferred entry, and independent mobile runtime traversal remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5923,6 +5966,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused history/top-nav tests passed 29/29, the complete Web suite passed 1381/1381, lint/typecheck passed, and production build completed 39/39. At 390x844 the production Agent top bar exposed 对话历史 and 打开菜单 but not 打开收件箱; the entry opened the real drawer. /app/today retained its normal mobile top bar without a contextual extra. Commits 183f0052, 880c3b5a, and dbdc13ae. Pre-edit impact was HIGH for OrbitTopNav (18 symbols, two processes, three modules) and AccountTopNav (15 symbols, three processes, three modules); the optional-prop implementation retained all existing callers, and staged detection was LOW with exactly those two symbols and zero affected processes.",
     status:
       "fixed and shared-boundary/mobile-slot/default-caller/hidden-inbox/visible-history/production-browser/focused/lint/build-verified; physical touch-device verification remains open",
+  },
+  {
+    id: "AUDIT-P1-104",
+    severity: "P1",
+    rootCause:
+      "Agent Chat and Today each duplicated an incomplete review-state rule: both treated awaiting_confirmation and deferred as one generic editable state and rendered Confirm, Later, and Ignore for both. The ledger service correctly allows defer only from awaiting_confirmation, so a deferred user was offered a guaranteed-conflict action. Chat then surfaced the English transport message verbatim on a Chinese page. The mobile ledger view model already encoded the correct transition set, proving the product contracts had drifted by client.",
+    decision:
+      "Move Web review-transition availability and stable ledger error localization into one feature-level presentation module. Map awaiting_confirmation to confirm/defer/reject, deferred to confirm/reject, and terminal states to no review transitions. Make Agent Chat and Today derive controls from that map, pass the authoritative entry status into the Today form, and translate domain error context while keeping the English transport message available only in English.",
+    files:
+      "repos/orbits/features/agent/ledger/presentation.ts; repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx; repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx; repos/orbits/app/(app)/app/today/orbit-today-decision-panel.tsx; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx; repos/orbits/tests/pages/app-today-decision-panel.test.tsx",
+    regression:
+      "Focused Agent/Today tests passed 15/15 and lock awaiting, deferred, rejected, domain-error, and unknown-error behavior. The complete Web suite passed 1382/1382, lint/typecheck passed, and production build completed 39/39. The production browser reproduced the old duplicate Later plus English conflict, then proved the rebuilt deferred UI had zero Later and one Ignore. Ignore produced a persisted rejected terminal state with no remaining write controls; actor B remained null, outbox/receipts and matching task records remained zero, reload preserved the result, and temporary session cleanup returned null for both actors. Commit a57dc7bf; pre-edit symbols were absent from the GitNexus index and staged detection was LOW.",
+    status:
+      "fixed and shared-state-map/Chat/Today/deferred-no-Later/rejected-terminal/localized-error/actor-isolation/no-domain-write/reload/cleanup/focused/full-suite/lint/build-verified; mobile runtime parity and concurrent-click traversal remain open",
   },
 ];
 

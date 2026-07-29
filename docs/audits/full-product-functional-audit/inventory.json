@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "dbdc13ae01929e93432283410eaddf4d6cea4ab1",
-  "deterministicSourceTime": "2026-07-29T20:16:03+09:00",
+  "generatedFromCommit": "a57dc7bfcc43a4171915d516c8dc434e2ab2e8e4",
+  "deterministicSourceTime": "2026-07-29T20:39:32+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -37,13 +37,13 @@
     "overlayImplementations": 9,
     "overlayRouteInstances": 31,
     "interactionRouteInstances": 2336,
-    "interactionsRuntimeVerified": 204,
+    "interactionsRuntimeVerified": 206,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 102,
-    "documentedRemediations": 103
+    "documentedVerificationCases": 103,
+    "documentedRemediations": 104
   },
   "surfaces": [
     {
@@ -45962,6 +45962,8 @@
           "repos/orbits/app/(app)/app/agent/orbit-agent-today-workspace.tsx",
           "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "repos/orbits/features/agent/contract.ts",
+          "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/chat/assist-contract.ts",
           "repos/orbits/features/chat/contract.ts",
@@ -45997,6 +45999,8 @@
           "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
           "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
+          "repos/orbits/features/agent/contract.ts",
+          "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
           "repos/orbits/features/auth/service.ts",
@@ -46030,6 +46034,8 @@
         "persistence": [
           "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/agent/contract.ts",
+          "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/service-factory.ts",
           "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
@@ -46075,6 +46081,8 @@
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/agent/contract.ts",
+          "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/contract.ts",
           "repos/orbits/features/auth/oauth-providers.ts",
@@ -46316,13 +46324,13 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 485,
+          "line": 476,
           "tag": "section",
           "text": "language === \"zh\" ? \"本次 Agent 操作\" : \"Agent actions from this turn\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 516,
+          "line": 507,
           "tag": "div",
           "text": "language === \"zh\" ? `Agent 进度 ${runView.progress.percent}%` : `Agent progress ${runView.progress.percent}%`"
         },
@@ -46638,7 +46646,7 @@
           "interactionId": "web:/app/agent#interaction-1",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 575,
+          "line": 566,
           "controlType": "button",
           "tag": "button",
           "visibleName": "取消 Run / Cancel run",
@@ -46671,7 +46679,7 @@
           "interactionId": "web:/app/agent#interaction-2",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 586,
+          "line": 577,
           "controlType": "button",
           "tag": "button",
           "visibleName": "重新提交请求 / Retry request",
@@ -46706,7 +46714,7 @@
           "interactionId": "web:/app/agent#interaction-3",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 646,
+          "line": 639,
           "controlType": "button",
           "tag": "button",
           "visibleName": "在 Today 查看 / Open in Today",
@@ -46742,7 +46750,7 @@
           "interactionId": "web:/app/agent#interaction-4",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 656,
+          "line": 649,
           "controlType": "button",
           "tag": "button",
           "visibleName": "全部操作 / All actions",
@@ -46778,7 +46786,7 @@
           "interactionId": "web:/app/agent#interaction-5",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 668,
+          "line": 661,
           "controlType": "button",
           "tag": "button",
           "visibleName": "确认执行 / Confirm",
@@ -46813,7 +46821,7 @@
           "interactionId": "web:/app/agent#interaction-6",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 686,
+          "line": 678,
           "controlType": "button",
           "tag": "button",
           "visibleName": "稍后处理 / Later",
@@ -46832,21 +46840,23 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The first transition persisted one deferred status and no domain side effect. A second Later click originally returned the stable transition conflict; after repair the invalid control is absent for deferred actions, so duplicate submission cannot be initiated from the current UI.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Clicking 稍后处理 changed action:natural-language:ed36fb20 from 等待确认 to 稍后处理, removed its Today shortcut, retained 确认执行 and 忽略, and survived exact session reload. Formal actor-A readback returned status=deferred with zero outbox and receipts while actor B returned null.",
+          "testData": "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; session agent-session-ms6020sv-r84o50; Run run:natural-language:82c9cc7d; action action:natural-language:ed36fb20; one unexecuted create_followup_task proposal for Transition Audit Person",
+          "testEvidence": [
+            "web-agent-review-transition-state-machine-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-7",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 694,
+          "line": 688,
           "controlType": "button",
           "tag": "button",
           "visibleName": "忽略 / Ignore",
@@ -46865,14 +46875,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Rejected is terminal in the review state map, so the UI exposes no repeat Ignore or other write control. No task, reminder, message, contact, outbox event, receipt, or external write was created.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "From the persisted deferred state, clicking 忽略 changed the action to 已忽略, removed Confirm/Later/Ignore controls, completed the waiting Run, and survived reload. Formal readback returned rejected for actor A, null for actor B, zero outbox/receipts, and zero matching task records.",
+          "testData": "The same actor-owned deferred action action:natural-language:ed36fb20 and Run run:natural-language:82c9cc7d, with configured live task storage queried for Transition Audit Person",
+          "testEvidence": [
+            "web-agent-review-transition-state-machine-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -49838,7 +49850,9 @@
         "the source disclosure opened by pointer and Enter, closed by Space, normalized duplicate persisted references, and left no session or feedback record after cleanup",
         "at 390x844 the Agent top bar exposed Chat history and Open menu while keeping the global inbox trigger hidden",
         "the mobile history drawer exposed a named modal dialog, focused Close, wrapped Shift+Tab and Tab, and restored focus to Chat history after Escape",
-        "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows"
+        "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
+        "one actor-owned internal task proposal moved from awaiting confirmation to deferred to rejected while task storage, outbox, and receipts stayed unchanged",
+        "a repeated Later control on the deferred action exposed a conflict and raw English error; shared ledger presentation rules removed the invalid control and localized stale-state errors across Agent Chat and Today"
       ],
       "verificationConclusion": "runtime-partially-verified-web-agent-session-actor-isolation"
     },
@@ -97432,49 +97446,49 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 206,
+          "line": 208,
           "tag": "label",
           "text": "{operation.title} {operation.effectSummary}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 235,
+          "line": 237,
           "tag": "label",
           "text": "本场活动目标 / 消息草稿 确认时会先保存你编辑后的目标，再执行写入。 / 确认只会保存草稿，不会发送消息。"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 246,
+          "line": 248,
           "tag": "textarea",
           "text": "operation.operationType === \"save_event_goal\" ? \"本场活动目标\" : \"消息草稿\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 246,
+          "line": 248,
           "tag": "textarea",
           "text": "operation.operationType === \"save_event_goal\" ? \"例如：确认储能试点的决策人和下一步时间\" : \"编辑草稿内容；Orbit 不会自动发送\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 293,
+          "line": 295,
           "tag": "label",
           "text": "任务标题 / 提醒标题"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 297,
+          "line": 299,
           "tag": "input",
           "text": "operation.operationType === \"create_followup_task\" ? \"任务标题\" : \"提醒标题\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 318,
+          "line": 320,
           "tag": "label",
           "text": "截止时间（可不填） / 提醒时间"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 322,
+          "line": 324,
           "tag": "input",
           "text": "operation.operationType === \"create_followup_task\" ? \"任务截止时间\" : \"提醒时间\""
         }
@@ -99019,7 +99033,7 @@
           "interactionId": "web:/app/today#interaction-49",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 211,
+          "line": 213,
           "controlType": "field",
           "tag": "input",
           "visibleName": "{operation.title} {operation.effectSummary}",
@@ -99053,7 +99067,7 @@
           "interactionId": "web:/app/today#interaction-50",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 246,
+          "line": 248,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "operation.operationType === \"save_event_goal\"\n                      ? \"本场活动目标\"\n                      : \"消息草稿\"",
@@ -99086,7 +99100,7 @@
           "interactionId": "web:/app/today#interaction-51",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 297,
+          "line": 299,
           "controlType": "field",
           "tag": "input",
           "visibleName": "operation.operationType === \"create_followup_task\"\n                        ? \"任务标题\"\n                        : \"提醒标题\"",
@@ -99119,7 +99133,7 @@
           "interactionId": "web:/app/today#interaction-52",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 322,
+          "line": 324,
           "controlType": "field",
           "tag": "input",
           "visibleName": "operation.operationType === \"create_followup_task\"\n                        ? \"任务截止时间\"\n                        : \"提醒时间\"",
@@ -99152,7 +99166,7 @@
           "interactionId": "web:/app/today#interaction-53",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 356,
+          "line": 359,
           "controlType": "button",
           "tag": "button",
           "visibleName": "确认执行",
@@ -99185,7 +99199,7 @@
           "interactionId": "web:/app/today#interaction-54",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 364,
+          "line": 369,
           "controlType": "button",
           "tag": "button",
           "visibleName": "稍后处理",
@@ -99218,7 +99232,7 @@
           "interactionId": "web:/app/today#interaction-55",
           "surfaceId": "web:/app/today",
           "sourceFile": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
-          "line": 372,
+          "line": 379,
           "controlType": "button",
           "tag": "button",
           "visibleName": "忽略",
@@ -119842,6 +119856,15 @@
       "actual": "The first live run completed 8/8 and returned four event cards, but the source summary claimed 8 records and expanded two byte-equivalent four-record references. The second run initially claimed 5 because its broad four-record artifact and one-record refinement shared evidence:event_signup:02. Runtime now removes semantically equivalent artifact outputs before synthesis, while the UI/history normalization groups one source snapshot and unions evidence ids rather than summing artifact item counts. Both stored sessions converged to one reference with itemCount=4 and four evidence ids. The production page rendered 查看依据 · 4 条真实记录, expanded to 推荐活动 · 4 from orbit-ai · events at 2026/6/30 09:00:00, and showed the first three exact evidence ids. Pointer opened and closed it; after the native summary failed to toggle in the runtime browser, the explicit handler made Enter open and Space close. The source-backed feedback path accepted both ratings and all three outcomes sequentially; formal readback ended with helpful plus goal_advanced for actor A, four unique evidence ids, and actor B null. Refresh restored those selections. Cleanup removed both feedback records and both sessions, and the browser returned to the empty Agent workspace.",
       "evidence": "Two production-browser conversations traversed the formal composer, 8/8 live Agent loop, four real event cards, closed/open source disclosure, exact source modules/time/evidence ids, refresh normalization, both ratings, all three later outcomes, selected-state reload, keyboard source open/close, and final empty cleanup. Formal configured session and feedback providers proved duplicate then normalized stored references, actor-A-only feedback with four evidence ids, actor-B absence, and final nulls. Focused runtime/history tests passed 54/54, source/history tests passed 18/18, lint/typecheck passed, and production build completed 39/39. Commits aa0d404e, 244c2527, and 7b367e84; pre-edit impact was LOW for runLiveOrbitAgentRuntime, evidenceRefsFromArtifacts, parseAgentChatSessionsArray, AgentEvidenceSources, and OrbitRealAgent, while new helper symbols were not yet indexed; staged detections were LOW.",
       "conclusion": "pass for live source generation, unique-record counting, equivalent-artifact suppression, overlapping-evidence union, persisted-history repair, source module/time/id disclosure, pointer open/close, Enter open, Space close, no-write disclosure, both rating values, all later outcomes, actor isolation, reload readback, cleanup, focused tests, lint, and build; feedback UI network-failure rendering, mobile source layout, screen-reader announcement timing, and independent manual assistive-technology verification remain separately unverified"
+    },
+    {
+      "id": "web-agent-review-transition-state-machine-2026-07-29",
+      "target": "Live Agent internal task proposal → Later → refresh → duplicate-transition guard → Ignore → terminal readback → session cleanup",
+      "testData": "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; temporary session agent-session-ms6020sv-r84o50; Run run:natural-language:82c9cc7d; action action:natural-language:ed36fb20; due time 2026-09-10T09:00:00+09:00; title Transition Audit Person",
+      "expected": "An ambiguous request that both asks for a pending write and forbids every write must stop safely without creating an action. An explicit internal proposal may create one awaiting-confirmation ledger action but no task. Later must persist deferred, retain only transitions valid from deferred, survive refresh, stay actor-scoped, and never enqueue work. The UI must not offer a duplicate invalid Later transition or expose an English transport error in Chinese. Ignore from deferred must persist rejected, remove all review-write controls, complete the waiting Run, survive refresh, and still create no task or external side effect. The temporary chat session must be removable independently of the audit ledger.",
+      "actual": "The first contradictory prompt stopped at the local confirmation boundary with a one-step completed response and no action. The clarified prompt generated one awaiting-confirmation create_followup_task action without executing it. Clicking 稍后处理 rendered 稍后处理, hid the Today shortcut, kept Confirm and Ignore, and formal readback returned deferred, zero outbox, zero receipts, and actor B null. Reload preserved the exact deferred status. The page still exposed Later; clicking it returned the server's transition conflict verbatim in English on the Chinese page. Source tracing found that Agent Chat treated awaiting and deferred as one editable state, and Today rendered the same unconditional control set, while the mobile view model already used the correct state map. A shared ledger presentation layer now defines awaiting as confirm/defer/reject and deferred as confirm/reject, and maps stable ledger error context to localized copy. On the rebuilt production page, deferred retained its status but had zero Later controls and one Ignore. Clicking Ignore rendered 已忽略, removed Confirm/Later/Ignore, and formal readback returned Run completed plus action rejected for actor A, actor B null, zero outbox/receipts, and zero task records containing Transition Audit Person. Reload retained the terminal UI. Confirmed session deletion returned the Agent welcome workspace and both actor-scoped session providers returned null.",
+      "evidence": "In-app production browser traversed the safe contradictory prompt, clarified pending action, exact action/run ids, Later, deferred control set, repeated invalid Later and English conflict, session-bound refresh, rebuilt deferred state, Ignore, terminal control removal, terminal refresh, and confirmed session deletion. Configured runtime services proved actor-A awaiting/deferred/rejected states, actor-B null, zero outbox/receipts, and final Run completion; configured task storage returned zero matching records; configured session providers returned null after cleanup. Focused Agent/Today tests passed 15/15, the complete Web suite passed 1382/1382, lint/typecheck passed, and production build completed 39/39. Commit a57dc7bf; AgentActionStatusCard, OrbitTodayDecisionForm, and OrbitTodayDecisionPanelBody were not present in the GitNexus index, while staged detection was LOW with one detected type symbol and zero affected processes.",
+      "conclusion": "pass for ambiguous-request fail-closed behavior, internal pending proposal, Later persistence, deferred refresh, duplicate-control removal, shared Chat/Today state rules, Chinese stable-error mapping, Ignore from deferred, terminal control removal, Run completion, actor isolation, zero task/outbox/receipt/external writes, refresh readback, session cleanup, focused/full tests, lint, and build; cancellation during a genuinely running Run, network failure during the first transition, rapid concurrent clicks, Today browser rendering of a deferred entry, and independent mobile runtime traversal remain separately unverified"
     }
   ],
   "remediations": [
@@ -120771,6 +120794,15 @@
       "files": "repos/orbits/app/(app)/app/orbit-public-shell.tsx; repos/orbits/app/(app)/app/orbit-account-shell.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/(app)/app/orbit-reference-styles.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts; repos/orbits/tests/ui/orbit-top-nav-structure.test.ts",
       "regression": "Focused history/top-nav tests passed 29/29, the complete Web suite passed 1381/1381, lint/typecheck passed, and production build completed 39/39. At 390x844 the production Agent top bar exposed 对话历史 and 打开菜单 but not 打开收件箱; the entry opened the real drawer. /app/today retained its normal mobile top bar without a contextual extra. Commits 183f0052, 880c3b5a, and dbdc13ae. Pre-edit impact was HIGH for OrbitTopNav (18 symbols, two processes, three modules) and AccountTopNav (15 symbols, three processes, three modules); the optional-prop implementation retained all existing callers, and staged detection was LOW with exactly those two symbols and zero affected processes.",
       "status": "fixed and shared-boundary/mobile-slot/default-caller/hidden-inbox/visible-history/production-browser/focused/lint/build-verified; physical touch-device verification remains open"
+    },
+    {
+      "id": "AUDIT-P1-104",
+      "severity": "P1",
+      "rootCause": "Agent Chat and Today each duplicated an incomplete review-state rule: both treated awaiting_confirmation and deferred as one generic editable state and rendered Confirm, Later, and Ignore for both. The ledger service correctly allows defer only from awaiting_confirmation, so a deferred user was offered a guaranteed-conflict action. Chat then surfaced the English transport message verbatim on a Chinese page. The mobile ledger view model already encoded the correct transition set, proving the product contracts had drifted by client.",
+      "decision": "Move Web review-transition availability and stable ledger error localization into one feature-level presentation module. Map awaiting_confirmation to confirm/defer/reject, deferred to confirm/reject, and terminal states to no review transitions. Make Agent Chat and Today derive controls from that map, pass the authoritative entry status into the Today form, and translate domain error context while keeping the English transport message available only in English.",
+      "files": "repos/orbits/features/agent/ledger/presentation.ts; repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx; repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx; repos/orbits/app/(app)/app/today/orbit-today-decision-panel.tsx; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx; repos/orbits/tests/pages/app-today-decision-panel.test.tsx",
+      "regression": "Focused Agent/Today tests passed 15/15 and lock awaiting, deferred, rejected, domain-error, and unknown-error behavior. The complete Web suite passed 1382/1382, lint/typecheck passed, and production build completed 39/39. The production browser reproduced the old duplicate Later plus English conflict, then proved the rebuilt deferred UI had zero Later and one Ignore. Ignore produced a persisted rejected terminal state with no remaining write controls; actor B remained null, outbox/receipts and matching task records remained zero, reload preserved the result, and temporary session cleanup returned null for both actors. Commit a57dc7bf; pre-edit symbols were absent from the GitNexus index and staged detection was LOW.",
+      "status": "fixed and shared-state-map/Chat/Today/deferred-no-Later/rejected-terminal/localized-error/actor-isolation/no-domain-write/reload/cleanup/focused/full-suite/lint/build-verified; mobile runtime parity and concurrent-click traversal remain open"
     }
   ],
   "externalLimitations": []

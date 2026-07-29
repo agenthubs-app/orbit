@@ -497,7 +497,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
   const agentRuntimeEvidence = inventory.surfaces.find(
     (surface) => surface.surfaceId === "web:/app/agent",
   )?.runtimeEvidence;
-  assert.equal(agentRuntimeEvidence?.length, 15);
+  assert.equal(agentRuntimeEvidence?.length, 17);
   assert.equal(
     agentRuntimeEvidence?.includes(
       "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
@@ -525,6 +525,18 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
   assert.equal(
     agentRuntimeEvidence?.includes(
       "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "one actor-owned internal task proposal moved from awaiting confirmation to deferred to rejected while task storage, outbox, and receipts stayed unchanged",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "a repeated Later control on the deferred action exposed a conflict and raw English error; shared ledger presentation rules removed the invalid control and localized stale-state errors across Agent Chat and Today",
     ),
     true,
   );
