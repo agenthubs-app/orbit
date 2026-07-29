@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "014d0c15be3702b43756dcf56e93576f644011f8",
-  "deterministicSourceTime": "2026-07-29T18:09:34+09:00",
+  "generatedFromCommit": "2ba002674662c76b54167a19b4fd7d5403cb09be",
+  "deterministicSourceTime": "2026-07-29T18:42:03+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -34,16 +34,16 @@
     "productionRoutes": 86,
     "developmentRoutes": 8,
     "dynamicRoutes": 16,
-    "overlayImplementations": 7,
-    "overlayRouteInstances": 29,
-    "interactionRouteInstances": 2329,
-    "interactionsRuntimeVerified": 186,
+    "overlayImplementations": 8,
+    "overlayRouteInstances": 30,
+    "interactionRouteInstances": 2335,
+    "interactionsRuntimeVerified": 196,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 97,
-    "documentedRemediations": 96
+    "documentedVerificationCases": 98,
+    "documentedRemediations": 97
   },
   "surfaces": [
     {
@@ -46116,81 +46116,117 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 747,
+          "line": 764,
           "tag": "button",
           "text": "t({ en: \"Copy message\", zh: \"复制消息\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 747,
+          "line": 764,
           "tag": "button",
           "text": "copied ? t({ en: \"Copied\", zh: \"已复制\" }) : t({ en: \"Copy\", zh: \"复制\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 933,
+          "line": 959,
           "tag": "input",
           "text": "t({ en: \"Rename conversation\", zh: \"重命名对话\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 963,
+          "line": 985,
+          "tag": "button",
+          "text": "t({ en: \"Save conversation name\", zh: \"保存对话名称\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 985,
+          "tag": "button",
+          "text": "t({ en: \"Save\", zh: \"保存\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 996,
+          "tag": "button",
+          "text": "t({ en: \"Cancel conversation rename\", zh: \"取消重命名对话\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 996,
+          "tag": "button",
+          "text": "t({ en: \"Cancel\", zh: \"取消\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1009,
           "tag": "button",
           "text": "item.q || item.title"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 981,
+          "line": 1027,
           "tag": "button",
           "text": "t({ en: \"More actions\", zh: \"更多操作\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1094,
+          "line": 1175,
+          "tag": "h2",
+          "text": "Delete this conversation? / 删除这个对话？"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1246,
           "tag": "h2",
           "text": "I am iOrbit / 我是 iOrbit"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1322,
+          "line": 1474,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit about contacts, events, and relationship to-dos\", zh: \"询问 Orbit 人脉、活动与关系待办\", })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1322,
+          "line": 1474,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit: what you want to do, who to meet, which event to attend…\", zh: \"问问 Orbit：想做什么、想认识谁、想去什么活动…\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1349,
+          "line": 1501,
           "tag": "button",
           "text": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2040,
+          "line": 2286,
           "tag": "h1",
           "text": "iOrbit Agent workspace / iOrbit Agent 工作区"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2056,
+          "line": 2302,
           "tag": "button",
           "text": "t({ en: \"Chat history\", zh: \"对话历史\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2078,
+          "line": 2324,
           "tag": "button",
           "text": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2122,
+          "line": 2368,
           "tag": "h3",
           "text": "{panel.panelTitle}"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 2470,
+          "tag": "button",
+          "text": "t({ en: \"Dismiss\", zh: \"关闭提示\" })"
         },
         {
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
@@ -46592,7 +46628,7 @@
         "forbidden": true,
         "unavailable": true,
         "partialFailure": true,
-        "timeout": false,
+        "timeout": true,
         "duplicateSubmission": true
       },
       "interactions": [
@@ -47074,7 +47110,7 @@
           "interactionId": "web:/app/agent#interaction-15",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 724,
+          "line": 741,
           "controlType": "link",
           "tag": "a",
           "visibleName": "{children}",
@@ -47100,7 +47136,7 @@
           "interactionId": "web:/app/agent#interaction-16",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 747,
+          "line": 764,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Copy message\", zh: \"复制消息\" })",
@@ -47135,7 +47171,7 @@
           "interactionId": "web:/app/agent#interaction-17",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 796,
+          "line": 813,
           "controlType": "disclosure",
           "tag": "summary",
           "visibleName": "{t({ en: `Sources · ${totalItems} records`, zh: `查看依据 · ${totalItems} 条真实记录`, })}",
@@ -47161,7 +47197,7 @@
           "interactionId": "web:/app/agent#interaction-18",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 926,
+          "line": 952,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": null,
@@ -47195,7 +47231,7 @@
           "interactionId": "web:/app/agent#interaction-19",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 933,
+          "line": 959,
           "controlType": "field",
           "tag": "input",
           "visibleName": "t({ en: \"Rename conversation\", zh: \"重命名对话\" })",
@@ -47209,32 +47245,95 @@
             },
             {
               "event": "onkeydown",
-              "expression": "(event) => {\n                            if (event.key === \"Escape\") {\n                              event.preventDefault();\n                              setRenamingHistoryId(null);\n                              setRenamingHistoryTitle(\"\");\n                            }\n                          }"
+              "expression": "(event) => {\n                            if (event.key === \"Escape\") {\n                              event.preventDefault();\n                              cancelRename();\n                            }\n                          }"
             }
           ],
           "href": null,
           "downstreamCallHints": [
             "setRenamingHistoryTitle",
             "event.preventDefault",
-            "setRenamingHistoryId"
+            "cancelRename"
           ],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
+          "testData": "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-20",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 963,
+          "line": 985,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Save conversation name\", zh: \"保存对话名称\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "!renamingHistoryTitle.trim()",
+          "handlers": [],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "not-proven",
+          "idempotency": "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
+          "testData": "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-21",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 996,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Cancel conversation rename\", zh: \"取消重命名对话\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "cancelRename"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "not-proven",
+          "idempotency": "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
+          "testData": "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-22",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1009,
           "controlType": "button",
           "tag": "button",
           "visibleName": "item.q || item.title",
@@ -47254,27 +47353,29 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
+          "testData": "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-21",
+          "interactionId": "web:/app/agent#interaction-23",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 981,
+          "line": 1027,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"More actions\", zh: \"更多操作\" })",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
+          "disabledCondition": "pending",
           "handlers": [
             {
               "event": "onclick",
@@ -47287,27 +47388,29 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
+          "idempotency": "Repeated menu open and close changed only local disclosure state and wrote no history record.",
+          "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
+          "testData": "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-22",
+          "interactionId": "web:/app/agent#interaction-24",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1018,
+          "line": 1065,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Unpin / 取消置顶 / Pin / 置顶",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
+          "disabledCondition": "pending",
           "handlers": [
             {
               "event": "onclick",
@@ -47321,27 +47424,29 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
+          "idempotency": "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
+          "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
+          "testData": "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-23",
+          "interactionId": "web:/app/agent#interaction-25",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1032,
+          "line": 1080,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Rename / 重命名",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
+          "disabledCondition": "pending",
           "handlers": [
             {
               "event": "onclick",
@@ -47354,27 +47459,29 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
+          "idempotency": "Opening rename changed only local editor state and did not write until explicit save.",
+          "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
+          "testData": "Pinned live History Lifecycle Audit session",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-24",
+          "interactionId": "web:/app/agent#interaction-26",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1044,
+          "line": 1093,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Delete / 删除对话",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
+          "disabledCondition": "pending",
           "handlers": [
             {
               "event": "onclick",
@@ -47388,21 +47495,89 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
+          "idempotency": "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
+          "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
+          "testData": "Selected History Lifecycle Audit 20260729 session with two persisted messages",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-25",
+          "interactionId": "web:/app/agent#interaction-27",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1105,
+          "line": 1196,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Keep conversation / 保留对话",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "pending",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onCancel"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "not-proven",
+          "idempotency": "Cancel sent no DELETE request and changed no live record.",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "保留对话 closed the destructive confirmation, kept the selected session and its assistant reply visible, and left the history row present.",
+          "testData": "Open delete confirmation for agent-session-ms5w1kuk-o68abs",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-28",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1205,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "Deleting… / 正在删除… / Delete conversation / 删除对话",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": "pending",
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "onConfirm"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static-signal",
+          "idempotency": "Before deletion the second actor returned null for the session. After deletion both actors returned null; no cross-actor record or orphaned visible session remained.",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "Confirmed deletion removed the active row only after the actor-scoped DELETE persisted, navigated to the fresh Agent home, removed the transcript, and remained absent after reload.",
+          "testData": "Live actor user_ms5llhof_wrbpuq, session agent-session-ms5w1kuk-o68abs, and isolated actor user_ms2on5yh_60z90f",
+          "testEvidence": [
+            "web-agent-history-lifecycle-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-29",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1257,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{agentSuggestLabel(suggest.label, language === \"ja\" ? \"en\" : language)}",
@@ -47432,10 +47607,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-26",
+          "interactionId": "web:/app/agent#interaction-30",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1129,
+          "line": 1281,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{connection.displayName} {[connection.title, connection.company].filter(Boolean).join(\" · \")} {item.match} % Match / 匹配度 {status.label} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{connection.industry}</span>} / {null} {item.reason} Why this person / 推荐依据 {item.opener} View contact / 查看名片",
@@ -47465,10 +47640,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-27",
+          "interactionId": "web:/app/agent#interaction-31",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1180,
+          "line": 1332,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{event.name} {dateLabel} {item.score} Score / 匹配分 {event.place} {item.reason} How to network on site / 怎么在现场社交 {item.howto} View event / 查看活动",
@@ -47498,10 +47673,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-28",
+          "interactionId": "web:/app/agent#interaction-32",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1228,
+          "line": 1380,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item.title} {[item.contactName, item.organization].filter(Boolean).join(\" · \")} {item.due} Due / 到期 {item.priority} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{item.sourceLabel}</span>} / {null} {<div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>} / {null} {<div style={{ background: \"var(--accent-softer)\", borderRadius: \"var(--r-sm)\", display: \"flex\", gap: 8, marginTop: 11, padding: 11 }}> <Icon name=\"clock\" size={15} color=\"var(--accent)\" style={{ flexShrink: 0, marginTop: 1 }} /> <div style={{ minWidth: 0 }}> <div style={{ color: \"var(--accent)\", fontSize: 12, fontWeight: 600 }}>{t({ en: \"Suggested action\", zh: \"建议动作\" })}</div> <div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.task}</div> </div> </div>} / {null} Open schedule / 查看日程",
@@ -47531,10 +47706,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-29",
+          "interactionId": "web:/app/agent#interaction-33",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1322,
+          "line": 1474,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "t({\n          en: \"Ask Orbit about contacts, events, and relationship to-dos\",\n          zh: \"询问 Orbit 人脉、活动与关系待办\",\n        })",
@@ -47570,10 +47745,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-30",
+          "interactionId": "web:/app/agent#interaction-34",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1349,
+          "line": 1501,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })",
@@ -47601,10 +47776,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-31",
+          "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1980,
+          "line": 2226,
           "controlType": "callback-control",
           "tag": "AgentActionStatusCard",
           "visibleName": null,
@@ -47636,10 +47811,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-32",
+          "interactionId": "web:/app/agent#interaction-36",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1995,
+          "line": 2241,
           "controlType": "button",
           "tag": "button",
           "visibleName": "重新提交请求 / Retry request",
@@ -47671,10 +47846,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-33",
+          "interactionId": "web:/app/agent#interaction-37",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2056,
+          "line": 2302,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Chat history\", zh: \"对话历史\" })",
@@ -47704,10 +47879,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-34",
+          "interactionId": "web:/app/agent#interaction-38",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2066,
+          "line": 2312,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -47735,10 +47910,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-35",
+          "interactionId": "web:/app/agent#interaction-39",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2075,
+          "line": 2321,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -47760,7 +47935,7 @@
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
+          "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
           "actualResult": "not-runtime-verified",
@@ -47770,10 +47945,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-36",
+          "interactionId": "web:/app/agent#interaction-40",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2078,
+          "line": 2324,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })",
@@ -47801,10 +47976,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-37",
+          "interactionId": "web:/app/agent#interaction-41",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2111,
+          "line": 2357,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -47836,10 +48011,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-38",
+          "interactionId": "web:/app/agent#interaction-42",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2147,
+          "line": 2393,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -47871,10 +48046,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-39",
+          "interactionId": "web:/app/agent#interaction-43",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2153,
+          "line": 2399,
           "controlType": "callback-control",
           "tag": "div",
           "visibleName": null,
@@ -47904,10 +48079,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-40",
+          "interactionId": "web:/app/agent#interaction-44",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2158,
+          "line": 2404,
           "controlType": "callback-control",
           "tag": "IconButton",
           "visibleName": null,
@@ -47937,10 +48112,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-41",
+          "interactionId": "web:/app/agent#interaction-45",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2161,
+          "line": 2407,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -47968,10 +48143,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-42",
+          "interactionId": "web:/app/agent#interaction-46",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2174,
+          "line": 2420,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -48002,10 +48177,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-43",
+          "interactionId": "web:/app/agent#interaction-47",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2183,
+          "line": 2429,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -48027,6 +48202,78 @@
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
           "idempotency": "not-runtime-verified",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-48",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 2435,
+          "controlType": "callback-control",
+          "tag": "AgentHistoryDeleteDialog",
+          "visibleName": null,
+          "accessibleNameEvidence": "not-applicable-structural-boundary",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "oncancel",
+              "expression": "() => {\n            setHistoryDeleteError(null);\n            setPendingDeleteHistory(null);\n          }"
+            },
+            {
+              "event": "onconfirm",
+              "expression": "() => {\n            void confirmDeleteHistorySession();\n          }"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setHistoryDeleteError",
+            "setPendingDeleteHistory",
+            "confirmDeleteHistorySession"
+          ],
+          "readWrite": "write-or-external-effect",
+          "confirmation": "present-static-signal",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "present-static-signal",
+          "expectedSuccess": "not-proven",
+          "expectedError": "present-static-signal",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-49",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 2470,
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "t({ en: \"Dismiss\", zh: \"关闭提示\" })",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => setHistoryFeedback(null)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "setHistoryFeedback"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
@@ -48037,7 +48284,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-44",
+          "interactionId": "web:/app/agent#interaction-50",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 316,
@@ -48063,7 +48310,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-45",
+          "interactionId": "web:/app/agent#interaction-51",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 323,
@@ -48096,7 +48343,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-46",
+          "interactionId": "web:/app/agent#interaction-52",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 351,
@@ -48127,7 +48374,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-47",
+          "interactionId": "web:/app/agent#interaction-53",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 420,
@@ -48160,7 +48407,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-48",
+          "interactionId": "web:/app/agent#interaction-54",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 430,
@@ -48193,7 +48440,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-49",
+          "interactionId": "web:/app/agent#interaction-55",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 441,
@@ -48224,7 +48471,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-50",
+          "interactionId": "web:/app/agent#interaction-56",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 445,
@@ -48257,7 +48504,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-51",
+          "interactionId": "web:/app/agent#interaction-57",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 470,
@@ -48288,7 +48535,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-52",
+          "interactionId": "web:/app/agent#interaction-58",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 641,
@@ -48319,7 +48566,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-53",
+          "interactionId": "web:/app/agent#interaction-59",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 648,
@@ -48352,7 +48599,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-54",
+          "interactionId": "web:/app/agent#interaction-60",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 651,
@@ -48385,7 +48632,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-55",
+          "interactionId": "web:/app/agent#interaction-61",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 653,
@@ -48416,7 +48663,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-56",
+          "interactionId": "web:/app/agent#interaction-62",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 659,
@@ -48449,7 +48696,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-57",
+          "interactionId": "web:/app/agent#interaction-63",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 662,
@@ -48482,7 +48729,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-58",
+          "interactionId": "web:/app/agent#interaction-64",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 673,
@@ -48513,7 +48760,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-59",
+          "interactionId": "web:/app/agent#interaction-65",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 752,
@@ -48546,7 +48793,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-60",
+          "interactionId": "web:/app/agent#interaction-66",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 801,
@@ -48579,7 +48826,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-61",
+          "interactionId": "web:/app/agent#interaction-67",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 812,
@@ -48612,7 +48859,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-62",
+          "interactionId": "web:/app/agent#interaction-68",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 826,
@@ -48645,7 +48892,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-63",
+          "interactionId": "web:/app/agent#interaction-69",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 848,
@@ -48684,7 +48931,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-64",
+          "interactionId": "web:/app/agent#interaction-70",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1065,
@@ -48715,7 +48962,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-65",
+          "interactionId": "web:/app/agent#interaction-71",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1101,
@@ -48746,7 +48993,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-66",
+          "interactionId": "web:/app/agent#interaction-72",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1112,
@@ -48781,7 +49028,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-67",
+          "interactionId": "web:/app/agent#interaction-73",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1142,
@@ -48814,7 +49061,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-68",
+          "interactionId": "web:/app/agent#interaction-74",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1380,
@@ -48848,7 +49095,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-69",
+          "interactionId": "web:/app/agent#interaction-75",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1430,
@@ -48881,7 +49128,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-70",
+          "interactionId": "web:/app/agent#interaction-76",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
@@ -48907,7 +49154,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-71",
+          "interactionId": "web:/app/agent#interaction-77",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
@@ -48933,7 +49180,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-72",
+          "interactionId": "web:/app/agent#interaction-78",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
@@ -48968,7 +49215,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-73",
+          "interactionId": "web:/app/agent#interaction-79",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
@@ -48994,7 +49241,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-74",
+          "interactionId": "web:/app/agent#interaction-80",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
@@ -49020,7 +49267,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-75",
+          "interactionId": "web:/app/agent#interaction-81",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
@@ -49055,7 +49302,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-76",
+          "interactionId": "web:/app/agent#interaction-82",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
@@ -49088,7 +49335,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-77",
+          "interactionId": "web:/app/agent#interaction-83",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
@@ -49114,7 +49361,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-78",
+          "interactionId": "web:/app/agent#interaction-84",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
@@ -49140,7 +49387,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-79",
+          "interactionId": "web:/app/agent#interaction-85",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
@@ -49166,7 +49413,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-80",
+          "interactionId": "web:/app/agent#interaction-86",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
@@ -49192,7 +49439,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-81",
+          "interactionId": "web:/app/agent#interaction-87",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
@@ -49218,7 +49465,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-82",
+          "interactionId": "web:/app/agent#interaction-88",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
@@ -49244,7 +49491,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-83",
+          "interactionId": "web:/app/agent#interaction-89",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
@@ -49270,7 +49517,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-84",
+          "interactionId": "web:/app/agent#interaction-90",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
@@ -49303,7 +49550,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-85",
+          "interactionId": "web:/app/agent#interaction-91",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
@@ -49336,7 +49583,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-86",
+          "interactionId": "web:/app/agent#interaction-92",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
@@ -49362,7 +49609,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-87",
+          "interactionId": "web:/app/agent#interaction-93",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
@@ -49393,7 +49640,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-88",
+          "interactionId": "web:/app/agent#interaction-94",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 217,
@@ -49419,7 +49666,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-89",
+          "interactionId": "web:/app/agent#interaction-95",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
@@ -49446,6 +49693,18 @@
         }
       ],
       "overlays": [
+        {
+          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1156",
+          "parentSurfaceId": "web:/app/agent",
+          "trigger": "reachable from route source; exact control requires runtime verification",
+          "enterExitBehavior": "not-runtime-verified",
+          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1156",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+          "line": 1156,
+          "kind": "alertdialog",
+          "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
+          "runtimeStatus": "not-runtime-verified"
+        },
         {
           "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1070",
           "parentSurfaceId": "web:/app/agent",
@@ -49492,7 +49751,11 @@
         "the authenticated actor loaded an empty chat-history sidebar instead of the 13 sessions previously leaked from the deployment-wide workspace",
         "the relationship workspace preserved the actor's truthful zero-change state",
         "refreshing the workspace kept the same actor-scoped zero state without creating a session or operation",
-        "unauthenticated session-list and session-delete requests both failed with 401 before storage access"
+        "unauthenticated session-list and session-delete requests both failed with 401 before storage access",
+        "a new read-only conversation could be selected, pinned, renamed, refreshed, and restored from actor-scoped live storage",
+        "renaming exposed explicit save and cancel controls; cancel wrote nothing and refresh retained the original name",
+        "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
+        "the same session id was absent from the second actor before deletion and from both actors after cleanup"
       ],
       "verificationConclusion": "runtime-partially-verified-web-agent-session-actor-isolation"
     },
@@ -118538,6 +118801,14 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
+      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1156",
+      "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+      "line": 1156,
+      "kind": "alertdialog",
+      "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
+      "runtimeStatus": "not-runtime-verified"
+    },
+    {
       "implementationId": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243",
       "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
       "line": 1243,
@@ -119435,6 +119706,15 @@
       "actual": "Before retry, All Actions rendered one successful and one failed operation plus 重试失败项 and 撤销. Today showed only 联系 Partial Retry Success One on 2026-09-04 and zero arrangements on 2026-09-05. The production route initially only processed outbox after confirm, so retry would reset the dead letter to pending and reload without execution; the repaired policy processes both confirm and retry transitions. Clicking 重试失败项 changed the entry directly to 已完成, removed the retry control, and changed the second operation to success. Today then showed exactly one task on each date. Live readback retained one failed receipt and produced exactly one completed receipt per operation with both outbox events completed at attempt 1. Final undo changed both operations to 已撤销, produced two undo receipts, and returned both dates to 0 场. A separate crash-window regression proved a pre-existing undone receipt prevents a second compensation even while action status is still completed.",
       "evidence": "Focused partial-failure, route, ledger, and repository tests passed 37/37 and 14/14; lint passed; production build completed 39/39; complete Web passed 1375/1375. In-app browser covered the initial partial-failure ledger, retry control, authoritative reload, exact operation statuses, two dates before/after retry, final undo, and two empty dates after cleanup. Live AgentRuntimeService/repository readback proved two completed outbox events, one failed receipt retained, one completed receipt per operation, and two undo receipts. Commits 1dd7b4b6 and 014d0c15. The exact transition route and both receipt repository implementations were LOW impact; staged detection for the repository change was LOW with six symbols and zero processes, while the add/import route change was not detected.",
       "conclusion": "pass for partial-failure truth, failed-only retry, immediate live outbox execution, successful-operation non-replay, failed-receipt retention, one domain record per operation, two-date UI readback, multi-operation undo, compensation crash fencing, focused/full tests, lint, and build; real external-provider transient recovery, responsive, keyboard, and assistive-technology states remain separately unverified"
+    },
+    {
+      "id": "web-agent-history-lifecycle-2026-07-29",
+      "target": "Authenticated Web /app/agent history selection → pin → explicit rename save/cancel → reload → confirmed deletion → actor-scoped live-store cleanup",
+      "testData": "Live actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; temporary session agent-session-ms5w1kuk-o68abs; prompt 这是 History Lifecycle Audit 20260729，只回复“历史审计会话已创建”，不要创建任务、提醒、消息、联系人或任何外部写入动作。; exact production build",
+      "expected": "History selection must restore the exact actor-owned transcript and bind the URL to its real session id. Pin and rename must update the UI only after durable storage confirms persistence, surface success or failure truthfully, and survive reload. Rename must expose explicit save and cancel controls. Delete must require an accessible irreversible-action confirmation, preserve the session when canceled, delete the exact actor-owned session when confirmed, clear an active transcript, survive reload, and never expose the session to another actor. Unconfigured production storage must fail closed rather than return a false success.",
+      "actual": "The initial API contract returned success=true with persisted=false when live history storage was absent, while the client treated any success envelope as persistence, optimistically changed pin/name/delete state, ignored failures, and deleted without confirmation. The repaired write and delete APIs return SERVICE_UNAVAILABLE/503 when storage is unconfigured. The client requires data.storage.persisted=true, serializes history mutations, updates local state only after persistence, and renders an error while retaining the prior state on failure. The real browser created one two-message read-only session, switched to another conversation, selected the session back through history, and restored its prompt/reply at the exact session URL. Pin rendered 对话已置顶 and survived reload as 取消置顶. Explicit save persisted History Lifecycle Audit 20260729 and survived reload; explicit cancel discarded SHOULD NOT PERSIST 20260729 and retained the original name after reload. Delete opened an alertdialog with permanent-loss copy. 保留对话 left the session and transcript intact. Confirmed deletion returned to the fresh Agent home, removed the row/transcript, and remained absent after reload.",
+      "evidence": "Focused history/API tests passed 14/14 before the explicit-control adjustment and the final history suite passed 11/11. The complete Web suite passed 1376/1376, repository lint/typecheck passed, and production build completed 39/39 static pages. In-app browser traversal covered the formal composer, generated reply, real session id, cross-session selection, pin success, rename field/save/cancel, two reloads, delete dialog, cancel, confirm, active-session clearing, and post-delete reload. Configured live-provider readback returned the pinned custom title and two messages for actor A while actor B returned null; after cleanup both actors returned null. Commits b30e1348, faa1e10c, and 2ba00267. GitNexus impact was LOW for both API handlers, OrbitRealAgent, AgentHistoryList, persistence helpers, and rename submission; staged detection was LOW.",
+      "conclusion": "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; responsive/mobile-width layout and screen-reader announcement timing remain separately unverified"
     }
   ],
   "remediations": [
@@ -120301,6 +120581,15 @@
       "files": "repos/orbits/features/agent/runtime/repository.ts; repos/orbits/features/agent/storage/agent-runtime-live-record-provider.ts; repos/orbits/tests/capabilities/agent-runtime-evolution.test.ts",
       "regression": "The crash-window regression saved an undone receipt while action status remained completed, then proved undoAction moved the action to undone without invoking compensate. The storage-backed repository returned undone and ignored failed. Focused tests passed 14/14, lint passed, production build completed 39/39, and full Web passed 1375/1375. The live partial-failure action then produced two completed and two undone receipts and returned both due dates to zero. Commit 014d0c15; staged detection was LOW for three files, six symbols, and zero processes.",
       "status": "fixed and completed/undone-terminal-receipt/failed-attempt-retry/crash-window-compensation/storage/focused/full-suite/lint/build-verified"
+    },
+    {
+      "id": "AUDIT-P1-097",
+      "severity": "P1",
+      "rootCause": "Orbit Agent history writes had no truthful persisted-success contract. In live mode without configured storage, POST and DELETE returned success=true with persisted=false. The client checked only the top-level success flag, optimistically changed pin, custom title, and delete state before the request completed, ignored every failure, and could therefore show a change that vanished after reload. Delete also executed directly from the menu without an irreversible-action confirmation, while rename exposed only implicit Enter/blur submission.",
+      "decision": "Fail closed with SERVICE_UNAVAILABLE/503 for unconfigured history writes and deletes while retaining honest read-only empty responses. Require data.storage.persisted=true before the client accepts a mutation. Serialize per-page history writes, keep the prior UI on failure, and expose explicit accessible success/error feedback. Update pin and rename only after storage confirmation. Gate deletion behind a focus-managed alertdialog with keep and confirm actions, and clear the active transcript only after the actor-scoped delete persists. Replace implicit rename submission with visible save and cancel controls.",
+      "files": "repos/orbits/app/api/ai/conversations/sessions/handler.ts; repos/orbits/app/api/ai/conversations/sessions/[id]/handler.ts; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/capabilities/orbit-agent-chat-session-api.test.ts; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+      "regression": "Unconfigured live API tests prove save and delete return 503/SERVICE_UNAVAILABLE; mutation parsing rejects success envelopes without persisted=true. Focused history/API tests passed 14/14 and the final history suite passed 11/11. Full Web passed 1376/1376, lint/typecheck passed, and production build completed 39/39. Browser and live-provider readback proved select, pin, explicit rename save/cancel, reload persistence, delete confirmation/cancel/confirm, active-session cleanup, second-actor isolation, and final removal. Commits b30e1348, faa1e10c, and 2ba00267; all pre-edit impact and staged detection results were LOW.",
+      "status": "fixed and fail-closed-storage/persisted-success-gate/API-first-UI/mutation-fence/explicit-rename/destructive-confirmation/error-feedback/reload/actor-isolation/cleanup/focused/full-suite/lint/build-verified"
     }
   ],
   "externalLimitations": []

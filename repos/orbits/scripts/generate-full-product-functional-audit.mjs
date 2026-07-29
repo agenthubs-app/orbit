@@ -731,6 +731,10 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the relationship workspace preserved the actor's truthful zero-change state",
         "refreshing the workspace kept the same actor-scoped zero state without creating a session or operation",
         "unauthenticated session-list and session-delete requests both failed with 401 before storage access",
+        "a new read-only conversation could be selected, pinned, renamed, refreshed, and restored from actor-scoped live storage",
+        "renaming exposed explicit save and cancel controls; cancel wrote nothing and refresh retained the original name",
+        "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
+        "the same session id was absent from the second actor before deletion and from both actors after cleanup",
       ],
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
       verificationConclusion:
@@ -2345,6 +2349,136 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Each operation ended with exactly one completed receipt and one task; the successful operation was not replayed, the failed attempt receipt remained auditable, and final undo removed both tasks once.",
       verificationCase:
         "web-agent-partial-failure-retry-compensation-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
+    {
+      actualResult:
+        "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
+      testData:
+        "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
+      idempotency:
+        "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Save conversation name", zh: "保存对话名称" })',
+    {
+      actualResult:
+        "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
+      testData:
+        "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
+      idempotency:
+        "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Cancel conversation rename", zh: "取消重命名对话" })',
+    {
+      actualResult:
+        "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
+      testData:
+        "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
+      idempotency:
+        "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#item.q || item.title",
+    {
+      actualResult:
+        "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
+      testData:
+        "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
+      idempotency:
+        "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "More actions", zh: "更多操作" })',
+    {
+      actualResult:
+        "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
+      testData:
+        "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
+      idempotency:
+        "Repeated menu open and close changed only local disclosure state and wrote no history record.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Unpin / 取消置顶 / Pin / 置顶",
+    {
+      actualResult:
+        "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
+      testData:
+        "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
+      idempotency:
+        "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Rename / 重命名",
+    {
+      actualResult:
+        "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
+      testData:
+        "Pinned live History Lifecycle Audit session",
+      idempotency:
+        "Opening rename changed only local editor state and did not write until explicit save.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Delete / 删除对话",
+    {
+      actualResult:
+        "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
+      testData:
+        "Selected History Lifecycle Audit 20260729 session with two persisted messages",
+      idempotency:
+        "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Keep conversation / 保留对话",
+    {
+      actualResult:
+        "保留对话 closed the destructive confirmation, kept the selected session and its assistant reply visible, and left the history row present.",
+      testData:
+        "Open delete confirmation for agent-session-ms5w1kuk-o68abs",
+      idempotency:
+        "Cancel sent no DELETE request and changed no live record.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Deleting… / 正在删除… / Delete conversation / 删除对话",
+    {
+      actualResult:
+        "Confirmed deletion removed the active row only after the actor-scoped DELETE persisted, navigated to the fresh Agent home, removed the transcript, and remained absent after reload.",
+      testData:
+        "Live actor user_ms5llhof_wrbpuq, session agent-session-ms5w1kuk-o68abs, and isolated actor user_ms2on5yh_60z90f",
+      idempotency:
+        "Before deletion the second actor returned null for the session. After deletion both actors returned null; no cross-actor record or orphaned visible session remained.",
+      verificationCase:
+        "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -4163,6 +4297,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for partial-failure truth, failed-only retry, immediate live outbox execution, successful-operation non-replay, failed-receipt retention, one domain record per operation, two-date UI readback, multi-operation undo, compensation crash fencing, focused/full tests, lint, and build; real external-provider transient recovery, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
+  {
+    id: "web-agent-history-lifecycle-2026-07-29",
+    target:
+      "Authenticated Web /app/agent history selection → pin → explicit rename save/cancel → reload → confirmed deletion → actor-scoped live-store cleanup",
+    testData:
+      "Live actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; temporary session agent-session-ms5w1kuk-o68abs; prompt 这是 History Lifecycle Audit 20260729，只回复“历史审计会话已创建”，不要创建任务、提醒、消息、联系人或任何外部写入动作。; exact production build",
+    expected:
+      "History selection must restore the exact actor-owned transcript and bind the URL to its real session id. Pin and rename must update the UI only after durable storage confirms persistence, surface success or failure truthfully, and survive reload. Rename must expose explicit save and cancel controls. Delete must require an accessible irreversible-action confirmation, preserve the session when canceled, delete the exact actor-owned session when confirmed, clear an active transcript, survive reload, and never expose the session to another actor. Unconfigured production storage must fail closed rather than return a false success.",
+    actual:
+      "The initial API contract returned success=true with persisted=false when live history storage was absent, while the client treated any success envelope as persistence, optimistically changed pin/name/delete state, ignored failures, and deleted without confirmation. The repaired write and delete APIs return SERVICE_UNAVAILABLE/503 when storage is unconfigured. The client requires data.storage.persisted=true, serializes history mutations, updates local state only after persistence, and renders an error while retaining the prior state on failure. The real browser created one two-message read-only session, switched to another conversation, selected the session back through history, and restored its prompt/reply at the exact session URL. Pin rendered 对话已置顶 and survived reload as 取消置顶. Explicit save persisted History Lifecycle Audit 20260729 and survived reload; explicit cancel discarded SHOULD NOT PERSIST 20260729 and retained the original name after reload. Delete opened an alertdialog with permanent-loss copy. 保留对话 left the session and transcript intact. Confirmed deletion returned to the fresh Agent home, removed the row/transcript, and remained absent after reload.",
+    evidence:
+      "Focused history/API tests passed 14/14 before the explicit-control adjustment and the final history suite passed 11/11. The complete Web suite passed 1376/1376, repository lint/typecheck passed, and production build completed 39/39 static pages. In-app browser traversal covered the formal composer, generated reply, real session id, cross-session selection, pin success, rename field/save/cancel, two reloads, delete dialog, cancel, confirm, active-session clearing, and post-delete reload. Configured live-provider readback returned the pinned custom title and two messages for actor A while actor B returned null; after cleanup both actors returned null. Commits b30e1348, faa1e10c, and 2ba00267. GitNexus impact was LOW for both API handlers, OrbitRealAgent, AgentHistoryList, persistence helpers, and rename submission; staged detection was LOW.",
+    conclusion:
+      "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; responsive/mobile-width layout and screen-reader announcement timing remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5505,6 +5654,20 @@ const AUDIT_REMEDIATIONS = [
       "The crash-window regression saved an undone receipt while action status remained completed, then proved undoAction moved the action to undone without invoking compensate. The storage-backed repository returned undone and ignored failed. Focused tests passed 14/14, lint passed, production build completed 39/39, and full Web passed 1375/1375. The live partial-failure action then produced two completed and two undone receipts and returned both due dates to zero. Commit 014d0c15; staged detection was LOW for three files, six symbols, and zero processes.",
     status:
       "fixed and completed/undone-terminal-receipt/failed-attempt-retry/crash-window-compensation/storage/focused/full-suite/lint/build-verified",
+  },
+  {
+    id: "AUDIT-P1-097",
+    severity: "P1",
+    rootCause:
+      "Orbit Agent history writes had no truthful persisted-success contract. In live mode without configured storage, POST and DELETE returned success=true with persisted=false. The client checked only the top-level success flag, optimistically changed pin, custom title, and delete state before the request completed, ignored every failure, and could therefore show a change that vanished after reload. Delete also executed directly from the menu without an irreversible-action confirmation, while rename exposed only implicit Enter/blur submission.",
+    decision:
+      "Fail closed with SERVICE_UNAVAILABLE/503 for unconfigured history writes and deletes while retaining honest read-only empty responses. Require data.storage.persisted=true before the client accepts a mutation. Serialize per-page history writes, keep the prior UI on failure, and expose explicit accessible success/error feedback. Update pin and rename only after storage confirmation. Gate deletion behind a focus-managed alertdialog with keep and confirm actions, and clear the active transcript only after the actor-scoped delete persists. Replace implicit rename submission with visible save and cancel controls.",
+    files:
+      "repos/orbits/app/api/ai/conversations/sessions/handler.ts; repos/orbits/app/api/ai/conversations/sessions/[id]/handler.ts; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/capabilities/orbit-agent-chat-session-api.test.ts; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+    regression:
+      "Unconfigured live API tests prove save and delete return 503/SERVICE_UNAVAILABLE; mutation parsing rejects success envelopes without persisted=true. Focused history/API tests passed 14/14 and the final history suite passed 11/11. Full Web passed 1376/1376, lint/typecheck passed, and production build completed 39/39. Browser and live-provider readback proved select, pin, explicit rename save/cancel, reload persistence, delete confirmation/cancel/confirm, active-session cleanup, second-actor isolation, and final removal. Commits b30e1348, faa1e10c, and 2ba00267; all pre-edit impact and staged detection results were LOW.",
+    status:
+      "fixed and fail-closed-storage/persisted-success-gate/API-first-UI/mutation-fence/explicit-rename/destructive-confirmation/error-feedback/reload/actor-isolation/cleanup/focused/full-suite/lint/build-verified",
   },
 ];
 
