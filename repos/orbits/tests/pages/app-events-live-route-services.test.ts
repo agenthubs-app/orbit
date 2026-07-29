@@ -156,6 +156,9 @@ test("events composition exposes controlled scenarios without a GET action chain
 
 test("/app/events renders the public event catalogue without requiring authentication", async () => {
   const pageSource = source("app/(app)/app/events/page.tsx");
+  const landingSource = source(
+    "app/(app)/app/orbit-landing-route-view-model.ts",
+  );
 
   assert.match(pageSource, /OrbitRealExploreClient/);
   assert.match(pageSource, /getOrbitLandingViewModel/);
@@ -164,6 +167,10 @@ test("/app/events renders the public event catalogue without requiring authentic
   assert.doesNotMatch(pageSource, /searchParams|scenario/);
   assert.doesNotMatch(pageSource, /redirect\("\/app\/account\/login/);
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
+  assert.doesNotMatch(
+    landingSource,
+    /eventRegistrationRuntimeService|postgres-live-record-store/,
+  );
 });
 
 test("the public event catalogue keeps the full previously approved demo set", async () => {
@@ -174,6 +181,85 @@ test("the public event catalogue keeps the full previously approved demo set", a
 
   assert.equal(catalogue.events.length, 13);
   assert.equal(new Set(catalogue.events.map((event) => event.code)).size, 13);
+  assert.equal("getOrbitEventDetailViewModel" in module, false);
+  assert.equal(catalogue.account.fullName, "Orbit");
+  assert.deepEqual(catalogue.connections, []);
+  assert.ok(
+    catalogue.events.every(
+      (event) =>
+        event.stats.attendees.length === 0 &&
+        event.stats.authed === false &&
+        event.stats.youRsvped === false &&
+        event.youRsvped === false,
+    ),
+  );
+  assert.ok(
+    catalogue.events.some(
+      (event) => event.participantCount > 0 && event.stats.count > 0,
+    ),
+  );
+});
+
+test("registered catalogue attendee access follows persisted registration lifecycle", async () => {
+  const actorId = "actor:catalogue-roster-lifecycle";
+  const eventId = "event_01";
+  const { eventRegistrationRuntimeService } = await import(
+    "../../features/events/registration/runtime"
+  );
+  const { getOrbitRegisteredEventViewModel } = await import(
+    "../../app/(app)/app/orbit-registered-event-route-view-model"
+  );
+
+  assert.equal(
+    await getOrbitRegisteredEventViewModel({ actorId, eventId }),
+    null,
+  );
+  assert.equal(
+    await getOrbitRegisteredEventViewModel({
+      actorId,
+      eventId: "unknown-public-event",
+    }),
+    null,
+  );
+  assert.equal(
+    await getOrbitRegisteredEventViewModel({ actorId: "", eventId }),
+    null,
+  );
+  assert.equal(
+    await getOrbitRegisteredEventViewModel({
+      actorId: "actor:catalogue-roster-other",
+      eventId,
+    }),
+    null,
+  );
+
+  await eventRegistrationRuntimeService.register({
+    displayName: "目录名单测试用户",
+    eventId,
+    userId: actorId,
+  });
+
+  const registered = await getOrbitRegisteredEventViewModel({
+    actorId,
+    eventId,
+  });
+
+  assert.ok(registered);
+  assert.equal(registered.stats.authed, true);
+  assert.equal(registered.stats.youRsvped, true);
+  assert.equal(registered.youRsvped, true);
+  assert.equal(registered.stats.attendees.length, registered.participantCount);
+  assert.ok(registered.stats.attendees.length > 0);
+
+  await eventRegistrationRuntimeService.cancel({
+    eventId,
+    userId: actorId,
+  });
+
+  assert.equal(
+    await getOrbitRegisteredEventViewModel({ actorId, eventId }),
+    null,
+  );
 });
 
 test("event date tiles keep the day as a locale-neutral numeric token", () => {

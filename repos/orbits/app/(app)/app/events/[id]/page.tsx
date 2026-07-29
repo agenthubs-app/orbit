@@ -29,8 +29,8 @@ import { eventsRouteToOrbitLandingViewModel } from "../compose-app-events-from-p
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
-import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
 import { getOrbitLandingViewModel } from "../../orbit-landing-route-view-model";
+import { getOrbitRegisteredEventViewModel } from "../../orbit-registered-event-route-view-model";
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 
 export type AppEventDetailPageSearchParams = Record<
@@ -141,14 +141,17 @@ export default async function AppEventDetailPage({
     ) ?? null;
 
   if (catalogueEvent) {
-    const registration = session?.user?.id
-      ? await eventRegistrationRuntimeService.get({
+    const registeredEvent = session?.user?.id
+      ? await getOrbitRegisteredEventViewModel({
+          actorId: session.user.id,
           eventId: catalogueEvent.id,
-          userId: session.user.id,
         })
       : null;
-    const registered = registration?.status === "rsvped";
-    const presentedEvent = presentOrbitEvent(catalogueEvent, language);
+    const registered = Boolean(registeredEvent);
+    const presentedEvent = presentOrbitEvent(
+      registeredEvent ?? catalogueEvent,
+      language,
+    );
     const startsAt = new Date(presentedEvent.startsAt).getTime();
     const endsAt = new Date(presentedEvent.endsAt).getTime();
     const now = Date.now();

@@ -234,7 +234,7 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
 
   assert.match(pageSource, /loadAppEventDetailRoute/);
   assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
+  assert.match(pageSource, /getOrbitRegisteredEventViewModel/);
   assert.match(pageSource, /attendees: registered \?/);
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /const id = eventRouteId\(routeId\)/);
@@ -250,7 +250,7 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
   assert.doesNotMatch(pageSource, /RegistrationProfileGuide/);
 });
 
-test("event presentation preserves the source-backed attendee roster and count", async () => {
+test("public event presentation preserves aggregate count without attendee names", async () => {
   const { getOrbitLandingViewModel } = await import(
     "../../app/(app)/app/orbit-landing-route-view-model"
   );
@@ -266,7 +266,10 @@ test("event presentation preserves the source-backed attendee roster and count",
 
   assert.equal(presented.participantCount, event.participantCount);
   assert.equal(presented.stats.count, event.stats.count);
-  assert.deepEqual(presented.stats.attendees, event.stats.attendees);
+  assert.ok(presented.participantCount > 0);
+  assert.deepEqual(presented.stats.attendees, []);
+  assert.equal(presented.stats.authed, false);
+  assert.equal(presented.stats.youRsvped, false);
   assert.ok(presented.about?.length);
 });
 

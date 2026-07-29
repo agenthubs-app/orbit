@@ -124,7 +124,7 @@ test("public catalogue event codes resolve to an organizer without exposing atte
 
   assert.equal(routeModel.state, "success");
   if (routeModel.state === "success") {
-    assert.equal(routeModel.organizer.name, "Orbit 人脉测试空间");
+    assert.equal(routeModel.organizer.name, "Orbit");
     assert.ok(routeModel.organizer.events.length > 0);
     assert.ok(
       routeModel.organizer.events.some((event) => event.id === "event_01"),

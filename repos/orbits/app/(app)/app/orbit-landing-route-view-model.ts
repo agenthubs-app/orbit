@@ -1,7 +1,6 @@
 import type { EventDTO } from "../../../shared/domain/contracts";
 import {
   attendeesForEvent,
-  compactCodeFor,
   eventCodeFor,
   eventIndustryFor,
   eventStatusFor,
@@ -12,7 +11,6 @@ import {
   getOrbitHybridRouteData,
   hashString,
   initialFor,
-  sortedContacts,
   sortedEvents,
   type OrbitHybridRouteData,
 } from "./orbit-hybrid-route-data";
@@ -184,24 +182,12 @@ function agendaFor(event: EventDTO): OrbitEventAgendaItem[] {
   ];
 }
 
-function attendeeViewsFor(
-  data: OrbitHybridRouteData,
-  event: EventDTO,
-): OrbitEventAttendeeView[] {
-  return attendeesForEvent(data, event.id).map((attendee) => ({
-    initial: initialFor(attendee.displayName),
-    name: attendee.displayName,
-    role: [attendee.role, attendee.organization].filter(Boolean).join(" · "),
-  }));
-}
-
 function eventView(
   data: OrbitHybridRouteData,
   event: EventDTO,
   index: number,
 ): OrbitLandingEventView {
-  const attendees = attendeeViewsFor(data, event);
-  const attendeeCount = attendees.length;
+  const attendeeCount = attendeesForEvent(data, event.id).length;
   const status = eventStatusFor(event, data.generatedAt);
   const theme = eventThemeFor(event);
   const color = colorForEvent(event, index);
@@ -223,29 +209,29 @@ function eventView(
     detailLogoUrl: logoUrl,
     endsAt: event.endsAt ?? event.startsAt,
     feeLabel: "Source-backed",
-    host: data.account.name,
+    host: "Orbit",
     id: event.id,
     industry: eventIndustryFor(event),
     logoUrl,
     mapX,
     mapY,
     name: event.name,
-    organizer: data.account.name,
+    organizer: "Orbit",
     participantCount: attendeeCount,
     place: event.location ?? "Local remote database",
     startsAt: event.startsAt,
     stats: {
-      attendees,
-      authed: true,
+      attendees: [],
+      authed: false,
       count: attendeeCount,
-      youRsvped: true,
+      youRsvped: false,
     },
     status,
     summaryZh: description,
     tags: eventTagsFor(event),
     theme,
     venue: event.location ?? "Local remote database",
-    youRsvped: true,
+    youRsvped: false,
   };
 }
 
@@ -253,22 +239,10 @@ export function getOrbitLandingViewModel(): OrbitLandingViewModel {
   const data = getOrbitHybridRouteData();
 
   return {
-    account: { fullName: data.profile.displayName },
-    connections: sortedContacts(data).slice(0, 6).map((contact) => ({
-      displayName: contact.displayName,
-      id: contact.id,
-      initial: initialFor(contact.displayName),
-    })),
-    events: sortedEvents(data).map((event, index) => eventView(data, event, index)),
+    account: { fullName: "Orbit" },
+    connections: [],
+    events: sortedEvents(data).map((event, index) =>
+      eventView(data, event, index),
+    ),
   };
-}
-
-export function getOrbitEventDetailViewModel(code: string) {
-  const normalized = compactCodeFor(String(code || ""), "");
-  const landing = getOrbitLandingViewModel();
-
-  return (
-    landing.events.find((event) => event.code === normalized || event.id === code) ??
-    landing.events[0]
-  );
 }

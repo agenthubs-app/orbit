@@ -212,6 +212,9 @@ test("registered catalogue attendees can open the read-only Party experience", a
     const { getOrbitLandingViewModel } = await import(
       "../../app/(app)/app/orbit-landing-route-view-model"
     );
+    const { eventRegistrationRuntimeService } = await import(
+      "../../features/events/registration/runtime"
+    );
     const { loadAppPartyRouteViewModel } = await import(
       "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
@@ -219,41 +222,37 @@ test("registered catalogue attendees can open the read-only Party experience", a
       (item) => item.id === "event_01",
     );
     assert.ok(event);
-    let observedRegistration: { actorId: string; eventId: string } | null =
-      null;
+    assert.deepEqual(event.stats.attendees, []);
+    const actorId = "actor:registered-party-catalogue";
+
+    await eventRegistrationRuntimeService.register({
+      displayName: "Registered member",
+      eventId: event.id,
+      userId: actorId,
+    });
 
     const routeModel = await loadAppPartyRouteViewModel(
       {
         actor: {
           displayName: "Registered member",
           email: "member@example.test",
-          id: "actor:registered",
+          id: actorId,
         },
         eventId: event.id,
         language: "zh",
         mode: "mock",
       },
-      {
-        getCatalogueEvents: () => [event],
-        getRegistrationStatus: async (eventId, actorId) => {
-          observedRegistration = { actorId, eventId };
-          return "rsvped";
-        },
-      },
     );
 
-    assert.deepEqual(observedRegistration, {
-      actorId: "actor:registered",
-      eventId: event.id,
-    });
     assert.equal(routeModel.state, "success");
     if (routeModel.state === "success") {
       assert.equal(routeModel.party.eventId, event.id);
       assert.equal(routeModel.party.checkInAvailable, false);
       assert.equal(
         routeModel.party.recommendations.length,
-        event.stats.attendees.length,
+        event.participantCount,
       );
+      assert.ok(routeModel.party.recommendations.length > 0);
       assert.ok(
         routeModel.party.recommendations.every(
           (person) =>
@@ -263,6 +262,11 @@ test("registered catalogue attendees can open the read-only Party experience", a
         ),
       );
     }
+
+    await eventRegistrationRuntimeService.cancel({
+      eventId: event.id,
+      userId: actorId,
+    });
   });
 });
 
@@ -288,10 +292,6 @@ test("unregistered catalogue viewers do not receive Party attendee context", asy
         eventId: event.id,
         language: "zh",
         mode: "mock",
-      },
-      {
-        getCatalogueEvents: () => [event],
-        getRegistrationStatus: async () => null,
       },
     );
 

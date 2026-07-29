@@ -3,7 +3,6 @@ import {
   type AppEventDetailBoundaryModel,
   type AppEventDetailSuccessModel,
 } from "../../events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
-import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
 import {
   loadAppProfileRouteViewModel,
   type AppProfileActor,
@@ -24,6 +23,7 @@ import {
   getOrbitLandingViewModel,
   type OrbitLandingEventView,
 } from "../../orbit-landing-route-view-model";
+import { getOrbitRegisteredEventViewModel } from "../../orbit-registered-event-route-view-model";
 
 export interface AppPartySearchParams {
   code?: string | string[];
@@ -548,10 +548,14 @@ async function registeredCatalogueEvent(
   const actorId = input.actor?.id.trim();
   if (!actorId) return null;
 
-  const catalogueEvents = (
-    dependencies.getCatalogueEvents ??
-    (() => getOrbitLandingViewModel().events)
-  )();
+  if (!dependencies.getCatalogueEvents) {
+    return getOrbitRegisteredEventViewModel({
+      actorId,
+      eventId,
+    });
+  }
+
+  const catalogueEvents = dependencies.getCatalogueEvents();
   const event =
     catalogueEvents.find(
       (item) => item.id === eventId || item.code === eventId,
@@ -560,12 +564,7 @@ async function registeredCatalogueEvent(
 
   const registrationStatus = dependencies.getRegistrationStatus
     ? await dependencies.getRegistrationStatus(event.id, actorId)
-    : (
-        await eventRegistrationRuntimeService.get({
-          eventId: event.id,
-          userId: actorId,
-        })
-      )?.status ?? null;
+    : null;
 
   return registrationStatus === "rsvped" ? event : null;
 }

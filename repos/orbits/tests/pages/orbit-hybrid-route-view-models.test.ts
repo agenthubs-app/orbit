@@ -221,19 +221,22 @@ function withHybridSeed(run: () => void) {
   }
 }
 
-test("legacy app route view models read hybrid local remote route data", () => {
+test("public landing catalogue does not expose hybrid account or contact identity", () => {
   withHybridSeed(() => {
     const landing = getOrbitLandingViewModel();
     const hybridEvent = landing.events.find((event) =>
       event.name.includes("Hybrid Routes Investor Salon"),
     );
 
-    assert.equal(landing.account.fullName, "Route Tester");
+    assert.equal(landing.account.fullName, "Orbit");
+    assert.deepEqual(landing.connections, []);
     assert.ok(hybridEvent);
-    assert.ok(
-      landing.connections.some((connection) => connection.displayName === "Ava Route"),
-    );
-
+    assert.equal(hybridEvent.host, "Orbit");
+    assert.equal(hybridEvent.organizer, "Orbit");
+    assert.deepEqual(hybridEvent.stats.attendees, []);
+    assert.equal(hybridEvent.stats.authed, false);
+    assert.equal(hybridEvent.stats.youRsvped, false);
+    assert.equal(hybridEvent.youRsvped, false);
   });
 });
 
