@@ -9,6 +9,8 @@ import type { OrbitLanguage } from "../orbit-language-core";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../shared/ui/state-view";
+import { auth } from "../../../../auth";
+import { redirect } from "next/navigation";
 import {
   loadAppChatRouteViewModel,
   type AppChatRouteStateViewModel,
@@ -100,9 +102,17 @@ export default async function AppAgentPage({
 }: {
   searchParams?: Promise<AppAgentSearchParams>;
 } = {}) {
+  const session = await auth();
+  const actorId = session?.user?.id;
+  if (!actorId) {
+    redirect("/app/account/login?next=%2Fapp%2Fagent");
+  }
+
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);
-  const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams);
+  const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
+    actorId,
+  });
   const language =
     routeModel.state === "success"
       ? requestedLanguage ?? (await getAgentPageLanguage())

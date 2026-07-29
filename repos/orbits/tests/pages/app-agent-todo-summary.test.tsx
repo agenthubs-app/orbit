@@ -108,7 +108,10 @@ test("/app/agent hydrates submitted to-do prompts through the client conversatio
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(pageSource, /loadAppChatRouteViewModel\(resolvedSearchParams\)/);
+  assert.match(
+    pageSource,
+    /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/,
+  );
   assert.match(agentSource, /function currentAgentQuery/);
   assert.match(agentSource, /const query = currentAgentQuery\(\)/);
   assert.match(agentSource, /void ask\(query\)/);

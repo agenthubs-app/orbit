@@ -64,21 +64,34 @@ test("/app/chat does not surface fixture-backed proactive calendar messages", as
 
 test("/app/agent ignores obsolete fixture proactive ids", async () => {
   const proactive = await firstProactiveMessageId();
-  const Page = (await importProjectModule<{
-    default: (input?: {
-      searchParams?: Promise<Record<string, string | string[] | undefined>>;
-    }) => Promise<JSX.Element>;
-  }>("app/(app)/app/agent/page.tsx")).default;
-  const html = renderToStaticMarkup(
-    await Page({
-      searchParams: Promise.resolve({
-        lang: "zh",
-        proactive,
-      }),
-    }),
+  const { loadAppChatRouteViewModel } = await import(
+    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+  );
+  const { chatRouteToOrbitAgentViewModel } = await import(
+    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
+  );
+  const { OrbitRealAgent } = await import(
+    "../../app/(app)/app/agent/orbit-real-agent"
+  );
+  const routeModel = await loadAppChatRouteViewModel(
+    { proactive } as unknown as {
+      conversation?: string;
+      conversationId?: string;
+    },
+    { actorId: "account:test-proactive-agent" },
   );
 
-  assert.match(html, /data-orbit-route="app-agent-route"/);
+  assert.equal(routeModel.state, "success");
+  if (routeModel.state !== "success") {
+    return;
+  }
+
+  const html = renderToStaticMarkup(
+    <OrbitRealAgent
+      viewModel={chatRouteToOrbitAgentViewModel(routeModel)}
+    />,
+  );
+
   assert.match(html, /data-orbit-real-page="agent"/);
   assert.doesNotMatch(
     html,

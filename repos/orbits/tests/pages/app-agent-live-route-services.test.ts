@@ -59,6 +59,18 @@ test("/app/agent page renders the real Orbit AI chat experience", async () => {
   assert.match(pageSource, /StateView/);
   assert.match(pageSource, /getOrbitServerLanguage/);
   assert.match(pageSource, /localizeOrbitTree/);
+  assert.match(pageSource, /await auth\(\)/);
+  assert.match(
+    pageSource,
+    /redirect\("\/app\/account\/login\?next=%2Fapp%2Fagent"\)/,
+  );
+  assert.match(
+    pageSource,
+    /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/,
+  );
+  assert.doesNotMatch(pageSource, /firstSearchParam\(resolvedSearchParams, "action"\)/);
+  assert.doesNotMatch(pageSource, /firstSearchParam\(resolvedSearchParams, "scenario"\)/);
+  assert.doesNotMatch(pageSource, /firstSearchParam\(resolvedSearchParams, "mode"\)/);
   assert.doesNotMatch(pageSource, /AppAgentCommandCenter/);
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
   assert.match(agentSource, /data-orbit-real-page="agent"/);
