@@ -68,6 +68,9 @@ async function withMockParty<T>(run: () => Promise<T>): Promise<T> {
 test("/app/party routes use a live-capable party loader instead of the legacy hybrid party view model", () => {
   const partyPageSource = source("app/(app)/app/party/page.tsx");
   const graphPageSource = source("app/(app)/app/party/graph/page.tsx");
+  const partyModelSource = source(
+    "app/(app)/app/orbit-party-route-view-model.ts",
+  );
 
   for (const pageSource of [partyPageSource, graphPageSource]) {
     assert.match(pageSource, /loadAppPartyRouteViewModel/);
@@ -76,6 +79,11 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
     assert.doesNotMatch(pageSource, /buildOrbitParty/);
     assert.doesNotMatch(pageSource, /getOrbitPartyViewModel/);
   }
+
+  assert.doesNotMatch(
+    partyModelSource,
+    /getOrbitPartyViewModel|getOrbitHybridRouteData/,
+  );
 });
 
 test("/app/party/checkin uses the same live-capable party loader without component fallback", () => {
