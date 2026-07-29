@@ -3668,6 +3668,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the legacy Admin/Platform hybrid constructors while preserving authenticated Events + Profile composition, controlled route states, and read-only operator surfaces",
   },
+  {
+    id: "web-public-event-catalogue-registration-roster-boundary-2026-07-29",
+    target:
+      "Public Events/Organizer catalogue → registration-gated server roster access shared by Event detail and Party",
+    testData:
+      "Approved 13-event catalogue, event_01 with 50 source-backed attendee rows, distinct unregistered and registered actors, persisted registration and cancellation records, unknown event, empty actor, Events list, Event detail, Organizer public, Party, Party graph, and Party check-in source/runtime paths",
+    expected:
+      "The public catalogue must retain truthful aggregate counts while defaulting to no actor identity, contacts, attendee names, authentication, or RSVP claim. Attendee rows may appear only after the server verifies an active registration for the exact actor and event. Cancellation, another actor, unknown event, or empty actor must fail closed; the registration provider must remain outside client bundles.",
+    actual:
+      "getOrbitLandingViewModel previously selected the first hybrid account/profile, returned six private contacts, populated attendee names, and marked every event authed and RSVP'd. Current pages each attempted to scrub those unsafe defaults, while an orphan detail helper silently returned the first event for an unknown code. The repaired Landing model is public-safe by construction: account label Orbit, no connections, no names, and false auth/RSVP flags while aggregate counts remain. A separate server route-model module verifies the persisted event registration before attaching attendee rows. Event detail and Party consume that boundary; the fallback helper is removed. An initial attempt to import registration runtime into the shared Landing file failed the production build by pulling PostgreSQL fs/dns/net/tls dependencies into a client consumer, so the final implementation isolates registration in its own server-only dependency direction and adds a source regression.",
+    evidence:
+      "Fresh GitNexus indexing reported HIGH pre-edit impact: getOrbitLandingViewModel reached 11 upstream symbols and three production processes; eventView reached eight and attendeeViewsFor seven, covering Events list, Event detail, and Organizer public. Focused cross-surface tests passed 45/45. The persisted lifecycle test used eventRegistrationRuntimeService to prove unregistered=null, other actor=null, register→50 attendee rows, cancel→null, with unknown event and empty actor also null. Repository lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 3081473c. Required staged detection reported medium risk, nine files, eight symbols, and exactly one expected affected execution flow: AppEventDetailPage → NormalizeOrbitLanguage.",
+    conclusion:
+      "pass for source, persistence, identity isolation, cross-surface, lint, build, and full-suite verification of the public catalogue roster boundary; browser click-through for all 13 catalogue details remains part of the broader runtime route matrix",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4786,6 +4801,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact and zero execution flows for every removed symbol; exact context identified only the legacy test as a public-getter caller. Focused tests passed 8/8, lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages. Coverage retains authenticated page wiring, mock success, controlled unconfigured-live failure, public query isolation, source-backed read-only Admin metrics, and the absence of unbacked approval, notification, matching, export, invite, or create controls. Staged detect returned No changes detected despite 192 deletions, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified; authenticated Events + Profile composition remains the single Admin/Platform route architecture",
+  },
+  {
+    id: "AUDIT-P1-081",
+    severity: "P1",
+    rootCause:
+      "The shared Landing constructor combined a public event catalogue with the first hybrid account, profile, contacts, and every attendee row, then marked every event authenticated and RSVP'd. Production list, detail, Organizer, and Party callers relied on separate page-level scrubbing or registration checks, making privacy unsafe by default and easy for a new caller to bypass. A second orphan detail helper also returned the first event when an unknown code was requested.",
+    decision:
+      "Make getOrbitLandingViewModel a public-safe contract: use the neutral Orbit label, expose no contacts or attendee names, preserve aggregate counts, and default authentication/registration flags to false. Remove the unknown-code fallback helper. Add a dedicated server route-model boundary that accepts a non-empty actor and event, reads the real registration record, returns null unless status is rsvped, and only then attaches source-backed attendee rows. Route Event detail and Party through it. Keep registration/PostgreSQL dependencies out of the shared Landing module because that module also supplies client-consumed cover presentation.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts; repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts; repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/tests/pages/app-events-live-route-services.test.ts; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts; repos/orbits/tests/pages/app-organizer-public-live-route-services.test.ts; repos/orbits/tests/pages/app-party-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus warned HIGH before the public catalogue edit across three production processes. Focused tests passed 45/45 and include a real registration live-record lifecycle: unregistered and cross-actor reads return null, registration returns the exact event with all 50 source-backed attendees, cancellation removes access, and unknown/empty inputs fail closed. Public seed substitution still changes event content but cannot change the exposed account label or inject contacts/attendee names. Lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages after separating the server registration module from client-consumed Landing code. Staged detect reported medium risk and only the expected Event detail execution flow.",
+    status:
+      "fixed and source/persistence/lint/build/full-suite-verified; public catalogue identity and attendee access now fail closed by default",
   },
 ];
 
