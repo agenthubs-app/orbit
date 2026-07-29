@@ -1,6 +1,6 @@
 "use client";
 
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -1965,6 +1965,29 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     [historySidebarWidth],
   );
 
+  const resizeHistorySidebarWithKeyboard = useCallback(
+    (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+      const nextWidth =
+        event.key === "ArrowLeft"
+          ? historySidebarWidth - 16
+          : event.key === "ArrowRight"
+            ? historySidebarWidth + 16
+            : event.key === "Home"
+              ? HISTORY_SIDEBAR_MIN_WIDTH
+              : event.key === "End"
+                ? HISTORY_SIDEBAR_MAX_WIDTH
+                : null;
+
+      if (nextWidth === null) {
+        return;
+      }
+
+      event.preventDefault();
+      setHistorySidebarWidth(clampHistorySidebarWidth(nextWidth));
+    },
+    [historySidebarWidth],
+  );
+
   const send = () => {
     const value = text.trim();
     if (thinking || !value) return;
@@ -2325,7 +2348,12 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           className="orbit-agent-history-resize"
           aria-label={t({ en: "Resize chat history", zh: "调整历史宽度" })}
           aria-orientation="vertical"
+          aria-valuemax={HISTORY_SIDEBAR_MAX_WIDTH}
+          aria-valuemin={HISTORY_SIDEBAR_MIN_WIDTH}
+          aria-valuenow={historySidebarWidth}
+          aria-valuetext={`${historySidebarWidth}px`}
           data-orbit-agent-history-resize-handle
+          onKeyDown={resizeHistorySidebarWithKeyboard}
           onPointerDown={startHistorySidebarResize}
           role="separator"
           title={t({ en: "Resize chat history", zh: "调整历史宽度" })}
