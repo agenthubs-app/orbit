@@ -169,7 +169,7 @@ test("/app/events renders the public event catalogue without requiring authentic
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
   assert.doesNotMatch(
     landingSource,
-    /eventRegistrationRuntimeService|postgres-live-record-store/,
+    /eventRegistrationRuntimeService|postgres-live-record-store|getOrbitHybridRouteData/,
   );
 });
 

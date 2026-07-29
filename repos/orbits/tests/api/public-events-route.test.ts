@@ -21,7 +21,7 @@ test("public events route exposes catalogue events without actor-private records
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
   assert.ok((body.data?.events?.length ?? 0) > 0);
-  assert.equal(body.data?.organizer?.name, "Orbit 人脉测试空间");
+  assert.equal(body.data?.organizer?.name, "Orbit");
   assert.ok(
     body.data?.events?.some(
       (event) =>

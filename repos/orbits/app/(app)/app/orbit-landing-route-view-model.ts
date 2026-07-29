@@ -1,18 +1,17 @@
 import type { EventDTO } from "../../../shared/domain/contracts";
 import {
-  attendeesForEvent,
+  readPublicEventCatalogue,
+  type PublicEventCatalogueSnapshot,
+} from "../../../features/events/public-catalogue";
+import {
   eventCodeFor,
   eventIndustryFor,
   eventStatusFor,
   eventTagsFor,
   eventThemeFor,
-  evidenceSummaryFor,
   formatDuration,
-  getOrbitHybridRouteData,
   hashString,
   initialFor,
-  sortedEvents,
-  type OrbitHybridRouteData,
 } from "./orbit-hybrid-route-data";
 
 export interface OrbitLandingEventView {
@@ -106,37 +105,6 @@ const themeGlyphs: Record<string, string> = {
   globe: "<circle cx='200' cy='120' r='42'/><path d='M158 120h84M200 78c-15 12-15 72 0 84M200 78c15 12 15 72 0 84M168 98c20 10 44 10 64 0M168 142c20-10 44-10 64 0'/>",
 };
 
-const themeByCode: Record<string, string> = {
-  SAAS04: "cloud",
-  SEMI26: "chip",
-  FINTK8: "finance",
-  AIFND: "ai",
-  FASHN: "fashion",
-  D2C03: "fashion",
-  CONS5: "globe",
-  XB25: "globe",
-};
-
-// Real, theme-matched cover photography (bundled under /public, Unsplash
-// License — free for commercial use, no attribution required). Replaces the
-// flat generated color blocks; the generated SVG stays as a fallback for any
-// theme without a photo.
-const coverPhotoByTheme: Record<string, string> = {
-  ai: "/orbit-covers/ai.jpg",
-  chip: "/orbit-covers/chip.jpg",
-  cloud: "/orbit-covers/cloud.jpg",
-  fashion: "/orbit-covers/fashion.jpg",
-  finance: "/orbit-covers/finance.jpg",
-  globe: "/orbit-covers/globe.jpg",
-};
-
-/** Real cover photo for an event code (via its theme), or undefined if the
- * theme has no bundled photo. Lets any event-card call site show the same
- * photography as the main list without threading imageUrl through view models. */
-export function eventCoverPhoto(code: string): string | undefined {
-  return coverPhotoByTheme[themeByCode[code] ?? "ai"];
-}
-
 function colorForEvent(event: EventDTO, index: number): string {
   return brandColors[(hashString(event.id) + index) % brandColors.length];
 }
@@ -183,21 +151,19 @@ function agendaFor(event: EventDTO): OrbitEventAgendaItem[] {
 }
 
 function eventView(
-  data: OrbitHybridRouteData,
+  catalogue: PublicEventCatalogueSnapshot,
   event: EventDTO,
   index: number,
 ): OrbitLandingEventView {
-  const attendeeCount = attendeesForEvent(data, event.id).length;
-  const status = eventStatusFor(event, data.generatedAt);
+  const attendeeCount = catalogue.participantCounts[event.id] ?? 0;
+  const status = eventStatusFor(event, catalogue.generatedAt);
   const theme = eventThemeFor(event);
   const color = colorForEvent(event, index);
   const logoUrl = coverSvg(color, theme, initialFor(event.name, "E"));
   const [mapX, mapY] = mapPositionFor(event);
-  const description = evidenceSummaryFor(
-    data,
-    event.evidenceIds,
-    "Source-backed event loaded from the hybrid local remote database.",
-  );
+  const description =
+    catalogue.evidenceSummaries[event.id] ??
+    "Source-backed event loaded from the approved public catalogue.";
 
   return {
     address: event.location ?? "",
@@ -236,13 +202,17 @@ function eventView(
 }
 
 export function getOrbitLandingViewModel(): OrbitLandingViewModel {
-  const data = getOrbitHybridRouteData();
+  const catalogue = readPublicEventCatalogue();
+  const events = [...catalogue.events].sort(
+    (left, right) =>
+      new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime(),
+  );
 
   return {
     account: { fullName: "Orbit" },
     connections: [],
-    events: sortedEvents(data).map((event, index) =>
-      eventView(data, event, index),
+    events: events.map((event, index) =>
+      eventView(catalogue, event, index),
     ),
   };
 }

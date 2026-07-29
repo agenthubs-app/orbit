@@ -4,7 +4,9 @@ import type { EventRecord } from "./event-crud-and-import/contract";
 
 export interface PublicEventCatalogueSnapshot {
   events: readonly EventDTO[];
+  evidenceSummaries: Readonly<Record<string, string>>;
   generatedAt: string;
+  participantCounts: Readonly<Record<string, number>>;
 }
 
 /**
@@ -17,10 +19,30 @@ export interface PublicEventCatalogueSnapshot {
  */
 export function readPublicEventCatalogue(): PublicEventCatalogueSnapshot {
   const state = createOrbitLocalRemoteDatabase().getState();
+  const evidenceById = new Map(
+    state.evidence.map((item) => [item.id, item.summary]),
+  );
 
   return {
     events: state.events,
+    evidenceSummaries: Object.fromEntries(
+      state.events.map((event) => [
+        event.id,
+        event.evidenceIds
+          .map((evidenceId) => evidenceById.get(evidenceId))
+          .find((summary): summary is string => Boolean(summary?.trim())) ??
+          event.description ??
+          "Source-backed event loaded from the approved public catalogue.",
+      ]),
+    ),
     generatedAt: state.generatedAt,
+    participantCounts: Object.fromEntries(
+      state.events.map((event) => [
+        event.id,
+        state.attendees.filter((attendee) => attendee.eventId === event.id)
+          .length,
+      ]),
+    ),
   };
 }
 

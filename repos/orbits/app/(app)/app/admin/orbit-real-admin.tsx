@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrbitAdminEventView, OrbitAdminFeedView, OrbitAdminMemberView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
-import { eventCoverPhoto } from "../orbit-landing-route-view-model";
+import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import { Cover, Icon, Logo, StatusBadge } from "../orbit-reference-primitives";
 

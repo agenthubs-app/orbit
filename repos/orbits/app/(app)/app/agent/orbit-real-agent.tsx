@@ -13,7 +13,7 @@ import type {
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
-import { eventCoverPhoto } from "../orbit-landing-route-view-model";
+import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";

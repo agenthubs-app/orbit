@@ -1,19 +1,18 @@
-import { eventRegistrationRuntimeService } from "../../../features/events/registration/runtime";
 import {
-  attendeesForEvent,
-  getOrbitHybridRouteData,
-  initialFor,
-} from "./orbit-hybrid-route-data";
+  readRegisteredCatalogueAttendees,
+  type RegisteredCatalogueAttendee,
+} from "../../../features/events/registered-catalogue-attendees";
+import { initialFor } from "./orbit-hybrid-route-data";
 import {
   getOrbitLandingViewModel,
   type OrbitEventAttendeeView,
   type OrbitLandingEventView,
 } from "./orbit-landing-route-view-model";
 
-function registeredAttendeeViews(eventId: string): OrbitEventAttendeeView[] {
-  const data = getOrbitHybridRouteData();
-
-  return attendeesForEvent(data, eventId).map((attendee) => ({
+function registeredAttendeeViews(
+  attendees: readonly RegisteredCatalogueAttendee[],
+): OrbitEventAttendeeView[] {
+  return attendees.map((attendee) => ({
     initial: initialFor(attendee.displayName),
     name: attendee.displayName,
     role: [attendee.role, attendee.organization].filter(Boolean).join(" · "),
@@ -40,12 +39,12 @@ export async function getOrbitRegisteredEventViewModel(input: {
     return null;
   }
 
-  const registration = await eventRegistrationRuntimeService.get({
+  const registeredContext = await readRegisteredCatalogueAttendees({
+    actorId,
     eventId: event.id,
-    userId: actorId,
   });
 
-  if (registration?.status !== "rsvped") {
+  if (!registeredContext || registeredContext.eventId !== event.id) {
     return null;
   }
 
@@ -53,7 +52,7 @@ export async function getOrbitRegisteredEventViewModel(input: {
     ...event,
     stats: {
       ...event.stats,
-      attendees: registeredAttendeeViews(event.id),
+      attendees: registeredAttendeeViews(registeredContext.attendees),
       authed: true,
       youRsvped: true,
     },
