@@ -2364,7 +2364,7 @@ html:has([data-orbit-real-page]) {
     display: contents;
   }
   [data-orbit-real-page="agent"] .orbit-nav-extra .ri-trigger {
-    display: none;
+    display: none !important;
   }
 
   [data-orbit-real-page] .orbit-lang-toggle {

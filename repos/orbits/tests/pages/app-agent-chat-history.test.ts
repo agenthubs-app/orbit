@@ -391,7 +391,7 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   );
   assert.match(
     styles,
-    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \.ri-trigger \{\s*display: none;/,
+    /\[data-orbit-real-page="agent"\] \.orbit-nav-extra \.ri-trigger \{\s*display: none !important;/,
   );
 });
 
