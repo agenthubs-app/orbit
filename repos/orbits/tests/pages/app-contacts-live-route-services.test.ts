@@ -80,6 +80,29 @@ test("app contacts route loader returns a controlled live failure when storage i
   });
 });
 
+test("public contacts query parameters cannot select internal scenarios or actions", async () => {
+  const publicResult = await loadAppContactsRouteViewModel({
+    action: "review-filtered-contact",
+    scenario: "empty",
+  });
+
+  assert.equal(publicResult.state, "success");
+  if (publicResult.state === "success") {
+    assert.equal(publicResult.payload.reviewActionRequested, false);
+  }
+
+  const internalScenario = await loadAppContactsRouteViewModel(
+    undefined,
+    undefined,
+    { scenario: "empty" },
+  );
+
+  assert.equal(internalScenario.state, "route-state");
+  if (internalScenario.state === "route-state") {
+    assert.equal(internalScenario.routeState.scenario, "empty");
+  }
+});
+
 test("/app/contacts page renders the live-capable product contacts UI", async () => {
   const pageSource = source("app/(app)/app/contacts/page.tsx");
 

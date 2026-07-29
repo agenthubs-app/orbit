@@ -15,6 +15,10 @@ export type AppContactsSearchParams = Record<
   string | string[] | undefined
 >;
 export type AppContactsRouteScenario = "empty" | "pending" | "failure";
+export interface AppContactsRouteControls {
+  reviewFilteredContact?: boolean;
+  scenario?: AppContactsRouteScenario;
+}
 
 type SourceType = ContactListItem["source"]["type"];
 type StatusType = ContactListItem["status"];
@@ -150,18 +154,6 @@ function readSearchParamList(
   }
 
   return [];
-}
-
-function readRouteScenario(
-  searchParams: AppContactsSearchParams | undefined,
-): AppContactsRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function readContactsInput(
@@ -468,8 +460,9 @@ async function routeStateViewModel(
 export async function loadAppContactsRouteViewModel(
   searchParams?: AppContactsSearchParams,
   actorId?: string | null,
+  controls?: AppContactsRouteControls,
 ): Promise<AppContactsRouteViewModel> {
-  const requestedScenario = readRouteScenario(searchParams);
+  const requestedScenario = controls?.scenario ?? null;
 
   if (requestedScenario) {
     return {
@@ -483,8 +476,7 @@ export async function loadAppContactsRouteViewModel(
     ...readContactsInput(searchParams),
     actorId,
   };
-  const reviewActionRequested =
-    readSearchParam(searchParams, "action") === "review-filtered-contact";
+  const reviewActionRequested = controls?.reviewFilteredContact === true;
   const result = reviewActionRequested
     ? await resolveContactsListSearchResult(contactsService.searchContacts(input))
     : await resolveContactsListSearchResult(contactsService.listContacts(input));
