@@ -25,18 +25,20 @@ import {
   type OrbitLandingEventView,
 } from "../../orbit-landing-route-view-model";
 
-export type AppPartySearchParams = Record<
-  string,
-  string | string[] | undefined
->;
+export interface AppPartySearchParams {
+  code?: string | string[];
+  eventId?: string | string[];
+}
 export type AppPartyRouteScenario = "empty" | "pending" | "failure";
+export interface AppPartyRouteControls {
+  scenario?: AppPartyRouteScenario;
+}
 
 export interface AppPartyRouteInput {
   actor?: AppProfileActor | null;
   eventId?: string | null;
   language?: OrbitLanguage;
   mode?: ModuleMode | string | null;
-  scenario?: string | null;
   searchParams?: AppPartySearchParams;
 }
 
@@ -571,12 +573,11 @@ async function registeredCatalogueEvent(
 export async function loadAppPartyRouteViewModel(
   input: AppPartyRouteInput = {},
   dependencies: AppPartyRouteDependencies = {},
+  controls: AppPartyRouteControls = {},
 ): Promise<AppPartyRouteViewModel> {
   const language = input.language ?? "en";
   const mode = input.mode ?? undefined;
-  const scenario = normalizeScenario(
-    input.scenario ?? readSearchParam(input.searchParams, "scenario"),
-  );
+  const scenario = normalizeScenario(controls.scenario);
   const eventId = routeEventId(input);
 
   if (!eventId) {

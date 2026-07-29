@@ -143,6 +143,12 @@ test("app party route loader returns a real party model in mock mode", async () 
     );
     const routeModel = await loadAppPartyRouteViewModel({
       eventId: "demo-event-1",
+      searchParams: {
+        scenario: "failure",
+      } as unknown as {
+        code?: string | string[];
+        eventId?: string | string[];
+      },
     });
 
     assert.equal(routeModel.state, "success");
@@ -169,6 +175,16 @@ test("app party route loader returns a real party model in mock mode", async () 
             person.seat === null,
         ),
       );
+    }
+
+    const controlledState = await loadAppPartyRouteViewModel(
+      { eventId: "demo-event-1" },
+      undefined,
+      { scenario: "empty" },
+    );
+    assert.equal(controlledState.state, "route-state");
+    if (controlledState.state === "route-state") {
+      assert.equal(controlledState.routeState.scenario, "empty");
     }
   });
 });
