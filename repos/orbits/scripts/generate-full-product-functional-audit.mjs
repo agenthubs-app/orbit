@@ -2380,7 +2380,7 @@ const LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE = new Map([
 const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
   [
     [
-      707,
+      706,
       {
         actualResult:
           "Selecting A/C showed the thinking state and advanced to a source-constrained adaptive next question.",
@@ -2389,7 +2389,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      755,
+      754,
       {
         actualResult:
           "Submitting the custom-answer form advanced one turn without navigating away.",
@@ -2398,7 +2398,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      762,
+      761,
       {
         actualResult:
           "The custom-answer field accepted a Chinese multi-word value that later persisted exactly.",
@@ -2407,7 +2407,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      771,
+      770,
       {
         actualResult:
           "Continue submitted the custom value, showed loading, and rendered the next question.",
@@ -2416,7 +2416,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      777,
+      776,
       {
         actualResult:
           "The custom-answer affordance revealed the editable field and enabled Continue only after non-empty input.",
@@ -2425,7 +2425,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      809,
+      808,
       {
         actualResult:
           "With the server offline, generation returned to the interview with Failed to fetch and wrote zero records; retry after restart saved one record before revealing the persona.",
@@ -2434,7 +2434,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      902,
+      901,
       {
         actualResult:
           "Cancel registration opened an alert dialog and performed no write until explicit confirmation.",
@@ -2443,7 +2443,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      974,
+      973,
       {
         actualResult:
           "Register again returned the cancelled record to the interview; successful submission reactivated the same record ID.",
@@ -2452,7 +2452,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      1281,
+      1280,
       {
         actualResult:
           "Keep registration dismissed the alert dialog; the UI and Postgres record remained rsvped.",
@@ -2461,7 +2461,7 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
       },
     ],
     [
-      1293,
+      1292,
       {
         actualResult:
           "Confirm cancellation persisted status=cancelled, rendered the cancelled result, and survived full refresh; later reactivation reused the same row.",
@@ -3518,6 +3518,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite removal of unused Event Detail action and relationship projections while preserving real explicit mutation paths; authenticated browser matchmaking lifecycle, want-connect API readback, repeated mutation/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-event-registration-fixture-isolation-2026-07-29",
+    target:
+      "Authenticated Web Event Registration → public/actor-scoped event and profile sources separated from deterministic test-user fixtures",
+    testData:
+      "Production Event Detail and /app/events/[id]/register source; public event_signup_01 by id and EVTSIGNUP01 code; actor-scoped Event/Profile services; live-mode demo-only event_001; retired deterministic registration-guide preview; registration GET/POST/interview/persona API consumers",
+    expected:
+      "A registration page and its APIs may resolve only a reviewed public-catalogue event or an event readable by the authenticated actor. Visible participant identity must come from that actor's Profile/session. Demo event/profile fixtures and the Ari Lane test user must never preempt live ownership reads or appear in production registration/detail UI.",
+    actual:
+      "The shared registration loader checked mockEventRecords before the public catalogue and actor-scoped Event service, so production page and API consumers could resolve demo events without ownership. Both Event Detail and Registration also called loadRegistrationProfileGuideForCurrentTestUser, whose success model always used mockManualProfile, mockProfileFixture completeness, and deterministic guide metadata. Registration replaced the visible name with the session name but retained the fixture headline; Event Detail rendered the entire demo question/missing-field preview. After repair, the loader resolves public catalogue then server-configured actor Event data, production pages have no test-user guide dependency, registration display name comes from actor-scoped Profile with session fallback, the obsolete detail/fallback guide UI and runtime mock-profile constants are removed, and unavailable events terminate before question generation or writes.",
+    evidence:
+      "Fresh GitNexus impact was MEDIUM for loadEventForRegistration across five direct page/API callers and one registration process, LOW for both pages, guide components, workspace props, constants, language helper, and corrected registerability guard; no HIGH/CRITICAL risk. Focused Event Registration/Event Detail/API/capability tests passed 39/39, repository lint passed, the complete Web suite passed 1357/1357, and production build passed. A live-mode regression proves demo-only event_001 resolves to null while public event_signup_01 remains registerable. Staged detection reported MEDIUM for seven files and one four-step NormalizeOrbitLanguage flow; commit 1a0b72b4.",
+    conclusion:
+      "pass for source/lint/build/full-suite isolation of production Event Registration from demo event/profile/guide fixtures while preserving public catalogue, actor Profile, registration persistence, cancel/reactivate, interview, and persona API boundaries; authenticated browser profile-name readback, live private-event registration, provider failure, eight-question completion, multi-account UI, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4496,6 +4511,20 @@ const AUDIT_REMEDIATIONS = [
       "After a forced fresh GitNexus rebuild, impact was MEDIUM for the public action/success interfaces and LOW for all page/helper/presenter symbols. Focused tests passed 23/23, repository lint passed, the complete Web suite passed 1356/1356, and production build passed. Regression asserts the page still supports public catalogue/private fallback behavior while production source has no actionResult or dead helper. Staged detect was executed but returned No changes detected for an exact six-file, 316-deletion diff; the discrepancy is recorded rather than reporting a false risk level.",
     status:
       "fixed and source/lint/build/full-suite-verified for removal of the fake Event Detail action projection; authenticated browser matchmaking lifecycle, explicit want-connect readback, repeat/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-071",
+    severity: "P1",
+    rootCause:
+      "The shared Event Registration loader returned mockEventRecords before consulting the reviewed public catalogue or actor-scoped Event service, and all page/API consumers inherited that shortcut. Event Detail and Registration then called a test-user guide loader that always composed Ari Lane, mock profile completeness, and deterministic questions. The real adaptive registration workspace had already superseded this architecture, but the old guide still rendered on production Event Detail and supplied fallback participant context to Registration.",
+    decision:
+      "Make one truthful production chain: resolve reviewed public events first, otherwise use the server-configured actor-scoped Event service; read the visible participant name from the actor-scoped Profile service with only the authenticated session as fallback; keep registration writes behind the existing authenticated APIs; remove production test-user-guide calls, obsolete Event Detail guide/fallback UI, unused mock-profile runtime constants, and the unused headline prop. Unknown, unauthorized, ended, or cancelled events must render one no-write boundary before question generation.",
+    files:
+      "repos/orbits/features/events/registration/event-loader.ts; repos/orbits/features/events/registration/runtime.ts; repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/app/(app)/app/events/[id]/register/page.tsx; repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx; repos/orbits/tests/pages/app-event-registration-guide.test.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+    regression:
+      "GitNexus reported MEDIUM impact for the shared loader across five direct consumers and one registration process, with LOW impact for all page, component, constant, language, and guard symbols. Focused tests passed 39/39, lint passed, the full Web suite passed 1357/1357, and production build passed after the registerability type guard was corrected to match its confirmed/imported runtime predicate. Regression covers public id/code entry, adversarial fixture absence, actor Profile source, live-mode rejection of demo-only event_001, no production guide imports/UI, unavailable no-write boundary, and unchanged explicit registration/interview/persona/cancel APIs. Staged detect was MEDIUM for seven files and one expected language-normalization flow.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for removal of demo event/profile/guide precedence from Event Registration; authenticated browser actor-profile readback, live private-event registration, provider failure, full interview/persona lifecycle, two-account UI isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 

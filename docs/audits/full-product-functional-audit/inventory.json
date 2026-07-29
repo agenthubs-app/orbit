@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "069c22cf64919201ff4f80fd6612fbc4c52bb6dc",
-  "deterministicSourceTime": "2026-07-29T11:29:46+09:00",
+  "generatedFromCommit": "1a0b72b4d77425c38dc6d1b71f0c194b016e9c67",
+  "deterministicSourceTime": "2026-07-29T11:49:03+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -36,14 +36,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 49,
-    "interactionRouteInstances": 2848,
+    "interactionRouteInstances": 2841,
     "interactionsRuntimeVerified": 170,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 70,
-    "documentedRemediations": 70
+    "documentedVerificationCases": 71,
+    "documentedRemediations": 71
   },
   "surfaces": [
     {
@@ -81518,8 +81518,7 @@
       "dataSources": {
         "api": [
           "repos/orbits/features/auth/service.ts",
-          "repos/orbits/shared/contract/envelope.ts",
-          "repos/orbits/shared/contract/profile.ts"
+          "repos/orbits/shared/contract/envelope.ts"
         ],
         "live": [
           "repos/orbits/auth.ts",
@@ -81538,11 +81537,7 @@
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
           "repos/orbits/features/auth/service.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
-          "repos/orbits/features/profile/contract.ts",
-          "repos/orbits/features/profile/fixtures.ts",
           "repos/orbits/shared/config/feature-mode.ts",
-          "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/domain/contracts.ts",
           "repos/orbits/shared/domain/source-types.ts",
           "repos/orbits/shared/local-remote-store/orbit-database.ts",
@@ -81560,7 +81555,6 @@
           "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
           "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/registration/storage/live-record-provider.ts",
-          "repos/orbits/features/profile/contract.ts",
           "repos/orbits/shared/local-remote-store/orbit-database.ts",
           "repos/orbits/shared/local-remote-store/store.ts",
           "repos/orbits/shared/mock/generated-relationship-fixtures.ts",
@@ -81584,7 +81578,6 @@
           "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/registration/contract.ts",
           "repos/orbits/features/events/registration/service.ts",
-          "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/contract/source.ts",
           "repos/orbits/shared/domain/contracts.ts",
           "repos/orbits/shared/domain/source-types.ts",
@@ -82989,8 +82982,7 @@
           "repos/orbits/features/recommendations/event-value-contract.ts",
           "repos/orbits/shared/contract/envelope.ts",
           "repos/orbits/shared/contract/events.ts",
-          "repos/orbits/shared/contract/orbit-ai.ts",
-          "repos/orbits/shared/contract/profile.ts"
+          "repos/orbits/shared/contract/orbit-ai.ts"
         ],
         "live": [
           "repos/orbits/auth.ts",
@@ -83056,9 +83048,7 @@
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/event-loader.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -83070,8 +83060,6 @@
           "repos/orbits/features/orbit-ai/conversation-contract.ts",
           "repos/orbits/features/orbit-ai/proactive-contract.ts",
           "repos/orbits/features/orbit-ai/service.ts",
-          "repos/orbits/features/profile/contract.ts",
-          "repos/orbits/features/profile/fixtures.ts",
           "repos/orbits/features/recommendations/contract.ts",
           "repos/orbits/features/recommendations/event-value-contract.ts",
           "repos/orbits/features/recommendations/event-value-fixtures.ts",
@@ -83080,7 +83068,6 @@
           "repos/orbits/features/recommendations/mock-service.ts",
           "repos/orbits/features/recommendations/service-factory.ts",
           "repos/orbits/shared/config/feature-mode.ts",
-          "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/domain/contracts.ts",
           "repos/orbits/shared/domain/source-types.ts",
           "repos/orbits/shared/local-remote-store/orbit-database.ts",
@@ -83124,7 +83111,6 @@
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
@@ -83137,7 +83123,6 @@
           "repos/orbits/features/orbit-ai/conversation-contract.ts",
           "repos/orbits/features/orbit-ai/event-recommendation-artifact-service.ts",
           "repos/orbits/features/orbit-ai/proactive-contract.ts",
-          "repos/orbits/features/profile/contract.ts",
           "repos/orbits/features/recommendations/contract.ts",
           "repos/orbits/features/recommendations/event-value-contract.ts",
           "repos/orbits/features/recommendations/event-value-fixtures.ts",
@@ -83201,7 +83186,6 @@
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/contract.ts",
           "repos/orbits/features/events/registration/service.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
@@ -83225,7 +83209,6 @@
           "repos/orbits/features/recommendations/mock-service.ts",
           "repos/orbits/features/recommendations/storage/event-recommendation-live-record-provider.ts",
           "repos/orbits/shared/contract/events.ts",
-          "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/contract/source.ts",
           "repos/orbits/shared/domain/contracts.ts",
           "repos/orbits/shared/domain/source-types.ts",
@@ -83369,33 +83352,15 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 98,
-          "tag": "StateView",
-          "text": "routeModel.title"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 128,
+          "line": 88,
           "tag": "h1",
           "text": "{routeModel.title}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 139,
+          "line": 99,
           "tag": "StateView",
           "text": "routeModel.title"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 208,
-          "tag": "h1",
-          "text": "{guide.event.title}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 367,
-          "tag": "h2",
-          "text": "Profile questions for this event / 这场活动的资料问题"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
@@ -83760,8 +83725,7 @@
         "preserveHref(item.href)",
         "preserveHref(meHref)",
         "preserveHref(productHref(href))",
-        "productHref(`/o/${slug}`)",
-        "registrationGuideHref(guide)"
+        "productHref(`/o/${slug}`)"
       ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
@@ -84834,58 +84798,6 @@
         {
           "interactionId": "web:/app/events/[id]#interaction-32",
           "surfaceId": "web:/app/events/[id]",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 291,
-          "controlType": "link",
-          "tag": "a",
-          "visibleName": "Continue registration profile guide / 继续填写报名资料",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": "registrationGuideHref(guide)",
-          "downstreamCallHints": [],
-          "readWrite": "navigation",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]#interaction-33",
-          "surfaceId": "web:/app/events/[id]",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
-          "line": 407,
-          "controlType": "link",
-          "tag": "a",
-          "visibleName": "Continue registration profile guide / 继续填写报名资料",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": "registrationGuideHref(guide)",
-          "downstreamCallHints": [],
-          "readWrite": "navigation",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]#interaction-34",
-          "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 316,
           "controlType": "link",
@@ -84910,7 +84822,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-35",
+          "interactionId": "web:/app/events/[id]#interaction-33",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 323,
@@ -84943,7 +84855,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-36",
+          "interactionId": "web:/app/events/[id]#interaction-34",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 351,
@@ -84974,7 +84886,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-37",
+          "interactionId": "web:/app/events/[id]#interaction-35",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 420,
@@ -85007,7 +84919,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-38",
+          "interactionId": "web:/app/events/[id]#interaction-36",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 430,
@@ -85040,7 +84952,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-39",
+          "interactionId": "web:/app/events/[id]#interaction-37",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 441,
@@ -85071,7 +84983,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-40",
+          "interactionId": "web:/app/events/[id]#interaction-38",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 445,
@@ -85104,7 +85016,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-41",
+          "interactionId": "web:/app/events/[id]#interaction-39",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 470,
@@ -85135,7 +85047,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-42",
+          "interactionId": "web:/app/events/[id]#interaction-40",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 641,
@@ -85166,7 +85078,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-43",
+          "interactionId": "web:/app/events/[id]#interaction-41",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 648,
@@ -85199,7 +85111,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-44",
+          "interactionId": "web:/app/events/[id]#interaction-42",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 651,
@@ -85232,7 +85144,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-45",
+          "interactionId": "web:/app/events/[id]#interaction-43",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 653,
@@ -85263,7 +85175,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-46",
+          "interactionId": "web:/app/events/[id]#interaction-44",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 659,
@@ -85296,7 +85208,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-47",
+          "interactionId": "web:/app/events/[id]#interaction-45",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 662,
@@ -85329,7 +85241,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-48",
+          "interactionId": "web:/app/events/[id]#interaction-46",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 673,
@@ -85360,7 +85272,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-49",
+          "interactionId": "web:/app/events/[id]#interaction-47",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 752,
@@ -85393,7 +85305,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-50",
+          "interactionId": "web:/app/events/[id]#interaction-48",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 801,
@@ -85426,7 +85338,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-51",
+          "interactionId": "web:/app/events/[id]#interaction-49",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 812,
@@ -85459,7 +85371,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-52",
+          "interactionId": "web:/app/events/[id]#interaction-50",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 826,
@@ -85492,7 +85404,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-53",
+          "interactionId": "web:/app/events/[id]#interaction-51",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 848,
@@ -85531,7 +85443,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-54",
+          "interactionId": "web:/app/events/[id]#interaction-52",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1065,
@@ -85562,7 +85474,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-55",
+          "interactionId": "web:/app/events/[id]#interaction-53",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1101,
@@ -85593,7 +85505,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-56",
+          "interactionId": "web:/app/events/[id]#interaction-54",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1112,
@@ -85628,7 +85540,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-57",
+          "interactionId": "web:/app/events/[id]#interaction-55",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1142,
@@ -85661,7 +85573,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-58",
+          "interactionId": "web:/app/events/[id]#interaction-56",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1380,
@@ -85695,7 +85607,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-59",
+          "interactionId": "web:/app/events/[id]#interaction-57",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1430,
@@ -85728,7 +85640,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-60",
+          "interactionId": "web:/app/events/[id]#interaction-58",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 98,
@@ -85759,7 +85671,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-61",
+          "interactionId": "web:/app/events/[id]#interaction-59",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 161,
@@ -85790,7 +85702,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-62",
+          "interactionId": "web:/app/events/[id]#interaction-60",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 193,
@@ -85821,7 +85733,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-63",
+          "interactionId": "web:/app/events/[id]#interaction-61",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 100,
@@ -85847,7 +85759,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-64",
+          "interactionId": "web:/app/events/[id]#interaction-62",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 106,
@@ -85873,7 +85785,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-65",
+          "interactionId": "web:/app/events/[id]#interaction-63",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 127,
@@ -85906,7 +85818,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-66",
+          "interactionId": "web:/app/events/[id]#interaction-64",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
@@ -85932,7 +85844,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-67",
+          "interactionId": "web:/app/events/[id]#interaction-65",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
@@ -85958,7 +85870,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-68",
+          "interactionId": "web:/app/events/[id]#interaction-66",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
@@ -85993,7 +85905,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-69",
+          "interactionId": "web:/app/events/[id]#interaction-67",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 221,
@@ -86026,7 +85938,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-70",
+          "interactionId": "web:/app/events/[id]#interaction-68",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 258,
@@ -86052,7 +85964,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-71",
+          "interactionId": "web:/app/events/[id]#interaction-69",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 265,
@@ -86078,7 +85990,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-72",
+          "interactionId": "web:/app/events/[id]#interaction-70",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 280,
@@ -86104,7 +86016,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-73",
+          "interactionId": "web:/app/events/[id]#interaction-71",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 286,
@@ -86130,7 +86042,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-74",
+          "interactionId": "web:/app/events/[id]#interaction-72",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 353,
@@ -86156,7 +86068,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-75",
+          "interactionId": "web:/app/events/[id]#interaction-73",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 364,
@@ -86182,7 +86094,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-76",
+          "interactionId": "web:/app/events/[id]#interaction-74",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 366,
@@ -86208,7 +86120,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-77",
+          "interactionId": "web:/app/events/[id]#interaction-75",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 381,
@@ -86241,7 +86153,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-78",
+          "interactionId": "web:/app/events/[id]#interaction-76",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 394,
@@ -86274,7 +86186,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-79",
+          "interactionId": "web:/app/events/[id]#interaction-77",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 397,
@@ -86300,7 +86212,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-80",
+          "interactionId": "web:/app/events/[id]#interaction-78",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
@@ -86331,7 +86243,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-81",
+          "interactionId": "web:/app/events/[id]#interaction-79",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
@@ -86357,7 +86269,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-82",
+          "interactionId": "web:/app/events/[id]#interaction-80",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
@@ -86383,7 +86295,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-83",
+          "interactionId": "web:/app/events/[id]#interaction-81",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 217,
@@ -86409,7 +86321,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]#interaction-84",
+          "interactionId": "web:/app/events/[id]#interaction-82",
           "surfaceId": "web:/app/events/[id]",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
@@ -86538,6 +86450,9 @@
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/orbit-ai/artifact-contract.ts",
           "repos/orbits/features/orbit-ai/conversation-contract.ts",
+          "repos/orbits/features/profile/mock-extraction-service.ts",
+          "repos/orbits/features/profile/mock-signal-service.ts",
+          "repos/orbits/features/profile/service.ts",
           "repos/orbits/shared/contract/envelope.ts",
           "repos/orbits/shared/contract/events.ts",
           "repos/orbits/shared/contract/orbit-ai.ts",
@@ -86561,6 +86476,11 @@
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/storage/generated-want-connect-live-record-provider.ts",
+          "repos/orbits/features/profile/live-service.ts",
+          "repos/orbits/features/profile/live-signal-service.ts",
+          "repos/orbits/features/profile/service-factory.ts",
+          "repos/orbits/features/profile/storage/profile-live-record-provider.ts",
+          "repos/orbits/features/profile/storage/profile-signal-live-record-provider.ts",
           "repos/orbits/shared/storage/configured-live-record-store.ts",
           "repos/orbits/shared/storage/postgres-live-record-store.ts"
         ],
@@ -86596,9 +86516,7 @@
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/event-loader.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -86610,7 +86528,16 @@
           "repos/orbits/features/orbit-ai/conversation-contract.ts",
           "repos/orbits/features/orbit-ai/service.ts",
           "repos/orbits/features/profile/contract.ts",
+          "repos/orbits/features/profile/extraction-contract.ts",
+          "repos/orbits/features/profile/extraction-fixtures.ts",
           "repos/orbits/features/profile/fixtures.ts",
+          "repos/orbits/features/profile/mock-extraction-service.ts",
+          "repos/orbits/features/profile/mock-service.ts",
+          "repos/orbits/features/profile/mock-signal-service.ts",
+          "repos/orbits/features/profile/service-factory.ts",
+          "repos/orbits/features/profile/service.ts",
+          "repos/orbits/features/profile/signal-contract.ts",
+          "repos/orbits/features/profile/signal-fixtures.ts",
           "repos/orbits/shared/config/feature-mode.ts",
           "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/domain/contracts.ts",
@@ -86655,7 +86582,6 @@
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/storage/live-record-provider.ts",
           "repos/orbits/features/events/storage/event-work-record-provider.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
@@ -86669,6 +86595,11 @@
           "repos/orbits/features/orbit-ai/gemini-provider.ts",
           "repos/orbits/features/orbit-ai/trace-contract.ts",
           "repos/orbits/features/profile/contract.ts",
+          "repos/orbits/features/profile/live-service.ts",
+          "repos/orbits/features/profile/live-signal-service.ts",
+          "repos/orbits/features/profile/signal-contract.ts",
+          "repos/orbits/features/profile/storage/profile-live-record-provider.ts",
+          "repos/orbits/features/profile/storage/profile-signal-live-record-provider.ts",
           "repos/orbits/shared/contract/events.ts",
           "repos/orbits/shared/local-remote-store/orbit-database.ts",
           "repos/orbits/shared/local-remote-store/store.ts",
@@ -86679,6 +86610,7 @@
         ],
         "external": [
           "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+          "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
           "repos/orbits/app/(app)/app/orbit-event-content.ts",
           "repos/orbits/app/(app)/app/orbit-language-server.ts",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
@@ -86718,7 +86650,6 @@
           "repos/orbits/features/events/post-event-review/live-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
           "repos/orbits/features/events/public-catalogue.ts",
-          "repos/orbits/features/events/registration-profile-guide.ts",
           "repos/orbits/features/events/registration/contract.ts",
           "repos/orbits/features/events/registration/question-generator.ts",
           "repos/orbits/features/events/registration/service.ts",
@@ -86734,6 +86665,12 @@
           "repos/orbits/features/orbit-ai/event-recommendation-artifact-service.ts",
           "repos/orbits/features/orbit-ai/gemini-provider.ts",
           "repos/orbits/features/orbit-ai/trace-contract.ts",
+          "repos/orbits/features/profile/extraction-contract.ts",
+          "repos/orbits/features/profile/extraction-fixtures.ts",
+          "repos/orbits/features/profile/live-extraction-service.ts",
+          "repos/orbits/features/profile/signal-contract.ts",
+          "repos/orbits/features/profile/storage/profile-live-record-provider.ts",
+          "repos/orbits/features/profile/storage/profile-signal-live-record-provider.ts",
           "repos/orbits/shared/contract/events.ts",
           "repos/orbits/shared/contract/profile.ts",
           "repos/orbits/shared/contract/source.ts",
@@ -86747,117 +86684,51 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 579,
+          "line": 578,
           "tag": "h1",
           "text": "{event.title}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 675,
+          "line": 674,
           "tag": "h2",
           "text": "{question.prompt}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 762,
+          "line": 761,
           "tag": "input",
           "text": "copy(language, { en: \"Write your own answer…\", zh: \"用自己的话说…\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 844,
+          "line": 843,
           "tag": "h2",
           "text": "Your event-scoped answers are stored. / 你的本场回答已可靠保存"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 937,
+          "line": 936,
           "tag": "h2",
           "text": "You are no longer registered for this event. / 你已不再参加这场活动"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1094,
+          "line": 1093,
           "tag": "h2",
           "text": "{persona.tagline}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1260,
+          "line": 1259,
           "tag": "h2",
           "text": "Cancel this event registration? / 确认取消这次活动报名？"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 147,
-          "tag": "h1",
-          "text": "{title}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 158,
+          "line": 175,
           "tag": "StateView",
-          "text": "title"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 236,
-          "tag": "h1",
-          "text": "{guide.event.title}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 254,
-          "tag": "section",
-          "text": "Current profile context"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 279,
-          "tag": "section",
-          "text": "copy(language, { en: \"Read-only registration profile questions\", zh: \"只读报名资料问题\", })"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 298,
-          "tag": "legend",
-          "text": "{copy(language, { en: `Question ${index + 1}`, zh: `问题 ${index + 1}` })}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 308,
-          "tag": "label",
-          "text": "{question.prompt}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 312,
-          "tag": "textarea",
-          "text": "copy(language, { en: \"Answer unavailable in read-only mode\", zh: \"只读模式下无法填写回答\", })"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 312,
-          "tag": "textarea",
-          "text": "copy(language, { en: \"Return to the event and retry when registration is available.\", zh: \"请返回活动，待报名恢复可用后重试。\", })"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 336,
-          "tag": "p",
-          "text": "copy(language, { en: \"Profile field context\", zh: \"关系资料字段说明\", })"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 361,
-          "tag": "label",
-          "text": "{question.skipLabel}"
-        },
-        {
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 385,
-          "tag": "a",
-          "text": "copy(language, { en: \"Return to event\", zh: \"返回活动\" })"
+          "text": "language === \"en\" ? \"Registration unavailable\" : \"报名暂不可用\""
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
@@ -86967,8 +86838,7 @@
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href",
-        "eventHref",
-        "eventHref(guide)"
+        "eventHref"
       ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
@@ -87016,7 +86886,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-1",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 564,
+          "line": 563,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Back to event / 返回活动页",
@@ -87042,7 +86912,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-2",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 707,
+          "line": 706,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{OPTION_KEYS[optionIndex]} {option}",
@@ -87077,7 +86947,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-3",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 755,
+          "line": 754,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Next / 继续 ⏎",
@@ -87113,7 +86983,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-4",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 762,
+          "line": 761,
           "controlType": "field",
           "tag": "input",
           "visibleName": "copy(language, { en: \"Write your own answer…\", zh: \"用自己的话说…\" })",
@@ -87148,7 +87018,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-5",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 771,
+          "line": 770,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Next / 继续 ⏎",
@@ -87176,7 +87046,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-6",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 777,
+          "line": 776,
           "controlType": "button",
           "tag": "button",
           "visibleName": "I'd rather write my own / 选项不合适?用自己的话说",
@@ -87211,7 +87081,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-7",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 798,
+          "line": 797,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Previous / 上一题",
@@ -87242,7 +87112,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-8",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 809,
+          "line": 808,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Skip the rest — generate now / 跳过剩余问题,直接生成画像",
@@ -87277,7 +87147,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-9",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 886,
+          "line": 885,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Generate event persona / 生成活动画像",
@@ -87310,7 +87180,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-10",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 894,
+          "line": 893,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Edit answers / 修改回答",
@@ -87341,7 +87211,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-11",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 902,
+          "line": 901,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Cancel registration / 取消报名",
@@ -87360,7 +87230,7 @@
             "setConfirmingCancel"
           ],
           "readWrite": "write-or-external-effect",
-          "confirmation": "alertdialog-confirmation-runtime-verified",
+          "confirmation": "present-static-signal",
           "idempotency": "opening and dismissing the dialog did not mutate the registration",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
@@ -87377,7 +87247,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-12",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 914,
+          "line": 913,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Back to event / 返回活动页",
@@ -87403,7 +87273,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-13",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 951,
+          "line": 950,
           "controlType": "disclosure",
           "tag": "summary",
           "visibleName": "Review previously saved answers / 查看此前保存的回答",
@@ -87429,7 +87299,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-14",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 974,
+          "line": 973,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Register again / 重新报名",
@@ -87462,7 +87332,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-15",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 977,
+          "line": 976,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Back to event / 返回活动页",
@@ -87488,7 +87358,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-16",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1194,
+          "line": 1193,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Redo the interview / 重新回答",
@@ -87519,7 +87389,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-17",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1204,
+          "line": 1203,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Cancel registration / 取消报名",
@@ -87553,7 +87423,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-18",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1217,
+          "line": 1216,
           "controlType": "link",
           "tag": "a",
           "visibleName": "Back to event / 返回活动页",
@@ -87579,7 +87449,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-19",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1281,
+          "line": 1280,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Keep registration / 保留报名",
@@ -87615,7 +87485,7 @@
           "interactionId": "web:/app/events/[id]/register#interaction-20",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1293,
+          "line": 1292,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Cancelling… / 取消中… / Confirm cancellation / 确认取消报名",
@@ -87633,7 +87503,7 @@
             "cancelRegistration"
           ],
           "readWrite": "write-or-external-effect",
-          "confirmation": "alertdialog-confirmation-runtime-verified",
+          "confirmation": "present-static-signal",
           "idempotency": "one user/event record remained before and after cancel/reactivate",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
@@ -87648,136 +87518,6 @@
         },
         {
           "interactionId": "web:/app/events/[id]/register#interaction-21",
-          "surfaceId": "web:/app/events/[id]/register",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 209,
-          "controlType": "link",
-          "tag": "a",
-          "visibleName": "Back to event / 返回活动",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": "eventHref(guide)",
-          "downstreamCallHints": [],
-          "readWrite": "navigation",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]/register#interaction-22",
-          "surfaceId": "web:/app/events/[id]/register",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 312,
-          "controlType": "field",
-          "tag": "textarea",
-          "visibleName": "copy(language, {\n                    en: \"Answer unavailable in read-only mode\",\n                    zh: \"只读模式下无法填写回答\",\n                  })",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "true",
-          "handlers": [],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "present-static-signal",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]/register#interaction-23",
-          "surfaceId": "web:/app/events/[id]/register",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 370,
-          "controlType": "field",
-          "tag": "input",
-          "visibleName": "{question.skipLabel}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": "true",
-          "handlers": [],
-          "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]/register#interaction-24",
-          "surfaceId": "web:/app/events/[id]/register",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 385,
-          "controlType": "link",
-          "tag": "a",
-          "visibleName": "copy(language, { en: \"Return to event\", zh: \"返回活动\" })",
-          "accessibleNameEvidence": "present-static",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": "eventHref(guide)",
-          "downstreamCallHints": [],
-          "readWrite": "navigation",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]/register#interaction-25",
-          "surfaceId": "web:/app/events/[id]/register",
-          "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 405,
-          "controlType": "link",
-          "tag": "a",
-          "visibleName": "{guide.skipGuideLabel}",
-          "accessibleNameEvidence": "dynamic-static-expression",
-          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
-          "disabledCondition": null,
-          "handlers": [],
-          "href": "eventHref(guide)",
-          "downstreamCallHints": [],
-          "readWrite": "navigation",
-          "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
-          "expectedLoading": "not-proven",
-          "expectedSuccess": "not-proven",
-          "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
-          "severity": null
-        },
-        {
-          "interactionId": "web:/app/events/[id]/register#interaction-26",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
@@ -87808,7 +87548,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]/register#interaction-27",
+          "interactionId": "web:/app/events/[id]/register#interaction-22",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
@@ -87834,7 +87574,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]/register#interaction-28",
+          "interactionId": "web:/app/events/[id]/register#interaction-23",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
@@ -87860,7 +87600,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]/register#interaction-29",
+          "interactionId": "web:/app/events/[id]/register#interaction-24",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 217,
@@ -87886,7 +87626,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/events/[id]/register#interaction-30",
+          "interactionId": "web:/app/events/[id]/register#interaction-25",
           "surfaceId": "web:/app/events/[id]/register",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 249,
@@ -87914,13 +87654,13 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "web:/app/events/[id]/register#overlay-repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1244",
+          "overlayInstanceId": "web:/app/events/[id]/register#overlay-repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243",
           "parentSurfaceId": "web:/app/events/[id]/register",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1244",
+          "implementationId": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243",
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-          "line": 1244,
+          "line": 1243,
           "kind": "alertdialog",
           "visibleName": "Cancel this event registration? / 确认取消这次活动报名？ You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later. / 取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。 {<div className=\"orbit-alert error\" role=\"alert\"> {error} </div>} / {null} Keep registration / 保留报名 Cancelling… / 取消中… / Confirm cancellation / 确认取消报名",
           "runtimeStatus": "not-runtime-verified"
@@ -95328,7 +95068,6 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -98716,7 +98455,6 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -102095,7 +101833,6 @@
           "repos/orbits/features/events/post-event-review/fixtures.ts",
           "repos/orbits/features/events/post-event-review/mock-service.ts",
           "repos/orbits/features/events/post-event-review/storage/generated-post-event-review-live-record-provider.ts",
-          "repos/orbits/features/events/registration/runtime.ts",
           "repos/orbits/features/events/service-factory.ts",
           "repos/orbits/features/events/want-connect/contract.ts",
           "repos/orbits/features/events/want-connect/fixtures.ts",
@@ -138063,9 +137800,9 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1244",
+      "implementationId": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243",
       "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
-      "line": 1244,
+      "line": 1243,
       "kind": "alertdialog",
       "visibleName": "Cancel this event registration? / 确认取消这次活动报名？ You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later. / 取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。 {<div className=\"orbit-alert error\" role=\"alert\"> {error} </div>} / {null} Keep registration / 保留报名 Cancelling… / 取消中… / Confirm cancellation / 确认取消报名",
       "runtimeStatus": "not-runtime-verified"
@@ -138717,6 +138454,15 @@
       "actual": "The page already ignored action/target/scenario/mode queries and the loader returned actionResult=null, but the success model retained an action-result type and two test-only helpers for selecting a target and converting a live intent into that result. A relationship-context presenter projected the null action into an all-false side-effect ledger; the page imported but never called it. A visual test passed that projection as an extra prop to OrbitRealEventDetail even though the component accepts only event, so React discarded the alleged UI evidence. After repair, the dead model/helpers/presenter/import/extra prop and their self-validating test are removed; real authenticated APIs and matchmaking controls are unchanged.",
       "evidence": "A forced index-only GitNexus rebuild completed with 28,414 nodes, 60,478 edges, and 300 flows after the incremental index exposed stale deleted symbols. Upstream impact was MEDIUM for the action/success interfaces with eleven graph users and LOW for the page, helpers, and presenter; no HIGH/CRITICAL risk. Focused Event Detail and visual tests passed 23/23, repository lint passed, the complete Web suite passed 1356/1356, and production build passed; commit 069c22cf. Required staged detection ran against the fresh index but again returned No changes detected for the six-file deletion-heavy diff, so no false staged risk is assigned.",
       "conclusion": "pass for source/lint/build/full-suite removal of unused Event Detail action and relationship projections while preserving real explicit mutation paths; authenticated browser matchmaking lifecycle, want-connect API readback, repeated mutation/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "web-event-registration-fixture-isolation-2026-07-29",
+      "target": "Authenticated Web Event Registration → public/actor-scoped event and profile sources separated from deterministic test-user fixtures",
+      "testData": "Production Event Detail and /app/events/[id]/register source; public event_signup_01 by id and EVTSIGNUP01 code; actor-scoped Event/Profile services; live-mode demo-only event_001; retired deterministic registration-guide preview; registration GET/POST/interview/persona API consumers",
+      "expected": "A registration page and its APIs may resolve only a reviewed public-catalogue event or an event readable by the authenticated actor. Visible participant identity must come from that actor's Profile/session. Demo event/profile fixtures and the Ari Lane test user must never preempt live ownership reads or appear in production registration/detail UI.",
+      "actual": "The shared registration loader checked mockEventRecords before the public catalogue and actor-scoped Event service, so production page and API consumers could resolve demo events without ownership. Both Event Detail and Registration also called loadRegistrationProfileGuideForCurrentTestUser, whose success model always used mockManualProfile, mockProfileFixture completeness, and deterministic guide metadata. Registration replaced the visible name with the session name but retained the fixture headline; Event Detail rendered the entire demo question/missing-field preview. After repair, the loader resolves public catalogue then server-configured actor Event data, production pages have no test-user guide dependency, registration display name comes from actor-scoped Profile with session fallback, the obsolete detail/fallback guide UI and runtime mock-profile constants are removed, and unavailable events terminate before question generation or writes.",
+      "evidence": "Fresh GitNexus impact was MEDIUM for loadEventForRegistration across five direct page/API callers and one registration process, LOW for both pages, guide components, workspace props, constants, language helper, and corrected registerability guard; no HIGH/CRITICAL risk. Focused Event Registration/Event Detail/API/capability tests passed 39/39, repository lint passed, the complete Web suite passed 1357/1357, and production build passed. A live-mode regression proves demo-only event_001 resolves to null while public event_signup_01 remains registerable. Staged detection reported MEDIUM for seven files and one four-step NormalizeOrbitLanguage flow; commit 1a0b72b4.",
+      "conclusion": "pass for source/lint/build/full-suite isolation of production Event Registration from demo event/profile/guide fixtures while preserving public catalogue, actor Profile, registration persistence, cancel/reactivate, interview, and persona API boundaries; authenticated browser profile-name readback, live private-event registration, provider failure, eight-question completion, multi-account UI, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "remediations": [
@@ -139349,6 +139095,15 @@
       "files": "repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts; repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts; repos/orbits/tests/pages/app-demo-visual-assets.test.tsx; repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
       "regression": "After a forced fresh GitNexus rebuild, impact was MEDIUM for the public action/success interfaces and LOW for all page/helper/presenter symbols. Focused tests passed 23/23, repository lint passed, the complete Web suite passed 1356/1356, and production build passed. Regression asserts the page still supports public catalogue/private fallback behavior while production source has no actionResult or dead helper. Staged detect was executed but returned No changes detected for an exact six-file, 316-deletion diff; the discrepancy is recorded rather than reporting a false risk level.",
       "status": "fixed and source/lint/build/full-suite-verified for removal of the fake Event Detail action projection; authenticated browser matchmaking lifecycle, explicit want-connect readback, repeat/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-071",
+      "severity": "P1",
+      "rootCause": "The shared Event Registration loader returned mockEventRecords before consulting the reviewed public catalogue or actor-scoped Event service, and all page/API consumers inherited that shortcut. Event Detail and Registration then called a test-user guide loader that always composed Ari Lane, mock profile completeness, and deterministic questions. The real adaptive registration workspace had already superseded this architecture, but the old guide still rendered on production Event Detail and supplied fallback participant context to Registration.",
+      "decision": "Make one truthful production chain: resolve reviewed public events first, otherwise use the server-configured actor-scoped Event service; read the visible participant name from the actor-scoped Profile service with only the authenticated session as fallback; keep registration writes behind the existing authenticated APIs; remove production test-user-guide calls, obsolete Event Detail guide/fallback UI, unused mock-profile runtime constants, and the unused headline prop. Unknown, unauthorized, ended, or cancelled events must render one no-write boundary before question generation.",
+      "files": "repos/orbits/features/events/registration/event-loader.ts; repos/orbits/features/events/registration/runtime.ts; repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/app/(app)/app/events/[id]/register/page.tsx; repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx; repos/orbits/tests/pages/app-event-registration-guide.test.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts",
+      "regression": "GitNexus reported MEDIUM impact for the shared loader across five direct consumers and one registration process, with LOW impact for all page, component, constant, language, and guard symbols. Focused tests passed 39/39, lint passed, the full Web suite passed 1357/1357, and production build passed after the registerability type guard was corrected to match its confirmed/imported runtime predicate. Regression covers public id/code entry, adversarial fixture absence, actor Profile source, live-mode rejection of demo-only event_001, no production guide imports/UI, unavailable no-write boundary, and unchanged explicit registration/interview/persona/cancel APIs. Staged detect was MEDIUM for seven files and one expected language-normalization flow.",
+      "status": "fixed and source/lint/build/full-suite-verified for removal of demo event/profile/guide precedence from Event Registration; authenticated browser actor-profile readback, live private-event registration, provider failure, full interview/persona lifecycle, two-account UI isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []

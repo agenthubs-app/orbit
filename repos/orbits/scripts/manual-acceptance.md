@@ -54,6 +54,16 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
      authenticated POST/PATCH API, reloads stored state, and does not claim
      peer notification, external messaging, or calendar delivery before those
      capabilities actually run.
+   - Open a reviewed upcoming event's `/register?language=en&mode=mock&scenario=failure`
+     route while signed in. Confirm only language affects presentation, the
+     event comes from the reviewed public catalogue or the current actor's
+     Event store, and the participant name comes from that actor's Profile or
+     session. Confirm no Ari Lane, demo-only event, deterministic guide,
+     fixture completeness, or fixture headline appears.
+   - In live mode, open `/app/events/event_001/register`. Confirm the demo-only
+     event terminates at the unavailable boundary before question generation,
+     registration writes, Profile writes, notifications, messages, or AI
+     provider work.
 8. Open `/app/today?view=day`.
    - Confirm the time spine contains source-backed follow-up and draft context.
    - Confirm public query input does not claim completion, send messages, or
