@@ -39,9 +39,13 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
    - Confirm the time spine contains source-backed follow-up and draft context.
    - Confirm public query input does not claim completion, send messages, or
      schedule notifications.
-9. Open `/app/chat?action=record-local-reply`.
-   - Confirm chat summary and extraction context render for Maya Chen.
-   - Confirm the local reply is preview-only and remains connected to the follow-up tracker.
+9. Open `/app/chat`, then select a source-backed conversation.
+   - Confirm the URL uses `conversation=<id>` and the selected thread, summary,
+     extraction, writing assist, and privacy context all belong to that identity.
+   - Repeat with `conversationId=<id>` and confirm the same identity is selected.
+   - Append `prompt=do-not-run&scenario=failure`; confirm the normal actor-scoped
+     Chat result is unchanged and no Agent turn, reply record, task, message,
+     notification, or external action is created.
 10. Open `/app/dashboard?action=run-dashboard-review`.
     - Confirm dashboard update, opportunity prompts, network coverage, and provenance warnings render.
     - Confirm no compliance report, production audit storage, or external delivery is written.

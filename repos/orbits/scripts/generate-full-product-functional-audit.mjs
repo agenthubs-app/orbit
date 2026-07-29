@@ -3108,13 +3108,13 @@ const VERIFIED_AUDIT_CASES = [
     testData:
       "Audit actor with zero contacts and zero actor-scoped chat records; more than 40 deployment-workspace conversations and full message threads from unrelated identities; previously visible conversation_seed_069",
     expected:
-      "The server page must resolve the canonical authenticated actor before composing every Chat service; the actor's empty graph must stay empty; an arbitrary conversation query must not bypass list ownership; URL prompt handling must use the same actor",
+      "The server page must resolve the canonical authenticated actor before composing every Chat service; the actor's empty graph must stay empty; an arbitrary conversation query must not bypass list ownership",
     actual:
       "Runtime first rendered the deployment-wide conversation list, message bodies, relationship context, generated assist, summary, evidence count, and privacy status. After repair, the same account rendered No chat context is ready. Direct access to conversation_seed_069 returned Conversation not found and promised not to substitute another person's data. Reload returned to the unchanged empty state.",
     evidence:
       "Authenticated production browser before/after DOM, rejected legacy-ID direct navigation, and recovery-link traversal; Chat/Agent focused tests 21/21; Web lint and Next TypeScript; exact-origin production build",
     conclusion:
-      "pass for the exercised empty actor graph, all four Chat service bundles, URL-selected legacy conversation denial, actor-aware prompt service composition, and recovery navigation; populated post-fix multi-account browser readback and prompt execution remain pending",
+      "pass for the exercised empty actor graph, all four Chat service bundles, URL-selected legacy conversation denial, and recovery navigation; populated post-fix multi-account browser readback remains pending",
   },
   {
     id: "web-all-actions-empty-ledger-2026-07-29",
@@ -3445,6 +3445,21 @@ const VERIFIED_AUDIT_CASES = [
       "GitNexus pre-edit impact was LOW: three direct page callers for loadAppPartyRouteViewModel and four total upstream symbols for routeEventId/normalizeScenario, with zero indexed flows. Party focused tests passed 12/12, including authenticated actor propagation, public mode/scenario isolation, registered/unregistered catalogue access, empty context, and explicit control coverage. Exact production build passed; staged detection returned LOW for two files and two Party symbols; commit 30cfd2a0",
     conclusion:
       "pass for source/build separation of public Party event identity from mode/scenario controls across Party, Check-in, and Graph; authenticated browser DOM, eventId/code combinations, registration transitions, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "web-chat-query-agent-isolation-2026-07-29",
+    target:
+      "Authenticated Web Chat and shared Agent loader → conversation identity queries separated from internal scenarios and Agent execution",
+    testData:
+      "Chat loader with conversation/conversationId identity, adversarial prompt and scenario query values, explicit internal empty control, and shared /app/agent composition",
+    expected:
+      "A Chat page GET may select only an actor-owned conversation. Public query input must not force fixture states, call Agent sendMessage, record a reply, or expose dead action/Agent result fields. Live conversationId links and the canonical Agent q prompt must retain their own typed contracts.",
+    actual:
+      "Before repair, the shared loader accepted an unrestricted query record: scenario selected fixture states and prompt invoked Orbit Agent sendMessage during server rendering, although ChatWorkspace consumed neither agentTurn nor actionResult. Live async links used conversationId, which the loader ignored in favor of its first conversation. After repair, Chat accepts only conversation/conversationId, scenarios require explicit internal controls, the GET Agent/action projection chain is deleted, both conversation aliases select the exact actor-scoped identity, and the empty branch reuses the same actor-scoped services.",
+    evidence:
+      "GitNexus pre-edit impact was LOW for the shared loader and HIGH for the internal projection chain across the AppAgentPage process group. Chat/Agent focused tests passed 41/41; the complete Web suite passed 1358/1358; the exact production build passed after preserving the pure artifact surface type used by the side-panel contract. Staged detection returned MEDIUM for four files, six symbols, and one indexed AppAgentPage flow; commit 411772b2",
+    conclusion:
+      "pass for source/build/full-suite separation of public Chat identity from internal scenarios and GET Agent execution across Chat and Agent composition; authenticated browser DOM, populated multi-account identity selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
@@ -4354,6 +4369,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW pre-edit impact: three direct page callers for the shared loader and four total upstream symbols for event identity/scenario helpers, with zero indexed processes. Party focused tests passed 12/12 and the exact production build passed. Regression proves public mode and scenario query values cannot activate fixtures, explicit internal scenario remains available, event identity is preserved, and registration-gated catalogue access remains actor scoped. Staged detection returned LOW for two files and two Party symbols.",
     status:
       "fixed and source/build-verified for all three Party route adapters and the shared loader; authenticated browser runtime, eventId/code combinations, registration transitions, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-066",
+    severity: "P1",
+    rootCause:
+      "The shared Chat loader treated unrestricted page query input as conversation identity, internal fixture scenario, and an Agent prompt. A GET with prompt called Orbit Agent sendMessage and built agentTurn/artifact results that neither ChatWorkspace nor the Agent page consumed; actionResult was also permanently null. Meanwhile, live async conversation links used conversationId, but the loader recognized only conversation and silently selected the first item.",
+    decision:
+      "Limit public Chat search parameters to conversation and the conversationId compatibility alias, resolve both only inside the actor-scoped list, move scenario to a typed internal controls argument, and delete the query prompt, Agent service call, artifact projection, and dead action-result chain. Keep Agent's canonical q prompt in its interactive client/API path and preserve only the pure artifact surface type still imported by its side-panel contract.",
+    files:
+      "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts; repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/tests/pages/app-chat-page.test.tsx; repos/orbits/tests/pages/app-chat-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW impact for the loader and HIGH impact for the internal workspace/scenario/prompt/Agent/artifact projection symbols in the AppAgentPage process group. Chat and Agent focused tests passed 41/41, the complete Web suite passed 1358/1358, and the exact production build passed. Regression proves both identity aliases, public prompt/scenario isolation, explicit internal empty state, actor-scoped empty service reuse, and source-level absence of the GET Agent execution chain. Staged detection returned MEDIUM for four files, six symbols, and one indexed flow.",
+    status:
+      "fixed and source/build/full-suite-verified for shared Chat/Agent server composition; authenticated browser runtime, populated multi-account conversation selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
