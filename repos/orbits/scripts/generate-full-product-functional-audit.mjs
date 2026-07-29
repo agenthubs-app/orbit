@@ -3743,6 +3743,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for actor-scoped Admin truthfulness, actual-profile identity, unsupported-metric removal, Platform provider/role fail-closed behavior, desktop/mobile runtime, lint, build, and full-suite verification; platform moderation and organizer-role workflows remain unavailable rather than simulated",
   },
+  {
+    id: "web-admin-navigation-capability-truth-2026-07-29",
+    target:
+      "Organizer Admin entry and desktop/mobile navigation → only implemented actor-scoped destinations",
+    testData:
+      "Authenticated live Admin with one actor event; public /app/login-admin compatibility entry; desktop navigation DOM; current actor-scoped Admin capability boundary",
+    expected:
+      "Every Admin navigation label must lead to a distinct implemented surface matching its visible promise. Missing access-management or event-configuration providers must not be represented by buttons that silently return to Dashboard or Events. The public Admin entry must describe the same read-only source-record capability that appears after authentication.",
+    actual:
+      "The Admin sidebar exposed Access and Event setup even though their hrefs were /app/admin and /app/admin/events, so clicking them produced unrelated existing pages with no access or setup behavior. The shared login component also promised registration, check-in, and on-site matching, and retained an unused Platform branch after Platform was made unavailable. The navigation now contains only Dashboard and Events on desktop and mobile. The login entry is organizer-only, targets /app/admin through the secure sign-in flow, and explicitly describes actor-scoped Event/Profile reads while naming registration, attendance, capacity, matching, and team data as unavailable until providers exist.",
+    evidence:
+      "GitNexus pre-edit impact was LOW: buildHostNav reached five upstream nodes, OrbitRealAdminLogin had two direct page callers, and neither reached an indexed process. Focused Admin/Platform tests passed 6/6, lint passed, the complete Web suite passed 1354/1354, and production build completed 39/39 static pages; commit 048db81b. Browser DOM readback showed exactly two Admin navigation controls, 仪表盘 and 活动管理, and /app/login-admin linked secure sign-in to /app/admin with the corrected capability boundary. Required staged detection reported LOW for two files, one symbol, and zero execution flows.",
+    conclusion:
+      "pass for destination/label alignment, unsupported-capability removal, secure-login target, browser readback, lint, build, and full-suite verification; access management, event configuration, and platform administration remain unavailable rather than misrouted",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4931,6 +4946,20 @@ const AUDIT_REMEDIATIONS = [
       "All pre-edit GitNexus impacts were LOW with zero indexed processes. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit e8d8df38. Desktop browser readback showed only the real account event/profile and Platform unavailable state. At 390x844 both routes had no overflow and both recovery links were 44px. Staged detection reported LOW for 19 symbols and zero flows, while the deleted Platform component remained a deletion-only file.",
     status:
       "fixed and source-truth/platform-fail-closed/browser/responsive/lint/build/full-suite-verified; no platform moderation, role, registration, attendance, capacity, match, team, or live-feed capability is claimed",
+  },
+  {
+    id: "AUDIT-P1-086",
+    severity: "P1",
+    rootCause:
+      "Admin rendered Access and Event setup navigation buttons whose destinations were merely the Dashboard and Events routes, while the shared login entry promised registration, check-in, matching, and an unused Platform-admin mode that no backed provider could deliver.",
+    decision:
+      "Remove navigation items without distinct implemented destinations instead of creating empty shells or relabeling unrelated pages. Make the shared entry organizer-only, preserve secure sign-in to /app/admin, and state the exact actor-scoped Event/Profile read boundary plus the unsupported operational data.",
+    files:
+      "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
+    regression:
+      "GitNexus impact was LOW for both edited symbols. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit 048db81b. Browser readback found only the two real Admin destinations and the compatibility login entry linked to /app/admin with truthful copy. Staged detection reported LOW for two files, one symbol, and zero flows.",
+    status:
+      "fixed and navigation-destination/login-copy/browser/lint/build/full-suite-verified; unsupported Admin capabilities no longer appear as actionable controls",
   },
 ];
 

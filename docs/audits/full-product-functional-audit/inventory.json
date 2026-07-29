@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "e8d8df38e10759f51d3ce636a5f5b5fe13840f5e",
-  "deterministicSourceTime": "2026-07-29T14:13:58+09:00",
+  "generatedFromCommit": "048db81bf7f04b9737fbe208dbeb879af1ca5d6c",
+  "deterministicSourceTime": "2026-07-29T14:21:42+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42,8 +42,8 @@
     "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 85,
-    "documentedRemediations": 85
+    "documentedVerificationCases": 86,
+    "documentedRemediations": 86
   },
   "surfaces": [
     {
@@ -45216,7 +45216,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
           "line": 26,
           "tag": "h1",
-          "text": "Product platform admin / 产品平台后台 / Organizer admin / 主办方后台"
+          "text": "Organizer admin / 主办方后台"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
@@ -45226,37 +45226,37 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 122,
+          "line": 120,
           "tag": "h1",
           "text": "Dashboard / 仪表盘"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 125,
+          "line": 123,
           "tag": "h2",
           "text": "Event source records / 活动来源记录"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 127,
+          "line": 125,
           "tag": "h2",
           "text": "Authenticated account profile / 已登录账户资料"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 128,
+          "line": 126,
           "tag": "h2",
           "text": "Data boundary / 数据边界"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 155,
+          "line": 153,
           "tag": "h1",
           "text": "Events / 活动管理"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 159,
+          "line": 157,
           "tag": "h2",
           "text": "Authenticated account / 已登录账户"
         },
@@ -45447,7 +45447,7 @@
           "interactionId": "web:/app/admin#interaction-2",
           "surfaceId": "web:/app/admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 66,
+          "line": 64,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -45480,7 +45480,7 @@
           "interactionId": "web:/app/admin#interaction-3",
           "surfaceId": "web:/app/admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 68,
+          "line": 66,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Exit admin / 退出后台",
@@ -45513,7 +45513,7 @@
           "interactionId": "web:/app/admin#interaction-4",
           "surfaceId": "web:/app/admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 74,
+          "line": 72,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -45726,7 +45726,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
           "line": 26,
           "tag": "h1",
-          "text": "Product platform admin / 产品平台后台 / Organizer admin / 主办方后台"
+          "text": "Organizer admin / 主办方后台"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
@@ -45736,37 +45736,37 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 122,
+          "line": 120,
           "tag": "h1",
           "text": "Dashboard / 仪表盘"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 125,
+          "line": 123,
           "tag": "h2",
           "text": "Event source records / 活动来源记录"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 127,
+          "line": 125,
           "tag": "h2",
           "text": "Authenticated account profile / 已登录账户资料"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 128,
+          "line": 126,
           "tag": "h2",
           "text": "Data boundary / 数据边界"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 155,
+          "line": 153,
           "tag": "h1",
           "text": "Events / 活动管理"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 159,
+          "line": 157,
           "tag": "h2",
           "text": "Authenticated account / 已登录账户"
         },
@@ -45874,7 +45874,7 @@
           "interactionId": "web:/app/admin/access#interaction-2",
           "surfaceId": "web:/app/admin/access",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 66,
+          "line": 64,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -45907,7 +45907,7 @@
           "interactionId": "web:/app/admin/access#interaction-3",
           "surfaceId": "web:/app/admin/access",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 68,
+          "line": 66,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Exit admin / 退出后台",
@@ -45940,7 +45940,7 @@
           "interactionId": "web:/app/admin/access#interaction-4",
           "surfaceId": "web:/app/admin/access",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 74,
+          "line": 72,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -46281,7 +46281,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
           "line": 26,
           "tag": "h1",
-          "text": "Product platform admin / 产品平台后台 / Organizer admin / 主办方后台"
+          "text": "Organizer admin / 主办方后台"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
@@ -46291,37 +46291,37 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 122,
+          "line": 120,
           "tag": "h1",
           "text": "Dashboard / 仪表盘"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 125,
+          "line": 123,
           "tag": "h2",
           "text": "Event source records / 活动来源记录"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 127,
+          "line": 125,
           "tag": "h2",
           "text": "Authenticated account profile / 已登录账户资料"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 128,
+          "line": 126,
           "tag": "h2",
           "text": "Data boundary / 数据边界"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 155,
+          "line": 153,
           "tag": "h1",
           "text": "Events / 活动管理"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 159,
+          "line": 157,
           "tag": "h2",
           "text": "Authenticated account / 已登录账户"
         },
@@ -46506,7 +46506,7 @@
           "interactionId": "web:/app/admin/events#interaction-2",
           "surfaceId": "web:/app/admin/events",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 66,
+          "line": 64,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -46539,7 +46539,7 @@
           "interactionId": "web:/app/admin/events#interaction-3",
           "surfaceId": "web:/app/admin/events",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 68,
+          "line": 66,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Exit admin / 退出后台",
@@ -46572,7 +46572,7 @@
           "interactionId": "web:/app/admin/events#interaction-4",
           "surfaceId": "web:/app/admin/events",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 74,
+          "line": 72,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -93527,7 +93527,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
           "line": 26,
           "tag": "h1",
-          "text": "Product platform admin / 产品平台后台 / Organizer admin / 主办方后台"
+          "text": "Organizer admin / 主办方后台"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
@@ -93537,37 +93537,37 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 122,
+          "line": 120,
           "tag": "h1",
           "text": "Dashboard / 仪表盘"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 125,
+          "line": 123,
           "tag": "h2",
           "text": "Event source records / 活动来源记录"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 127,
+          "line": 125,
           "tag": "h2",
           "text": "Authenticated account profile / 已登录账户资料"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 128,
+          "line": 126,
           "tag": "h2",
           "text": "Data boundary / 数据边界"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 155,
+          "line": 153,
           "tag": "h1",
           "text": "Events / 活动管理"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 159,
+          "line": 157,
           "tag": "h2",
           "text": "Authenticated account / 已登录账户"
         },
@@ -93675,7 +93675,7 @@
           "interactionId": "web:/app/login-admin#interaction-2",
           "surfaceId": "web:/app/login-admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 66,
+          "line": 64,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -93708,7 +93708,7 @@
           "interactionId": "web:/app/login-admin#interaction-3",
           "surfaceId": "web:/app/login-admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 68,
+          "line": 66,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Exit admin / 退出后台",
@@ -93741,7 +93741,7 @@
           "interactionId": "web:/app/login-admin#interaction-4",
           "surfaceId": "web:/app/login-admin",
           "sourceFile": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
-          "line": 74,
+          "line": 72,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -138210,6 +138210,15 @@
       "actual": "Before repair, Admin turned evidence.length into registrations, added 20 as capacity, inferred check-ins from event dates, inferred matches from the foreign recommendation, generated an @orbit.local email from the profile name, labeled event rows as LIVE activity, and rendered a registration funnel. Platform converted the same personal profile and event into one verified organizer, one platform user, and a pending moderation record although no platform provider or role existed. Admin now exposes only event record totals and date-derived upcoming/active/ended counts, real event title/time/venue/status/summary, and the source profile's actual email. The UI explicitly withholds unsupported operational metrics. The synthetic Platform success model/component and platform-wide interfaces were deleted; /app/platform returns PLATFORM_ADMIN_PROVIDER_UNAVAILABLE with provider-unavailable and role-unverified evidence before Events/Profile reads.",
       "evidence": "Every pre-edit GitNexus impact was LOW: the loader had three direct page callers; Admin mapping helpers reached at most seven upstream symbols; Admin UI functions reached at most three; shared interfaces reached nine; OrbitRealPlatform had one direct caller and zero processes. Focused Admin/Platform tests passed 6/6, lint passed, the complete Web suite passed 1354/1354, and production build completed 39/39 static pages; commit e8d8df38. Desktop browser readback showed exactly one actor event, truthful lifecycle counts, the persisted profile email, and the explicit data boundary; Platform showed only its unavailable state. At 390x844 both pages had scrollWidth 390, Platform recovery links measured 44px high, and the retired registration funnel text was absent. Required staged detection reported LOW for five detected files, 19 symbols, and zero execution flows; the commit contained six files because the removed Platform component was deletion-only.",
       "conclusion": "pass for actor-scoped Admin truthfulness, actual-profile identity, unsupported-metric removal, Platform provider/role fail-closed behavior, desktop/mobile runtime, lint, build, and full-suite verification; platform moderation and organizer-role workflows remain unavailable rather than simulated"
+    },
+    {
+      "id": "web-admin-navigation-capability-truth-2026-07-29",
+      "target": "Organizer Admin entry and desktop/mobile navigation → only implemented actor-scoped destinations",
+      "testData": "Authenticated live Admin with one actor event; public /app/login-admin compatibility entry; desktop navigation DOM; current actor-scoped Admin capability boundary",
+      "expected": "Every Admin navigation label must lead to a distinct implemented surface matching its visible promise. Missing access-management or event-configuration providers must not be represented by buttons that silently return to Dashboard or Events. The public Admin entry must describe the same read-only source-record capability that appears after authentication.",
+      "actual": "The Admin sidebar exposed Access and Event setup even though their hrefs were /app/admin and /app/admin/events, so clicking them produced unrelated existing pages with no access or setup behavior. The shared login component also promised registration, check-in, and on-site matching, and retained an unused Platform branch after Platform was made unavailable. The navigation now contains only Dashboard and Events on desktop and mobile. The login entry is organizer-only, targets /app/admin through the secure sign-in flow, and explicitly describes actor-scoped Event/Profile reads while naming registration, attendance, capacity, matching, and team data as unavailable until providers exist.",
+      "evidence": "GitNexus pre-edit impact was LOW: buildHostNav reached five upstream nodes, OrbitRealAdminLogin had two direct page callers, and neither reached an indexed process. Focused Admin/Platform tests passed 6/6, lint passed, the complete Web suite passed 1354/1354, and production build completed 39/39 static pages; commit 048db81b. Browser DOM readback showed exactly two Admin navigation controls, 仪表盘 and 活动管理, and /app/login-admin linked secure sign-in to /app/admin with the corrected capability boundary. Required staged detection reported LOW for two files, one symbol, and zero execution flows.",
+      "conclusion": "pass for destination/label alignment, unsupported-capability removal, secure-login target, browser readback, lint, build, and full-suite verification; access management, event configuration, and platform administration remain unavailable rather than misrouted"
     }
   ],
   "remediations": [
@@ -138977,6 +138986,15 @@
       "files": "repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/platform/page.tsx; repos/orbits/app/(app)/app/platform/orbit-real-platform.tsx; repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
       "regression": "All pre-edit GitNexus impacts were LOW with zero indexed processes. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit e8d8df38. Desktop browser readback showed only the real account event/profile and Platform unavailable state. At 390x844 both routes had no overflow and both recovery links were 44px. Staged detection reported LOW for 19 symbols and zero flows, while the deleted Platform component remained a deletion-only file.",
       "status": "fixed and source-truth/platform-fail-closed/browser/responsive/lint/build/full-suite-verified; no platform moderation, role, registration, attendance, capacity, match, team, or live-feed capability is claimed"
+    },
+    {
+      "id": "AUDIT-P1-086",
+      "severity": "P1",
+      "rootCause": "Admin rendered Access and Event setup navigation buttons whose destinations were merely the Dashboard and Events routes, while the shared login entry promised registration, check-in, matching, and an unused Platform-admin mode that no backed provider could deliver.",
+      "decision": "Remove navigation items without distinct implemented destinations instead of creating empty shells or relabeling unrelated pages. Make the shared entry organizer-only, preserve secure sign-in to /app/admin, and state the exact actor-scoped Event/Profile read boundary plus the unsupported operational data.",
+      "files": "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
+      "regression": "GitNexus impact was LOW for both edited symbols. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit 048db81b. Browser readback found only the two real Admin destinations and the compatibility login entry linked to /app/admin with truthful copy. Staged detection reported LOW for two files, one symbol, and zero flows.",
+      "status": "fixed and navigation-destination/login-copy/browser/lint/build/full-suite-verified; unsupported Admin capabilities no longer appear as actionable controls"
     }
   ],
   "externalLimitations": []
