@@ -118,6 +118,44 @@ test("every route-reachable interaction has a stable identity and audit fields",
   }
 });
 
+test("route UI inventory follows imported exports instead of sibling components", () => {
+  const adminAccess = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "web:/app/admin/access",
+  );
+  const adminDashboard = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "web:/app/admin",
+  );
+
+  assert.ok(adminAccess);
+  assert.deepEqual(
+    adminAccess.interactions.map((interaction) => interaction.sourceFile),
+    ["repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx"],
+  );
+  assert.ok(adminDashboard);
+  assert.equal(
+    adminDashboard.interactions.some(
+      (interaction) =>
+        interaction.sourceFile ===
+        "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+    ),
+    false,
+  );
+  assert.equal(
+    adminDashboard.interactions.some(
+      (interaction) =>
+        interaction.sourceFile === "repos/orbits/shared/ui/primitives.tsx",
+    ),
+    false,
+  );
+  assert.equal(
+    adminDashboard.interactions.some(
+      (interaction) =>
+        interaction.sourceFile === "repos/orbits/shared/ui/state-view.tsx",
+    ),
+    true,
+  );
+});
+
 test("visible controls do not rely on missing static behavior evidence", () => {
   const missingHandlers = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(

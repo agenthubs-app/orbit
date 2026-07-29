@@ -5131,6 +5131,271 @@ function collectReachableSources(entryFile, clientRoot) {
   return [...visited].sort();
 }
 
+function collectReachableUiScopes(entryFile, clientRoot) {
+  const moduleInfoCache = new Map();
+  const scopes = new Map();
+  const queue = [{ filePath: entryFile, symbol: "default" }];
+  const visitedTargets = new Set();
+
+  function addBinding(map, name, value) {
+    const bindings = map.get(name) ?? [];
+    bindings.push(value);
+    map.set(name, bindings);
+  }
+
+  function hasModifier(node, kind) {
+    return node.modifiers?.some((modifier) => modifier.kind === kind) ?? false;
+  }
+
+  function moduleInfo(filePath) {
+    const cached = moduleInfoCache.get(filePath);
+    if (cached) {
+      return cached;
+    }
+
+    const { source } = sourceFileFor(filePath);
+    const localDeclarations = new Map();
+    const exportedBindings = new Map();
+    const importedBindings = new Map();
+    const wildcardExports = [];
+
+    function registerLocal(name, node) {
+      if (name) {
+        addBinding(localDeclarations, name, { kind: "node", node });
+      }
+    }
+
+    for (const statement of source.statements) {
+      if (
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier)
+      ) {
+        const resolved = resolveLocalImport(
+          filePath,
+          statement.moduleSpecifier.text,
+          clientRoot,
+        );
+        const clause = statement.importClause;
+        if (!resolved || !clause) {
+          continue;
+        }
+        if (clause.name) {
+          addBinding(importedBindings, clause.name.text, {
+            kind: "target",
+            filePath: resolved,
+            symbol: "default",
+          });
+        }
+        if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+          for (const element of clause.namedBindings.elements) {
+            addBinding(importedBindings, element.name.text, {
+              kind: "target",
+              filePath: resolved,
+              symbol: element.propertyName?.text ?? element.name.text,
+            });
+          }
+        } else if (
+          clause.namedBindings &&
+          ts.isNamespaceImport(clause.namedBindings)
+        ) {
+          addBinding(importedBindings, clause.namedBindings.name.text, {
+            kind: "namespace",
+            filePath: resolved,
+          });
+        }
+        continue;
+      }
+
+      if (
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier &&
+        ts.isStringLiteral(statement.moduleSpecifier)
+      ) {
+        const resolved = resolveLocalImport(
+          filePath,
+          statement.moduleSpecifier.text,
+          clientRoot,
+        );
+        if (!resolved) {
+          continue;
+        }
+        if (statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+          for (const element of statement.exportClause.elements) {
+            addBinding(exportedBindings, element.name.text, {
+              kind: "target",
+              filePath: resolved,
+              symbol: element.propertyName?.text ?? element.name.text,
+            });
+          }
+        } else {
+          wildcardExports.push(resolved);
+        }
+        continue;
+      }
+
+      if (
+        ts.isExportDeclaration(statement) &&
+        statement.exportClause &&
+        ts.isNamedExports(statement.exportClause)
+      ) {
+        for (const element of statement.exportClause.elements) {
+          addBinding(exportedBindings, element.name.text, {
+            kind: "local",
+            symbol: element.propertyName?.text ?? element.name.text,
+          });
+        }
+        continue;
+      }
+
+      if (ts.isExportAssignment(statement)) {
+        addBinding(exportedBindings, "default", {
+          kind: "node",
+          node: statement,
+        });
+        continue;
+      }
+
+      if (
+        ts.isFunctionDeclaration(statement) ||
+        ts.isClassDeclaration(statement)
+      ) {
+        const name = statement.name?.text;
+        registerLocal(name, statement);
+        if (hasModifier(statement, ts.SyntaxKind.ExportKeyword) && name) {
+          addBinding(exportedBindings, name, {
+            kind: "local",
+            symbol: name,
+          });
+        }
+        if (hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {
+          addBinding(exportedBindings, "default", {
+            kind: "node",
+            node: statement,
+          });
+        }
+        continue;
+      }
+
+      if (ts.isVariableStatement(statement)) {
+        const exported = hasModifier(statement, ts.SyntaxKind.ExportKeyword);
+        for (const declaration of statement.declarationList.declarations) {
+          if (!ts.isIdentifier(declaration.name)) {
+            continue;
+          }
+          const name = declaration.name.text;
+          registerLocal(name, statement);
+          if (exported) {
+            addBinding(exportedBindings, name, {
+              kind: "local",
+              symbol: name,
+            });
+          }
+        }
+      }
+    }
+
+    const info = {
+      exportedBindings,
+      importedBindings,
+      localDeclarations,
+      source,
+      wildcardExports,
+    };
+    moduleInfoCache.set(filePath, info);
+    return info;
+  }
+
+  while (queue.length > 0) {
+    const target = queue.shift();
+    if (!target?.filePath) {
+      continue;
+    }
+
+    const info = moduleInfo(target.filePath);
+    let bindings;
+    if (target.node) {
+      bindings = [{ kind: "node", node: target.node }];
+    } else if (target.local) {
+      bindings = info.localDeclarations.get(target.symbol) ?? [];
+    } else {
+      bindings = info.exportedBindings.get(target.symbol) ?? [];
+      if (bindings.length === 0) {
+        for (const wildcardFile of info.wildcardExports) {
+          queue.push({ filePath: wildcardFile, symbol: target.symbol });
+        }
+      }
+    }
+
+    for (const binding of bindings) {
+      if (binding.kind === "target") {
+        queue.push({ filePath: binding.filePath, symbol: binding.symbol });
+        continue;
+      }
+      if (binding.kind === "local") {
+        queue.push({
+          filePath: target.filePath,
+          local: true,
+          symbol: binding.symbol,
+        });
+        continue;
+      }
+      if (binding.kind !== "node") {
+        continue;
+      }
+
+      const nodeKey = `${target.filePath}:${binding.node.getStart(info.source)}`;
+      if (visitedTargets.has(nodeKey)) {
+        continue;
+      }
+      visitedTargets.add(nodeKey);
+      const statementStarts = scopes.get(target.filePath) ?? new Set();
+      statementStarts.add(binding.node.getStart(info.source));
+      scopes.set(target.filePath, statementStarts);
+
+      function visit(node) {
+        if (ts.isIdentifier(node)) {
+          const name = node.text;
+          for (const imported of info.importedBindings.get(name) ?? []) {
+            if (
+              imported.kind === "namespace" &&
+              ts.isPropertyAccessExpression(node.parent) &&
+              node.parent.expression === node
+            ) {
+              queue.push({
+                filePath: imported.filePath,
+                symbol: node.parent.name.text,
+              });
+            } else if (imported.kind !== "namespace") {
+              queue.push(imported);
+            }
+          }
+          if (info.localDeclarations.has(name)) {
+            queue.push({
+              filePath: target.filePath,
+              local: true,
+              symbol: name,
+            });
+          }
+        }
+        ts.forEachChild(node, visit);
+      }
+
+      visit(binding.node);
+    }
+  }
+
+  return scopes;
+}
+
+function scopedTopLevelNodes(source, statementStarts) {
+  if (!statementStarts) {
+    return [source];
+  }
+  return source.statements.filter((statement) =>
+    statementStarts.has(statement.getStart(source)),
+  );
+}
+
 function attributeMap(attributes, source) {
   const result = new Map();
   for (const property of attributes.properties) {
@@ -5413,10 +5678,16 @@ function imperativeHandlers(attributes, selectorEvidence) {
   ];
 }
 
-function collectInteractions(filePath, client, selectorEvidence) {
+function collectInteractions(
+  filePath,
+  client,
+  selectorEvidence,
+  statementStarts = null,
+) {
   const { source, sourceText } = sourceFileFor(filePath);
   const interactions = [];
   const explicitLabels = new Map();
+  const roots = scopedTopLevelNodes(source, statementStarts);
 
   function discoverLabels(node) {
     if (ts.isJsxElement(node)) {
@@ -5435,7 +5706,9 @@ function collectInteractions(filePath, client, selectorEvidence) {
     }
     ts.forEachChild(node, discoverLabels);
   }
-  discoverLabels(source);
+  for (const root of roots) {
+    discoverLabels(root);
+  }
 
   function visit(node) {
     const parts = getJsxParts(node, source);
@@ -5566,13 +5839,16 @@ function collectInteractions(filePath, client, selectorEvidence) {
     ts.forEachChild(node, visit);
   }
 
-  visit(source);
+  for (const root of roots) {
+    visit(root);
+  }
   return interactions;
 }
 
-function collectVisibleContent(filePath) {
+function collectVisibleContent(filePath, statementStarts = null) {
   const { source } = sourceFileFor(filePath);
   const content = [];
+  const roots = scopedTopLevelNodes(source, statementStarts);
 
   function visit(node) {
     const parts = getJsxParts(node, source);
@@ -5613,7 +5889,9 @@ function collectVisibleContent(filePath) {
     ts.forEachChild(node, visit);
   }
 
-  visit(source);
+  for (const root of roots) {
+    visit(root);
+  }
   return [
     ...new Map(
       content.map((item) => [
@@ -5624,9 +5902,10 @@ function collectVisibleContent(filePath) {
   ];
 }
 
-function collectOverlays(filePath) {
+function collectOverlays(filePath, statementStarts = null) {
   const { source } = sourceFileFor(filePath);
   const overlays = [];
+  const roots = scopedTopLevelNodes(source, statementStarts);
 
   function record(node, kind, label) {
     const position = source.getLineAndCharacterOfPosition(node.getStart(source));
@@ -5680,7 +5959,9 @@ function collectOverlays(filePath) {
     ts.forEachChild(node, visit);
   }
 
-  visit(source);
+  for (const root of roots) {
+    visit(root);
+  }
   return overlays;
 }
 
@@ -5970,29 +6251,34 @@ export function buildFullProductFunctionalAuditInventory() {
       entry.pageFile,
       entry.clientRoot,
     );
+    const reachableUiScopes = collectReachableUiScopes(
+      entry.pageFile,
+      entry.clientRoot,
+    );
     const selectorEvidence = collectImperativeSelectorEvidence(reachableFiles);
     const interactionMap = new Map();
     const contentMap = new Map();
     const overlayMap = new Map();
 
-    for (const filePath of reachableFiles) {
+    for (const [filePath, statementStarts] of reachableUiScopes) {
       for (const interaction of collectInteractions(
         filePath,
         entry.client,
         selectorEvidence,
+        statementStarts,
       )) {
         interactionMap.set(
           `${interaction.sourceFile}:${interaction.line}:${interaction.controlType}:${interaction.tag}`,
           interaction,
         );
       }
-      for (const content of collectVisibleContent(filePath)) {
+      for (const content of collectVisibleContent(filePath, statementStarts)) {
         contentMap.set(
           `${content.sourceFile}:${content.line}:${content.tag}:${content.text}`,
           content,
         );
       }
-      for (const overlay of collectOverlays(filePath)) {
+      for (const overlay of collectOverlays(filePath, statementStarts)) {
         overlayMap.set(overlay.implementationId, overlay);
         overlayImplementations.set(overlay.implementationId, overlay);
       }
