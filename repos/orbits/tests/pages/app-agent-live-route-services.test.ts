@@ -52,6 +52,9 @@ async function withUnconfiguredLiveAgent<T>(
 test("/app/agent page renders the real Orbit AI chat experience", async () => {
   const pageSource = source("app/(app)/app/agent/page.tsx");
   const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const agentModelSource = source(
+    "app/(app)/app/orbit-agent-route-view-model.ts",
+  );
 
   assert.match(pageSource, /OrbitRealAgent/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
@@ -73,6 +76,10 @@ test("/app/agent page renders the real Orbit AI chat experience", async () => {
   assert.doesNotMatch(pageSource, /firstSearchParam\(resolvedSearchParams, "mode"\)/);
   assert.doesNotMatch(pageSource, /AppAgentCommandCenter/);
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
+  assert.doesNotMatch(
+    agentModelSource,
+    /getOrbitAgentViewModel|getOrbitHybridRouteData/,
+  );
   assert.match(agentSource, /data-orbit-real-page="agent"/);
 });
 

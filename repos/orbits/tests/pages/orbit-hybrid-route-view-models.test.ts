@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { getOrbitAdminViewModel, getOrbitPlatformViewModel } from "../../app/(app)/app/orbit-admin-platform-route-view-model";
-import { getOrbitAgentViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
 import { getOrbitOrganizerPublicViewModel } from "../../app/(app)/app/orbit-organizer-route-view-model";
 import { getOrbitPartyViewModel } from "../../app/(app)/app/orbit-party-route-view-model";
@@ -258,13 +257,6 @@ test("legacy app route view models read hybrid local remote route data", () => {
     const platform = getOrbitPlatformViewModel();
     assert.ok(platform.orgAccounts.some((account) => account.name === "Hybrid Routes Workspace"));
     assert.ok(platform.reviewQueue.some((review) => review.name === "Hybrid Routes Investor Salon"));
-
-    const agent = getOrbitAgentViewModel();
-    assert.ok(
-      agent.scenarios.people.items.some(
-        (item) => "connection" in item && item.connection.displayName === "Ava Route",
-      ),
-    );
 
     const register = getOrbitRegisterViewModel(hybridEvent?.code);
     assert.equal(register.event.name, "Hybrid Routes Investor Salon");
