@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "2ba002674662c76b54167a19b4fd7d5403cb09be",
-  "deterministicSourceTime": "2026-07-29T18:42:03+09:00",
+  "generatedFromCommit": "8d53505db5ac7bd09ead9034d09bb446fa2f6eb8",
+  "deterministicSourceTime": "2026-07-29T18:57:07+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -37,13 +37,13 @@
     "overlayImplementations": 8,
     "overlayRouteInstances": 30,
     "interactionRouteInstances": 2335,
-    "interactionsRuntimeVerified": 196,
+    "interactionsRuntimeVerified": 198,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 98,
-    "documentedRemediations": 97
+    "documentedVerificationCases": 99,
+    "documentedRemediations": 98
   },
   "surfaces": [
     {
@@ -46200,31 +46200,31 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2286,
+          "line": 2309,
           "tag": "h1",
           "text": "iOrbit Agent workspace / iOrbit Agent 工作区"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2302,
+          "line": 2325,
           "tag": "button",
           "text": "t({ en: \"Chat history\", zh: \"对话历史\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2324,
+          "line": 2347,
           "tag": "button",
           "text": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2368,
+          "line": 2396,
           "tag": "h3",
           "text": "{panel.panelTitle}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2470,
+          "line": 2498,
           "tag": "button",
           "text": "t({ en: \"Dismiss\", zh: \"关闭提示\" })"
         },
@@ -47779,7 +47779,7 @@
           "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2226,
+          "line": 2249,
           "controlType": "callback-control",
           "tag": "AgentActionStatusCard",
           "visibleName": null,
@@ -47814,7 +47814,7 @@
           "interactionId": "web:/app/agent#interaction-36",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2241,
+          "line": 2264,
           "controlType": "button",
           "tag": "button",
           "visibleName": "重新提交请求 / Retry request",
@@ -47849,7 +47849,7 @@
           "interactionId": "web:/app/agent#interaction-37",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2302,
+          "line": 2325,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Chat history\", zh: \"对话历史\" })",
@@ -47882,7 +47882,7 @@
           "interactionId": "web:/app/agent#interaction-38",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2312,
+          "line": 2335,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -47899,21 +47899,23 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "After selecting the real Undo Audit conversation, desktop 新对话 returned the URL to /app/agent, removed the old prompt and transcript, restored the welcome workspace and active composer, and retained all six persisted history rows.",
+          "testData": "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions and active session agent-session-ms5tz2ay-zx6dfl",
+          "testEvidence": [
+            "web-agent-history-navigation-resize-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-39",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2321,
+          "line": 2344,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -47948,7 +47950,7 @@
           "interactionId": "web:/app/agent#interaction-40",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2324,
+          "line": 2347,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })",
@@ -47956,6 +47958,10 @@
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
+            {
+              "event": "onkeydown",
+              "expression": "resizeHistorySidebarWithKeyboard"
+            },
             {
               "event": "onpointerdown",
               "expression": "startHistorySidebarResize"
@@ -47965,21 +47971,23 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Keyboard resizing changed only local layout state and wrote no session, preference, message, action, or external record; reload restored the product default.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The vertical separator announced min=180, max=380, and current=212. ArrowRight changed current and rendered width to 228, Home moved to 180, and End moved to 380.",
+          "testData": "Authenticated desktop Agent production page with the focusable history separator",
+          "testEvidence": [
+            "web-agent-history-navigation-resize-2026-07-29"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-41",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2357,
+          "line": 2385,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -48014,7 +48022,7 @@
           "interactionId": "web:/app/agent#interaction-42",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2393,
+          "line": 2421,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -48049,7 +48057,7 @@
           "interactionId": "web:/app/agent#interaction-43",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2399,
+          "line": 2427,
           "controlType": "callback-control",
           "tag": "div",
           "visibleName": null,
@@ -48082,7 +48090,7 @@
           "interactionId": "web:/app/agent#interaction-44",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2404,
+          "line": 2432,
           "controlType": "callback-control",
           "tag": "IconButton",
           "visibleName": null,
@@ -48115,7 +48123,7 @@
           "interactionId": "web:/app/agent#interaction-45",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2407,
+          "line": 2435,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -48146,7 +48154,7 @@
           "interactionId": "web:/app/agent#interaction-46",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2420,
+          "line": 2448,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -48180,7 +48188,7 @@
           "interactionId": "web:/app/agent#interaction-47",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2429,
+          "line": 2457,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -48215,7 +48223,7 @@
           "interactionId": "web:/app/agent#interaction-48",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2435,
+          "line": 2463,
           "controlType": "callback-control",
           "tag": "AgentHistoryDeleteDialog",
           "visibleName": null,
@@ -48254,7 +48262,7 @@
           "interactionId": "web:/app/agent#interaction-49",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2470,
+          "line": 2498,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Dismiss\", zh: \"关闭提示\" })",
@@ -49755,7 +49763,9 @@
         "a new read-only conversation could be selected, pinned, renamed, refreshed, and restored from actor-scoped live storage",
         "renaming exposed explicit save and cancel controls; cancel wrote nothing and refresh retained the original name",
         "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
-        "the same session id was absent from the second actor before deletion and from both actors after cleanup"
+        "the same session id was absent from the second actor before deletion and from both actors after cleanup",
+        "desktop New chat cleared the selected transcript and session URL while retaining all six persisted history rows",
+        "the focusable history separator exposed min, max, current value, and orientation; ArrowRight, Home, and End changed the rendered width to the exact announced values"
       ],
       "verificationConclusion": "runtime-partially-verified-web-agent-session-actor-isolation"
     },
@@ -119715,6 +119725,15 @@
       "actual": "The initial API contract returned success=true with persisted=false when live history storage was absent, while the client treated any success envelope as persistence, optimistically changed pin/name/delete state, ignored failures, and deleted without confirmation. The repaired write and delete APIs return SERVICE_UNAVAILABLE/503 when storage is unconfigured. The client requires data.storage.persisted=true, serializes history mutations, updates local state only after persistence, and renders an error while retaining the prior state on failure. The real browser created one two-message read-only session, switched to another conversation, selected the session back through history, and restored its prompt/reply at the exact session URL. Pin rendered 对话已置顶 and survived reload as 取消置顶. Explicit save persisted History Lifecycle Audit 20260729 and survived reload; explicit cancel discarded SHOULD NOT PERSIST 20260729 and retained the original name after reload. Delete opened an alertdialog with permanent-loss copy. 保留对话 left the session and transcript intact. Confirmed deletion returned to the fresh Agent home, removed the row/transcript, and remained absent after reload.",
       "evidence": "Focused history/API tests passed 14/14 before the explicit-control adjustment and the final history suite passed 11/11. The complete Web suite passed 1376/1376, repository lint/typecheck passed, and production build completed 39/39 static pages. In-app browser traversal covered the formal composer, generated reply, real session id, cross-session selection, pin success, rename field/save/cancel, two reloads, delete dialog, cancel, confirm, active-session clearing, and post-delete reload. Configured live-provider readback returned the pinned custom title and two messages for actor A while actor B returned null; after cleanup both actors returned null. Commits b30e1348, faa1e10c, and 2ba00267. GitNexus impact was LOW for both API handlers, OrbitRealAgent, AgentHistoryList, persistence helpers, and rename submission; staged detection was LOW.",
       "conclusion": "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; responsive/mobile-width layout and screen-reader announcement timing remain separately unverified"
+    },
+    {
+      "id": "web-agent-history-navigation-resize-2026-07-29",
+      "target": "Authenticated desktop Web /app/agent selected history → New chat reset and keyboard-operable history separator",
+      "testData": "Live actor user_ms5llhof_wrbpuq with six persisted sessions; selected session agent-session-ms5tz2ay-zx6dfl; production viewport; history width bounds 180–380",
+      "expected": "New chat must clear only the active transcript, panel, composer draft, active session id, and session URL while retaining stored history. A focusable separator must expose orientation and current/min/max values and support keyboard adjustment without requiring pointer input. Layout-only changes must not persist or write domain data.",
+      "actual": "Selecting the Undo Audit session restored its real prompt at the session URL. Clicking desktop 新对话 returned to /app/agent, removed that prompt, restored the welcome workspace and composer, and kept the same six history rows. Source tracing found the focusable separator declared a label and vertical orientation but implemented only pointerdown. The repair adds ArrowLeft/ArrowRight 16-pixel adjustments plus Home/End bounds and aria-valuemin/max/now/text. Browser readback began at 212, moved to 228 with ArrowRight, to 180 with Home, and to 380 with End.",
+      "evidence": "Focused Agent history tests passed 11/11 and production build completed 39/39. In-app browser exercised real session selection, desktop New chat, URL/transcript reset, unchanged history count, separator focus, exact ARIA values, three keyboard transitions, and default restoration on reload. Commit 8d53505d. OrbitRealAgent and startHistorySidebarResize impact were LOW; staged detection was LOW with zero affected processes.",
+      "conclusion": "pass for desktop active-session reset, history preservation, URL reset, composer restoration, separator orientation/value semantics, ArrowLeft/ArrowRight/Home/End contract, layout-only no-write behavior, focused tests, and build; mobile New chat, mobile history drawer, pointer drag, persisted user width preference, and assistive-technology announcement timing remain separately unverified"
     }
   ],
   "remediations": [
@@ -120590,6 +120609,15 @@
       "files": "repos/orbits/app/api/ai/conversations/sessions/handler.ts; repos/orbits/app/api/ai/conversations/sessions/[id]/handler.ts; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/capabilities/orbit-agent-chat-session-api.test.ts; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
       "regression": "Unconfigured live API tests prove save and delete return 503/SERVICE_UNAVAILABLE; mutation parsing rejects success envelopes without persisted=true. Focused history/API tests passed 14/14 and the final history suite passed 11/11. Full Web passed 1376/1376, lint/typecheck passed, and production build completed 39/39. Browser and live-provider readback proved select, pin, explicit rename save/cancel, reload persistence, delete confirmation/cancel/confirm, active-session cleanup, second-actor isolation, and final removal. Commits b30e1348, faa1e10c, and 2ba00267; all pre-edit impact and staged detection results were LOW.",
       "status": "fixed and fail-closed-storage/persisted-success-gate/API-first-UI/mutation-fence/explicit-rename/destructive-confirmation/error-feedback/reload/actor-isolation/cleanup/focused/full-suite/lint/build-verified"
+    },
+    {
+      "id": "AUDIT-P1-098",
+      "severity": "P1",
+      "rootCause": "The Agent history resize handle was a focusable element with role=separator and a vertical orientation label, but it implemented only onPointerDown. Keyboard users could focus the control yet could not change the sidebar width, and assistive technology received no minimum, maximum, or current value.",
+      "decision": "Keep the same clamped pointer resize model and add the separator keyboard contract at that boundary: ArrowLeft and ArrowRight adjust by a predictable 16 pixels, Home and End select the existing minimum and maximum, handled keys prevent page scrolling, and aria-valuemin, aria-valuemax, aria-valuenow, and aria-valuetext remain synchronized with the rendered width.",
+      "files": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+      "regression": "Focused history tests passed 11/11 and production build completed 39/39. The real production browser read min=180, max=380, current=212, and vertical orientation; ArrowRight produced 228, Home produced 180, and End produced 380. Commit 8d53505d; impact and staged detection were LOW with zero affected processes.",
+      "status": "fixed and keyboard-separator/ARIA-range/ArrowLeft/ArrowRight/Home/End/clamped-layout/no-write/browser/focused/build-verified; pointer-drag and screen-reader announcement timing remain separately unverified"
     }
   ],
   "externalLimitations": []

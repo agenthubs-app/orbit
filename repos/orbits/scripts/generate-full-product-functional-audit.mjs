@@ -735,6 +735,8 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "renaming exposed explicit save and cancel controls; cancel wrote nothing and refresh retained the original name",
         "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
         "the same session id was absent from the second actor before deletion and from both actors after cleanup",
+        "desktop New chat cleared the selected transcript and session URL while retaining all six persisted history rows",
+        "the focusable history separator exposed min, max, current value, and orientation; ArrowRight, Home, and End changed the rendered width to the exact announced values",
       ],
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
       verificationConclusion:
@@ -2479,6 +2481,32 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Before deletion the second actor returned null for the session. After deletion both actors returned null; no cross-actor record or orphaned visible session remained.",
       verificationCase:
         "web-agent-history-lifecycle-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:2335",
+    {
+      actualResult:
+        "After selecting the real Undo Audit conversation, desktop 新对话 returned the URL to /app/agent, removed the old prompt and transcript, restored the welcome workspace and active composer, and retained all six persisted history rows.",
+      testData:
+        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions and active session agent-session-ms5tz2ay-zx6dfl",
+      idempotency:
+        "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
+      verificationCase:
+        "web-agent-history-navigation-resize-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Resize chat history", zh: "调整历史宽度" })',
+    {
+      actualResult:
+        "The vertical separator announced min=180, max=380, and current=212. ArrowRight changed current and rendered width to 228, Home moved to 180, and End moved to 380.",
+      testData:
+        "Authenticated desktop Agent production page with the focusable history separator",
+      idempotency:
+        "Keyboard resizing changed only local layout state and wrote no session, preference, message, action, or external record; reload restored the product default.",
+      verificationCase:
+        "web-agent-history-navigation-resize-2026-07-29",
     },
   ],
   [
@@ -4312,6 +4340,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; responsive/mobile-width layout and screen-reader announcement timing remain separately unverified",
   },
+  {
+    id: "web-agent-history-navigation-resize-2026-07-29",
+    target:
+      "Authenticated desktop Web /app/agent selected history → New chat reset and keyboard-operable history separator",
+    testData:
+      "Live actor user_ms5llhof_wrbpuq with six persisted sessions; selected session agent-session-ms5tz2ay-zx6dfl; production viewport; history width bounds 180–380",
+    expected:
+      "New chat must clear only the active transcript, panel, composer draft, active session id, and session URL while retaining stored history. A focusable separator must expose orientation and current/min/max values and support keyboard adjustment without requiring pointer input. Layout-only changes must not persist or write domain data.",
+    actual:
+      "Selecting the Undo Audit session restored its real prompt at the session URL. Clicking desktop 新对话 returned to /app/agent, removed that prompt, restored the welcome workspace and composer, and kept the same six history rows. Source tracing found the focusable separator declared a label and vertical orientation but implemented only pointerdown. The repair adds ArrowLeft/ArrowRight 16-pixel adjustments plus Home/End bounds and aria-valuemin/max/now/text. Browser readback began at 212, moved to 228 with ArrowRight, to 180 with Home, and to 380 with End.",
+    evidence:
+      "Focused Agent history tests passed 11/11 and production build completed 39/39. In-app browser exercised real session selection, desktop New chat, URL/transcript reset, unchanged history count, separator focus, exact ARIA values, three keyboard transitions, and default restoration on reload. Commit 8d53505d. OrbitRealAgent and startHistorySidebarResize impact were LOW; staged detection was LOW with zero affected processes.",
+    conclusion:
+      "pass for desktop active-session reset, history preservation, URL reset, composer restoration, separator orientation/value semantics, ArrowLeft/ArrowRight/Home/End contract, layout-only no-write behavior, focused tests, and build; mobile New chat, mobile history drawer, pointer drag, persisted user width preference, and assistive-technology announcement timing remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5668,6 +5711,20 @@ const AUDIT_REMEDIATIONS = [
       "Unconfigured live API tests prove save and delete return 503/SERVICE_UNAVAILABLE; mutation parsing rejects success envelopes without persisted=true. Focused history/API tests passed 14/14 and the final history suite passed 11/11. Full Web passed 1376/1376, lint/typecheck passed, and production build completed 39/39. Browser and live-provider readback proved select, pin, explicit rename save/cancel, reload persistence, delete confirmation/cancel/confirm, active-session cleanup, second-actor isolation, and final removal. Commits b30e1348, faa1e10c, and 2ba00267; all pre-edit impact and staged detection results were LOW.",
     status:
       "fixed and fail-closed-storage/persisted-success-gate/API-first-UI/mutation-fence/explicit-rename/destructive-confirmation/error-feedback/reload/actor-isolation/cleanup/focused/full-suite/lint/build-verified",
+  },
+  {
+    id: "AUDIT-P1-098",
+    severity: "P1",
+    rootCause:
+      "The Agent history resize handle was a focusable element with role=separator and a vertical orientation label, but it implemented only onPointerDown. Keyboard users could focus the control yet could not change the sidebar width, and assistive technology received no minimum, maximum, or current value.",
+    decision:
+      "Keep the same clamped pointer resize model and add the separator keyboard contract at that boundary: ArrowLeft and ArrowRight adjust by a predictable 16 pixels, Home and End select the existing minimum and maximum, handled keys prevent page scrolling, and aria-valuemin, aria-valuemax, aria-valuenow, and aria-valuetext remain synchronized with the rendered width.",
+    files:
+      "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+    regression:
+      "Focused history tests passed 11/11 and production build completed 39/39. The real production browser read min=180, max=380, current=212, and vertical orientation; ArrowRight produced 228, Home produced 180, and End produced 380. Commit 8d53505d; impact and staged detection were LOW with zero affected processes.",
+    status:
+      "fixed and keyboard-separator/ARIA-range/ArrowLeft/ArrowRight/Home/End/clamped-layout/no-write/browser/focused/build-verified; pointer-drag and screen-reader announcement timing remain separately unverified",
   },
 ];
 
