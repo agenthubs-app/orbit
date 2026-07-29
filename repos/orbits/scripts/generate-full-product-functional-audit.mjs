@@ -3578,6 +3578,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the legacy Agent hybrid-data constructor while preserving the shared UI type contract and actor-scoped Chat implementation; other legacy hybrid route constructors are separate boundaries and remain pending individual impact analysis",
   },
+  {
+    id: "web-register-legacy-hybrid-model-retirement-2026-07-29",
+    target:
+      "Retired legacy Register hybrid-data constructor → single reviewed-public-event entry into adaptive registration",
+    testData:
+      "Repository imports and symbol references for orbit-register-route-view-model.ts and getOrbitRegisterViewModel; canonical /app/register page and loader; EVTSIGNUP01, unknown demo-event-1, adversarial mode/scenario query, and the hybrid-route self-validation test",
+    expected:
+      "The legacy invite-code route must have one production architecture: resolve a reviewed public event code, preserve presentation language only, and redirect to that event's authenticated adaptive registration workspace. No unused compatibility file may compose a hybrid event plus hybrid profile preview or expose a second registration form model solely for tests.",
+    actual:
+      "The canonical route already resolved only reviewed public catalogue events, failed closed for unknown codes, ignored mode/scenario, and redirected without loading a profile form. A separate 43-line orbit-register-route-view-model.ts still called synchronous landing and profile hybrid getters to assemble event fields, option lists, tags, and a profile preview. Repository search and GitNexus found only the broad legacy self-validation test importing it. After repair, that file and test invocation are deleted, while the focused Register regression asserts the compatibility path remains absent.",
+    evidence:
+      "GitNexus reported LOW upstream impact for getOrbitRegisterViewModel: one direct test-file caller, zero production processes, and zero affected modules. Focused Register and hybrid-route tests passed 7/7, repository lint passed, the complete Web suite passed 1352/1352, and production build passed; commit 2b9058a6. Required staged detection returned No changes detected for the three-file deletion/reference-removal diff, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the orphan legacy Register hybrid model while preserving reviewed public code resolution and the canonical adaptive registration workspace; browser registration lifecycle gaps remain tracked under the existing Event Registration audit cases",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4612,6 +4627,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact and zero execution flows for the getter; its helpers reached only the same dead chain. Focused tests passed 4/4, lint passed, the complete Web suite passed 1352/1352, and production build passed. The Agent UI types remain imported by the Chat adapter and real component, while repository search and regression reject the deleted constructor/import. Staged detect returned No changes detected despite Git showing three staged files and 187 deletions, so the deletion blind spot is recorded rather than assigned a false risk.",
     status:
       "fixed and source/lint/build/full-suite-verified for retirement of the Agent-only legacy hybrid constructor; other parallel route constructors remain pending separate review",
+  },
+  {
+    id: "AUDIT-P1-075",
+    severity: "P1",
+    rootCause:
+      "The canonical /app/register route had already become a narrow reviewed-public-event redirect into adaptive registration, but a separate orbit-register-route-view-model.ts remained in product source. Its synchronous getter combined the legacy landing event and legacy Profile model into a complete profile-preview registration form. No product page imported it; one legacy hybrid-route test sustained the second registration architecture.",
+    decision:
+      "Delete the orphan compatibility file rather than keep a re-export shell. Keep registration contracts at their real feature-local boundary and retain /app/register as the single invite-code adapter: reviewed public event lookup, language-only propagation, unknown-code no-write state, and redirect to /app/events/[id]/register. Remove the legacy test invocation and make the focused Register regression assert the file stays absent.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-register-route-view-model.ts; repos/orbits/tests/pages/app-register-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus reported LOW impact with one direct test caller and zero execution flows. Focused tests passed 7/7, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains reviewed EVTSIGNUP01 resolution, canonical adaptive-registration redirect, language propagation, public mode/scenario isolation, unknown-code failure, and absence of pre-redirect profile form composition. Staged detect returned No changes detected despite the deleted file and removed test reference, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for retirement of the legacy Register hybrid constructor; real adaptive-registration runtime gaps remain tracked under AUDIT-P1-071",
   },
 ];
 
