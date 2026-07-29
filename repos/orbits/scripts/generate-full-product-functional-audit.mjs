@@ -3608,6 +3608,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the legacy Organizer hybrid constructor while preserving the public loader, aggregate privacy, and shared UI type contract; authenticated organizer administration remains a separate product boundary",
   },
+  {
+    id: "web-profile-legacy-hybrid-model-retirement-2026-07-29",
+    target:
+      "Retired Web Profile hybrid-data constructor → type-only editor contract backed by actor-scoped Profile composition",
+    testData:
+      "Repository imports and symbol references for getOrbitProfileViewModel and its unique helper; real /app/profile page, actor-scoped loader, adapter, editor, save/readback checks, extraction APIs, and the hybrid-route self-validation test",
+    expected:
+      "The Profile UI contract must be populated only by the authenticated Profile loader and adapter. Its shared model file may retain editor types, but it must not synthesize biography, company, industries, tags, goals, or topics from the global hybrid relationship graph. Writes must continue through the authenticated API and be accepted only after complete readback.",
+    actual:
+      "The production Profile page already required a session, passed the actor into the live-capable loader, adapted its payload, and used API extraction/save with strict readback. The shared type file still contained a 54-line getOrbitProfileViewModel that read global hybrid contacts, connections, event intents, and account data to manufacture a complete editor model. Only orbit-hybrid-route-view-models.test.ts called it. After repair, the file exports only OrbitProfileView and OrbitProfileViewModel, the test-only invocation is removed, and the focused Profile regression rejects the getter and hybrid-data import from returning.",
+    evidence:
+      "GitNexus context found no execution process. Upstream impact was LOW for getOrbitProfileViewModel with one direct test-file caller and zero processes; its private unique helper reached only the same dead getter/test chain. Focused Profile and hybrid-route tests passed 12/12, repository lint passed, the complete Web suite passed 1352/1352, and production build passed; commit 9a474af2. Required staged detection returned No changes detected for the three-file deletion-heavy diff, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the legacy Profile hybrid constructor while preserving actor-scoped loading, API writes, strict readback, and the shared editor type contract; authenticated browser save/refresh and two-account UI isolation retain their existing runtime evidence gaps",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4670,6 +4685,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact with one direct test caller and zero execution flows. Focused tests passed 9/9, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains public code resolution, unknown-slug isolation from private storage, language-stable controlled states, URL control isolation, aggregate-only output, and absence of attendee names. Staged detect returned No changes detected despite the getter removal and test changes, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified for retirement of the legacy Organizer hybrid constructor; the canonical public Organizer loader remains the single data architecture",
+  },
+  {
+    id: "AUDIT-P1-077",
+    severity: "P1",
+    rootCause:
+      "After /app/profile migrated to authenticated actor-scoped Profile composition, orbit-profile-route-view-model.ts still contained a synchronous hybrid constructor. It combined global account, contacts, connections, relationship-value types, and event participant intents into manufactured biography, company, industries, tags, offerings, needs, and topics. No production path called it; the broad legacy hybrid-route test kept the second Profile architecture alive.",
+    decision:
+      "Retain only OrbitProfileView and OrbitProfileViewModel as the shared editor contract. Delete getOrbitProfileViewModel, its private unique helper, and all hybrid-data imports. Remove the test-only call and extend the focused Profile source regression to prohibit the getter and getOrbitHybridRouteData. Keep actor identity, extraction, save, free-text/custom tags, and complete API readback in the canonical Profile implementation.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-profile-route-view-model.ts; repos/orbits/tests/pages/app-profile-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus reported LOW impact and zero execution flows; the only direct caller was the legacy test. Focused tests passed 12/12, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains actor-scoped failure, real editor composition, API extraction/save, strict partial-readback rejection, free-text industry, custom tags, and the absence of hardcoded founder identity. Staged detect returned No changes detected despite 70 deletions, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for retirement of the legacy Profile hybrid constructor; canonical actor-scoped Profile composition remains the single data architecture",
   },
 ];
 
