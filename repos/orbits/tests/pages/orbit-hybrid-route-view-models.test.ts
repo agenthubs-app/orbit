@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { getOrbitAdminViewModel, getOrbitPlatformViewModel } from "../../app/(app)/app/orbit-admin-platform-route-view-model";
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
 import type { MockRuntimeFixtures } from "../../shared/mock/fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
@@ -234,14 +233,6 @@ test("legacy app route view models read hybrid local remote route data", () => {
     assert.ok(
       landing.connections.some((connection) => connection.displayName === "Ava Route"),
     );
-
-    const admin = getOrbitAdminViewModel();
-    assert.ok(admin.adminEvents.some((event) => event.name === "Hybrid Routes Investor Salon"));
-    assert.ok(admin.adminMembers.some((member) => member.name === "Route Tester"));
-
-    const platform = getOrbitPlatformViewModel();
-    assert.ok(platform.orgAccounts.some((account) => account.name === "Hybrid Routes Workspace"));
-    assert.ok(platform.reviewQueue.some((review) => review.name === "Hybrid Routes Investor Salon"));
 
   });
 });

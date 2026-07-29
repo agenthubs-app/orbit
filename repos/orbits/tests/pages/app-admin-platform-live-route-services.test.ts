@@ -69,6 +69,9 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
   const adminSource = source("app/(app)/app/admin/page.tsx");
   const adminEventsSource = source("app/(app)/app/admin/events/page.tsx");
   const platformSource = source("app/(app)/app/platform/page.tsx");
+  const sharedModelSource = source(
+    "app/(app)/app/orbit-admin-platform-route-view-model.ts",
+  );
 
   for (const pageSource of [adminSource, adminEventsSource, platformSource]) {
     assert.match(pageSource, /loadAppAdminPlatformRouteViewModel/);
@@ -80,6 +83,11 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
     assert.doesNotMatch(pageSource, /getOrbitAdminViewModel/);
     assert.doesNotMatch(pageSource, /getOrbitPlatformViewModel/);
   }
+
+  assert.doesNotMatch(
+    sharedModelSource,
+    /getOrbitAdminViewModel|getOrbitPlatformViewModel|getOrbitHybridRouteData/,
+  );
 });
 
 test("admin and platform success surfaces do not expose unbacked write controls", () => {
