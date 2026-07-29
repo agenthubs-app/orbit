@@ -3638,6 +3638,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the legacy Party hybrid constructor while preserving authenticated shared Party composition and its type contract; the separate authored Party presentation/content path remains pending an independent boundary review",
   },
+  {
+    id: "web-party-authored-demo-retirement-2026-07-29",
+    target:
+      "Retired orphan authored Party demo → one actor- and event-scoped Party data architecture",
+    testData:
+      "Repository imports and exact GitNexus symbols for buildOrbitParty, pick, personView, PARTY_CONTENT, and all five Party content interfaces; real Party/check-in page source; focused Party loader and access-state scenarios",
+    expected:
+      "No dormant Party presentation path may replace the authenticated event, attendee, recommendation, agenda, tablemate, current-user, or access-code state with fixed demo identities. The canonical Party loader and shared UI model must remain the only product data path, while localized source-backed fields continue to flow through the existing route composition.",
+    actual:
+      "orbit-party-presentation.ts documented that it intentionally replaced the route payload with 625 lines of curated trilingual demo content. Its builder returned a fixed demo-event-1, fixed access code, fixed user identity, fixed people, and fixed active phase. Exact repository search found no import or caller; production Party and check-in pages explicitly rejected buildOrbitParty and already used loadAppPartyRouteViewModel. After repair, both the 625-line content file and 92-line presentation file are deleted, and the focused source regression asserts that neither file can return.",
+    evidence:
+      "GitNexus reported LOW upstream impact and zero execution flows throughout the chain: buildOrbitParty and PARTY_CONTENT had zero callers; pick reached only personView/buildOrbitParty; personView reached only buildOrbitParty; every Party content interface was imported only by the orphan presentation file. Focused Party and hybrid-route tests passed 14/14, repository lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages; commit bfddbbe5. Required staged detection returned No changes detected for the two-file deletion plus regression assertion, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the orphan authored Party demo while preserving the canonical actor- and event-scoped Party loader; runtime browser Party coverage remains governed by the broader Party audit matrix",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4728,6 +4743,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact and zero execution flows for every removed function; only the legacy test directly called the public constructor. Focused tests passed 14/14, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains the real Party loader, shared check-in composition, route-derived industry filtering, registered/unregistered public access, actor propagation, query isolation from mock fixtures, sourced-event empty-people handling, and distinct missing-selection/missing-people states. Staged detect returned No changes detected despite 213 deletions, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified for retirement of the legacy Party hybrid constructor; authored Party presentation/content remains a separate pending review",
+  },
+  {
+    id: "AUDIT-P1-079",
+    severity: "P1",
+    rootCause:
+      "A second orphan Party architecture remained after the live-capable loader migration. orbit-party-presentation.ts explicitly replaced raw route data with 625 lines of authored demo content, including fixed event id, access code, event phase, current user, recommendations, tablemates, agenda, and icebreakers. The builder had no caller or execution flow, but retaining it created a ready path to bypass actor identity, event selection, registration access, and source-backed people context.",
+    decision:
+      "Delete orbit-party-presentation.ts and orbit-party-content.ts as one closed orphan chain instead of wiring fixed demo data back into production or preserving unused compatibility exports. Keep loadAppPartyRouteViewModel and OrbitPartyViewModel as the single Party architecture. Extend the focused source regression to assert both authored demo files remain absent while retaining the real loader, access-state, actor propagation, route-filter, and empty-context checks.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-party-presentation.ts; repos/orbits/app/(app)/app/orbit-party-content.ts; repos/orbits/tests/pages/app-party-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW impact and zero execution flows for every deleted function, constant, and interface. Focused tests passed 14/14, lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages. Coverage now rejects both orphan files and continues to exercise the real Party/check-in loader, registered and unregistered public access, actor propagation, query isolation, route-derived filtering, and sourced empty-state behavior. Staged detect returned No changes detected despite 718 deletions, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified; Party now has one actor- and event-scoped route data architecture",
   },
 ];
 
