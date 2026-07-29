@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -71,6 +71,14 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
   const partyModelSource = source(
     "app/(app)/app/orbit-party-route-view-model.ts",
   );
+  const authoredContentPath = join(
+    projectRoot,
+    "app/(app)/app/orbit-party-content.ts",
+  );
+  const authoredPresentationPath = join(
+    projectRoot,
+    "app/(app)/app/orbit-party-presentation.ts",
+  );
 
   for (const pageSource of [partyPageSource, graphPageSource]) {
     assert.match(pageSource, /loadAppPartyRouteViewModel/);
@@ -84,6 +92,8 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
     partyModelSource,
     /getOrbitPartyViewModel|getOrbitHybridRouteData/,
   );
+  assert.equal(existsSync(authoredContentPath), false);
+  assert.equal(existsSync(authoredPresentationPath), false);
 });
 
 test("/app/party/checkin uses the same live-capable party loader without component fallback", () => {
