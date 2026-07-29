@@ -2,7 +2,7 @@ import {
   readRegisteredCatalogueAttendees,
   type RegisteredCatalogueAttendee,
 } from "../../../features/events/registered-catalogue-attendees";
-import { initialFor } from "./orbit-hybrid-route-data";
+import { initialFor } from "./orbit-event-view-helpers";
 import {
   getOrbitLandingViewModel,
   type OrbitEventAttendeeView,

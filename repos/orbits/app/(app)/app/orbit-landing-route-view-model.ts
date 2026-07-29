@@ -3,16 +3,16 @@ import {
   readPublicEventCatalogue,
   type PublicEventCatalogueSnapshot,
 } from "../../../features/events/public-catalogue";
+import { eventCodeFor } from "../../../features/events/public-route-code";
+import { hashString } from "../../../shared/utils/stable-hash";
 import {
-  eventCodeFor,
   eventIndustryFor,
   eventStatusFor,
   eventTagsFor,
   eventThemeFor,
   formatDuration,
-  hashString,
   initialFor,
-} from "./orbit-hybrid-route-data";
+} from "./orbit-event-view-helpers";
 
 export interface OrbitLandingEventView {
   about?: OrbitEventAboutSection[];

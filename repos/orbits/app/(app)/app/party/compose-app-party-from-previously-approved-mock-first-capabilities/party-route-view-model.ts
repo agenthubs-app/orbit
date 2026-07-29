@@ -18,7 +18,7 @@ import {
   resolveModuleMode,
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
-import { eventStatusFor } from "../../orbit-hybrid-route-data";
+import { eventStatusFor } from "../../orbit-event-view-helpers";
 import {
   getOrbitLandingViewModel,
   type OrbitLandingEventView,

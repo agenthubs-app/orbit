@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
@@ -241,11 +241,18 @@ test("public landing catalogue does not expose hybrid account or contact identit
 });
 
 test("legacy route files no longer embed old product sample records", () => {
+  assert.equal(
+    existsSync("app/(app)/app/orbit-hybrid-route-data.ts"),
+    false,
+    "the retired hybrid route data module must not return",
+  );
+
   const routeFiles = [
     "app/(app)/app/orbit-admin-platform-route-view-model.ts",
     "app/(app)/app/orbit-agent-route-view-model.ts",
     "app/(app)/app/orbit-contacts-route-view-model.ts",
     "app/(app)/app/orbit-home-route-view-model.ts",
+    "app/(app)/app/orbit-event-view-helpers.ts",
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-party-route-view-model.ts",
     "app/(app)/app/orbit-profile-route-view-model.ts",
@@ -253,6 +260,10 @@ test("legacy route files no longer embed old product sample records", () => {
     "app/(app)/app/admin/orbit-real-admin.tsx",
     "app/(app)/app/dashboard/orbit-real-party.tsx",
   ];
+  const eventHelperSource = readFileSync(
+    "app/(app)/app/orbit-event-view-helpers.ts",
+    "utf8",
+  );
   const legacyTerms = [
     "Tokyo Business Connect",
     "TBC26S",
@@ -265,6 +276,11 @@ test("legacy route files no longer embed old product sample records", () => {
     "Tokyo Tech Co., Ltd.",
     "东京科技有限公司",
   ];
+
+  assert.doesNotMatch(
+    eventHelperSource,
+    /local-remote-store|shared\/mock|getOrbitHybridRouteData/,
+  );
 
   for (const routeFile of routeFiles) {
     const source = readFileSync(routeFile, "utf8");
