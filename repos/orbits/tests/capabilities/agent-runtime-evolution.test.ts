@@ -13,6 +13,8 @@ import {
   getOrbitAgentToolMetadata,
 } from "../../features/orbit-ai/agent-tools/registry";
 import type { OrbitAgentArtifactPayload } from "../../features/orbit-ai/artifact-contract";
+import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 function createHarness(input: {
   executeFailures?: number;
@@ -396,6 +398,84 @@ test("undo is limited to declared compensation and repeated undo is idempotent",
   assert.equal((await harness.runtime.undoAction(action.actionId)).status, "undone");
   assert.equal((await harness.runtime.undoAction(action.actionId)).status, "undone");
   assert.equal(harness.compensationCount(), 1);
+});
+
+test("an existing undo receipt fences compensation after a crash before action status", async () => {
+  const harness = createHarness({ compensation: true });
+  const action = await proposeTestAction(harness, {
+    actionId: "action:undo-receipt-recovery",
+  });
+  await harness.runtime.approveAction({
+    actionId: action.actionId,
+    actorLabel: "Orbit user",
+  });
+  await harness.runtime.processOutbox();
+  const detail = await harness.runtime.getRun(action.runId);
+  const event = detail!.outbox[0];
+  const undoIdempotencyKey = `undo:${event.idempotencyKey}`;
+  await harness.repository.saveReceipt({
+    receiptId: `receipt:${undoIdempotencyKey}`,
+    outboxId: `undo:${event.operationId}`,
+    actionId: event.actionId,
+    operationId: event.operationId,
+    runId: event.runId,
+    idempotencyKey: undoIdempotencyKey,
+    executorKey: event.executorKey,
+    status: "undone",
+    resultSummary:
+      "The previous worker completed compensation before it crashed.",
+    createdAt: "2026-07-25T00:00:00.000Z",
+    updatedAt: "2026-07-25T00:00:00.000Z",
+  });
+
+  assert.equal(
+    (await harness.runtime.undoAction(action.actionId)).status,
+    "undone",
+  );
+  assert.equal(harness.compensationCount(), 0);
+});
+
+test("storage repository returns completed compensation but ignores failed attempts", async () => {
+  const repository = createStorageAgentRuntimeRepository({
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "receipt-terminal-success",
+  });
+  const baseReceipt = {
+    outboxId: "outbox:receipt-terminal-success",
+    actionId: "action:receipt-terminal-success",
+    operationId: "operation:receipt-terminal-success",
+    runId: "run:receipt-terminal-success",
+    executorKey: "tests.write",
+    createdAt: "2026-07-25T00:00:00.000Z",
+    updatedAt: "2026-07-25T00:00:00.000Z",
+  };
+  await repository.saveReceipt({
+    ...baseReceipt,
+    receiptId: "receipt:failed-attempt",
+    idempotencyKey: "failed-attempt",
+    status: "failed",
+    resultSummary: "Transient failure.",
+  });
+  await repository.saveReceipt({
+    ...baseReceipt,
+    receiptId: "receipt:undo-success",
+    idempotencyKey: "undo:completed-write",
+    status: "undone",
+    resultSummary: "Compensation completed.",
+  });
+
+  assert.equal(
+    await repository.getReceiptByIdempotencyKey("failed-attempt"),
+    null,
+  );
+  assert.equal(
+    (
+      await repository.getReceiptByIdempotencyKey(
+        "undo:completed-write",
+      )
+    )?.status,
+    "undone",
+  );
 });
 
 test("undo compensates only operations selected and completed by this action", async () => {

@@ -421,7 +421,8 @@ export function createStorageAgentRuntimeRepository({
         receipts.find(
           (receipt) =>
             receipt.idempotencyKey === idempotencyKey &&
-            receipt.status === "completed",
+            (receipt.status === "completed" ||
+              receipt.status === "undone"),
         ) ?? null
       );
     },

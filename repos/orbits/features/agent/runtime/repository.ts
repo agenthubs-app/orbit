@@ -35,6 +35,11 @@ export interface AgentRuntimeRepository {
     workerId: string;
     actionId?: string;
   }) => Promise<readonly AgentOutboxEvent[]>;
+  /**
+   * Returns a successful terminal receipt. Failed attempts are deliberately
+   * ignored so executor retries remain possible; completed writes and
+   * completed compensations both fence duplicate side effects.
+   */
   getReceiptByIdempotencyKey: (
     idempotencyKey: string,
   ) => Promise<AgentExecutionReceipt | null>;
@@ -151,7 +156,8 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
       const receipt = [...receipts.values()].find(
         (candidate) =>
           candidate.idempotencyKey === idempotencyKey &&
-          candidate.status === "completed",
+          (candidate.status === "completed" ||
+            candidate.status === "undone"),
       );
 
       return receipt ? clone(receipt) : null;
