@@ -3326,6 +3326,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for all 43 rendered and data-enabled settings interactions plus truthful empty/unconfigured boundaries; feedback deletion and integration connect, check, and disconnect remain explicitly unverified until real actor-owned records and configured providers exist",
   },
+  {
+    id: "web-public-registration-english-identity-2026-07-29",
+    target:
+      "Authenticated Web canonical Registration English presentation → reviewed public event identity and question context",
+    testData:
+      "/app/events/event_signup_01/register?language=en for the reviewed future public event; public catalogue DTO carrying Chinese-only title/location presentation fields; exact production build",
+    expected:
+      "The registration heading, venue, and generated question context must use the same reviewed English event identity as the public detail page. A Chinese-only catalogue projection must not leak Chinese identity fields into an explicitly English interview.",
+    actual:
+      "Before repair, the authenticated production page mixed English controls and questions with 关西跨境商务对接会 and 大阪, including an English sentence beginning At 关西跨境商务对接会. After repair, exact server rendering produced Kansai Cross-Border Business Connect in both heading and question context plus Osaka as venue, with neither Chinese identity string present.",
+    evidence:
+      "Authenticated pre-repair production-browser DOM; source trace from the Chinese-only public EventDTO projection into slash-segment localization; existing reviewed EVENT_CONTENT title and server localization boundary; focused registration page test 9/9 and broader registration chain 29/29; exact production build; GitNexus pre-edit impact LOW and staged detection HIGH across six registration presentation flows; commit 41044f6a",
+    conclusion:
+      "pass for source-backed English identity consistency in exact production server rendering and regression tests; post-repair authenticated browser DOM, Japanese registration, other public events, generated model-provider output, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4122,6 +4137,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact for AppRegisterPage, loadAppRegisterRouteViewModel, normalizeScenario, and baseRouteState; staged detection was LOW with zero execution flows. Focused legacy and canonical registration tests passed 13/13, and the exact production build passed. Browser runtime changed bare/demo URLs into non-looping empty boundaries and reduced the adversarial reviewed-code redirect to /app/events/event_signup_01/register?language=en before rendering the real interview.",
     status:
       "fixed and runtime-verified for the exercised no-code, mock-fixture, and reviewed-code compatibility paths, canonical identity, language-only forwarding, query isolation, and no-write adapter behavior; guest login return, other reviewed codes, duplicate/array/encoded inputs, cache/proxy behavior, English event-title localization, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P2-058",
+    severity: "P2",
+    rootCause:
+      "The canonical registration page localized every EventRecord through slash-delimited title and venue segments. Public catalogue records had already been projected into EventDTO with one Chinese display value, so an English registration URL had no alternate segment to select even though the app presentation layer held reviewed English content for the same stable event ID.",
+    decision:
+      "At the app presentation boundary, prefer the existing reviewed event title by stable ID, retain slash-segment handling as the fallback for live records, and pass the resulting event identity through the existing server localizer so Chinese-only location values use the same translation path as public detail. Feed that one localized EventRecord to both the visible workspace and question generator.",
+    files:
+      "repos/orbits/app/(app)/app/events/[id]/register/page.tsx; repos/orbits/tests/pages/app-event-registration-guide.test.tsx",
+    regression:
+      "GitNexus reported LOW upstream impact for AppEventRegistrationGuidePage, while staged detection reported HIGH across six registration presentation flows; the warning was surfaced before commit. Focused registration page tests passed 9/9, the broader registration chain passed 29/29, and the exact production build passed. Server-rendered English output now contains Kansai Cross-Border Business Connect and Osaka in both workspace and question context with no Chinese event identity.",
+    status:
+      "fixed and source/render-verified for event_signup_01 English registration identity; post-repair authenticated browser DOM, Japanese registration, other events, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
