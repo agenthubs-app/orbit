@@ -85,7 +85,7 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
   assert.match(agentSource, /message\.role === "user" \?/);
   assert.match(agentSource, /<AgentMarkdown text=\{message\.text\}/);
   assert.match(agentSource, /inlinePanel && message\.items\.length > 0/);
-  assert.match(agentSource, /items:\s*\[\], kind: "people"/);
+  assert.match(agentSource, /items:\s*\[\],\s*kind:\s*"people"/);
 });
 
 test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {
