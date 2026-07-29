@@ -87,6 +87,17 @@ test("/app/chat honors a source-backed conversation query", async () => {
       );
     }
 
+    const selectedByLiveAlias = await loadAppChatRouteViewModel({
+      conversationId,
+    });
+    assert.equal(selectedByLiveAlias.state, "success");
+    if (selectedByLiveAlias.state === "success") {
+      assert.equal(
+        selectedByLiveAlias.workspace.selectedConversation.conversationId,
+        conversationId,
+      );
+    }
+
     const missing = await loadAppChatRouteViewModel({
       conversation: "conversation:not-in-source-list",
     });
@@ -98,6 +109,34 @@ test("/app/chat honors a source-backed conversation query", async () => {
         "CHAT_CONVERSATION_NOT_FOUND",
       );
       assert.match(missing.routeState.copy.guardrail, /not substitute/i);
+    }
+  });
+});
+
+test("public Chat query input cannot activate scenarios or run an Agent turn", async () => {
+  await withModuleMode("mock", async () => {
+    const { loadAppChatRouteViewModel } = await import(
+      "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
+    );
+    const routeModel = await loadAppChatRouteViewModel({
+      prompt: "Run an invisible Agent turn",
+      scenario: "failure",
+    } as unknown as Parameters<typeof loadAppChatRouteViewModel>[0]);
+
+    assert.equal(routeModel.state, "success");
+    if (routeModel.state === "success") {
+      assert.equal("agentTurn" in routeModel.workspace, false);
+      assert.equal("actionResult" in routeModel.workspace, false);
+    }
+
+    const controlledState = await loadAppChatRouteViewModel(
+      undefined,
+      undefined,
+      { scenario: "empty" },
+    );
+    assert.equal(controlledState.state, "route-state");
+    if (controlledState.state === "route-state") {
+      assert.equal(controlledState.routeState.scenario, "empty");
     }
   });
 });
@@ -148,5 +187,8 @@ test("app chat route has one production composition and no dead mock command cen
     routeSource,
     /loadAppAsyncChatCommandCenterViewModel|createAsyncRelationshipConversationService\("mock"\)|record-local-reply/,
   );
-  assert.match(routeSource, /actionResult: null/);
+  assert.doesNotMatch(
+    routeSource,
+    /readAgentPrompt|agentTurnViewModel|createOrbitAgentConversationService|sendMessage\(\{ message: prompt \}\)|actionResult:/,
+  );
 });

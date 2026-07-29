@@ -4,8 +4,6 @@ import type {
   ChatConversationStatus,
   ChatMessageThreadPayload,
   ChatMessageThreadResult,
-  ChatSendMessagePayload,
-  ChatSendMessageResult,
 } from "../../../../../features/chat/contract";
 import type {
   ChatWritingAssistPayload,
@@ -21,24 +19,22 @@ import type {
   ChatSummaryExtractionResult,
 } from "../../../../../features/chat/summary-contract";
 import {
-  selectPrimaryOrbitAgentArtifactSurface,
-  type OrbitAgentArtifactSurfaceViewModel,
-} from "../../../../../features/orbit-ai/artifact-view-model";
-import {
-  createOrbitAgentConversationService,
-  createOrbitAgentConversationServiceForActor,
-} from "../../../../../features/orbit-ai/service-factory";
-import {
   createActorScopedAppChatRouteServices,
   createAppChatRouteServices,
   type AppChatRouteServices,
 } from "./chat-service-factory";
 
 // Chat route view-model 是传统 chat 页的总装层。
-// 它同时读取 chat、writing assist、summary、privacy 和 Orbit Agent conversation service，
+// 它读取 chat、writing assist、summary 和 privacy 服务，
 // 再把多个 feature contract 合并成一个页面可渲染的 workspace。
-export type AppChatSearchParams = Record<string, string | string[] | undefined>;
+export interface AppChatSearchParams {
+  conversation?: string | string[];
+  conversationId?: string | string[];
+}
 export type AppChatRouteScenario = "empty" | "pending" | "failure";
+export interface AppChatRouteControls {
+  scenario?: AppChatRouteScenario;
+}
 
 export interface AppChatRouteRequestContext {
   actorId?: string | null;
@@ -47,7 +43,6 @@ export interface AppChatRouteRequestContext {
 type ChatRouteResult =
   | ChatConversationListResult
   | ChatMessageThreadResult
-  | ChatSendMessageResult
   | ChatWritingAssistResult
   | ChatSummaryExtractionResult
   | ChatPrivacyControlsResult;
@@ -124,11 +119,6 @@ export interface AppChatPrivacyViewModel {
   participantName: string;
 }
 
-export interface AppChatActionResultViewModel {
-  messageBody: string;
-  selectedConversationLabel: string;
-}
-
 export interface AppChatAgentArtifactActionViewModel {
   id: string;
   label: string;
@@ -141,6 +131,7 @@ export interface AppChatAgentArtifactMetadataViewModel {
 }
 
 export interface AppChatAgentArtifactItemViewModel {
+  actions: readonly AppChatAgentArtifactActionViewModel[];
   body: string | null;
   confidenceLabel: string | null;
   id: string;
@@ -148,7 +139,6 @@ export interface AppChatAgentArtifactItemViewModel {
   reason: string | null;
   subtitle: string | null;
   title: string;
-  actions: readonly AppChatAgentArtifactActionViewModel[];
 }
 
 export interface AppChatAgentArtifactSectionViewModel {
@@ -170,16 +160,7 @@ export interface AppChatAgentArtifactSurfaceViewModel {
   title: string;
 }
 
-export interface AppChatAgentTurnViewModel {
-  artifactSurface: AppChatAgentArtifactSurfaceViewModel | null;
-  assistantMessage: string;
-  prompt: string;
-  proposedToolLabels: readonly string[];
-}
-
 export interface AppChatWorkspaceViewModel {
-  actionResult: AppChatActionResultViewModel | null;
-  agentTurn: AppChatAgentTurnViewModel | null;
   conversations: readonly AppChatConversationViewModel[];
   extraction: AppChatExtractionViewModel;
   primaryAssist: AppChatAssistViewModel | null;
@@ -213,19 +194,6 @@ function readAppChatSearchParam(
   }
 
   return value ?? null;
-}
-
-// scenario 只服务状态演示/测试；正常页面不带 scenario 时走成功工作区。
-function readAppChatRouteScenario(
-  searchParams: AppChatSearchParams | undefined,
-): AppChatRouteScenario | null {
-  const scenario = readAppChatSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function statusLabel(status: ChatConversationStatus): string {
@@ -470,111 +438,8 @@ function privacyViewModel(
   };
 }
 
-function actionResultViewModel(input: {
-  conversation: AppChatConversationViewModel;
-  result: ChatSendMessagePayload | null;
-}): AppChatActionResultViewModel | null {
-  if (!input.result) {
-    return null;
-  }
-
-  return {
-    messageBody: input.result.message.body,
-    selectedConversationLabel: `${input.conversation.participantName} at ${input.conversation.organization}`,
-  };
-}
-
-// artifact surface 来自 Orbit Agent artifact view-model；这里只做 UI 字段透传和重命名。
-function agentArtifactSurfaceViewModel(
-  surface: OrbitAgentArtifactSurfaceViewModel | null,
-): AppChatAgentArtifactSurfaceViewModel | null {
-  if (!surface) {
-    return null;
-  }
-
-  return {
-    artifactId: surface.artifactId,
-    evidenceIds: surface.evidenceIds,
-    kind: surface.kind,
-    nextAction: surface.nextAction,
-    sections: surface.sections.map((section) => ({
-      body: section.body,
-      items: section.items.map((item) => ({
-        actions: item.actions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          requiresConfirmation: action.requiresConfirmation,
-        })),
-        body: item.body,
-        confidenceLabel: item.confidenceLabel,
-        id: item.id,
-        metadata: item.metadata.map((metadata) => ({
-          label: metadata.label,
-          value: metadata.value,
-        })),
-        reason: item.reason,
-        subtitle: item.subtitle,
-        title: item.title,
-      })),
-      title: section.title,
-    })),
-    sourceModules: surface.sourceModules,
-    subtitle: surface.subtitle,
-    summary: surface.summary,
-    surface: surface.surface,
-    title: surface.title,
-  };
-}
-
-// prompt 存在时才触发 Orbit Agent；不带 prompt 的普通 chat 页面不会调用 agent。
-function readAgentPrompt(
-  searchParams: AppChatSearchParams | undefined,
-): string | null {
-  const prompt = readAppChatSearchParam(searchParams, "prompt");
-
-  return prompt && prompt.trim() ? prompt.trim() : null;
-}
-
-// agentTurnViewModel 是 chat 页接入 Chat Agent API 的位置。
-// 服务具体走 mock 还是 live 由 ORBIT_AGENT_CONVERSATION_MODE/.env 决定，UI 只消费 contract。
-async function agentTurnViewModel(
-  prompt: string | null,
-  actorId: string | null,
-): Promise<AppChatAgentTurnViewModel | null> {
-  if (!prompt) {
-    return null;
-  }
-
-  const orbitAgentService = actorId
-    ? createOrbitAgentConversationServiceForActor(actorId)
-    : createOrbitAgentConversationService();
-  const result = await orbitAgentService.sendMessage({ message: prompt });
-
-  if (result.success === false) {
-    return {
-      artifactSurface: null,
-      assistantMessage: `Agent 暂时无法完成这次回复：${result.error.message}`,
-      prompt,
-      proposedToolLabels: [],
-    };
-  }
-
-  return {
-    artifactSurface: agentArtifactSurfaceViewModel(
-      selectPrimaryOrbitAgentArtifactSurface(result.data.artifacts),
-    ),
-    assistantMessage: result.data.assistantMessage,
-    prompt,
-    proposedToolLabels: result.data.proposedToolIntents.map(
-      (intent) => intent.label,
-    ),
-  };
-}
-
 // workspaceViewModel 把多个成功 payload 合成一个页面工作区。
 function workspaceViewModel(input: {
-  actionResult: ChatSendMessagePayload | null;
-  agentTurn: AppChatAgentTurnViewModel | null;
   assist: ChatWritingAssistPayload;
   conversations: ChatConversationListPayload;
   extraction: ChatSummaryExtractionPayload;
@@ -588,11 +453,6 @@ function workspaceViewModel(input: {
     : null;
 
   return {
-    actionResult: actionResultViewModel({
-      conversation: selectedConversation,
-      result: input.actionResult,
-    }),
-    agentTurn: input.agentTurn,
     conversations: input.conversations.conversations.map(conversationViewModel),
     extraction: extractionViewModel(input.extraction),
     primaryAssist,
@@ -661,12 +521,13 @@ export async function loadAppChatRouteStateViewModel(
   };
 }
 
-// 主加载函数：先处理 scenario，再读 conversation/thread/assist/summary/privacy，最后按需跑 agent。
+// 主加载函数：先处理显式内部 scenario，再读取 conversation/thread/assist/summary/privacy。
 export async function loadAppChatRouteViewModel(
   searchParams?: AppChatSearchParams,
   context: AppChatRouteRequestContext = {},
+  controls: AppChatRouteControls = {},
 ): Promise<AppChatRouteViewModel> {
-  const requestedScenario = readAppChatRouteScenario(searchParams);
+  const requestedScenario = controls.scenario;
   const actorId = context.actorId?.trim() || null;
   const services = actorId
     ? createActorScopedAppChatRouteServices(actorId)
@@ -693,9 +554,9 @@ export async function loadAppChatRouteViewModel(
     };
   }
 
-  const requestedConversationId = readAppChatSearchParam(
-    searchParams,
-    "conversation",
+  const requestedConversationId = (
+    readAppChatSearchParam(searchParams, "conversation") ??
+    readAppChatSearchParam(searchParams, "conversationId")
   )?.trim();
   const conversation = requestedConversationId
     ? conversationsResult.data.conversations.find(
@@ -715,7 +576,7 @@ export async function loadAppChatRouteViewModel(
     }
 
     return {
-      routeState: await loadAppChatRouteStateViewModel("empty"),
+      routeState: await loadAppChatRouteStateViewModel("empty", services),
       state: "route-state",
     };
   }
@@ -786,16 +647,9 @@ export async function loadAppChatRouteViewModel(
     };
   }
 
-  const agentTurn = await agentTurnViewModel(
-    readAgentPrompt(searchParams),
-    actorId,
-  );
-
   return {
     state: "success",
     workspace: workspaceViewModel({
-      actionResult: null,
-      agentTurn,
       assist: assistResult.data,
       conversations: conversationsResult.data,
       extraction: extractionResult.data,

@@ -17,7 +17,10 @@ import {
 import { chatRouteToOrbitAgentViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
 import { OrbitRealAgent } from "./orbit-real-agent";
 
-export type AppAgentSearchParams = AppChatSearchParams;
+export type AppAgentSearchParams = AppChatSearchParams & {
+  lang?: string | string[];
+  q?: string | string[];
+};
 
 async function getAgentPageLanguage(): Promise<OrbitLanguage> {
   try {

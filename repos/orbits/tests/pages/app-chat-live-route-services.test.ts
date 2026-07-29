@@ -167,7 +167,10 @@ test("/app/chat page authenticates before loading the actor-scoped route adapter
   );
   assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
   assert.match(routeSource, /createActorScopedAppChatRouteServices\(actorId\)/);
-  assert.match(routeSource, /createOrbitAgentConversationServiceForActor\(actorId\)/);
+  assert.doesNotMatch(
+    routeSource,
+    /createOrbitAgentConversationServiceForActor|readAgentPrompt|agentTurnViewModel/,
+  );
   for (const factoryName of [
     "createActorScopedChatConversationMessageService",
     "createActorScopedChatPrivacyControlsService",
