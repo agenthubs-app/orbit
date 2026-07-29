@@ -22,19 +22,23 @@ function createHarness(input: {
   let executionCount = 0;
   let compensationCount = 0;
   let idCount = 0;
+  const executedRecordIds: string[] = [];
+  const compensatedRecordIds: string[] = [];
   const executor: AgentActionExecutor = {
     key: "tests.write",
     riskLevel: "write",
-    async execute() {
+    async execute(payload) {
       executionCount += 1;
+      executedRecordIds.push(String(payload.recordId ?? ""));
       if (executionCount <= (input.executeFailures ?? 0)) {
         throw new Error(`planned failure ${executionCount}`);
       }
       return { resultRef: "test:written", summary: "written once" };
     },
     compensate: input.compensation
-      ? async () => {
+      ? async (payload) => {
           compensationCount += 1;
+          compensatedRecordIds.push(String(payload.recordId ?? ""));
           return { summary: "removed once" };
         }
       : undefined,
@@ -52,6 +56,8 @@ function createHarness(input: {
     repository,
     executionCount: () => executionCount,
     compensationCount: () => compensationCount,
+    executedRecordIds: () => [...executedRecordIds],
+    compensatedRecordIds: () => [...compensatedRecordIds],
     setClock: (next: string) => {
       clock = next;
     },
@@ -390,6 +396,36 @@ test("undo is limited to declared compensation and repeated undo is idempotent",
   assert.equal((await harness.runtime.undoAction(action.actionId)).status, "undone");
   assert.equal((await harness.runtime.undoAction(action.actionId)).status, "undone");
   assert.equal(harness.compensationCount(), 1);
+});
+
+test("undo compensates only operations selected and completed by this action", async () => {
+  const harness = createHarness({ compensation: true });
+  const action = await proposeTestAction(harness, {
+    actionId: "action:selected-undo",
+    operationCount: 2,
+  });
+  const selectedOperation = action.operations[0];
+  const unselectedOperation = action.operations[1];
+  await harness.runtime.approveAction({
+    actionId: action.actionId,
+    actorLabel: "Orbit user",
+    selectedOperationIds: [selectedOperation.operationId],
+  });
+  await harness.runtime.processOutbox();
+
+  assert.deepEqual(harness.executedRecordIds(), [
+    selectedOperation.payload.recordId,
+  ]);
+  assert.equal((await harness.runtime.undoAction(action.actionId)).status, "undone");
+  assert.deepEqual(harness.compensatedRecordIds(), [
+    selectedOperation.payload.recordId,
+  ]);
+  assert.equal(
+    harness.compensatedRecordIds().includes(
+      String(unselectedOperation.payload.recordId),
+    ),
+    false,
+  );
 });
 
 test("executable tool registry validates inputs and redacts observations", async () => {

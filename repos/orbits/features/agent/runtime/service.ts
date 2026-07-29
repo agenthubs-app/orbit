@@ -930,14 +930,46 @@ export function createAgentRuntimeService({
       if (!action.compensation.supported) {
         throw new Error(`Agent action ${actionId} does not support undo.`);
       }
+      const detail = await repository.getRun(action.runId);
+      if (!detail) {
+        throw new Error(`Agent run ${action.runId} was not found.`);
+      }
+      const completedOperationIds = new Set(
+        detail.receipts
+          .filter(
+            (receipt) =>
+              receipt.actionId === actionId &&
+              receipt.status === "completed",
+          )
+          .map((receipt) => receipt.operationId),
+      );
+      const executedOperations = action.operations.filter((operation) =>
+        completedOperationIds.has(operation.operationId),
+      );
+      if (executedOperations.length === 0) {
+        throw new Error(
+          `Agent action ${actionId} has no completed operation to undo.`,
+        );
+      }
+      const unsupportedOperation = executedOperations.find(
+        (operation) => !operation.compensation.supported,
+      );
+      if (unsupportedOperation) {
+        throw new Error(
+          `Agent operation ${unsupportedOperation.operationId} does not support undo.`,
+        );
+      }
       const timestamp = now();
-      for (const operation of action.operations) {
-        if (!operation.compensation.supported) continue;
+      for (const operation of executedOperations) {
+        const undoIdempotencyKey = `undo:${operation.idempotencyKey}`;
+        const existingReceipt =
+          await repository.getReceiptByIdempotencyKey(undoIdempotencyKey);
+        if (existingReceipt?.status === "undone") continue;
         await executors.compensate(operation, {
           actionId,
           runId: action.runId,
           operationId: operation.operationId,
-          idempotencyKey: `undo:${operation.idempotencyKey}`,
+          idempotencyKey: undoIdempotencyKey,
           now: timestamp,
         });
         await repository.saveReceipt({
@@ -946,7 +978,7 @@ export function createAgentRuntimeService({
           actionId,
           operationId: operation.operationId,
           runId: action.runId,
-          idempotencyKey: `undo:${operation.idempotencyKey}`,
+          idempotencyKey: undoIdempotencyKey,
           executorKey:
             operation.compensation.executorKey ?? operation.executorKey,
           status: "undone",
