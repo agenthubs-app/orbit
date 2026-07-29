@@ -70,12 +70,19 @@ async function withMockOrganizer<T>(run: () => Promise<T>): Promise<T> {
 test("/app/o/[slug] page uses a live-capable organizer loader instead of the legacy landing view model", () => {
   const pageSource = source("app/(app)/app/o/[slug]/page.tsx");
   const organizerSource = source("app/(app)/app/o/orbit-real-organizer-public.tsx");
+  const organizerModelSource = source(
+    "app/(app)/app/orbit-organizer-route-view-model.ts",
+  );
 
   assert.match(pageSource, /loadAppOrganizerPublicRouteViewModel/);
   assert.match(pageSource, /StateView/);
   assert.match(pageSource, /OrbitRealOrganizerPublic/);
   assert.doesNotMatch(pageSource, /searchParams/);
   assert.doesNotMatch(pageSource, /getOrbitOrganizerPublicViewModel/);
+  assert.doesNotMatch(
+    organizerModelSource,
+    /getOrbitOrganizerPublicViewModel|getOrbitLandingViewModel/,
+  );
   assert.match(organizerSource, /PublicTopNav active="events"/);
   assert.match(
     organizerSource,
