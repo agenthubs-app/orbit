@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,12 @@ function source(path: string): string {
 
 test("/app/register resolves invite codes before redirecting to the canonical registration workspace", () => {
   const pageSource = source("app/(app)/app/register/page.tsx");
+  const legacyRoutePath = join(
+    projectRoot,
+    "app/(app)/app/orbit-register-route-view-model.ts",
+  );
 
+  assert.equal(existsSync(legacyRoutePath), false);
   assert.match(pageSource, /loadAppRegisterRouteViewModel/);
   assert.match(pageSource, /redirect\(/);
   assert.match(pageSource, /routeModel\.register\.event\.id/);

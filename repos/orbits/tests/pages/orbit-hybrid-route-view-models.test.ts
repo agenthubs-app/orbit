@@ -7,7 +7,6 @@ import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-rout
 import { getOrbitOrganizerPublicViewModel } from "../../app/(app)/app/orbit-organizer-route-view-model";
 import { getOrbitPartyViewModel } from "../../app/(app)/app/orbit-party-route-view-model";
 import { getOrbitProfileViewModel } from "../../app/(app)/app/orbit-profile-route-view-model";
-import { getOrbitRegisterViewModel } from "../../app/(app)/app/orbit-register-route-view-model";
 import type { MockRuntimeFixtures } from "../../shared/mock/fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
@@ -257,10 +256,6 @@ test("legacy app route view models read hybrid local remote route data", () => {
     const platform = getOrbitPlatformViewModel();
     assert.ok(platform.orgAccounts.some((account) => account.name === "Hybrid Routes Workspace"));
     assert.ok(platform.reviewQueue.some((review) => review.name === "Hybrid Routes Investor Salon"));
-
-    const register = getOrbitRegisterViewModel(hybridEvent?.code);
-    assert.equal(register.event.name, "Hybrid Routes Investor Salon");
-    assert.equal(register.profilePreview.name, "Route Tester");
 
     const organizer = getOrbitOrganizerPublicViewModel(hybridEvent?.code ?? "");
     assert.equal(organizer.name, "Hybrid Routes Workspace");
