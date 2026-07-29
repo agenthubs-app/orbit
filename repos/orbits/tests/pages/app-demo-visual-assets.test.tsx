@@ -11,7 +11,6 @@ import { OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-cont
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
-  eventDetailRouteToRelationshipContextView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
@@ -54,7 +53,6 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
-      relationshipContext={eventDetailRouteToRelationshipContextView(routeModel)}
     />,
   );
 }

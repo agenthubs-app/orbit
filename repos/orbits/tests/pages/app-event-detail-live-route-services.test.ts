@@ -6,21 +6,14 @@ import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
-  buildWantConnectActionResult,
   classifyComposedEventContextFailures,
   loadAppEventDetailRoute,
-  selectWantConnectTargetContactId,
   type AppEventDetailBoundaryModel,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
-  eventDetailRouteToRelationshipContextView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { canUseEventDetailHistoryBack } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
-import { createLiveWantConnectService } from "../../features/events/want-connect/live-service";
-import { createGeneratedWantConnectProvider } from "../../features/events/want-connect/storage/generated-want-connect-live-record-provider";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
-import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -150,7 +143,6 @@ test("app event detail route composes the recommended event with relationship co
     assert.ok(routeModel.recommendations.recommendations.length > 0);
     assert.ok(routeModel.wantConnectMatches.matches.length > 0);
     assert.ok(routeModel.sourceConsistency.reconciledSourceCount > 0);
-    assert.equal(routeModel.actionResult, null);
     assert.equal(routeModel.eventDetail.event.calendarSyncRequested, false);
     assert.equal(routeModel.eventDetail.event.calendarProviderRequested, false);
     assert.equal(routeModel.eventDetail.event.externalNetworkRequested, false);
@@ -170,9 +162,6 @@ test("app event detail route preserves success shape through presenter-owned vie
 
   if (routeModel.routeState === "success") {
     const eventView = eventDetailRouteToOrbitLandingEventView(routeModel);
-    const relationshipView =
-      eventDetailRouteToRelationshipContextView(routeModel);
-
     assert.equal(routeModel.canonicalEvent.id, "demo-event-1");
     assert.equal(eventView.id, "demo-event-1");
     assert.equal(eventView.name, routeModel.canonicalEvent.title);
@@ -185,19 +174,6 @@ test("app event detail route preserves success shape through presenter-owned vie
     assert.ok(eventView.agenda.length >= 3);
     assert.ok(eventView.stats.attendees.length > 0);
 
-    assert.equal(relationshipView.sideEffects.sideEffectsLabel, "none");
-    assert.equal(relationshipView.sideEffects.databaseWriteExecuted, false);
-    assert.equal(relationshipView.sideEffects.calendarUpdateExecuted, false);
-    assert.equal(relationshipView.sideEffects.externalMessageSent, false);
-    assert.equal(relationshipView.sideEffects.notificationDelivered, false);
-    assert.ok(relationshipView.primaryPerson.name.length > 0);
-    assert.ok(relationshipView.recommendedPeople.length > 0);
-    assert.ok(relationshipView.readinessItems.length > 0);
-    assert.ok(relationshipView.evidenceIds.length > 0);
-    assert.match(
-      relationshipView.sourceConsistencySummary,
-      /event detail record|match the event detail record/,
-    );
   }
 });
 
@@ -253,54 +229,6 @@ test("app event detail route preserves empty pending and failure boundaries", as
   }
 });
 
-test("app event detail action uses the live match target and allows live storage writes", async () => {
-  const workspaceId = "workspace:app-event-detail-action-live";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
-    now: () => "2026-07-02T00:20:00.000Z",
-    store,
-    workspaceId,
-  });
-
-  const service = createLiveWantConnectService({
-    now: () => "2026-07-02T00:25:00.000Z",
-    provider: createGeneratedWantConnectProvider({
-      now: () => "2026-07-02T00:24:00.000Z",
-      store,
-      workspaceId,
-    }),
-  });
-  const matches = await service.listMatches({ eventId: "event_01" });
-
-  assert.equal(matches.success, true);
-
-  if (matches.success) {
-    const targetContactId = selectWantConnectTargetContactId(matches.data);
-
-    assert.equal(targetContactId, "contact_078");
-    assert.equal(
-      selectWantConnectTargetContactId(matches.data, "contact:not-in-event"),
-      "contact_078",
-    );
-
-    const intent = await service.createWantToConnectIntent({
-      actorContactId: "contact:operator",
-      eventId: "event_01",
-      targetContactId,
-    });
-    const actionResult = buildWantConnectActionResult(intent);
-
-    assert.ok(actionResult);
-    assert.equal(actionResult.databaseWriteExecuted, true);
-    assert.equal(actionResult.sideEffectsLabel, "live-storage");
-    assert.match(actionResult.targetDisplayName, /曾伟/);
-    assert.equal(actionResult.externalMessageSent, false);
-    assert.equal(actionResult.notificationDelivered, false);
-    assert.equal(actionResult.peerNotificationDelivered, false);
-  }
-});
-
 test("/app/events/[id] serves public catalogue detail before private owner fallback", async () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
@@ -312,6 +240,12 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
   assert.match(pageSource, /const id = eventRouteId\(routeId\)/);
   assert.match(pageSource, /decodeURIComponent\(value\)/);
   assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
+  assert.doesNotMatch(
+    source(
+      "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
+    ),
+    /actionResult|buildWantConnectActionResult|selectWantConnectTargetContactId/,
+  );
   assert.match(
     pageSource,
     /loadRegistrationProfileGuideForCurrentTestUser\(\{\s*actorId: session\.user\.id/,

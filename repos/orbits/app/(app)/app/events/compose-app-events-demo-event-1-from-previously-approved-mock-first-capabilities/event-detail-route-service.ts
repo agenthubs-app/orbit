@@ -31,8 +31,6 @@ import type {
 import { createWantConnectService } from "../../../../../features/events/service-factory";
 import type {
   WantConnectMatchesPayload,
-  WantConnectPayload,
-  WantConnectResult,
   WantConnectService,
 } from "../../../../../features/events/want-connect/contract";
 import { createEventRecommendationService } from "../../../../../features/recommendations/service-factory";
@@ -73,20 +71,6 @@ export interface AppEventDetailRouteInput {
   scenario?: string | null;
 }
 
-export interface AppEventDetailActionResult {
-  calendarUpdateExecuted: false;
-  databaseWriteExecuted: boolean;
-  evidenceId: string;
-  externalMessageSent: false;
-  externalNetworkRequested: false;
-  matchTitle: string;
-  notificationDelivered: false;
-  peerNotificationDelivered: false;
-  realtimePresenceRequested: false;
-  sideEffectsLabel: "none" | "live-storage";
-  targetDisplayName: string;
-}
-
 export interface AppEventDetailCanonicalEvent {
   endsAt: string;
   evidenceIds: readonly string[];
@@ -108,7 +92,6 @@ export interface AppEventDetailSourceConsistency {
 }
 
 export interface AppEventDetailSuccessModel {
-  actionResult: AppEventDetailActionResult | null;
   attendeeRoster: EventAttendeeRosterPayload;
   canonicalEvent: AppEventDetailCanonicalEvent;
   composedCapabilities: typeof APP_EVENT_DETAIL_COMPOSED_CAPABILITIES;
@@ -448,83 +431,6 @@ function hasEmptySuccessPayloads(
   );
 }
 
-function targetDisplayName(
-  payload: WantConnectPayload,
-): string {
-  const targetContactId = payload.intent?.targetContactId;
-  const participant = payload.participants.find(
-    (item) => item.contactId === targetContactId,
-  );
-
-  return participant?.displayName ?? "selected attendee";
-}
-
-export function selectWantConnectTargetContactId(
-  payload: WantConnectMatchesPayload,
-  requestedTargetContactId?: string | null,
-): string | null {
-  const requested = requestedTargetContactId?.trim();
-  const availableTargetContactIds = new Set(
-    payload.matches.flatMap((match) =>
-      match.participantContactIds.filter(
-        (contactId) => contactId !== "contact:operator",
-      ),
-    ),
-  );
-
-  if (requested && availableTargetContactIds.has(requested)) {
-    return requested;
-  }
-
-  return availableTargetContactIds.values().next().value ?? null;
-}
-
-function hasOutsideSideEffects(payload: WantConnectPayload): boolean {
-  // live storage 写入是记录本地意图的允许副作用；外部消息、presence 和通知仍然必须被拦截。
-  return (
-    payload.provenance.externalNetworkRequested ||
-    Boolean(payload.intent?.realtimePresenceRequested) ||
-    Boolean(payload.intent?.peerNotificationDelivered) ||
-    Boolean(payload.intent?.externalMessageSent) ||
-    Boolean(payload.matchNotice?.notificationProviderRequested) ||
-    Boolean(payload.matchNotice?.peerNotificationDelivered) ||
-    Boolean(payload.matchNotice?.externalMessageSent)
-  );
-}
-
-export function buildWantConnectActionResult(
-  result: WantConnectResult,
-): AppEventDetailActionResult | null {
-  // 只有 create intent 成功且没有任何外部副作用时，才把本地 actionResult 展示给页面。
-  if (result.success === false || result.data.intent === null) {
-    return null;
-  }
-
-  const payload = result.data;
-  const outsideSideEffects = hasOutsideSideEffects(payload);
-
-  if (outsideSideEffects) {
-    return null;
-  }
-
-  return {
-    calendarUpdateExecuted: false,
-    databaseWriteExecuted: payload.provenance.liveDatabaseWriteExecuted,
-    evidenceId:
-      payload.intent.evidenceIds[0] ?? payload.provenance.evidenceIds[0] ?? "",
-    externalMessageSent: payload.intent.externalMessageSent,
-    externalNetworkRequested: payload.provenance.externalNetworkRequested,
-    matchTitle: payload.matchNotice?.title ?? "Intent recorded",
-    notificationDelivered: false,
-    peerNotificationDelivered: payload.intent.peerNotificationDelivered,
-    realtimePresenceRequested: payload.intent.realtimePresenceRequested,
-    sideEffectsLabel: payload.provenance.liveDatabaseWriteExecuted
-      ? "live-storage"
-      : "none",
-    targetDisplayName: targetDisplayName(payload),
-  };
-}
-
 interface RouteEventSourceDetail {
   capability: string;
   eventId: string;
@@ -807,7 +713,6 @@ export async function loadAppEventDetailRoute({
     wantConnectMatches: wantConnectMatchesResult.data,
   });
   return {
-    actionResult: null,
     attendeeRoster: attendeeRosterResult.data,
     canonicalEvent,
     composedCapabilities: APP_EVENT_DETAIL_COMPOSED_CAPABILITIES,

@@ -14,7 +14,6 @@ import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/comp
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
-  eventDetailRouteToRelationshipContextView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
@@ -138,9 +137,6 @@ test("displayed people only receive an exact curated avatar; others safely use t
     return;
   }
 
-  const relationshipContext =
-    eventDetailRouteToRelationshipContextView(eventDetail);
-
   for (const connection of rootLanding.connections) {
     assertPersonVisualSafety({
       displayName: connection.displayName,
@@ -171,16 +167,6 @@ test("displayed people only receive an exact curated avatar; others safely use t
     assertPersonVisualSafety({
       displayName: recommendation.attendee.displayName,
       recordId: recommendation.attendee.attendeeId,
-    });
-  }
-
-  assertPersonVisualSafety({
-    displayName: relationshipContext.primaryPerson.name,
-  });
-
-  for (const person of relationshipContext.recommendedPeople) {
-    assertPersonVisualSafety({
-      displayName: person.name,
     });
   }
 

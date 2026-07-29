@@ -19,7 +19,6 @@ import {
 import { StateView } from "../../../../../shared/ui/state-view";
 import {
   eventDetailRouteToOrbitLandingEventView,
-  eventDetailRouteToRelationshipContextView,
 } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import {
   loadAppEventDetailRoute,
