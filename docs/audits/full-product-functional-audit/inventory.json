@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "8625f4e5a1fa94e45c3f9cd3763128e8029fbb13",
-  "deterministicSourceTime": "2026-07-29T13:27:49+09:00",
+  "generatedFromCommit": "1893c5f2884a3889f41a3461030663e78565d12b",
+  "deterministicSourceTime": "2026-07-29T13:37:23+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42,8 +42,8 @@
     "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 82,
-    "documentedRemediations": 82
+    "documentedVerificationCases": 83,
+    "documentedRemediations": 83
   },
   "surfaces": [
     {
@@ -81526,7 +81526,6 @@
           "repos/orbits/shared/storage/postgres-live-record-store.ts"
         ],
         "mockOrFixture": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
           "repos/orbits/features/auth/service.ts",
@@ -81542,7 +81541,6 @@
           "repos/orbits/shared/services/module-mode.ts"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -83018,7 +83016,6 @@
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
           "repos/orbits/features/auth/service-factory.ts",
           "repos/orbits/features/auth/service.ts",
@@ -83080,7 +83077,6 @@
         ],
         "persistence": [
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -86487,7 +86483,6 @@
           "repos/orbits/shared/storage/postgres-live-record-store.ts"
         ],
         "mockOrFixture": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -86552,7 +86547,6 @@
           "repos/orbits/shared/ui/primitives.tsx"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/agent/contract.ts",
@@ -87850,7 +87844,6 @@
           "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
           "repos/orbits/app/(app)/app/home/page.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -87932,7 +87925,6 @@
         "persistence": [
           "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -90728,7 +90720,6 @@
           "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
           "repos/orbits/app/(app)/app/home/events/page.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -90810,7 +90801,6 @@
         "persistence": [
           "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -93895,7 +93885,6 @@
         "mockOrFixture": [
           "repos/orbits/app/(app)/app/o/[slug]/page.tsx",
           "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/mock-service.ts",
@@ -93937,7 +93926,6 @@
           "repos/orbits/shared/ui/primitives.tsx"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
@@ -95026,7 +95014,6 @@
         "mockOrFixture": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts",
           "repos/orbits/app/(app)/app/party/page.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
@@ -95097,7 +95084,6 @@
           "repos/orbits/shared/ui/primitives.tsx"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -98416,7 +98402,6 @@
         "mockOrFixture": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/party/checkin/page.tsx",
           "repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
@@ -98487,7 +98472,6 @@
           "repos/orbits/shared/ui/primitives.tsx"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -101797,7 +101781,6 @@
         "mockOrFixture": [
           "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts",
           "repos/orbits/app/(app)/app/party/graph/page.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
@@ -101868,7 +101851,6 @@
           "repos/orbits/shared/ui/primitives.tsx"
         ],
         "persistence": [
-          "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -138548,6 +138530,15 @@
       "actual": "The public-safe Landing model still bypassed readPublicEventCatalogue and called getOrbitHybridRouteData directly for events, evidence, counts, and generated time. Its cover-photo helper lived in the same server-data module and was imported by client Agent/Admin components. The public Events API independently opened the local-remote database and exposed the first account name as organizer. After repair, readPublicEventCatalogue owns events, per-event evidence summaries, participant counts, and generated time; a feature-owned readRegisteredCatalogueAttendees boundary owns registration-gated roster access; Landing, Event detail, and Party consume those contracts; the cover helper is presentation-only; and the API exposes the neutral Orbit organizer. Exact repository search finds no production caller of getOrbitHybridRouteData.",
       "evidence": "GitNexus warned HIGH before editing getOrbitLandingViewModel: eight upstream symbols and three production processes. readPublicEventCatalogue reached seven upstream symbols and one registration flow; eventCoverPhoto reached ten Agent/Admin symbols, while the registered attendee mapper and public API were separately reviewed. Focused cross-surface/API/asset tests passed 50/50, repository lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 8625f4e5. Required staged detection reported HIGH for 10 changed symbols and six existing public event catalogue/registration execution flows, all within the reviewed Events list and registration boundary.",
       "conclusion": "pass for source-boundary, privacy, persisted-registration, client-bundle, API, lint, build, and full-suite verification; the remaining orbit-hybrid-route-data pure helper module is a separate retirement/refactoring review"
+    },
+    {
+      "id": "web-hybrid-route-data-module-retirement-2026-07-29",
+      "target": "Retired hybrid route data module → data-free event view helpers and canonical feature/shared imports",
+      "testData": "All 31 constants, types, interfaces, and functions in orbit-hybrid-route-data.ts; exact incoming callers; Events list, Event detail, registered attendee projection, Party and check-in; custom hybrid public seed; approved 13-event catalogue; persisted registration lifecycle; source imports and production build graph",
+      "expected": "No dormant module may expose a global first-account/profile/contact/event graph to route code after production consumers have migrated to actor- and feature-scoped boundaries. Pure event view behavior still used by product surfaces must retain its output under a data-free presentation dependency. Canonical event codes and stable hashes must be imported from their feature/shared owners, and a regression must prevent the hybrid data module or server/mock dependencies from returning.",
+      "actual": "After P1-082, getOrbitHybridRouteData had no caller or execution flow, but the 349-line module remained because Landing, registered attendee projection, and Party imported six pure helpers from it. The same file still exported the unused first-account/profile fallback aggregate plus attendee, evidence, network, contact inference, sorting, pass-code, gradient, and time helpers. The six live functions were moved without algorithm changes to orbit-event-view-helpers.ts; Landing now imports eventCodeFor and hashString directly from their canonical owners; all three callers use the data-free helper module; and orbit-hybrid-route-data.ts was deleted. Source regression proves the retired file is absent and the replacement cannot import local-remote storage, shared mock fixtures, or getOrbitHybridRouteData.",
+      "evidence": "Fresh GitNexus indexing covered 28,331 nodes, 60,144 edges, and 300 flows. Pre-edit impact including tests was HIGH for the live presentation chain: initialFor reached 10 upstream symbols/three flows, eventStatusFor 13/three, eventThemeFor eight/three, eventIndustryFor 10/three, and eventTagsFor eight/three. OrbitHybridRouteData was MEDIUM with 34 upstream symbols but zero production processes; getOrbitHybridRouteData and nearly every obsolete aggregate/contact helper were LOW with zero callers or flows. Focused cross-surface tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 1893c5f2. Required staged detection returned No changes detected for the add/delete/import-only refactor, so the known movement/deletion blind spot is recorded instead of assigning an unsupported staged risk.",
+      "conclusion": "pass for source, dependency-boundary, public-seed privacy, persisted-registration, Party/Event behavior, lint, build, and full-suite retirement of the global hybrid route data module"
     }
   ],
   "remediations": [
@@ -139288,6 +139279,15 @@
       "files": "repos/orbits/features/events/public-catalogue.ts; repos/orbits/features/events/registered-catalogue-attendees.ts; repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts; repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts; repos/orbits/app/(app)/app/orbit-event-cover-photo.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/api/events/public/route.ts; repos/orbits/tests/api/public-events-route.test.ts; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
       "regression": "GitNexus warned HIGH before the Landing edit across eight upstream symbols and three production processes; the catalogue boundary reached seven upstream symbols and one registration flow, and the cover helper reached ten Agent/Admin symbols. Exact source search finds no production getOrbitHybridRouteData caller. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 8625f4e5. Staged detection reported HIGH for 10 changed symbols and six reviewed public event catalogue/registration flows.",
       "status": "fixed and source/persistence/privacy/client-bundle/API/lint/build/full-suite-verified; remaining pure hybrid helper retirement is tracked as a separate bounded review"
+    },
+    {
+      "id": "AUDIT-P1-083",
+      "severity": "P1",
+      "rootCause": "Once every production getOrbitHybridRouteData caller was removed, a 349-line global hybrid data module remained solely because three route files imported six pure event presentation helpers from it. That accidental co-location kept an unused first-account/profile fallback aggregate and 25 attendee, evidence, network, contact inference, sorting, code, gradient, and formatting symbols available for reintroduction.",
+      "decision": "Move only the six live, behavior-preserving event view helpers into a data-free presentation module. Import eventCodeFor directly from the Events feature and hashString from the shared utility. Delete the entire hybrid data module and all orphan symbols, then enforce both file absence and replacement-module dependency isolation in source regression.",
+      "files": "repos/orbits/app/(app)/app/orbit-event-view-helpers.ts; repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts; repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts; repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+      "regression": "Fresh GitNexus impact warned HIGH for five live presentation helpers across three Events/Party flows; OrbitHybridRouteData was MEDIUM with zero production processes, while getOrbitHybridRouteData and nearly every obsolete helper were LOW with zero callers or flows. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 1893c5f2. Source search finds no production hybrid module/getter reference. Staged detection returned No changes detected for the add/delete/import-only refactor, so no unsupported staged risk level is claimed.",
+      "status": "fixed and source/dependency-boundary/privacy/persistence/lint/build/full-suite-verified; the global hybrid route data architecture is fully retired"
     }
   ],
   "externalLimitations": []

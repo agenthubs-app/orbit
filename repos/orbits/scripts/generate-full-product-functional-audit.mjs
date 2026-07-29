@@ -3698,6 +3698,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source-boundary, privacy, persisted-registration, client-bundle, API, lint, build, and full-suite verification; the remaining orbit-hybrid-route-data pure helper module is a separate retirement/refactoring review",
   },
+  {
+    id: "web-hybrid-route-data-module-retirement-2026-07-29",
+    target:
+      "Retired hybrid route data module → data-free event view helpers and canonical feature/shared imports",
+    testData:
+      "All 31 constants, types, interfaces, and functions in orbit-hybrid-route-data.ts; exact incoming callers; Events list, Event detail, registered attendee projection, Party and check-in; custom hybrid public seed; approved 13-event catalogue; persisted registration lifecycle; source imports and production build graph",
+    expected:
+      "No dormant module may expose a global first-account/profile/contact/event graph to route code after production consumers have migrated to actor- and feature-scoped boundaries. Pure event view behavior still used by product surfaces must retain its output under a data-free presentation dependency. Canonical event codes and stable hashes must be imported from their feature/shared owners, and a regression must prevent the hybrid data module or server/mock dependencies from returning.",
+    actual:
+      "After P1-082, getOrbitHybridRouteData had no caller or execution flow, but the 349-line module remained because Landing, registered attendee projection, and Party imported six pure helpers from it. The same file still exported the unused first-account/profile fallback aggregate plus attendee, evidence, network, contact inference, sorting, pass-code, gradient, and time helpers. The six live functions were moved without algorithm changes to orbit-event-view-helpers.ts; Landing now imports eventCodeFor and hashString directly from their canonical owners; all three callers use the data-free helper module; and orbit-hybrid-route-data.ts was deleted. Source regression proves the retired file is absent and the replacement cannot import local-remote storage, shared mock fixtures, or getOrbitHybridRouteData.",
+    evidence:
+      "Fresh GitNexus indexing covered 28,331 nodes, 60,144 edges, and 300 flows. Pre-edit impact including tests was HIGH for the live presentation chain: initialFor reached 10 upstream symbols/three flows, eventStatusFor 13/three, eventThemeFor eight/three, eventIndustryFor 10/three, and eventTagsFor eight/three. OrbitHybridRouteData was MEDIUM with 34 upstream symbols but zero production processes; getOrbitHybridRouteData and nearly every obsolete aggregate/contact helper were LOW with zero callers or flows. Focused cross-surface tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 1893c5f2. Required staged detection returned No changes detected for the add/delete/import-only refactor, so the known movement/deletion blind spot is recorded instead of assigning an unsupported staged risk.",
+    conclusion:
+      "pass for source, dependency-boundary, public-seed privacy, persisted-registration, Party/Event behavior, lint, build, and full-suite retirement of the global hybrid route data module",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4844,6 +4859,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus warned HIGH before the Landing edit across eight upstream symbols and three production processes; the catalogue boundary reached seven upstream symbols and one registration flow, and the cover helper reached ten Agent/Admin symbols. Exact source search finds no production getOrbitHybridRouteData caller. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 8625f4e5. Staged detection reported HIGH for 10 changed symbols and six reviewed public event catalogue/registration flows.",
     status:
       "fixed and source/persistence/privacy/client-bundle/API/lint/build/full-suite-verified; remaining pure hybrid helper retirement is tracked as a separate bounded review",
+  },
+  {
+    id: "AUDIT-P1-083",
+    severity: "P1",
+    rootCause:
+      "Once every production getOrbitHybridRouteData caller was removed, a 349-line global hybrid data module remained solely because three route files imported six pure event presentation helpers from it. That accidental co-location kept an unused first-account/profile fallback aggregate and 25 attendee, evidence, network, contact inference, sorting, code, gradient, and formatting symbols available for reintroduction.",
+    decision:
+      "Move only the six live, behavior-preserving event view helpers into a data-free presentation module. Import eventCodeFor directly from the Events feature and hashString from the shared utility. Delete the entire hybrid data module and all orphan symbols, then enforce both file absence and replacement-module dependency isolation in source regression.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-event-view-helpers.ts; repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts; repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts; repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "Fresh GitNexus impact warned HIGH for five live presentation helpers across three Events/Party flows; OrbitHybridRouteData was MEDIUM with zero production processes, while getOrbitHybridRouteData and nearly every obsolete helper were LOW with zero callers or flows. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 1893c5f2. Source search finds no production hybrid module/getter reference. Staged detection returned No changes detected for the add/delete/import-only refactor, so no unsupported staged risk level is claimed.",
+    status:
+      "fixed and source/dependency-boundary/privacy/persistence/lint/build/full-suite-verified; the global hybrid route data architecture is fully retired",
   },
 ];
 
