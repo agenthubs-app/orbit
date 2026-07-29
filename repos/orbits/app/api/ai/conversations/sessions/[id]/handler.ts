@@ -82,15 +82,12 @@ export function createOrbitAgentChatSessionHandlers(
 
       const { id } = await context.params;
       if (!resolved.provider) {
-        return NextResponse.json(
-          success({
-            deleted: false,
-            storage: { configured: false, persisted: false },
-          }),
-          {
-            headers: runtimeBoundaryHeaders(mode),
-            status: 200,
-          },
+        return responseForError(
+          mode,
+          new AppError(
+            "SERVICE_UNAVAILABLE",
+            "Orbit Agent chat history storage is not configured.",
+          ),
         );
       }
 

@@ -43,7 +43,7 @@ function withSessionApiEnv<TValue>(
   });
 }
 
-test("Orbit Agent chat session API is safe when live storage is unconfigured", async () => {
+test("Orbit Agent chat session API fails closed for writes when live storage is unconfigured", async () => {
   await withSessionApiEnv("live", async () => {
     const module = await importProjectModule<{
       createOrbitAgentChatSessionsHandlers: (dependencies: {
@@ -82,11 +82,10 @@ test("Orbit Agent chat session API is safe when live storage is unconfigured", a
     );
     const saveEnvelope = await saveResponse.json();
 
-    assert.equal(saveResponse.status, 200);
-    assert.equal(saveEnvelope.success, true);
-    assert.equal(saveEnvelope.data.session.id, "agent-session-demo");
-    assert.equal(saveEnvelope.data.storage.configured, false);
-    assert.equal(saveEnvelope.data.storage.persisted, false);
+    assert.equal(saveResponse.status, 503);
+    assert.equal(saveEnvelope.success, false);
+    assert.equal(saveEnvelope.error.code, "SERVICE_UNAVAILABLE");
+    assert.match(saveEnvelope.error.message, /storage is not configured/i);
 
     const byIdModule = await importProjectModule<{
       createOrbitAgentChatSessionHandlers: (dependencies: {
@@ -110,10 +109,10 @@ test("Orbit Agent chat session API is safe when live storage is unconfigured", a
     );
     const deleteEnvelope = await deleteResponse.json();
 
-    assert.equal(deleteResponse.status, 200);
-    assert.equal(deleteEnvelope.success, true);
-    assert.equal(deleteEnvelope.data.deleted, false);
-    assert.equal(deleteEnvelope.data.storage.configured, false);
+    assert.equal(deleteResponse.status, 503);
+    assert.equal(deleteEnvelope.success, false);
+    assert.equal(deleteEnvelope.error.code, "SERVICE_UNAVAILABLE");
+    assert.match(deleteEnvelope.error.message, /storage is not configured/i);
   });
 });
 

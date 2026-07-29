@@ -140,15 +140,12 @@ export function createOrbitAgentChatSessionsHandlers(
 
       const provider = providerForActor(mode, actor.id);
       if (!provider) {
-        return NextResponse.json(
-          success({
-            session,
-            storage: { configured: false, persisted: false },
-          }),
-          {
-            headers: runtimeBoundaryHeaders(mode),
-            status: 200,
-          },
+        return responseForError(
+          mode,
+          new AppError(
+            "SERVICE_UNAVAILABLE",
+            "Orbit Agent chat history storage is not configured.",
+          ),
         );
       }
 
