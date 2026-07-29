@@ -329,6 +329,12 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /onKeyDown=\{resizeHistorySidebarWithKeyboard\}/);
   assert.match(source, /event\.key === "ArrowLeft"/);
   assert.match(source, /event\.key === "ArrowRight"/);
+  assert.match(source, /function AgentMobileHistoryDrawer/);
+  assert.match(source, /data-orbit-agent-history-drawer/);
+  assert.match(source, /const drawerRef = useOrbitModalA11y\(onClose\)/);
+  assert.match(source, /aria-labelledby="orbit-agent-mobile-history-title"/);
+  assert.match(source, /aria-modal="true"/);
+  assert.match(source, /role="dialog"/);
 });
 
 test("agent history uses a flat, left-aligned navigation list", () => {

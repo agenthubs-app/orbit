@@ -1220,6 +1220,109 @@ function AgentHistoryDeleteDialog({
   );
 }
 
+function AgentMobileHistoryDrawer({
+  activeQ,
+  activeSessionId,
+  history,
+  onClose,
+  onDelete,
+  onNavigate,
+  onNewChat,
+  onPick,
+  onRename,
+  onTogglePin,
+  pendingSessionId,
+}: {
+  activeQ: string;
+  activeSessionId: string | null;
+  history: OrbitAgentHistoryView[];
+  onClose: () => void;
+  onDelete: (history: OrbitAgentHistoryView) => void;
+  onNavigate: (href: string) => void;
+  onNewChat: () => void;
+  onPick: (history: OrbitAgentHistoryView) => void;
+  onRename: (history: OrbitAgentHistoryView, title: string) => void;
+  onTogglePin: (history: OrbitAgentHistoryView) => void;
+  pendingSessionId: string | null;
+}) {
+  const { t } = useOrbitLanguage();
+  const drawerRef = useOrbitModalA11y(onClose);
+
+  return (
+    <div
+      className="orbit-mobile-only"
+      data-orbit-agent-history-drawer
+      role="presentation"
+      style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}
+    >
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }}
+      />
+      <div
+        aria-labelledby="orbit-agent-mobile-history-title"
+        aria-modal="true"
+        ref={drawerRef}
+        role="dialog"
+        style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}
+        tabIndex={-1}
+      >
+        <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
+          <span id="orbit-agent-mobile-history-title" style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>
+            {t({ en: "Chat history", zh: "对话历史" })}
+          </span>
+          <div style={{ flex: 1 }} />
+          <IconButton ariaLabel={t({ en: "Close", zh: "关闭" })} name="x" onClick={onClose} size={16} />
+        </div>
+        <div className="orbit-agent-history-actions">
+          <button className="btn btn-block orbit-agent-new-chat" type="button" onClick={onNewChat}>
+            <Icon name="plus" size={16} color="var(--accent)" />
+            {t({ en: "New chat", zh: "新对话" })}
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "0 12px 4px" }}>
+          <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>{t({ en: "Go to", zh: "前往" })}</div>
+          {[
+            ["/", "home", t({ en: "Home", zh: "首页" })],
+            ["/explore", "calendar", t({ en: "Events", zh: "活动" })],
+            ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
+            ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
+          ].map(([href, icon, label]) => (
+            <button
+              className="btn btn-quiet"
+              key={href}
+              onClick={() => {
+                onClose();
+                onNavigate(href);
+              }}
+              style={{ height: "auto", justifyContent: "flex-start", padding: "9px 8px", width: "100%" }}
+              type="button"
+            >
+              <Icon name={icon} size={17} color="var(--accent)" />
+              {label}
+            </button>
+          ))}
+          <div style={{ background: "var(--border)", height: 1, margin: "7px 8px 2px" }} />
+          <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
+        </div>
+        <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
+          <AgentHistoryList
+            activeQ={activeQ}
+            activeSessionId={activeSessionId}
+            history={history}
+            onDelete={onDelete}
+            onPick={onPick}
+            onRename={onRename}
+            onTogglePin={onTogglePin}
+            pendingSessionId={pendingSessionId}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function agentSuggestLabel(label: string, language: "en" | "zh") {
   if (language === "zh") return label;
 
@@ -1912,15 +2015,6 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
   }, [messages, thinking]);
 
   useEffect(() => {
-    if (!histOpen) return undefined;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setHistOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [histOpen]);
-
-  useEffect(() => {
     if (!historySidebarResizing) {
       return undefined;
     }
@@ -2423,41 +2517,19 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       </div>
 
       {histOpen ? (
-        <div className="orbit-mobile-only" style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}>
-          <div aria-hidden="true" onClick={() => setHistOpen(false)} style={{ backdropFilter: "blur(3px)", background: "var(--scrim)", inset: 0, position: "absolute" }} />
-          <div style={{ animation: "slideInLeft .26s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", bottom: 0, boxShadow: "var(--sh-pop)", display: "flex", flexDirection: "column", left: 0, maxWidth: 320, position: "absolute", top: 0, width: "84%" }}>
-            <div style={{ alignItems: "center", borderBottom: "1px solid var(--border)", display: "flex", flexShrink: 0, height: 54, padding: "0 14px" }}>
-              <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t({ en: "Chat history", zh: "对话历史" })}</span>
-              <div style={{ flex: 1 }} />
-              <IconButton ariaLabel={t({ en: "Close", zh: "关闭" })} name="x" onClick={() => setHistOpen(false)} size={16} />
-            </div>
-            <div className="orbit-agent-history-actions">
-              <button className="btn btn-block orbit-agent-new-chat" type="button" onClick={newChat}>
-                <Icon name="plus" size={16} color="var(--accent)" />
-                {t({ en: "New chat", zh: "新对话" })}
-              </button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "0 12px 4px" }}>
-              <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>{t({ en: "Go to", zh: "前往" })}</div>
-              {[
-                ["/", "home", t({ en: "Home", zh: "首页" })],
-                ["/explore", "calendar", t({ en: "Events", zh: "活动" })],
-                ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })],
-                ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })],
-              ].map(([href, icon, label]) => (
-                <button className="btn btn-quiet" key={href} type="button" onClick={() => { setHistOpen(false); navigate(href); }} style={{ height: "auto", justifyContent: "flex-start", padding: "9px 8px", width: "100%" }}>
-                  <Icon name={icon} size={17} color="var(--accent)" />
-                  {label}
-                </button>
-              ))}
-              <div style={{ background: "var(--border)", height: 1, margin: "7px 8px 2px" }} />
-              <div className="eyebrow" style={{ padding: "2px 8px 4px" }}>{t({ en: "Chat history", zh: "对话历史" })}</div>
-            </div>
-            <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "2px 8px 18px" }}>
-              <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} />
-            </div>
-          </div>
-        </div>
+        <AgentMobileHistoryDrawer
+          activeQ={activeQ}
+          activeSessionId={activeSessionId}
+          history={storedHistory}
+          onClose={() => setHistOpen(false)}
+          onDelete={deleteHistorySession}
+          onNavigate={navigate}
+          onNewChat={newChat}
+          onPick={pickHistory}
+          onRename={renameHistorySession}
+          onTogglePin={togglePinnedHistorySession}
+          pendingSessionId={historyMutationSessionId}
+        />
       ) : null}
       {pendingDeleteHistory ? (
         <AgentHistoryDeleteDialog
