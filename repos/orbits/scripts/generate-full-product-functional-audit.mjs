@@ -3911,6 +3911,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for imported-export, local-declaration, namespace, re-export, interaction, visible-content, overlay, Admin runtime, audit, lint, build, and full-suite reachability verification",
   },
+  {
+    id: "expo-manual-contact-write-idempotency-2026-07-29",
+    target:
+      "Expo /contacts/new manual source → actor-scoped contact write → contact detail and list readback",
+    testData:
+      "Authenticated live Expo Web actor; zero initial contacts; two pre-fix legacy manual drafts; one distinct source-backed audit contact; repeated identical submission before and after confirmation; production Next server with explicit Expo CORS origin",
+    expected:
+      "Repeating the same actor/source input must converge on one stable draft. Confirmation must either persist one actor-owned contact with evidence or fail visibly while leaving the draft pending. A successful response must expose the real contact id, open its detail, survive reload, appear exactly once in Contacts, and remain single after replay.",
+    actual:
+      "The pre-fix runtime created two identical pending drafts and confirmation merely changed one draft to confirmed while Contacts remained zero. After repair, the first distinct submission increased the draft queue from two to three; two further identical submissions left it at three. Confirmation displayed 联系人已写入 and 打开联系人, opened the exact manual-contact detail, and the detail survived hard reload. Contacts then showed exactly one record. Replaying the identical confirmed input returned the same written state, left the draft queue at three, and left Contacts at one.",
+    evidence:
+      "Server focused 17/17; Expo focused 38/38; Web full 1360/1360; Expo full 527/527; Web lint/typecheck; Expo typecheck; production build 39/39; in-app browser click-through from /contacts/new to /contacts/[id] and /contacts/list; commits 31ebdeab and 0c414649.",
+    conclusion:
+      "pass for stable actor-scoped draft/contact identity, duplicate guard, explicit confirmation write, persisted detail/list readback, hard reload, replay idempotency, truthful mobile copy, and direct navigation; the two pre-fix legacy drafts are retained as audit evidence and did not create contacts",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5127,6 +5142,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported HIGH for the shared Admin shell/navigation helpers because both Admin routes consume them; the behavior-preserving split was browser-verified across all four entries. Admin-focused tests passed 19/19, lint passed, full Web tests passed 1355/1355, and build passed 39/39; commit c34f54ef. The scanner functions were LOW impact with zero indexed flows; symbol-reachability regression and the audit suite passed; commit c113dc86. Route-reachable interactions changed from 2834 to 2326 and overlay route instances from 49 to 29. Admin success routes now retain three shell controls plus two genuinely reachable failure-state controls, while each public Admin entry retains exactly its one secure sign-in link. Staged detection was LOW for both commits.",
     status:
       "fixed and export/local-dependency/re-export/admin-browser/audit/lint/build/full-suite-verified; file-level dependency signals remain intentionally broader than rendered UI scope",
+  },
+  {
+    id: "AUDIT-P1-088",
+    severity: "P1",
+    rootCause:
+      "Expo manual contact confirmation ended after persisting a confirmed draft and returned contactWriteExecuted=false; it never called the actor-scoped contact store, so the user could not find the confirmed person in Contacts. The draft id also included the submission timestamp, so identical retries created separate pending drafts. The only reusable contact writer was hidden behind a business-card-specific type name.",
+    decision:
+      "Generalize the existing actor-scoped contact record provider through a source-agnostic compatibility contract. Derive stable manual draft and contact ids from normalized actor plus source input, check the actor's existing contacts before writing, persist source evidence, fail closed while leaving the draft pending on missing storage/write/duplicate errors, and make confirmation retries recover the same contact. Expose the real contact id to Expo only when the response proves a write, refresh the list, and offer a direct Open contact action.",
+    files:
+      "repos/orbits/features/acquisition/contract.ts; repos/orbits/features/acquisition/live-manual-service.ts; repos/orbits/features/acquisition/manual-contract.ts; repos/orbits/features/acquisition/manual-fixtures.ts; repos/orbits/features/acquisition/mock-manual-service.ts; repos/orbits/features/acquisition/service-factory.ts; repos/orbits/features/contacts/contact-write-contract.ts; repos/orbits/features/contacts/storage/contact-write-live-record-provider.ts; repos/orbits/tests/capabilities/manual-contact-creation-live-store.test.ts; repos/orbits/tests/capabilities/manual-contact-creation-mock.test.ts; repos/orbit-app/src/view-models/contact-acquisition.ts; repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx; repos/orbit-app/tests/contact-acquisition-view-model.test.ts; repos/orbit-app/tests/contact-acquisition-screen.test.ts",
+    regression:
+      "Server-focused tests passed 17/17, repository lint/typecheck passed, full Web tests passed 1360/1360, and production build completed 39/39; commit 31ebdeab. Expo-focused tests passed 38/38, Expo typecheck passed, and the full Expo suite passed 527/527; commit 0c414649. GitNexus staged detection was LOW for the 10-file server change (33 symbols, zero flows) and MEDIUM for the four-file Expo change (10 symbols, five ContactAcquisitionScreen flows). In the authenticated Expo Web runtime, the first new submission changed the persisted draft queue from two legacy records to three; two identical resubmissions and a later confirmed replay kept it at three. Confirmation displayed 联系人已写入 and 打开联系人, opened the exact contact:manual:* detail, survived a hard reload, and changed the Contacts list from zero to exactly one; replay kept the list at one.",
+    status:
+      "fixed and actor-isolated/stable-id/duplicate-guard/fail-closed/write/readback/reload/replay/browser/lint/build/full-Web/full-Expo-verified; two pre-fix legacy audit drafts remain as evidence and are not counted as contacts",
   },
 ];
 

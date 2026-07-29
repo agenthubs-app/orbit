@@ -27,7 +27,7 @@
 | `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 14 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 34 | 2 | runtime-partially-verified-expo-empty-contact-search-boundary |
-| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 54 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
+| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 55 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
 | `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 7 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
 | `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 20 | runtime-partially-verified-expo-live-event-chain |

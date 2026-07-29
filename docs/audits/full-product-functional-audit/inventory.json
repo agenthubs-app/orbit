@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "a1b62edb6a966dd8a9ab577db0ca49acda05b489",
-  "deterministicSourceTime": "2026-07-29T14:44:34+09:00",
+  "generatedFromCommit": "0c414649b0b2af5288b94a8a1ed39a6d06883055",
+  "deterministicSourceTime": "2026-07-29T15:21:55+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -36,14 +36,14 @@
     "dynamicRoutes": 16,
     "overlayImplementations": 7,
     "overlayRouteInstances": 29,
-    "interactionRouteInstances": 2326,
+    "interactionRouteInstances": 2327,
     "interactionsRuntimeVerified": 178,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 87,
-    "documentedRemediations": 87
+    "documentedVerificationCases": 88,
+    "documentedRemediations": 88
   },
   "surfaces": [
     {
@@ -17594,967 +17594,973 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 746,
+          "line": 750,
           "tag": "AppScreen",
           "text": "添加人脉"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 761,
+          "line": 765,
           "tag": "DataCard",
           "text": "选择来源"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 784,
+          "line": 788,
           "tag": "Text",
           "text": "{item.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 797,
+          "line": 801,
           "tag": "DataCard",
           "text": "formTitle(mode)"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 821,
+          "line": 825,
           "tag": "Text",
           "text": "{error}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 833,
+          "line": 837,
           "tag": "Text",
           "text": "提交中 / 生成待确认候选"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 918,
+          "line": 922,
           "tag": "Text",
           "text": "{draftQueueState.error.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 922,
+          "line": 926,
           "tag": "Text",
           "text": "{mergeReviewState.error.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 926,
+          "line": 930,
           "tag": "Text",
           "text": "{externalCandidatesState.error.message}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 965,
+          "line": 969,
           "tag": "Input",
           "text": "姓名"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 965,
+          "line": 969,
           "tag": "Input",
           "text": "例如：王小雨"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 971,
+          "line": 975,
           "tag": "Input",
           "text": "公司"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 971,
+          "line": 975,
           "tag": "Input",
           "text": "例如：Orbit"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 977,
+          "line": 981,
           "tag": "Input",
           "text": "职位"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 977,
+          "line": 981,
           "tag": "Input",
           "text": "例如：市场负责人"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 983,
+          "line": 987,
           "tag": "Input",
           "text": "关系备注"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 983,
+          "line": 987,
           "tag": "Input",
           "text": "在哪里认识、对方想找什么、你能提供什么。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 990,
+          "line": 994,
           "tag": "Input",
           "text": "下一步"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 990,
+          "line": 994,
           "tag": "Input",
           "text": "例如：下周约 30 分钟交流"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 996,
+          "line": 1000,
           "tag": "Input",
           "text": "标签"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 996,
+          "line": 1000,
           "tag": "Input",
           "text": "AI, 东京, 制造业"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1055,
+          "line": 1059,
           "tag": "Text",
           "text": "关闭扫描"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1070,
+          "line": 1074,
           "tag": "Text",
           "text": "等待相机权限 / 扫 QR"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1075,
+          "line": 1079,
           "tag": "Input",
           "text": "QR 内容"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1075,
+          "line": 1079,
           "tag": "Input",
           "text": "粘贴扫码得到的文本或链接"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1082,
+          "line": 1086,
           "tag": "Input",
           "text": "来源备注"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1082,
+          "line": 1086,
           "tag": "Input",
           "text": "例如：东京 AI 活动现场"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1109,
+          "line": 1113,
           "tag": "Image",
           "text": "已选择的名片图片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1118,
+          "line": 1122,
           "tag": "Text",
           "text": "拍名片或选图片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1133,
+          "line": 1137,
           "tag": "Text",
           "text": "处理中 / 拍名片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1148,
+          "line": 1152,
           "tag": "Text",
           "text": "处理中 / 选图片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1154,
+          "line": 1158,
           "tag": "Text",
           "text": "{[form.imageName, sizeLabel(form.imageSizeBytes)] .filter(Boolean) .join(\" · \")}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1161,
+          "line": 1165,
           "tag": "Text",
           "text": "图片会先生成待确认候选；你确认前不会写入联系人。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1164,
+          "line": 1168,
           "tag": "Input",
           "text": "名片文字"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1164,
+          "line": 1168,
           "tag": "Input",
           "text": "\"图片不清楚时，可粘贴：姓名\\n公司\\n职位\\n邮箱或电话\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1171,
+          "line": 1175,
           "tag": "Input",
           "text": "备注名"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1171,
+          "line": 1175,
           "tag": "Input",
           "text": "例如：关西交流会名片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1208,
+          "line": 1212,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1209,
+          "line": 1213,
           "tag": "TextInput",
           "text": "placeholder"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1234,
+          "line": 1238,
           "tag": "DataCard",
           "text": "导入活动名单"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1235,
+          "line": 1239,
           "tag": "Text",
           "text": "把这场活动的参会者先放入待确认候选，逐条复核后再决定是否写入联系人。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1249,
+          "line": 1253,
           "tag": "Text",
           "text": "导入中 / 导入为待确认候选"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1255,
+          "line": 1259,
           "tag": "Text",
           "text": "{view.summary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1260,
+          "line": 1264,
           "tag": "Text",
           "text": "{draft.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1264,
+          "line": 1268,
           "tag": "Text",
           "text": "{draft.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1269,
-          "tag": "Text",
-          "text": "{draft.statusLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1271,
-          "tag": "Text",
-          "text": "{draft.writeState}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1272,
-          "tag": "Text",
-          "text": "{draft.relationship}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
           "line": 1273,
           "tag": "Text",
-          "text": "{draft.nextAction}"
+          "text": "{draft.statusLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1277,
-          "tag": "Text",
-          "text": "{evidence}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1285,
-          "tag": "Text",
-          "text": "{view.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1286,
-          "tag": "Text",
-          "text": "这里仍是待确认候选，不会跳过复核直接写入联系人。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1325,
-          "tag": "DataCard",
-          "text": "result.title"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1329,
-          "tag": "Text",
-          "text": "{result.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1331,
-          "tag": "Text",
-          "text": "{result.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1333,
-          "tag": "Text",
-          "text": "{result.confirmationText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1334,
-          "tag": "Text",
-          "text": "{result.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1348,
-          "tag": "Text",
-          "text": "{excerpt}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1372,
-          "tag": "Text",
-          "text": "写入中 / {result.contactWriteLabel ?? \"写入联系人\"}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1389,
-          "tag": "Text",
-          "text": "确认中 / {result.confirmLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1394,
-          "tag": "Text",
-          "text": "{result.confirmLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1408,
-          "tag": "Text",
-          "text": "回到人脉"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1424,
-          "tag": "Text",
-          "text": "{view.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1425,
-          "tag": "Text",
-          "text": "{view.statusLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1427,
-          "tag": "Text",
-          "text": "{view.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1428,
-          "tag": "Text",
-          "text": "{view.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1439,
-          "tag": "Text",
-          "text": "{view.openContactLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1466,
-          "tag": "Text",
-          "text": "名片字段复核"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1467,
-          "tag": "Text",
-          "text": "保存后仍然只是候选，不会写入联系人。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1472,
-          "tag": "Text",
-          "text": "{field.label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1473,
-          "tag": "Text",
-          "text": "{field.confidenceLabel} · {field.stateLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1477,
-          "tag": "TextInput",
-          "text": "field.value || field.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1497,
-          "tag": "Text",
-          "text": "保存中 / {saveLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1526,
-          "tag": "DataCard",
-          "text": "外部导入"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1527,
-          "tag": "Text",
-          "text": "{view.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1530,
-          "tag": "SourceChip",
-          "text": "全部"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1537,
-          "tag": "SourceChip",
-          "text": "source.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1549,
-          "tag": "Text",
-          "text": "{view.emptyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1558,
-          "tag": "Text",
-          "text": "生成待确认候选，不会直接写联系人。"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1572,
-          "tag": "Text",
-          "text": "导入中 / 导入为候选"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1605,
-          "tag": "Text",
-          "text": "{label}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1608,
-          "tag": "Text",
-          "text": "{[countLabel, stateLabel].filter(Boolean).join(\" · \")}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1624,
-          "tag": "Text",
-          "text": "{candidate.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1628,
-          "tag": "Text",
-          "text": "{candidate.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1633,
-          "tag": "Text",
-          "text": "{candidate.confidenceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1636,
-          "tag": "Text",
-          "text": "{candidate.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1637,
-          "tag": "Text",
-          "text": "{candidate.duplicateText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1639,
-          "tag": "Text",
-          "text": "{candidate.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1662,
-          "tag": "DataCard",
-          "text": "view.title"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1663,
-          "tag": "Text",
-          "text": "{view.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1664,
-          "tag": "Text",
-          "text": "{view.safetyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1671,
-          "tag": "Text",
-          "text": "{draft.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1675,
-          "tag": "Text",
-          "text": "{draft.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1680,
-          "tag": "Text",
-          "text": "{draft.stateLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1683,
-          "tag": "Text",
-          "text": "{draft.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1685,
-          "tag": "Text",
-          "text": "{draft.confirmationText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1686,
-          "tag": "Text",
-          "text": "{draft.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1703,
-          "tag": "Text",
-          "text": "确认中 / {draft.confirmLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1715,
-          "tag": "Text",
-          "text": "{localDismissText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1763,
-          "tag": "DataCard",
-          "text": "朋友引荐"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1767,
-          "tag": "Text",
-          "text": "{view?.nextAction ?? \"选择一个引荐来源，先生成待确认候选。\"}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1771,
-          "tag": "SourceChip",
-          "text": "全部"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1780,
-          "tag": "SourceChip",
-          "text": "source.label"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1789,
-          "tag": "Text",
-          "text": "{view?.safetyText ?? \"只生成待确认候选，不会发消息，也不会写联系人。\"}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1793,
-          "tag": "Text",
-          "text": "{view.emptyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1813,
-          "tag": "Text",
-          "text": "{draft.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1817,
-          "tag": "Text",
-          "text": "{draft.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1822,
-          "tag": "Text",
-          "text": "{draft.stateLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1824,
-          "tag": "Text",
-          "text": "{draft.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1825,
-          "tag": "Text",
-          "text": "{draft.confirmationText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1826,
-          "tag": "Text",
-          "text": "{draft.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1843,
-          "tag": "Text",
-          "text": "确认中 / {draft.confirmLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1855,
-          "tag": "Text",
-          "text": "{localDismissText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1868,
-          "tag": "Text",
-          "text": "生成中 / 生成引荐候选"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1889,
-          "tag": "Text",
-          "text": "{recommendation.name}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1893,
-          "tag": "Text",
-          "text": "{recommendation.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1898,
-          "tag": "Text",
-          "text": "{recommendation.confidenceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1903,
-          "tag": "Text",
-          "text": "{recommendation.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1905,
-          "tag": "Text",
-          "text": "{recommendation.recommenderLine}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1906,
-          "tag": "Text",
-          "text": "{recommendation.reason}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1907,
-          "tag": "Text",
-          "text": "{recommendation.introductionPath}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1908,
-          "tag": "Text",
-          "text": "{recommendation.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1920,
-          "tag": "Text",
-          "text": "确认中 / 确认推荐"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1934,
-          "tag": "DataCard",
-          "text": "view.title"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1935,
-          "tag": "Text",
-          "text": "{view.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1936,
-          "tag": "Text",
-          "text": "确认人： {view.confirmedBy}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1940,
-          "tag": "Text",
-          "text": "{excerpt}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1946,
-          "tag": "Text",
-          "text": "{view.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1947,
-          "tag": "Text",
-          "text": "{view.safetyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1970,
-          "tag": "DataCard",
-          "text": "待确认候选"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1971,
-          "tag": "Text",
-          "text": "{queue.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1973,
-          "tag": "Text",
-          "text": "{queue.emptyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1981,
-          "tag": "Text",
-          "text": "{draft.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1985,
-          "tag": "Text",
-          "text": "{draft.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1990,
-          "tag": "Text",
-          "text": "{draft.stateLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1993,
-          "tag": "Text",
-          "text": "{draft.sourceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1995,
+          "line": 1275,
           "tag": "Text",
           "text": "{draft.writeState}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1996,
+          "line": 1276,
           "tag": "Text",
-          "text": "{draft.confirmationText}"
+          "text": "{draft.relationship}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2000,
-          "tag": "Text",
-          "text": "{excerpt}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2006,
+          "line": 1277,
           "tag": "Text",
           "text": "{draft.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2023,
+          "line": 1281,
           "tag": "Text",
-          "text": "确认中 / {draft.confirmLabel}"
+          "text": "{evidence}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2035,
-          "tag": "Text",
-          "text": "{localDismissText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2052,
-          "tag": "Text",
-          "text": "暂不处理"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2067,
-          "tag": "DataCard",
-          "text": "重复检查"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2068,
-          "tag": "Text",
-          "text": "{review.nextAction}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2070,
-          "tag": "Text",
-          "text": "{review.emptyText}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2078,
-          "tag": "Text",
-          "text": "{suggestion.title}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2081,
-          "tag": "Text",
-          "text": "{suggestion.decisionLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2085,
-          "tag": "Text",
-          "text": "{suggestion.confidenceLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2089,
-          "tag": "Text",
-          "text": "{suggestion.importedLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2090,
-          "tag": "Text",
-          "text": "{suggestion.existingLabel}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2091,
-          "tag": "Text",
-          "text": "{suggestion.reviewQuestion}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2095,
-          "tag": "Text",
-          "text": "{line}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2101,
-          "tag": "Text",
-          "text": "{suggestion.guardrail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2117,
-          "tag": "Text",
-          "text": "确认中 / 确认合并预览"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2137,
-          "tag": "DataCard",
-          "text": "view.title"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2138,
-          "tag": "Text",
-          "text": "{view.detail}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2139,
-          "tag": "Text",
-          "text": "确认人： {view.confirmedBy}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2143,
-          "tag": "Text",
-          "text": "{line}"
-        },
-        {
-          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2149,
+          "line": 1289,
           "tag": "Text",
           "text": "{view.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2150,
+          "line": 1290,
+          "tag": "Text",
+          "text": "这里仍是待确认候选，不会跳过复核直接写入联系人。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1329,
+          "tag": "DataCard",
+          "text": "result.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1333,
+          "tag": "Text",
+          "text": "{result.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1335,
+          "tag": "Text",
+          "text": "{result.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1337,
+          "tag": "Text",
+          "text": "{result.confirmationText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1338,
+          "tag": "Text",
+          "text": "{result.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1352,
+          "tag": "Text",
+          "text": "{excerpt}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1376,
+          "tag": "Text",
+          "text": "写入中 / {result.contactWriteLabel ?? \"写入联系人\"}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1393,
+          "tag": "Text",
+          "text": "确认中 / {result.confirmLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1398,
+          "tag": "Text",
+          "text": "{result.confirmLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1413,
+          "tag": "Text",
+          "text": "打开联系人"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1425,
+          "tag": "Text",
+          "text": "回到人脉"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1441,
+          "tag": "Text",
+          "text": "{view.title}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1442,
+          "tag": "Text",
+          "text": "{view.statusLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1444,
+          "tag": "Text",
+          "text": "{view.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1445,
+          "tag": "Text",
+          "text": "{view.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1456,
+          "tag": "Text",
+          "text": "{view.openContactLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1483,
+          "tag": "Text",
+          "text": "名片字段复核"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1484,
+          "tag": "Text",
+          "text": "保存后仍然只是候选，不会写入联系人。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1489,
+          "tag": "Text",
+          "text": "{field.label}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1490,
+          "tag": "Text",
+          "text": "{field.confidenceLabel} · {field.stateLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1494,
+          "tag": "TextInput",
+          "text": "field.value || field.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1514,
+          "tag": "Text",
+          "text": "保存中 / {saveLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1543,
+          "tag": "DataCard",
+          "text": "外部导入"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1544,
+          "tag": "Text",
+          "text": "{view.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1547,
+          "tag": "SourceChip",
+          "text": "全部"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1554,
+          "tag": "SourceChip",
+          "text": "source.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1566,
+          "tag": "Text",
+          "text": "{view.emptyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1575,
+          "tag": "Text",
+          "text": "生成待确认候选，不会直接写联系人。"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1589,
+          "tag": "Text",
+          "text": "导入中 / 导入为候选"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1622,
+          "tag": "Text",
+          "text": "{label}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1625,
+          "tag": "Text",
+          "text": "{[countLabel, stateLabel].filter(Boolean).join(\" · \")}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1641,
+          "tag": "Text",
+          "text": "{candidate.name}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1645,
+          "tag": "Text",
+          "text": "{candidate.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1650,
+          "tag": "Text",
+          "text": "{candidate.confidenceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1653,
+          "tag": "Text",
+          "text": "{candidate.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1654,
+          "tag": "Text",
+          "text": "{candidate.duplicateText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1656,
+          "tag": "Text",
+          "text": "{candidate.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1679,
+          "tag": "DataCard",
+          "text": "view.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1680,
+          "tag": "Text",
+          "text": "{view.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1681,
+          "tag": "Text",
+          "text": "{view.safetyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1688,
+          "tag": "Text",
+          "text": "{draft.title}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1692,
+          "tag": "Text",
+          "text": "{draft.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1697,
+          "tag": "Text",
+          "text": "{draft.stateLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1700,
+          "tag": "Text",
+          "text": "{draft.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1702,
+          "tag": "Text",
+          "text": "{draft.confirmationText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1703,
+          "tag": "Text",
+          "text": "{draft.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1720,
+          "tag": "Text",
+          "text": "确认中 / {draft.confirmLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1732,
+          "tag": "Text",
+          "text": "{localDismissText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1780,
+          "tag": "DataCard",
+          "text": "朋友引荐"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1784,
+          "tag": "Text",
+          "text": "{view?.nextAction ?? \"选择一个引荐来源，先生成待确认候选。\"}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1788,
+          "tag": "SourceChip",
+          "text": "全部"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1797,
+          "tag": "SourceChip",
+          "text": "source.label"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1806,
+          "tag": "Text",
+          "text": "{view?.safetyText ?? \"只生成待确认候选，不会发消息，也不会写联系人。\"}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1810,
+          "tag": "Text",
+          "text": "{view.emptyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1830,
+          "tag": "Text",
+          "text": "{draft.title}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1834,
+          "tag": "Text",
+          "text": "{draft.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1839,
+          "tag": "Text",
+          "text": "{draft.stateLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1841,
+          "tag": "Text",
+          "text": "{draft.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1842,
+          "tag": "Text",
+          "text": "{draft.confirmationText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1843,
+          "tag": "Text",
+          "text": "{draft.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1860,
+          "tag": "Text",
+          "text": "确认中 / {draft.confirmLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1872,
+          "tag": "Text",
+          "text": "{localDismissText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1885,
+          "tag": "Text",
+          "text": "生成中 / 生成引荐候选"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1906,
+          "tag": "Text",
+          "text": "{recommendation.name}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1910,
+          "tag": "Text",
+          "text": "{recommendation.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1915,
+          "tag": "Text",
+          "text": "{recommendation.confidenceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1920,
+          "tag": "Text",
+          "text": "{recommendation.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1922,
+          "tag": "Text",
+          "text": "{recommendation.recommenderLine}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1923,
+          "tag": "Text",
+          "text": "{recommendation.reason}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1924,
+          "tag": "Text",
+          "text": "{recommendation.introductionPath}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1925,
+          "tag": "Text",
+          "text": "{recommendation.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1937,
+          "tag": "Text",
+          "text": "确认中 / 确认推荐"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1951,
+          "tag": "DataCard",
+          "text": "view.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1952,
+          "tag": "Text",
+          "text": "{view.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1953,
+          "tag": "Text",
+          "text": "确认人： {view.confirmedBy}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1957,
+          "tag": "Text",
+          "text": "{excerpt}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1963,
+          "tag": "Text",
+          "text": "{view.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1964,
+          "tag": "Text",
+          "text": "{view.safetyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1987,
+          "tag": "DataCard",
+          "text": "待确认候选"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1988,
+          "tag": "Text",
+          "text": "{queue.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1990,
+          "tag": "Text",
+          "text": "{queue.emptyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1998,
+          "tag": "Text",
+          "text": "{draft.title}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2002,
+          "tag": "Text",
+          "text": "{draft.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2007,
+          "tag": "Text",
+          "text": "{draft.stateLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2010,
+          "tag": "Text",
+          "text": "{draft.sourceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2012,
+          "tag": "Text",
+          "text": "{draft.writeState}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2013,
+          "tag": "Text",
+          "text": "{draft.confirmationText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2017,
+          "tag": "Text",
+          "text": "{excerpt}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2023,
+          "tag": "Text",
+          "text": "{draft.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2040,
+          "tag": "Text",
+          "text": "确认中 / {draft.confirmLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2052,
+          "tag": "Text",
+          "text": "{localDismissText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2069,
+          "tag": "Text",
+          "text": "暂不处理"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2084,
+          "tag": "DataCard",
+          "text": "重复检查"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2085,
+          "tag": "Text",
+          "text": "{review.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2087,
+          "tag": "Text",
+          "text": "{review.emptyText}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2095,
+          "tag": "Text",
+          "text": "{suggestion.title}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2098,
+          "tag": "Text",
+          "text": "{suggestion.decisionLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2102,
+          "tag": "Text",
+          "text": "{suggestion.confidenceLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2106,
+          "tag": "Text",
+          "text": "{suggestion.importedLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2107,
+          "tag": "Text",
+          "text": "{suggestion.existingLabel}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2108,
+          "tag": "Text",
+          "text": "{suggestion.reviewQuestion}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2112,
+          "tag": "Text",
+          "text": "{line}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2118,
+          "tag": "Text",
+          "text": "{suggestion.guardrail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2134,
+          "tag": "Text",
+          "text": "确认中 / 确认合并预览"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2154,
+          "tag": "DataCard",
+          "text": "view.title"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2155,
+          "tag": "Text",
+          "text": "{view.detail}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2156,
+          "tag": "Text",
+          "text": "确认人： {view.confirmedBy}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2160,
+          "tag": "Text",
+          "text": "{line}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2166,
+          "tag": "Text",
+          "text": "{view.nextAction}"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 2167,
           "tag": "Text",
           "text": "{view.safetyText}"
         },
@@ -18721,7 +18727,7 @@
           "interactionId": "mobile:/contacts/new#interaction-3",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 749,
+          "line": 753,
           "controlType": "callback-control",
           "tag": "RefreshControl",
           "visibleName": null,
@@ -18752,7 +18758,7 @@
           "interactionId": "mobile:/contacts/new#interaction-4",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 767,
+          "line": 771,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{item.label}",
@@ -18787,7 +18793,7 @@
           "interactionId": "mobile:/contacts/new#interaction-5",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 802,
+          "line": 806,
           "controlType": "callback-control",
           "tag": "QrFields",
           "visibleName": null,
@@ -18822,7 +18828,7 @@
           "interactionId": "mobile:/contacts/new#interaction-6",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 822,
+          "line": 826,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "提交中 / 生成待确认候选",
@@ -18855,7 +18861,7 @@
           "interactionId": "mobile:/contacts/new#interaction-7",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 839,
+          "line": 843,
           "controlType": "callback-control",
           "tag": "EventContextDraftImportCard",
           "visibleName": null,
@@ -18886,7 +18892,7 @@
           "interactionId": "mobile:/contacts/new#interaction-8",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 847,
+          "line": 851,
           "controlType": "callback-control",
           "tag": "ContactExternalCandidatesCard",
           "visibleName": null,
@@ -18921,7 +18927,7 @@
           "interactionId": "mobile:/contacts/new#interaction-9",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 856,
+          "line": 860,
           "controlType": "callback-control",
           "tag": "ContactExternalImportResultCard",
           "visibleName": null,
@@ -18956,7 +18962,7 @@
           "interactionId": "mobile:/contacts/new#interaction-10",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 864,
+          "line": 868,
           "controlType": "callback-control",
           "tag": "ReferralRecommendationsCard",
           "visibleName": null,
@@ -18999,7 +19005,7 @@
           "interactionId": "mobile:/contacts/new#interaction-11",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 881,
+          "line": 885,
           "controlType": "callback-control",
           "tag": "AcquisitionResultCard",
           "visibleName": null,
@@ -19046,7 +19052,7 @@
           "interactionId": "mobile:/contacts/new#interaction-12",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 908,
+          "line": 912,
           "controlType": "callback-control",
           "tag": "ContactDraftQueueCard",
           "visibleName": null,
@@ -19081,7 +19087,7 @@
           "interactionId": "mobile:/contacts/new#interaction-13",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 965,
+          "line": 969,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：王小雨",
@@ -19114,7 +19120,7 @@
           "interactionId": "mobile:/contacts/new#interaction-14",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 971,
+          "line": 975,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：Orbit",
@@ -19147,7 +19153,7 @@
           "interactionId": "mobile:/contacts/new#interaction-15",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 977,
+          "line": 981,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：市场负责人",
@@ -19180,7 +19186,7 @@
           "interactionId": "mobile:/contacts/new#interaction-16",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 983,
+          "line": 987,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "在哪里认识、对方想找什么、你能提供什么。",
@@ -19213,7 +19219,7 @@
           "interactionId": "mobile:/contacts/new#interaction-17",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 990,
+          "line": 994,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：下周约 30 分钟交流",
@@ -19246,7 +19252,7 @@
           "interactionId": "mobile:/contacts/new#interaction-18",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 996,
+          "line": 1000,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "AI, 东京, 制造业",
@@ -19279,7 +19285,7 @@
           "interactionId": "mobile:/contacts/new#interaction-19",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1046,
+          "line": 1050,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "关闭扫描",
@@ -19310,7 +19316,7 @@
           "interactionId": "mobile:/contacts/new#interaction-20",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1059,
+          "line": 1063,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "等待相机权限 / 扫 QR",
@@ -19343,7 +19349,7 @@
           "interactionId": "mobile:/contacts/new#interaction-21",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1075,
+          "line": 1079,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "粘贴扫码得到的文本或链接",
@@ -19376,7 +19382,7 @@
           "interactionId": "mobile:/contacts/new#interaction-22",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1082,
+          "line": 1086,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：东京 AI 活动现场",
@@ -19409,7 +19415,7 @@
           "interactionId": "mobile:/contacts/new#interaction-23",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1122,
+          "line": 1126,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "处理中 / 拍名片",
@@ -19442,7 +19448,7 @@
           "interactionId": "mobile:/contacts/new#interaction-24",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1137,
+          "line": 1141,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "处理中 / 选图片",
@@ -19475,7 +19481,7 @@
           "interactionId": "mobile:/contacts/new#interaction-25",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1164,
+          "line": 1168,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "\"图片不清楚时，可粘贴：姓名\\n公司\\n职位\\n邮箱或电话\"",
@@ -19508,7 +19514,7 @@
           "interactionId": "mobile:/contacts/new#interaction-26",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1171,
+          "line": 1175,
           "controlType": "callback-control",
           "tag": "Input",
           "visibleName": "例如：关西交流会名片",
@@ -19541,7 +19547,7 @@
           "interactionId": "mobile:/contacts/new#interaction-27",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1209,
+          "line": 1213,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "placeholder",
@@ -19572,7 +19578,7 @@
           "interactionId": "mobile:/contacts/new#interaction-28",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1238,
+          "line": 1242,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "导入中 / 导入为待确认候选",
@@ -19603,7 +19609,7 @@
           "interactionId": "mobile:/contacts/new#interaction-29",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1336,
+          "line": 1340,
           "controlType": "callback-control",
           "tag": "BusinessCardReviewFields",
           "visibleName": null,
@@ -19638,7 +19644,7 @@
           "interactionId": "mobile:/contacts/new#interaction-30",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1355,
+          "line": 1359,
           "controlType": "callback-control",
           "tag": "ContactBusinessCardWriteResultCard",
           "visibleName": null,
@@ -19669,7 +19675,7 @@
           "interactionId": "mobile:/contacts/new#interaction-31",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1361,
+          "line": 1365,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "写入中 / {result.contactWriteLabel ?? \"写入联系人\"}",
@@ -19702,7 +19708,7 @@
           "interactionId": "mobile:/contacts/new#interaction-32",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1378,
+          "line": 1382,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / {result.confirmLabel}",
@@ -19735,7 +19741,7 @@
           "interactionId": "mobile:/contacts/new#interaction-33",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1397,
+          "line": 1401,
           "controlType": "callback-control",
           "tag": "DismissDraftButton",
           "visibleName": null,
@@ -19768,7 +19774,40 @@
           "interactionId": "mobile:/contacts/new#interaction-34",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1399,
+          "line": 1404,
+          "controlType": "native-control",
+          "tag": "Pressable",
+          "visibleName": "打开联系人",
+          "accessibleNameEvidence": "present-static",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onpress",
+              "expression": "() => onOpenContact(result.contactId!)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "onOpenContact"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "mobile:/contacts/new#interaction-35",
+          "surfaceId": "mobile:/contacts/new",
+          "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
+          "line": 1416,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "回到人脉",
@@ -19796,10 +19835,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-35",
+          "interactionId": "mobile:/contacts/new#interaction-36",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1430,
+          "line": 1447,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{view.openContactLabel}",
@@ -19829,10 +19868,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-36",
+          "interactionId": "mobile:/contacts/new#interaction-37",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1477,
+          "line": 1494,
           "controlType": "field",
           "tag": "TextInput",
           "visibleName": "field.value || field.label",
@@ -19862,10 +19901,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-37",
+          "interactionId": "mobile:/contacts/new#interaction-38",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1486,
+          "line": 1503,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "保存中 / {saveLabel}",
@@ -19893,10 +19932,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-38",
+          "interactionId": "mobile:/contacts/new#interaction-39",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1530,
+          "line": 1547,
           "controlType": "callback-control",
           "tag": "SourceChip",
           "visibleName": null,
@@ -19926,10 +19965,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-39",
+          "interactionId": "mobile:/contacts/new#interaction-40",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1537,
+          "line": 1554,
           "controlType": "callback-control",
           "tag": "SourceChip",
           "visibleName": null,
@@ -19959,10 +19998,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-40",
+          "interactionId": "mobile:/contacts/new#interaction-41",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1559,
+          "line": 1576,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "导入中 / 导入为候选",
@@ -19992,10 +20031,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-41",
+          "interactionId": "mobile:/contacts/new#interaction-42",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1594,
+          "line": 1611,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "{label} {[countLabel, stateLabel].filter(Boolean).join(\" · \")}",
@@ -20025,10 +20064,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-42",
+          "interactionId": "mobile:/contacts/new#interaction-43",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1688,
+          "line": 1705,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / {draft.confirmLabel}",
@@ -20058,10 +20097,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-43",
+          "interactionId": "mobile:/contacts/new#interaction-44",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1709,
+          "line": 1726,
           "controlType": "callback-control",
           "tag": "DismissDraftButton",
           "visibleName": null,
@@ -20091,10 +20130,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-44",
+          "interactionId": "mobile:/contacts/new#interaction-45",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1771,
+          "line": 1788,
           "controlType": "callback-control",
           "tag": "SourceChip",
           "visibleName": null,
@@ -20124,10 +20163,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-45",
+          "interactionId": "mobile:/contacts/new#interaction-46",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1780,
+          "line": 1797,
           "controlType": "callback-control",
           "tag": "SourceChip",
           "visibleName": null,
@@ -20157,10 +20196,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-46",
+          "interactionId": "mobile:/contacts/new#interaction-47",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1798,
+          "line": 1815,
           "controlType": "callback-control",
           "tag": "ReferralRecommendationItem",
           "visibleName": null,
@@ -20188,10 +20227,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-47",
+          "interactionId": "mobile:/contacts/new#interaction-48",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1828,
+          "line": 1845,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / {draft.confirmLabel}",
@@ -20221,10 +20260,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-48",
+          "interactionId": "mobile:/contacts/new#interaction-49",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1849,
+          "line": 1866,
           "controlType": "callback-control",
           "tag": "DismissDraftButton",
           "visibleName": null,
@@ -20254,10 +20293,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-49",
+          "interactionId": "mobile:/contacts/new#interaction-50",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1857,
+          "line": 1874,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "生成中 / 生成引荐候选",
@@ -20287,10 +20326,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-50",
+          "interactionId": "mobile:/contacts/new#interaction-51",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 1909,
+          "line": 1926,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / 确认推荐",
@@ -20320,10 +20359,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-51",
+          "interactionId": "mobile:/contacts/new#interaction-52",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2008,
+          "line": 2025,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / {draft.confirmLabel}",
@@ -20353,10 +20392,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-52",
+          "interactionId": "mobile:/contacts/new#interaction-53",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2029,
+          "line": 2046,
           "controlType": "callback-control",
           "tag": "DismissDraftButton",
           "visibleName": null,
@@ -20386,10 +20425,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-53",
+          "interactionId": "mobile:/contacts/new#interaction-54",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2043,
+          "line": 2060,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "暂不处理",
@@ -20417,10 +20456,10 @@
           "severity": null
         },
         {
-          "interactionId": "mobile:/contacts/new#interaction-54",
+          "interactionId": "mobile:/contacts/new#interaction-55",
           "surfaceId": "mobile:/contacts/new",
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx",
-          "line": 2102,
+          "line": 2119,
           "controlType": "native-control",
           "tag": "Pressable",
           "visibleName": "确认中 / 确认合并预览",
@@ -119220,6 +119259,15 @@
       "actual": "The previous scanner recursively collected imported files and then parsed every declaration in each file. That assigned IconButton to routes importing only Icon, PrimaryAction and SecondaryAction to routes importing only Chip, every co-located Admin presenter to all four Admin entries, and most Party/Contacts sibling-route controls and overlays to each other. The scanner now resolves default, named, namespace, and re-export bindings; traverses referenced local declarations; and scopes interactions, visible content, and overlays to those statements. The Admin surfaces were also split into login, shell, dashboard, and events owners. The regenerated denominator contains 2326 route-reachable interactions instead of 2834 and 29 overlay route instances instead of 49; real file-level data signals are unchanged.",
       "evidence": "GitNexus reported LOW impact with zero indexed flows for buildFullProductFunctionalAuditInventory, collectInteractions, collectVisibleContent, collectOverlays, and both audit arrays. The symbol-scope regression proves Admin login has only its secure sign-in link, Admin routes do not inherit IconButton or sibling primitive actions, and their reachable StateView failure controls remain. All eight audit tests passed. Admin-focused tests passed 19/19, lint passed, the complete Web suite passed 1355/1355, and production build completed 39/39. Browser DOM verified all four Admin entries; commits c34f54ef and c113dc86. Both staged detections were LOW.",
       "conclusion": "pass for imported-export, local-declaration, namespace, re-export, interaction, visible-content, overlay, Admin runtime, audit, lint, build, and full-suite reachability verification"
+    },
+    {
+      "id": "expo-manual-contact-write-idempotency-2026-07-29",
+      "target": "Expo /contacts/new manual source → actor-scoped contact write → contact detail and list readback",
+      "testData": "Authenticated live Expo Web actor; zero initial contacts; two pre-fix legacy manual drafts; one distinct source-backed audit contact; repeated identical submission before and after confirmation; production Next server with explicit Expo CORS origin",
+      "expected": "Repeating the same actor/source input must converge on one stable draft. Confirmation must either persist one actor-owned contact with evidence or fail visibly while leaving the draft pending. A successful response must expose the real contact id, open its detail, survive reload, appear exactly once in Contacts, and remain single after replay.",
+      "actual": "The pre-fix runtime created two identical pending drafts and confirmation merely changed one draft to confirmed while Contacts remained zero. After repair, the first distinct submission increased the draft queue from two to three; two further identical submissions left it at three. Confirmation displayed 联系人已写入 and 打开联系人, opened the exact manual-contact detail, and the detail survived hard reload. Contacts then showed exactly one record. Replaying the identical confirmed input returned the same written state, left the draft queue at three, and left Contacts at one.",
+      "evidence": "Server focused 17/17; Expo focused 38/38; Web full 1360/1360; Expo full 527/527; Web lint/typecheck; Expo typecheck; production build 39/39; in-app browser click-through from /contacts/new to /contacts/[id] and /contacts/list; commits 31ebdeab and 0c414649.",
+      "conclusion": "pass for stable actor-scoped draft/contact identity, duplicate guard, explicit confirmation write, persisted detail/list readback, hard reload, replay idempotency, truthful mobile copy, and direct navigation; the two pre-fix legacy drafts are retained as audit evidence and did not create contacts"
     }
   ],
   "remediations": [
@@ -120005,6 +120053,15 @@
       "files": "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-workspace.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-events.tsx; repos/orbits/app/(app)/app/admin/page.tsx; repos/orbits/app/(app)/app/admin/events/page.tsx; repos/orbits/app/(app)/app/admin/access/page.tsx; repos/orbits/app/(app)/app/login-admin/page.tsx",
       "regression": "GitNexus reported HIGH for the shared Admin shell/navigation helpers because both Admin routes consume them; the behavior-preserving split was browser-verified across all four entries. Admin-focused tests passed 19/19, lint passed, full Web tests passed 1355/1355, and build passed 39/39; commit c34f54ef. The scanner functions were LOW impact with zero indexed flows; symbol-reachability regression and the audit suite passed; commit c113dc86. Route-reachable interactions changed from 2834 to 2326 and overlay route instances from 49 to 29. Admin success routes now retain three shell controls plus two genuinely reachable failure-state controls, while each public Admin entry retains exactly its one secure sign-in link. Staged detection was LOW for both commits.",
       "status": "fixed and export/local-dependency/re-export/admin-browser/audit/lint/build/full-suite-verified; file-level dependency signals remain intentionally broader than rendered UI scope"
+    },
+    {
+      "id": "AUDIT-P1-088",
+      "severity": "P1",
+      "rootCause": "Expo manual contact confirmation ended after persisting a confirmed draft and returned contactWriteExecuted=false; it never called the actor-scoped contact store, so the user could not find the confirmed person in Contacts. The draft id also included the submission timestamp, so identical retries created separate pending drafts. The only reusable contact writer was hidden behind a business-card-specific type name.",
+      "decision": "Generalize the existing actor-scoped contact record provider through a source-agnostic compatibility contract. Derive stable manual draft and contact ids from normalized actor plus source input, check the actor's existing contacts before writing, persist source evidence, fail closed while leaving the draft pending on missing storage/write/duplicate errors, and make confirmation retries recover the same contact. Expose the real contact id to Expo only when the response proves a write, refresh the list, and offer a direct Open contact action.",
+      "files": "repos/orbits/features/acquisition/contract.ts; repos/orbits/features/acquisition/live-manual-service.ts; repos/orbits/features/acquisition/manual-contract.ts; repos/orbits/features/acquisition/manual-fixtures.ts; repos/orbits/features/acquisition/mock-manual-service.ts; repos/orbits/features/acquisition/service-factory.ts; repos/orbits/features/contacts/contact-write-contract.ts; repos/orbits/features/contacts/storage/contact-write-live-record-provider.ts; repos/orbits/tests/capabilities/manual-contact-creation-live-store.test.ts; repos/orbits/tests/capabilities/manual-contact-creation-mock.test.ts; repos/orbit-app/src/view-models/contact-acquisition.ts; repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx; repos/orbit-app/tests/contact-acquisition-view-model.test.ts; repos/orbit-app/tests/contact-acquisition-screen.test.ts",
+      "regression": "Server-focused tests passed 17/17, repository lint/typecheck passed, full Web tests passed 1360/1360, and production build completed 39/39; commit 31ebdeab. Expo-focused tests passed 38/38, Expo typecheck passed, and the full Expo suite passed 527/527; commit 0c414649. GitNexus staged detection was LOW for the 10-file server change (33 symbols, zero flows) and MEDIUM for the four-file Expo change (10 symbols, five ContactAcquisitionScreen flows). In the authenticated Expo Web runtime, the first new submission changed the persisted draft queue from two legacy records to three; two identical resubmissions and a later confirmed replay kept it at three. Confirmation displayed 联系人已写入 and 打开联系人, opened the exact contact:manual:* detail, survived a hard reload, and changed the Contacts list from zero to exactly one; replay kept the list at one.",
+      "status": "fixed and actor-isolated/stable-id/duplicate-guard/fail-closed/write/readback/reload/replay/browser/lint/build/full-Web/full-Expo-verified; two pre-fix legacy audit drafts remain as evidence and are not counted as contacts"
     }
   ],
   "externalLimitations": []
