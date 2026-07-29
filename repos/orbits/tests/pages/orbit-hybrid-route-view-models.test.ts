@@ -5,7 +5,6 @@ import test from "node:test";
 import { getOrbitAdminViewModel, getOrbitPlatformViewModel } from "../../app/(app)/app/orbit-admin-platform-route-view-model";
 import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
 import { getOrbitPartyViewModel } from "../../app/(app)/app/orbit-party-route-view-model";
-import { getOrbitProfileViewModel } from "../../app/(app)/app/orbit-profile-route-view-model";
 import type { MockRuntimeFixtures } from "../../shared/mock/fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
@@ -243,10 +242,6 @@ test("legacy app route view models read hybrid local remote route data", () => {
     assert.ok(
       party.recommendations.some((person) => person.name === "Ava Route"),
     );
-
-    const profile = getOrbitProfileViewModel();
-    assert.equal(profile.profile.fullName, "Route Tester");
-    assert.equal(profile.profile.company, "Hybrid Routes Workspace");
 
     const admin = getOrbitAdminViewModel();
     assert.ok(admin.adminEvents.some((event) => event.name === "Hybrid Routes Investor Salon"));

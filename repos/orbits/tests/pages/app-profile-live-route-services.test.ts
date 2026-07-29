@@ -111,6 +111,9 @@ test("app profile route loader returns a controlled live failure when storage is
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const profileModelSource = source(
+    "app/(app)/app/orbit-profile-route-view-model.ts",
+  );
   const routeSource = source(
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
   );
@@ -125,6 +128,10 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   assert.doesNotMatch(routeSource, /readSearchParam/);
   assert.doesNotMatch(routeSource, /complete-profile-field/);
   assert.doesNotMatch(routeSource, /AppProfileActionViewModel/);
+  assert.doesNotMatch(
+    profileModelSource,
+    /getOrbitProfileViewModel|getOrbitHybridRouteData/,
+  );
 });
 
 test("app profile route scenarios are available only through explicit internal controls", async () => {
