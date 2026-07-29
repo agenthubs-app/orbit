@@ -182,7 +182,7 @@ export async function loadAppHomeRouteViewModel(
   actor?: AppHomeActor | null,
 ): Promise<AppHomeRouteViewModel> {
   const [events, contacts, profile] = await Promise.all([
-    loadAppEventsRouteViewModel(searchParams, actor?.id),
+    loadAppEventsRouteViewModel(actor?.id),
     loadAppContactsRouteViewModel(searchParams, actor?.id),
     loadAppProfileRouteViewModel(actor),
   ]);

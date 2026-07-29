@@ -559,7 +559,7 @@ export default async function AppEventDetailPage({
   const detailSuccess = routeModel.routeState === "success";
   const eventsListModel = detailSuccess
     ? null
-    : await loadAppEventsRouteViewModel(undefined, session.user.id);
+    : await loadAppEventsRouteViewModel(session.user.id);
   const fallbackEvent =
     eventsListModel && eventsListModel.state === "success"
       ? eventsRouteToOrbitLandingViewModel(eventsListModel).events.find(

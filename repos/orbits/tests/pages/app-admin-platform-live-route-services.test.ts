@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { renderToStaticMarkup } from "react-dom/server";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -74,6 +73,10 @@ test("/app/admin and /app/platform routes use a live-capable admin-platform load
   for (const pageSource of [adminSource, adminEventsSource, platformSource]) {
     assert.match(pageSource, /loadAppAdminPlatformRouteViewModel/);
     assert.match(pageSource, /StateView/);
+    assert.match(pageSource, /await auth\(\)/);
+    assert.match(pageSource, /redirect\("\/app\/account\/login/);
+    assert.match(pageSource, /id: session\.user\.id/);
+    assert.doesNotMatch(pageSource, /searchParams/);
     assert.doesNotMatch(pageSource, /getOrbitAdminViewModel/);
     assert.doesNotMatch(pageSource, /getOrbitPlatformViewModel/);
   }
@@ -128,7 +131,11 @@ test("app admin-platform route loader returns admin and platform models in mock 
       "../../app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model"
     );
     const routeModel = await loadAppAdminPlatformRouteViewModel({
-      searchParams: { mode: "mock" },
+      actor: {
+        displayName: "Admin test actor",
+        email: "admin@example.invalid",
+        id: "actor:admin-platform-test",
+      },
     });
 
     assert.equal(routeModel.state, "success");
@@ -143,56 +150,63 @@ test("app admin-platform route loader returns admin and platform models in mock 
   });
 });
 
-test("app admin page renders a controlled live failure when storage is unconfigured", async () => {
+test("admin and platform loaders fail visibly when live storage is unconfigured", async () => {
   await withUnconfiguredLiveAdminPlatform(async () => {
-    const Page = (await import("../../app/(app)/app/admin/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
+    const { loadAppAdminPlatformRouteViewModel } = await import(
+      "../../app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model"
     );
+    for (const surface of ["admin", "platform"] as const) {
+      const routeModel = await loadAppAdminPlatformRouteViewModel({
+        actor: {
+          displayName: "Admin test actor",
+          email: "admin@example.invalid",
+          id: "actor:admin-platform-live-test",
+        },
+        surface,
+      });
 
-    assert.match(html, /Admin workspace could not load/);
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-admin-route-state/);
+      assert.equal(routeModel.state, "route-state");
+      if (routeModel.state === "route-state") {
+        assert.equal(routeModel.routeState.scenario, "failure");
+        assert.match(
+          routeModel.routeState.copy.title,
+          surface === "platform"
+            ? /Platform workspace could not load/
+            : /Admin workspace could not load/,
+        );
+      }
+    }
   });
 });
 
-test("app admin events page renders the same controlled live failure", async () => {
-  await withUnconfiguredLiveAdminPlatform(async () => {
-    const Page = (await import("../../app/(app)/app/admin/events/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
+test("admin-platform public query values cannot select Event fixtures or acceptance", async () => {
+  await withMockAdminPlatform(async () => {
+    const module = await import(
+      "../../app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model"
     );
+    const actor = {
+      displayName: "Admin test actor",
+      email: "admin@example.invalid",
+      id: "actor:admin-platform-query-test",
+    };
+    const publicInput = {
+      actor,
+      action: "accept-top-event",
+      scenario: "failure",
+    } as unknown as Parameters<
+      typeof module.loadAppAdminPlatformRouteViewModel
+    >[0];
+    const publicResult =
+      await module.loadAppAdminPlatformRouteViewModel(publicInput);
+    const controlledResult = await module.loadAppAdminPlatformRouteViewModel({
+      actor,
+      controls: { scenario: "empty" },
+    });
 
-    assert.match(html, /Admin workspace could not load/);
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-admin-events-route-state/);
-  });
-});
-
-test("app platform page renders the same controlled live failure", async () => {
-  await withUnconfiguredLiveAdminPlatform(async () => {
-    const Page = (await import("../../app/(app)/app/platform/page"))
-      .default as (props?: {
-      searchParams?: Promise<Record<string, string | undefined>>;
-    }) => Promise<React.ReactElement>;
-    const html = renderToStaticMarkup(
-      await Page({
-        searchParams: Promise.resolve({ mode: "live" }),
-      }),
-    );
-
-    assert.match(html, /Platform workspace could not load/);
-    assert.match(html, /data-state-boundary="shared-ui-state-view"/);
-    assert.match(html, /app-platform-route-state/);
+    assert.equal(publicResult.state, "success");
+    assert.equal(controlledResult.state, "route-state");
+    if (controlledResult.state === "route-state") {
+      assert.equal(controlledResult.routeState.scenario, "empty");
+    }
   });
 });

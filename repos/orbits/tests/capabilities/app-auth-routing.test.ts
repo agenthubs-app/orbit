@@ -10,6 +10,8 @@ import {
 test("personal app route trees are private", () => {
   for (const pathname of [
     "/app/agent",
+    "/app/admin",
+    "/app/admin/events",
     "/app/chat/thread-1",
     "/app/contacts",
     "/app/contacts/person-1",
@@ -18,6 +20,7 @@ test("personal app route trees are private", () => {
     "/app/home",
     "/app/home/events",
     "/app/party/checkin",
+    "/app/platform",
     "/app/profile",
     "/app/schedule",
     "/app/today",
@@ -37,7 +40,6 @@ test("public discovery, account, organizer, registration, and admin entry routes
     "/app/events/demo-event",
     "/app/login-admin",
     "/app/o/orbit",
-    "/app/platform",
     "/app/register",
   ]) {
     assert.equal(isOrbitPrivateAppPath(pathname), false, pathname);

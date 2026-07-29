@@ -4,6 +4,8 @@
  * 负责本地化 admin view model，并挂载管理员工作台组件。
  */
 import { StateView } from "../../../../shared/ui/state-view";
+import { auth } from "../../../../auth";
+import { redirect } from "next/navigation";
 import type { OrbitLanguage } from "../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
@@ -11,7 +13,6 @@ import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
-  type AppAdminPlatformSearchParams,
 } from "./compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
 import { OrbitRealAdminWorkspace } from "./orbit-real-admin";
 
@@ -59,13 +60,22 @@ function AdminRouteStateBoundary({
   );
 }
 
-export default async function AdminPage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppAdminPlatformSearchParams>;
-} = {}) {
+export default async function AdminPage() {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fadmin");
+  }
+
   const routeModel = await loadAppAdminPlatformRouteViewModel({
-    searchParams: await searchParams,
+    actor: {
+      displayName:
+        session.user.name?.trim() ||
+        session.user.email?.trim() ||
+        "Orbit admin",
+      email: session.user.email,
+      id: session.user.id,
+    },
     surface: "admin",
   });
   const language =

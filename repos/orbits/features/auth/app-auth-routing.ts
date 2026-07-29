@@ -1,4 +1,5 @@
 const ORBIT_PRIVATE_APP_PREFIXES = [
+  "/app/admin",
   "/app/agent",
   "/app/chat",
   "/app/contacts",
@@ -6,6 +7,7 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/followups",
   "/app/home",
   "/app/party",
+  "/app/platform",
   "/app/profile",
   "/app/schedule",
   "/app/settings",
@@ -13,6 +15,10 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
 ] as const;
 
 const ORBIT_AUTH_ENTRY_PREFIX = "/app/account";
+const ORBIT_PUBLIC_ADMIN_ENTRY_PATHS = new Set([
+  "/app/admin/access",
+  "/app/login-admin",
+]);
 const SAFE_ORIGIN = "https://orbit.local";
 
 function matchesRoutePrefix(pathname: string, prefix: string): boolean {
@@ -20,6 +26,10 @@ function matchesRoutePrefix(pathname: string, prefix: string): boolean {
 }
 
 export function isOrbitPrivateAppPath(pathname: string): boolean {
+  if (ORBIT_PUBLIC_ADMIN_ENTRY_PATHS.has(pathname)) {
+    return false;
+  }
+
   return ORBIT_PRIVATE_APP_PREFIXES.some((prefix) =>
     matchesRoutePrefix(pathname, prefix),
   );

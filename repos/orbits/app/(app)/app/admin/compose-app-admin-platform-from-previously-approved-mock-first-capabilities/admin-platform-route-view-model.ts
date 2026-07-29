@@ -1,6 +1,6 @@
 import type {
   AppEventsRouteStateViewModel,
-  AppEventsSearchParams,
+  AppEventsRouteControls,
   AppEventsSuccessViewModel,
 } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { loadAppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
@@ -17,12 +17,18 @@ import type {
   OrbitPlatformViewModel,
 } from "../../orbit-admin-platform-route-view-model";
 
-export type AppAdminPlatformSearchParams = AppEventsSearchParams;
 export type AppAdminPlatformRouteScenario = "empty" | "pending" | "failure";
 export type AppAdminPlatformSurface = "admin" | "platform";
 
+export interface AppAdminPlatformActor {
+  displayName: string;
+  email?: string | null;
+  id: string;
+}
+
 export interface AppAdminPlatformRouteInput {
-  searchParams?: AppAdminPlatformSearchParams;
+  actor?: AppAdminPlatformActor | null;
+  controls?: AppEventsRouteControls;
   surface?: AppAdminPlatformSurface;
 }
 
@@ -485,8 +491,8 @@ export async function loadAppAdminPlatformRouteViewModel(
 ): Promise<AppAdminPlatformRouteViewModel> {
   const surface = input.surface ?? "admin";
   const [eventsRoute, profileRoute] = await Promise.all([
-    loadAppEventsRouteViewModel(input.searchParams),
-    loadAppProfileRouteViewModel(),
+    loadAppEventsRouteViewModel(input.actor?.id, input.controls),
+    loadAppProfileRouteViewModel(input.actor),
   ]);
 
   if (eventsRoute.state === "route-state") {

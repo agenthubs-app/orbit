@@ -13,19 +13,15 @@ import type {
   EventRecommendationsResult,
 } from "../../../../../features/recommendations/contract";
 import type {
-  EventValueRecommendation,
-  EventValueRecommendationAcceptanceResult,
-  EventValueRecommendationService,
   EventValueRecommendationsPayload,
   EventValueRecommendationsResult,
 } from "../../../../../features/recommendations/event-value-contract";
 import { createAppEventsRouteServices } from "./events-service-factory";
 
-export type AppEventsSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
 export type AppEventsRouteScenario = "empty" | "pending" | "failure";
+export interface AppEventsRouteControls {
+  scenario?: AppEventsRouteScenario;
+}
 
 type RouteResult =
   | EventListResult
@@ -128,21 +124,7 @@ export interface AppEventsReadinessViewModel {
   readinessScore: number;
 }
 
-export interface AppEventsActionResultViewModel {
-  acceptedTitle: string;
-  calendarNeedsReview: boolean;
-  databaseWriteNeedsReview: boolean;
-  decisionLabel: string;
-  evidence: readonly AppEventsEvidenceViewModel[];
-  externalNetworkNeedsReview: boolean;
-  notificationNeedsReview: boolean;
-  outsideContacted: boolean;
-  state: "success" | "failure";
-  summary: string;
-}
-
 export interface AppEventsSuccessViewModel {
-  actionResult: AppEventsActionResultViewModel | null;
   attendeePanel: {
     recommendation: AppEventsAttendeeRecommendationViewModel | null;
     summary: string;
@@ -174,31 +156,6 @@ export type AppEventsRouteViewModel =
 
 function bilingualText(chinese: string, english: string): string {
   return `${chinese} / ${english}`;
-}
-
-function readSearchParam(
-  searchParams: AppEventsSearchParams | undefined,
-  key: string,
-): string | null {
-  const value = searchParams?.[key];
-
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-
-  return value ?? null;
-}
-
-function readRouteScenario(
-  searchParams: AppEventsSearchParams | undefined,
-): AppEventsRouteScenario | null {
-  const scenario = readSearchParam(searchParams, "scenario");
-
-  if (scenario === "empty" || scenario === "pending" || scenario === "failure") {
-    return scenario;
-  }
-
-  return null;
 }
 
 function firstFailure(results: readonly RouteResult[]): RouteFailure | null {
@@ -407,8 +364,8 @@ function routeRecoveryActions(
       label: bilingualText("重新加载活动", "Reload events"),
     },
     {
-      href: "/app/events?scenario=pending",
-      label: bilingualText("检查准备状态", "Check readiness status"),
+      href: "/app/settings",
+      label: bilingualText("检查活动设置", "Check event settings"),
     },
   ];
 }
@@ -466,63 +423,7 @@ function readinessViewModel(
   };
 }
 
-function actionResultViewModel(
-  result: EventValueRecommendationAcceptanceResult,
-): AppEventsActionResultViewModel {
-  if (result.success === false) {
-    return {
-      acceptedTitle: "",
-      calendarNeedsReview: false,
-      databaseWriteNeedsReview: false,
-      decisionLabel: "",
-      evidence: [],
-      externalNetworkNeedsReview: false,
-      notificationNeedsReview: false,
-      outsideContacted: false,
-      state: "failure",
-      summary: "",
-    };
-  }
-
-  const outsideContacted =
-    result.data.action.externalNetworkRequested ||
-    result.data.action.calendarProviderRequested ||
-    result.data.action.notificationDelivered ||
-    result.data.action.databaseWriteExecuted ||
-    result.data.action.productionAuditLogWriteExecuted;
-
-  return {
-    acceptedTitle: result.data.acceptedEvent.title,
-    calendarNeedsReview: result.data.action.calendarProviderRequested,
-    databaseWriteNeedsReview: result.data.action.databaseWriteExecuted,
-    decisionLabel: result.data.action.label,
-    evidence: evidenceViewModels(result.data.action.evidenceIds),
-    externalNetworkNeedsReview: result.data.action.externalNetworkRequested,
-    notificationNeedsReview: result.data.action.notificationDelivered,
-    outsideContacted,
-    state: "success",
-    summary: productCopy(result.data.summary),
-  };
-}
-
-async function actionResultFor(
-  action: string | null,
-  topRecommendation: EventValueRecommendation | undefined,
-  eventValueService: EventValueRecommendationService,
-): Promise<AppEventsActionResultViewModel | null> {
-  if (action !== "accept-top-event" || !topRecommendation) {
-    return null;
-  }
-
-  const result = await eventValueService.acceptRecommendedEvent({
-    eventId: topRecommendation.eventId,
-  });
-
-  return actionResultViewModel(result);
-}
-
 function successViewModel(input: {
-  actionResult: AppEventsActionResultViewModel | null;
   attendeePayload: EventRecommendationsPayload;
   eventPayload: EventListPayload;
   primaryEventId: string;
@@ -542,7 +443,6 @@ function successViewModel(input: {
     : "";
 
   return {
-    actionResult: input.actionResult,
     attendeePanel: {
       recommendation: topAttendee
         ? {
@@ -616,10 +516,10 @@ function successViewModel(input: {
 }
 
 export async function loadAppEventsRouteViewModel(
-  searchParams?: AppEventsSearchParams,
   actorId?: string | null,
+  controls: AppEventsRouteControls = {},
 ): Promise<AppEventsRouteViewModel> {
-  const scenario = readRouteScenario(searchParams);
+  const scenario = controls.scenario ?? null;
   const services = createAppEventsRouteServices();
   const eventResult = await services.events.listEvents({ actorId, scenario });
   const eventFailure = firstFailure([eventResult]);
@@ -756,16 +656,9 @@ export async function loadAppEventsRouteViewModel(
     };
   }
 
-  const actionResult = await actionResultFor(
-    readSearchParam(searchParams, "action"),
-    valueResult.data.recommendations[0],
-    services.eventValues,
-  );
-
   return {
     state: "success",
     workspace: successViewModel({
-      actionResult,
       attendeePayload: attendeeResult.data,
       eventPayload: eventResult.data,
       primaryEventId,

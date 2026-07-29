@@ -95,7 +95,6 @@ test("private event list mapping does not invent organizer, roster, or registrat
 test("app events route loader returns a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveEvents(async () => {
     const viewModel = await loadAppEventsRouteViewModel(
-      undefined,
       "actor:events-page-test",
     );
 
@@ -121,8 +120,8 @@ test("empty events route does not offer an action without a target event", async
   try {
     process.env.ORBIT_MODULE_MODE = "mock";
     const viewModel = await loadAppEventsRouteViewModel(
-      { scenario: "empty" },
       "actor:events-empty-test",
+      { scenario: "empty" },
     );
 
     assert.equal(viewModel.state, "route-state");
@@ -140,6 +139,19 @@ test("empty events route does not offer an action without a target event", async
       process.env.ORBIT_MODULE_MODE = previousMode;
     }
   }
+});
+
+test("events composition exposes controlled scenarios without a GET action chain", async () => {
+  const routeSource = source(
+    "app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
+  );
+
+  assert.match(routeSource, /controls: AppEventsRouteControls/);
+  assert.doesNotMatch(
+    routeSource,
+    /readSearchParam|readRouteScenario|accept-top-event|acceptRecommendedEvent|actionResult:/,
+  );
+  assert.doesNotMatch(routeSource, /\/app\/events\?scenario=/);
 });
 
 test("/app/events renders the public event catalogue without requiring authentication", async () => {

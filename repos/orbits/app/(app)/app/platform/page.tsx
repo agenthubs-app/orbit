@@ -4,10 +4,11 @@
  * 这里生成平台级 view model 并交给真实平台组件；route 本身不包含管理业务逻辑。
  */
 import { StateView } from "../../../../shared/ui/state-view";
+import { auth } from "../../../../auth";
+import { redirect } from "next/navigation";
 import {
   loadAppAdminPlatformRouteViewModel,
   type AppAdminPlatformRouteStateViewModel,
-  type AppAdminPlatformSearchParams,
 } from "../admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model";
 import type { OrbitLanguage } from "../orbit-language-core";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
@@ -57,13 +58,22 @@ function PlatformRouteStateBoundary({
   );
 }
 
-export default async function PlatformPage({
-  searchParams,
-}: {
-  searchParams?: Promise<AppAdminPlatformSearchParams>;
-} = {}) {
+export default async function PlatformPage() {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/app/account/login?next=%2Fapp%2Fplatform");
+  }
+
   const routeModel = await loadAppAdminPlatformRouteViewModel({
-    searchParams: await searchParams,
+    actor: {
+      displayName:
+        session.user.name?.trim() ||
+        session.user.email?.trim() ||
+        "Orbit admin",
+      email: session.user.email,
+      id: session.user.id,
+    },
     surface: "platform",
   });
   const language =
