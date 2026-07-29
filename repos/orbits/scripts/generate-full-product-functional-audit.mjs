@@ -3971,6 +3971,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; cancel, retry, ignore, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
+  {
+    id: "web-agent-ignore-action-today-terminal-activity-2026-07-29",
+    target:
+      "Authenticated Web /app/agent natural-language task and reminder proposals → ignore → reload → Today terminal-activity and no-write readback",
+    testData:
+      "Same authenticated live audit actor; prompt 8月12日提醒我联系 Ignore Audit Person，先创建待办并等我确认。; one create_followup_task proposal plus one create_reminder proposal; due date 2026-08-12; exact production build",
+    expected:
+      "Ignoring each proposed operation must persist a rejected terminal ledger state without executing a task or reminder write. Reloading and reopening the conversation must retain that state. Today may expose the terminal audit record, but it must describe the section as recent activity rather than completed work, localize the canonical action titles and statuses coherently, and show no resulting arrangement on the requested date.",
+    actual:
+      "The run staged two awaiting-confirmation operations. Clicking 忽略 on both changed both cards to 已忽略; a hard reload and conversation-history reopen retained both rejected states. Today initially counted the rejected audit records under 最近完成, which was semantically false even though the records correctly remained visible. The repaired presentation calls the terminal section 最近动态 / Recent activity / 最近の動き and maps the canonical task/reminder titles plus ledger statuses explicitly. On 2026-08-12 Today still rendered 这一天暂无安排 and contained no Ignore Audit Person, proving neither ignored proposal executed.",
+    evidence:
+      "Focused Today/Agent/All Actions tests passed 51/51; repository lint/typecheck passed; the complete Web suite passed 1368/1368; production build completed 39/39 static pages. In-app browser verified both ignore transitions, hard-reload persistence, the empty 2026-08-12 schedule, absent target name, coherent English Recent activity / Create follow-up task / Create reminder / Ignored, and coherent Chinese 最近动态 / 创建跟进任务 / 创建提醒 / 已忽略. Commit 39d9bf87. Pre-edit impact was LOW for DecisionEntryCard, OrbitRealToday, and AppTodayPageContent, while the shared SECTION_TITLES index result was corrupt/CRITICAL and was deliberately not edited. Staged detection reported HIGH because AppTodayPageContent participates in nine reviewed Today loading flows.",
+    conclusion:
+      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while cancel, retry, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5243,6 +5258,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Agent/Chat tests passed 30/30, lint/typecheck passed, the complete Web suite passed 1366/1366, and production build completed 39/39; commit 7379d840. Browser runtime proved the same empty actor moved from a blocking StateView to a zero-entity Agent starter. A real follow-up-task prompt moved through awaiting confirmation → deferred → reload/history reopen → completed, then appeared in Today both as the completed action and as 联系 Maya on its 2026-08-05 due date. GitNexus returned UNKNOWN for the edited TSX/adapter/loader symbols and No changes detected for the exact staged files, so the unavailable graph result is recorded rather than upgraded.",
     status:
       "fixed and empty-actor/no-fixture/no-synthetic-id/fail-closed/proposal/defer/reload/confirm/outbox/task-readback/browser/lint/build/full-suite-verified; remaining Agent action states stay in the audit queue",
+  },
+  {
+    id: "AUDIT-P1-092",
+    severity: "P1",
+    rootCause:
+      "Today grouped every terminal Agent ledger outcome under 最近完成, so rejected, canceled, failed, and undone audit records were presented as completed work. The generic substring localizer also had no exact presentation contract for canonical natural-language action titles or ledger status labels, causing the English terminal section to retain Chinese or mixed-language action copy.",
+    decision:
+      "Keep all non-deferred terminal ledger records visible for auditability, but name the section 最近动态 / Recent activity / 最近の動き. Add a Today-scoped exact presentation layer for section names and the six canonical natural-language action titles, plus explicit per-language labels for every ledger status. Apply that presentation before the existing tree localizer and leave the shared localization engine untouched because its indexed blast radius is corrupt and broad.",
+    files:
+      "repos/orbits/app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model.ts; repos/orbits/app/(app)/app/today/orbit-real-today.tsx; repos/orbits/app/(app)/app/today/today-page-content.tsx; repos/orbits/app/(app)/app/today/today-section-presentation.ts; repos/orbits/tests/pages/app-today-merged.test.ts; repos/orbits/tests/pages/app-today-route-view-model.test.ts",
+    regression:
+      "Focused tests passed 51/51, lint/typecheck passed, the complete Web suite passed 1368/1368, and production build completed 39/39; commit 39d9bf87. Browser runtime proved two ignored operations survived hard reload, created no 2026-08-12 arrangement, and rendered coherent terminal section/action/status copy in English and Chinese. Staged detection was HIGH for six files because AppTodayPageContent reaches nine reviewed Today load flows; shared localization was intentionally unchanged.",
+    status:
+      "fixed and ignore/no-write/reload/terminal-semantics/English/Chinese/lint/build/full-suite-verified; broader mixed-language Today arrangement prose is recorded as a separate open defect",
   },
 ];
 
