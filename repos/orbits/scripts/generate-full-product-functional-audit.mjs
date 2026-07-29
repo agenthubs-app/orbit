@@ -3431,6 +3431,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build separation of public All Actions filters/selection from internal ledger scenarios while preserving authenticated service resolution; authenticated browser DOM, filter/entry combinations, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-party-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web Party, Check-in, and Graph → event identity queries separated from internal fixture controls",
+    testData:
+      "Shared Party loader with eventId/code identity, adversarial scenario=failure and mode=mock query values, explicit mock mode, and explicit internal empty control",
+    expected:
+      "Public Party query input may select one event by eventId or code, but it must not switch runtime mode or force fixture states. The authenticated actor, configured module mode, registration truth, and stored event context must determine access; controlled tests retain a typed scenario path.",
+    actual:
+      "The existing loader already ignored URL mode, but it still read scenario from the unrestricted query record and forwarded it to private Event Detail composition across all three Party pages. After repair, AppPartySearchParams contains only eventId/code, scenario moved to a typed third controls argument, adversarial public scenario input preserves the normal Party success model, and an explicit internal empty control still returns the controlled route state.",
+    evidence:
+      "GitNexus pre-edit impact was LOW: three direct page callers for loadAppPartyRouteViewModel and four total upstream symbols for routeEventId/normalizeScenario, with zero indexed flows. Party focused tests passed 12/12, including authenticated actor propagation, public mode/scenario isolation, registered/unregistered catalogue access, empty context, and explicit control coverage. Exact production build passed; staged detection returned LOW for two files and two Party symbols; commit 30cfd2a0",
+    conclusion:
+      "pass for source/build separation of public Party event identity from mode/scenario controls across Party, Check-in, and Graph; authenticated browser DOM, eventId/code combinations, registration transitions, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4325,6 +4340,20 @@ const AUDIT_REMEDIATIONS = [
       "Current GitNexus symbols were unresolved after the incremental-index UTF-8 failure, so both required pre-edit impacts returned UNKNOWN/not found and the change was verified conservatively. Three focused test files passed 20/20, including valid filters, unknown filters, entry expansion, explicit internal empty/failure states, actor-required failure, and public scenario isolation. The exact production build passed; the immediately preceding same-ledger full Web suite passed 1356/1356; staged detection returned LOW for three files and one recognized symbol.",
     status:
       "fixed and source/build-verified for the All Actions public query boundary; GitNexus current-symbol graph coverage, authenticated browser runtime, filter/entry combinations, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-065",
+    severity: "P1",
+    rootCause:
+      "The three authenticated Party pages correctly required actor identity and used eventId/code as legitimate URL identity, but the shared loader also accepted scenario from the same unrestricted search-parameter record. Public URLs could therefore select private Event Detail fixture states before registration and attendee context were evaluated.",
+    decision:
+      "Define Party public search parameters as eventId and code only, keep configured runtime mode and authenticated actor as explicit server-owned input, and move scenario into a typed third controls argument. Preserve one shared loader for Party, Check-in, and Graph so the access and registration rules remain identical.",
+    files:
+      "repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/tests/pages/app-party-live-route-services.test.ts",
+    regression:
+      "GitNexus reported LOW pre-edit impact: three direct page callers for the shared loader and four total upstream symbols for event identity/scenario helpers, with zero indexed processes. Party focused tests passed 12/12 and the exact production build passed. Regression proves public mode and scenario query values cannot activate fixtures, explicit internal scenario remains available, event identity is preserved, and registration-gated catalogue access remains actor scoped. Staged detection returned LOW for two files and two Party symbols.",
+    status:
+      "fixed and source/build-verified for all three Party route adapters and the shared loader; authenticated browser runtime, eventId/code combinations, registration transitions, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
