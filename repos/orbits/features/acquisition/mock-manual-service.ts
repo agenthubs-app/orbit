@@ -276,6 +276,7 @@ function buildConfirmationPayload(
       followUpHint: draft.followUpHint,
       evidenceIds: confirmedDraft.provenance.evidenceIds,
       readyForContactWrite: true,
+      contactId: null,
       contactWriteExecuted: false,
       duplicateLookupExecuted: false,
     },

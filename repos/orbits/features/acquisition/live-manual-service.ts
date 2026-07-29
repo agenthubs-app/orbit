@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   MANUAL_CONTACT_CREATION_ERROR_DEFINITIONS,
   type ManualContactCandidate,
@@ -23,6 +25,8 @@ import type {
   ContactDraftEvidence,
 } from "./contract";
 import type { LiveContactAcquisitionDraftProvider } from "./storage/contact-draft-live-record-provider";
+import type { ContactDTO } from "../../shared/domain/contracts";
+import type { ContactRecordWriteProvider } from "../contacts/contact-write-contract";
 import {
   composeBilingualSearchText,
   type EnglishTranslationResult,
@@ -35,6 +39,8 @@ export interface ManualContactNoteTranslator {
 }
 
 export interface LiveManualContactCreationServiceOptions {
+  actorId?: string;
+  contactProvider?: ContactRecordWriteProvider | null;
   now?: () => string;
   provider?: LiveContactAcquisitionDraftProvider | null;
   // 录入时把中文/日文 note 翻成英文，合成 "原文 / English" 可搜索文本，供关系检索的
@@ -58,6 +64,8 @@ async function searchableNoteFor(
 }
 
 type StoredManualContactDraft = ContactAcquisitionDraft & {
+  contactId?: string;
+  contactWriteExecuted?: boolean;
   note?: string;
   tags?: readonly string[];
   followUpHint?: string;
@@ -213,6 +221,7 @@ function unconfiguredProvenance(now: string): ManualContactCreationProvenance {
 }
 
 function provenanceFor(input: {
+  contactWriteExecuted?: boolean;
   evidenceIds: readonly string[];
   generatedAt: string;
   generationMethod: ManualContactCreationProvenance["generationMethod"];
@@ -229,7 +238,7 @@ function provenanceFor(input: {
     generationMethod: input.generationMethod,
     liveDatabaseReadExecuted: input.readExecuted ?? false,
     contactDraftWriteExecuted: input.writeExecuted ?? false,
-    contactWriteExecuted: false,
+    contactWriteExecuted: input.contactWriteExecuted ?? false,
     externalNetworkRequested: false,
   };
 }
@@ -310,12 +319,16 @@ function manualDraftFromContactDraft(
     evidence: draft.evidence.map(manualEvidenceFromContactEvidence),
     provenance: provenanceFromContactDraft(draft),
     createdAt: draft.createdAt,
+    ...(nonEmpty(stored.contactId) ? { contactId: stored.contactId } : {}),
+    contactWriteExecuted: stored.contactWriteExecuted === true,
   };
 }
 
 function provenanceFromContactDraft(
   draft: ContactAcquisitionDraft,
 ): ManualContactCreationProvenance {
+  const stored = draft as StoredManualContactDraft;
+
   return {
     source: draft.provenance.source,
     sourceLabel: draft.provenance.sourceLabel,
@@ -329,24 +342,39 @@ function provenanceFromContactDraft(
     liveDatabaseReadExecuted: draft.provenance.liveDatabaseReadExecuted ?? false,
     contactDraftWriteExecuted:
       draft.provenance.contactDraftWriteExecuted ?? false,
-    contactWriteExecuted: false,
+    contactWriteExecuted: stored.contactWriteExecuted === true,
     externalNetworkRequested: false,
   };
 }
 
 function contactDraftFromManualInput(input: {
+  actorId: string;
   generatedAt: string;
   provider: LiveContactAcquisitionDraftProvider;
   source: ManualContactSourceReference;
   displayName: string;
   role: string;
   organization: string;
+  idempotencyNote: string;
   note: string;
   tags: readonly string[];
   followUpHint: string;
 }): StoredManualContactDraft {
-  const seed = `${input.displayName}:${input.organization}:${input.generatedAt}`;
-  const draftId = `manual-draft:live:${slugFor(seed)}`;
+  const seed = [
+    input.actorId,
+    input.displayName,
+    input.organization,
+    input.role,
+    input.idempotencyNote,
+    input.followUpHint,
+    ...[...input.tags].sort(),
+  ]
+    .map((value) => value.normalize("NFKC").trim().toLocaleLowerCase())
+    .join("\u0000");
+  const draftId = `manual-draft:live:${createHash("sha256")
+    .update(seed)
+    .digest("hex")
+    .slice(0, 24)}`;
   const evidenceId = `evidence:manual-contact-live:${draftId}`;
   const evidence: ContactDraftEvidence = {
     evidenceId,
@@ -391,7 +419,7 @@ function contactDraftFromManualInput(input: {
       collectedAt: input.generatedAt,
       privacy: "live-contact-acquisition-drafts",
       generationMethod: "live-store-query",
-      liveDatabaseReadExecuted: false,
+      liveDatabaseReadExecuted: true,
       contactDraftWriteExecuted: true,
       contactWriteExecuted: false,
       externalNetworkRequested: false,
@@ -405,14 +433,18 @@ function contactDraftFromManualInput(input: {
 function creationPayload(
   draft: ManualContactDraft,
 ): ManualContactCreationPayload {
+  const contactWritten = draft.contactWriteExecuted === true && draft.contactId;
+
   return {
     state: "success",
     draft,
-    summary:
-      "One live manual contact draft was staged in the shared contact draft queue without creating a contact.",
+    summary: contactWritten
+      ? "This manual source was already confirmed into an actor-owned contact."
+      : "One live manual contact draft was staged in the shared contact draft queue without creating a contact.",
     provenance: draft.provenance,
-    nextAction:
-      "Review the manual note evidence before confirming this contact candidate.",
+    nextAction: contactWritten
+      ? "Open the saved contact to continue the relationship workflow."
+      : "Review the manual note evidence before confirming this contact candidate.",
   };
 }
 
@@ -438,7 +470,157 @@ function emptyPayload(
   };
 }
 
-function candidateFromDraft(draft: ManualContactDraft): ManualContactCandidate {
+interface ManualContactWriteOutcome {
+  contactId: string;
+  contactWriteExecuted: boolean;
+  duplicateLookupExecuted: boolean;
+}
+
+function normalizedComparisonValue(value: string | undefined): string {
+  return (value ?? "").normalize("NFKC").trim().toLocaleLowerCase();
+}
+
+function contactIdFor(actorId: string, draftId: string): string {
+  const digest = createHash("sha256")
+    .update(actorId)
+    .update("\u0000")
+    .update(draftId)
+    .digest("hex")
+    .slice(0, 24);
+
+  return `contact:manual:${digest}`;
+}
+
+function contactForManualDraft(input: {
+  actorLabel: string;
+  confirmedAt: string;
+  contactId: string;
+  draft: ManualContactDraft;
+}): ContactDTO {
+  const profileSnippet = [
+    input.draft.relationshipContext,
+    input.draft.followUpHint,
+    input.draft.tags.length > 0 ? `Tags: ${input.draft.tags.join(", ")}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return {
+    id: input.contactId,
+    displayName: input.draft.displayName.trim(),
+    ...(nonEmpty(input.draft.organization)
+      ? { organization: input.draft.organization.trim() }
+      : {}),
+    ...(nonEmpty(input.draft.role) ? { role: input.draft.role.trim() } : {}),
+    ...(profileSnippet ? { profileSnippet } : {}),
+    stage: "captured",
+    source: {
+      id: input.draft.source.id,
+      label: `${input.draft.source.label} · confirmed by ${input.actorLabel}`,
+      type: "manual",
+    },
+    evidenceIds: Array.from(
+      new Set([
+        ...input.draft.provenance.evidenceIds
+          .map((id) => id.trim())
+          .filter(Boolean),
+        `evidence:manual-contact-confirmed:${input.draft.id}`,
+      ]),
+    ) as [string, ...string[]],
+    createdAt: input.confirmedAt,
+    updatedAt: input.confirmedAt,
+  };
+}
+
+function duplicateManualContact(
+  contacts: readonly ContactDTO[],
+  draft: ManualContactDraft,
+): ContactDTO | null {
+  const displayName = normalizedComparisonValue(draft.displayName);
+  const organization = normalizedComparisonValue(draft.organization);
+
+  return (
+    contacts.find(
+      (contact) =>
+        normalizedComparisonValue(contact.displayName) === displayName &&
+        normalizedComparisonValue(contact.organization) === organization,
+    ) ?? null
+  );
+}
+
+async function writeManualContact(input: {
+  actorId: string;
+  actorLabel: string;
+  confirmedAt: string;
+  contactProvider: ContactRecordWriteProvider;
+  draft: ManualContactDraft;
+}): Promise<
+  | { success: true; outcome: ManualContactWriteOutcome }
+  | {
+      success: false;
+      code:
+        | "MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED"
+        | "MANUAL_CONTACT_WRITE_FAILED";
+    }
+> {
+  const contactId = contactIdFor(input.actorId, input.draft.id);
+
+  try {
+    const existing = await input.contactProvider.getContact(
+      contactId,
+      input.actorId,
+    );
+
+    if (existing) {
+      return {
+        success: true,
+        outcome: {
+          contactId: existing.id,
+          contactWriteExecuted: false,
+          duplicateLookupExecuted: false,
+        },
+      };
+    }
+
+    const duplicate = duplicateManualContact(
+      await input.contactProvider.listContacts(input.actorId),
+      input.draft,
+    );
+
+    if (duplicate) {
+      return {
+        success: false,
+        code: "MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+      };
+    }
+
+    const saved = await input.contactProvider.saveContact(
+      contactForManualDraft({
+        actorLabel: input.actorLabel,
+        confirmedAt: input.confirmedAt,
+        contactId,
+        draft: input.draft,
+      }),
+      input.actorId,
+    );
+
+    return {
+      success: true,
+      outcome: {
+        contactId: saved.id,
+        contactWriteExecuted: true,
+        duplicateLookupExecuted: true,
+      },
+    };
+  } catch {
+    return { success: false, code: "MANUAL_CONTACT_WRITE_FAILED" };
+  }
+}
+
+function candidateFromDraft(
+  draft: ManualContactDraft,
+  outcome: ManualContactWriteOutcome,
+): ManualContactCandidate {
   return {
     candidateId: `contact-candidate:${draft.id}`,
     displayName: draft.displayName,
@@ -450,9 +632,10 @@ function candidateFromDraft(draft: ManualContactDraft): ManualContactCandidate {
     tags: draft.tags,
     followUpHint: draft.followUpHint,
     evidenceIds: draft.provenance.evidenceIds,
-    readyForContactWrite: true,
-    contactWriteExecuted: false,
-    duplicateLookupExecuted: false,
+    readyForContactWrite: false,
+    contactId: outcome.contactId,
+    contactWriteExecuted: outcome.contactWriteExecuted,
+    duplicateLookupExecuted: outcome.duplicateLookupExecuted,
   };
 }
 
@@ -460,6 +643,7 @@ function confirmedContactDraft(input: {
   actorLabel: string;
   confirmedAt: string;
   draft: ContactAcquisitionDraft;
+  outcome: ManualContactWriteOutcome;
   provider: LiveContactAcquisitionDraftProvider;
 }): StoredManualContactDraft {
   const stored = input.draft as StoredManualContactDraft;
@@ -476,6 +660,9 @@ function confirmedContactDraft(input: {
 
   return {
     ...stored,
+    contactId: input.outcome.contactId,
+    contactWriteExecuted:
+      input.outcome.contactWriteExecuted || stored.contactWriteExecuted === true,
     status: "confirmed",
     confirmation: {
       ...input.draft.confirmation,
@@ -493,17 +680,22 @@ function confirmedContactDraft(input: {
       generationMethod: "live-store-confirmation",
       liveDatabaseReadExecuted: true,
       contactDraftWriteExecuted: true,
-      contactWriteExecuted: false,
+      contactWriteExecuted:
+        input.outcome.contactWriteExecuted || stored.contactWriteExecuted === true,
       externalNetworkRequested: false,
     },
   };
 }
 
 export function createLiveManualContactCreationService({
+  actorId,
+  contactProvider,
   now = () => new Date().toISOString(),
   provider,
   normalizationService,
 }: LiveManualContactCreationServiceOptions = {}): ManualContactCreationService {
+  const normalizedActorId = actorId?.trim() ?? "";
+
   return {
     async createManualContactDraft(
       input = {},
@@ -514,6 +706,18 @@ export function createLiveManualContactCreationService({
         return failure(
           "MANUAL_CONTACT_LIVE_STORE_UNCONFIGURED",
           unconfiguredProvenance(generatedAt),
+        );
+      }
+
+      if (!normalizedActorId) {
+        return failure(
+          "MANUAL_CONTACT_ACTOR_REQUIRED",
+          provenanceFor({
+            evidenceIds: ["evidence:manual-contact-live-actor-required"],
+            generatedAt,
+            generationMethod: "live-store-manual-contact-draft",
+            provider,
+          }),
         );
       }
 
@@ -571,16 +775,27 @@ export function createLiveManualContactCreationService({
       const source = sourceFor(input.source, displayName);
       const searchableNote = await searchableNoteFor(note, normalizationService);
       const contactDraft = contactDraftFromManualInput({
+        actorId: normalizedActorId,
         generatedAt,
         provider,
         source,
         displayName,
         role,
         organization,
+        idempotencyNote: note,
         note: searchableNote,
         tags: tagsFor(input.tags),
         followUpHint: nonEmpty(input.followUpHint) ?? "",
       });
+      const graph = await provider.readDraftGraph();
+      const existingDraft = graph.contactDrafts.find(
+        (draft) => draft.id === contactDraft.id && draft.source.type === "manual",
+      );
+
+      if (existingDraft) {
+        return success(creationPayload(manualDraftFromContactDraft(existingDraft)));
+      }
+
       const saved = await provider.upsertContactDraft(contactDraft, generatedAt);
       const manualDraft = manualDraftFromContactDraft({
         ...saved,
@@ -601,6 +816,34 @@ export function createLiveManualContactCreationService({
         return failure(
           "MANUAL_CONTACT_LIVE_STORE_UNCONFIGURED",
           unconfiguredProvenance(confirmedAt),
+        );
+      }
+
+      if (!normalizedActorId) {
+        return failure(
+          "MANUAL_CONTACT_ACTOR_REQUIRED",
+          provenanceFor({
+            evidenceIds: ["evidence:manual-contact-live-actor-required"],
+            generatedAt: confirmedAt,
+            generationMethod: "live-store-confirmation",
+            provider,
+            readExecuted: false,
+            writeExecuted: false,
+          }),
+        );
+      }
+
+      if (!contactProvider) {
+        return failure(
+          "MANUAL_CONTACT_WRITE_UNCONFIGURED",
+          provenanceFor({
+            evidenceIds: ["evidence:manual-contact-write-unconfigured"],
+            generatedAt: confirmedAt,
+            generationMethod: "live-store-confirmation",
+            provider,
+            readExecuted: false,
+            writeExecuted: false,
+          }),
         );
       }
 
@@ -651,13 +894,56 @@ export function createLiveManualContactCreationService({
         );
       }
 
-      const updated = confirmedContactDraft({
+      const manualDraft = manualDraftFromContactDraft(existingDraft);
+      const contactWrite = await writeManualContact({
+        actorId: normalizedActorId,
         actorLabel: actorLabelFor(input.actorLabel),
         confirmedAt,
-        draft: existingDraft,
-        provider,
+        contactProvider,
+        draft: manualDraft,
       });
-      const saved = await provider.upsertContactDraft(updated, confirmedAt);
+
+      if (contactWrite.success === false) {
+        return failure(
+          contactWrite.code,
+          provenanceFor({
+            evidenceIds: existingDraft.provenance.evidenceIds,
+            generatedAt: confirmedAt,
+            generationMethod: "live-store-confirmation",
+            provider,
+            readExecuted: true,
+            writeExecuted: false,
+          }),
+        );
+      }
+
+      const storedExisting = existingDraft as StoredManualContactDraft;
+      const alreadyFullyConfirmed =
+        existingDraft.status === "confirmed" &&
+        storedExisting.contactId === contactWrite.outcome.contactId &&
+        storedExisting.contactWriteExecuted === true;
+      const updated = alreadyFullyConfirmed
+        ? storedExisting
+        : existingDraft.status === "confirmed"
+          ? {
+              ...storedExisting,
+              contactId: contactWrite.outcome.contactId,
+              contactWriteExecuted: true,
+              provenance: {
+                ...storedExisting.provenance,
+                contactWriteExecuted: true,
+              },
+            }
+          : confirmedContactDraft({
+              actorLabel: actorLabelFor(input.actorLabel),
+              confirmedAt,
+              draft: existingDraft,
+              outcome: contactWrite.outcome,
+              provider,
+            });
+      const saved = alreadyFullyConfirmed
+        ? storedExisting
+        : await provider.upsertContactDraft(updated, confirmedAt);
       const confirmedDraft = manualDraftFromContactDraft({
         ...saved,
         note: updated.note,
@@ -683,12 +969,15 @@ export function createLiveManualContactCreationService({
       return confirmationSuccess({
         state: "confirmed",
         confirmedDraft,
-        contactCandidate: candidateFromDraft(confirmedDraft),
+        contactCandidate: candidateFromDraft(
+          confirmedDraft,
+          contactWrite.outcome,
+        ),
         createdEvidence,
         confirmedAt,
         provenance: confirmedDraft.provenance,
         nextAction:
-          "Hand this source-backed candidate to the contact record service only after preserving manual note evidence.",
+          "Open the saved actor-owned contact to continue the relationship workflow.",
       });
     },
   };

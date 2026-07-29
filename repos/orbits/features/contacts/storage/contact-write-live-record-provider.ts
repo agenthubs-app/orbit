@@ -12,12 +12,14 @@ import type {
 import type { BusinessCardContactWriteProvider } from "../contact-write-contract";
 
 export interface StorageBusinessCardContactWriteProviderOptions {
+  recordProvider?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }
 
 export interface ConfiguredBusinessCardContactWriteProviderOptions {
   env?: LiveDatabaseEnv;
+  recordProvider?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,6 +94,7 @@ function belongsToActor(
 }
 
 export function createStorageBusinessCardContactWriteProvider({
+  recordProvider = "orbit-business-card-contact-write",
   store,
   workspaceId,
 }: StorageBusinessCardContactWriteProviderOptions): BusinessCardContactWriteProvider {
@@ -129,7 +132,7 @@ export function createStorageBusinessCardContactWriteProvider({
         lifecycleState: "active",
         occurredAt: contact.createdAt,
         payload: contact as unknown as Record<string, unknown>,
-        provider: "orbit-business-card-contact-write",
+        provider: recordProvider,
         providerRecordId: contact.id,
         recordId: contact.id,
         searchText: [
@@ -160,6 +163,7 @@ export function createStorageBusinessCardContactWriteProvider({
 
 export function createConfiguredStorageBusinessCardContactWriteProvider({
   env,
+  recordProvider,
 }: ConfiguredBusinessCardContactWriteProviderOptions = {}): BusinessCardContactWriteProvider | null {
   const configuredStore = createConfiguredPostgresLiveRecordStore({ env });
 
@@ -168,6 +172,7 @@ export function createConfiguredStorageBusinessCardContactWriteProvider({
   }
 
   return createStorageBusinessCardContactWriteProvider({
+    recordProvider,
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
   });

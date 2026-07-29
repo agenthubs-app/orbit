@@ -5,12 +5,14 @@ import { createLiveContactAcquisitionDraftService } from "../../features/acquisi
 import { createLiveManualContactCreationService } from "../../features/acquisition/live-manual-service";
 import { createManualContactCreationService } from "../../features/acquisition/service-factory";
 import { createStorageContactAcquisitionDraftProvider } from "../../features/acquisition/storage/contact-draft-live-record-provider";
+import { createStorageBusinessCardContactWriteProvider } from "../../features/contacts/storage/contact-write-live-record-provider";
 import {
   createMemoryLiveRecordStore,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:manual-contact-live-test";
+const ACTOR_ID = "account:manual-contact-live-test";
 const NOW = "2026-07-02T08:30:00.000Z";
 
 function createStore() {
@@ -46,10 +48,12 @@ function listCollection(
 test("manual contact live creation persists a central contactDraft without contact writes", async () => {
   const store = createStore();
   const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
     store,
     workspaceId: WORKSPACE_ID,
   });
   const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
     now: () => NOW,
     provider,
   });
@@ -77,7 +81,7 @@ test("manual contact live creation persists a central contactDraft without conta
   assert.equal(result.data.draft?.evidence[0]?.createdBy, "live-manual-contact-service");
   assert.equal(result.data.provenance.privacy, "live-manual-contact-creation");
   assert.equal(result.data.provenance.generationMethod, "live-store-manual-contact-draft");
-  assert.equal(result.data.provenance.liveDatabaseReadExecuted, false);
+  assert.equal(result.data.provenance.liveDatabaseReadExecuted, true);
   assert.equal(result.data.provenance.contactDraftWriteExecuted, true);
   assert.equal(result.data.provenance.contactWriteExecuted, false);
   assert.equal(result.data.draft?.duplicateCheck.externalLookupExecuted, false);
@@ -99,11 +103,13 @@ test("manual contact live creation persists a central contactDraft without conta
 test("manual contact live creation stores bilingual searchable note when translation is enabled", async () => {
   const store = createStore();
   const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
     store,
     workspaceId: WORKSPACE_ID,
   });
   let translateCalls = 0;
   const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
     now: () => NOW,
     provider,
     // translate-on-ingest：注入一个确定性 translator 模拟"模型把中文 note 翻成英文"。
@@ -138,13 +144,20 @@ test("manual contact live creation stores bilingual searchable note when transla
   assert.match(String(result.data.draft?.relationshipContext ?? ""), /restaurant/i);
 });
 
-test("manual contact live confirmation updates only the contactDrafts collection", async () => {
+test("manual contact live confirmation writes one actor-owned contact and is idempotent", async () => {
   const store = createStore();
   const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
     store,
     workspaceId: WORKSPACE_ID,
   });
   const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    contactProvider: createStorageBusinessCardContactWriteProvider({
+      recordProvider: "orbit-manual-contact-write",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
     now: () => NOW,
     provider,
   });
@@ -154,6 +167,10 @@ test("manual contact live confirmation updates only the contactDrafts collection
   const draftId = created.data.draft?.id ?? "";
 
   const confirmed = await service.confirmManualContactDraft({
+    actorLabel: "Live reviewer",
+    draftId,
+  });
+  const repeated = await service.confirmManualContactDraft({
     actorLabel: "Live reviewer",
     draftId,
   });
@@ -174,14 +191,171 @@ test("manual contact live confirmation updates only the contactDrafts collection
   assert.equal(confirmed.data.confirmedDraft.status, "confirmed");
   assert.equal(confirmed.data.confirmedDraft.confirmation.actorLabel, "Live reviewer");
   assert.equal(confirmed.data.createdEvidence.createdBy, "live-manual-contact-service");
-  assert.equal(confirmed.data.contactCandidate.readyForContactWrite, true);
-  assert.equal(confirmed.data.contactCandidate.contactWriteExecuted, false);
-  assert.equal(confirmed.data.contactCandidate.duplicateLookupExecuted, false);
+  assert.equal(confirmed.data.contactCandidate.readyForContactWrite, false);
+  assert.equal(confirmed.data.contactCandidate.contactWriteExecuted, true);
+  assert.equal(confirmed.data.contactCandidate.duplicateLookupExecuted, true);
+  assert.match(confirmed.data.contactCandidate.contactId ?? "", /^contact:manual:/);
   assert.equal(confirmed.data.provenance.contactDraftWriteExecuted, true);
-  assert.equal(confirmed.data.provenance.contactWriteExecuted, false);
+  assert.equal(confirmed.data.provenance.contactWriteExecuted, true);
   assert.equal(savedPayload?.status, "confirmed");
   assert.equal(savedPayload?.confirmation?.actorLabel, "Live reviewer");
-  assert.equal(contacts.length, 0);
+  assert.equal(contacts.length, 1);
+  assert.equal(contacts[0]?.userId, ACTOR_ID);
+  assert.equal(contacts[0]?.provider, "orbit-manual-contact-write");
+  assert.equal(contacts[0]?.payload.displayName, "佐藤 明");
+  assert.equal((contacts[0]?.payload.source as { type?: unknown })?.type, "manual");
+  assert.equal(repeated.success, true);
+  assert.equal(
+    repeated.data.contactCandidate.contactId,
+    confirmed.data.contactCandidate.contactId,
+  );
+  assert.equal(repeated.data.contactCandidate.contactWriteExecuted, false);
+  assert.equal(listCollection(store, "contacts").length, 1);
+});
+
+test("manual contact confirmation stays pending when the contact store is unavailable", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    now: () => NOW,
+    provider,
+  });
+  const created = await service.createManualContactDraft(manualInput());
+  assert.equal(created.success, true);
+  const draftId = created.data.draft?.id ?? "";
+
+  const confirmed = await service.confirmManualContactDraft({
+    actorLabel: "Live reviewer",
+    draftId,
+  });
+  const savedDraft = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: draftId,
+  });
+
+  assert.equal(confirmed.success, false);
+  assert.equal(confirmed.error.code, "MANUAL_CONTACT_WRITE_UNCONFIGURED");
+  assert.equal(savedDraft?.payload.status, "pending_confirmation");
+  assert.equal(listCollection(store, "contacts").length, 0);
+});
+
+test("manual contact confirmation blocks normalized duplicates without mutating the draft", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const contactProvider = createStorageBusinessCardContactWriteProvider({
+    recordProvider: "orbit-manual-contact-write",
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  await contactProvider.saveContact(
+    {
+      id: "contact:existing-akira",
+      displayName: "  佐藤 明  ",
+      organization: "ＳＡＴＯ ＲＯＢＯＴＩＣＳ",
+      stage: "captured",
+      source: {
+        id: "source:existing",
+        label: "Existing actor contact",
+        type: "manual",
+      },
+      evidenceIds: ["evidence:existing-akira"],
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
+    ACTOR_ID,
+  );
+  const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    contactProvider,
+    now: () => NOW,
+    provider,
+  });
+  const created = await service.createManualContactDraft(manualInput());
+  assert.equal(created.success, true);
+  const draftId = created.data.draft?.id ?? "";
+
+  const confirmed = await service.confirmManualContactDraft({
+    actorLabel: "Live reviewer",
+    draftId,
+  });
+  const savedDraft = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: draftId,
+  });
+
+  assert.equal(confirmed.success, false);
+  assert.equal(
+    confirmed.error.code,
+    "MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+  );
+  assert.equal(savedDraft?.payload.status, "pending_confirmation");
+  assert.equal(listCollection(store, "contacts").length, 1);
+});
+
+test("repeated manual submission reuses one stable actor-scoped draft", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    now: () => NOW,
+    provider,
+  });
+
+  const first = await service.createManualContactDraft(manualInput());
+  const second = await service.createManualContactDraft(manualInput());
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.equal(first.data.draft?.id, second.data.draft?.id);
+  assert.equal(listCollection(store, "contactDrafts").length, 1);
+});
+
+test("manual draft idempotency is based on source input rather than translated output", async () => {
+  const store = createStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_ID,
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  let translationVersion = 0;
+  const service = createLiveManualContactCreationService({
+    actorId: ACTOR_ID,
+    now: () => NOW,
+    provider,
+    normalizationService: {
+      translateToEnglish: async () => {
+        translationVersion += 1;
+
+        return {
+          englishText: `Translation version ${translationVersion}`,
+          translated: true,
+        };
+      },
+    },
+  });
+
+  const first = await service.createManualContactDraft(manualInput());
+  const second = await service.createManualContactDraft(manualInput());
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.equal(first.data.draft?.id, second.data.draft?.id);
+  assert.equal(listCollection(store, "contactDrafts").length, 1);
 });
 
 test("manual contact live drafts are persisted and read within one actor boundary", async () => {
@@ -197,10 +371,22 @@ test("manual contact live drafts are persisted and read within one actor boundar
     workspaceId: WORKSPACE_ID,
   });
   const actorAService = createLiveManualContactCreationService({
+    actorId: "account:manual-a",
+    contactProvider: createStorageBusinessCardContactWriteProvider({
+      recordProvider: "orbit-manual-contact-write",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
     now: () => NOW,
     provider: actorAProvider,
   });
   const actorBService = createLiveManualContactCreationService({
+    actorId: "account:manual-b",
+    contactProvider: createStorageBusinessCardContactWriteProvider({
+      recordProvider: "orbit-manual-contact-write",
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
     now: () => NOW,
     provider: actorBProvider,
   });

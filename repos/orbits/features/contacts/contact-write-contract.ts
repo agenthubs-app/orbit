@@ -120,6 +120,11 @@ export interface BusinessCardContactWriteProvider {
   saveContact(contact: ContactDTO, actorId: string): Promise<ContactDTO>;
 }
 
+// Contact persistence is source-agnostic. Keep the business-card name as a
+// compatibility alias while other reviewed acquisition sources share the same
+// actor-scoped record boundary.
+export type ContactRecordWriteProvider = BusinessCardContactWriteProvider;
+
 export function businessCardContactWriteFailureToAppError(
   failure: BusinessCardContactWriteFailure,
 ): AppError {

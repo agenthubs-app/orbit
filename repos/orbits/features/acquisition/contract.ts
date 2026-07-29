@@ -132,7 +132,7 @@ export interface ContactAcquisitionDraftProvenance {
     | "rule-based-contact-draft";
   liveDatabaseReadExecuted?: boolean;
   contactDraftWriteExecuted?: boolean;
-  contactWriteExecuted?: false;
+  contactWriteExecuted?: boolean;
   externalNetworkRequested?: false;
 }
 

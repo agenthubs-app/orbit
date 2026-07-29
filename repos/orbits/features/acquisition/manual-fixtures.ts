@@ -176,6 +176,7 @@ export const mockManualContactConfirmedFixture: ManualContactConfirmationPayload
       followUpHint: mockManualContactConfirmedDraft.followUpHint,
       evidenceIds: mockManualContactConfirmedDraft.provenance.evidenceIds,
       readyForContactWrite: true,
+      contactId: null,
       contactWriteExecuted: false,
       duplicateLookupExecuted: false,
     },

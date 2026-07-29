@@ -57,6 +57,7 @@ import { createConfiguredStorageReferralRecommendationProvider } from "./storage
 import { createConfiguredStorageBusinessCardReviewProvider } from "./storage/business-card-review-live-record-provider";
 import { createConfiguredStorageQrScanConnectProvider } from "./storage/qr-live-record-provider";
 import { createConfiguredStorageBusinessCardScanOcrProvider } from "./storage/business-card-scan-live-record-provider";
+import { createConfiguredStorageBusinessCardContactWriteProvider } from "../contacts/storage/contact-write-live-record-provider";
 
 // 聚合类型用于需要一次性拿到 acquisition 全家桶的页面/view model。
 // 每个字段仍然是独立 capability，未来可以逐个替换成 live 实现。
@@ -276,6 +277,12 @@ export function createManualContactCreationServiceForActor(
   }
 
   return createLiveManualContactCreationService({
+    actorId,
+    contactProvider: actorId.trim()
+      ? createConfiguredStorageBusinessCardContactWriteProvider({
+          recordProvider: "orbit-manual-contact-write",
+        })
+      : null,
     provider: actorId.trim()
       ? createConfiguredStorageContactAcquisitionDraftProvider({ actorId })
       : null,

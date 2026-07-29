@@ -7,8 +7,12 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // Manual Contact Creation contract 描述人工录入联系人时的 staged draft 流程。
 // 手动输入必须先形成草稿并经过确认，不能直接写入联系人图谱。
 export const MANUAL_CONTACT_CREATION_ERROR_CODES = [
+  "MANUAL_CONTACT_ACTOR_REQUIRED",
   "MANUAL_CONTACT_LIVE_STORE_UNCONFIGURED",
   "MANUAL_CONTACT_LIVE_STORE_FAILED",
+  "MANUAL_CONTACT_WRITE_UNCONFIGURED",
+  "MANUAL_CONTACT_WRITE_FAILED",
+  "MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED",
   "MANUAL_CONTACT_NOTE_REQUIRED",
   "MANUAL_CONTACT_DRAFT_NOT_FOUND",
   "MANUAL_CONTACT_CONFIRMATION_NOT_ALLOWED",
@@ -43,6 +47,13 @@ export interface ManualContactCreationErrorDefinition {
 }
 
 export const MANUAL_CONTACT_CREATION_ERROR_DEFINITIONS = {
+  MANUAL_CONTACT_ACTOR_REQUIRED: {
+    code: "MANUAL_CONTACT_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message: "An authenticated actor is required before staging or confirming a manual contact.",
+    recovery:
+      "Sign in before staging the source-backed manual contact draft.",
+  },
   MANUAL_CONTACT_NOTE_REQUIRED: {
     code: "MANUAL_CONTACT_NOTE_REQUIRED",
     appCode: "VALIDATION_ERROR",
@@ -63,6 +74,27 @@ export const MANUAL_CONTACT_CREATION_ERROR_DEFINITIONS = {
     message: "The live manual contact creation store failed.",
     recovery:
       "Keep the manual intake form open and retry after the live record store is healthy.",
+  },
+  MANUAL_CONTACT_WRITE_UNCONFIGURED: {
+    code: "MANUAL_CONTACT_WRITE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live contact record store is not configured.",
+    recovery:
+      "Keep the manual draft pending until the actor-scoped contact store is available.",
+  },
+  MANUAL_CONTACT_WRITE_FAILED: {
+    code: "MANUAL_CONTACT_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The confirmed manual contact could not be saved.",
+    recovery:
+      "Keep the manual draft pending and retry after the contact store recovers.",
+  },
+  MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED: {
+    code: "MANUAL_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+    appCode: "CONFLICT",
+    message: "A contact with the same normalized name and organization already exists.",
+    recovery:
+      "Keep the manual draft pending and review the existing actor-owned contact before retrying.",
   },
   MANUAL_CONTACT_DRAFT_NOT_FOUND: {
     code: "MANUAL_CONTACT_DRAFT_NOT_FOUND",
@@ -130,7 +162,7 @@ export interface ManualContactCreationProvenance {
     | "rule-based-manual-contact";
   liveDatabaseReadExecuted?: boolean;
   contactDraftWriteExecuted?: boolean;
-  contactWriteExecuted?: false;
+  contactWriteExecuted?: boolean;
   externalNetworkRequested?: false;
 }
 
@@ -179,6 +211,8 @@ export interface ManualContactDraft {
   evidence: readonly ManualContactEvidence[];
   provenance: ManualContactCreationProvenance;
   createdAt: string;
+  contactId?: string;
+  contactWriteExecuted?: boolean;
 }
 
 export interface ManualContactCreationPayload {
@@ -200,9 +234,10 @@ export interface ManualContactCandidate {
   tags: readonly string[];
   followUpHint: string;
   evidenceIds: readonly string[];
-  readyForContactWrite: true;
-  contactWriteExecuted: false;
-  duplicateLookupExecuted: false;
+  readyForContactWrite: boolean;
+  contactId: string | null;
+  contactWriteExecuted: boolean;
+  duplicateLookupExecuted: boolean;
 }
 
 export interface ManualContactConfirmationPayload {
