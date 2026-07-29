@@ -10,6 +10,7 @@ import {
   parseAgentChatRunActions,
   parseAgentChatRunView,
 } from "../../app/(app)/app/agent/agent-action-status-card";
+import { agentRetryRequestForAssistant } from "../../app/(app)/app/agent/orbit-real-agent";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
 test("conversation response links actions from exactly one shared run", () => {
@@ -158,6 +159,48 @@ test("chat derives ordered Run progress and retry controls from the server envel
   });
 });
 
+test("failed Agent requests replay the nearest preceding user request", () => {
+  assert.equal(
+    agentRetryRequestForAssistant(
+      [
+        { role: "user", text: "先找人" },
+        {
+          items: [],
+          kind: "people",
+          panelTitle: "",
+          role: "assistant",
+          text: "第一轮",
+        },
+        { role: "user", text: "  再生成跟进建议  " },
+        {
+          items: [],
+          kind: "people",
+          panelTitle: "",
+          role: "assistant",
+          text: "失败",
+        },
+      ],
+      3,
+    ),
+    "再生成跟进建议",
+  );
+  assert.equal(
+    agentRetryRequestForAssistant(
+      [
+        {
+          items: [],
+          kind: "people",
+          panelTitle: "",
+          role: "assistant",
+          text: "没有用户请求",
+        },
+      ],
+      0,
+    ),
+    null,
+  );
+});
+
 test("chat never offers one-click confirmation for external actions", () => {
   assert.equal(
     agentChatActionCanConfirm({
@@ -218,4 +261,22 @@ test("Agent chat keeps run and action ids in persisted assistant messages", asyn
   assert.match(source, /evidenceRefsFromArtifacts/);
   assert.match(source, /data-agent-evidence-sources/);
   assert.match(source, /<AgentActionStatusCard/);
+  assert.match(source, /onRetryRequest=/);
+  assert.match(source, /agentRetryRequestForAssistant/);
+});
+
+test("Agent run transition API exposes cancellation only, not a fake in-place retry", async () => {
+  const source = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/api/ai/runs/[id]/transition/route.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(source, /body\?\.action !== "cancel"/);
+  assert.match(source, /runtime\.cancelRun/);
+  assert.doesNotMatch(source, /runtime\.retryRun/);
 });

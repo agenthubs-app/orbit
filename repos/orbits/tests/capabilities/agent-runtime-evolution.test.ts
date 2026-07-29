@@ -137,7 +137,7 @@ test("confirmation is idempotent, freezes all proposed operations, and only queu
   assert.equal(harness.executionCount(), 1);
 });
 
-test("run steps expose progress and support cancel plus idempotent retry", async () => {
+test("run steps expose progress and support idempotent cancellation", async () => {
   const harness = createHarness({});
   const run = await harness.runtime.createRun({
     runId: "run:progress",
@@ -187,15 +187,9 @@ test("run steps expose progress and support cancel plus idempotent retry", async
   assert.equal(detail.run.status, "canceled");
   assert.equal(detail.steps[1]?.status, "canceled");
   assert.equal((await harness.runtime.cancelRun(run.runId)).run.status, "canceled");
-
-  detail = await harness.runtime.retryRun(run.runId);
-  assert.equal(detail.run.status, "running");
-  assert.equal(detail.steps[0]?.status, "completed");
-  assert.equal(detail.steps[1]?.status, "queued");
-  assert.equal(detail.steps[1]?.attempt, 2);
 });
 
-test("failed run steps retain an error and retry only the failed step", async () => {
+test("failed run steps retain their error as immutable audit evidence", async () => {
   const harness = createHarness({});
   const run = await harness.runtime.createRun({
     runId: "run:failed-step",
@@ -225,11 +219,9 @@ test("failed run steps retain an error and retry only the failed step", async ()
   assert.equal(detail.run.status, "failed");
   assert.equal(detail.run.error?.code, "CONTACT_AMBIGUOUS");
   assert.equal(agentRunProgress(detail).canRetry, true);
-
-  detail = await harness.runtime.retryRun(run.runId);
-  assert.equal(detail.steps[0]?.status, "queued");
-  assert.equal(detail.steps[0]?.attempt, 2);
-  assert.equal(detail.steps[0]?.error, undefined);
+  assert.equal(detail.steps[0]?.status, "failed");
+  assert.equal(detail.steps[0]?.attempt, 1);
+  assert.equal(detail.steps[0]?.error?.code, "CONTACT_AMBIGUOUS");
 });
 
 test("concurrent workers atomically claim an outbox event and execute it once", async () => {

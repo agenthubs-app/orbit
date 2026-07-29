@@ -65,7 +65,6 @@ export interface AgentRuntimeService {
     error?: AgentRun["error"],
   ) => Promise<AgentRun>;
   cancelRun: (runId: string) => Promise<AgentRunDetail>;
-  retryRun: (runId: string) => Promise<AgentRunDetail>;
   proposeAction: (input: AgentActionProposalInput) => Promise<AgentActionRecord>;
   approveAction: (input: {
     actionId: string;
@@ -621,49 +620,6 @@ export function createAgentRuntimeService({
         canceledAt: timestamp,
         error: undefined,
         status: "canceled",
-        updatedAt: timestamp,
-      });
-      return orderedRunDetail((await repository.getRun(runId))!);
-    },
-    async retryRun(runId) {
-      const detail = await repository.getRun(runId);
-      if (!detail) throw new Error(`Agent run ${runId} was not found.`);
-      if (
-        detail.run.status !== "failed" &&
-        detail.run.status !== "canceled"
-      ) {
-        throw new Error(
-          `Agent run ${runId} cannot retry from ${detail.run.status}.`,
-        );
-      }
-      const timestamp = now();
-      const retryableSteps = detail.steps.filter(
-        (step) =>
-          step.status === "failed" || step.status === "canceled",
-      );
-      if (retryableSteps.length === 0) {
-        throw new Error(`Agent run ${runId} has no retryable step.`);
-      }
-      for (const step of retryableSteps) {
-        await repository.saveRunStep({
-          ...step,
-          attempt: step.attempt + 1,
-          completedAt: undefined,
-          error: undefined,
-          startedAt: undefined,
-          status: "queued",
-          updatedAt: timestamp,
-        });
-      }
-      await repository.saveRun({
-        ...detail.run,
-        canceledAt: undefined,
-        completedAt: undefined,
-        currentStepId: retryableSteps[0]?.stepId,
-        error: undefined,
-        failedAt: undefined,
-        startedAt: timestamp,
-        status: "running",
         updatedAt: timestamp,
       });
       return orderedRunDetail((await repository.getRun(runId))!);

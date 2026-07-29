@@ -45,19 +45,16 @@ export async function POST(
   const body = (await request.json().catch(() => null)) as {
     action?: unknown;
   } | null;
-  if (body?.action !== "cancel" && body?.action !== "retry") {
+  if (body?.action !== "cancel") {
     return errorResponse(
-      "Agent run transition action must be cancel or retry.",
+      "Agent run transition action must be cancel.",
       mode,
       400,
     );
   }
   const { id } = await context.params;
   try {
-    const detail =
-      body.action === "cancel"
-        ? await agentContext.runtime.cancelRun(id)
-        : await agentContext.runtime.retryRun(id);
+    const detail = await agentContext.runtime.cancelRun(id);
     return NextResponse.json(
       success({
         ...detail,

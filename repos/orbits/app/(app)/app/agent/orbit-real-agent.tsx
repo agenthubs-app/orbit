@@ -43,6 +43,25 @@ type AgentMessage =
       text: string;
     };
 
+export function agentRetryRequestForAssistant(
+  messages: readonly AgentMessage[],
+  assistantIndex: number,
+): string | null {
+  for (
+    let index = Math.min(assistantIndex - 1, messages.length - 1);
+    index >= 0;
+    index -= 1
+  ) {
+    const message = messages[index];
+    if (message?.role === "user") {
+      const text = message.text.trim();
+      return text || null;
+    }
+  }
+
+  return null;
+}
+
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
@@ -1945,6 +1964,13 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                       actionIds={message.actionIds ?? []}
                       language={language === "zh" ? "zh" : "en"}
                       navigate={navigate}
+                      onRetryRequest={async () => {
+                        const request = agentRetryRequestForAssistant(
+                          messages,
+                          index,
+                        );
+                        if (request) await ask(request);
+                      }}
                       runId={message.runId}
                     />
                   ) : null}

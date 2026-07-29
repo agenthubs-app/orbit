@@ -39,6 +39,7 @@ interface AgentActionStatusCardProps {
   actionIds: readonly string[];
   language: AgentActionStatusLanguage;
   navigate: (href: string) => void;
+  onRetryRequest?: () => Promise<void>;
   runId: string;
 }
 
@@ -277,6 +278,7 @@ export function AgentActionStatusCard({
   actionIds,
   language,
   navigate,
+  onRetryRequest,
   runId,
 }: AgentActionStatusCardProps) {
   const stableActionIds = useMemo(
@@ -375,14 +377,14 @@ export function AgentActionStatusCard({
     };
   }, [hasPendingExecution, hasPendingRun, runId, stableActionIds]);
 
-  async function applyRunTransition(action: "cancel" | "retry") {
-    setPendingActionId(`run:${action}`);
+  async function cancelRun() {
+    setPendingActionId("run:cancel");
     setError(null);
     try {
       const response = await fetch(
         `/api/ai/runs/${encodeURIComponent(runId)}/transition`,
         {
-          body: JSON.stringify({ action }),
+          body: JSON.stringify({ action: "cancel" }),
           headers: { "content-type": "application/json" },
           method: "POST",
         },
@@ -400,6 +402,23 @@ export function AgentActionStatusCard({
         language === "zh"
           ? "网络错误，Run 状态没有改变。"
           : "Network error. The run was not changed.",
+      );
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
+  async function retryRequest() {
+    if (!onRetryRequest) return;
+    setPendingActionId("run:retry-request");
+    setError(null);
+    try {
+      await onRetryRequest();
+    } catch {
+      setError(
+        language === "zh"
+          ? "请求没有重新提交，请再试一次。"
+          : "The request was not retried. Please try again.",
       );
     } finally {
       setPendingActionId(null);
@@ -557,21 +576,21 @@ export function AgentActionStatusCard({
                   className="btn btn-quiet"
                   data-agent-run-cancel
                   disabled={pendingActionId === "run:cancel"}
-                  onClick={() => void applyRunTransition("cancel")}
+                  onClick={() => void cancelRun()}
                   type="button"
                 >
                   {language === "zh" ? "取消 Run" : "Cancel run"}
                 </button>
               ) : null}
-              {runView.progress.canRetry ? (
+              {runView.progress.canRetry && onRetryRequest ? (
                 <button
                   className="btn btn-quiet"
-                  data-agent-run-retry
-                  disabled={pendingActionId === "run:retry"}
-                  onClick={() => void applyRunTransition("retry")}
+                  data-agent-run-retry-request
+                  disabled={pendingActionId === "run:retry-request"}
+                  onClick={() => void retryRequest()}
                   type="button"
                 >
-                  {language === "zh" ? "从失败步骤重试" : "Retry failed step"}
+                  {language === "zh" ? "重新提交请求" : "Retry request"}
                 </button>
               ) : null}
             </div>
