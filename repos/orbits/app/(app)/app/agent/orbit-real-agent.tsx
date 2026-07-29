@@ -1165,7 +1165,7 @@ function AgentHistoryDeleteDialog({
           borderRadius: "var(--r-lg)",
           boxShadow: "var(--sh-pop)",
           display: "grid",
-          gap: 14,
+          gap: 16,
           maxWidth: 440,
           padding: 24,
           width: "100%",
@@ -1174,7 +1174,7 @@ function AgentHistoryDeleteDialog({
       >
         <h2
           id="orbit-agent-history-delete-title"
-          style={{ color: "var(--ink)", fontSize: 21, margin: 0 }}
+          style={{ color: "var(--ink)", fontSize: 22, margin: 0 }}
         >
           {t({ en: "Delete this conversation?", zh: "删除这个对话？" })}
         </h2>
@@ -1192,7 +1192,7 @@ function AgentHistoryDeleteDialog({
             {error}
           </p>
         ) : null}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "flex-end" }}>
           <button
             autoFocus
             className="btn btn-secondary"
@@ -1708,15 +1708,6 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
     () => agentChatHistorySessionsToHistory(storedSessions, language),
     [language, storedSessions],
   );
-
-  useEffect(() => {
-    if (historyFeedback?.kind !== "success") {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setHistoryFeedback(null), 3200);
-    return () => window.clearTimeout(timer);
-  }, [historyFeedback]);
 
   const navigate = useCallback((prototypeHref: string) => {
     const href = preserveHref(productHref(prototypeHref));
