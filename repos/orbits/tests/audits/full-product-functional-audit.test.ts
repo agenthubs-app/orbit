@@ -154,7 +154,7 @@ test("visible controls have static accessible-name evidence", () => {
   );
 });
 
-test("browser base-state evidence is scoped to the 23 directly rendered Web surfaces", () => {
+test("browser base-state evidence is scoped to the 20 currently direct Web surfaces", () => {
   const browserEvidenceSurfaces = inventory.surfaces.filter(
     (surface) =>
       surface.runtimeEvidence.includes(
@@ -162,8 +162,36 @@ test("browser base-state evidence is scoped to the 23 directly rendered Web surf
       ),
   );
 
-  assert.equal(browserEvidenceSurfaces.length, 23);
-  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 94);
+  assert.equal(browserEvidenceSurfaces.length, 20);
+  for (const route of ["/app/admin", "/app/admin/events", "/app/platform"]) {
+    const surface = inventory.surfaces.find(
+      (candidate) => candidate.surfaceId === `web:${route}`,
+    );
+    assert.ok(surface, route);
+    assert.equal(
+      surface.runtimeEvidence.includes(
+        "in-app browser base-state at 1440x900",
+      ),
+      false,
+      route,
+    );
+    assert.equal(surface.access.policy, "authenticated-at-web-boundary", route);
+  }
+  for (const route of ["/app/admin/access", "/app/login-admin"]) {
+    const surface = inventory.surfaces.find(
+      (candidate) => candidate.surfaceId === `web:${route}`,
+    );
+    assert.ok(surface, route);
+    assert.equal(
+      surface.runtimeEvidence.includes(
+        "in-app browser base-state at 1440x900",
+      ),
+      true,
+      route,
+    );
+    assert.equal(surface.access.policy, "public-admin-auth-entry", route);
+  }
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, 91);
   const runtimeVerifiedInteractions = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
       (interaction) =>

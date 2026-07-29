@@ -1,6 +1,10 @@
 # Compose App Events Live Implementation Notes
 
-Sprint 62 composes `/app/events` from approved event CRUD/import, event attendee recommendation, event value recommendation, and event goal readiness boundaries. The app route calls service factories and route handlers; it does not import raw source data into nested UI components.
+The public `/app/events` page is a read-only catalogue. A separate internal
+Events aggregate composes actor-owned event CRUD/import records, attendee
+recommendations, event-value recommendations, and readiness for authenticated
+Home, Event Detail fallback, Admin, and Platform surfaces. Neither path imports
+raw provider data into nested UI components.
 
 The customer-facing catalogue is a public discovery surface. `/app/events` reads the
 previously approved catalogue without requiring a session; authentication starts only
@@ -11,23 +15,35 @@ public catalogue.
 
 ## Evaluator Evidence Summary
 
-This document covers live service/provider files, switch mechanism, required env vars or permissions, privacy/provenance constraints, replacement tests, route state checks, route recovery actions, and `data-action-evidence`. The `/app/events` page now keeps internal capability terms out of user-visible copy: state scenarios remain accessible through `/app/events?scenario=empty`, `/app/events?scenario=pending`, and `/app/events?scenario=failure`, while the ready page reads as an event briefing rather than a validation console.
+This document covers live service/provider files, switch mechanism, required
+env vars or permissions, privacy/provenance constraints, replacement tests,
+route state checks, and route recovery actions. Public Event URLs do not expose
+fixture scenarios or action controls. Controlled empty, pending, and failure
+states are available only through the aggregate loader's typed internal
+`controls` argument.
 
 Live files:
 
 - `features/events/event-crud-and-import/service.ts`, `features/events/event-crud-and-import/contract.ts`, and future `features/events/live-service.ts` for event CRUD/import.
 - `features/recommendations/service.ts`, `features/recommendations/contract.ts`, and future `features/recommendations/live-service.ts` for event attendee recommendations and opening lines.
-- `features/recommendations/event-value-contract.ts` and future `features/recommendations/live-event-value-service.ts` for event value recommendations and accept actions.
+- `features/recommendations/event-value-contract.ts` and
+  `features/recommendations/live-event-value-service.ts` for event value reads
+  and the authenticated accept endpoint.
 - `features/events/goal-readiness/contract.ts` and future `features/events/live-goal-service.ts` for event goals and readiness.
 - `app/api/events/route.ts`, `app/api/recommendations/events/route.ts`, `app/api/recommendations/event/[id]/route.ts`, and `app/api/events/[id]/readiness/route.ts` for API envelopes.
 - `app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory.ts` for app route service resolution.
 
 Switch:
 
-- The page uses `createAppEventsRouteServices`, which resolves services through `createModuleServiceFactory`.
+- The internal aggregate uses `createAppEventsRouteServices`, which resolves
+  services through `createModuleServiceFactory`.
 - `ORBIT_MODULE_MODE` selects `mock`, `hybrid`, or `live`; invalid or missing values fall back to mock mode.
-- Live mode must stay unavailable until the live constructors are registered and return controlled `NOT_IMPLEMENTED` failures for missing implementations.
 - The app route must not branch directly on provider env vars.
+- The aggregate public signature is actor identity plus typed internal controls;
+  it accepts no page search-parameter record.
+- `/app/admin`, `/app/admin/events`, and `/app/platform` require the existing
+  authenticated session and pass that actor to both Events and Profile.
+  `/app/admin/access` and `/app/login-admin` remain public sign-in entries.
 - The route state boundary is owned by this app adapter as `data-state-boundary="app-events-route-state-view"` so live readiness, empty, and failure states can keep product-facing labels while still exposing deterministic route state checks.
 - A true zero-catalogue state stays inside the same discovery shell, with the normal
   navigation, title, filters, and a product-facing empty message. Internal capability
@@ -50,12 +66,17 @@ Privacy and provenance:
   attendee names server-side and only serialize them after the current account has an
   active registration for that exact event. Hiding a rendered roster with CSS is not
   an authorization boundary.
-- Sensitive actions must keep `data-action-evidence`, route state checks, route recovery actions, and `data-side-effects="none"` until a confirmation guard and external action sandbox approve live side effects.
-- Live services must not run calendar writes, database writes, email sends, notification delivery, event discovery calls, or AI calls from the page render path.
+- Event acceptance must use authenticated
+  `POST /api/recommendations/events/[id]/accept`; page GET rendering must not
+  call `acceptRecommendedEvent` or build an invisible action result.
+- Live services must not run calendar writes, database writes, email sends,
+  notification delivery, event discovery calls, AI calls, or acceptance
+  previews from the page render path.
 
 Replacement tests:
 
-- Page route tests for `/app/events`, `/app/events?scenario=empty`, `/app/events?scenario=pending`, and `/app/events?scenario=failure`.
+- Page route tests for the public `/app/events` catalogue plus internal
+  aggregate tests for explicit empty, pending, and failure controls.
 - Copy regression tests proving public `/app/events` text avoids route, boundary, provider, fixture, live, vector, model, deterministic, database, console, mock, and harness vocabulary while preserving raw evidence ids in data attributes.
 - API envelope tests for `GET /api/events`, `GET /api/recommendations/events`, attendee recommendation reads, readiness reads, and accept action envelopes.
 - Factory tests proving `mock`, `hybrid`, and `live` resolution selects registered constructors and returns controlled failures for unavailable live services.
@@ -64,4 +85,7 @@ Replacement tests:
 - Account-boundary tests proving the catalogue and public details are readable without
   a session, registration redirects to login, catalogue codes are unique, and attendee
   names are absent until the current account has registered.
+- Operator-boundary tests proving the two admin sign-in entries stay public,
+  the three workspaces require a session, server pages pass the canonical actor,
+  and public `scenario`/`action` query values cannot enter the Events aggregate.
 - Confirmation and sandbox tests before enabling live calendar writes, external messages, notifications, database writes, or production audit writes.

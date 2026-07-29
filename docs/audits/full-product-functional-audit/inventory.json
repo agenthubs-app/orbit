@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "411772b22955211ee9f8f4083e1a1bd4d4150056",
-  "deterministicSourceTime": "2026-07-29T10:29:42+09:00",
+  "generatedFromCommit": "138d528ad382e90fedcb1bbb5c86236513657665",
+  "deterministicSourceTime": "2026-07-29T10:47:18+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
     "webAppRoot": "repos/orbits/app",
     "mobileAppRoot": "repos/orbit-app/app",
     "webPrivatePrefixes": [
+      "/app/admin",
       "/app/agent",
       "/app/chat",
       "/app/contacts",
@@ -15,10 +16,15 @@
       "/app/followups",
       "/app/home",
       "/app/party",
+      "/app/platform",
       "/app/profile",
       "/app/schedule",
       "/app/settings",
       "/app/today"
+    ],
+    "webPublicPathExceptions": [
+      "/app/admin/access",
+      "/app/login-admin"
     ]
   },
   "summary": {
@@ -33,11 +39,11 @@
     "interactionRouteInstances": 2848,
     "interactionsRuntimeVerified": 170,
     "surfacesRuntimeVerified": 0,
-    "surfacesWithRuntimeEvidence": 94,
+    "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 66,
-    "documentedRemediations": 66
+    "documentedVerificationCases": 67,
+    "documentedRemediations": 67
   },
   "surfaces": [
     {
@@ -44962,14 +44968,14 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
         "api": [
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/encounter-note/contract.ts",
           "repos/orbits/features/events/event-crud-and-import/contract.ts",
@@ -44986,6 +44992,12 @@
           "repos/orbits/shared/contract/profile.ts"
         ],
         "live": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider.ts",
           "repos/orbits/features/events/encounter-note/storage/generated-encounter-note-live-record-provider.ts",
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
@@ -45015,6 +45027,9 @@
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/mock-service.ts",
@@ -45078,6 +45093,11 @@
           "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -45130,6 +45150,7 @@
         "external": [
           "repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
           "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
+          "repos/orbits/app/(app)/app/admin/page.tsx",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-language-server.ts",
@@ -45138,6 +45159,13 @@
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/oauth-providers.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -45245,7 +45273,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/page.tsx",
-          "line": 42,
+          "line": 43,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -45352,8 +45380,8 @@
           "text": "Next step:"
         }
       ],
-      "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "layout": "source-inventoried; rendered structure requires viewport verification",
+      "entryBehavior": "not-runtime-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href",
@@ -45361,9 +45389,9 @@
       ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
-        "desktop": "base-state-no-horizontal-overflow-at-1440x900",
+        "desktop": "not-runtime-verified",
         "tablet": "not-runtime-verified",
-        "mobile": "base-state-no-horizontal-overflow-at-390x844"
+        "mobile": "not-runtime-verified"
       },
       "accessibility": {
         "keyboard": "not-runtime-verified",
@@ -45373,23 +45401,18 @@
       "routeParameters": {
         "queryParameters": [
           "4636af91-bda9-4959-bb19-8ab1c003d4e6",
-          "copy",
-          "errorCode",
-          "evidenceIds",
           "lang",
           "orbit-lang",
           "orbitVisualSeed",
-          "recoveryActions",
-          "scenario",
-          "searchParams",
-          "surface",
           "x-orbit-lang"
         ],
         "hashEvidenceFiles": [
           "repos/orbits/app/(app)/app/orbit-language-context.tsx",
           "repos/orbits/app/(app)/app/orbit-language-core.ts"
         ],
-        "deepLinkEvidenceFiles": []
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/admin/page.tsx"
+        ]
       },
       "states": {
         "loading": true,
@@ -45668,19 +45691,15 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
         "repos/orbits/tests/pages/orbit-cover-photo-usage.test.ts",
         "repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
         "repos/orbits/tests/ui/orbit-modal-standard.test.ts"
       ],
-      "runtimeEvidence": [
-        "production-build transport smoke",
-        "in-app browser base-state at 1440x900",
-        "in-app browser base-state at 390x844",
-        "browser console warning/error check"
-      ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "runtimeEvidence": [],
+      "verificationConclusion": "inventory-complete-runtime-verification-pending"
     },
     {
       "surfaceId": "web:/app/admin/access",
@@ -45697,7 +45716,7 @@
           "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "public-admin-auth-entry"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -46021,6 +46040,7 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts"
       ],
       "runtimeEvidence": [
@@ -46043,14 +46063,14 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
         "api": [
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/encounter-note/contract.ts",
           "repos/orbits/features/events/event-crud-and-import/contract.ts",
@@ -46067,6 +46087,12 @@
           "repos/orbits/shared/contract/profile.ts"
         ],
         "live": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider.ts",
           "repos/orbits/features/events/encounter-note/storage/generated-encounter-note-live-record-provider.ts",
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
@@ -46096,6 +46122,9 @@
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/mock-service.ts",
@@ -46159,6 +46188,11 @@
           "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
           "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -46210,6 +46244,7 @@
         ],
         "external": [
           "repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
+          "repos/orbits/app/(app)/app/admin/events/page.tsx",
           "repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx",
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts",
@@ -46219,6 +46254,13 @@
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/oauth-providers.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -46272,7 +46314,7 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/admin/events/page.tsx",
-          "line": 40,
+          "line": 41,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -46433,8 +46475,8 @@
           "text": "Next step:"
         }
       ],
-      "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "layout": "source-inventoried; rendered structure requires viewport verification",
+      "entryBehavior": "not-runtime-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href",
@@ -46442,9 +46484,9 @@
       ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
-        "desktop": "base-state-no-horizontal-overflow-at-1440x900",
+        "desktop": "not-runtime-verified",
         "tablet": "not-runtime-verified",
-        "mobile": "base-state-no-horizontal-overflow-at-390x844"
+        "mobile": "not-runtime-verified"
       },
       "accessibility": {
         "keyboard": "not-runtime-verified",
@@ -46454,23 +46496,18 @@
       "routeParameters": {
         "queryParameters": [
           "4636af91-bda9-4959-bb19-8ab1c003d4e6",
-          "copy",
-          "errorCode",
-          "evidenceIds",
           "lang",
           "orbit-lang",
           "orbitVisualSeed",
-          "recoveryActions",
-          "scenario",
-          "searchParams",
-          "surface",
           "x-orbit-lang"
         ],
         "hashEvidenceFiles": [
           "repos/orbits/app/(app)/app/orbit-language-context.tsx",
           "repos/orbits/app/(app)/app/orbit-language-core.ts"
         ],
-        "deepLinkEvidenceFiles": []
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/admin/events/page.tsx"
+        ]
       },
       "states": {
         "loading": true,
@@ -46749,15 +46786,12 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts"
       ],
-      "runtimeEvidence": [
-        "production-build transport smoke",
-        "in-app browser base-state at 1440x900",
-        "in-app browser base-state at 390x844",
-        "browser console warning/error check"
-      ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "runtimeEvidence": [],
+      "verificationConclusion": "inventory-complete-runtime-verification-pending"
     },
     {
       "surfaceId": "web:/app/agent",
@@ -93764,7 +93798,7 @@
           "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "public-admin-auth-entry"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -94088,6 +94122,7 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts"
       ],
       "runtimeEvidence": [
@@ -105364,14 +105399,14 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
         "api": [
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/encounter-note/contract.ts",
           "repos/orbits/features/events/event-crud-and-import/contract.ts",
@@ -105388,6 +105423,12 @@
           "repos/orbits/shared/contract/profile.ts"
         ],
         "live": [
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider.ts",
           "repos/orbits/features/events/encounter-note/storage/generated-encounter-note-live-record-provider.ts",
           "repos/orbits/features/events/event-crud-and-import/providers/storage-event-provider.ts",
@@ -105417,6 +105458,9 @@
           "repos/orbits/app/(app)/app/platform/page.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/mock-service.ts",
@@ -105479,6 +105523,11 @@
           "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-hybrid-route-data.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/service-factory.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -105537,8 +105586,16 @@
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
           "repos/orbits/app/(app)/app/platform/orbit-real-platform.tsx",
+          "repos/orbits/app/(app)/app/platform/page.tsx",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
           "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
+          "repos/orbits/auth.ts",
+          "repos/orbits/features/auth/auth-user-service.ts",
+          "repos/orbits/features/auth/contract.ts",
+          "repos/orbits/features/auth/oauth-providers.ts",
+          "repos/orbits/features/auth/service.ts",
+          "repos/orbits/features/auth/storage/auth-account-provisioning-provider.ts",
+          "repos/orbits/features/auth/storage/auth-user-live-record-provider.ts",
           "repos/orbits/features/events/attendee-roster/contract.ts",
           "repos/orbits/features/events/attendee-roster/fixtures.ts",
           "repos/orbits/features/events/attendee-roster/live-service.ts",
@@ -105676,7 +105733,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/platform/page.tsx",
-          "line": 40,
+          "line": 41,
           "tag": "StateView",
           "text": "routeState.copy.title"
         },
@@ -105753,17 +105810,17 @@
           "text": "Next step:"
         }
       ],
-      "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "layout": "source-inventoried; rendered structure requires viewport verification",
+      "entryBehavior": "not-runtime-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "action.href"
       ],
       "backCloseBehavior": "not-runtime-verified",
       "responsive": {
-        "desktop": "base-state-no-horizontal-overflow-at-1440x900",
+        "desktop": "not-runtime-verified",
         "tablet": "not-runtime-verified",
-        "mobile": "base-state-no-horizontal-overflow-at-390x844"
+        "mobile": "not-runtime-verified"
       },
       "accessibility": {
         "keyboard": "not-runtime-verified",
@@ -105773,23 +105830,18 @@
       "routeParameters": {
         "queryParameters": [
           "4636af91-bda9-4959-bb19-8ab1c003d4e6",
-          "copy",
-          "errorCode",
-          "evidenceIds",
           "lang",
           "orbit-lang",
           "orbitVisualSeed",
-          "recoveryActions",
-          "scenario",
-          "searchParams",
-          "surface",
           "x-orbit-lang"
         ],
         "hashEvidenceFiles": [
           "repos/orbits/app/(app)/app/orbit-language-context.tsx",
           "repos/orbits/app/(app)/app/orbit-language-core.ts"
         ],
-        "deepLinkEvidenceFiles": []
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/platform/page.tsx"
+        ]
       },
       "states": {
         "loading": true,
@@ -106142,17 +106194,13 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts"
       ],
-      "runtimeEvidence": [
-        "production-build transport smoke",
-        "in-app browser base-state at 1440x900",
-        "in-app browser base-state at 390x844",
-        "browser console warning/error check"
-      ],
-      "verificationConclusion": "runtime-partially-verified-browser-base-state"
+      "runtimeEvidence": [],
+      "verificationConclusion": "inventory-complete-runtime-verification-pending"
     },
     {
       "surfaceId": "web:/app/profile",
@@ -138656,6 +138704,15 @@
       "actual": "Before repair, the shared loader accepted an unrestricted query record: scenario selected fixture states and prompt invoked Orbit Agent sendMessage during server rendering, although ChatWorkspace consumed neither agentTurn nor actionResult. Live async links used conversationId, which the loader ignored in favor of its first conversation. After repair, Chat accepts only conversation/conversationId, scenarios require explicit internal controls, the GET Agent/action projection chain is deleted, both conversation aliases select the exact actor-scoped identity, and the empty branch reuses the same actor-scoped services.",
       "evidence": "GitNexus pre-edit impact was LOW for the shared loader and HIGH for the internal projection chain across the AppAgentPage process group. Chat/Agent focused tests passed 41/41; the complete Web suite passed 1358/1358; the exact production build passed after preserving the pure artifact surface type used by the side-panel contract. Staged detection returned MEDIUM for four files, six symbols, and one indexed AppAgentPage flow; commit 411772b2",
       "conclusion": "pass for source/build/full-suite separation of public Chat identity from internal scenarios and GET Agent execution across Chat and Agent composition; authenticated browser DOM, populated multi-account identity selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "web-operator-events-auth-query-isolation-2026-07-29",
+      "target": "Web Admin, Admin Events, and Platform → authenticated actor-scoped Events/Profile composition separated from public sign-in entries and internal Events controls",
+      "testData": "Signed-out /app/admin/access, /app/login-admin, /app/admin, /app/admin/events, and /app/platform access policy; shared operator loader with an explicit actor, adversarial scenario/action properties, and explicit internal empty control",
+      "expected": "Only the two sign-in entries may remain public. Every operator workspace must require the existing authenticated session, pass its canonical actor to both Events and Profile, and ignore public fixture/action query input. A page GET must never invoke recommendation acceptance; controlled tests retain a non-URL scenario path.",
+      "actual": "Before repair, all three workspaces were public, their pages forwarded unrestricted search parameters, and the shared loader called live Events/Profile without an actor. scenario selected internal Event states, while action=accept-top-event called acceptRecommendedEvent during GET and produced an actionResult that no production consumer rendered. After repair, the proxy and each server page require a session while the two sign-in entries remain public, the shared loader passes one actor to Events and Profile, Events accepts only actorId plus typed controls, and the dead GET acceptance/actionResult chain and scenario URL recovery are removed.",
+      "evidence": "Fresh GitNexus index (28,424 nodes, 60,559 edges, 300 flows); pre-edit HIGH impact for the Events loader/action helpers across Home, Home Events, and Event Detail, LOW for the operator loader/pages/auth predicate; focused Events/Admin/Home/Event Detail/auth/visual tests 55/55; complete Web suite 1358/1358; exact production build; staged GitNexus CRITICAL across 11 files, 15 symbols, and 16 expected Events/Home/Detail/auth-return flows; commit 138d528a",
+      "conclusion": "pass for source/build/full-suite enforcement of authenticated operator composition, actor propagation, public sign-in exceptions, explicit-only Event scenarios, and removal of GET acceptance; authenticated browser redirect/return/data-isolation runtime, admin role authorization beyond a generic session, populated multi-account operator data, POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "remediations": [
@@ -139252,6 +139309,15 @@
       "files": "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts; repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/tests/pages/app-chat-page.test.tsx; repos/orbits/tests/pages/app-chat-live-route-services.test.ts",
       "regression": "GitNexus reported LOW impact for the loader and HIGH impact for the internal workspace/scenario/prompt/Agent/artifact projection symbols in the AppAgentPage process group. Chat and Agent focused tests passed 41/41, the complete Web suite passed 1358/1358, and the exact production build passed. Regression proves both identity aliases, public prompt/scenario isolation, explicit internal empty state, actor-scoped empty service reuse, and source-level absence of the GET Agent execution chain. Staged detection returned MEDIUM for four files, six symbols, and one indexed flow.",
       "status": "fixed and source/build/full-suite-verified for shared Chat/Agent server composition; authenticated browser runtime, populated multi-account conversation selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-067",
+      "severity": "P1",
+      "rootCause": "Admin, Admin Events, and Platform were operator workspaces with profile/member/event/review data, but the auth route policy left all three public. Their pages passed unrestricted query input into a shared loader and supplied no actor to live Events or Profile. scenario selected fixture states; action=accept-top-event invoked recommendation acceptance during GET and built an action result ignored by every production consumer.",
+      "decision": "Keep /app/admin/access and /app/login-admin as the only public operator sign-in entries. Require the existing authenticated session at proxy and server-page boundaries for all three workspaces, pass one canonical actor into Events and Profile, change the Events aggregate to actorId plus typed internal controls, delete query readers and the unconsumed GET acceptance/action-result chain, and retain real acceptance only behind the authenticated POST API. Do not invent admin roles that the current identity model does not define.",
+      "files": "repos/orbits/features/auth/app-auth-routing.ts; repos/orbits/app/(app)/app/admin/page.tsx; repos/orbits/app/(app)/app/admin/events/page.tsx; repos/orbits/app/(app)/app/platform/page.tsx; repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts; repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx; repos/orbits/app/(app)/app/events/[id]/page.tsx; focused auth/operator/Events tests",
+      "regression": "After a successful full GitNexus re-index, pre-edit impact was HIGH for the shared Events loader and action helpers across Home and Event Detail, while operator pages and the auth predicate were LOW. Seven focused test files passed 55/55, the complete Web suite passed 1358/1358, and the exact production build passed. Tests cover public sign-in exceptions, private workspace paths, safe auth return normalization, page-level auth/redirect/actor source, live failure, adversarial public scenario/action isolation, explicit internal empty state, and absence of the GET acceptance chain. Staged detection was CRITICAL across 16 expected flows.",
+      "status": "fixed and source/build/full-suite-verified for session gating, actor propagation, query isolation, and GET acceptance removal; browser runtime, a dedicated admin/organizer role authorization model, populated multi-account isolation, authenticated POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
     }
   ],
   "externalLimitations": []

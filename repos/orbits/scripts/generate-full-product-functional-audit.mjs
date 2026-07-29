@@ -76,14 +76,11 @@ const BROWSER_SMOKE_WEB_ROUTES = new Set([
   "/app/account/login",
   "/app/account/mobile-google",
   "/app/account/signup",
-  "/app/admin",
   "/app/admin/access",
-  "/app/admin/events",
   "/app/events",
   "/app/events/[id]",
   "/app/login-admin",
   "/app/o/[slug]",
-  "/app/platform",
   "/app/register",
   "/dev/agent-test-report",
   "/dev/capabilities",
@@ -3461,6 +3458,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build/full-suite separation of public Chat identity from internal scenarios and GET Agent execution across Chat and Agent composition; authenticated browser DOM, populated multi-account identity selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-operator-events-auth-query-isolation-2026-07-29",
+    target:
+      "Web Admin, Admin Events, and Platform → authenticated actor-scoped Events/Profile composition separated from public sign-in entries and internal Events controls",
+    testData:
+      "Signed-out /app/admin/access, /app/login-admin, /app/admin, /app/admin/events, and /app/platform access policy; shared operator loader with an explicit actor, adversarial scenario/action properties, and explicit internal empty control",
+    expected:
+      "Only the two sign-in entries may remain public. Every operator workspace must require the existing authenticated session, pass its canonical actor to both Events and Profile, and ignore public fixture/action query input. A page GET must never invoke recommendation acceptance; controlled tests retain a non-URL scenario path.",
+    actual:
+      "Before repair, all three workspaces were public, their pages forwarded unrestricted search parameters, and the shared loader called live Events/Profile without an actor. scenario selected internal Event states, while action=accept-top-event called acceptRecommendedEvent during GET and produced an actionResult that no production consumer rendered. After repair, the proxy and each server page require a session while the two sign-in entries remain public, the shared loader passes one actor to Events and Profile, Events accepts only actorId plus typed controls, and the dead GET acceptance/actionResult chain and scenario URL recovery are removed.",
+    evidence:
+      "Fresh GitNexus index (28,424 nodes, 60,559 edges, 300 flows); pre-edit HIGH impact for the Events loader/action helpers across Home, Home Events, and Event Detail, LOW for the operator loader/pages/auth predicate; focused Events/Admin/Home/Event Detail/auth/visual tests 55/55; complete Web suite 1358/1358; exact production build; staged GitNexus CRITICAL across 11 files, 15 symbols, and 16 expected Events/Home/Detail/auth-return flows; commit 138d528a",
+    conclusion:
+      "pass for source/build/full-suite enforcement of authenticated operator composition, actor propagation, public sign-in exceptions, explicit-only Event scenarios, and removal of GET acceptance; authenticated browser redirect/return/data-isolation runtime, admin role authorization beyond a generic session, populated multi-account operator data, POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4384,6 +4396,20 @@ const AUDIT_REMEDIATIONS = [
     status:
       "fixed and source/build/full-suite-verified for shared Chat/Agent server composition; authenticated browser runtime, populated multi-account conversation selection, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "AUDIT-P1-067",
+    severity: "P1",
+    rootCause:
+      "Admin, Admin Events, and Platform were operator workspaces with profile/member/event/review data, but the auth route policy left all three public. Their pages passed unrestricted query input into a shared loader and supplied no actor to live Events or Profile. scenario selected fixture states; action=accept-top-event invoked recommendation acceptance during GET and built an action result ignored by every production consumer.",
+    decision:
+      "Keep /app/admin/access and /app/login-admin as the only public operator sign-in entries. Require the existing authenticated session at proxy and server-page boundaries for all three workspaces, pass one canonical actor into Events and Profile, change the Events aggregate to actorId plus typed internal controls, delete query readers and the unconsumed GET acceptance/action-result chain, and retain real acceptance only behind the authenticated POST API. Do not invent admin roles that the current identity model does not define.",
+    files:
+      "repos/orbits/features/auth/app-auth-routing.ts; repos/orbits/app/(app)/app/admin/page.tsx; repos/orbits/app/(app)/app/admin/events/page.tsx; repos/orbits/app/(app)/app/platform/page.tsx; repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts; repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx; repos/orbits/app/(app)/app/events/[id]/page.tsx; focused auth/operator/Events tests",
+    regression:
+      "After a successful full GitNexus re-index, pre-edit impact was HIGH for the shared Events loader and action helpers across Home and Event Detail, while operator pages and the auth predicate were LOW. Seven focused test files passed 55/55, the complete Web suite passed 1358/1358, and the exact production build passed. Tests cover public sign-in exceptions, private workspace paths, safe auth return normalization, page-level auth/redirect/actor source, live failure, adversarial public scenario/action isolation, explicit internal empty state, and absence of the GET acceptance chain. Staged detection was CRITICAL across 16 expected flows.",
+    status:
+      "fixed and source/build/full-suite-verified for session gating, actor propagation, query isolation, and GET acceptance removal; browser runtime, a dedicated admin/organizer role authorization model, populated multi-account isolation, authenticated POST acceptance/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 
 function toPosix(filePath) {
@@ -5224,8 +5250,33 @@ function readPrivateWebPrefixes() {
     : [];
 }
 
-function accessForSurface(client, route, privateWebPrefixes) {
+function readPublicWebPathExceptions() {
+  const filePath = path.join(WEB_ROOT, "features/auth/app-auth-routing.ts");
+  const source = readFileSync(filePath, "utf8");
+  const declaration =
+    /ORBIT_PUBLIC_ADMIN_ENTRY_PATHS\s*=\s*new Set\(\[([\s\S]*?)\]\)/u.exec(
+      source,
+    );
+  return declaration
+    ? [...declaration[1].matchAll(/["']([^"']+)["']/gu)].map(
+        (match) => match[1],
+      )
+    : [];
+}
+
+function accessForSurface(
+  client,
+  route,
+  privateWebPrefixes,
+  publicWebPathExceptions,
+) {
   if (client === "web") {
+    if (publicWebPathExceptions.includes(route)) {
+      return {
+        roles: ["anonymous", "authenticated-user"],
+        policy: "public-admin-auth-entry",
+      };
+    }
     if (
       privateWebPrefixes.some(
         (prefix) => route === prefix || route.startsWith(`${prefix}/`),
@@ -5356,6 +5407,7 @@ export function buildFullProductFunctionalAuditInventory() {
     routeEntries.map((entry) => `${entry.client}:${entry.route}`),
   );
   const privateWebPrefixes = readPrivateWebPrefixes();
+  const publicWebPathExceptions = readPublicWebPathExceptions();
   const testsByClient = {
     web: testFilesForClient("web"),
     mobile: testFilesForClient("mobile"),
@@ -5536,7 +5588,12 @@ export function buildFullProductFunctionalAuditInventory() {
       pathParameters,
       pageFile: relativeToWorkspace(entry.pageFile),
       trigger: "direct route, navigation, redirect, or deep link",
-      access: accessForSurface(entry.client, entry.route, privateWebPrefixes),
+      access: accessForSurface(
+        entry.client,
+        entry.route,
+        privateWebPrefixes,
+        publicWebPathExceptions,
+      ),
       prerequisites: "runtime data, session, role, and configuration require verification",
       dataSources: collectDataSignals(reachableFiles),
       goal: inferPurpose(entry.route),
@@ -5765,6 +5822,7 @@ export function buildFullProductFunctionalAuditInventory() {
       webAppRoot: relativeToWorkspace(WEB_APP_ROOT),
       mobileAppRoot: relativeToWorkspace(MOBILE_APP_ROOT),
       webPrivatePrefixes: privateWebPrefixes,
+      webPublicPathExceptions: publicWebPathExceptions,
     },
     summary: {
       routeSurfaces: surfaces.length,

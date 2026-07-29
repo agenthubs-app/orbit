@@ -29,9 +29,15 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
 5. Open `/app/contacts/demo-contact-1?action=prepare-follow-up`.
    - Confirm Kenji Watanabe's contact detail shows connection evidence.
    - Confirm the follow-up draft stays local until explicit confirmation.
-6. Open `/app/events?action=accept-top-event`.
-   - Confirm event attendee recommendation and readiness context render.
-   - Confirm accepting the event recommendation does not change calendars, saved records, messages, or notifications.
+6. Sign out and open `/app/admin/access`, then try `/app/admin`,
+   `/app/admin/events`, and `/app/platform`.
+   - Confirm the access page stays public while every workspace redirects to the
+     secure account sign-in flow with its exact return path.
+   - Sign in, open each workspace, and confirm its event/profile data belongs to
+     the current actor.
+   - Append `scenario=failure&action=accept-top-event`; confirm the normal
+     actor-scoped result is unchanged and no recommendation acceptance,
+     calendar, record, message, notification, or external action is executed.
 7. Open `/app/events/demo-event-1?action=want-to-connect&targetContactId=contact:priya-shah`.
    - Confirm Climate founders dinner, attendee recommendation, opening line, and want-to-connect intent render.
    - Confirm the intent is route-only and has no peer notification, external message, saved-record write, or outside network request.
