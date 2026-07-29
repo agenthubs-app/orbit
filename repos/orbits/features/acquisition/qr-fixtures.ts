@@ -244,6 +244,7 @@ export const mockQrContactCandidate: QrContactCandidate = {
   source: mockQrScanSource,
   evidenceIds: mockConfirmedQrConnectionDraft.provenance.evidenceIds,
   readyForContactWrite: true,
+  contactId: null,
   contactWriteExecuted: false,
 };
 
@@ -257,6 +258,7 @@ export const mockQrConnectionCandidate: QrConnectionCandidate = {
   source: mockQrScanSource,
   evidenceIds: mockConfirmedQrConnectionDraft.provenance.evidenceIds,
   readyForConnectionWrite: true,
+  connectionId: null,
   connectionWriteExecuted: false,
 };
 

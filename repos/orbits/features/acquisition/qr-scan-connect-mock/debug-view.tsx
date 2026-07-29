@@ -100,10 +100,10 @@ const qrApiProbes = [
 
 const liveHandoffEvidenceExcerpts = [
   "Live service files live under features/acquisition/live-qr-service.ts.",
-  "Storage provider files live under features/acquisition/storage/qr-live-record-provider.ts.",
-  "ORBIT_MODULE_MODE=live switches QR scan connect to source-backed remote live records.",
+  "Actor-scoped drafts use features/acquisition/storage/contact-draft-live-record-provider.ts.",
+  "ORBIT_MODULE_MODE=live stages submitted orbit-qr text before confirmed contact and connection writes.",
   "Camera permission, QR decoder, and signature verifier controls remain future device-scanning work.",
-  "Replacement tests cover scan, confirm, empty, pending, invalid payload, and provider failure paths.",
+  "Replacement tests cover idempotency, actor isolation, duplicate review, partial-write retry, and provider failures.",
 ] as const;
 
 function EvidenceChips({ evidenceIds }: { evidenceIds: readonly string[] }) {

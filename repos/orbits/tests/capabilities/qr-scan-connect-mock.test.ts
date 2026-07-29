@@ -48,12 +48,17 @@ test("QR scan connect contract exposes scan result mutual context draft creation
   });
 
   assert.deepEqual(contract.QR_SCAN_CONNECT_ERROR_CODES, [
+    "QR_SCAN_ACTOR_REQUIRED",
     "QR_SCAN_PAYLOAD_REQUIRED",
     "QR_SCAN_DRAFT_NOT_FOUND",
     "QR_SCAN_CONNECT_PENDING",
     "QR_SCAN_CONNECT_MOCK_FAILED",
     "QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED",
     "QR_SCAN_CONNECT_LIVE_STORE_FAILED",
+    "QR_SCAN_CONNECT_WRITE_UNCONFIGURED",
+    "QR_SCAN_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+    "QR_SCAN_CONTACT_WRITE_FAILED",
+    "QR_SCAN_CONNECTION_WRITE_FAILED",
   ]);
   assert.equal(
     contract.QR_SCAN_CONNECT_ERROR_DEFINITIONS.QR_SCAN_PAYLOAD_REQUIRED.appCode,
@@ -353,7 +358,7 @@ test("QR scan connect debug route renders all states and the live replacement ha
   );
   assert.match(
     liveDoc,
-    /features\/acquisition\/storage\/qr-live-record-provider\.ts/,
+    /features\/acquisition\/storage\/contact-draft-live-record-provider\.ts/,
   );
   assert.match(liveDoc, /ORBIT_MODULE_MODE=live/);
   assert.match(liveDoc, /camera permission/);

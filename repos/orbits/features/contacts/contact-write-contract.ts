@@ -1,7 +1,11 @@
 import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
-import type { ContactDTO } from "../../shared/domain/contracts";
+import type {
+  ConnectionDTO,
+  ContactDTO,
+  RelationshipEvidenceDTO,
+} from "../../shared/domain/contracts";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const BUSINESS_CARD_CONTACT_WRITE_ERROR_CODES = [
@@ -124,6 +128,22 @@ export interface BusinessCardContactWriteProvider {
 // compatibility alias while other reviewed acquisition sources share the same
 // actor-scoped record boundary.
 export type ContactRecordWriteProvider = BusinessCardContactWriteProvider;
+
+export interface RelationshipRecordWriteProvider
+  extends ContactRecordWriteProvider {
+  getConnection(
+    connectionId: string,
+    actorId: string,
+  ): Promise<ConnectionDTO | null>;
+  saveConnection(
+    connection: ConnectionDTO,
+    actorId: string,
+  ): Promise<ConnectionDTO>;
+  saveEvidence(
+    evidence: RelationshipEvidenceDTO,
+    actorId: string,
+  ): Promise<RelationshipEvidenceDTO>;
+}
 
 export function businessCardContactWriteFailureToAppError(
   failure: BusinessCardContactWriteFailure,

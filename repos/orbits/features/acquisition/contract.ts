@@ -153,6 +153,7 @@ export interface ContactDraftConfirmation {
   question: string;
   confirmedAt?: string;
   actorLabel?: string;
+  writeTargets?: readonly ("contact" | "connection")[];
 }
 
 // ContactAcquisitionDraft 是跨来源统一的候选联系人 DTO。

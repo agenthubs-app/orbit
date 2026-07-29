@@ -8,12 +8,17 @@ import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 // mock/live 的具体来源标记和执行策略由各自实现提供。
 
 export const QR_SCAN_CONNECT_ERROR_CODES = [
+  "QR_SCAN_ACTOR_REQUIRED",
   "QR_SCAN_PAYLOAD_REQUIRED",
   "QR_SCAN_DRAFT_NOT_FOUND",
   "QR_SCAN_CONNECT_PENDING",
   "QR_SCAN_CONNECT_MOCK_FAILED",
   "QR_SCAN_CONNECT_LIVE_STORE_UNCONFIGURED",
   "QR_SCAN_CONNECT_LIVE_STORE_FAILED",
+  "QR_SCAN_CONNECT_WRITE_UNCONFIGURED",
+  "QR_SCAN_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+  "QR_SCAN_CONTACT_WRITE_FAILED",
+  "QR_SCAN_CONNECTION_WRITE_FAILED",
 ] as const;
 
 export type QrScanConnectErrorCode =
@@ -56,6 +61,14 @@ export interface QrScanConnectErrorDefinition {
 
 // QR 错误定义覆盖缺 payload、草稿缺失、pending 和受控失败。
 export const QR_SCAN_CONNECT_ERROR_DEFINITIONS = {
+  QR_SCAN_ACTOR_REQUIRED: {
+    code: "QR_SCAN_ACTOR_REQUIRED",
+    appCode: "UNAUTHORIZED",
+    message:
+      "An authenticated actor is required before staging or confirming a QR relationship.",
+    recovery:
+      "Sign in before staging the QR source as an actor-owned draft.",
+  },
   QR_SCAN_PAYLOAD_REQUIRED: {
     code: "QR_SCAN_PAYLOAD_REQUIRED",
     appCode: "VALIDATION_ERROR",
@@ -101,6 +114,35 @@ export const QR_SCAN_CONNECT_ERROR_DEFINITIONS = {
     recovery:
       "Keep the contact graph unchanged and return a controlled live storage failure envelope.",
   },
+  QR_SCAN_CONNECT_WRITE_UNCONFIGURED: {
+    code: "QR_SCAN_CONNECT_WRITE_UNCONFIGURED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live relationship record writer is not configured.",
+    recovery:
+      "Keep the QR draft pending until contact, connection, and evidence storage are available.",
+  },
+  QR_SCAN_CONTACT_DUPLICATE_REVIEW_REQUIRED: {
+    code: "QR_SCAN_CONTACT_DUPLICATE_REVIEW_REQUIRED",
+    appCode: "CONFLICT",
+    message:
+      "An actor-owned contact already matches the QR email or normalized name and organization.",
+    recovery:
+      "Keep the QR draft pending and review the existing contact before confirming again.",
+  },
+  QR_SCAN_CONTACT_WRITE_FAILED: {
+    code: "QR_SCAN_CONTACT_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The QR-sourced contact could not be saved.",
+    recovery:
+      "Keep the QR draft pending and retry after contact storage recovers.",
+  },
+  QR_SCAN_CONNECTION_WRITE_FAILED: {
+    code: "QR_SCAN_CONNECTION_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The QR-sourced relationship connection could not be saved.",
+    recovery:
+      "Keep the QR draft pending and retry; an already saved stable contact will be reused.",
+  },
 } as const satisfies Record<
   QrScanConnectErrorCode,
   QrScanConnectErrorDefinition
@@ -122,9 +164,9 @@ export interface QrScanConnectProvenance {
   privacy: "demo-qr-scan-connect-only" | "live-qr-scan-connect";
   generationMethod: "fixture" | "live-store-confirmation" | "live-store-query" | "rule-based-qr";
   liveDatabaseReadExecuted?: boolean;
-  databaseWriteExecuted?: false;
-  contactWriteExecuted?: false;
-  connectionWriteExecuted?: false;
+  databaseWriteExecuted?: boolean;
+  contactWriteExecuted?: boolean;
+  connectionWriteExecuted?: boolean;
   externalNetworkRequested?: false;
   cameraRequested?: false;
   qrDecoderProviderRequested?: false;
@@ -147,7 +189,7 @@ export interface QrScanResult {
   qrDecoderProviderCalled: false;
   cryptographicValidationExecuted: false;
   externalLookupExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
 }
 
 // mutual context 用于解释这段关系的共同活动/共同联系人来源。
@@ -181,6 +223,7 @@ export interface QrConnectionDraftConfirmation {
   question: string;
   confirmedAt?: string;
   actorLabel?: string;
+  writeTargets?: readonly ("contact" | "connection")[];
 }
 
 export interface QrConnectionDraft {
@@ -195,8 +238,10 @@ export interface QrConnectionDraft {
   suggestedNextAction: string;
   mutualContext: QrMutualConnectionContext;
   confirmation: QrConnectionDraftConfirmation;
-  contactWriteExecuted: false;
-  connectionWriteExecuted: false;
+  contactId?: string;
+  connectionId?: string;
+  contactWriteExecuted: boolean;
+  connectionWriteExecuted: boolean;
   notificationDelivered: false;
   evidence: readonly QrConnectionEvidence[];
   provenance: QrScanConnectProvenance;
@@ -222,8 +267,9 @@ export interface QrContactCandidate {
   relationshipContext: string;
   source: QrScanSourceReference;
   evidenceIds: readonly string[];
-  readyForContactWrite: true;
-  contactWriteExecuted: false;
+  readyForContactWrite: boolean;
+  contactId: string | null;
+  contactWriteExecuted: boolean;
 }
 
 export interface QrConnectionCandidate {
@@ -234,8 +280,9 @@ export interface QrConnectionCandidate {
   valueHypothesis: string;
   source: QrScanSourceReference;
   evidenceIds: readonly string[];
-  readyForConnectionWrite: true;
-  connectionWriteExecuted: false;
+  readyForConnectionWrite: boolean;
+  connectionId: string | null;
+  connectionWriteExecuted: boolean;
 }
 
 export interface QrConnectionConfirmationPayload {

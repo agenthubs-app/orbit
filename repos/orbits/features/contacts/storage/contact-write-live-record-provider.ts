@@ -1,4 +1,8 @@
-import type { ContactDTO } from "../../../shared/domain/contracts";
+import type {
+  ConnectionDTO,
+  ContactDTO,
+  RelationshipEvidenceDTO,
+} from "../../../shared/domain/contracts";
 import {
   isRelationshipStage,
   isSourceType,
@@ -9,7 +13,10 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
-import type { BusinessCardContactWriteProvider } from "../contact-write-contract";
+import type {
+  BusinessCardContactWriteProvider,
+  RelationshipRecordWriteProvider,
+} from "../contact-write-contract";
 
 export interface StorageBusinessCardContactWriteProviderOptions {
   recordProvider?: string;
@@ -83,6 +90,107 @@ function contactFromRecord(
   };
 }
 
+function connectionFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+): ConnectionDTO | null {
+  if (!record) {
+    return null;
+  }
+
+  const payload = record.payload;
+  const source = payload.source;
+  const evidenceIds = Array.isArray(payload.evidenceIds)
+    ? payload.evidenceIds.filter(
+        (evidenceId): evidenceId is string => nonEmptyString(evidenceId),
+      )
+    : [];
+  const valueTypes = Array.isArray(payload.valueTypes)
+    ? payload.valueTypes.filter(
+        (valueType): valueType is ConnectionDTO["valueTypes"][number] =>
+          valueType === "strategic_fit" ||
+          valueType === "commercial_opportunity" ||
+          valueType === "knowledge_exchange" ||
+          valueType === "referral_path" ||
+          valueType === "community_context",
+      )
+    : [];
+
+  if (
+    !nonEmptyString(payload.id) ||
+    !nonEmptyString(payload.accountId) ||
+    !nonEmptyString(payload.contactId) ||
+    !isRelationshipStage(payload.stage) ||
+    !nonEmptyString(payload.summary) ||
+    !isRecord(source) ||
+    !isSourceType(source.type) ||
+    !nonEmptyString(source.id) ||
+    evidenceIds.length === 0 ||
+    !nonEmptyString(payload.createdAt) ||
+    !nonEmptyString(payload.updatedAt)
+  ) {
+    return null;
+  }
+
+  return {
+    id: payload.id,
+    accountId: payload.accountId,
+    contactId: payload.contactId,
+    stage: payload.stage,
+    valueTypes,
+    summary: payload.summary,
+    relationshipStrength:
+      typeof payload.relationshipStrength === "number"
+        ? payload.relationshipStrength
+        : undefined,
+    sharedTopics: Array.isArray(payload.sharedTopics)
+      ? payload.sharedTopics.filter(nonEmptyString)
+      : undefined,
+    suggestedActions: Array.isArray(payload.suggestedActions)
+      ? payload.suggestedActions.filter(nonEmptyString)
+      : undefined,
+    source: {
+      id: source.id,
+      label: optionalString(source.label),
+      type: source.type,
+    },
+    evidenceIds: evidenceIds as [string, ...string[]],
+    createdAt: payload.createdAt,
+    updatedAt: payload.updatedAt,
+  };
+}
+
+function evidenceFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+): RelationshipEvidenceDTO | null {
+  if (!record) {
+    return null;
+  }
+
+  const payload = record.payload;
+
+  if (
+    !nonEmptyString(payload.id) ||
+    !isSourceType(payload.sourceType) ||
+    !nonEmptyString(payload.sourceId) ||
+    !nonEmptyString(payload.summary) ||
+    !nonEmptyString(payload.occurredAt) ||
+    typeof payload.confidence !== "number" ||
+    !nonEmptyString(payload.createdBy)
+  ) {
+    return null;
+  }
+
+  return {
+    id: payload.id,
+    sourceType: payload.sourceType,
+    sourceId: payload.sourceId,
+    summary: payload.summary,
+    occurredAt: payload.occurredAt,
+    confidence: payload.confidence,
+    createdBy: payload.createdBy,
+  };
+}
+
 function belongsToActor(
   record: LiveRecord<Record<string, unknown>>,
   actorId: string,
@@ -97,14 +205,14 @@ export function createStorageBusinessCardContactWriteProvider({
   recordProvider = "orbit-business-card-contact-write",
   store,
   workspaceId,
-}: StorageBusinessCardContactWriteProviderOptions): BusinessCardContactWriteProvider {
+}: StorageBusinessCardContactWriteProviderOptions): RelationshipRecordWriteProvider {
   return {
     async getContact(contactId, actorId) {
       const record = await store.getRecord({
-          collectionName: "contacts",
-          recordId: contactId,
-          workspaceId,
-        });
+        collectionName: "contacts",
+        recordId: contactId,
+        workspaceId,
+      });
 
       return record && belongsToActor(record, actorId)
         ? contactFromRecord(record)
@@ -158,6 +266,73 @@ export function createStorageBusinessCardContactWriteProvider({
 
       return contactFromRecord(saved) ?? contact;
     },
+
+    async getConnection(connectionId, actorId) {
+      const record = await store.getRecord({
+        collectionName: "connections",
+        recordId: connectionId,
+        workspaceId,
+      });
+
+      return record && belongsToActor(record, actorId)
+        ? connectionFromRecord(record)
+        : null;
+    },
+
+    async saveConnection(connection, actorId) {
+      const record: LiveRecord<Record<string, unknown>> = {
+        collectionName: "connections",
+        createdAt: connection.createdAt,
+        evidenceIds: connection.evidenceIds,
+        lifecycleState: "active",
+        occurredAt: connection.createdAt,
+        payload: connection as unknown as Record<string, unknown>,
+        provider: recordProvider,
+        providerRecordId: connection.id,
+        recordId: connection.id,
+        searchText: [
+          connection.summary,
+          ...(connection.sharedTopics ?? []),
+          ...(connection.suggestedActions ?? []),
+        ].join(" "),
+        sourceId: connection.source.id,
+        sourceLabel: connection.source.label,
+        sourceType: connection.source.type,
+        targetId: connection.contactId,
+        targetType: "connection",
+        updatedAt: connection.updatedAt,
+        userId: actorId,
+        workspaceId,
+      };
+      const saved = await store.upsertRecord(record);
+
+      return connectionFromRecord(saved) ?? connection;
+    },
+
+    async saveEvidence(evidence, actorId) {
+      const record: LiveRecord<Record<string, unknown>> = {
+        collectionName: "evidence",
+        createdAt: evidence.occurredAt,
+        evidenceIds: [evidence.id],
+        lifecycleState: "active",
+        occurredAt: evidence.occurredAt,
+        payload: evidence as unknown as Record<string, unknown>,
+        provider: recordProvider,
+        providerRecordId: evidence.id,
+        recordId: evidence.id,
+        searchText: evidence.summary,
+        sourceId: evidence.sourceId,
+        sourceType: evidence.sourceType,
+        targetId: evidence.sourceId,
+        targetType: "relationship-evidence",
+        updatedAt: evidence.occurredAt,
+        userId: actorId,
+        workspaceId,
+      };
+      const saved = await store.upsertRecord(record);
+
+      return evidenceFromRecord(saved) ?? evidence;
+    },
   };
 }
 
@@ -165,6 +340,23 @@ export function createConfiguredStorageBusinessCardContactWriteProvider({
   env,
   recordProvider,
 }: ConfiguredBusinessCardContactWriteProviderOptions = {}): BusinessCardContactWriteProvider | null {
+  const configuredStore = createConfiguredPostgresLiveRecordStore({ env });
+
+  if (!configuredStore) {
+    return null;
+  }
+
+  return createStorageBusinessCardContactWriteProvider({
+    recordProvider,
+    store: configuredStore.store,
+    workspaceId: configuredStore.workspaceId,
+  });
+}
+
+export function createConfiguredStorageRelationshipRecordWriteProvider({
+  env,
+  recordProvider,
+}: ConfiguredBusinessCardContactWriteProviderOptions = {}): RelationshipRecordWriteProvider | null {
   const configuredStore = createConfiguredPostgresLiveRecordStore({ env });
 
   if (!configuredStore) {

@@ -55,7 +55,7 @@ email/calendar signal 的第一版 live 实现是 metadata-backed review boundar
 
 business card review 的第一版 live 实现是 source-backed review boundary：`features/acquisition/storage/business-card-review-live-record-provider.ts` 读取 remote `contacts` 和 `evidence`，`features/acquisition/live-business-card-review-service.ts` 从 `source.type="business_card_ocr"` 的联系人记录派生可复核字段。更新复核和确认都只返回 preview/evidence payload；不调用 OCR provider，不写 `contacts` 或 `contactDrafts`，不发通知。
 
-QR scan connect 的第一版 live 实现是 source-backed review boundary：`features/acquisition/storage/qr-live-record-provider.ts` 读取 remote `contacts` 和 `evidence`，`features/acquisition/live-qr-service.ts` 从 `source.type="qr_scan"` 的联系人记录派生可确认的 QR connection draft。scan 和 confirm 都只返回 preview/candidate/evidence payload；不请求相机权限，不调用 QR decoder 或 signature verifier，不查外部关系图，不写 `contacts`、`connections` 或 `contactDrafts`，不发通知。
+QR scan connect 的 live 实现以操作者提交的 `orbit-qr:` 文本为唯一输入：`features/acquisition/live-qr-service.ts` 先做本地规则解析，再通过 `features/acquisition/storage/contact-draft-live-record-provider.ts` 写入 actor-scoped 待确认草稿。重复扫描按 actor 与规范化字段生成稳定草稿 ID。明确确认后，服务通过共享 relationship record writer 以稳定 ID 写入一条 `contacts`、一条 `connections` 和来源/确认 evidence；重复确认不会重复写。该边界不请求相机权限，不调用 QR decoder 或 signature verifier，不查外部关系图，不发通知，并在界面上明确提示当前 payload 未做签名校验。
 
 ## API 与页面使用
 

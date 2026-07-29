@@ -55,9 +55,11 @@ import { createConfiguredStorageEventAttendeeImportProvider } from "./storage/ev
 import { createConfiguredStorageExternalContactsImportProvider } from "./storage/external-import-live-record-provider";
 import { createConfiguredStorageReferralRecommendationProvider } from "./storage/referral-live-record-provider";
 import { createConfiguredStorageBusinessCardReviewProvider } from "./storage/business-card-review-live-record-provider";
-import { createConfiguredStorageQrScanConnectProvider } from "./storage/qr-live-record-provider";
 import { createConfiguredStorageBusinessCardScanOcrProvider } from "./storage/business-card-scan-live-record-provider";
-import { createConfiguredStorageBusinessCardContactWriteProvider } from "../contacts/storage/contact-write-live-record-provider";
+import {
+  createConfiguredStorageBusinessCardContactWriteProvider,
+  createConfiguredStorageRelationshipRecordWriteProvider,
+} from "../contacts/storage/contact-write-live-record-provider";
 
 // 聚合类型用于需要一次性拿到 acquisition 全家桶的页面/view model。
 // 每个字段仍然是独立 capability，未来可以逐个替换成 live 实现。
@@ -137,7 +139,8 @@ export const qrScanConnectServiceFactory =
     implementations: {
       live: () =>
         createLiveQrScanConnectService({
-          provider: null,
+          draftProvider: null,
+          recordProvider: null,
         }),
       mock: () => createMockQrScanConnectService(),
     },
@@ -353,8 +356,17 @@ export function createQrScanConnectServiceForActor(
   }
 
   return createLiveQrScanConnectService({
-    provider: actorId.trim()
-      ? createConfiguredStorageQrScanConnectProvider({ actorId })
+    actorId,
+    draftProvider: actorId.trim()
+      ? createConfiguredStorageContactAcquisitionDraftProvider({
+          actorId,
+          sourceLabel: "Actor-scoped QR relationship drafts",
+        })
+      : null,
+    recordProvider: actorId.trim()
+      ? createConfiguredStorageRelationshipRecordWriteProvider({
+          recordProvider: "orbit-qr-relationship-write",
+        })
       : null,
   });
 }
