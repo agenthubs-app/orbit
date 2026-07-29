@@ -137,6 +137,7 @@ test("public Chat query input cannot activate scenarios or run an Agent turn", a
     assert.equal(controlledState.state, "route-state");
     if (controlledState.state === "route-state") {
       assert.equal(controlledState.routeState.scenario, "empty");
+      assert.equal(controlledState.routeState.errorCode, null);
     }
   });
 });

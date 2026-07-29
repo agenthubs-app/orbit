@@ -82,3 +82,44 @@ export interface OrbitAgentViewModel {
   };
   suggests: OrbitAgentSuggestView[];
 }
+
+// Agent can start before the actor has imported any relationship conversations.
+// Keep this model free of people, events, and history so the welcome screen never
+// presents sample entities as if they belonged to the signed-in actor.
+export function createOrbitAgentStarterViewModel(): OrbitAgentViewModel {
+  const peopleQuery = "帮我找当前最值得跟进的人脉。";
+  const eventQuery = "推荐我现在应该关注的活动。";
+  const todoQuery = "整理我当前的关系待办，并说明来源和优先级。";
+
+  return {
+    history: [],
+    scenarios: {
+      events: {
+        intro: "",
+        items: [],
+        kind: "events",
+        panelTitle: "",
+        q: eventQuery,
+      },
+      people: {
+        intro: "",
+        items: [],
+        kind: "people",
+        panelTitle: "",
+        q: peopleQuery,
+      },
+      peopleToEvents: {
+        intro: "",
+        items: [],
+        kind: "todos",
+        panelTitle: "",
+        q: todoQuery,
+      },
+    },
+    suggests: [
+      { icon: "users", label: "找值得跟进的人脉", q: peopleQuery },
+      { icon: "calendar", label: "推荐可拓展活动", q: eventQuery },
+      { icon: "check", label: "整理关系待办", q: todoQuery },
+    ],
+  };
+}

@@ -95,7 +95,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
 
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /chatRouteToOrbitAgentViewModel/);
+  assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
   assert.match(agentSource, /currentAgentQuery\(\)/);
   assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
   assert.match(agentSource, /peopleItemsFromArtifact\(contactArtifact\)/);

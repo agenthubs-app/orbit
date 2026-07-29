@@ -475,6 +475,23 @@ export async function loadAppChatRouteStateViewModel(
       scenario,
     }),
   );
+
+  // An empty conversation list has no valid child identity to query. Returning
+  // from the authoritative list result avoids probing the live actor store with
+  // the synthetic demo id below and misclassifying a new account as "not found".
+  if (
+    scenario === "empty" &&
+    conversationResult.success &&
+    conversationResult.data.conversations.length === 0
+  ) {
+    return {
+      copy: stateCopy("empty"),
+      errorCode: null,
+      evidenceIds: uniqueEvidenceIds([conversationResult]),
+      scenario: "empty",
+    };
+  }
+
   const threadResult = await resolveChatResult(
     services.conversationService.getMessageThread({
       conversationId: "demo-conversation-1",

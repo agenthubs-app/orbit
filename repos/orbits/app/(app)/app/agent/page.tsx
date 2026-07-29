@@ -16,7 +16,7 @@ import {
   type AppChatRouteStateViewModel,
   type AppChatSearchParams,
 } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
-import { chatRouteToOrbitAgentViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
+import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
 import { OrbitRealAgent } from "./orbit-real-agent";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
@@ -113,8 +113,9 @@ export default async function AppAgentPage({
   const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
     actorId,
   });
+  const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
-    routeModel.state === "success"
+    entryModel.state === "ready"
       ? requestedLanguage ?? (await getAgentPageLanguage())
       : "zh";
 
@@ -122,17 +123,17 @@ export default async function AppAgentPage({
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
+      {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
           <OrbitRealAgent
             viewModel={localizeOrbitTree(
-              chatRouteToOrbitAgentViewModel(routeModel),
+              entryModel.viewModel,
               language,
             )}
           />
         </div>
       ) : (
-        <AgentRouteStateBoundary routeState={routeModel.routeState} />
+        <AgentRouteStateBoundary routeState={entryModel.routeState} />
       )}
     </>
   );

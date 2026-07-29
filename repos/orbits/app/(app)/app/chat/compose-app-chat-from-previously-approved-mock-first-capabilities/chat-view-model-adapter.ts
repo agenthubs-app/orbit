@@ -3,6 +3,7 @@ import type {
   OrbitAgentPeopleResultView,
   OrbitAgentViewModel,
 } from "../../orbit-agent-route-view-model";
+import { createOrbitAgentStarterViewModel } from "../../orbit-agent-route-view-model";
 import type { AppChatRouteViewModel } from "./chat-route-view-model";
 
 type AppChatSuccessRouteViewModel = Extract<
@@ -116,5 +117,48 @@ export function chatRouteToOrbitAgentViewModel(
       { icon: "edit", label: "润色当前回复", q: rewriteQuery },
       { icon: "sparkle", label: "总结关系上下文", q: contextQuery },
     ],
+  };
+}
+
+export type OrbitAgentEntryViewModel =
+  | {
+      state: "ready";
+      viewModel: OrbitAgentViewModel;
+    }
+  | {
+      routeState: Extract<
+        AppChatRouteViewModel,
+        { state: "route-state" }
+      >["routeState"];
+      state: "route-state";
+    };
+
+// Chat context personalizes the welcome suggestions when it exists, but it is
+// not a prerequisite for asking Orbit a first question. Only the ordinary,
+// error-free empty list becomes a starter model. Missing conversation ids and
+// service failures keep their exact fail-closed route state.
+export function composeOrbitAgentEntryViewModel(
+  model: AppChatRouteViewModel,
+): OrbitAgentEntryViewModel {
+  if (model.state === "success") {
+    return {
+      state: "ready",
+      viewModel: chatRouteToOrbitAgentViewModel(model),
+    };
+  }
+
+  if (
+    model.routeState.scenario === "empty" &&
+    model.routeState.errorCode === null
+  ) {
+    return {
+      state: "ready",
+      viewModel: createOrbitAgentStarterViewModel(),
+    };
+  }
+
+  return {
+    routeState: model.routeState,
+    state: "route-state",
   };
 }

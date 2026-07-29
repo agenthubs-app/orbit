@@ -1053,6 +1053,9 @@ function agentSuggestLabel(label: string, language: "en" | "zh") {
     "找金融 AI 方向的人脉": "Find AI finance contacts",
     "想认识女装设计师": "Meet womenswear designers",
     "推荐 AI / 出海活动": "Recommend AI / global events",
+    "找值得跟进的人脉": "Find contacts worth following up",
+    "推荐可拓展活动": "Recommend events to grow my network",
+    "整理关系待办": "Review relationship to-dos",
   };
 
   return labels[label] ?? label;

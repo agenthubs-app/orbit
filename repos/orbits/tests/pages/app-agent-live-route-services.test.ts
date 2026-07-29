@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -58,7 +60,7 @@ test("/app/agent page renders the real Orbit AI chat experience", async () => {
 
   assert.match(pageSource, /OrbitRealAgent/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /chatRouteToOrbitAgentViewModel/);
+  assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
   assert.match(pageSource, /StateView/);
   assert.match(pageSource, /getOrbitServerLanguage/);
   assert.match(pageSource, /localizeOrbitTree/);
@@ -83,6 +85,86 @@ test("/app/agent page renders the real Orbit AI chat experience", async () => {
   assert.match(agentSource, /data-orbit-real-page="agent"/);
 });
 
+test("/app/agent keeps the composer reachable when a new actor has no chat conversations", async () => {
+  const { composeOrbitAgentEntryViewModel } = await import(
+    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
+  );
+  const { OrbitRealAgent } = await import(
+    "../../app/(app)/app/agent/orbit-real-agent"
+  );
+  const entryModel = composeOrbitAgentEntryViewModel({
+    routeState: {
+      copy: {
+        description: "No sourced conversations.",
+        emptyState: "No conversations.",
+        guardrail: "No relationship result is inferred.",
+        nextStep: "Ask Orbit a question.",
+        purpose: "Start without imported chat history.",
+        title: "No chat context is ready",
+      },
+      errorCode: null,
+      evidenceIds: [],
+      scenario: "empty",
+    },
+    state: "route-state",
+  });
+
+  assert.equal(entryModel.state, "ready");
+  if (entryModel.state !== "ready") return;
+
+  assert.deepEqual(entryModel.viewModel.history, []);
+  assert.deepEqual(entryModel.viewModel.scenarios.people.items, []);
+  assert.deepEqual(entryModel.viewModel.scenarios.events.items, []);
+  assert.deepEqual(entryModel.viewModel.scenarios.peopleToEvents.items, []);
+  assert.equal(entryModel.viewModel.suggests.length, 3);
+
+  const html = renderToStaticMarkup(
+    React.createElement(OrbitRealAgent, {
+      viewModel: entryModel.viewModel,
+    }),
+  );
+
+  assert.match(html, /data-orbit-real-page="agent"/);
+  assert.match(html, /询问 Orbit 人脉、活动与关系待办/);
+  assert.match(html, /data-orbit-agent-submit="true"/);
+  assert.doesNotMatch(html, /No chat context is ready/);
+});
+
+test("/app/agent does not turn chat failures or missing conversation ids into a ready Agent", async () => {
+  const { composeOrbitAgentEntryViewModel } = await import(
+    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
+  );
+  const copy = {
+    description: "Unavailable.",
+    emptyState: "Unavailable.",
+    guardrail: "Do not substitute data.",
+    nextStep: "Reload.",
+    purpose: "Fail closed.",
+    title: "Unavailable",
+  };
+  const failure = composeOrbitAgentEntryViewModel({
+    routeState: {
+      copy,
+      errorCode: "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
+      evidenceIds: [],
+      scenario: "failure",
+    },
+    state: "route-state",
+  });
+  const missing = composeOrbitAgentEntryViewModel({
+    routeState: {
+      copy,
+      errorCode: "CHAT_CONVERSATION_NOT_FOUND",
+      evidenceIds: [],
+      scenario: "empty",
+    },
+    state: "route-state",
+  });
+
+  assert.equal(failure.state, "route-state");
+  assert.equal(missing.state, "route-state");
+});
+
 test("/app/agent page renders a controlled live failure when storage is unconfigured", async () => {
   await withUnconfiguredLiveAgent(async () => {
     const { loadAppChatRouteViewModel } = await import(
@@ -102,6 +184,6 @@ test("/app/agent page renders a controlled live failure when storage is unconfig
 
     const pageSource = source("app/(app)/app/agent/page.tsx");
     assert.match(pageSource, /AgentRouteStateBoundary/);
-    assert.match(pageSource, /routeModel\.routeState/);
+    assert.match(pageSource, /entryModel\.routeState/);
   });
 });
