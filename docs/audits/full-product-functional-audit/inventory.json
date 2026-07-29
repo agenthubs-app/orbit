@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "46666e685274ac5cd9e66d4fa2a490293077e12b",
-  "deterministicSourceTime": "2026-07-29T12:10:46+09:00",
+  "generatedFromCommit": "4c853b4e33524caf12c521d005c3e69558c8477a",
+  "deterministicSourceTime": "2026-07-29T12:20:47+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42,8 +42,8 @@
     "surfacesWithRuntimeEvidence": 91,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 73,
-    "documentedRemediations": 73
+    "documentedVerificationCases": 74,
+    "documentedRemediations": 74
   },
   "surfaces": [
     {
@@ -46926,7 +46926,6 @@
           "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-panel-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
-          "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-language-server.ts",
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
@@ -138504,6 +138503,15 @@
       "actual": "The proxy classified /app/agent as private, but unlike /app/chat the page called loadAppChatRouteViewModel without a session actor. The shared loader could therefore resolve generic non-actor services despite the private route. action, scenario, mode, and proactive inputs were already inert, while the manual acceptance guide incorrectly described review-top-agent-action as a page-load command-center preview. After repair, the server page resolves auth, redirects a missing actor to the canonical login return, passes actorId to the shared loader, and regressions prove the obsolete query values remain unread.",
       "evidence": "Pre-edit GitNexus impact was LOW for AppAgentPage and the affected tests, with zero upstream callers. Focused Agent/Chat regressions passed 16/16, repository lint passed, the complete Web suite passed 1352/1352, and production build passed. Staged detection reported HIGH because the page is the common entry to eight existing Chat service, result, language, state-copy, and decoding flows; context inspection confirmed no incoming callers and no changed downstream call set. Commit 46666e68.",
       "conclusion": "pass for source/lint/build/full-suite enforcement of the Agent server auth boundary, actor propagation, and obsolete action/scenario/mode query isolation; authenticated browser redirect and populated conversation runtime, two-account isolation, explicit Agent action lifecycle/readback, cache/proxy behavior, duplicate/array/encoded inputs, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "web-agent-legacy-hybrid-model-retirement-2026-07-29",
+      "target": "Retired Web Agent hybrid-data constructor → type-only UI contract backed by the shared actor-scoped Chat composition",
+      "testData": "Repository imports and symbol references for getOrbitAgentViewModel; its six private hybrid-data helpers; the shared OrbitAgentViewModel UI types; the real Agent page, Chat adapter, and hybrid-route self-validation test",
+      "expected": "Once /app/agent uses the authenticated shared Chat loader and adapter, its legacy synchronous constructor must not remain as a second data architecture. The file may retain the stable UI type contract consumed by the adapter and component, but it must not import hybrid route data, build deterministic history/suggestions, or synthesize people and event recommendations.",
+      "actual": "The real Agent page and Chat adapter no longer called getOrbitAgentViewModel, but the product file still imported the entire hybrid route-data layer and kept 159 lines of recommendation, fallback, event, history, and suggestion construction. Only orbit-hybrid-route-view-models.test.ts invoked the getter, so that test self-validated an architecture the product had already replaced. After repair, the file exports only the UI interfaces, the self-validating Agent invocation is removed, and the live-page regression rejects either the getter or hybrid-data import from returning.",
+      "evidence": "GitNexus reported LOW upstream impact for getOrbitAgentViewModel with zero callers and zero execution flows. Its six helpers affected only the same dead getter chain, with at most three internal symbols and no flows. Focused Agent and hybrid-route tests passed 4/4, repository lint passed, the complete Web suite passed 1352/1352, and production build passed; commit 4c853b4e. Required staged detection returned No changes detected for the three-file diff containing 187 deletions, so no unsupported staged risk level is claimed.",
+      "conclusion": "pass for source/lint/build/full-suite retirement of the legacy Agent hybrid-data constructor while preserving the shared UI type contract and actor-scoped Chat implementation; other legacy hybrid route constructors are separate boundaries and remain pending individual impact analysis"
     }
   ],
   "remediations": [
@@ -139163,6 +139171,15 @@
       "files": "repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/app-agent-todo-summary.test.tsx; repos/orbits/tests/pages/app-proactive-agent-message.test.tsx; repos/orbits/scripts/manual-acceptance.md",
       "regression": "GitNexus pre-edit impact was LOW with no upstream callers. Focused Agent/Chat tests passed 16/16, lint passed, the complete Web suite passed 1352/1352, and production build passed. Regression covers page auth, signed-out redirect source, canonical actor propagation, real Agent rendering, submitted-query hydration, proactive fixture isolation, and absence of action/scenario/mode query reads. Staged detect was HIGH across eight existing flows because AppAgentPage is their common entry; context review found no incoming callers and no changed downstream call set.",
       "status": "fixed and source/lint/build/full-suite-verified for Agent page auth, actor propagation, and obsolete query isolation; authenticated browser runtime, populated two-account conversation isolation, explicit Agent action/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified"
+    },
+    {
+      "id": "AUDIT-P1-074",
+      "severity": "P1",
+      "rootCause": "After /app/agent migrated to authenticated actor-scoped Chat composition, orbit-agent-route-view-model.ts still contained a complete synchronous hybrid-data constructor. It built deterministic people and event recommendations, suggestion prompts, and conversation history from getOrbitHybridRouteData. No product page called it; one broad legacy test kept the parallel architecture alive by seeding a fake local database and asserting the getter's own output.",
+      "decision": "Retain orbit-agent-route-view-model.ts only as the stable UI type contract consumed by the real Chat adapter and Agent component. Delete the legacy getter, its six private hybrid-data helpers, and all data-layer imports. Remove the test-only invocation and make the focused Agent source regression prohibit both getOrbitAgentViewModel and getOrbitHybridRouteData from returning. Evaluate other legacy route constructors independently instead of deleting them in one unbounded change.",
+      "files": "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+      "regression": "GitNexus reported LOW impact and zero execution flows for the getter; its helpers reached only the same dead chain. Focused tests passed 4/4, lint passed, the complete Web suite passed 1352/1352, and production build passed. The Agent UI types remain imported by the Chat adapter and real component, while repository search and regression reject the deleted constructor/import. Staged detect returned No changes detected despite Git showing three staged files and 187 deletions, so the deletion blind spot is recorded rather than assigned a false risk.",
+      "status": "fixed and source/lint/build/full-suite-verified for retirement of the Agent-only legacy hybrid constructor; other parallel route constructors remain pending separate review"
     }
   ],
   "externalLimitations": []
