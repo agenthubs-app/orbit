@@ -2246,6 +2246,19 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    "web:/app/agent|repos/orbits/app/(app)/app/orbit-public-shell.tsx:127",
+    {
+      actualResult:
+        "账号菜单 exposed the independently authenticated second account surface-contacts-1785123834639@example.invalid before its Agent, All Actions, and Today isolation checks.",
+      testData:
+        "Independent Chrome session for actor user_ms2on5yh_60z90f, distinct from the first audit actor user_ms5llhof_wrbpuq",
+      idempotency:
+        "Opening the account menu changed local disclosure state only; it created no session, Run, action, task, reminder, contact, event, or external record.",
+      verificationCase:
+        "web-agent-action-second-actor-isolation-2026-07-29",
+    },
+  ],
+  [
     "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#重新提交请求 / Retry request",
     {
       actualResult:
@@ -4105,7 +4118,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent/runtime/ledger tests passed 41/41; repository lint and the 39/39 production build had passed on the production change; the complete Web suite passed 1372/1372. In-app browser traversal exercised the real composer, repeated confirmation, Agent card, Today due-date readback, exact All Actions entry, repeated undo, hard reload, conversation-history reopen, and final empty due date. Live AgentRuntimeService readback proved one outbox item, one completed execution receipt, one undo receipt, and stable undone responses. Commit 7bf79467 fixed compensation scope; eba21635 hardened an unrelated formatting-sensitive source assertion exposed by the full gate. GitNexus staged detection was LOW for two files, five symbols, and zero affected processes.",
     conclusion:
-      "pass for explicit confirmation, repeated-confirm idempotency, selected-operation execution, truthful cross-surface readback, completed-receipt compensation scope, repeated-undo idempotency, persisted undone state, task removal, hard reload, focused/full tests, lint, and build; second-actor isolation, partial-failure browser execution, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for explicit confirmation, repeated-confirm idempotency, selected-operation execution, truthful cross-surface readback, completed-receipt compensation scope, repeated-undo idempotency, persisted undone state, task removal, hard reload, focused/full tests, lint, and build; partial-failure browser execution, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
+  {
+    id: "web-agent-action-second-actor-isolation-2026-07-29",
+    target:
+      "First actor Agent Run/action/task lifecycle → independently authenticated second actor Agent history, All Actions, Today, and live runtime boundary",
+    testData:
+      "First actor user_ms5llhof_wrbpuq with run run:natural-language:05879e7b and undone action action:natural-language:a34dc77e; independent second actor user_ms2on5yh_60z90f / surface-contacts-1785123834639@example.invalid; due date 2026-09-03; exact production build",
+    expected:
+      "A second authenticated actor must not see the first actor's conversation prompt, Run id, action id, ledger entry, execution/undo receipts, outbox state, or due-date task. Runtime lookup of the foreign Run must return no detail and listing actions must remain actor-scoped. Reading the second actor must not mutate the first actor's terminal audit evidence.",
+    actual:
+      "The independent browser session identified the second account through the account menu. Its Agent history contained no first-actor prompt, Undo Audit Person label, or foreign Run id. All Actions rendered the explicit empty ledger, and Today on 2026-09-03 rendered 0 场 plus 这一天暂无安排 without the first action id or task title. The configured auth provider resolved the second actor id, after which its formal live AgentRuntimeService returned null for the first Run, zero actions, and no first action. A final first-actor readback still returned the completed Run, undone action, two receipts, and one outbox item.",
+    evidence:
+      "Independent authenticated Chrome traversal covered the account identity menu, Agent history, All Actions empty state, and exact Today due date. Formal configured auth-user and Agent runtime services resolved actor user_ms2on5yh_60z90f, rejected the foreign Run as null, and returned zero actions; a separate first-actor readback proved its terminal records remained unchanged. The same source baseline passed focused tests 41/41, full Web 1372/1372, lint, and the 39/39 production build. No source defect or code change was found.",
+    conclusion:
+      "pass for independent-session identity, conversation/Run/action/ledger/task isolation, foreign-Run no-read, zero-action listing, due-date absence, and first-actor non-mutation; additional workspace membership roles, concurrent cross-account writes, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
