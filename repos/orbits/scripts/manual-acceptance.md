@@ -47,8 +47,13 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
      actor-scoped result is unchanged and no recommendation acceptance,
      calendar, record, message, notification, or external action is executed.
 7. Open `/app/events/demo-event-1?action=want-to-connect&targetContactId=contact:priya-shah`.
-   - Confirm Climate founders dinner, attendee recommendation, opening line, and want-to-connect intent render.
-   - Confirm the intent is route-only and has no peer notification, external message, saved-record write, or outside network request.
+   - Confirm the normal source-backed event detail is unchanged; the URL does
+     not create an intent, select a target, or render an action result.
+   - For a registered event with matchmaking data, use the visible request,
+     consent, and scheduling controls. Confirm each mutation uses its
+     authenticated POST/PATCH API, reloads stored state, and does not claim
+     peer notification, external messaging, or calendar delivery before those
+     capabilities actually run.
 8. Open `/app/today?view=day`.
    - Confirm the time spine contains source-backed follow-up and draft context.
    - Confirm public query input does not claim completion, send messages, or

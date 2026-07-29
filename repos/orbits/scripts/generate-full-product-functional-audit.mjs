@@ -3503,6 +3503,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite removal of the dead Contact Detail GET evidence/draft action chain while preserving actor-scoped read composition; authenticated browser DOM, populated multi-account contact isolation, explicit follow-up API UX/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-event-detail-dead-action-projection-2026-07-29",
+    target:
+      "Web Event Detail → rendered event model separated from unused want-connect action and relationship projections",
+    testData:
+      "Public catalogue and authenticated owner-fallback Event Detail pages, success model and presenter consumers, adversarial action/target query, visual-asset tests, authenticated matchmaking UI, and want-connect API path",
+    expected:
+      "The page may read event identity and language only. Its server model and tests must represent content actually rendered. Want-connect or matchmaking writes must originate from explicit authenticated UI/API actions, not an always-null action result or a presenter that no production component consumes.",
+    actual:
+      "The page already ignored action/target/scenario/mode queries and the loader returned actionResult=null, but the success model retained an action-result type and two test-only helpers for selecting a target and converting a live intent into that result. A relationship-context presenter projected the null action into an all-false side-effect ledger; the page imported but never called it. A visual test passed that projection as an extra prop to OrbitRealEventDetail even though the component accepts only event, so React discarded the alleged UI evidence. After repair, the dead model/helpers/presenter/import/extra prop and their self-validating test are removed; real authenticated APIs and matchmaking controls are unchanged.",
+    evidence:
+      "A forced index-only GitNexus rebuild completed with 28,414 nodes, 60,478 edges, and 300 flows after the incremental index exposed stale deleted symbols. Upstream impact was MEDIUM for the action/success interfaces with eleven graph users and LOW for the page, helpers, and presenter; no HIGH/CRITICAL risk. Focused Event Detail and visual tests passed 23/23, repository lint passed, the complete Web suite passed 1356/1356, and production build passed; commit 069c22cf. Required staged detection ran against the fresh index but again returned No changes detected for the six-file deletion-heavy diff, so no false staged risk is assigned.",
+    conclusion:
+      "pass for source/lint/build/full-suite removal of unused Event Detail action and relationship projections while preserving real explicit mutation paths; authenticated browser matchmaking lifecycle, want-connect API readback, repeated mutation/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4467,6 +4482,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact for the loaders/action helpers in one AppContactDetailPage process and MEDIUM for the input/success interfaces with five direct users. Focused tests passed 14/14, repository lint passed, the complete Web suite passed 1357/1357, and production build passed. Regression proves the page accepts no search parameters and the service contains none of the former action names, builder, or result field. The required staged detect command ran, but GitNexus returned No changes detected despite an exact two-file staged diff; the discrepancy is recorded instead of assigning a false risk level.",
     status:
       "fixed and source/lint/build/full-suite-verified for read-only Contact Detail GET composition; browser runtime, populated multi-account isolation, explicit follow-up mutation/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-070",
+    severity: "P1",
+    rootCause:
+      "Event Detail kept a second, non-product action presentation architecture after the page had moved to explicit APIs and the real matchmaking workspace. The route success model always returned actionResult=null, while test-only helpers selected a want-connect target and converted a live write into that unused result. A relationship-context presenter converted it to an all-false side-effect ledger, but the production page only imported the presenter and never called it. Visual tests passed the projection through an unsupported component prop, so React discarded it while tests treated it as rendered evidence.",
+    decision:
+      "Make the Event Detail server model describe only content the real component renders. Delete the action-result type/field, target/action helpers, unused relationship presenter and types, dead page import, unsupported test prop, and self-validating helper test. Keep the authenticated want-connect API, live service, and visible matchmaking request/consent/scheduling controls as the only mutation architecture.",
+    files:
+      "repos/orbits/app/(app)/app/events/[id]/page.tsx; repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts; repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts; repos/orbits/tests/pages/app-demo-visual-assets.test.tsx; repos/orbits/tests/capabilities/demo-visual-asset-coverage.test.ts",
+    regression:
+      "After a forced fresh GitNexus rebuild, impact was MEDIUM for the public action/success interfaces and LOW for all page/helper/presenter symbols. Focused tests passed 23/23, repository lint passed, the complete Web suite passed 1356/1356, and production build passed. Regression asserts the page still supports public catalogue/private fallback behavior while production source has no actionResult or dead helper. Staged detect was executed but returned No changes detected for an exact six-file, 316-deletion diff; the discrepancy is recorded rather than reporting a false risk level.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for removal of the fake Event Detail action projection; authenticated browser matchmaking lifecycle, explicit want-connect readback, repeat/idempotency, multi-account isolation, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 

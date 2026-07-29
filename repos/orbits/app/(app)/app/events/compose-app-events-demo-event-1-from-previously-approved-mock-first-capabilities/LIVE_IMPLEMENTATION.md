@@ -4,13 +4,11 @@ Sprint 63 composes `/app/events/demo-event-1` from the approved mock-first event
 
 ## Evaluator Evidence Summary
 
-This document covers live service/provider files, switch mechanism, required env vars or permissions, privacy/provenance constraints, replacement tests, route state checks, `data-action-evidence`, and `data-side-effects`. The route state checks are `/app/events/demo-event-1?scenario=empty`, `/app/events/demo-event-1?scenario=pending`, and `/app/events/demo-event-1?scenario=failure`.
+This document covers live service/provider files, switch mechanism, required env vars or permissions, privacy/provenance constraints, replacement tests, and route state checks. Empty, pending, and failure scenarios are explicit service-test inputs; the product page does not read them from the URL.
 
 The app route uses the event detail record as the canonical event source for visible logistics. Attendee roster, recommendations, readiness, want-to-connect, encounter notes, and post-event review can contribute relationship content and evidence, but their embedded event summaries must be reconciled before the page shows venue or time. Live replacement must preserve this canonical source check so conflicting provider payloads cannot show mixed event logistics to the person preparing for the event. The route also reports the API-evidence view separately: one of the three sprint API evidence surfaces currently carries older event logistics, while four of six composed capability sources require canonical reconciliation.
 
-The product route also exposes a top-level relationship priority before secondary event details. That checkpoint must continue to combine the current route adapter's canonical event logistics, roster context for the confirmed want-to-connect person, record-review summary, model-level API-evidence reconciliation, and want-to-connect action so the participant knows who to meet first without trusting conflicting provider summaries.
-
-The visible page copy intentionally keeps that checkpoint product-facing: it names one first person to meet, keeps venue and time anchored to the event detail record, and phrases stale logistics as records Orbit already resolved before recommendations are shown. Ranked recommendations and generated opening lines remain visible, but the page labels them as secondary when they refer to someone other than the confirmed in-room action target. Technical terms such as route APIs, composed capability sources, and API evidence remain available in the route model and tests for verifier evidence, but live UI should not expose that wording to participants.
+The route keeps canonical event logistics and the source-backed roster available to the real event UI. Matchmaking actions are owned by the client workspace and authenticated APIs; the server route does not manufacture a separate relationship-priority or action-result view that the UI never renders.
 
 ## Live Service/Provider Files
 
@@ -27,8 +25,8 @@ The live service/provider files for this route are:
 - `app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts`
   maps the route success model into the existing event detail UI view model.
 - `app/(app)/app/events/[id]/page.tsx` is the real Next route adapter. It
-  reads route/search params, calls the route service, and renders either the
-  existing event detail UI or a shared state boundary.
+  reads the route event id and optional language query, calls the route service,
+  and renders either the existing event detail UI or a shared state boundary.
 - API envelopes remain under `app/api/events/[id]/route.ts`, `app/api/events/[id]/attendees/route.ts`, `app/api/recommendations/event/[id]/route.ts`, `app/api/events/[id]/readiness/route.ts`, `app/api/events/[id]/want-to-connect/route.ts`, `app/api/events/[id]/encounters/route.ts`, and `app/api/events/[id]/post-event/route.ts`.
 
 ## Switch Mechanism
@@ -61,19 +59,20 @@ missing configuration must fail visibly with live-store evidence.
 - Every event, attendee, recommendation, opening line, readiness item, want-to-connect intent, encounter note, and post-event review contact must preserve evidence ids, source labels, timestamps, and generation method.
 - Visible event venue and time must come from the canonical event detail source. If a live roster, recommendation, note, or post-event provider returns conflicting logistics, the route must surface a controlled reconciliation state instead of showing mixed venue or time details.
 - The page may show readable source labels and evidence chips, but must not expose raw provider payloads, private roster fields, OAuth tokens, prompts, or unapproved attendee data.
-- Sensitive actions stay guarded by `data-action-evidence`. Want-to-connect may record a storage-only live intent; external presence, peer notification, external message, notification delivery, calendar write, contact write, AI provider, and external network side effects remain disallowed from the render path.
+- Sensitive actions use explicit authenticated mutation APIs. External presence, peer notification, external message, notification delivery, calendar write, contact write, AI provider, and external network side effects remain disallowed from the render path.
 - Live services must not send messages, notify peers, write calendars, write contacts, run AI providers, or call external networks from the render path.
 
 ## Replacement Tests
 
-- Page route tests for `/app/events/demo-event-1`, `/app/events/demo-event-1?scenario=empty`, `/app/events/demo-event-1?scenario=pending`, and `/app/events/demo-event-1?scenario=failure`.
+- Page route tests for `/app/events/demo-event-1` plus service-level explicit empty, pending, and failure controls.
 - Route state checks proving the route renders empty, pending, and failure through `data-state-boundary="app-event-detail-route-state-view"`.
 - API envelope tests for `GET /api/events/demo-event-1`, `GET /api/events/demo-event-1/attendees`, and `GET /api/recommendations/event/demo-event-1`.
 - Canonical source tests proving `/app/events/demo-event-1` renders one visible venue/time from the event detail source, records reconciliation evidence for any provider payload with different logistics, and separately reports the one-of-three API evidence contradiction collected by the sprint probes.
-- Top-level relationship priority tests proving the first product checkpoint names the confirmed want-to-connect person, repeats canonical event logistics, states the API-evidence reconciliation summary, and appears before secondary source-consistency details.
-- Product-language route tests proving the rendered priority says one person is first, avoids route/API/capability jargon, and still preserves the model-level reconciliation counts for verifier evidence.
-- Action-coherence route tests proving a different ranked recommendation, such as Mina Park, is framed as the next evidence-backed lead after the confirmed Priya Shah in-room action instead of competing with the primary action.
-- Reload-after-action and repeated-click persistence tests proving the want-to-connect result remains stable across repeated renders and reports storage-only live intent writes without presence, peer notification, external message, notification delivery, or external network requests.
+- Source-level tests proving the page and route model contain no dead
+  action-result projection or relationship-context presenter.
+- Authenticated API and matchmaking-workspace tests proving explicit requests,
+  consent, slot proposals, retries, and readback rather than route-render
+  simulation.
 - Factory tests proving mock, hybrid, and live service resolution selects registered constructors and reports controlled failures when live implementations are unavailable.
 - Mapper tests proving live event, attendee, recommendation, opening-line, readiness, want-to-connect, encounter, and post-event payloads preserve provenance and evidence ids.
 - Privacy tests proving route copy avoids raw provider payloads, private notes, credentials, prompts, and unapproved attendee fields.
@@ -86,9 +85,13 @@ missing configuration must fail visibly with live-store evidence.
   service, avoids the legacy event detail view model, and renders live-store
   failure evidence when storage is unconfigured.
 - `features/events/encounter-note/live-service.ts` returns read-only encounter-note preview data when `noteText` is absent, so loading the event detail route does not write notes.
-- The route derives its default want-to-connect target from the live match payload before falling back to the legacy demo contact.
-- `buildWantConnectActionResult()` allows storage-only live intent writes and still suppresses results if presence, peer notification, external message, notification provider, or external network flags appear.
-- Remote smoke with `ORBIT_MODULE_MODE=live` loaded `event_01` with 50 attendees, three recommendations, two post-event contact drafts, one want-connect match, and a storage-only want-connect action result for `曾伟`.
+- The route exposes source-backed match data as read context only. The former
+  target-selection/action-result helpers and unused relationship presenter are
+  removed; real writes remain behind authenticated POST handlers.
+- Remote smoke with `ORBIT_MODULE_MODE=live` loaded `event_01` with 50
+  attendees, three recommendations, two post-event contact drafts, and one
+  source-backed want-connect match. That read smoke is not evidence of a
+  completed mutation.
 - Remote page smoke rendered `/app/events/event_01?mode=live` with
   `hasRemoteTitle=true`, `hasOldDemoTitle=false`, `hasFailure=false`, and
   `hasDetailPage=true`.
