@@ -3341,6 +3341,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source-backed English identity consistency in exact production server rendering and regression tests; post-repair authenticated browser DOM, Japanese registration, other public events, generated model-provider output, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-contacts-route-control-isolation-2026-07-29",
+    target:
+      "Authenticated Web Contacts list family and Home contact aggregate → public filters separated from internal fixture controls",
+    testData:
+      "AppContactsSearchParams containing scenario=empty and action=review-filtered-contact; shared loader callers at /app/contacts, graph, intros, pipeline, contacts dashboard, /app/home, and /app/home/events",
+    expected:
+      "Public query input may filter contacts by query/source/status/tag/value, but it must not force empty/pending/failure fixtures or switch the internal list/search operation. Controlled tests must retain an explicit non-URL path to those states.",
+    actual:
+      "Before repair, the shared loader read scenario and action directly from the same public searchParams object used for filters; scenario entered the synthetic route-state branch and action switched listContacts to searchContacts. After repair, the adversarial public parameter object returned the normal success model with reviewActionRequested=false, while an explicit third-argument scenario still returned the controlled empty route state.",
+    evidence:
+      "Source trace across the shared loader and seven direct callers; focused Contacts/Home tests 38/38; Web full suite 1353/1353; exact production build; GitNexus pre-edit HIGH impact with seven direct callers and four process groups, then staged CRITICAL detection across 22 generated flows; commit 0026dfc7",
+    conclusion:
+      "pass for source-level separation of public contacts filters from internal scenario/action controls with full Web regression coverage; authenticated browser DOM, valid-filter browser behavior, each affected route independently, duplicate/array/encoded query values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4151,6 +4166,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW upstream impact for AppEventRegistrationGuidePage, while staged detection reported HIGH across six registration presentation flows; the warning was surfaced before commit. Focused registration page tests passed 9/9, the broader registration chain passed 29/29, and the exact production build passed. Server-rendered English output now contains Kansai Cross-Border Business Connect and Osaka in both workspace and question context with no Chinese event identity.",
     status:
       "fixed and source/render-verified for event_signup_01 English registration identity; post-repair authenticated browser DOM, Japanese registration, other events, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-059",
+    severity: "P1",
+    rootCause:
+      "loadAppContactsRouteViewModel used one untrusted AppContactsSearchParams object for both legitimate list filters and internal route controls. Any production caller forwarding the URL therefore allowed scenario=empty/pending/failure to replace actor-scoped results with synthetic states, while action=review-filtered-contact selected a different internal service method during GET composition.",
+    decision:
+      "Keep query/source/status/tag/value in the public search-parameter path, but move scenario and reviewFilteredContact into an explicit typed controls argument. Existing page and Home callers remain source-compatible and cannot activate controls; controlled tests and internal callers can still request them deliberately without encoding them in a public URL.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts; repos/orbits/tests/pages/app-contacts-live-route-services.test.ts",
+    regression:
+      "GitNexus reported HIGH pre-edit impact with seven direct callers, nine upstream symbols, and four process groups. Staged detection reported CRITICAL across 22 generated Contacts/Home flows, so the change was held for expanded verification. Contacts/Home focused tests passed 38/38, the complete Web suite passed 1353/1353 with no skips, and the exact production build passed. Regression proves public scenario/action are inert while explicit internal scenario remains available.",
+    status:
+      "fixed and source/build/full-suite-verified for the shared Contacts loader boundary; authenticated browser runtime, legitimate filter combinations, each caller independently, duplicate/array/encoded values, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
