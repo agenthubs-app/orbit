@@ -1,7 +1,3 @@
-import {
-  mockEventRecords,
-  mockOrbitAiRecommendedEventDetailRecord,
-} from "../event-crud-and-import/fixtures";
 import type { EventRecord } from "../event-crud-and-import/contract";
 import { bilingualSegment } from "../../orbit-ai/event-recommendation-artifact-service";
 import { createEventCrudAndImportService } from "../service-factory";
@@ -54,11 +50,6 @@ export function localizedEventTitle(
   return fromTitle;
 }
 
-const knownRegistrationEvents: readonly EventRecord[] = [
-  ...mockEventRecords,
-  mockOrbitAiRecommendedEventDetailRecord,
-];
-
 function publicCatalogueEventRecord(eventId: string): EventRecord | null {
   const catalogue = readPublicEventCatalogue();
   const event = catalogue.events.find(
@@ -82,14 +73,6 @@ export async function loadEventForRegistration(
   actorId?: string | null,
 ): Promise<EventRecord | null> {
   const normalizedEventId = eventId.trim();
-  const knownEvent = knownRegistrationEvents.find(
-    (event) => event.id === normalizedEventId,
-  );
-
-  if (knownEvent) {
-    return knownEvent;
-  }
-
   const catalogueEvent = loadPublicEventForRegistration(normalizedEventId);
 
   if (catalogueEvent) {

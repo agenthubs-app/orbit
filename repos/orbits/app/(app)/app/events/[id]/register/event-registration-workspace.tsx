@@ -41,7 +41,6 @@ interface RegistrationWorkspaceProps {
   language: Language;
   profile: {
     displayName: string;
-    headline: string;
   };
   questionSet: EventRegistrationQuestionSet;
 }

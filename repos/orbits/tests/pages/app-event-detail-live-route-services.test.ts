@@ -246,10 +246,8 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
     ),
     /actionResult|buildWantConnectActionResult|selectWantConnectTargetContactId/,
   );
-  assert.match(
-    pageSource,
-    /loadRegistrationProfileGuideForCurrentTestUser\(\{\s*actorId: session\.user\.id/,
-  );
+  assert.doesNotMatch(pageSource, /loadRegistrationProfileGuideForCurrentTestUser/);
+  assert.doesNotMatch(pageSource, /RegistrationProfileGuide/);
 });
 
 test("event presentation preserves the source-backed attendee roster and count", async () => {

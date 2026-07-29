@@ -1,13 +1,6 @@
 import { StateView } from "../../../../../../shared/ui/state-view";
 import { auth } from "../../../../../../auth";
-import {
-  loadRegistrationProfileGuideForCurrentTestUser,
-  normalizeRegistrationProfileGuideLanguage,
-  type RegistrationProfileGuide,
-  type RegistrationProfileGuideLanguage,
-  type RegistrationProfileGuideResult,
-} from "../../../../../../features/events/registration-profile-guide";
-import type { OrbitLanguage } from "../../../orbit-language-core";
+import { normalizeOrbitLanguage } from "../../../orbit-language-core";
 import {
   getOrbitServerLanguage,
   localizeOrbitTree,
@@ -21,10 +14,8 @@ import {
 } from "../../../../../../features/events/registration/event-loader";
 import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
-import {
-  CURRENT_EVENT_REGISTRATION_PROFILE,
-  eventRegistrationRuntimeService,
-} from "../../../../../../features/events/registration/runtime";
+import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import { createProfileService } from "../../../../../../features/profile/service-factory";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
 import { redirect } from "next/navigation";
 
@@ -44,15 +35,15 @@ function readSearchParam(
 
 async function getEventRegistrationPageLanguage(
   preferredLanguage?: string | null,
-): Promise<RegistrationProfileGuideLanguage> {
+): Promise<"en" | "zh"> {
   if (preferredLanguage) {
-    return normalizeRegistrationProfileGuideLanguage(preferredLanguage);
+    return normalizeOrbitLanguage(preferredLanguage) === "en" ? "en" : "zh";
   }
 
   try {
-    return normalizeRegistrationProfileGuideLanguage(
-      await getOrbitServerLanguage(),
-    );
+    return normalizeOrbitLanguage(await getOrbitServerLanguage()) === "en"
+      ? "en"
+      : "zh";
   } catch (error) {
     if (
       error instanceof Error &&
@@ -63,13 +54,6 @@ async function getEventRegistrationPageLanguage(
 
     throw error;
   }
-}
-
-function copy(
-  language: OrbitLanguage,
-  text: { en: string; zh: string },
-): string {
-  return language === "en" ? text.en : text.zh;
 }
 
 async function currentRegistrationActor() {
@@ -91,349 +75,16 @@ async function currentRegistrationActor() {
   }
 }
 
-function eventHref(
-  guide: RegistrationProfileGuide,
-): string {
-  return `/app/events/${encodeURIComponent(guide.event.id)}?language=${guide.languagePreference}`;
-}
-
-function finalStepCue(language: RegistrationProfileGuideLanguage): string {
-  return copy(language, {
-    en: "This read-only fallback cannot save answers. Return to the event and retry after its registration record is confirmed or imported.",
-    zh: "此只读兜底页不会保存回答。请返回活动，待报名记录确认为已发布或已导入后重试。",
-  });
-}
+type RegistrationEvent = NonNullable<
+  Awaited<ReturnType<typeof loadEventForRegistration>>
+>;
 
 function isRegisterableEventForWorkspace(
   event: Awaited<ReturnType<typeof loadEventForRegistration>>,
-): event is NonNullable<
-  Awaited<ReturnType<typeof loadEventForRegistration>>
-> {
+): event is RegistrationEvent & { status: "confirmed" | "imported" } {
   return (
     event !== null &&
     (event.status === "confirmed" || event.status === "imported")
-  );
-}
-
-function failureTitle(result: Exclude<RegistrationProfileGuideResult, { state: "success" }>) {
-  if (result.state === "not-registerable") {
-    return "Registration questions are not available";
-  }
-
-  return "Registration guide could not load";
-}
-
-function failureDescription(
-  result: Exclude<RegistrationProfileGuideResult, { state: "success" }>,
-) {
-  if (result.state === "not-registerable") {
-    return result.reason;
-  }
-
-  return result.message;
-}
-
-function RegistrationGuideState({
-  result,
-}: {
-  result: Exclude<RegistrationProfileGuideResult, { state: "success" }>;
-}) {
-  const evidenceIds =
-    result.state === "failure" ? result.evidenceIds : [result.eventId];
-  const title = failureTitle(result);
-
-  return (
-    <main className="orbit-page" style={{ minHeight: "100dvh", padding: 24 }}>
-      <h1
-        style={{
-          color: "var(--ink)",
-          fontSize: "2.5rem",
-          lineHeight: 1,
-          margin: "0 auto 18px",
-          maxWidth: 960,
-        }}
-      >
-        {title}
-      </h1>
-      <StateView
-        description={failureDescription(result)}
-        emptyState="No registration profile answers were saved."
-        evidence={Array.from(evidenceIds)}
-        eyebrow="Registration profile"
-        guardrail="This route only reads event and profile context. It does not write profile fields, notify attendees, send messages, or call an AI provider."
-        nextStep="Return to the event and review registration when the event is confirmed or imported."
-        recoveryActions={[
-          {
-            href: "/app/events",
-            id: "event-registration-guide-return",
-            label: "Return to events",
-            recoveryCopy:
-              "Open a confirmed or imported event before answering profile questions.",
-          },
-        ]}
-        title={title}
-      />
-    </main>
-  );
-}
-
-function RegistrationGuideForm({
-  guide,
-  language,
-}: {
-  guide: RegistrationProfileGuide;
-  language: RegistrationProfileGuideLanguage;
-}) {
-  return (
-    <main
-      data-orbit-registration-profile-guide="register"
-      style={{
-        background: "var(--bg-sunken)",
-        minHeight: "100dvh",
-        padding: "28px 16px",
-      }}
-    >
-      <section
-        style={{
-          background: "var(--bg)",
-          border: "1px solid var(--border)",
-          borderRadius: 18,
-          boxShadow: "var(--sh-md)",
-          display: "grid",
-          gap: 18,
-          margin: "0 auto",
-          maxWidth: 760,
-          padding: 22,
-        }}
-      >
-        <a
-          href={eventHref(guide)}
-          style={{
-            color: "var(--text-2)",
-            fontSize: 13,
-            fontWeight: 650,
-            textDecoration: "none",
-          }}
-        >
-          {copy(language, { en: "Back to event", zh: "返回活动" })}
-        </a>
-        <header style={{ display: "grid", gap: 8 }}>
-          <p
-            style={{
-              color: "var(--accent)",
-              fontSize: 12,
-              fontWeight: 750,
-              letterSpacing: "0.08em",
-              margin: 0,
-              textTransform: "uppercase",
-            }}
-          >
-            {copy(language, {
-              en: "Registration profile",
-              zh: "报名资料",
-            })}
-          </p>
-          <h1
-            className="h-display"
-            style={{ color: "var(--ink)", margin: 0 }}
-          >
-            {guide.event.title}
-          </h1>
-          <p
-            data-registration-guide-state="read-only"
-            role="status"
-            style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.55, margin: 0 }}
-          >
-            {copy(language, {
-              en: "Registration is temporarily read-only because the current event record could not be verified as confirmed or imported. Nothing entered here can be saved.",
-              zh: "当前活动记录暂时无法验证为已发布或已导入，因此报名资料仅供只读查看；此处不会保存任何输入。",
-            })}
-          </p>
-        </header>
-
-        <section
-          aria-label="Current profile context"
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            display: "grid",
-            gap: 8,
-            padding: 14,
-          }}
-        >
-          <div style={{ color: "var(--ink)", fontSize: 14, fontWeight: 700 }}>
-            {guide.currentUser.displayName} · {guide.currentUser.role}
-          </div>
-          <div style={{ color: "var(--text-2)", fontSize: 13.5, lineHeight: 1.5 }}>
-            {guide.currentUser.headline}
-          </div>
-          <div style={{ color: "var(--text-3)", fontSize: 12.5 }}>
-            {copy(language, { en: "Missing field", zh: "待补字段" })}:{" "}
-            {guide.currentUser.missingFieldContext
-              .map((field) => field.description)
-              .join(" / ")}
-          </div>
-        </section>
-
-        <section
-          aria-label={copy(language, {
-            en: "Read-only registration profile questions",
-            zh: "只读报名资料问题",
-          })}
-          style={{ display: "grid", gap: 14 }}
-        >
-          {guide.questions.map((question, index) => (
-            <fieldset
-              key={question.id}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 14,
-                display: "grid",
-                gap: 10,
-                margin: 0,
-                padding: 16,
-              }}
-            >
-              <legend
-                style={{
-                  color: "var(--accent)",
-                  fontSize: 12,
-                  fontWeight: 750,
-                  padding: "0 6px",
-                }}
-              >
-                {copy(language, { en: `Question ${index + 1}`, zh: `问题 ${index + 1}` })}
-              </legend>
-              <label style={{ display: "grid", gap: 8 }}>
-                <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 700, lineHeight: 1.45 }}>
-                  {question.prompt}
-                </span>
-                <textarea
-                  aria-label={copy(language, {
-                    en: "Answer unavailable in read-only mode",
-                    zh: "只读模式下无法填写回答",
-                  })}
-                  name={question.id}
-                  placeholder={copy(language, {
-                    en: "Return to the event and retry when registration is available.",
-                    zh: "请返回活动，待报名恢复可用后重试。",
-                  })}
-                  readOnly
-                  style={{
-                    border: "1px solid var(--border-2)",
-                    borderRadius: 12,
-                    color: "var(--ink)",
-                    fontFamily: "var(--ff)",
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    minHeight: 84,
-                    padding: 12,
-                    resize: "vertical",
-                  }}
-                />
-              </label>
-              <p
-                aria-label={copy(language, {
-                  en: "Profile field context",
-                  zh: "关系资料字段说明",
-                })}
-                style={{
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  color: "var(--text-2)",
-                  fontSize: 13,
-                  lineHeight: 1.45,
-                  margin: 0,
-                  padding: 10,
-                }}
-              >
-                {copy(language, {
-                  en: "Profile field",
-                  zh: "关系资料字段",
-                })}
-                : {question.profileFieldDescription}
-              </p>
-              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.45, margin: 0 }}>
-                {question.rationale}
-              </p>
-              <label
-                style={{
-                  alignItems: "center",
-                  color: "var(--text-2)",
-                  display: "flex",
-                  fontSize: 13,
-                  gap: 8,
-                }}
-              >
-                <input disabled name={`${question.id}:skip`} type="checkbox" />
-                {question.skipLabel}
-              </label>
-              <div style={{ color: "var(--accent)", fontSize: 12.5, fontWeight: 650 }}>
-                {question.stagedAnswerLabel}
-              </div>
-            </fieldset>
-          ))}
-          <div
-            style={{
-              display: "grid",
-              gap: 10,
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            }}
-          >
-            <a
-              aria-label={copy(language, { en: "Return to event", zh: "返回活动" })}
-              href={eventHref(guide)}
-              style={{
-                alignItems: "center",
-                background: "var(--accent)",
-                border: "1px solid var(--accent)",
-                borderRadius: 12,
-                color: "var(--on-dark)",
-                cursor: "pointer",
-                display: "flex",
-                fontSize: 15,
-                fontWeight: 700,
-                justifyContent: "center",
-                minHeight: 46,
-                textDecoration: "none",
-              }}
-            >
-              {copy(language, { en: "Return to event", zh: "返回活动" })}
-            </a>
-            <a
-              href={eventHref(guide)}
-              style={{
-                alignItems: "center",
-                background: "var(--surface)",
-                border: "1px solid var(--border-2)",
-                borderRadius: 12,
-                color: "var(--text-2)",
-                display: "flex",
-                fontSize: 15,
-                fontWeight: 650,
-                justifyContent: "center",
-                minHeight: 46,
-                textDecoration: "none",
-              }}
-            >
-              {guide.skipGuideLabel}
-            </a>
-          </div>
-          <p
-            style={{
-              color: "var(--text-3)",
-              fontSize: 13,
-              lineHeight: 1.45,
-              margin: 0,
-            }}
-          >
-            {finalStepCue(language)}
-          </p>
-        </section>
-      </section>
-    </main>
   );
 }
 
@@ -455,11 +106,6 @@ export default async function AppEventRegistrationGuidePage({
   const actor = actorContext.actor;
   const preferredLanguage = readSearchParam(query, "language");
   const language = await getEventRegistrationPageLanguage(preferredLanguage);
-  const result = await loadRegistrationProfileGuideForCurrentTestUser({
-    actorId: actor?.id,
-    eventId: id,
-    languagePreference: language,
-  });
   const event = await loadEventForRegistration(id, actor?.id);
 
   if (isRegisterableEventForWorkspace(event)) {
@@ -478,7 +124,7 @@ export default async function AppEventRegistrationGuidePage({
       },
       eventLanguage,
     );
-    const [questionSet, registration] = await Promise.all([
+    const [questionSet, registration, profileResult] = await Promise.all([
       generateEventRegistrationQuestions({
         event: localizedEvent,
         language,
@@ -489,21 +135,19 @@ export default async function AppEventRegistrationGuidePage({
             userId: actor.id,
           })
         : null,
+      actor?.id
+        ? createProfileService().getProfile({
+            actorId: actor.id,
+          })
+        : null,
     ]);
-    const profile = actor
-      ? {
-          displayName: actor.name || CURRENT_EVENT_REGISTRATION_PROFILE.displayName,
-          headline:
-            result.state === "success"
-              ? result.guide.currentUser.headline
-              : CURRENT_EVENT_REGISTRATION_PROFILE.headline,
-        }
-      : result.state === "success"
-        ? {
-            displayName: result.guide.currentUser.displayName,
-            headline: result.guide.currentUser.headline,
-          }
-        : CURRENT_EVENT_REGISTRATION_PROFILE;
+    const actorProfile =
+      profileResult?.success === true ? profileResult.data.profile : null;
+    const displayName =
+      actorProfile?.displayName.trim() ||
+      actor?.name?.trim() ||
+      actor?.email?.trim() ||
+      (language === "en" ? "Orbit member" : "Orbit 成员");
 
     return (
       <>
@@ -516,7 +160,7 @@ export default async function AppEventRegistrationGuidePage({
           }}
           initialRegistration={registration}
           language={language}
-          profile={profile}
+          profile={{ displayName }}
           questionSet={questionSet}
         />
         <OrbitVisualFreezeRuntime />
@@ -527,11 +171,54 @@ export default async function AppEventRegistrationGuidePage({
   return (
     <>
       <OrbitReferenceStyles />
-      {result.state === "success" ? (
-        <RegistrationGuideForm guide={result.guide} language={language} />
-      ) : (
-        <RegistrationGuideState result={result} />
-      )}
+      <main className="orbit-page" style={{ minHeight: "100dvh", padding: 24 }}>
+        <StateView
+          description={
+            event
+              ? language === "en"
+                ? "This event is no longer open for registration."
+                : "该活动当前已不再开放报名。"
+              : language === "en"
+                ? "This event is not available to the signed-in account."
+                : "当前登录账号无法访问该活动。"
+          }
+          emptyState={
+            language === "en"
+              ? "No registration answers were saved."
+              : "未保存任何报名回答。"
+          }
+          evidence={
+            event
+              ? event.evidence.map((item) => item.evidenceId)
+              : [`event:${id}:registration-unavailable`]
+          }
+          eyebrow={language === "en" ? "Event registration" : "活动报名"}
+          guardrail={
+            language === "en"
+              ? "This boundary does not create a registration, generate questions, update a profile, notify attendees, send messages, or call an AI provider."
+              : "此边界不会创建报名、生成问题、更新资料、通知参与者、发送消息或调用 AI 服务。"
+          }
+          nextStep={
+            language === "en"
+              ? "Return to Events and choose an upcoming event available to this account."
+              : "返回活动列表，选择当前账号可访问的待开始活动。"
+          }
+          recoveryActions={[
+            {
+              href: "/app/events",
+              id: "event-registration-return",
+              label: language === "en" ? "Return to events" : "返回活动",
+              recoveryCopy:
+                language === "en"
+                  ? "Choose an upcoming event before starting registration."
+                  : "选择待开始活动后再开始报名。",
+            },
+          ]}
+          title={
+            language === "en" ? "Registration unavailable" : "报名暂不可用"
+          }
+        />
+      </main>
       <OrbitVisualFreezeRuntime />
     </>
   );

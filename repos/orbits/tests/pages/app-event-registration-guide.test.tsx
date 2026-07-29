@@ -26,32 +26,16 @@ async function withOrbitModuleMode<T>(
   }
 }
 
-test("/app/events/[id] exposes the event-specific registration profile guide entry", async () => {
-  const { loadRegistrationProfileGuideForCurrentTestUser } = await import(
-    "../../features/events/registration-profile-guide"
-  );
-  const result = await loadRegistrationProfileGuideForCurrentTestUser({
-    eventId: "event_001",
-    languagePreference: "en",
-    mode: "mock",
-  });
+test("/app/events/[id] does not render the retired deterministic registration guide", () => {
   const pageSource = readFileSync(
     join(projectRoot, "app/(app)/app/events/[id]/page.tsx"),
     "utf8",
   );
 
-  assert.equal(result.state, "success");
-  if (result.state === "success") {
-    assert.equal(
-      result.guide.event.title,
-      "Seed Investor and Founder Matching Salon",
-    );
-    assert.equal(result.guide.languagePreference, "en");
-  }
-  assert.match(pageSource, /data-orbit-registration-profile-guide="detail"/);
-  assert.match(pageSource, /Profile questions for this event/);
-  assert.match(pageSource, /Answers are staged locally until you confirm them/);
-  assert.match(pageSource, /registrationGuideHref\(guide\)/);
+  assert.doesNotMatch(pageSource, /loadRegistrationProfileGuideForCurrentTestUser/);
+  assert.doesNotMatch(pageSource, /RegistrationProfileGuide/);
+  assert.doesNotMatch(pageSource, /data-orbit-registration-profile-guide/);
+  assert.doesNotMatch(pageSource, /deterministic profile questions/);
 });
 
 test("public event detail stays readable while registration itself requires authentication", () => {
@@ -70,15 +54,18 @@ test("public event detail stays readable while registration itself requires auth
   assert.match(pageSource, /actorId: session\.user\.id/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.match(registerSource, /actorContext\.requestScoped/);
-  assert.match(registerSource, /actorId: actor\?\.id/);
   assert.match(registerSource, /loadEventForRegistration\(id, actor\?\.id\)/);
+  assert.match(
+    registerSource,
+    /createProfileService\(\)\.getProfile\(\{\s*actorId: actor\.id/,
+  );
   assert.doesNotMatch(registerSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(registerSource, /readSearchParam\(query, "scenario"\)/);
   assert.match(registerSource, /\/app\/account\/login\?next=/);
   assert.match(registerSource, /\/app\/events\/\$\{id\}\/register/);
 });
 
-test("/app/events/[id]/register renders event-specific optional participant-profile questions without a mock query", async () => {
+test("/app/events/[id]/register renders public event questions without a mock query", async () => {
   const Page = (await import("../../app/(app)/app/events/[id]/register/page"))
     .default as (props: {
     params: Promise<{ id: string }>;
@@ -86,13 +73,12 @@ test("/app/events/[id]/register renders event-specific optional participant-prof
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
     await Page({
-      params: Promise.resolve({ id: "event_001" }),
+      params: Promise.resolve({ id: "event_signup_01" }),
       searchParams: Promise.resolve({ language: "en" }),
     }),
   );
 
-  assert.match(html, /data-orbit-registration-profile-guide="register"/);
-  assert.match(html, /Seed Investor and Founder Matching Salon/);
+  assert.match(html, /Kansai Cross-Border Business Connect/);
   // 新版是一屏一题的自适应问答:SSR 渲染第一题、进度指示与选项胶囊。
   assert.match(html, /data-registration-stage="interview"/);
   assert.match(html, /1 \/ 8/);
@@ -100,7 +86,7 @@ test("/app/events/[id]/register renders event-specific optional participant-prof
   assert.match(html, /Answers stay scoped to this event/);
 });
 
-test("/app/events/[id]/register renders the canonical guide without query setup", async () => {
+test("/app/events/[id]/register renders a public event without query setup", async () => {
   await withOrbitModuleMode("hybrid", async () => {
     const Page = (await import("../../app/(app)/app/events/[id]/register/page"))
       .default as (props: {
@@ -109,12 +95,11 @@ test("/app/events/[id]/register renders the canonical guide without query setup"
     }) => Promise<React.ReactElement>;
     const html = renderToStaticMarkup(
       await Page({
-        params: Promise.resolve({ id: "event_001" }),
+        params: Promise.resolve({ id: "event_signup_01" }),
       }),
     );
 
-    assert.match(html, /data-orbit-registration-profile-guide="register"/);
-    assert.match(html, /<h1[^>]*>Seed Investor and Founder Matching Salon<\/h1>/);
+    assert.match(html, /<h1[^>]*>关西跨境商务对接会<\/h1>/);
     // 默认中文:一屏一题 + 本活动范围声明。
     assert.match(html, /data-registration-stage="interview"/);
     assert.match(html, /回答只用于本次活动|Answers stay scoped to this event/);
@@ -156,7 +141,9 @@ test("registerable live events are not gated by the legacy deterministic-guide w
 
   assert.doesNotMatch(source, /result\.state === "success" && event/);
   assert.match(source, /isRegisterableEventForWorkspace\(event\)/);
-  assert.match(source, /CURRENT_EVENT_REGISTRATION_PROFILE/);
+  assert.match(source, /createProfileService\(\)\.getProfile/);
+  assert.doesNotMatch(source, /CURRENT_EVENT_REGISTRATION_PROFILE/);
+  assert.doesNotMatch(source, /loadRegistrationProfileGuideForCurrentTestUser/);
 });
 
 test("the approved public catalogue enters registration with honest time status", async () => {
@@ -186,7 +173,29 @@ test("the approved public catalogue enters registration with honest time status"
   assert.equal(upcomingEvent?.externalNetworkRequested, false);
 });
 
-test("registration fallback is transparent and exposes no fake confirmation", () => {
+test("registration loader does not preempt actor-scoped services with demo events", async () => {
+  const loaderSource = readFileSync(
+    join(
+      projectRoot,
+      "features/events/registration/event-loader.ts",
+    ),
+    "utf8",
+  );
+
+  assert.doesNotMatch(loaderSource, /mockEventRecords/);
+  assert.doesNotMatch(loaderSource, /mockOrbitAiRecommendedEventDetailRecord/);
+  assert.doesNotMatch(loaderSource, /knownRegistrationEvents/);
+
+  await withOrbitModuleMode("live", async () => {
+    const { loadEventForRegistration } = await import(
+      "../../features/events/registration/event-loader"
+    );
+
+    assert.equal(await loadEventForRegistration("event_001"), null);
+  });
+});
+
+test("registration fallback is transparent and exposes no fixture form", () => {
   const source = readFileSync(
     join(
       projectRoot,
@@ -195,11 +204,11 @@ test("registration fallback is transparent and exposes no fake confirmation", ()
     "utf8",
   );
 
-  assert.match(source, /data-registration-guide-state="read-only"/);
-  assert.match(source, /Nothing entered here can be saved/);
-  assert.match(source, /readOnly/);
-  assert.match(source, /<section[\s\S]*Read-only registration profile questions/);
-  assert.doesNotMatch(source, /<button[\s\S]*guide\.confirmationLabel/);
+  assert.match(source, /Registration unavailable/);
+  assert.match(source, /No registration answers were saved/);
+  assert.match(source, /does not create a registration, generate questions/);
+  assert.doesNotMatch(source, /RegistrationGuideForm/);
+  assert.doesNotMatch(source, /mockManualProfile|mockProfileFixture|Ari Lane/);
 });
 
 test("registration workspace exposes real register cancel and re-register states", () => {
