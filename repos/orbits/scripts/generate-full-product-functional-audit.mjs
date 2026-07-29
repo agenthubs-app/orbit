@@ -3401,6 +3401,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build/full-suite separation of public query input from Profile fixture/action behavior across all known production callers; authenticated browser DOM, explicit profile API save/readback, provider failures, cache/proxy behavior, duplicate/array/encoded query values, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-today-aggregate-query-isolation-2026-07-29",
+    target:
+      "Authenticated Web Today aggregate → legitimate date/view/entry navigation separated from Today ledger, Schedule, and Followups fixture/action controls",
+    testData:
+      "/app/today with date, view, entry, scenario=failure, and action=complete-top-followup; merged actor-scoped ledger, arrangements, and follow-up time-spine loaders",
+    expected:
+      "Public query input may select a calendar date/view and expand one ledger entry, but it must not select child-service fixture states or fabricate a completion result. Controlled tests must retain an explicit non-URL path to each child failure state, and recovery actions must point to real product destinations.",
+    actual:
+      "Before repair, loadAppTodayMergedViewModel forwarded the entire public query object to all three child loaders. scenario therefore selected ledger, Schedule, and Followups fixtures simultaneously; complete-top-followup built a Followups actionResult that the schedule adapter and final Today UI never consumed. After repair, the aggregate forwards only allowlisted entry input to the ledger, consumes date/view locally, invokes Schedule and Followups without public query input, exposes typed internal controls for all three children, removes the dead actionResult chain, and routes recovery to Today, Today arrangements, Contacts New, or Settings.",
+    evidence:
+      "Current-source call-site inventory after GitNexus incremental analysis failed with LOWER: Invalid UTF-8 and left current symbols unresolved; the required impact commands were run and returned UNKNOWN/not found, so verification was expanded. Today/Followups/Schedule focused tests passed 59/59, the complete Web suite passed 1356/1356, the exact production build passed, and staged GitNexus detection returned LOW for eight files and two recognized merged-view symbols; commit ba8fd2c8",
+    conclusion:
+      "pass for source/build/full-suite separation of public Today navigation from three child fixture/action controls and removal of the invisible completion preview; authenticated browser DOM, explicit write/readback actions, provider failures, cache/proxy behavior, duplicate/array/encoded query values, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4267,6 +4282,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported HIGH pre-edit impact with four direct callers, 12 upstream symbols, and three process groups. Profile/Home/Party/Admin focused tests passed 49/49, the exact production build passed, and staged detection reported CRITICAL across 20 shared composition flows, so the complete Web suite was required and passed 1355/1355. Regression asserts that the production page has no searchParams, the loader has no query reader or complete-profile-field branch, and explicit internal scenario controls remain available.",
     status:
       "fixed and source/build/full-suite-verified for Profile and all known shared callers; authenticated browser runtime, profile API save/readback, provider failures, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-063",
+    severity: "P1",
+    rootCause:
+      "The authenticated Today aggregate reused one unrestricted URL query object across calendar navigation, ledger selection, Schedule composition, and Followups composition. scenario selected internal states in all three child loaders, while action=complete-top-followup created a no-write completion result that the Followups adapter and final Today UI ignored. Recovery links also targeted retired redirect routes or internal scenario URLs.",
+    decision:
+      "Define the public Today contract as date, view, and entry only. Consume date/view in the aggregate, pass only entry to the ledger, call Schedule and Followups without public query input, and move every child scenario into typed internal controls. Delete the unconsumed Followups completion-result contract and replace recovery links with real Today, Today arrangements, Contacts New, and Settings destinations.",
+    files:
+      "repos/orbits/app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model.ts; repos/orbits/app/(app)/app/schedule/schedule-route-view-model.ts; repos/orbits/app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model.ts; repos/orbits/app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts; repos/orbits/app/(app)/app/today/today-page-content.tsx; repos/orbits/tests/pages/app-followups-live-route-services.test.ts; repos/orbits/tests/pages/app-today-route-view-model.test.ts; repos/orbits/tests/pages/app-today-merged.test.ts",
+    regression:
+      "GitNexus incremental analysis failed with LOWER: Invalid UTF-8 and left current loader symbols unresolved; all required pre-edit impact commands were nevertheless run and returned UNKNOWN/not found, so the change was treated conservatively. Focused Today/Followups/Schedule tests passed 59/59, the complete Web suite passed 1356/1356, and the exact production build passed. Staged detection returned LOW for eight files and two recognized merged-view symbols. Regression proves adversarial public scenario/action input leaves all three child models successful while explicit internal controls still render degraded states.",
+    status:
+      "fixed and source/build/full-suite-verified for the Today aggregate and its three child control boundaries; GitNexus current-symbol graph coverage, authenticated browser runtime, explicit mutation/readback paths, provider failures, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 

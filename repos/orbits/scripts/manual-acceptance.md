@@ -35,9 +35,10 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
 7. Open `/app/events/demo-event-1?action=want-to-connect&targetContactId=contact:priya-shah`.
    - Confirm Climate founders dinner, attendee recommendation, opening line, and want-to-connect intent render.
    - Confirm the intent is route-only and has no peer notification, external message, saved-record write, or outside network request.
-8. Open `/app/followups?action=complete-top-followup`.
-   - Confirm follow-up generation, message draft context, and notification queue context render.
-   - Confirm completion is preview-only and messages/notifications are not sent.
+8. Open `/app/today?view=day`.
+   - Confirm the time spine contains source-backed follow-up and draft context.
+   - Confirm public query input does not claim completion, send messages, or
+     schedule notifications.
 9. Open `/app/chat?action=record-local-reply`.
    - Confirm chat summary and extraction context render for Maya Chen.
    - Confirm the local reply is preview-only and remains connected to the follow-up tracker.
