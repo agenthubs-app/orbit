@@ -410,6 +410,7 @@ function contactDraftFromManualInput(input: {
       required: true,
       state: "pending",
       question: `Confirm adding ${input.displayName} from the manual note?`,
+      writeTargets: ["contact"],
     },
     evidence: [evidence],
     provenance: {
@@ -669,6 +670,7 @@ function confirmedContactDraft(input: {
       state: "confirmed",
       actorLabel: input.actorLabel,
       confirmedAt: input.confirmedAt,
+      writeTargets: ["contact"],
     },
     evidence: [...input.draft.evidence, confirmationEvidence],
     provenance: {

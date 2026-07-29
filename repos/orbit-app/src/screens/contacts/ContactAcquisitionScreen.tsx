@@ -947,7 +947,7 @@ function formTitle(mode: ContactAcquisitionMode): string {
 
 function formDetail(mode: ContactAcquisitionMode): string {
   if (mode === "qr") {
-    return "适合活动现场扫码后的文本";
+    return "仅支持 orbit-qr: 文本；当前不校验签名，确认前请核对字段";
   }
 
   if (mode === "businessCard") {

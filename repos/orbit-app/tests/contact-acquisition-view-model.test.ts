@@ -1046,7 +1046,8 @@ test("acquisitionResultToSummary maps a pending manual draft without implementat
       confirmation: {
         required: true,
         state: "pending",
-        question: "Confirm adding 测试联系人 from the manual note?"
+        question: "Confirm adding 测试联系人 from the manual note?",
+        writeTargets: ["contact"]
       }
     },
     nextAction: "Review the manual note evidence before confirming this contact candidate.",
@@ -1058,7 +1059,7 @@ test("acquisitionResultToSummary maps a pending manual draft without implementat
   assert.deepEqual(summary, {
     canConfirm: true,
     confirmLabel: "确认候选",
-    confirmationText: "确认后会生成候选，不会直接写联系人。",
+    confirmationText: "确认后会写入联系人，并保留来源证据。",
     detail: "Orbit · AI 导入负责人",
     draftId: "manual-draft:live:1",
     evidenceExcerpts: ["在东京活动认识，希望交流企业 AI 落地。"],
@@ -1068,6 +1069,86 @@ test("acquisitionResultToSummary maps a pending manual draft without implementat
     title: "测试联系人",
     writeState: "还没有创建联系人"
   });
+});
+
+test("acquisitionResultToSummary discloses pending QR relationship writes", () => {
+  const summary = acquisitionResultToSummary({
+    draft: {
+      contactWriteExecuted: false,
+      connectionWriteExecuted: false,
+      displayName: "QR 测试联系人",
+      email: "qr@example.invalid",
+      evidence: [
+        {
+          excerpt: "由操作者提交的 Orbit QR 字段生成。"
+        }
+      ],
+      id: "qr-draft:live:mobile-1",
+      organization: "Orbit",
+      relationshipContext: "在东京活动现场扫码认识。",
+      role: "合作伙伴",
+      source: {
+        label: "Tokyo QR",
+        type: "qr_scan"
+      },
+      status: "pending_confirmation",
+      confirmation: {
+        required: true,
+        state: "pending",
+        writeTargets: ["contact", "connection"]
+      }
+    },
+    state: "success"
+  });
+
+  assert.equal(summary.canConfirm, true);
+  assert.equal(
+    summary.confirmationText,
+    "确认后会写入联系人和关系记录，并保留来源证据。"
+  );
+  assert.equal(summary.sourceLabel, "QR 扫码");
+  assert.equal(summary.writeState, "还没有创建联系人");
+});
+
+test("acquisitionResultToSummary exposes a confirmed QR contact write", () => {
+  const summary = acquisitionResultToSummary({
+    confirmedDraft: {
+      contactId: "contact:qr:mobile-1",
+      contactWriteExecuted: true,
+      connectionId: "connection:qr:mobile-1",
+      connectionWriteExecuted: true,
+      displayName: "QR 测试联系人",
+      id: "qr-draft:live:mobile-1",
+      organization: "Orbit",
+      role: "合作伙伴",
+      source: {
+        label: "Tokyo QR",
+        type: "qr_scan"
+      },
+      status: "confirmed",
+      confirmation: {
+        required: true,
+        state: "confirmed",
+        writeTargets: ["contact", "connection"]
+      }
+    },
+    contactCandidate: {
+      contactId: "contact:qr:mobile-1",
+      contactWriteExecuted: true,
+      readyForContactWrite: false
+    },
+    connectionCandidate: {
+      connectionId: "connection:qr:mobile-1",
+      connectionWriteExecuted: true,
+      readyForConnectionWrite: false
+    },
+    state: "confirmed"
+  });
+
+  assert.equal(summary.canConfirm, false);
+  assert.equal(summary.contactId, "contact:qr:mobile-1");
+  assert.equal(summary.confirmationText, "候选已确认，联系人已写入。");
+  assert.equal(summary.writeState, "联系人已写入");
 });
 
 test("acquisitionResultToSummary maps confirmed drafts as candidates, not written contacts", () => {

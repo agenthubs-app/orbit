@@ -615,7 +615,8 @@ function confirmationText(
   confirmation: Record<string, unknown>,
   confirmed: boolean,
   contactWritten: boolean,
-  contactWriteAvailable: boolean
+  contactWriteAvailable: boolean,
+  writeTargets: readonly string[]
 ): string {
   if (confirmed) {
     if (contactWritten) {
@@ -627,9 +628,22 @@ function confirmationText(
       : "候选已确认；当前流程仍不会写入联系人。";
   }
 
-  return confirmation.required === false
-    ? "这条草稿无需确认。"
-    : "确认后会生成候选，不会直接写联系人。";
+  if (confirmation.required === false) {
+    return "这条草稿无需确认。";
+  }
+
+  if (
+    writeTargets.includes("contact") &&
+    writeTargets.includes("connection")
+  ) {
+    return "确认后会写入联系人和关系记录，并保留来源证据。";
+  }
+
+  if (writeTargets.includes("contact")) {
+    return "确认后会写入联系人，并保留来源证据。";
+  }
+
+  return "确认后会生成候选，不会直接写联系人。";
 }
 
 function fallbackNextAction(confirmed: boolean): string {
@@ -1118,6 +1132,7 @@ export function acquisitionResultToSummary(
     Boolean(contactId) &&
     (draft.contactWriteExecuted === true ||
       contactCandidate.contactWriteExecuted === true);
+  const writeTargets = stringListField(confirmation, "writeTargets");
 
   return {
     canConfirm: Boolean(draftId) && !confirmed,
@@ -1133,7 +1148,8 @@ export function acquisitionResultToSummary(
       confirmation,
       confirmed,
       contactWritten,
-      Boolean(contactWrite)
+      Boolean(contactWrite),
+      writeTargets
     ),
     detail,
     draftId,
