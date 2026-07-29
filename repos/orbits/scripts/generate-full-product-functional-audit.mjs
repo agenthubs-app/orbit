@@ -3653,6 +3653,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the orphan authored Party demo while preserving the canonical actor- and event-scoped Party loader; runtime browser Party coverage remains governed by the broader Party audit matrix",
   },
+  {
+    id: "web-admin-platform-legacy-hybrid-model-retirement-2026-07-29",
+    target:
+      "Retired Admin/Platform hybrid constructors → type-only UI contracts backed by authenticated Events + Profile composition",
+    testData:
+      "Repository references and exact GitNexus symbols for getOrbitAdminViewModel, getOrbitPlatformViewModel, adminEvent, adminMembers, adminFeed, phaseForStatus, and themeColors; authenticated Admin/Admin Events/Platform pages; mock success, unconfigured-live failure, public-query isolation, and read-only control checks",
+    expected:
+      "Admin and Platform pages must compose operator views from the authenticated actor's live-capable Events and Profile boundaries, fail visibly when those sources are unavailable, and avoid unbacked moderation or notification writes. The shared UI model file may retain types, but it must not expose synchronous constructors over global hybrid route data.",
+    actual:
+      "All three production pages already required a session, forwarded the actor id, ignored public search controls, and called loadAppAdminPlatformRouteViewModel. That loader independently composed Events and Profile state, propagated empty/pending/failure boundaries, and produced read-only Admin/Platform models. The shared type file still retained 183 lines of hybrid imports, helpers, and two constructors that manufactured workspace ownership, events, feeds, members, review queues, and platform statistics. Only orbit-hybrid-route-view-models.test.ts invoked them. After repair, the file exports only the shared interfaces, the legacy test calls are removed, and the focused source regression prohibits both getters and getOrbitHybridRouteData.",
+    evidence:
+      "GitNexus reported LOW impact and zero affected execution flows for all seven removed symbols. Exact context showed the old hybrid test file as the sole incoming caller for each public getter, while upstream impact did not count that file-level call; internal helpers reached only getOrbitAdminViewModel. Focused Admin/Platform and hybrid-route tests passed 8/8, repository lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages; commit 21da705d. Required staged detection returned No changes detected for the three-file deletion-heavy diff, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the legacy Admin/Platform hybrid constructors while preserving authenticated Events + Profile composition, controlled route states, and read-only operator surfaces",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4757,6 +4772,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact and zero execution flows for every deleted function, constant, and interface. Focused tests passed 14/14, lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages. Coverage now rejects both orphan files and continues to exercise the real Party/check-in loader, registered and unregistered public access, actor propagation, query isolation, route-derived filtering, and sourced empty-state behavior. Staged detect returned No changes detected despite 718 deletions, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified; Party now has one actor- and event-scoped route data architecture",
+  },
+  {
+    id: "AUDIT-P1-080",
+    severity: "P1",
+    rootCause:
+      "After Admin and Platform pages migrated to authenticated Events + Profile composition, orbit-admin-platform-route-view-model.ts still contained two synchronous hybrid constructors and five private support symbols. They manufactured organizer ownership, member email, event capacity, check-in/match totals, activity feed, moderation queue, and platform account statistics from global hybrid data. No production page used them; a broad legacy self-validation test alone sustained the second architecture.",
+    decision:
+      "Retain the Admin and Platform interfaces as the shared loader/component contract. Delete getOrbitAdminViewModel, getOrbitPlatformViewModel, their helpers/constants, and all EventDTO/hybrid runtime imports. Remove the legacy test invocations and extend the focused Admin/Platform source regression to prohibit both getters and getOrbitHybridRouteData. Preserve session enforcement, actor forwarding, Events + Profile composition, route-state propagation, public-query isolation, and the explicit read-only guardrail in the canonical implementation.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts; repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus reported LOW impact and zero execution flows for every removed symbol; exact context identified only the legacy test as a public-getter caller. Focused tests passed 8/8, lint passed, the complete Web suite passed 1352/1352, and production build completed 39/39 static pages. Coverage retains authenticated page wiring, mock success, controlled unconfigured-live failure, public query isolation, source-backed read-only Admin metrics, and the absence of unbacked approval, notification, matching, export, invite, or create controls. Staged detect returned No changes detected despite 192 deletions, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified; authenticated Events + Profile composition remains the single Admin/Platform route architecture",
   },
 ];
 
