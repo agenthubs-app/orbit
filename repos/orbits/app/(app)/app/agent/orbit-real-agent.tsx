@@ -83,6 +83,7 @@ export interface AgentEvidenceRef {
 function agentEvidenceRefIdentity(reference: AgentEvidenceRef): string {
   return JSON.stringify({
     evidenceIds: [...reference.evidenceIds].sort(),
+    generatedAt: reference.generatedAt,
     itemCount: reference.itemCount,
     label: reference.label,
     sourceModules: [...reference.sourceModules].sort(),
@@ -92,16 +93,53 @@ function agentEvidenceRefIdentity(reference: AgentEvidenceRef): string {
 export function uniqueAgentEvidenceRefs(
   references: readonly AgentEvidenceRef[],
 ): AgentEvidenceRef[] {
-  const seen = new Set<string>();
+  const merged: AgentEvidenceRef[] = [];
+  const evidenceGroupIndexes = new Map<string, number>();
+  const unkeyedReferences = new Set<string>();
 
-  return references.filter((reference) => {
-    const identity = agentEvidenceRefIdentity(reference);
-    if (seen.has(identity)) {
-      return false;
+  for (const reference of references) {
+    const evidenceIds = [...new Set(reference.evidenceIds)];
+    if (evidenceIds.length === 0) {
+      const identity = agentEvidenceRefIdentity(reference);
+      if (!unkeyedReferences.has(identity)) {
+        unkeyedReferences.add(identity);
+        merged.push(reference);
+      }
+      continue;
     }
-    seen.add(identity);
-    return true;
-  });
+
+    const groupIdentity = JSON.stringify({
+      generatedAt: reference.generatedAt,
+      label: reference.label,
+      sourceModules: [...reference.sourceModules].sort(),
+    });
+    const existingIndex = evidenceGroupIndexes.get(groupIdentity);
+    if (typeof existingIndex === "undefined") {
+      evidenceGroupIndexes.set(groupIdentity, merged.length);
+      merged.push({
+        ...reference,
+        evidenceIds,
+        itemCount: Math.max(reference.itemCount, evidenceIds.length),
+      });
+      continue;
+    }
+
+    const existing = merged[existingIndex];
+    const combinedEvidenceIds = [
+      ...new Set([...existing.evidenceIds, ...evidenceIds]),
+    ];
+    merged[existingIndex] = {
+      ...existing,
+      evidenceIds: combinedEvidenceIds,
+      itemCount: Math.max(
+        existing.itemCount,
+        reference.itemCount,
+        combinedEvidenceIds.length,
+      ),
+    };
+  }
+
+  return merged;
 }
 
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";

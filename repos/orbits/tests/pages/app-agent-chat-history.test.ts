@@ -98,13 +98,18 @@ test("agent chat history parser keeps refreshable sessions under the older group
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
 });
 
-test("agent chat history repairs duplicate persisted evidence references", () => {
+test("agent chat history merges duplicate and overlapping persisted evidence references", () => {
   const duplicateReference = {
     evidenceIds: ["evidence:event:1", "evidence:event:2"],
     generatedAt: "2026-07-29T10:00:00.000Z",
     itemCount: 2,
     label: "推荐活动",
     sourceModules: ["orbit-ai", "events"],
+  };
+  const overlappingReference = {
+    ...duplicateReference,
+    evidenceIds: ["evidence:event:2"],
+    itemCount: 1,
   };
   const sessions = parseAgentChatHistoryStorage(
     JSON.stringify([
@@ -114,7 +119,11 @@ test("agent chat history repairs duplicate persisted evidence references", () =>
         messages: [
           { role: "user", text: "推荐活动" },
           {
-            evidenceRefs: [duplicateReference, duplicateReference],
+            evidenceRefs: [
+              duplicateReference,
+              duplicateReference,
+              overlappingReference,
+            ],
             items: [],
             kind: "events",
             panelTitle: "推荐活动",
