@@ -129,6 +129,8 @@ test("admin entry and event management do not claim unexecuted email or writes",
   const adminSource = source("app/(app)/app/admin/orbit-real-admin.tsx");
 
   assert.match(adminSource, /Continue to secure sign in/);
+  assert.match(adminSource, /actor-scoped event source records/);
+  assert.match(adminSource, /dedicated providers are connected/);
   assert.match(
     adminSource,
     /\/app\/account\/login\?next=\$\{encodeURIComponent\(dest\)\}/,
@@ -141,6 +143,10 @@ test("admin entry and event management do not claim unexecuted email or writes",
   assert.doesNotMatch(
     adminSource,
     /function CreateEventModal|Create event|Invite member/,
+  );
+  assert.doesNotMatch(
+    adminSource,
+    /Manage registration, check-in|Review events, manage organizer accounts|访问管理|活动配置/,
   );
 });
 

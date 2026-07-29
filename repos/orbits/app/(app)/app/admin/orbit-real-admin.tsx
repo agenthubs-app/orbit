@@ -12,9 +12,9 @@ function navigateTo(path: string) {
   window.location.href = path;
 }
 
-export function OrbitRealAdminLogin({ kind = "organizer" }: { kind?: "organizer" | "platform" }) {
+export function OrbitRealAdminLogin() {
   const { t, language } = useOrbitLanguage();
-  const dest = kind === "platform" ? "/app/platform" : "/app/admin";
+  const dest = "/app/admin";
   const signInHref = `/app/account/login?next=${encodeURIComponent(dest)}`;
 
   return (
@@ -23,15 +23,15 @@ export function OrbitRealAdminLogin({ kind = "organizer" }: { kind?: "organizer"
         <div className="orbit-admin-access-art-inner">
           <Logo color="var(--on-dark)" size={28} textColor="var(--on-dark)" />
           <div>
-            <h1 className="h-display orbit-admin-access-art-title">{kind === "platform" ? t({ en: "Product platform admin", zh: "产品平台后台" }) : t({ en: "Organizer admin", zh: "主办方后台" })}</h1>
-            <p className="orbit-admin-access-art-copy">{kind === "platform" ? t({ en: "Review events, manage organizer accounts, and maintain quality and trust across the platform.", zh: "审核活动、管理主办方账号，维护整个平台的质量与信任。" }) : t({ en: "Manage registration, check-in, and on-site matching to turn every event into a high-quality networking experience.", zh: "管理报名、签到与现场匹配，把每一场活动办成高质量的人脉局。" })}</p>
+            <h1 className="h-display orbit-admin-access-art-title">{t({ en: "Organizer admin", zh: "主办方后台" })}</h1>
+            <p className="orbit-admin-access-art-copy">{t({ en: "Review actor-scoped event source records and the authenticated account profile. Registration, attendance, capacity, matching, and team data stay unavailable until dedicated providers are connected.", zh: "查看按账户隔离的活动来源记录和已登录账户资料。在接入专用数据服务前，不展示报名、签到、容量、匹配或团队数据。" })}</p>
           </div>
         </div>
       </section>
       <section className="orbit-admin-access-panel">
           <div className="orbit-admin-access-card card">
             <div className="orbit-admin-access-brand"><Logo size={26} /><div className="orbit-admin-access-brand-sub"><Icon name="lock" size={14} />ADMIN SESSION</div></div>
-            <div className="eyebrow orbit-admin-access-eyebrow">{kind === "platform" ? "PLATFORM ADMIN" : "ORGANIZER ADMIN"} / MAGIC LINK</div>
+            <div className="eyebrow orbit-admin-access-eyebrow">ORGANIZER ADMIN / SECURE SIGN IN</div>
             <h1 className="h-display orbit-admin-access-title">{t({ en: "Sign in to admin", zh: "登录后台" })}</h1>
             <p className="orbit-admin-access-copy">{t({ en: "Continue through the secure account sign-in flow. Admin access is granted only after the authenticated session is verified.", zh: "请通过安全账号登录流程继续。只有在验证登录会话后，才能进入后台。" })}</p>
             <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
@@ -48,8 +48,6 @@ function buildHostNav(t: OrbitT): Array<[string, string, string, string]> {
   return [
     ["dash", "grid", t({ en: "Dashboard", zh: "仪表盘" }), "/app/admin"],
     ["events", "calendar", t({ en: "Events", zh: "活动管理" }), "/app/admin/events"],
-    ["access", "lock", t({ en: "Access", zh: "访问管理" }), "/app/admin"],
-    ["settings", "settings", t({ en: "Event setup", zh: "活动配置" }), "/app/admin/events"],
   ];
 }
 
