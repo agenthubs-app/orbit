@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "900c105819a4b2e4c2fbd93f25bdb724391fab5a",
-  "deterministicSourceTime": "2026-07-29T16:07:42+09:00",
+  "generatedFromCommit": "7379d8407533b7454a4dee34bfa3ce14c1c2b871",
+  "deterministicSourceTime": "2026-07-29T16:33:03+09:00",
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42,8 +42,8 @@
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 90,
-    "documentedRemediations": 90
+    "documentedVerificationCases": 91,
+    "documentedRemediations": 91
   },
   "surfaces": [
     {
@@ -46067,6 +46067,7 @@
           "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-panel-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-language-server.ts",
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
@@ -46145,49 +46146,49 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1069,
+          "line": 1072,
           "tag": "h2",
           "text": "I am iOrbit / 我是 iOrbit"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1297,
+          "line": 1300,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit about contacts, events, and relationship to-dos\", zh: \"询问 Orbit 人脉、活动与关系待办\", })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1297,
+          "line": 1300,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit: what you want to do, who to meet, which event to attend…\", zh: \"问问 Orbit：想做什么、想认识谁、想去什么活动…\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1324,
+          "line": 1327,
           "tag": "button",
           "text": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1982,
+          "line": 1985,
           "tag": "h1",
           "text": "iOrbit Agent workspace / iOrbit Agent 工作区"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1998,
+          "line": 2001,
           "tag": "button",
           "text": "t({ en: \"Chat history\", zh: \"对话历史\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2020,
+          "line": 2023,
           "tag": "button",
           "text": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2064,
+          "line": 2067,
           "tag": "h3",
           "text": "{panel.panelTitle}"
         },
@@ -47393,7 +47394,7 @@
           "interactionId": "web:/app/agent#interaction-25",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1080,
+          "line": 1083,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{agentSuggestLabel(suggest.label, language === \"ja\" ? \"en\" : language)}",
@@ -47426,7 +47427,7 @@
           "interactionId": "web:/app/agent#interaction-26",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1104,
+          "line": 1107,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{connection.displayName} {[connection.title, connection.company].filter(Boolean).join(\" · \")} {item.match} % Match / 匹配度 {status.label} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{connection.industry}</span>} / {null} {item.reason} Why this person / 推荐依据 {item.opener} View contact / 查看名片",
@@ -47459,7 +47460,7 @@
           "interactionId": "web:/app/agent#interaction-27",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1155,
+          "line": 1158,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{event.name} {dateLabel} {item.score} Score / 匹配分 {event.place} {item.reason} How to network on site / 怎么在现场社交 {item.howto} View event / 查看活动",
@@ -47492,7 +47493,7 @@
           "interactionId": "web:/app/agent#interaction-28",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1203,
+          "line": 1206,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item.title} {[item.contactName, item.organization].filter(Boolean).join(\" · \")} {item.due} Due / 到期 {item.priority} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{item.sourceLabel}</span>} / {null} {<div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>} / {null} {<div style={{ background: \"var(--accent-softer)\", borderRadius: \"var(--r-sm)\", display: \"flex\", gap: 8, marginTop: 11, padding: 11 }}> <Icon name=\"clock\" size={15} color=\"var(--accent)\" style={{ flexShrink: 0, marginTop: 1 }} /> <div style={{ minWidth: 0 }}> <div style={{ color: \"var(--accent)\", fontSize: 12, fontWeight: 600 }}>{t({ en: \"Suggested action\", zh: \"建议动作\" })}</div> <div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.task}</div> </div> </div>} / {null} Open schedule / 查看日程",
@@ -47525,7 +47526,7 @@
           "interactionId": "web:/app/agent#interaction-29",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1297,
+          "line": 1300,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "t({\n          en: \"Ask Orbit about contacts, events, and relationship to-dos\",\n          zh: \"询问 Orbit 人脉、活动与关系待办\",\n        })",
@@ -47564,7 +47565,7 @@
           "interactionId": "web:/app/agent#interaction-30",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1324,
+          "line": 1327,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })",
@@ -47595,7 +47596,7 @@
           "interactionId": "web:/app/agent#interaction-31",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1998,
+          "line": 2001,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Chat history\", zh: \"对话历史\" })",
@@ -47628,7 +47629,7 @@
           "interactionId": "web:/app/agent#interaction-32",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2008,
+          "line": 2011,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -47659,7 +47660,7 @@
           "interactionId": "web:/app/agent#interaction-33",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2017,
+          "line": 2020,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -47694,7 +47695,7 @@
           "interactionId": "web:/app/agent#interaction-34",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2020,
+          "line": 2023,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })",
@@ -47725,7 +47726,7 @@
           "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2053,
+          "line": 2056,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -47760,7 +47761,7 @@
           "interactionId": "web:/app/agent#interaction-36",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2089,
+          "line": 2092,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -47795,7 +47796,7 @@
           "interactionId": "web:/app/agent#interaction-37",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2095,
+          "line": 2098,
           "controlType": "callback-control",
           "tag": "div",
           "visibleName": null,
@@ -47828,7 +47829,7 @@
           "interactionId": "web:/app/agent#interaction-38",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2100,
+          "line": 2103,
           "controlType": "callback-control",
           "tag": "IconButton",
           "visibleName": null,
@@ -47861,7 +47862,7 @@
           "interactionId": "web:/app/agent#interaction-39",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2103,
+          "line": 2106,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -47892,7 +47893,7 @@
           "interactionId": "web:/app/agent#interaction-40",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2116,
+          "line": 2119,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -47926,7 +47927,7 @@
           "interactionId": "web:/app/agent#interaction-41",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2125,
+          "line": 2128,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -119286,6 +119287,15 @@
       "actual": "The persisted QR contact detail rendered the same localized business-context sentence twice and surfaced the React warning Encountered two children with the same key. readyEvidence sliced raw records before localization and returned duplicate strings, while the component used each string as its key. The repaired view-model localizes all candidate rows, deduplicates the final strings, and then applies the three-row limit. Browser readback retained the contact and relationship analysis, showed one equivalent business-context row, and no longer exposed the warning.",
       "evidence": "GitNexus impact was LOW: readyEvidence reached four upstream symbols and zero indexed processes. Focused relationship-value tests passed 3/3, Expo typecheck passed, and the complete Expo suite passed 529/529. Browser reproduction and post-fix reload used the same persisted contact and proved duplicateKeyWarning changed from true to false while the equivalent businessEvidenceCount changed to one. Commit 900c1058; required staged detection was LOW for two files, two symbols, and zero flows.",
       "conclusion": "pass for final-presentation deduplication, stable React keys, retained relationship-value evidence, focused/full Expo regression, typecheck, and live browser reload; backend evidence records remain intact and independently auditable"
+    },
+    {
+      "id": "web-agent-first-chat-action-lifecycle-2026-07-29",
+      "target": "Authenticated Web /app/agent with no chat conversations → first prompt → deferred action → conversation reload → confirmation → Today task readback",
+      "testData": "Authenticated live audit actor whose actor-scoped Chat list was empty; prompt 下周三提醒我联系 Maya，先生成待办，执行前让我确认。; action action:natural-language:fac2493f; due date 2026-08-05; exact production build",
+      "expected": "A new actor must be able to reach the Agent composer without imported conversations or fabricated people/events. The prompt may stage an internal follow-up task but must not write before confirmation. Later must persist across reload, confirmation must execute exactly once, and the resulting task must be visible from the actor's Today data on its due date. Missing conversation ids and provider/storage failures must remain fail-closed.",
+      "actual": "Before repair, /app/agent rendered No chat context is ready and exposed no composer or Agent action controls. The shared empty-state loader also queried demo-conversation-1 against the live actor store, polluting a legitimate empty list with CHAT_CONVERSATION_NOT_FOUND. After repair, the same account rendered a starter model with zero people, events, and history plus three generic prompts. The real prompt completed a 7/7 run and staged one create_followup_task action without writing. 稍后处理 changed it to deferred; a hard reload followed by reopening the persisted conversation retained that state. 确认执行 changed the action to 已完成. Today showed the same action under 最近完成 and, at 2026-08-05, rendered a 14:59 arrangement whose task text was 联系 Maya.",
+      "evidence": "Focused Agent/Chat tests passed 30/30; repository lint/typecheck passed; the complete Web suite passed 1366/1366; production build completed 39/39 static pages. In-app browser traversal covered the initial blocked state, repaired empty-actor welcome, real prompt, 7/7 progress, awaiting confirmation, defer, hard reload/history reopen, confirm, action completion, Today action readback, and due-date task readback. Commit 7379d840. GitNexus could not resolve the edited TSX/adapter symbols and staged detection returned No changes detected, so no unsupported graph risk is claimed.",
+      "conclusion": "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; cancel, retry, ignore, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified"
     }
   ],
   "remediations": [
@@ -120098,6 +120108,15 @@
       "files": "repos/orbit-app/src/view-models/relationship-value.ts; repos/orbit-app/tests/relationship-value-view-model.test.ts",
       "regression": "GitNexus impact was LOW for readyEvidence. Focused tests passed 3/3, Expo typecheck passed, and full Expo passed 529/529. On the same hard-loaded QR contact detail, browser evidence changed from two identical business-context rows plus Encountered two children with the same key to one row and no warning; commit 900c1058. Staged detection was LOW for two files, two symbols, and zero flows.",
       "status": "fixed and localized-row-deduplication/React-key/browser-reload/typecheck/full-Expo-verified; stored evidence remains unchanged"
+    },
+    {
+      "id": "AUDIT-P1-091",
+      "severity": "P1",
+      "rootCause": "The general Web Agent page treated the Chat route's empty relationship-conversation state as an Agent availability failure, so a new actor could not reach the composer or any run/action control. The shared empty-state loader then queried a synthetic demo-conversation-1 against the actor's live store, turning a valid zero-row list into a misleading not-found error.",
+      "decision": "Keep /app/chat as the source-backed conversation review surface, but compose /app/agent independently when the authoritative Chat list is ordinarily empty. Return early from empty-state composition before any child conversation read. Supply a starter Agent model containing no people, events, history, or inferred relationship facts, only generic prompts. Preserve exact route-state boundaries for requested missing conversations and all service failures.",
+      "files": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts; repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts; repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/app-chat-page.test.tsx",
+      "regression": "Focused Agent/Chat tests passed 30/30, lint/typecheck passed, the complete Web suite passed 1366/1366, and production build completed 39/39; commit 7379d840. Browser runtime proved the same empty actor moved from a blocking StateView to a zero-entity Agent starter. A real follow-up-task prompt moved through awaiting confirmation → deferred → reload/history reopen → completed, then appeared in Today both as the completed action and as 联系 Maya on its 2026-08-05 due date. GitNexus returned UNKNOWN for the edited TSX/adapter/loader symbols and No changes detected for the exact staged files, so the unavailable graph result is recorded rather than upgraded.",
+      "status": "fixed and empty-actor/no-fixture/no-synthetic-id/fail-closed/proposal/defer/reload/confirm/outbox/task-readback/browser/lint/build/full-suite-verified; remaining Agent action states stay in the audit queue"
     }
   ],
   "externalLimitations": []

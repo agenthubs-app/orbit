@@ -3956,6 +3956,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for final-presentation deduplication, stable React keys, retained relationship-value evidence, focused/full Expo regression, typecheck, and live browser reload; backend evidence records remain intact and independently auditable",
   },
+  {
+    id: "web-agent-first-chat-action-lifecycle-2026-07-29",
+    target:
+      "Authenticated Web /app/agent with no chat conversations → first prompt → deferred action → conversation reload → confirmation → Today task readback",
+    testData:
+      "Authenticated live audit actor whose actor-scoped Chat list was empty; prompt 下周三提醒我联系 Maya，先生成待办，执行前让我确认。; action action:natural-language:fac2493f; due date 2026-08-05; exact production build",
+    expected:
+      "A new actor must be able to reach the Agent composer without imported conversations or fabricated people/events. The prompt may stage an internal follow-up task but must not write before confirmation. Later must persist across reload, confirmation must execute exactly once, and the resulting task must be visible from the actor's Today data on its due date. Missing conversation ids and provider/storage failures must remain fail-closed.",
+    actual:
+      "Before repair, /app/agent rendered No chat context is ready and exposed no composer or Agent action controls. The shared empty-state loader also queried demo-conversation-1 against the live actor store, polluting a legitimate empty list with CHAT_CONVERSATION_NOT_FOUND. After repair, the same account rendered a starter model with zero people, events, and history plus three generic prompts. The real prompt completed a 7/7 run and staged one create_followup_task action without writing. 稍后处理 changed it to deferred; a hard reload followed by reopening the persisted conversation retained that state. 确认执行 changed the action to 已完成. Today showed the same action under 最近完成 and, at 2026-08-05, rendered a 14:59 arrangement whose task text was 联系 Maya.",
+    evidence:
+      "Focused Agent/Chat tests passed 30/30; repository lint/typecheck passed; the complete Web suite passed 1366/1366; production build completed 39/39 static pages. In-app browser traversal covered the initial blocked state, repaired empty-actor welcome, real prompt, 7/7 progress, awaiting confirmation, defer, hard reload/history reopen, confirm, action completion, Today action readback, and due-date task readback. Commit 7379d840. GitNexus could not resolve the edited TSX/adapter symbols and staged detection returned No changes detected, so no unsupported graph risk is claimed.",
+    conclusion:
+      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; cancel, retry, ignore, undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5214,6 +5229,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus impact was LOW for readyEvidence. Focused tests passed 3/3, Expo typecheck passed, and full Expo passed 529/529. On the same hard-loaded QR contact detail, browser evidence changed from two identical business-context rows plus Encountered two children with the same key to one row and no warning; commit 900c1058. Staged detection was LOW for two files, two symbols, and zero flows.",
     status:
       "fixed and localized-row-deduplication/React-key/browser-reload/typecheck/full-Expo-verified; stored evidence remains unchanged",
+  },
+  {
+    id: "AUDIT-P1-091",
+    severity: "P1",
+    rootCause:
+      "The general Web Agent page treated the Chat route's empty relationship-conversation state as an Agent availability failure, so a new actor could not reach the composer or any run/action control. The shared empty-state loader then queried a synthetic demo-conversation-1 against the actor's live store, turning a valid zero-row list into a misleading not-found error.",
+    decision:
+      "Keep /app/chat as the source-backed conversation review surface, but compose /app/agent independently when the authoritative Chat list is ordinarily empty. Return early from empty-state composition before any child conversation read. Supply a starter Agent model containing no people, events, history, or inferred relationship facts, only generic prompts. Preserve exact route-state boundaries for requested missing conversations and all service failures.",
+    files:
+      "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/(app)/app/agent/page.tsx; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts; repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts; repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts; repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx; repos/orbits/tests/pages/app-agent-live-route-services.test.ts; repos/orbits/tests/pages/app-chat-page.test.tsx",
+    regression:
+      "Focused Agent/Chat tests passed 30/30, lint/typecheck passed, the complete Web suite passed 1366/1366, and production build completed 39/39; commit 7379d840. Browser runtime proved the same empty actor moved from a blocking StateView to a zero-entity Agent starter. A real follow-up-task prompt moved through awaiting confirmation → deferred → reload/history reopen → completed, then appeared in Today both as the completed action and as 联系 Maya on its 2026-08-05 due date. GitNexus returned UNKNOWN for the edited TSX/adapter/loader symbols and No changes detected for the exact staged files, so the unavailable graph result is recorded rather than upgraded.",
+    status:
+      "fixed and empty-actor/no-fixture/no-synthetic-id/fail-closed/proposal/defer/reload/confirm/outbox/task-readback/browser/lint/build/full-suite-verified; remaining Agent action states stay in the audit queue",
   },
 ];
 
