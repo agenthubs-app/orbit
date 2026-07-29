@@ -19,26 +19,20 @@ const inventory = JSON.parse(readFileSync(INVENTORY_PATH, "utf8"));
 const webSurfaces = inventory.surfaces.filter(
   (surface: { client: string }) => surface.client === "web",
 );
-
-const AUTHENTICATED_PREFIXES = [
-  "/app/agent",
-  "/app/chat",
-  "/app/contacts",
-  "/app/dashboard",
-  "/app/followups",
-  "/app/home",
-  "/app/party",
-  "/app/profile",
-  "/app/schedule",
-  "/app/settings",
-  "/app/today",
-];
+const webSurfaceByRuntimePath = new Map(
+  webSurfaces.map((surface: { access: { policy: string } }) => [
+    runtimePathForSurface(surface),
+    surface,
+  ]),
+);
 
 function requiresAuthentication(pathname: string): boolean {
+  const surface = webSurfaceByRuntimePath.get(pathname);
+  assert.ok(surface, `missing Web surface for runtime path ${pathname}`);
+
   return (
-    AUTHENTICATED_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-    ) || /^\/app\/events\/[^/]+\/register$/u.test(pathname)
+    surface.access.policy === "authenticated-at-web-boundary" ||
+    /^\/app\/events\/[^/]+\/register$/u.test(pathname)
   );
 }
 
@@ -98,8 +92,8 @@ test("whole-Web transport verification reports every route and any mismatch", as
 
   assert.deepEqual(report.summary, {
     routeSurfaces: 46,
-    okResponses: 23,
-    authRedirects: 23,
+    okResponses: 20,
+    authRedirects: 26,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
