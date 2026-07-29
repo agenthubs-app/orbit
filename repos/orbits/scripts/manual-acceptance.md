@@ -31,9 +31,12 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
 4. Open `/app/contacts?action=review-filtered-contact&query=storage&tag=topic:storage-pilots&value=commercial_opportunity`.
    - Confirm the contacts relationship console shows Kenji Watanabe and a storage-pilot review.
    - Confirm outside services contacted is `none`.
-5. Open `/app/contacts/demo-contact-1?action=prepare-follow-up`.
-   - Confirm Kenji Watanabe's contact detail shows connection evidence.
-   - Confirm the follow-up draft stays local until explicit confirmation.
+5. Open `/app/contacts/demo-contact-1?action=prepare-follow-up&scenario=failure`.
+   - Confirm the normal actor-scoped, source-backed contact detail remains
+     read-only and URL action/scenario values do not change the result.
+   - Confirm page load does not add connection evidence, build a follow-up
+     draft, write a contact, send a message, deliver a notification, or call an
+     outside provider.
 6. Sign out and open `/app/admin/access`, then try `/app/admin`,
    `/app/admin/events`, and `/app/platform`.
    - Confirm the access page stays public while every workspace redirects to the

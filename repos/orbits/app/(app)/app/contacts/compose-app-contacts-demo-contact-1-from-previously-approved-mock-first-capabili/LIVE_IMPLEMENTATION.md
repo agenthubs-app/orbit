@@ -21,8 +21,8 @@ import fixtures or live record stores directly.
 - `app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts`
   maps the route success model into the existing contact detail UI view model.
 - `app/(app)/app/contacts/[id]/page.tsx` is the real Next route adapter. It
-  reads route/search params, calls the route service, and renders either the
-  existing detail UI or a shared state boundary.
+  reads the authenticated actor and route contact id, calls the route service,
+  and renders either the existing detail UI or a shared state boundary.
 
 ## Switch
 
@@ -55,10 +55,14 @@ import fixtures or live record stores directly.
 - Loading the route reads live records only.
 - Contact detail update remains a preview in the feature service; it does not
   write contacts or production audit logs.
-- `prepare-follow-up` remains a local/mock action. Live connection evidence
-  returns a controlled pending failure for unconfirmed add-evidence requests, so
-  the route does not send messages, write contact records, write evidence,
-  deliver notifications, call AI providers, or access external networks.
+- The former `prepare-follow-up` / `stage-local-review` loader action and its
+  unconsumed `actionResult` are removed. A detail-page GET cannot call
+  connection-evidence `addEvidence`, build a draft, send messages, write
+  contacts or evidence, deliver notifications, call AI providers, or access
+  external networks.
+- Fixture scenario, module mode, and live provider overrides remain explicit
+  service-test inputs. The real page does not accept or forward search
+  parameters.
 
 ## Verified Behavior
 
@@ -71,6 +75,8 @@ import fixtures or live record stores directly.
 - The same test proves the real `/app/contacts/[id]` page calls the live route
   service, avoids the legacy contacts view model, and renders live-store
   failure evidence when storage is unconfigured.
+- The same test rejects reintroduction of the GET action names, local action
+  builder, and `actionResult` field in the route service.
 - Focused contact detail, connection evidence, relationship value, and app
   contacts tests pass with the live-capable route loader.
 - Remote smoke with `ORBIT_MODULE_MODE=live` loaded `contact_078` (`曾伟`),

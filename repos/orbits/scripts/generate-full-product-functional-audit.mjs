@@ -3488,6 +3488,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build/full-suite removal of the latent query-driven Contact Import aggregator while preserving explicit authenticated action APIs; configured OCR success/readback, other source connections, API permission failures, authenticated browser DOM, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-contact-detail-get-action-isolation-2026-07-29",
+    target:
+      "Authenticated Web Contact Detail → read-only actor/contact composition separated from dead local action simulation",
+    testData:
+      "Production /app/contacts/[id] page, shared Contact Detail route input/success model, adversarial action=prepare-follow-up/scenario=failure query, focused live graph states, and source-level action-chain absence",
+    expected:
+      "A Contact Detail page GET must resolve only the authenticated actor and route contact identity, read source-backed detail/evidence/value records, and ignore public query input. It must not add evidence, build a draft, or expose an unconsumed local action result.",
+    actual:
+      "The real page already accepted only params and passed actorId/contactId, but the shared loader still exposed an action input. prepare-follow-up and its stage-local-review alias called connectionEvidence.addEvidence, assembled a local draft/safety ledger, and returned actionResult even though no page, adapter, component, or test consumed it. After repair, the action input/type/normalizer/builder/result model are deleted; fixture scenario/mode/provider remain explicit service-test controls; the page-level regression rejects reintroduction of the action chain.",
+    evidence:
+      "GitNexus context found the live AppContactDetailPage flow. Upstream impact was LOW for the three loaders, normalizer, and builder across that one process, and MEDIUM for the public input/success interfaces with five direct use sites; no HIGH/CRITICAL risk. Focused Contact Detail and visual tests passed 14/14; repository typed lint passed after replacing the same test's impossible post-assert comparison; complete Web suite passed 1357/1357; exact production build passed; commit 5efaa07f. Staged detect-changes was executed but incorrectly returned No changes detected despite Git showing two staged files with 11 insertions and 98 deletions, so no staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite removal of the dead Contact Detail GET evidence/draft action chain while preserving actor-scoped read composition; authenticated browser DOM, populated multi-account contact isolation, explicit follow-up API UX/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4438,6 +4453,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus context and upstream impact found one test caller, zero production processes, and LOW risk for every function in the retired module. The focused page regression passed 1/1, the complete Web suite passed 1357/1357, and the production build passed. The regression checks authentication, the availability boundary, action-workspace rendering, absence of searchParams/preflight calls, and absence of the retired loader/service/query/confirmation symbols. Staged detection was LOW for two files and zero processes. The repository-wide typed lint remains blocked by an unrelated pre-existing TS2367 in the contact-detail route test.",
     status:
       "fixed and source/build/full-suite-verified for removal of the latent GET/query acquisition aggregator; explicit configured provider action/readback, broader source integrations, browser runtime, permission failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-069",
+    severity: "P1",
+    rootCause:
+      "The authenticated Contact Detail page was already query-free, but its shared loader retained an action field and two historical action names. Supplying either name called connectionEvidence.addEvidence during route composition, built a local follow-up draft and safety ledger, and returned actionResult. No production page, view-model adapter, component, or test consumed that result, so the branch was dead functionality with a latent GET-side-effect surface.",
+    decision:
+      "Keep Contact Detail GET composition read-only: accept authenticated actor, route contact identity, and explicit service-test controls only. Delete the action input/type, aliases, add-evidence/draft builder, and actionResult success-model field. Preserve real follow-up behavior for an explicit authenticated mutation boundary instead of simulating it in a loader.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts; repos/orbits/tests/pages/app-contact-detail-live-route-services.test.ts; repos/orbits/app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/LIVE_IMPLEMENTATION.md; repos/orbits/scripts/manual-acceptance.md",
+    regression:
+      "GitNexus reported LOW impact for the loaders/action helpers in one AppContactDetailPage process and MEDIUM for the input/success interfaces with five direct users. Focused tests passed 14/14, repository lint passed, the complete Web suite passed 1357/1357, and production build passed. Regression proves the page accepts no search parameters and the service contains none of the former action names, builder, or result field. The required staged detect command ran, but GitNexus returned No changes detected despite an exact two-file staged diff; the discrepancy is recorded instead of assigning a false risk level.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for read-only Contact Detail GET composition; browser runtime, populated multi-account isolation, explicit follow-up mutation/readback, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
