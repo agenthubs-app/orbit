@@ -3713,6 +3713,36 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source, dependency-boundary, public-seed privacy, persisted-registration, Party/Event behavior, lint, build, and full-suite retirement of the global hybrid route data module",
   },
+  {
+    id: "web-private-events-actor-recommendation-isolation-2026-07-29",
+    target:
+      "Authenticated Home, Home Events, Event Detail, and Admin → actor-scoped event recommendations with optional readiness",
+    testData:
+      "A newly registered live account with one actor-owned Runtime Evidence Forum event and no attendee, registration, match, check-in, capacity, or goal-readiness records; existing foreign recommendation/readiness records; injected cross-event mock payloads; desktop browser runtime",
+    expected:
+      "A private Events composition may only select value recommendations for event ids returned by the authenticated actor's event list. Attendee recommendations and readiness must match the selected actor-owned event id. Missing, empty, pending, failed, or foreign optional capabilities must remain unavailable without hiding the actor's valid event or borrowing data from another event/account.",
+    actual:
+      "Before repair, the Events list was actor-scoped but both recommendation services were global. The first global value recommendation became primaryEventId; attendee/readiness were fetched for that foreign id; successViewModel then failed to find it in the actor list and silently paired the foreign recommendation and readiness score with the actor's first event. The fresh account therefore saw a stranger in Admin and readiness score 87 on its new event despite having no corresponding records. Live private recommendation factories now receive the authenticated actor id; value recommendations are intersected with actor event ids; attendee and readiness payloads must identify the selected actor event; and unavailable optional data produces null panels plus the explicit Event Detail copy Readiness unavailable. A cross-event regression injects foreign value, attendee, and readiness payloads and proves none survives while the actor event remains visible.",
+    evidence:
+      "Fresh GitNexus indexing covered 28,307 nodes, 60,108 edges, and 300 flows. Pre-edit impact warned HIGH: loadAppEventsRouteViewModel reached 12 upstream symbols with six direct callers and three page processes; successViewModel reached 13; eventChoiceViewModel/readinessViewModel each reached eight; createAppEventsRouteServices reached 13. Focused Events tests passed 11/11, lint passed, the complete Web suite passed 1354/1354, and production build completed 39/39 static pages; commit 195cbe0d. Browser readback on the same live account showed only Runtime Evidence Forum, zero attendees, no match candidate, and Readiness unavailable. Required staged detection reported medium risk for four files, 15 symbols, and four reviewed Home service-resolution flows.",
+    conclusion:
+      "pass for actor/event identity intersection, foreign-payload rejection, optional-capability degradation, live browser readback, lint, build, and full-suite verification; no attendee, readiness, registration, capacity, or matching record was invented",
+  },
+  {
+    id: "web-admin-platform-truth-boundary-2026-07-29",
+    target:
+      "Authenticated Admin and Platform → actor-scoped source records without fabricated operational or platform-wide state",
+    testData:
+      "The same fresh live account, one actor-owned event, one persisted profile, no registration/check-in/match/capacity/team/moderation/platform-role records, unconfigured platform-wide provider, desktop and 390x844 browser runtime",
+    expected:
+      "Organizer Admin may summarize only fields actually returned by actor-scoped Event and Profile sources. It must not derive registrations, capacity, check-ins, matches, team membership, live activity, or email addresses from unrelated evidence, status, names, or recommendations. Platform must not present personal workspace data as platform-wide organizer accounts, users, verification, or moderation; without a platform provider and persisted platform-admin role it must fail closed before reading personal workspace data.",
+    actual:
+      "Before repair, Admin turned evidence.length into registrations, added 20 as capacity, inferred check-ins from event dates, inferred matches from the foreign recommendation, generated an @orbit.local email from the profile name, labeled event rows as LIVE activity, and rendered a registration funnel. Platform converted the same personal profile and event into one verified organizer, one platform user, and a pending moderation record although no platform provider or role existed. Admin now exposes only event record totals and date-derived upcoming/active/ended counts, real event title/time/venue/status/summary, and the source profile's actual email. The UI explicitly withholds unsupported operational metrics. The synthetic Platform success model/component and platform-wide interfaces were deleted; /app/platform returns PLATFORM_ADMIN_PROVIDER_UNAVAILABLE with provider-unavailable and role-unverified evidence before Events/Profile reads.",
+    evidence:
+      "Every pre-edit GitNexus impact was LOW: the loader had three direct page callers; Admin mapping helpers reached at most seven upstream symbols; Admin UI functions reached at most three; shared interfaces reached nine; OrbitRealPlatform had one direct caller and zero processes. Focused Admin/Platform tests passed 6/6, lint passed, the complete Web suite passed 1354/1354, and production build completed 39/39 static pages; commit e8d8df38. Desktop browser readback showed exactly one actor event, truthful lifecycle counts, the persisted profile email, and the explicit data boundary; Platform showed only its unavailable state. At 390x844 both pages had scrollWidth 390, Platform recovery links measured 44px high, and the retired registration funnel text was absent. Required staged detection reported LOW for five detected files, 19 symbols, and zero execution flows; the commit contained six files because the removed Platform component was deletion-only.",
+    conclusion:
+      "pass for actor-scoped Admin truthfulness, actual-profile identity, unsupported-metric removal, Platform provider/role fail-closed behavior, desktop/mobile runtime, lint, build, and full-suite verification; platform moderation and organizer-role workflows remain unavailable rather than simulated",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4873,6 +4903,34 @@ const AUDIT_REMEDIATIONS = [
       "Fresh GitNexus impact warned HIGH for five live presentation helpers across three Events/Party flows; OrbitHybridRouteData was MEDIUM with zero production processes, while getOrbitHybridRouteData and nearly every obsolete helper were LOW with zero callers or flows. Focused tests passed 50/50, lint passed, the complete Web suite passed 1353/1353, and production build completed 39/39 static pages; commit 1893c5f2. Source search finds no production hybrid module/getter reference. Staged detection returned No changes detected for the add/delete/import-only refactor, so no unsupported staged risk level is claimed.",
     status:
       "fixed and source/dependency-boundary/privacy/persistence/lint/build/full-suite-verified; the global hybrid route data architecture is fully retired",
+  },
+  {
+    id: "AUDIT-P1-084",
+    severity: "P1",
+    rootCause:
+      "The private Events loader combined an actor-scoped event list with global value and attendee recommendation services. It selected the first global recommendation id, fetched foreign attendee/readiness data, then silently fell back to the actor's first event when that id was absent, producing a cross-account composite that looked internally valid.",
+    decision:
+      "Pass the authenticated actor id into both live recommendation factories. Intersect value recommendations with the actor event set before choosing a primary event, require attendee/readiness payload event ids to equal that primary id, and degrade missing/foreign optional capabilities to explicit unavailable state without hiding valid actor events. Never project one event's readiness or attendee onto every event choice.",
+    files:
+      "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory.ts; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model.ts; repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts; repos/orbits/tests/pages/app-events-live-route-services.test.ts",
+    regression:
+      "GitNexus warned HIGH across three private page processes before the edit. A dedicated regression injects foreign value, attendee, and readiness payloads and proves the actor event remains while all foreign optional data becomes unavailable. Focused tests passed 11/11, lint passed, full Web tests passed 1354/1354, build passed 39/39, and live browser readback removed the stranger and false score 87; commit 195cbe0d. Staged detection reported medium risk for 15 symbols and four reviewed flows.",
+    status:
+      "fixed and actor/event-isolation/partial-capability/browser/lint/build/full-suite-verified; unsupported attendee and readiness state remains explicitly unavailable",
+  },
+  {
+    id: "AUDIT-P1-085",
+    severity: "P1",
+    rootCause:
+      "Admin treated event evidence, lifecycle status, and recommendations as operational registration/check-in/match/capacity/activity data and generated an email from the profile name. Platform then reclassified the same personal account and events as verified organizer, platform user, and moderation queue records without a platform-wide provider or persisted platform-admin role.",
+    decision:
+      "Reduce Admin to fields provided by actor-scoped Event/Profile sources and date-derived lifecycle counts, display the actual profile email, and explicitly withhold unsupported operational metrics. Delete the synthetic Platform success model/component and fail closed before personal data reads until both a platform-wide provider and an enforced platform-admin role exist.",
+    files:
+      "repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin.tsx; repos/orbits/app/(app)/app/orbit-admin-platform-route-view-model.ts; repos/orbits/app/(app)/app/platform/page.tsx; repos/orbits/app/(app)/app/platform/orbit-real-platform.tsx; repos/orbits/tests/pages/app-admin-platform-live-route-services.test.ts",
+    regression:
+      "All pre-edit GitNexus impacts were LOW with zero indexed processes. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit e8d8df38. Desktop browser readback showed only the real account event/profile and Platform unavailable state. At 390x844 both routes had no overflow and both recovery links were 44px. Staged detection reported LOW for 19 symbols and zero flows, while the deleted Platform component remained a deletion-only file.",
+    status:
+      "fixed and source-truth/platform-fail-closed/browser/responsive/lint/build/full-suite-verified; no platform moderation, role, registration, attendance, capacity, match, team, or live-feed capability is claimed",
   },
 ];
 

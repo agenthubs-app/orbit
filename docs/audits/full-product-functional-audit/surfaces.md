@@ -83,7 +83,7 @@
 | `web:/app/party` | web | production | `/app/party` | `web:/app` |  | 2 | 79 | 5 | runtime-partially-verified-web-party-source-context-boundary |
 | `web:/app/party/checkin` | web | production | `/app/party/checkin` | `web:/app/party` |  | 2 | 79 | 5 | runtime-partially-verified-web-party-checkin-source-context-boundary |
 | `web:/app/party/graph` | web | production | `/app/party/graph` | `web:/app/party` |  | 2 | 79 | 4 | runtime-partially-verified-web-party-graph-source-context-boundary |
-| `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 11 | 4 | inventory-complete-runtime-verification-pending |
+| `web:/app/platform` | web | production | `/app/platform` | `web:/app` |  | 0 | 4 | 4 | inventory-complete-runtime-verification-pending |
 | `web:/app/profile` | web | production | `/app/profile` | `web:/app` |  | 2 | 69 | 7 | runtime-partially-verified-web-profile-complete-lifecycle |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 4 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 9 | runtime-partially-verified-web-schedule-today-compatibility-route |
