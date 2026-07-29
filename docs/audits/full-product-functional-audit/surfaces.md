@@ -52,8 +52,8 @@
 | `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | runtime-partially-verified-expo-settings-destinations |
 | `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | runtime-partially-verified-expo-api-settings-persistence |
 | `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
-| `web:/` | web | production | `/` | — |  | 0 | 42 | 285 | runtime-partially-verified-browser-base-state |
-| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 153 | runtime-partially-verified-browser-base-state |
+| `web:/` | web | production | `/` | — |  | 0 | 42 | 286 | runtime-partially-verified-browser-base-state |
+| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 154 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 13 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 13 | 5 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 1 | runtime-partially-verified-browser-base-state |

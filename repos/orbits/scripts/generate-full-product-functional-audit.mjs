@@ -2354,6 +2354,19 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
+    {
+      actualResult:
+        "Clicking the latest assistant message copy control changed data-orbit-agent-message-copy from idle to copied and changed its title to 已复制 on the real persisted conversation.",
+      testData:
+        "Live actor user_ms5llhof_wrbpuq, persisted session agent-session-ms5t5ozq-x2bv2k, and latest assistant message from run run:conversation:aa176da4-fcb7-4d1b-8d68-332d87817637",
+      idempotency:
+        "Copying changed only clipboard/local presentation state; it wrote no conversation, Run, feedback, action, task, contact, or external record.",
+      verificationCase:
+        "web-agent-message-copy-feedback-2026-07-29",
+    },
+  ],
+  [
     'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
     {
       actualResult:
@@ -4355,6 +4368,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for desktop active-session reset, history preservation, URL reset, composer restoration, separator orientation/value semantics, ArrowLeft/ArrowRight/Home/End contract, layout-only no-write behavior, focused tests, and build; mobile New chat, mobile history drawer, pointer drag, persisted user width preference, and assistive-technology announcement timing remain separately unverified",
   },
+  {
+    id: "web-agent-message-copy-feedback-2026-07-29",
+    target:
+      "Persisted Agent assistant message → clipboard copy → actor-owned Run feedback → reload readback → cleanup",
+    testData:
+      "Live actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; session agent-session-ms5t5ozq-x2bv2k; run run:conversation:aa176da4-fcb7-4d1b-8d68-332d87817637; exact production build",
+    expected:
+      "Copy must expose immediate truthful completion without writing domain data. Feedback may only be attached to a Run owned by the authenticated actor, must persist through the configured provider, restore its selected state after reload, remain invisible to another actor, and reject a missing or foreign Run before any feedback write. Audit cleanup must remove the temporary rating.",
+    actual:
+      "The latest assistant copy control changed from idle to copied and exposed 已复制. Clicking 有帮助 changed only the matching rating control to the selected accent state with no error. The actor-scoped provider returned one helpful record with the exact Run id, while the independent actor returned null. Reload restored the same selected state. Formal provider cleanup removed the record, and a final reload restored the unselected state. Source tracing found that POST originally accepted any syntactically valid runId and upserted it without proving that the Run existed for the authenticated actor; the repaired handler resolves the actor-scoped runtime first, returns 404 for a missing or foreign Run before writing, returns 503 when runtime verification fails, and upserts only an owned Run.",
+    evidence:
+      "In-app browser exercised the latest message copy control, helpful rating, selected-state reload, cleanup reload, and absence of feedback errors. Configured provider readback proved actor A ownership, actor B absence, persistence, and final cleanup. Focused feedback/API tests passed 7/7, including no-write 404 for missing/foreign Runs, owned-Run success, and runtime-failure 503. The 39/39 production build and repository lint/typecheck passed. Commits 95b85435 and 9e6cccb6; resolveAgentFeedbackRequest and OrbitRealAgent impact were LOW, the new route-adjacent handler was not indexed, and staged detection for the ownership fix was LOW.",
+    conclusion:
+      "pass for clipboard success state/no-domain-write, helpful feedback persistence, actor-scoped Run ownership, second-actor absence, reload readback, cleanup, missing/foreign-Run no-write, runtime-failure truth, focused tests, lint, and build; not-relevant rating, later-outcome controls, feedback UI failure rendering, evidence-source disclosure, mobile width, keyboard, and assistive-technology states remain separately unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -5739,6 +5767,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Agent history tests passed 11/11 and production build completed 39/39. Source regression binds the drawer to useOrbitModalA11y and requires data-orbit-agent-history-drawer, a labelled role=dialog, and aria-modal=true. Commit 2e4a487b; staged detection was LOW with zero affected processes.",
     status:
       "fixed with shared-modal/focus-entry/Tab-trap/Escape-exclusive/focus-restore/dialog-name/static-source/focused/build evidence; mobile-width browser and real assistive-technology verification remain open",
+  },
+  {
+    id: "AUDIT-P1-100",
+    severity: "P1",
+    rootCause:
+      "Agent feedback storage was actor-scoped, but POST trusted the client-provided runId and wrote a learning record without checking that the referenced Agent Run existed for that actor. A fabricated or foreign Run id could therefore enter the actor's feedback context as if it were authoritative outcome evidence.",
+    decision:
+      "Enforce the invariant at the authenticated API actor boundary. Resolve the actor-scoped Agent runtime together with the feedback service, verify runtime.getRun(runId) before any provider write, return 404 for a missing or foreign Run, return 503 when ownership verification is unavailable, and keep only the validated owned-Run upsert path. Place the testable helper in a route-adjacent module because Next route modules may export only supported HTTP symbols.",
+    files:
+      "repos/orbits/app/api/agent/feedback/request.ts; repos/orbits/app/api/agent/feedback/handler.ts; repos/orbits/app/api/agent/feedback/route.ts; repos/orbits/tests/api/agent-feedback-routes.test.ts",
+    regression:
+      "Focused feedback/API tests passed 7/7 and prove missing/foreign Runs return 404 without calling upsert, an owned Run persists, and runtime failure returns 503 without a write. The production build completed 39/39 and lint/typecheck passed. Live browser/provider evidence proved helpful feedback persisted only for actor A, was absent for actor B, survived reload, and was removed during cleanup. Commit 95b85435; pre-edit impact was LOW and staged detection was LOW.",
+    status:
+      "fixed and actor-owned-Run/foreign-no-write/missing-no-write/runtime-failure/provider-persistence/second-actor-absence/reload/cleanup/focused/lint/build-verified; remaining rating/outcome/error UI states are tracked separately",
   },
 ];
 

@@ -494,11 +494,21 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     ),
     true,
   );
+  const agentRuntimeEvidence = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "web:/app/agent",
+  )?.runtimeEvidence;
+  assert.equal(agentRuntimeEvidence?.length, 10);
   assert.equal(
-    inventory.surfaces
-      .find((surface) => surface.surfaceId === "web:/app/agent")
-      ?.runtimeEvidence.length,
-    4,
+    agentRuntimeEvidence?.includes(
+      "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "the focusable history separator exposed min, max, current value, and orientation; ArrowRight, Home, and End changed the rendered width to the exact announced values",
+    ),
+    true,
   );
   assert.equal(
     inventory.surfaces
