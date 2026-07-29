@@ -3371,6 +3371,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source-level removal of public query injection at both personal Home adapters with focused/build coverage; authenticated browser DOM, other query shapes, cache/proxy behavior, child provider failures, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-dashboard-query-review-removal-2026-07-29",
+    target:
+      "Authenticated Web Dashboard GET composition → actor-scoped reads only, explicit internal scenarios, and real recovery destinations",
+    testData:
+      "/app/dashboard with action=run-dashboard-review or scenario=empty/pending/failure; actor-scoped aggregate, distribution, opportunity, and provenance services",
+    expected:
+      "A page GET must only compose the current actor's dashboard. Public query parameters must not run internal recompute/audit work or select fixture states; every rendered recovery link must reach a real product destination whose behavior matches its label.",
+    actual:
+      "Before repair, action=run-dashboard-review invoked opportunity recompute and provenance run during server rendering, then discarded the actionResult because neither the adapter nor final Dashboard UI consumed it. scenario selected internal states, and recovery links pointed back to action/scenario query URLs. After repair, the page accepts no searchParams, the loader accepts scenario only through explicit controls, the invisible action branch and result type are removed, and recovery goes to Dashboard, Add sourced contact, or Settings.",
+    evidence:
+      "GitNexus context and source trace from AppDashboardPage through four actor-scoped services; focused Dashboard tests 5/5; exact production build; GitNexus pre-edit LOW impacts and staged MEDIUM detection across five Dashboard flows; commit 223f13df",
+    conclusion:
+      "pass for source/build removal of public fixture/action controls, invisible GET recompute/audit work, and dead recovery links while preserving actor-scoped Dashboard reads; authenticated browser DOM, API-level recompute/audit controls, provider failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4209,6 +4224,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW pre-edit upstream impact for both page functions. Staged detection reported CRITICAL because they participate in 16 Home-to-child execution flows; the warning was surfaced before commit. Home-focused tests passed 20/20, the exact production build passed, and the immediately preceding shared boundary had passed the full Web suite 1353/1353. Source assertions require undefined query input and forbid searchParams in both adapters.",
     status:
       "fixed and source/build-verified for both authenticated personal Home adapters; authenticated browser runtime, other query shapes, cache/proxy behavior, provider failures, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-061",
+    severity: "P1",
+    rootCause:
+      "The Dashboard page forwarded unrestricted URL parameters into a loader that mixed actor-scoped reads, internal scenario fixtures, and action=run-dashboard-review. That action executed opportunity recompute plus provenance audit during a GET, but its result was absent from the Dashboard adapter and UI. Fixture recovery links exposed the same internal query controls to users.",
+    decision:
+      "Make the production Dashboard adapter actor-only. Change the loader to accept only actor context plus an explicit internal scenario control, remove the unused action result contract and GET execution branch, and replace fixture/action recovery links with real Dashboard, sourced-contact creation, and Settings destinations. Keep recompute and audit available only through their authenticated API action routes.",
+    files:
+      "repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-route-view-model.ts; repos/orbits/app/(app)/app/dashboard/page.tsx; repos/orbits/tests/pages/app-dashboard-live-route-services.test.ts",
+    regression:
+      "Focused Dashboard tests passed 5/5 and the exact production build passed. Tests prove the normal actor-scoped model, explicit-only internal empty state, real recovery hrefs, no page searchParams, and absence of run-dashboard-review, scenario URLs, recompute, and runAudit in the page composition source. GitNexus staged detection was MEDIUM across the five expected Dashboard read flows.",
+    status:
+      "fixed and source/build-verified for the Dashboard page boundary and recovery model; authenticated browser runtime, authenticated recompute/audit API interactions, provider failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
