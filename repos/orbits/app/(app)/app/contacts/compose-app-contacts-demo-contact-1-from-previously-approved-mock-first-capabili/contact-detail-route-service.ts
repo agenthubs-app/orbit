@@ -2,8 +2,8 @@
  * 联系人详情页的 route-level 聚合服务。
  *
  * 这个文件把联系人详情、关系证据和关系价值评分三个 capability service
- * 组合成页面需要的单一 view model。它不直接读写数据库；即使用户触发
- * `prepare-follow-up`，也只生成本地草稿和证据结果，不发送消息或执行外部动作。
+ * 组合成页面需要的单一只读 view model。写入、消息和外部动作不属于页面
+ * GET 组合边界。
  */
 import { createLiveRelationshipValueScoringService } from "../../../../../features/analysis/live-value-service";
 import { createRelationshipValueScoringService } from "../../../../../features/analysis/service-factory";
@@ -51,7 +51,6 @@ export const APP_CONTACT_DETAIL_CONTACT_ID = "demo-contact-1";
 export const APP_CONTACT_DETAIL_CONNECTION_ID = "demo-connection-1";
 
 export type AppContactDetailRouteScenario = "empty" | "pending" | "failure";
-export type AppContactDetailRouteAction = "prepare-follow-up";
 export type AppContactDetailRouteState =
   | "success"
   | "empty"
@@ -59,7 +58,6 @@ export type AppContactDetailRouteState =
   | "failure";
 
 export interface AppContactDetailRouteInput {
-  action?: string | null;
   actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
@@ -67,25 +65,7 @@ export interface AppContactDetailRouteInput {
   scenario?: string | null;
 }
 
-export interface AppContactDetailLocalActionResult {
-  databaseQueryExecuted: false;
-  evidenceId: string;
-  excerpt: string;
-  draftBody: string;
-  draftSubject: string;
-  notificationDelivered: false;
-  productionAuditLogWriteExecuted: false;
-  databaseWriteExecuted: false;
-  externalNetworkRequested: false;
-  localNextStep: string;
-  messageSent: false;
-  searchIndexReadExecuted: false;
-  sideEffectsLabel: "none";
-  title: string;
-}
-
 export interface AppContactDetailSuccessModel {
-  actionResult: AppContactDetailLocalActionResult | null;
   assessment: RelationshipValueAssessment | null;
   contact: ContactDetail;
   contactPayload: ContactDetailTagStatusPayload;
@@ -241,15 +221,6 @@ function normalizeScenario(
   return null;
 }
 
-function normalizeAction(action?: string | null): AppContactDetailRouteAction | null {
-  // 历史 query 名称 `stage-local-review` 也映射到同一个本地 follow-up 准备动作。
-  if (action === "prepare-follow-up" || action === "stage-local-review") {
-    return "prepare-follow-up";
-  }
-
-  return null;
-}
-
 function normalizeContactId(contactId: string): string {
   const rawContactId = contactId.trim();
 
@@ -354,56 +325,6 @@ function connectionIdForContact(
   );
 }
 
-async function buildLocalActionResult(
-  connectionEvidence: ConnectionEvidenceService,
-  connectionId: string,
-): Promise<AppContactDetailLocalActionResult | null> {
-  // 本地 action 只向 mock connection evidence 追加一条可复核证据。
-  // 返回的 actionResult 明确标记无数据库查询、无写入、无通知、无消息发送。
-  const result = await connectionEvidence.addEvidence({
-    connectionId,
-    contribution: "follow_up_signal",
-    occurredAt: "2026-06-25T19:20:00.000Z",
-    sourceLabel: "Operator follow-up note",
-    sourceType: "manual",
-    title: "Operator confirmed warm introduction path",
-    excerpt:
-      "Kenji wants the storage pilot operator intro before the partner review call.",
-  });
-
-  if (result.success === false) {
-    return null;
-  }
-
-  const addedEvidence = result.data.evidenceTimeline[
-    result.data.evidenceTimeline.length - 1
-  ];
-  const connection = result.data.connection;
-
-  if (!addedEvidence || !connection) {
-    return null;
-  }
-
-  return {
-    databaseQueryExecuted: false,
-    evidenceId: addedEvidence.evidenceId,
-    excerpt: addedEvidence.excerpt,
-    draftBody:
-      "Kenji, I can introduce you to the operator team that validated the storage pilot path after the climate founders dinner. I will keep the context tied to the partner review call and wait for your confirmation before anything leaves Orbit.",
-    draftSubject: "Warm intro for storage pilot operators",
-    notificationDelivered: false,
-    productionAuditLogWriteExecuted: false,
-    databaseWriteExecuted: false,
-    externalNetworkRequested: false,
-    localNextStep:
-      "Choose where to stage this draft. Orbit keeps it local and does not send, notify, write, query, or sync.",
-    messageSent: false,
-    searchIndexReadExecuted: false,
-    sideEffectsLabel: "none",
-    title: addedEvidence.title,
-  };
-}
-
 function routeStateForPayloads(
   contactPayload: ContactDetailTagStatusPayload,
   connectionPayload: ConnectionEvidenceDetailPayload,
@@ -500,7 +421,6 @@ async function resolveLiveRouteServicesFromGraph(input: {
 }
 
 async function loadComposedContactDetailRoute(input: {
-  action?: string | null;
   actorId?: string | null;
   contactId: string;
   scenario?: string | null;
@@ -545,7 +465,6 @@ async function loadComposedContactDetailRoute(input: {
       | "pending"
       | "unavailable",
   ): AppContactDetailSuccessModel => ({
-    actionResult: null,
     assessment: null,
     contact: contactResult.data.contact!,
     contactPayload: contactResult.data,
@@ -615,10 +534,6 @@ async function loadComposedContactDetailRoute(input: {
   }
 
   return {
-    actionResult:
-      normalizeAction(input.action) === "prepare-follow-up"
-        ? await buildLocalActionResult(input.services.connectionEvidence, connectionId)
-        : null,
     assessment: valueResult.data.assessment,
     contact: contactResult.data.contact,
     contactPayload: contactResult.data,
@@ -632,7 +547,6 @@ async function loadComposedContactDetailRoute(input: {
 }
 
 async function loadLiveAppContactDetailRoute(input: {
-  action?: string | null;
   actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
@@ -661,7 +575,6 @@ async function loadLiveAppContactDetailRoute(input: {
   });
 
   return loadComposedContactDetailRoute({
-    action: input.action,
     actorId,
     contactId: input.contactId,
     scenario: input.scenario,
@@ -670,7 +583,6 @@ async function loadLiveAppContactDetailRoute(input: {
 }
 
 export async function loadAppContactDetailRoute({
-  action,
   actorId,
   contactId,
   liveContactGraphProvider,
@@ -683,7 +595,6 @@ export async function loadAppContactDetailRoute({
   // mappers；mock/hybrid 继续走原有 service composition。
   if (resolveModuleMode(mode) === "live") {
     return loadLiveAppContactDetailRoute({
-      action,
       actorId,
       contactId: normalizedContactId,
       liveContactGraphProvider,
@@ -698,7 +609,6 @@ export async function loadAppContactDetailRoute({
   }
 
   return loadComposedContactDetailRoute({
-    action,
     actorId,
     contactId: normalizedContactId,
     scenario,

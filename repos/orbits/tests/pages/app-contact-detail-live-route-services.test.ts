@@ -474,12 +474,9 @@ test("app contact detail live route returns a controlled boundary when the focus
 
   assert.equal(graphLoads, 1);
   assert.equal(routeModel.routeState, "empty");
-
-  if (routeModel.routeState !== "success") {
-    assert.deepEqual(routeModel.evidence, [
-      "evidence:contact_detail_not_found",
-    ]);
-  }
+  assert.deepEqual(routeModel.evidence, [
+    "evidence:contact_detail_not_found",
+  ]);
 });
 
 test("/app/contacts/[id] page uses the live route service instead of the legacy contacts view model", async () => {
@@ -492,6 +489,12 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /redirect\(/);
   assert.doesNotMatch(pageSource, /searchParams|readSearchParam/);
   assert.doesNotMatch(pageSource, /action:|mode:|scenario:/);
+  assert.doesNotMatch(
+    source(
+      "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts",
+    ),
+    /prepare-follow-up|stage-local-review|buildLocalActionResult|actionResult/,
+  );
   assert.doesNotMatch(pageSource, /this failed route state/);
 });
 
