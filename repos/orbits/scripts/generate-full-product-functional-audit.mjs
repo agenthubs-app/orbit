@@ -3758,6 +3758,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for destination/label alignment, unsupported-capability removal, secure-login target, browser readback, lint, build, and full-suite verification; access management, event configuration, and platform administration remain unavailable rather than misrouted",
   },
+  {
+    id: "full-product-route-ui-export-reachability-2026-07-29",
+    target:
+      "All Web and Expo route UI inventories → exact imported exports, local declarations, and re-exports",
+    testData:
+      "All 94 route entry files; named/default/namespace imports; local component/helper references; re-export boundaries; co-located Admin, Party, Contacts, reference primitive, and shared primitive modules; generated interaction, visible-content, and overlay inventories",
+    expected:
+      "A route may inherit UI only from the exact export it imports and declarations that export references. Sibling components in the same file must not become route-reachable merely because the file is imported. File-level traversal may remain broader only for dependency, persistence, provider, and state-capability signals.",
+    actual:
+      "The previous scanner recursively collected imported files and then parsed every declaration in each file. That assigned IconButton to routes importing only Icon, PrimaryAction and SecondaryAction to routes importing only Chip, every co-located Admin presenter to all four Admin entries, and most Party/Contacts sibling-route controls and overlays to each other. The scanner now resolves default, named, namespace, and re-export bindings; traverses referenced local declarations; and scopes interactions, visible content, and overlays to those statements. The Admin surfaces were also split into login, shell, dashboard, and events owners. The regenerated denominator contains 2326 route-reachable interactions instead of 2834 and 29 overlay route instances instead of 49; real file-level data signals are unchanged.",
+    evidence:
+      "GitNexus reported LOW impact with zero indexed flows for buildFullProductFunctionalAuditInventory, collectInteractions, collectVisibleContent, collectOverlays, and both audit arrays. The symbol-scope regression proves Admin login has only its secure sign-in link, Admin routes do not inherit IconButton or sibling primitive actions, and their reachable StateView failure controls remain. All eight audit tests passed. Admin-focused tests passed 19/19, lint passed, the complete Web suite passed 1355/1355, and production build completed 39/39. Browser DOM verified all four Admin entries; commits c34f54ef and c113dc86. Both staged detections were LOW.",
+    conclusion:
+      "pass for imported-export, local-declaration, namespace, re-export, interaction, visible-content, overlay, Admin runtime, audit, lint, build, and full-suite reachability verification",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4960,6 +4975,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus impact was LOW for both edited symbols. Focused tests passed 6/6, lint passed, full Web tests passed 1354/1354, and build passed 39/39; commit 048db81b. Browser readback found only the two real Admin destinations and the compatibility login entry linked to /app/admin with truthful copy. Staged detection reported LOW for two files, one symbol, and zero flows.",
     status:
       "fixed and navigation-destination/login-copy/browser/lint/build/full-suite-verified; unsupported Admin capabilities no longer appear as actionable controls",
+  },
+  {
+    id: "AUDIT-P1-087",
+    severity: "P1",
+    rootCause:
+      "The audit source graph treated every local file import as reachability of every declaration in that file. Importing Icon therefore counted the sibling IconButton, importing Chip counted sibling action components, and route-specific components co-located in Admin, Party, and Contacts were all assigned to every importing route. The interaction and overlay denominators were deterministic but materially overstated.",
+    decision:
+      "Keep file-level dependency traversal for data, persistence, provider, and state signals, but derive route UI from the exact default/named/namespace export imported by the page, then traverse only referenced local declarations and re-exports. Apply the same symbol scope to interactions, visible content, and overlays. Split the four Admin route surfaces into route-owned components with a shared navigation shell so their ownership remains explicit in both production and audit evidence.",
+    files:
+      "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts; repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-workspace.tsx; repos/orbits/app/(app)/app/admin/orbit-real-admin-events.tsx; repos/orbits/app/(app)/app/admin/page.tsx; repos/orbits/app/(app)/app/admin/events/page.tsx; repos/orbits/app/(app)/app/admin/access/page.tsx; repos/orbits/app/(app)/app/login-admin/page.tsx",
+    regression:
+      "GitNexus reported HIGH for the shared Admin shell/navigation helpers because both Admin routes consume them; the behavior-preserving split was browser-verified across all four entries. Admin-focused tests passed 19/19, lint passed, full Web tests passed 1355/1355, and build passed 39/39; commit c34f54ef. The scanner functions were LOW impact with zero indexed flows; symbol-reachability regression and the audit suite passed; commit c113dc86. Route-reachable interactions changed from 2834 to 2326 and overlay route instances from 49 to 29. Admin success routes now retain three shell controls plus two genuinely reachable failure-state controls, while each public Admin entry retains exactly its one secure sign-in link. Staged detection was LOW for both commits.",
+    status:
+      "fixed and export/local-dependency/re-export/admin-browser/audit/lint/build/full-suite-verified; file-level dependency signals remain intentionally broader than rendered UI scope",
   },
 ];
 
