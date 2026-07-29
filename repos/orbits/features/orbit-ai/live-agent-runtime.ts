@@ -1178,6 +1178,38 @@ export function artifactSummaryForSynthesis(
   };
 }
 
+function artifactEvidenceIdentity(
+  artifact: OrbitAgentArtifactPayload,
+): string {
+  const itemIds = (artifact.result.generatedView?.sections ?? [])
+    .flatMap((section) => section.items ?? [])
+    .map((item) => item.id)
+    .sort();
+
+  return JSON.stringify({
+    evidenceIds: [...artifact.result.provenance.evidenceIds].sort(),
+    itemIds,
+    kind: artifact.result.kind,
+    source: artifact.result.provenance.source,
+    sourceModules: [...artifact.result.provenance.sourceModules].sort(),
+  });
+}
+
+function uniqueArtifactsByEvidence(
+  artifacts: readonly OrbitAgentArtifactPayload[],
+): OrbitAgentArtifactPayload[] {
+  const seen = new Set<string>();
+
+  return artifacts.filter((artifact) => {
+    const identity = artifactEvidenceIdentity(artifact);
+    if (seen.has(identity)) {
+      return false;
+    }
+    seen.add(identity);
+    return true;
+  });
+}
+
 export function failureForPlannerResult(
   plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: false }>,
 ): OrbitAgentConversationFailure {
@@ -1460,22 +1492,24 @@ export async function runLiveOrbitAgentRuntime(
   timings.push(timingSpan("tool_mapping", toolMappingStartedAt));
   const shouldExecuteDomainTools = runtime.maxLoopSteps >= 2;
   const artifactStartedAt = nowMs();
-  const artifacts: OrbitAgentArtifactPayload[] = shouldExecuteDomainTools
-    ? (
-        await Promise.all(
-          toolRequests.map((request) =>
-            artifactForRequest({
-              artifactTaskService: runtime.artifactTaskService,
-              history: historyTurns,
-              locale,
-              message,
-              request,
-            }),
-          ),
-        )
-      ).filter((artifact): artifact is OrbitAgentArtifactPayload =>
+  let artifacts: OrbitAgentArtifactPayload[] = shouldExecuteDomainTools
+    ? uniqueArtifactsByEvidence(
+        (
+          await Promise.all(
+            toolRequests.map((request) =>
+              artifactForRequest({
+                artifactTaskService: runtime.artifactTaskService,
+                history: historyTurns,
+                locale,
+                message,
+                request,
+              }),
+            ),
+          )
+        ).filter((artifact): artifact is OrbitAgentArtifactPayload =>
           Boolean(artifact),
-        )
+        ),
+      )
     : [];
   timings.push(
     timingSpan(
@@ -1529,7 +1563,10 @@ export async function runLiveOrbitAgentRuntime(
       ).filter((artifact): artifact is OrbitAgentArtifactPayload =>
         Boolean(artifact),
       );
-      artifacts.push(...continuationArtifacts);
+      artifacts = uniqueArtifactsByEvidence([
+        ...artifacts,
+        ...continuationArtifacts,
+      ]);
       timings.push(
         timingSpan(
           "artifact_generation_replan",

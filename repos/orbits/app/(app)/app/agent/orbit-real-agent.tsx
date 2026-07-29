@@ -72,12 +72,36 @@ type AgentHistoryFeedback = {
   text: string;
 };
 
-interface AgentEvidenceRef {
+export interface AgentEvidenceRef {
   evidenceIds: readonly string[];
   generatedAt: string;
   itemCount: number;
   label: string;
   sourceModules: readonly string[];
+}
+
+function agentEvidenceRefIdentity(reference: AgentEvidenceRef): string {
+  return JSON.stringify({
+    evidenceIds: [...reference.evidenceIds].sort(),
+    itemCount: reference.itemCount,
+    label: reference.label,
+    sourceModules: [...reference.sourceModules].sort(),
+  });
+}
+
+export function uniqueAgentEvidenceRefs(
+  references: readonly AgentEvidenceRef[],
+): AgentEvidenceRef[] {
+  const seen = new Set<string>();
+
+  return references.filter((reference) => {
+    const identity = agentEvidenceRefIdentity(reference);
+    if (seen.has(identity)) {
+      return false;
+    }
+    seen.add(identity);
+    return true;
+  });
 }
 
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
@@ -156,24 +180,26 @@ interface AgentArtifactRecord {
 function evidenceRefsFromArtifacts(artifacts: unknown): AgentEvidenceRef[] {
   if (!Array.isArray(artifacts)) return [];
 
-  return (artifacts as AgentArtifactRecord[]).flatMap((artifact) => {
-    const provenance = artifact.result?.provenance;
-    const label = artifact.result?.presentation?.title?.trim();
-    if (!provenance || !label) return [];
-    const items =
-      artifact.result?.generatedView?.sections?.flatMap(
-        (section) => section.items ?? [],
-      ) ?? [];
-    return [
-      {
-        evidenceIds: [...new Set(provenance.evidenceIds ?? [])],
-        generatedAt: provenance.generatedAt ?? "",
-        itemCount: items.length,
-        label,
-        sourceModules: [...new Set(provenance.sourceModules ?? [])],
-      },
-    ];
-  });
+  return uniqueAgentEvidenceRefs(
+    (artifacts as AgentArtifactRecord[]).flatMap((artifact) => {
+      const provenance = artifact.result?.provenance;
+      const label = artifact.result?.presentation?.title?.trim();
+      if (!provenance || !label) return [];
+      const items =
+        artifact.result?.generatedView?.sections?.flatMap(
+          (section) => section.items ?? [],
+        ) ?? [];
+      return [
+        {
+          evidenceIds: [...new Set(provenance.evidenceIds ?? [])],
+          generatedAt: provenance.generatedAt ?? "",
+          itemCount: items.length,
+          label,
+          sourceModules: [...new Set(provenance.sourceModules ?? [])],
+        },
+      ];
+    }),
+  );
 }
 
 function artifactOfKind(
@@ -387,7 +413,16 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
     .map((session) => ({
       id: typeof session.id === "string" ? session.id : "",
       messages: Array.isArray(session.messages)
-        ? session.messages.filter(isStoredAgentMessage)
+        ? session.messages
+            .filter(isStoredAgentMessage)
+            .map((message) =>
+              message.role === "assistant" && message.evidenceRefs
+                ? {
+                    ...message,
+                    evidenceRefs: uniqueAgentEvidenceRefs(message.evidenceRefs),
+                  }
+                : message,
+            )
         : [],
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
       createdAt:

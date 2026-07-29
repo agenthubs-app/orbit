@@ -98,6 +98,44 @@ test("agent chat history parser keeps refreshable sessions under the older group
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
 });
 
+test("agent chat history repairs duplicate persisted evidence references", () => {
+  const duplicateReference = {
+    evidenceIds: ["evidence:event:1", "evidence:event:2"],
+    generatedAt: "2026-07-29T10:00:00.000Z",
+    itemCount: 2,
+    label: "推荐活动",
+    sourceModules: ["orbit-ai", "events"],
+  };
+  const sessions = parseAgentChatHistoryStorage(
+    JSON.stringify([
+      {
+        createdAt: "2026-07-29T10:00:00.000Z",
+        id: "duplicate-evidence-session",
+        messages: [
+          { role: "user", text: "推荐活动" },
+          {
+            evidenceRefs: [duplicateReference, duplicateReference],
+            items: [],
+            kind: "events",
+            panelTitle: "推荐活动",
+            role: "assistant",
+            text: "找到两个活动。",
+          },
+        ],
+        title: "推荐活动",
+        updatedAt: "2026-07-29T10:01:00.000Z",
+      },
+    ]),
+  );
+  const assistant = sessions[0]?.messages[1];
+
+  assert.equal(assistant?.role, "assistant");
+  assert.deepEqual(
+    assistant?.role === "assistant" ? assistant.evidenceRefs : undefined,
+    [duplicateReference],
+  );
+});
+
 test("agent chat history preserves a failed message's retry request", () => {
   const sessions = parseAgentChatHistoryStorage(
     JSON.stringify([

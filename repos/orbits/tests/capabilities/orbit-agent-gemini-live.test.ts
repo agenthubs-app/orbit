@@ -2453,6 +2453,91 @@ test("live Orbit Agent replans from tool evidence and executes one new non-repea
   );
 });
 
+test("live Orbit Agent deduplicates equivalent evidence returned by a refined replan", async () => {
+  const requests: unknown[] = [];
+  const liveModule = await importProjectModule<{
+    createLiveOrbitAgentConversationService: (config: {
+      apiKey: string;
+      fetchImplementation: typeof fetch;
+      maxLoopSteps: number;
+      model: string;
+    }) => {
+      sendMessage: (input: { message: string }) => Promise<{
+        success: boolean;
+        data?: {
+          artifacts: readonly {
+            result: {
+              provenance: { evidenceIds: readonly string[] };
+            };
+          }[];
+        };
+      }>;
+    };
+  }>("features/orbit-ai/live-conversation-service.ts");
+
+  const service = liveModule.createLiveOrbitAgentConversationService({
+    apiKey: "test-gemini-key",
+    fetchImplementation: (async (_url, init) => {
+      requests.push(init);
+      const outputs = [
+        {
+          actionRequests: [],
+          assistantMessage: "先查种子轮活动。",
+          intent: "event_recommendations",
+          toolRequests: [
+            {
+              arguments: { searchTerms: "seed funding event" },
+              requiresUserConfirmation: true,
+              toolName: "events.recommend",
+            },
+          ],
+        },
+        {
+          actionRequests: [],
+          assistantMessage: "再按创始人反馈细化同一组活动。",
+          intent: "event_recommendations",
+          toolRequests: [
+            {
+              arguments: { searchTerms: "seed funding event " },
+              requiresUserConfirmation: true,
+              toolName: "events.recommend",
+            },
+          ],
+        },
+      ];
+      const output = outputs[requests.length - 1];
+      return jsonResponse({
+        steps: [
+          {
+            content: [
+              {
+                text: output
+                  ? JSON.stringify(output)
+                  : "已基于唯一的一组活动证据完成综合。",
+                type: "text",
+              },
+            ],
+            type: "model_output",
+          },
+        ],
+      });
+    }) as typeof fetch,
+    maxLoopSteps: 3,
+    model: "gemini-3.5-flash",
+  });
+
+  const result = await service.sendMessage({
+    message: "推荐适合种子轮融资并获取创始人反馈的活动",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(requests.length, 3);
+  assert.equal(result.data?.artifacts.length, 1);
+  assert.ok(
+    (result.data?.artifacts[0]?.result.provenance.evidenceIds.length ?? 0) > 0,
+  );
+});
+
 test("live Gemini Orbit Agent loop limit 1 plans but skips domain tools", async () => {
   const requests: unknown[] = [];
   const liveModule = await importProjectModule<{
