@@ -2270,6 +2270,58 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#在 Today 查看 / Open in Today",
+    {
+      actualResult:
+        "在 Today 查看 opened the exact completed action entry; selecting 2026-09-03 showed one 23:59 arrangement named 联系 Undo Audit Person before undo.",
+      testData:
+        "Authenticated live actor, action action:natural-language:a34dc77e, and one persisted follow-up task due 2026-09-03T23:59:59.000Z",
+      idempotency:
+        "Navigation was read-only; the action retained one completed execution receipt and the due-date task count remained one before undo.",
+      verificationCase:
+        "web-agent-confirm-undo-idempotency-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#全部操作 / All actions",
+    {
+      actualResult:
+        "全部操作 opened the exact expanded ledger entry for action:natural-language:a34dc77e with its completed operation, evidence id, payload hash, executor, and idempotency key.",
+      testData:
+        "The completed create_followup_task action for 联系 Undo Audit Person",
+      idempotency:
+        "Navigation and audit readback wrote no record; the ledger still contained one outbox item and one completed execution receipt.",
+      verificationCase:
+        "web-agent-confirm-undo-idempotency-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#确认执行 / Confirm",
+    {
+      actualResult:
+        "A double click on 确认执行 moved the action to 已完成 and removed the confirmation control; live-store readback found exactly one completed outbox item, one completed execution receipt, and one persisted follow-up task.",
+      testData:
+        "Run run:natural-language:05879e7b with one selected create_followup_task operation for 联系 Undo Audit Person",
+      idempotency:
+        "The repeated confirmation gesture converged on one action, one outbox item, one execution receipt, and one task; no reminder operation or record existed.",
+      verificationCase:
+        "web-agent-confirm-undo-idempotency-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/contacts/all-actions|repos/orbits/app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx#撤销",
+    {
+      actualResult:
+        "A double click on 撤销 changed the exact ledger entry to 已撤销, removed its undo control, removed the 2026-09-03 task from Today, and survived hard reload plus Agent history reopen.",
+      testData:
+        "Completed action action:natural-language:a34dc77e with one completed operation and one compensating follow-up delete",
+      idempotency:
+        "Two further formal undoAction calls both returned undone; live-store readback retained exactly one completed execution receipt, one undo receipt, and one outbox item.",
+      verificationCase:
+        "web-agent-confirm-undo-idempotency-2026-07-29",
+    },
+  ],
+  [
     "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
     {
       actualResult:
@@ -3993,7 +4045,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent/Chat tests passed 30/30; repository lint/typecheck passed; the complete Web suite passed 1366/1366; production build completed 39/39 static pages. In-app browser traversal covered the initial blocked state, repaired empty-actor welcome, real prompt, 7/7 progress, awaiting confirmation, defer, hard reload/history reopen, confirm, action completion, Today action readback, and due-date task readback. Commit 7379d840. GitNexus could not resolve the edited TSX/adapter symbols and staged detection returned No changes detected, so no unsupported graph risk is claimed.",
     conclusion:
-      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for empty-actor entry, no-fixture starter data, real natural-language proposal, no-write-before-confirmation, deferred persistence, conversation reload, explicit confirmation, outbox completion, Today action/task readback, focused/full tests, lint, and build; second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-ignore-action-today-terminal-activity-2026-07-29",
@@ -4008,7 +4060,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Today/Agent/All Actions tests passed 51/51; repository lint/typecheck passed; the complete Web suite passed 1368/1368; production build completed 39/39 static pages. In-app browser verified both ignore transitions, hard-reload persistence, the empty 2026-08-12 schedule, absent target name, coherent English Recent activity / Create follow-up task / Create reminder / Ignored, and coherent Chinese 最近动态 / 创建跟进任务 / 创建提醒 / 已忽略. Commit 39d9bf87. Pre-edit impact was LOW for DecisionEntryCard, OrbitRealToday, and AppTodayPageContent, while the shared SECTION_TITLES index result was corrupt/CRITICAL and was deliberately not edited. Staged detection reported HIGH because AppTodayPageContent participates in nine reviewed Today loading flows.",
     conclusion:
-      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for two-operation ignore, no-write, rejected-state persistence, hard reload/history reopen, terminal-section semantics, canonical action/status localization, focused/full tests, lint, build, and English/Chinese browser readback; broader Today arrangement prose still has mixed-language prototype localization and remains open, while second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-cancel-run-no-write-2026-07-29",
@@ -4023,7 +4075,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "The exact source baseline had already passed the complete Web suite at 1368/1368, repository lint/typecheck, and a 39/39 production build. In-app browser traversal covered the real prompt, two-operation proposal, run-level cancel, immediate terminal rendering, hard reload, persisted history reopen, control removal, and task/reminder no-write checks on both dates. No source defect or code change was found.",
     conclusion:
-      "pass for multi-operation run cancellation, atomic terminal state, confirmation-control removal, hard reload/history persistence, task no-write, reminder no-write, and two-date Today readback; undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for multi-operation run cancellation, atomic terminal state, confirmation-control removal, hard reload/history persistence, task no-write, reminder no-write, and two-date Today readback; second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
   {
     id: "web-agent-failed-request-replay-2026-07-29",
@@ -4038,7 +4090,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent/runtime tests passed 30/30 and focused history/action tests passed 23/23; repository lint/typecheck passed; the complete Web suite passed 1371/1371; production build completed 39/39 static pages. Browser and live-store evidence covered the authenticated account, real read-only conversation, formal failed-step seed, exact error rendering, one-click request replay, distinct run ids, old/new run statuses, zero actions, deliberate server outage, message-level recovery, disabled pending state, hard reload, and persisted history reopen. Commits 6f4583f1 and ca575f31. Exact retryRun impact was LOW, but Agent TSX types were corrupted in the GitNexus index: the first staged detection reported CRITICAL with hundreds of unrelated mobile/event/storage flows while omitting the runtime/API symbols; the second scoped message-recovery change detected LOW with zero affected flows.",
     conclusion:
-      "pass for truthful failed-run and no-run network recovery, original-request selection, new-run identity, immutable failure evidence, pending disablement, zero-write replay, store readback, hard reload/history persistence, focused/full tests, lint, and build; direct provider-failure injection remains separately unverified, while undo, duplicate confirm, second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+      "pass for truthful failed-run and no-run network recovery, original-request selection, new-run identity, immutable failure evidence, pending disablement, zero-write replay, store readback, hard reload/history persistence, focused/full tests, lint, and build; direct provider-failure injection remains separately unverified, while second-actor isolation, responsive, keyboard, and assistive-technology states remain separately unverified",
+  },
+  {
+    id: "web-agent-confirm-undo-idempotency-2026-07-29",
+    target:
+      "Authenticated Web Agent confirmation → live outbox execution → Today and All Actions readback → compensation → reload/history persistence",
+    testData:
+      "Live actor user_ms5llhof_wrbpuq; prompt 请创建一个9月3日到期的跟进任务：联系 Undo Audit Person，执行前等我确认，不要创建提醒。; run run:natural-language:05879e7b; action action:natural-language:a34dc77e; one create_followup_task operation due 2026-09-03T23:59:59.000Z",
+    expected:
+      "Confirmation must execute the selected operation exactly once even under a repeated gesture. Undo must compensate only operations that have a completed execution receipt, never an unselected or failed sibling operation. Repeated undo must converge on one compensation receipt. The action state and task existence must remain consistent across Agent, Today, All Actions, live storage, and hard reload.",
+    actual:
+      "The real prompt completed 7/7 and staged exactly one task action with no reminder. A double click on 确认执行 produced one completed action, one completed outbox item, one execution receipt, and one follow-up task. Today on 2026-09-03 showed one 23:59 arrangement named 联系 Undo Audit Person, while All Actions exposed the matching executor, evidence, payload hash, and idempotency key. A double click on 撤销 changed the entry to 已撤销 and removed the task. Two additional formal undoAction calls both returned undone without a second compensation receipt. Hard reload retained the undone ledger entry, Agent history reopened with 已撤销, and Today showed 0 场 plus 这一天暂无安排.",
+    evidence:
+      "Focused Agent/runtime/ledger tests passed 41/41; repository lint and the 39/39 production build had passed on the production change; the complete Web suite passed 1372/1372. In-app browser traversal exercised the real composer, repeated confirmation, Agent card, Today due-date readback, exact All Actions entry, repeated undo, hard reload, conversation-history reopen, and final empty due date. Live AgentRuntimeService readback proved one outbox item, one completed execution receipt, one undo receipt, and stable undone responses. Commit 7bf79467 fixed compensation scope; eba21635 hardened an unrelated formatting-sensitive source assertion exposed by the full gate. GitNexus staged detection was LOW for two files, five symbols, and zero affected processes.",
+    conclusion:
+      "pass for explicit confirmation, repeated-confirm idempotency, selected-operation execution, truthful cross-surface readback, completed-receipt compensation scope, repeated-undo idempotency, persisted undone state, task removal, hard reload, focused/full tests, lint, and build; second-actor isolation, partial-failure browser execution, responsive, keyboard, and assistive-technology states remain separately unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
@@ -5340,6 +5407,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused tests passed 30/30 and 23/23, lint/typecheck passed, full Web passed 1371/1371, and production build completed 39/39; commits 6f4583f1 and ca575f31. A formal live runtime failure seed drove the real browser from a persisted 6/7 failed run through 重新提交请求 to a distinct 6/6 completed run. Store readback preserved the old failed step and the new run had zero actions. A deliberate production-server outage then proved a no-run network failure rendered a persisted retry button, disabled during replay, recovered after restart, and survived hard reload/history reopen. The first GitNexus staged result was corrupt/CRITICAL; the second scoped change was LOW.",
     status:
       "fixed and truthful-run/no-run-replay/new-run/immutable-failure/no-write/live-store/network-outage/browser/reload/lint/build/full-suite-verified; direct provider-failure injection remains an open audit case",
+  },
+  {
+    id: "AUDIT-P1-094",
+    severity: "P1",
+    rootCause:
+      "undoAction iterated every declared operation whose compensation policy was supported, regardless of whether the user selected it or the executor completed it. In a multi-operation or partially failed action, undo could therefore compensate an operation that never created a record and could repeat an already completed compensation after an interrupted retry.",
+    decision:
+      "Resolve compensation scope from immutable completed execution receipts for the exact action. Reject undo when no completed operation exists or when an executed operation lacks compensation. Before each compensation, look up the deterministic undo idempotency key and skip an existing undone receipt. Keep the action-level undone fast path and one stable receipt per completed operation.",
+    files:
+      "repos/orbits/features/agent/runtime/service.ts; repos/orbits/tests/capabilities/agent-runtime-evolution.test.ts",
+    regression:
+      "A two-operation regression selected and executed only the first operation, then proved undo compensated only that record and never touched the unselected sibling. Focused Agent/runtime/ledger tests passed 41/41; the complete Web suite passed 1372/1372; lint and production build passed. Live browser and Postgres readback proved repeated confirmation created one task/receipt/outbox, repeated undo created one compensation receipt, hard reload retained the undone state, and Today removed the task. Commit 7bf79467; staged detection was LOW for two files, five symbols, and zero processes.",
+    status:
+      "fixed and selected-operation/completed-receipt/compensation-idempotency/live-store/browser/reload/focused/full-suite/lint/build-verified; partial-failure browser execution remains in the audit queue",
   },
 ];
 
