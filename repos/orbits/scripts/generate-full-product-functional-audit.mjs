@@ -3623,6 +3623,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/lint/build/full-suite retirement of the legacy Profile hybrid constructor while preserving actor-scoped loading, API writes, strict readback, and the shared editor type contract; authenticated browser save/refresh and two-account UI isolation retain their existing runtime evidence gaps",
   },
+  {
+    id: "web-party-legacy-hybrid-model-retirement-2026-07-29",
+    target:
+      "Retired Web Party hybrid-data constructor → type-only UI contract backed by authenticated shared Party composition",
+    testData:
+      "Repository imports and symbol references for getOrbitPartyViewModel and its five unique helpers; real Party and check-in loaders, route-derived industry filtering, sourced-event empty-people handling, public registered/unregistered access, actor propagation, mock-fixture isolation, and the hybrid-route self-validation test",
+    expected:
+      "Party pages must obtain event, people, agenda, recommendations, tablemates, and current-user state from the canonical shared loader under the route's actual actor and access rules. The shared model file may retain UI types, but it must not synchronously rebuild Party state from global hybrid data solely for a legacy test.",
+    actual:
+      "The production Party and check-in pages already used loadAppPartyRouteViewModel and the shared live-capable Party composition path. The shared type file nevertheless retained getOrbitPartyViewModel plus currentEvent, partyAgenda, personFromContact, personFromNetworkPerson, and recommendationPeople. Those functions selected a hybrid event and manufactured the complete Party surface from global account, contact, network, connection, agenda, and recommendation data. Only orbit-hybrid-route-view-models.test.ts called the constructor. After repair, the file exports only OrbitParty UI interfaces, the legacy test invocation is removed, and the focused Party regression rejects both the getter and hybrid-data import from returning.",
+    evidence:
+      "GitNexus reported LOW upstream impact for all six removed functions and zero affected execution flows; getOrbitPartyViewModel had one direct test caller, while the helpers reached at most three internal/test symbols. Focused Party and hybrid-route tests passed 14/14, repository lint passed, the complete Web suite passed 1352/1352, and production build passed; commit 68fc233f. Required staged detection returned No changes detected for the three-file deletion-heavy diff, so no unsupported staged risk level is claimed.",
+    conclusion:
+      "pass for source/lint/build/full-suite retirement of the legacy Party hybrid constructor while preserving authenticated shared Party composition and its type contract; the separate authored Party presentation/content path remains pending an independent boundary review",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4699,6 +4714,20 @@ const AUDIT_REMEDIATIONS = [
       "GitNexus reported LOW impact and zero execution flows; the only direct caller was the legacy test. Focused tests passed 12/12, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains actor-scoped failure, real editor composition, API extraction/save, strict partial-readback rejection, free-text industry, custom tags, and the absence of hardcoded founder identity. Staged detect returned No changes detected despite 70 deletions, so the deletion blind spot is recorded.",
     status:
       "fixed and source/lint/build/full-suite-verified for retirement of the legacy Profile hybrid constructor; canonical actor-scoped Profile composition remains the single data architecture",
+  },
+  {
+    id: "AUDIT-P1-078",
+    severity: "P1",
+    rootCause:
+      "The real Party and check-in pages had migrated to authenticated shared Party composition, but orbit-party-route-view-model.ts still contained a synchronous hybrid constructor and five helpers. They selected a global hybrid event and manufactured agenda, recommendations, tablemates, people, and current-user state from account, contacts, connections, and network fixtures. No production route called this architecture; the broad legacy hybrid-route test alone kept it alive.",
+    decision:
+      "Retain the OrbitParty interfaces as the shared UI contract. Delete getOrbitPartyViewModel, currentEvent, partyAgenda, personFromContact, personFromNetworkPerson, recommendationPeople, and all runtime hybrid imports. Remove the test-only invocation and extend the focused Party source regression to prohibit the getter and getOrbitHybridRouteData. Preserve real actor propagation, public registration access, route-derived filters, empty sourced-event behavior, and mock-fixture isolation in the canonical loader. Audit the separate buildOrbitParty authored-presentation path independently rather than bundling an unverified boundary change.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-party-route-view-model.ts; repos/orbits/tests/pages/app-party-live-route-services.test.ts; repos/orbits/tests/pages/orbit-hybrid-route-view-models.test.ts",
+    regression:
+      "GitNexus reported LOW impact and zero execution flows for every removed function; only the legacy test directly called the public constructor. Focused tests passed 14/14, lint passed, the complete Web suite passed 1352/1352, and production build passed. Coverage retains the real Party loader, shared check-in composition, route-derived industry filtering, registered/unregistered public access, actor propagation, query isolation from mock fixtures, sourced-event empty-people handling, and distinct missing-selection/missing-people states. Staged detect returned No changes detected despite 213 deletions, so the deletion blind spot is recorded.",
+    status:
+      "fixed and source/lint/build/full-suite-verified for retirement of the legacy Party hybrid constructor; authored Party presentation/content remains a separate pending review",
   },
 ];
 
