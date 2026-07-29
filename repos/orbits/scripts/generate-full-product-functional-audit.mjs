@@ -737,6 +737,11 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the same session id was absent from the second actor before deletion and from both actors after cleanup",
         "desktop New chat cleared the selected transcript and session URL while retaining all six persisted history rows",
         "the focusable history separator exposed min, max, current value, and orientation; ArrowRight, Home, and End changed the rendered width to the exact announced values",
+        "a live event recommendation disclosed four unique source records from orbit-ai and events with exact evidence ids and source time; refresh retained the same count",
+        "the source disclosure opened by pointer and Enter, closed by Space, normalized duplicate persisted references, and left no session or feedback record after cleanup",
+        "at 390x844 the Agent top bar exposed Chat history and Open menu while keeping the global inbox trigger hidden",
+        "the mobile history drawer exposed a named modal dialog, focused Close, wrapped Shift+Tab and Tab, and restored focus to Chat history after Escape",
+        "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
       ],
       verificationCase: "web-agent-session-actor-isolation-2026-07-29",
       verificationConclusion:
@@ -2367,6 +2372,45 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-outcome-feedback.tsx#onclick:() => void save({ rating: value })#… / {label}",
+    {
+      actualResult:
+        "不相关 and 有帮助 each became the sole selected rating when clicked on the source-backed Run. Formal readback ended with rating=helpful, retained the same feedback id and createdAt across updates, remained null for actor B, restored the selected state after reload, and was removed during cleanup.",
+      testData:
+        "Actor A user_ms5llhof_wrbpuq, actor B user_ms2on5yh_60z90f, Run run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f, and four unique event evidence ids",
+      idempotency:
+        "Each rating upsert updated one actor-and-Run feedback record rather than appending another record; the final record retained one feedback id and one four-id evidence set.",
+      verificationCase:
+        "web-agent-evidence-source-disclosure-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-outcome-feedback.tsx#onclick:() => void save({ outcome: value })#… / {label}",
+    {
+      actualResult:
+        "已联系, 已约见, and 目标有推进 each became the sole selected later outcome in sequence. Formal readback ended with outcome=goal_advanced on the same actor-owned feedback record, reload restored it, and cleanup removed it.",
+      testData:
+        "Source-backed Run run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f with sourceModules orbit-ai/events and four unique event evidence ids",
+      idempotency:
+        "All three controls converged on one feedback record keyed by the actor-owned Run; no duplicate outcome or feedback record was created.",
+      verificationCase:
+        "web-agent-evidence-source-disclosure-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onkeydown:toggleAgentEvidenceSourcesFromKeyboard#{t({ en: `Sources · ${totalItems} records`, zh: `查看依据 · ${totalItems} 条真实记录`, })}",
+    {
+      actualResult:
+        "The live recommendation first exposed an inflated 8-record count from an exact duplicate replan artifact, then 5 from a four-record result overlapping a one-record refinement. After repair, the persisted conversation rendered 查看依据 · 4 条真实记录, expanded to one source group from orbit-ai · events with the exact source time and evidence ids, opened with Enter, and closed with Space.",
+      testData:
+        "Actor user_ms5llhof_wrbpuq; sessions agent-session-ms5y03iq-c0phvh and agent-session-ms5yf1pi-bsibno; runs run:conversation:ad4cf600-e3cc-4529-b5c0-925aa8978e98 and run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f; four unique event evidence records",
+      idempotency:
+        "Disclosure changed only the native details open state. Repeated parsing grouped equivalent and overlapping references by source snapshot and evidence id, persisted one normalized four-record reference, and final cleanup returned both sessions and both feedback records as null.",
+      verificationCase:
+        "web-agent-evidence-source-disclosure-2026-07-29",
+    },
+  ],
+  [
     'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
     {
       actualResult:
@@ -2507,6 +2551,32 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
       verificationCase:
         "web-agent-history-navigation-resize-2026-07-29",
+    },
+  ],
+  [
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Chat history", zh: "对话历史" })',
+    {
+      actualResult:
+        "At 390x844 the history control was initially present in the DOM but invisible because the shared mobile nav rule hid the mixed extras container. After separating mobile contextual actions, the top bar exposed 对话历史 and 打开菜单, kept 打开收件箱 hidden, and clicking 对话历史 opened the labelled modal drawer with focus on 关闭.",
+      testData:
+        "Authenticated actor user_ms5llhof_wrbpuq, production Web /app/agent at 390x844, six actor-owned persisted sessions",
+      idempotency:
+        "Opening, focus traversal, Escape, and reopening changed only drawer presentation state. They made no session, message, action, task, inbox, or external write.",
+      verificationCase:
+        "web-agent-mobile-history-navigation-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:onNewChat#New chat / 新对话",
+    {
+      actualResult:
+        "After the mobile drawer selected session agent-session-ms5tz2ay-zx6dfl and reload restored its prompt and pending-action explanation, 新对话 closed the drawer, returned the URL to /app/agent, removed the old transcript, restored the welcome workspace, returned focus to 对话历史, and retained six of six history rows.",
+      testData:
+        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions; selected Undo Audit session agent-session-ms5tz2ay-zx6dfl; 390x844 production viewport",
+      idempotency:
+        "Mobile New chat reset only active client state and URL. The history row count remained 6 before and 6 after, proving it did not delete a session or domain record.",
+      verificationCase:
+        "web-agent-mobile-history-navigation-2026-07-29",
     },
   ],
   [
@@ -4351,7 +4421,7 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused history/API tests passed 14/14 before the explicit-control adjustment and the final history suite passed 11/11. The complete Web suite passed 1376/1376, repository lint/typecheck passed, and production build completed 39/39 static pages. In-app browser traversal covered the formal composer, generated reply, real session id, cross-session selection, pin success, rename field/save/cancel, two reloads, delete dialog, cancel, confirm, active-session clearing, and post-delete reload. Configured live-provider readback returned the pinned custom title and two messages for actor A while actor B returned null; after cleanup both actors returned null. Commits b30e1348, faa1e10c, and 2ba00267. GitNexus impact was LOW for both API handlers, OrbitRealAgent, AgentHistoryList, persistence helpers, and rename submission; staged detection was LOW.",
     conclusion:
-      "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; responsive/mobile-width layout and screen-reader announcement timing remain separately unverified",
+      "pass for actor-scoped selection, exact transcript restore, URL identity, durable pin, durable rename, explicit save/cancel, truthful success gating, fail-closed unconfigured writes, accessible destructive confirmation, cancel no-write, confirmed delete, active-session clearing, reload persistence, second-actor isolation, and final cleanup; mobile selection/New chat/modal behavior is covered by web-agent-mobile-history-navigation-2026-07-29, while mobile pin/rename/delete and screen-reader announcement timing remain separately unverified",
   },
   {
     id: "web-agent-history-navigation-resize-2026-07-29",
@@ -4366,7 +4436,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "Focused Agent history tests passed 11/11 and production build completed 39/39. In-app browser exercised real session selection, desktop New chat, URL/transcript reset, unchanged history count, separator focus, exact ARIA values, three keyboard transitions, and default restoration on reload. Commit 8d53505d. OrbitRealAgent and startHistorySidebarResize impact were LOW; staged detection was LOW with zero affected processes.",
     conclusion:
-      "pass for desktop active-session reset, history preservation, URL reset, composer restoration, separator orientation/value semantics, ArrowLeft/ArrowRight/Home/End contract, layout-only no-write behavior, focused tests, and build; mobile New chat, mobile history drawer, pointer drag, persisted user width preference, and assistive-technology announcement timing remain separately unverified",
+      "pass for desktop active-session reset, history preservation, URL reset, composer restoration, separator orientation/value semantics, ArrowLeft/ArrowRight/Home/End contract, layout-only no-write behavior, focused tests, and build; mobile New chat and drawer behavior are covered by web-agent-mobile-history-navigation-2026-07-29, while pointer drag, persisted user width preference, and assistive-technology announcement timing remain separately unverified",
+  },
+  {
+    id: "web-agent-mobile-history-navigation-2026-07-29",
+    target:
+      "Authenticated 390x844 Web /app/agent top-bar history entry → modal focus contract → real session restore/reload → mobile New chat",
+    testData:
+      "Live actor user_ms5llhof_wrbpuq with six persisted sessions; selected session agent-session-ms5tz2ay-zx6dfl; production viewport 390x844; exact source prompt containing Undo Audit Person",
+    expected:
+      "Mobile users must have a visible history entry without exposing desktop-only global extras. The drawer must be a named modal, focus its first control, wrap forward and reverse Tab, close exclusively on Escape, and restore focus. Selecting an actor-owned session must restore its exact URL and transcript through refresh. New chat must clear only active state and preserve all stored history.",
+    actual:
+      "At 390x844 the Agent history button existed in the DOM but the shared mobile rule hid its orbit-nav-extra parent. Re-enabling the mixed container also surfaced 打开收件箱 because that trigger carried inline display:inline-flex. The final implementation separates mobileRightExtra from the desktop rightExtra/inbox group: Agent renders only 对话历史 in the mobile slot, while the shared extras remain hidden. Production DOM then exposed 对话历史 plus 打开菜单 and no inbox. Clicking it opened dialog 对话历史 with 关闭 focused. Shift+Tab wrapped to the last 更多操作, Tab wrapped back to 关闭, and Escape closed only the drawer and restored focus to 对话历史. Selecting the existing Undo Audit row navigated to ?session=agent-session-ms5tz2ay-zx6dfl and restored the exact prompt plus pending-action explanation; reload retained both. Mobile 新对话 returned to /app/agent, removed the transcript, restored the welcome workspace, and kept the history count at 6 before and after.",
+    evidence:
+      "In-app production browser at 390x844 exercised the top-bar entry, labelled modal, initial focus, reverse and forward focus wrap, Escape/focus restoration, real row selection, exact session URL/transcript, reload readback, mobile New chat, unchanged six-row count, and final drawer screenshot without horizontal overflow. The same build was sampled on /app/today to prove the new optional slot did not expose an extra action on a default caller. Focused history/top-nav tests passed 29/29, the complete Web suite passed 1381/1381, repository lint/typecheck passed, and production build completed 39/39. Commits 2e4a487b, 183f0052, 880c3b5a, and dbdc13ae. OrbitTopNav impact was HIGH with 18 upstream symbols, two processes, and three modules; AccountTopNav impact was HIGH with 15 upstream symbols, three processes, and three modules. The final staged detection was LOW and contained exactly AccountTopNav and OrbitTopNav with zero affected processes.",
+    conclusion:
+      "pass for visible mobile entry, desktop-extra separation, hidden inbox, labelled modal, first focus, Shift+Tab/Tab trap, Escape-exclusive close, trigger focus restoration, actor-owned selection, exact URL/transcript, refresh readback, mobile New chat, history preservation, no-domain-write behavior, 390x844 layout, default-caller compatibility, focused tests, lint, and build; mobile pin/rename/delete, physical touch-device behavior, screen-reader announcement timing, and independent manual assistive-technology verification remain separately unverified",
   },
   {
     id: "web-agent-message-copy-feedback-2026-07-29",
@@ -4381,7 +4466,22 @@ const VERIFIED_AUDIT_CASES = [
     evidence:
       "In-app browser exercised the latest message copy control, helpful rating, selected-state reload, cleanup reload, and absence of feedback errors. Configured provider readback proved actor A ownership, actor B absence, persistence, and final cleanup. Focused feedback/API tests passed 7/7, including no-write 404 for missing/foreign Runs, owned-Run success, and runtime-failure 503. The 39/39 production build and repository lint/typecheck passed. Commits 95b85435 and 9e6cccb6; resolveAgentFeedbackRequest and OrbitRealAgent impact were LOW, the new route-adjacent handler was not indexed, and staged detection for the ownership fix was LOW.",
     conclusion:
-      "pass for clipboard success state/no-domain-write, helpful feedback persistence, actor-scoped Run ownership, second-actor absence, reload readback, cleanup, missing/foreign-Run no-write, runtime-failure truth, focused tests, lint, and build; not-relevant rating, later-outcome controls, feedback UI failure rendering, evidence-source disclosure, mobile width, keyboard, and assistive-technology states remain separately unverified",
+      "pass for clipboard success state/no-domain-write, helpful feedback persistence, actor-scoped Run ownership, second-actor absence, reload readback, cleanup, missing/foreign-Run no-write, runtime-failure truth, focused tests, lint, and build; the remaining rating/outcome paths are covered by web-agent-evidence-source-disclosure-2026-07-29, while feedback UI failure rendering, mobile width, keyboard, and assistive-technology states remain separately unverified",
+  },
+  {
+    id: "web-agent-evidence-source-disclosure-2026-07-29",
+    target:
+      "Live Agent event recommendation → multi-step artifact provenance → unique source count → pointer/keyboard disclosure → persisted normalization → feedback/session cleanup",
+    testData:
+      "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; sessions agent-session-ms5y03iq-c0phvh and agent-session-ms5yf1pi-bsibno; runs run:conversation:ad4cf600-e3cc-4529-b5c0-925aa8978e98 and run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f; source snapshot 2026-06-30T00:00:00.000Z; event evidence ids runtime-evidence-forum plus event_signup:01–03",
+    expected:
+      "The source summary must count unique underlying records, not artifacts or repeated planner reads. Equivalent replan artifacts must not be synthesized or persisted twice. Overlapping broad/refined results from the same source snapshot must union evidence ids and count each record once. Expanded disclosure must name the source modules, source time, and evidence ids; pointer, Enter, and Space must operate it without writing domain data. Refresh must retain normalized provenance, another actor must receive no feedback, and temporary sessions/feedback must be removable with null readback.",
+    actual:
+      "The first live run completed 8/8 and returned four event cards, but the source summary claimed 8 records and expanded two byte-equivalent four-record references. The second run initially claimed 5 because its broad four-record artifact and one-record refinement shared evidence:event_signup:02. Runtime now removes semantically equivalent artifact outputs before synthesis, while the UI/history normalization groups one source snapshot and unions evidence ids rather than summing artifact item counts. Both stored sessions converged to one reference with itemCount=4 and four evidence ids. The production page rendered 查看依据 · 4 条真实记录, expanded to 推荐活动 · 4 from orbit-ai · events at 2026/6/30 09:00:00, and showed the first three exact evidence ids. Pointer opened and closed it; after the native summary failed to toggle in the runtime browser, the explicit handler made Enter open and Space close. The source-backed feedback path accepted both ratings and all three outcomes sequentially; formal readback ended with helpful plus goal_advanced for actor A, four unique evidence ids, and actor B null. Refresh restored those selections. Cleanup removed both feedback records and both sessions, and the browser returned to the empty Agent workspace.",
+    evidence:
+      "Two production-browser conversations traversed the formal composer, 8/8 live Agent loop, four real event cards, closed/open source disclosure, exact source modules/time/evidence ids, refresh normalization, both ratings, all three later outcomes, selected-state reload, keyboard source open/close, and final empty cleanup. Formal configured session and feedback providers proved duplicate then normalized stored references, actor-A-only feedback with four evidence ids, actor-B absence, and final nulls. Focused runtime/history tests passed 54/54, source/history tests passed 18/18, lint/typecheck passed, and production build completed 39/39. Commits aa0d404e, 244c2527, and 7b367e84; pre-edit impact was LOW for runLiveOrbitAgentRuntime, evidenceRefsFromArtifacts, parseAgentChatSessionsArray, AgentEvidenceSources, and OrbitRealAgent, while new helper symbols were not yet indexed; staged detections were LOW.",
+    conclusion:
+      "pass for live source generation, unique-record counting, equivalent-artifact suppression, overlapping-evidence union, persisted-history repair, source module/time/id disclosure, pointer open/close, Enter open, Space close, no-write disclosure, both rating values, all later outcomes, actor isolation, reload readback, cleanup, focused tests, lint, and build; feedback UI network-failure rendering, mobile source layout, screen-reader announcement timing, and independent manual assistive-technology verification remain separately unverified",
   },
 ];
 const AUDIT_REMEDIATIONS = [
@@ -5764,9 +5864,9 @@ const AUDIT_REMEDIATIONS = [
     files:
       "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
     regression:
-      "Focused Agent history tests passed 11/11 and production build completed 39/39. Source regression binds the drawer to useOrbitModalA11y and requires data-orbit-agent-history-drawer, a labelled role=dialog, and aria-modal=true. Commit 2e4a487b; staged detection was LOW with zero affected processes.",
+      "Focused Agent history tests passed 11/11 for the initial repair; the final history/top-nav set passed 29/29, lint/typecheck passed, and production build completed 39/39. Source regression binds the drawer to useOrbitModalA11y and requires data-orbit-agent-history-drawer, a labelled role=dialog, and aria-modal=true. At 390x844 the production browser focused 关闭 on entry, wrapped Shift+Tab to the last 更多操作, wrapped Tab back to 关闭, and restored focus to 对话历史 after Escape. Commit 2e4a487b; staged detection was LOW with zero affected processes.",
     status:
-      "fixed with shared-modal/focus-entry/Tab-trap/Escape-exclusive/focus-restore/dialog-name/static-source/focused/build evidence; mobile-width browser and real assistive-technology verification remain open",
+      "fixed with shared-modal/focus-entry/Tab-trap/Escape-exclusive/focus-restore/dialog-name/mobile-width-browser/focused/lint/build evidence; screen-reader announcement timing and independent manual assistive-technology verification remain open",
   },
   {
     id: "AUDIT-P1-100",
@@ -5780,7 +5880,49 @@ const AUDIT_REMEDIATIONS = [
     regression:
       "Focused feedback/API tests passed 7/7 and prove missing/foreign Runs return 404 without calling upsert, an owned Run persists, and runtime failure returns 503 without a write. The production build completed 39/39 and lint/typecheck passed. Live browser/provider evidence proved helpful feedback persisted only for actor A, was absent for actor B, survived reload, and was removed during cleanup. Commit 95b85435; pre-edit impact was LOW and staged detection was LOW.",
     status:
-      "fixed and actor-owned-Run/foreign-no-write/missing-no-write/runtime-failure/provider-persistence/second-actor-absence/reload/cleanup/focused/lint/build-verified; remaining rating/outcome/error UI states are tracked separately",
+      "fixed and actor-owned-Run/foreign-no-write/missing-no-write/runtime-failure/provider-persistence/both-ratings/all-outcomes/second-actor-absence/reload/cleanup/focused/lint/build-verified; feedback UI error state is tracked separately",
+  },
+  {
+    id: "AUDIT-P1-101",
+    severity: "P1",
+    rootCause:
+      "The multi-step Agent loop accumulated a replan artifact whenever the tool arguments differed, even when the artifact resolved to the same evidence and result items. The source UI then summed itemCount per artifact. Exact duplicate results doubled four records to eight, and a one-record refinement overlapping a four-record result counted the shared record twice as five. The inflated references were persisted in conversation history and reused as feedback evidence.",
+    decision:
+      "Deduplicate semantically equivalent runtime artifacts before synthesis using kind, provider source, source modules, evidence ids, and generated item ids rather than task ids or planner query text. At the presentation/history boundary, group references by label and source snapshot, union stable evidence ids, derive itemCount from the unique union, retain distinct unkeyed references, and normalize stored assistant messages on read so legacy records converge through the existing persistence path.",
+    files:
+      "repos/orbits/features/orbit-ai/live-agent-runtime.ts; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/capabilities/orbit-agent-gemini-live.test.ts; repos/orbits/tests/pages/app-agent-chat-history.test.ts",
+    regression:
+      "A three-step planner regression proves a refined same-tool request returning equivalent evidence produces one artifact, while the existing distinct event-plus-contact continuation still produces two. History regression proves duplicate and overlapping references converge to one unique evidence set. Focused tests passed 54/54, lint/typecheck passed, and production build completed 39/39. Two live runs exposed the original 8 and 5 counts; after repair the UI and configured store both retained exactly one four-record reference with four unique ids, feedback carried the same four ids, and final cleanup returned null. Commits aa0d404e and 244c2527; impact and staged detection were LOW.",
+    status:
+      "fixed and equivalent-artifact/overlapping-provenance/unique-record-count/synthesis/history-normalization/feedback-evidence/reload/live-provider/cleanup/focused/lint/build-verified",
+  },
+  {
+    id: "AUDIT-P1-102",
+    severity: "P1",
+    rootCause:
+      "The source disclosure used a native details/summary pair and was focusable, but the actual in-app production browser did not toggle it with either Enter or Space. Pointer disclosure worked, leaving keyboard users unable to inspect the evidence modules, timestamp, or ids.",
+    decision:
+      "Keep the native details semantics and add a narrow summary key boundary for Enter and Space. Prevent the native default to avoid double toggles in browsers that implement it, verify the parent is an HTMLDetailsElement, and toggle only its open presentation state without any request or write.",
+    files:
+      "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-contact-recommendations.test.tsx",
+    regression:
+      "Focused source/history tests passed 18/18, lint/typecheck passed, and production build completed 39/39. On the exact source-backed persisted session, Enter changed the closed summary into one expanded four-record source group and Space returned it to the closed summary. Commit 7b367e84; AgentEvidenceSources impact was LOW and staged detection was LOW.",
+    status:
+      "fixed and native-details/Enter/Space/prevent-default/no-write/production-browser/focused/lint/build-verified; screen-reader announcement timing remains open",
+  },
+  {
+    id: "AUDIT-P1-103",
+    severity: "P1",
+    rootCause:
+      "AccountTopNav combined page-specific rightExtra content and the global RelationshipInboxTrigger inside one orbit-nav-extra boundary. The shared mobile contract correctly hid that desktop extras group, but Agent placed its only mobile history entry inside the same group, making the control present yet unreachable. Re-enabling the mixed group at the route level then exposed the inbox too, and its inline display:inline-flex overrode an ordinary responsive hide.",
+    decision:
+      "Separate semantics at the shared navigation boundary. Add an optional mobileRightExtra slot to OrbitTopNav and AccountTopNav, render it in a dedicated mobile-only container, keep the existing rightExtra plus global inbox group unchanged for desktop/default callers, and pass only Agent history through the mobile slot. Remove the Agent-specific inbox selector instead of depending on child class names or inline-style priority.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-public-shell.tsx; repos/orbits/app/(app)/app/orbit-account-shell.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/(app)/app/orbit-reference-styles.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts; repos/orbits/tests/ui/orbit-top-nav-structure.test.ts",
+    regression:
+      "Focused history/top-nav tests passed 29/29, the complete Web suite passed 1381/1381, lint/typecheck passed, and production build completed 39/39. At 390x844 the production Agent top bar exposed 对话历史 and 打开菜单 but not 打开收件箱; the entry opened the real drawer. /app/today retained its normal mobile top bar without a contextual extra. Commits 183f0052, 880c3b5a, and dbdc13ae. Pre-edit impact was HIGH for OrbitTopNav (18 symbols, two processes, three modules) and AccountTopNav (15 symbols, three processes, three modules); the optional-prop implementation retained all existing callers, and staged detection was LOW with exactly those two symbols and zero affected processes.",
+    status:
+      "fixed and shared-boundary/mobile-slot/default-caller/hidden-inbox/visible-history/production-browser/focused/lint/build-verified; physical touch-device verification remains open",
   },
 ];
 

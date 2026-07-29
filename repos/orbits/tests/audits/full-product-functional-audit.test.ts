@@ -497,7 +497,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
   const agentRuntimeEvidence = inventory.surfaces.find(
     (surface) => surface.surfaceId === "web:/app/agent",
   )?.runtimeEvidence;
-  assert.equal(agentRuntimeEvidence?.length, 10);
+  assert.equal(agentRuntimeEvidence?.length, 15);
   assert.equal(
     agentRuntimeEvidence?.includes(
       "deletion opened an accessible irreversible-action confirmation, its keep action preserved the conversation, and confirmed deletion survived refresh",
@@ -507,6 +507,24 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
   assert.equal(
     agentRuntimeEvidence?.includes(
       "the focusable history separator exposed min, max, current value, and orientation; ArrowRight, Home, and End changed the rendered width to the exact announced values",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "a live event recommendation disclosed four unique source records from orbit-ai and events with exact evidence ids and source time; refresh retained the same count",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "at 390x844 the Agent top bar exposed Chat history and Open menu while keeping the global inbox trigger hidden",
+    ),
+    true,
+  );
+  assert.equal(
+    agentRuntimeEvidence?.includes(
+      "the mobile drawer restored the actor-owned Undo Audit transcript and session URL after reload; New chat removed only active state and kept all six history rows",
     ),
     true,
   );
