@@ -15,10 +15,11 @@ Purpose: verify the capability-first Orbit framework can run the MVP relationshi
    - Confirm the Orbit relationship command center renders.
    - Confirm onboarding/account context is present through the bootstrap summary.
    - Confirm the one-task focus queue can preview an action with no external side effects.
-2. Open `/app/profile?action=complete-profile-field`.
-   - Confirm profile onboarding/editor context renders for Ari Lane.
-   - Confirm the preferred intro channel change is held for confirmation.
-   - Confirm outside services contacted is `none`.
+2. Open `/app/profile`.
+   - Confirm the authenticated profile onboarding/editor context renders.
+   - Change preferred intro channels and use the explicit save control.
+   - Confirm the saved profile is read back after refresh and no outside
+     messaging or notification service is contacted.
 3. Open `/app/contacts/new?action=confirm-manual-draft`.
    - Confirm contact acquisition renders manual add, business-card OCR, QR, external contact import, email-calendar signal, referral, and merge sections.
    - Confirm Kenji Watanabe is staged for contact review without a contact write.

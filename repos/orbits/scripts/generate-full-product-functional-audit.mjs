@@ -3386,6 +3386,21 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for source/build removal of public fixture/action controls, invisible GET recompute/audit work, and dead recovery links while preserving actor-scoped Dashboard reads; authenticated browser DOM, API-level recompute/audit controls, provider failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
   },
+  {
+    id: "web-profile-route-control-isolation-2026-07-29",
+    target:
+      "Authenticated Web Profile and shared Home, Party, Admin/Platform composition → actor-scoped profile reads separated from internal fixture controls",
+    testData:
+      "/app/profile with arbitrary scenario, action=complete-profile-field, and preferredIntroChannels query values; shared Profile loader calls from Home, Party, and Admin/Platform",
+    expected:
+      "A profile page GET must read the authenticated actor's sourced profile without selecting fixture states or fabricating an unsaved editor result from public query input. Tests must retain an explicit non-URL path to controlled route states, and every shared caller must preserve its actor boundary.",
+    actual:
+      "Before repair, the production page and three shared composers passed unrestricted search parameters to Profile. scenario selected synthetic states, while action=complete-profile-field and preferredIntroChannels built an action/choice preview that the final Profile adapter and UI never consumed and never persisted. After repair, the production page accepts no searchParams, all four production composition paths pass actor context only, scenario is available solely through typed internal controls, and the dead GET action/preview contract and helpers are removed.",
+    evidence:
+      "GitNexus pre-edit HIGH impact with four direct callers, 12 upstream symbols, and three process groups; Profile/Home/Party/Admin focused tests 49/49; complete Web suite 1355/1355; exact production build; staged GitNexus CRITICAL detection across 20 shared composition flows; commit d3f12a07",
+    conclusion:
+      "pass for source/build/full-suite separation of public query input from Profile fixture/action behavior across all known production callers; authenticated browser DOM, explicit profile API save/readback, provider failures, cache/proxy behavior, duplicate/array/encoded query values, responsive, keyboard, and assistive traversal remain unverified",
+  },
 ];
 const AUDIT_REMEDIATIONS = [
   {
@@ -4238,6 +4253,20 @@ const AUDIT_REMEDIATIONS = [
       "Focused Dashboard tests passed 5/5 and the exact production build passed. Tests prove the normal actor-scoped model, explicit-only internal empty state, real recovery hrefs, no page searchParams, and absence of run-dashboard-review, scenario URLs, recompute, and runAudit in the page composition source. GitNexus staged detection was MEDIUM across the five expected Dashboard read flows.",
     status:
       "fixed and source/build-verified for the Dashboard page boundary and recovery model; authenticated browser runtime, authenticated recompute/audit API interactions, provider failures, cache/proxy behavior, responsive, keyboard, and assistive traversal remain unverified",
+  },
+  {
+    id: "AUDIT-P1-062",
+    severity: "P1",
+    rootCause:
+      "The production Profile page and shared Home, Party, and Admin/Platform composers forwarded unrestricted URL parameters into loadAppProfileRouteViewModel. Public scenario values selected internal fixture states, while action=complete-profile-field plus preferredIntroChannels created an unsaved editor preview. The final Profile adapter and UI ignored that action result, so the GET branch was both externally activatable and behaviorally invisible.",
+    decision:
+      "Make the production Profile page actor-only, move scenario into an explicit typed controls argument, update every known production caller to pass actor context without query input, and delete the unconsumed action/intro-choice contract and formatting chain. Keep actual profile edits on the explicit authenticated profile API save/readback path.",
+    files:
+      "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts; repos/orbits/app/(app)/app/profile/page.tsx; repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx; repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts; repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts; repos/orbits/tests/pages/app-profile-live-route-services.test.ts",
+    regression:
+      "GitNexus reported HIGH pre-edit impact with four direct callers, 12 upstream symbols, and three process groups. Profile/Home/Party/Admin focused tests passed 49/49, the exact production build passed, and staged detection reported CRITICAL across 20 shared composition flows, so the complete Web suite was required and passed 1355/1355. Regression asserts that the production page has no searchParams, the loader has no query reader or complete-profile-field branch, and explicit internal scenario controls remain available.",
+    status:
+      "fixed and source/build/full-suite-verified for Profile and all known shared callers; authenticated browser runtime, profile API save/readback, provider failures, cache/proxy behavior, duplicate/array/encoded values, responsive, keyboard, and assistive traversal remain unverified",
   },
 ];
 
