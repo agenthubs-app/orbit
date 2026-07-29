@@ -52,7 +52,9 @@ test("the action ledger stays focused on audit instead of embedding settings", a
 });
 
 test("an empty ledger renders the dedicated empty state", async () => {
-  const model = await loadAppAllActionsRouteViewModel({ scenario: "empty" });
+  const model = await loadAppAllActionsRouteViewModel(undefined, undefined, {
+    scenario: "empty",
+  });
   const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
 
   assert.ok(html.includes("app-all-actions-route-empty"));

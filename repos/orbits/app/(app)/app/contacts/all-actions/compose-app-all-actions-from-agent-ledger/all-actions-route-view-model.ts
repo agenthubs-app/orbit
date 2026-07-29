@@ -14,10 +14,13 @@ import {
 import { createAgentLedgerService } from "../../../../../../features/agent/service-factory";
 import type { AgentLedgerService } from "../../../../../../features/agent/ledger/service";
 
-export type AppAllActionsSearchParams = Record<
-  string,
-  string | string[] | undefined
->;
+export interface AppAllActionsSearchParams {
+  entry?: string | string[];
+  status?: string | string[];
+}
+export interface AppAllActionsRouteControls {
+  scenario?: "empty" | "failure";
+}
 
 export type AllActionsFilterKey = "all" | AgentLedgerEntryStatus;
 
@@ -80,6 +83,7 @@ function resolveFilter(value: string | null): AllActionsFilterKey {
 export async function loadAppAllActionsRouteViewModel(
   searchParams?: AppAllActionsSearchParams,
   dependencies: AppAllActionsRouteDependencies = {},
+  controls: AppAllActionsRouteControls = {},
 ): Promise<AppAllActionsRouteViewModel> {
   if (dependencies.ledgerService === null) {
     return {
@@ -98,7 +102,7 @@ export async function loadAppAllActionsRouteViewModel(
   const service =
     dependencies.ledgerService ?? createAgentLedgerService();
   const result = await service.listEntries({
-    scenario: readParam(searchParams, "scenario"),
+    scenario: controls.scenario,
   });
 
   if (result.success === false) {

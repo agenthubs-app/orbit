@@ -57,11 +57,22 @@ test("an unknown ?status= falls back to the all bucket", async () => {
 });
 
 test("the failure scenario yields a typed failure view model", async () => {
-  const model = await loadAppAllActionsRouteViewModel({ scenario: "failure" });
+  const model = await loadAppAllActionsRouteViewModel(undefined, undefined, {
+    scenario: "failure",
+  });
 
   assert.equal(model.state, "failure");
   assert.equal(model.errorCode, "AGENT_LEDGER_MOCK_FAILED");
   assert.equal(model.entries.length, 0);
+});
+
+test("public query input cannot activate an All actions ledger scenario", async () => {
+  const model = await loadAppAllActionsRouteViewModel({
+    scenario: "failure",
+  } as unknown as Parameters<typeof loadAppAllActionsRouteViewModel>[0]);
+
+  assert.equal(model.state, "success");
+  assert.equal(model.entries.length, 6);
 });
 
 test("an explicitly missing live actor fails closed instead of showing mock entries", async () => {
