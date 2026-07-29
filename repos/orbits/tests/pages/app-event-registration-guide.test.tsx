@@ -121,6 +121,30 @@ test("/app/events/[id]/register renders the canonical guide without query setup"
   });
 });
 
+test("/app/events/[id]/register uses reviewed English identity for public catalogue events", async () => {
+  await withOrbitModuleMode("hybrid", async () => {
+    const Page = (await import("../../app/(app)/app/events/[id]/register/page"))
+      .default as (props: {
+      params: Promise<{ id: string }>;
+      searchParams?: Promise<Record<string, string | undefined>>;
+    }) => Promise<React.ReactElement>;
+    const html = renderToStaticMarkup(
+      await Page({
+        params: Promise.resolve({ id: "event_signup_01" }),
+        searchParams: Promise.resolve({ language: "en" }),
+      }),
+    );
+
+    assert.match(
+      html,
+      /<h1[^>]*>Kansai Cross-Border Business Connect<\/h1>/,
+    );
+    assert.match(html, />Osaka</);
+    assert.match(html, /At Kansai Cross-Border Business Connect,/);
+    assert.doesNotMatch(html, /关西跨境商务对接会|>大阪</);
+  });
+});
+
 test("registerable live events are not gated by the legacy deterministic-guide whitelist", () => {
   const source = readFileSync(
     join(

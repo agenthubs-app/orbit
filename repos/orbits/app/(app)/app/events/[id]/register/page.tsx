@@ -8,7 +8,11 @@ import {
   type RegistrationProfileGuideResult,
 } from "../../../../../../features/events/registration-profile-guide";
 import type { OrbitLanguage } from "../../../orbit-language-core";
-import { getOrbitServerLanguage } from "../../../orbit-language-server";
+import {
+  getOrbitServerLanguage,
+  localizeOrbitTree,
+} from "../../../orbit-language-server";
+import { eventTitleForId } from "../../../orbit-event-presentation";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
 import {
@@ -459,13 +463,21 @@ export default async function AppEventRegistrationGuidePage({
   const event = await loadEventForRegistration(id, actor?.id);
 
   if (isRegisterableEventForWorkspace(event)) {
+    const eventLanguage = language === "en" ? "en" : "zh";
     // live 活动的 title/venue 是「日/中/英」斜杠拼接串;进入画像问答前按
-    // 当前语言挑出单一段,标题展示与模型生成的题目措辞保持同一语言。
-    const localizedEvent = {
-      ...event,
-      title: localizedEventTitle(event, language === "en" ? "en" : "zh"),
-      venue: bilingualSegment(event.venue, language === "en" ? "en" : "zh"),
-    };
+    // 当前语言挑出单一段。公开目录在 DTO 层只保留中文展示字段，因此标题
+    // 优先复用按稳定活动 id 审阅过的展示内容，再由统一服务端本地化器处理
+    // 地点等中文单段；标题展示与模型生成的题目措辞由此保持同一语言。
+    const localizedEvent = localizeOrbitTree(
+      {
+        ...event,
+        title:
+          eventTitleForId(event.id, eventLanguage) ??
+          localizedEventTitle(event, eventLanguage),
+        venue: bilingualSegment(event.venue, eventLanguage),
+      },
+      eventLanguage,
+    );
     const [questionSet, registration] = await Promise.all([
       generateEventRegistrationQuestions({
         event: localizedEvent,
