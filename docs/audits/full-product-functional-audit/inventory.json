@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "7fcb1ff43b1c999d3b0ef87c970460af06d48900",
-  "deterministicSourceTime": "2026-07-30T13:58:11+09:00",
-  "sourceState": "clean-head",
-  "uncommittedAuthoritativeInputChanges": 0,
+  "generatedFromCommit": "317dc83222edb7ff3ea68f62c7ec525d57b4c67b",
+  "deterministicSourceTime": "2026-07-30T14:44:35+09:00",
+  "sourceState": "head-plus-uncommitted-authoritative-inputs",
+  "uncommittedAuthoritativeInputChanges": 6,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -42224,7 +42224,7 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/account/mobile-google/page.tsx",
-          "line": 31,
+          "line": 34,
           "tag": "h1",
           "text": "Google 登录暂时不可用"
         },
@@ -42301,7 +42301,7 @@
           "interactionId": "web:/app/account/mobile-google#interaction-2",
           "surfaceId": "web:/app/account/mobile-google",
           "sourceFile": "repos/orbits/app/(app)/app/account/mobile-google/page.tsx",
-          "line": 34,
+          "line": 37,
           "controlType": "link",
           "tag": "a",
           "visibleName": "返回邮箱登录",
@@ -75364,7 +75364,7 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
-          "line": 175,
+          "line": 178,
           "tag": "StateView",
           "text": "language === \"en\" ? \"Registration unavailable\" : \"报名暂不可用\""
         },
