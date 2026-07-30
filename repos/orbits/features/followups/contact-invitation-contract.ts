@@ -7,6 +7,7 @@ export const CONTACT_INVITATION_ERROR_CODES = [
   "CONTACT_INVITATION_INPUT_INVALID",
   "CONTACT_INVITATION_NOT_FOUND",
   "CONTACT_INVITATION_CONFIRMATION_REQUIRED",
+  "CONTACT_INVITATION_STORAGE_UNAVAILABLE",
 ] as const;
 
 export type ContactInvitationErrorCode =
@@ -77,6 +78,13 @@ export const CONTACT_INVITATION_ERROR_DEFINITIONS = {
     recovery:
       "Keep the invitation as an editable draft until the operator confirms it.",
   },
+  CONTACT_INVITATION_STORAGE_UNAVAILABLE: {
+    appCode: "SERVICE_UNAVAILABLE",
+    code: "CONTACT_INVITATION_STORAGE_UNAVAILABLE",
+    message: "Invitation storage is unavailable.",
+    recovery:
+      "Retry after the durable invitation store is configured.",
+  },
 } as const satisfies Record<
   ContactInvitationErrorCode,
   ContactInvitationErrorDefinition
@@ -96,6 +104,7 @@ export type ContactInvitationResult =
   | ContactInvitationFailure;
 
 export interface ContactInvitationService {
+  getInvitation(invitationId: string): Promise<ContactInvitationResult>;
   prepareInvitation(
     input: PrepareContactInvitationInput,
   ): Promise<ContactInvitationResult>;

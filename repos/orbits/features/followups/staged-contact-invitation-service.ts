@@ -9,10 +9,19 @@ import {
   type ContactInvitationService,
 } from "./contact-invitation-contract";
 import { createLiveMessageDraftGeneratorService } from "./live-message-draft-service";
+import type {
+  LiveRecord,
+  LiveRecordStoreLike,
+} from "../../shared/storage/live-record-store";
 
 export interface StagedContactInvitationServiceOptions {
+  actorId: string;
   now?: () => string;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
 }
+
+const CONTACT_INVITATION_COLLECTION = "contact_invitations";
 
 function nonEmpty(value: string): string | null {
   const normalized = value.trim();
@@ -24,9 +33,13 @@ function validEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function invitationIdFor(contactId: string, recipientEmail: string): string {
+function invitationIdFor(
+  actorId: string,
+  contactId: string,
+  recipientEmail: string,
+): string {
   const digest = createHash("sha256")
-    .update(`${contactId}:${recipientEmail.toLowerCase()}`)
+    .update(`${actorId}\u0000${contactId}\u0000${recipientEmail.toLowerCase()}`)
     .digest("hex")
     .slice(0, 24);
 
@@ -54,13 +67,121 @@ function success(
   };
 }
 
+function payloadFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+  actorId: string,
+): ContactInvitationPayload | null {
+  if (
+    !record ||
+    record.userId !== actorId ||
+    record.payload.actorId !== actorId
+  ) {
+    return null;
+  }
+
+  const payload = record.payload;
+  const status =
+    payload.status === "draft" || payload.status === "ready_for_delivery"
+      ? payload.status
+      : null;
+
+  if (
+    typeof payload.invitationId !== "string" ||
+    typeof payload.contactId !== "string" ||
+    typeof payload.recipientEmail !== "string" ||
+    typeof payload.recipientName !== "string" ||
+    !status ||
+    typeof payload.subject !== "string" ||
+    typeof payload.body !== "string" ||
+    typeof payload.preparedAt !== "string" ||
+    typeof payload.updatedAt !== "string" ||
+    payload.externalSendRequested !== false ||
+    payload.emailProviderRequested !== false ||
+    payload.messageSent !== false ||
+    typeof payload.nextAction !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    invitationId: payload.invitationId,
+    contactId: payload.contactId,
+    recipientEmail: payload.recipientEmail,
+    recipientName: payload.recipientName,
+    status,
+    subject: payload.subject,
+    body: payload.body,
+    preparedAt: payload.preparedAt,
+    updatedAt: payload.updatedAt,
+    externalSendRequested: false,
+    emailProviderRequested: false,
+    messageSent: false,
+    nextAction: payload.nextAction,
+  };
+}
+
+function invitationRecord(input: {
+  actorId: string;
+  payload: ContactInvitationPayload;
+  workspaceId: string;
+}): LiveRecord<Record<string, unknown>> {
+  return {
+    workspaceId: input.workspaceId,
+    collectionName: CONTACT_INVITATION_COLLECTION,
+    recordId: input.payload.invitationId,
+    userId: input.actorId,
+    sourceType: "manual",
+    sourceId: input.payload.invitationId,
+    sourceLabel: "contact-invitation-staged",
+    evidenceIds: [`evidence:${input.payload.invitationId}`],
+    targetType: "contact",
+    targetId: input.payload.contactId,
+    occurredAt: input.payload.updatedAt,
+    createdAt: input.payload.preparedAt,
+    updatedAt: input.payload.updatedAt,
+    lifecycleState: "active",
+    searchText: [
+      input.payload.recipientName,
+      input.payload.recipientEmail,
+      input.payload.subject,
+    ].join(" "),
+    payload: {
+      ...input.payload,
+      actorId: input.actorId,
+    },
+  };
+}
+
 export function createStagedContactInvitationService({
+  actorId,
   now = () => new Date().toISOString(),
-}: StagedContactInvitationServiceOptions = {}): ContactInvitationService {
-  const invitations = new Map<string, ContactInvitationPayload>();
+  store,
+  workspaceId,
+}: StagedContactInvitationServiceOptions): ContactInvitationService {
   const messageDraftService = createLiveMessageDraftGeneratorService();
 
   return {
+    async getInvitation(invitationIdInput) {
+      const invitationId = nonEmpty(invitationIdInput);
+
+      if (!invitationId) {
+        return failure("CONTACT_INVITATION_INPUT_INVALID");
+      }
+
+      const payload = payloadFromRecord(
+        await store.getRecord({
+          collectionName: CONTACT_INVITATION_COLLECTION,
+          recordId: invitationId,
+          workspaceId,
+        }),
+        actorId,
+      );
+
+      return payload
+        ? success(payload)
+        : failure("CONTACT_INVITATION_NOT_FOUND");
+    },
+
     async prepareInvitation(input) {
       const contactId = nonEmpty(input.contactId);
       const recipientEmail = nonEmpty(input.recipientEmail)?.toLowerCase();
@@ -88,8 +209,20 @@ export function createStagedContactInvitationService({
         return failure("CONTACT_INVITATION_INPUT_INVALID");
       }
 
-      const preparedAt = now();
-      const invitationId = invitationIdFor(contactId, recipientEmail);
+      const invitationId = invitationIdFor(
+        actorId,
+        contactId,
+        recipientEmail,
+      );
+      const existing = payloadFromRecord(
+        await store.getRecord({
+          collectionName: CONTACT_INVITATION_COLLECTION,
+          recordId: invitationId,
+          workspaceId,
+        }),
+        actorId,
+      );
+      const preparedAt = existing?.preparedAt ?? now();
       const payload: ContactInvitationPayload = {
         invitationId,
         contactId,
@@ -107,7 +240,9 @@ export function createStagedContactInvitationService({
           "Review and edit the invitation, then confirm it separately from contact creation.",
       };
 
-      invitations.set(invitationId, payload);
+      await store.upsertRecord(
+        invitationRecord({ actorId, payload, workspaceId }),
+      );
 
       return success(payload);
     },
@@ -125,7 +260,14 @@ export function createStagedContactInvitationService({
         return failure("CONTACT_INVITATION_INPUT_INVALID");
       }
 
-      const prepared = invitations.get(invitationId);
+      const prepared = payloadFromRecord(
+        await store.getRecord({
+          collectionName: CONTACT_INVITATION_COLLECTION,
+          recordId: invitationId,
+          workspaceId,
+        }),
+        actorId,
+      );
 
       if (!prepared) {
         return failure("CONTACT_INVITATION_NOT_FOUND");
@@ -144,9 +286,22 @@ export function createStagedContactInvitationService({
           "Configure an email delivery provider before sending this invitation.",
       };
 
-      invitations.set(invitationId, payload);
+      await store.upsertRecord(
+        invitationRecord({ actorId, payload, workspaceId }),
+      );
 
       return success(payload);
     },
+  };
+}
+
+export function createUnavailableContactInvitationService(): ContactInvitationService {
+  const unavailable = async (): Promise<ContactInvitationResult> =>
+    failure("CONTACT_INVITATION_STORAGE_UNAVAILABLE");
+
+  return {
+    confirmInvitation: unavailable,
+    getInvitation: unavailable,
+    prepareInvitation: unavailable,
   };
 }

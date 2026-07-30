@@ -7,10 +7,16 @@ import { createLiveMessageDraftGeneratorService } from "./live-message-draft-ser
 import { createMockMessageDraftGeneratorService } from "./mock-message-draft-service";
 import { createMockFollowupTaskGenerationService } from "./mock-service";
 import { createStagedContactInvitationService } from "./staged-contact-invitation-service";
+import { createUnavailableContactInvitationService } from "./staged-contact-invitation-service";
 import type { ContactInvitationService } from "./contact-invitation-contract";
 import type { MessageDraftGeneratorService } from "./message-draft-contract";
 import type { FollowupTaskGenerationService } from "./service";
 import { createConfiguredStorageFollowupTaskProvider } from "./storage/followup-live-record-provider";
+import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import {
+  createMemoryLiveRecordStore,
+  type LiveRecordStoreLike,
+} from "../../shared/storage/live-record-store";
 
 export const followupTaskGenerationServiceFactory =
   createModuleServiceFactory<FollowupTaskGenerationService>({
@@ -34,17 +40,15 @@ export const messageDraftGeneratorServiceFactory =
     },
   });
 
-const stagedContactInvitationService =
-  createStagedContactInvitationService();
+const mockContactInvitationStore =
+  createMemoryLiveRecordStore<Record<string, unknown>>();
 
-export const contactInvitationServiceFactory =
-  createModuleServiceFactory<ContactInvitationService>({
-    capabilityId: "contact-invitation-staged",
-    implementations: {
-      live: () => stagedContactInvitationService,
-      mock: () => stagedContactInvitationService,
-    },
-  });
+export interface ContactInvitationServiceContext {
+  actorId: string;
+  now?: () => string;
+  store?: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}
 
 export function resolveFollowupTaskGenerationService(
   mode?: ModuleMode | string,
@@ -84,14 +88,44 @@ export function createMessageDraftGeneratorService(
 
 export function resolveContactInvitationService(
   mode?: ModuleMode | string,
+  context?: ContactInvitationServiceContext,
 ) {
-  return contactInvitationServiceFactory.create(mode);
+  if (!context?.actorId.trim() || !context.workspaceId.trim()) {
+    return {
+      success: false as const,
+      error: {
+        message: "An authenticated actor is required for contact invitations.",
+      },
+    };
+  }
+
+  const normalizedMode = mode === "live" ? "live" : "mock";
+  const configured =
+    normalizedMode === "live" && !context.store
+      ? createConfiguredPostgresLiveRecordStore()
+      : null;
+  const store =
+    context.store ??
+    (normalizedMode === "live" ? configured?.store : mockContactInvitationStore);
+
+  return {
+    success: true as const,
+    service: store
+      ? createStagedContactInvitationService({
+          actorId: context.actorId,
+          now: context.now,
+          store,
+          workspaceId: context.workspaceId,
+        })
+      : createUnavailableContactInvitationService(),
+  };
 }
 
 export function createContactInvitationService(
   mode?: ModuleMode | string,
+  context?: ContactInvitationServiceContext,
 ): ContactInvitationService {
-  const resolution = resolveContactInvitationService(mode);
+  const resolution = resolveContactInvitationService(mode, context);
 
   if (resolution.success === false) {
     throw new Error(resolution.error.message);
