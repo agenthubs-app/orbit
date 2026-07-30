@@ -33,6 +33,26 @@ const controlStyle = {
   width: "100%",
 } as const;
 
+const memorySwitchLabelStyle = {
+  flex: 1,
+  minWidth: 0,
+  overflowWrap: "anywhere",
+  textAlign: "left",
+  whiteSpace: "normal",
+} as const;
+
+const memorySwitchStateStyle = {
+  flexShrink: 0,
+} as const;
+
+const memorySwitchStyle = {
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  minWidth: 0,
+  whiteSpace: "normal",
+  width: "100%",
+} as const;
+
 function apiError(value: unknown, fallback: string): string {
   if (
     typeof value === "object" &&
@@ -368,13 +388,13 @@ export function OrbitAgentMemorySettings() {
                 void updateSettings({ enabled: !settings.enabled })
               }
               role="switch"
-              style={{ justifyContent: "space-between", width: "100%" }}
+              style={memorySwitchStyle}
               type="button"
             >
-              <span>
+              <span style={memorySwitchLabelStyle}>
                 {t({ en: "Use memory in Agent replies", zh: "在 Agent 回复中使用记忆" })}
               </span>
-              <span className="chip">
+              <span className="chip" style={memorySwitchStateStyle}>
                 {settings.enabled
                   ? t({ en: "On", zh: "开启" })
                   : t({ en: "Off", zh: "关闭" })}
@@ -391,16 +411,16 @@ export function OrbitAgentMemorySettings() {
                 })
               }
               role="switch"
-              style={{ justifyContent: "space-between", width: "100%" }}
+              style={memorySwitchStyle}
               type="button"
             >
-              <span>
+              <span style={memorySwitchLabelStyle}>
                 {t({
                   en: "Allow approved learning from conversations",
                   zh: "允许从对话中经确认后学习",
                 })}
               </span>
-              <span className="chip">
+              <span className="chip" style={memorySwitchStateStyle}>
                 {settings.allowConversationLearning
                   ? t({ en: "On", zh: "开启" })
                   : t({ en: "Off", zh: "关闭" })}
