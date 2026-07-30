@@ -971,7 +971,8 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "natural-language Playbook compilation initially failed on an invalid model schema, then succeeded after a bounded fail-closed retry without expanding the read-only capability whitelist",
         "Playbook dry-run initially lost actor identity, then returned the current actor's truthful empty follow-up result after actor propagation was repaired",
         "temporary Playbooks completed trial, enable, immediate run, pause, resume, version-two edit, history disclosure, cancel-edit, and double-confirm delete before final cleanup",
-        "result-learning deletion and integration connect, health, and disconnect actions remained absent because the actor had zero feedback records and all three providers were explicitly unconfigured",
+        "the original actor had zero feedback records; a later isolated two-actor run rendered result-learning deletion, preserved the record under a controlled 503, deleted it on retry, converged under rapid duplicate activation and preserved cross-actor isolation",
+        "integration connect, health, and disconnect success actions remained absent because all three providers were explicitly unconfigured",
       ],
       verificationCase: "web-settings-actor-scoped-lifecycle-2026-07-29",
       verificationConclusion:
@@ -990,7 +991,7 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx:168",
+    "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx#onchange:(value) => updateValue(field, value)#null",
     {
       actualResult:
         "Submitting account C credentials issued a browser-managed HttpOnly Auth.js cookie, validated the session, and returned to the actor-owned /profile.",
@@ -1623,47 +1624,47 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
       "Refresh runtime status completed read-only and preserved deepseek configured, durable database, and worker-not-observed states.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:363",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => void updateSettings({ enabled: !settings.enabled })#Use memory in Agent replies / 在 Agent 回复中使用记忆 On / 开启 / Off / 关闭",
       "Use memory changed from on to off, survived hard reload, then returned to on and survived the final reload.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:383",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => void updateSettings({ allowConversationLearning: !settings.allowConversationLearning, })#Allow approved learning from conversations / 允许从对话中经确认后学习 On / 开启 / Off / 关闭",
       "Approved conversation learning changed from off to on, survived hard reload, then returned to off and survived the final reload.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:433",
+      'repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onchange:(event) => setCategory(event.target.value as AgentMemoryCategory)#t({ en: "Memory category", zh: "记忆分类" })',
       "Memory category changed from Preferences to Goals and returned to Preferences without creating a record.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:450",
+      'repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onchange:(event) => setContent(event.target.value)#t({ en: "Memory content", zh: "记忆内容", })',
       "Memory content accepted the clearly named temporary audit value used for create and reload verification.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:468",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => void createMemory()#Saving… / 正在保存… / Save memory / 保存记忆",
       "Save memory created one manual actor-scoped record and cleared the composer only after the API returned it.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:535",
+      'repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onchange:(event) => setEditCategory( event.target.value as AgentMemoryCategory, )#t({ en: "Edit memory category", zh: "编辑记忆分类", })',
       "Edit memory category changed to Goals inside the editor; Cancel discarded that unsaved category.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:554",
+      'repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onchange:(event) => setEditContent(event.target.value)#t({ en: "Edit memory content", zh: "编辑记忆内容", })',
       "Edit memory content accepted the revised audit value that later survived hard reload.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:574",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => void saveEdit(memory)#Save changes / 保存修改",
       "Save changes persisted the revised memory content and hard reload returned the same actor-scoped record.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:582",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => setEditingId(null)#Cancel / 取消",
       "Cancel closed the memory editor and discarded the unsaved category change.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:633",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => startEditing(memory)#Edit / 编辑",
       "Edit opened the selected temporary memory rather than another actor's record.",
     ],
     [
-      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx:641",
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx#onclick:() => void remove(memory)#Confirm delete / 确认删除 / Delete / 删除",
       "Delete changed to Confirm delete on the first click and removed both temporary memories only on the second click; final reload showed zero memories.",
     ],
     [
@@ -1688,6 +1689,19 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
 );
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
+  [
+    "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-feedback-settings.tsx#onclick:() => void remove(item.runId)#Deleting… / 正在删除… / Delete learning record / 删除学习记录",
+    {
+      actualResult:
+        "The actor-owned feedback record remained visible with a disabled 正在删除… control while pending. A controlled delayed 503 restored the delete control and preserved the row; retry removed it, hard reload stayed empty, rapid duplicate activation converged to one deleted state, and actor B never observed or mutated actor A's record.",
+      testData:
+        "Two disposable authenticated actors in workspace:web-write-risk-activation-20260730 with one formal actor-A feedback record and zero actor-B feedback records",
+      idempotency:
+        "Rapid double activation plus two repeated actor-A service removals and one actor-B removal left both actors at zero feedback records without duplicate or cross-actor mutation.",
+      verificationCase:
+        "web-settings-feedback-delete-two-actor-lifecycle-2026-07-30",
+    },
+  ],
   [
     "web:/app/admin|repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx:39",
     {
@@ -2190,7 +2204,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
+    "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx#owner:HomeEventRow#onclick:(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }#{content}",
     {
       actualResult:
         "Selecting 功能审计私有活动 20260729 opened /app/events/event%3Alive-record%3A20260729 and preserved the actor-owned event identity.",
@@ -2202,7 +2216,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:238",
+    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx#owner:MyEventsBlock#onclick:() => setTab(key)#{label} {counts[key]}",
     {
       actualResult:
         "Selecting 历史 0 changed the result to an explicit empty state; selecting 全部 restored the same one-event list.",
@@ -2214,7 +2228,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx:223",
+    "web:/app/home/events|repos/orbits/app/(app)/app/home/orbit-real-home.tsx#owner:HomeEventRow#onclick:(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }#{content}",
     {
       actualResult:
         "After restoring 全部, selecting the event opened its exact encoded actor-owned dynamic detail.",
@@ -2223,6 +2237,18 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       idempotency:
         "Read-only navigation; no event, registration, attendee, recommendation, profile, or external record was written.",
       verificationCase: "web-home-private-event-boundaries-2026-07-29",
+    },
+  ],
+  [
+    "web:/app/home|repos/orbits/app/(app)/app/home/orbit-real-home.tsx#owner:HomeEventRow#onclick:() => enterEvent(event.id)#{content}",
+    {
+      actualResult:
+        "Selecting the actor-owned ended Home event navigated to /app/party with its exact encoded eventId; Party resolved the same event before truthfully reporting that reviewed attendee/recommendation context was unavailable.",
+      testData:
+        "Disposable authenticated actor user_ms6bsfaj_6f80wx and event:live-record:audit-dynamic-20260730-event-success-a",
+      idempotency:
+        "Read-only navigation; no event, attendee, recommendation, profile, message, notification, calendar, or external record was written.",
+      verificationCase: "home-party-event-identity-repair-2026-07-30",
     },
   ],
   [
@@ -2238,7 +2264,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/today|repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx:524",
+    "web:/app/today|repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx#onclick:onClose#Got it / 知道了",
     {
       actualResult:
         "知道了 closed the unconfigured-service explanation and returned to the unchanged Today page.",
@@ -2717,7 +2743,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1287",
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx##Add contacts / 添加联系人",
     {
       actualResult:
         "添加联系人 left the repaired picker and opened the fail-closed import hub.",
@@ -2729,7 +2755,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1310",
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx#onclick:onClose#Cancel / 取消",
     {
       actualResult:
         "取消 closed the introduction composer and returned to the unchanged zero-entry ledger.",
@@ -2740,7 +2766,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1363",
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx#onclick:() => setComposerOpen(true)#Make introduction / 发起引荐",
     {
       actualResult:
         "发起引荐 opened a draft-only composer, left 保存草稿 disabled, and stated that nothing would be sent.",
@@ -2752,7 +2778,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1368",
+    "web:/app/contacts/intros|repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx:1370",
     {
       actualResult:
         "草稿 0, 已发送 0, and 全部 0 each became the pressed filter in turn while preserving the explicit no-match state and zero counts.",
@@ -4555,7 +4581,596 @@ const VERIFIED_AUDIT_CASES = [
     conclusion:
       "pass for awaiting-confirmation Run/action cancellation, terminal control removal, user-facing bilingual copy, pending feedback copy, actor isolation, zero task/outbox/receipt/external writes, exact-session reload, independent repeat scenario, session cleanup, focused/full tests, lint, and build; cancellation after an outbox operation has begun, forced network failure, rapid concurrent activation, mobile width, keyboard, and assistive-technology announcement timing remain separately unverified",
   },
+  {
+    id: "expo-actor-snapshot-ownership-repair-2026-07-29",
+    target:
+      "Expo authenticated API snapshot key, unsigned cache boundary, direct actor replacement, and legacy actor-less rows",
+    testData:
+      "Deterministic server A/B and actor A/B snapshot keys, unsigned resource loads, account replacement and legacy row cleanup through the production snapshot/session modules",
+    expected:
+      "Private snapshots must be owned by server plus actor plus path; unsigned state must not read or write them; replacing actor A with actor B must clear the previous snapshot set.",
+    actual:
+      "The v2 key includes server, actor and path, actor-less legacy rows are purged, unsigned resources skip snapshot reads/writes, and direct account replacement clears stored snapshots before accepting the second actor.",
+    evidence:
+      "repos/orbit-app/tests/snapshot-store.test.ts; Expo full suite 538/538; Expo typecheck",
+    conclusion:
+      "repair passes source and unit/integration boundaries; native actor-A cache to actor-B pre-network tree and SQLite ownership remain unverified",
+  },
+  {
+    id: "canonical-contact-identity-repair-2026-07-29",
+    target:
+      "Contact-detail relationship compose identity and follow-up tasks with no canonical contact",
+    testData:
+      "Exact contactId compose/create requests plus actor-owned follow-up records whose contactId is null",
+    expected:
+      "Relationship drafts must retain the selected canonical contact identity. A task without contactId must remain task-only and expose no fabricated person, detail link or email action.",
+    actual:
+      "The compose/create contract now carries contactId end to end. Null-contact tasks render 未关联联系人 and no longer synthesize a contact id, detail route or compose action across Followups, Today and Schedule projections.",
+    evidence:
+      "Focused relationship/follow-up/Today tests 44/44; Web full suite 1398/1398; production build",
+    conclusion:
+      "repair passes contract and cross-surface regression; same-name two-actor UI write/readback and foreign-contact negative runtime remain unverified",
+  },
+  {
+    id: "relationship-inbox-singleton-idempotency-repair-2026-07-29",
+    target:
+      "Responsive Relationship Inbox trigger arbitration, badge reads and create-draft-thread replay",
+    testData:
+      "Responsive sibling triggers, concurrent badge reads and repeated actor/requestId create requests through the live conversation provider",
+    expected:
+      "Only the actually rendered trigger may own the shared panel; concurrent badge reads must share one request; replaying the same actor/requestId must return the first record without another durable write.",
+    actual:
+      "Trigger ownership is selected by rendered geometry, badge reads share one in-flight request, requestId is hashed with actor identity, and provider replay returns the first actor-scoped record without overwriting it. At 375x812 the rebuilt account shell exposed one mobile Inbox trigger and one portal/dialog; /app/agent exposed that Inbox trigger alongside the independent history trigger. Four registered listeners shared the event, but only the visible owner consumed it.",
+    evidence:
+      "Relationship inbox panel/provider focused tests; Web full suite 1400/1400 before the final audit-only additions; lint and production build; harness-state/evidence/full-product-functional-audit/shards/web-contacts-chat-gap-closure/post-fix-evaluation.json",
+    conclusion:
+      "pass for responsive ownership, one visible mobile trigger, Agent Inbox/history coexistence, one portal/dialog, single event consumption, shared badge load, actor-bound request identity, durable same-actor replay, first-content preservation, and independent second-actor identity",
+  },
+  {
+    id: "shared-shell-state-boundaries-repair-2026-07-29",
+    target:
+      "Chat empty-state account/Inbox shell and entry Starfield mobile menu disclosure lifecycle",
+    testData:
+      "Production /app/chat empty actor plus / and /app at 390x844 with pointer, Tab and Escape",
+    expected:
+      "Route failure/empty states must remain inside the shared account shell. The mobile menu must expose truthful disclosure state, remove closed links from interaction, support dismissal and return focus.",
+    actual:
+      "/app/chat rendered account and Inbox controls around its empty state. Both entry routes exposed aria-expanded, hidden/inert closed content, keyboard entry, Escape/outside/link dismissal and focus return without console errors.",
+    evidence:
+      "Chat route-state tests 11/11; Starfield focused tests 32/32; harness-state/evidence/full-product-functional-audit/shards/entry-shell-parity-current/result.json; runtime-evidence.json; parity-orphan-review.json; route-instance-status.json",
+    conclusion:
+      "pass for the exercised shared empty-state shell, both entry routes at three widths, canonical language continuity, mobile-menu pointer/keyboard lifecycle, 84/84 route-instance conclusions, 94/94 route assignments and zero proven orphan routes; 20 Agent handoff controls remain explicitly external-limited by the read-only shard boundary, while physical touch and VoiceOver/TalkBack announcements remain unverified",
+  },
+  {
+    id: "event-temporal-source-of-truth-repair-2026-07-29",
+    target:
+      "Public event catalogue, detail header, authored description and agenda time authority",
+    testData:
+      "Reviewed catalogue events including EVTSIGNUP03 and invalid end-equals-start inputs",
+    expected:
+      "startsAt/endsAt must determine every rendered time; generated events must have positive duration; agenda rows may not outlive or contradict their event.",
+    actual:
+      "Generated events end two hours after start, presentation derives header/detail/agenda from the same bounds, and invalid non-positive intervals expose 结束时间待确认 with no fabricated agenda. EVTSIGNUP03 consistently rendered 18:00-20:00 with 18:00/18:30/19:00/19:30 agenda rows.",
+    evidence:
+      "Event focused tests 18/18; Web full suite 1398/1398; lint/build; production browser /app/events/EVTSIGNUP03",
+    conclusion:
+      "pass for repaired source/presentation integrity and exercised production detail; provider failures, all dynamic identities, responsive and assistive traversal remain unverified",
+  },
+  {
+    id: "production-dev-surface-boundary-repair-2026-07-29",
+    target:
+      "All fixed and dynamic /dev routes in production plus adjacent app/API authentication",
+    testData:
+      "Seven fixed paths, 49 registered capability slugs, one unknown slug, /app/contacts and /api/contacts against the exact local production build",
+    expected:
+      "Every /dev surface must fail closed in production without weakening adjacent authentication; development-only decision specimens must be truthfully non-interactive.",
+    actual:
+      "All 57 dev paths returned 404, /app/contacts retained its login redirect, /api/contacts retained its 401 envelope, and development foundation decision specimens are explicitly disabled.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/shards/web-dev-routes-runtime/result.json; route-instance-map.json; production-route-smoke.json; development-route-smoke.json; runtime-observations.json; tests/dev/production-dev-runtime.test.mjs 2/2; production build",
+    conclusion:
+      "pass for 384/384 inventoried route instances mapped to 154 implementations, the exact local production artifact, inherited route-group boundary, development identity, controlled unknown-slug fallback, keyboard-native disclosure and truthful inert style specimens; deployed edge/proxy host, authorized development-tunnel exposure and reliable 375/390 client-runtime traversal remain unverified",
+  },
+  {
+    id: "expo-private-route-and-next-boundary-repair-2026-07-29",
+    target:
+      "Expo private grouped/root route render gates and normalized post-auth next destinations",
+    testData:
+      "Signed-out Expo Web /contacts?q=runtime, /today?filter=pending, public /events, external/scheme-relative/malformed/unsupported next unit matrix",
+    expected:
+      "A private leaf must not mount before validated auth, its exact supported internal destination must survive login, and public discovery routes must remain reachable. External or unsupported next values must fail closed.",
+    actual:
+      "/contacts and /today reached login with their exact encoded next values and no maximum-update loop; /events remained public. Every current root-level private route is discovered from the route tree and required to use the shared render gate. The next resolver rejects external, scheme-relative, backslash, auth-loop and unknown destinations.",
+    evidence:
+      "Expo route/access/auth tests; Expo full suite 538/538; typecheck; Expo Web browser route matrix with zero console errors",
+    conclusion:
+      "pass for Expo Web private/public routing and normalized next matrix; native cold/warm deep links, cached-session expiry and offline snapshot states remain unverified",
+  },
+  {
+    id: "contact-introduction-request-idempotency-repair-2026-07-29",
+    target:
+      "Contact introduction composer request identity, retry replay, first-content preservation and actor isolation",
+    testData:
+      "Stable requestId reused with altered retry content for actor A, then the same requestId for actor B; disposable audit rows cleaned after provider readback",
+    expected:
+      "A retry from one composer must return the first actor-owned introduction without another durable row or overwrite. Another actor using the same requestId must receive an independent identity.",
+    actual:
+      "The composer creates one requestId and reuses it across retries. The repository derives identity from actor plus requestId, returns the existing actor-owned record before writing, preserved the first content after an altered retry, kept one active row for actor A, and produced an independent id for actor B.",
+    evidence:
+      "Introduction repository/API focused regressions; harness-state/evidence/full-product-functional-audit/shards/web-contacts-chat-gap-closure/post-fix-evaluation.json; ten disposable audit records removed and active audit set returned empty",
+    conclusion:
+      "pass for stable composer identity, retry idempotency, first-write preservation, actor isolation, durable readback and cleanup; rapid real-browser double activation and forced network timeout remain separately unverified",
+  },
+  {
+    id: "expo-public-event-contract-repair-2026-07-29",
+    target:
+      "Signed-out Expo event discovery/detail plus private registration and attendee boundaries",
+    testData:
+      "Signed-out Expo Go iOS defect reproduction followed by rebuilt Expo Web /events, /events/event_signup_02 and registration navigation against the exact-origin production API",
+    expected:
+      "Public discovery and exact event detail must not depend on a private session. Personalized modules must stay unmounted while signed out, and deeper registration/attendee workflows must preserve the destination through the shared private gate.",
+    actual:
+      "The original native run returned 401 and 登录状态已失效 on /events. After repair, Expo Web and native Expo Go iOS both rendered 13 public events and the exact 东京 AI 落地伙伴对接会 detail without 401. The native 报名参加 action reached the login form with /account/login?next=%2Fevents%2Fevent_signup_02%2Fregister.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/shards/mobile-gap-closure/ios-expo-events-unauthenticated-401-clean.png; post-fix-expo-web-events-runtime.json; harness-state/evidence/full-product-functional-audit/shards/mobile-post-fix-events-native/result.json; native XCUITest 2/2; related mobile tests 10/10; public API tests 3/3; Expo full suite 538/538; typecheck; production build 39/39",
+    conclusion:
+      "pass for the repaired public list/detail data contract, signed-out personalization boundary, exact private next preservation, Expo Web and post-fix native iOS runtime; Android remains externally unavailable",
+  },
+  {
+    id: "entry-language-authority-repair-2026-07-29",
+    target:
+      "Root Starfield language choice, reload persistence, document language and /app shell continuity",
+    testData:
+      "Production browser English selection at /, root reload, then direct /app navigation",
+    expected:
+      "The entry and application shell must share one canonical language authority, migrate the legacy entry key, persist the cookie, and keep documentElement.lang synchronized.",
+    actual:
+      "Before repair the root stayed English after reload while html lang remained zh-CN and /app returned Chinese. After repair, English text and html lang=en survived root reload and direct /app navigation.",
+    evidence:
+      "In-app production browser before/after traversal; tests/pages/orbit-starfield-language.test.ts; focused Starfield tests 7/7; lint and production build",
+    conclusion:
+      "pass for canonical localStorage/cookie resolution, legacy-key migration, root reload, document language and /app continuity; cross-tab storage events and manual screen-reader language switching remain open",
+  },
+  {
+    id: "public-web-rendered-leaf-base-states-2026-07-29",
+    target:
+      "Anonymous public Web base states at mobile, tablet and desktop viewport widths",
+    testData:
+      "13 public/auth-entry/alias routes rendered from the current production build at 375x812, 768x1024 and 1440x900",
+    expected:
+      "Every named base state must remain observable, enumerate only visible leaf controls, report state identity and overflow, and surface request/response/console failures without claiming unvisited interaction states.",
+    actual:
+      "All 39 route-viewport states were available. The collector observed 377 leaf-control occurrences and 33 unique state keys with no HTTP error responses, request failures, console errors or horizontal overflow. / and /app were equivalent per viewport; /app/admin/access and /app/login-admin were equivalent per viewport.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/public-web-2026-07-29/manifest.json and per-state screenshots/browser JSON",
+    conclusion:
+      "pass for the 39 explicitly named anonymous base states; this is a state-local observation and not the whole-product rendered-leaf denominator",
+  },
+  {
+    id: "anonymous-web-event-detail-private-request-repair-2026-07-29",
+    target:
+      "Signed-out Web /app/events/event_signup_02 data-access boundary",
+    testData:
+      "Exact local production event detail observed with HTTP response-error collection before and after repair",
+    expected:
+      "A public event detail must not issue private matchmaking or registration requests while signed out.",
+    actual:
+      "Before repair the 200 page made two hidden 401 requests to /matchmaking and /registration?questions=false. After auth state was passed into both client modules, the same page rendered 17 desktop leaf controls with zero HTTP error responses, failed requests, console errors or settle warnings.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/public-web-2026-07-29/detail-response-diagnostic.json; public-event-detail-post-fix.json; full 13-route post-fix manifest; focused event tests 17/17; production build 39/39",
+    conclusion:
+      "pass for the exercised signed-out Web event detail and its private subrequest boundary; authenticated matchmaking/registration states remain separately scoped",
+  },
+  {
+    id: "event-registration-jsonb-order-idempotency-repair-2026-07-29",
+    target:
+      "Authenticated event_signup_02 eight-answer registration write, replay and actor isolation",
+    testData:
+      "Production handler and PostgreSQL using the same eight semantic answers in canonical, reversed and shuffled key order, followed by one legitimate valueOffered change and a second actor read",
+    expected:
+      "Semantic retries must preserve one registration, all stable identities and timestamps without side effects; a real answer change must still persist and advance update timestamps; another actor must not see the record.",
+    actual:
+      "Before repair JSONB key reordering advanced updatedAt on every semantic retry. After field-by-field canonical comparison, all three semantic POSTs returned 200 with the same registration/profile identities and 15:18:29.640Z timestamps, one active row and all side effects false. Changing only valueOffered persisted the new value and advanced both update timestamps to 15:18:29.760Z. Actor B saw null at handler and provider layers.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/shards/web-event-registration-runtime-closure/result.json; harness-state/evidence/full-product-functional-audit/shards/web-event-registration-post-fix-evaluator/result.json; focused event registration tests 9/9; evaluator cleanup includeDeleted count=0",
+    conclusion:
+      "pass for eight-answer submission, refresh readback, JSONB-order-insensitive replay, legitimate update, one-row persistence, no external side effects and actor isolation; provider/model failure injection remains externally limited",
+  },
+  {
+    id: "web-chat-recording-idempotency-and-ui-repair-2026-07-29",
+    target:
+      "Authenticated /app/chat message-recording UI, API replay, PostgreSQL persistence and actor isolation",
+    testData:
+      "Production UI double activation; same requestId with identical and altered content; different requestIds with identical content; controlled live failure followed by retry; two actors; exact cleanup",
+    expected:
+      "The page must expose an honest storage-only recording lifecycle, synchronously suppress duplicate activation, preserve the first write for a stable request identity, allow intentional repeats under new identities, recover from failure and keep actors isolated.",
+    actual:
+      "Before repair the page was review-only and the API created two durable messages for duplicate activation. After repair it exposed one composer; double activation produced one POST, one active row and one reloaded UI article. Same-request altered replay returned the original id/content, different-request identical content produced two ids, controlled failure copy contained no mock-boundary wording and retry succeeded. Actor A/B reads and writes stayed isolated.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/shards/web-chat-runtime-closure/runtime-evaluation.json; harness-state/evidence/full-product-functional-audit/shards/web-chat-post-fix-evaluator/evaluation.json; raw-evidence.json; provenance-followup.json; focused Chat/Agent-context tests 29/29; evaluator cleanup active set empty",
+    conclusion:
+      "pass for the exercised UI pending/duplicate lifecycle, request replay, first-write preservation, intentional repeat, failure retry, durable readback and actor isolation; conversation deletion/retention policy remains a separate product lifecycle decision",
+  },
+  {
+    id: "shared-inbox-request-scoped-actor-repair-2026-07-30",
+    target:
+      "Authenticated Notifications and Relationship Inbox shared-shell requests across Dashboard, Home, Home Events, Schedule event detail and Today",
+    testData:
+      "Five authenticated route surfaces, ten automatic shared API reads, two anonymous reads, canonical profile/account actors A and B, actor-A-only conversation data and another-actor empty notification/inbox reads",
+    expected:
+      "Auth.js must stay bound to the concrete Next.js request while the shared handlers resolve the canonical account owner. Successful actor-scoped empty data must render as an honest empty Threads/Alerts/badge state, anonymous calls must remain 401, and no handler may call headers outside request scope or reveal another actor's data.",
+    actual:
+      "Before repair both shared APIs returned 500 in authenticated Next.js 16.2.9 development runtime because a factory-created handler re-entered zero-argument auth() outside request scope; Threads rendered Mailbox not connected and Alerts/badge masked the failure as empty. After both route modules were wrapped with auth(async request), all ten authenticated reads returned 200, zero returned 500, and the server logged zero headers-outside-request-scope stacks. Threads rendered a successful zero-conversation state, Alerts rendered All clear from a successful empty response, and badge zero agreed. Both anonymous reads remained exact 401. Canonical actor A/B resolution and other-actor empty reads passed.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/shards/web-home-today-schedule-followups-dashboard/shared-api-failure.md; harness-state/evidence/full-product-functional-audit/shards/shared-inbox-request-auth-post-fix/result.json; runtime-observations.json; server-log.md; source-evidence.md; focused tests 27/27; Web full suite 1408/1408; lint; production build 39/39",
+    conclusion:
+      "pass for the exercised authenticated GET runtime, honest shared-shell UI state, anonymous boundary, request-scoped canonical actor mapping and provider-level actor isolation across 130 affected route instances; the independent read-only evaluator did not execute a valid live compose POST, and used development rather than production runtime",
+  },
+  {
+    id: "contacts-dashboard-mobile-root-layout-repair-2026-07-30",
+    target:
+      "Authenticated Web /app/contacts/dashboard at the 390x844 mobile viewport",
+    testData:
+      "Canonical authenticated actor, the current actor-scoped empty dashboard data, desktop/mobile responsive roots and independent pre/post full-page DOM geometry captures",
+    expected:
+      "The desktop root must be inert and occupy no space at mobile width. The mobile root must begin at x=0/y=0, flow vertically, remain within the 390px viewport and expose the real dashboard content without horizontal overflow.",
+    actual:
+      "Before repair the outer desktop main remained visible at mobile width, occupied the first 844px and forced the mobile flex root beside it; document scrollWidth was 641px and the first viewport appeared blank. After moving the desktop-only boundary to the outer main and making the mobile root an explicit full-width column, the desktop root measured 0x0 and was inert/aria-hidden, the mobile root measured 390x844 at 0,0, and document/body clientWidth and scrollWidth were all exactly 390.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/authenticated-web-current/p1-contacts-dashboard-mobile-390-pre.json; p1-contacts-dashboard-mobile-390-fullpage.png; p1-contacts-dashboard-mobile-390-post.json; postfix-contacts-dashboard-mobile-390-fullpage.png; focused dashboard/a11y tests 6/6",
+    conclusion:
+      "pass for authenticated 390px mobile reachability, responsive-root exclusivity, vertical flow and zero horizontal overflow; 375px remained browser-clamped to 390px in this environment",
+  },
+  {
+    id: "settings-memory-switch-mobile-wrap-repair-2026-07-30",
+    target:
+      "Authenticated Web /app/settings Agent-memory switches at the 390x844 mobile viewport",
+    testData:
+      "Canonical authenticated actor, English long-form memory labels, current settings response and independent pre/post DOM geometry captures",
+    expected:
+      "Both switch labels must wrap inside the settings card while the On/Off state chip remains visible and fixed-size; no product node may extend document/body width beyond 390px.",
+    actual:
+      "Before repair the approved-learning label and Off chip were forced onto one line and extended document/body scrollWidth to 499px. After applying a shrinkable wrapping label, non-shrinking state chip and full-width wrapping switch row, document/body clientWidth and scrollWidth were exactly 390, no overflow node remained, and the label wrapped beside the visible Off chip.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/authenticated-web-current/settings-mobile-390-overflow.json; p1-candidate-settings-mobile-390-fullpage.png; settings-mobile-390-post.json; postfix-settings-mobile-390-fullpage.png; focused settings tests 8/8",
+    conclusion:
+      "pass for both English memory switches at authenticated 390px mobile width with zero horizontal overflow; Chinese and an actual 375px browser viewport remain outside this capture",
+  },
+  {
+    id: "third-round-rendered-leaf-and-negative-state-evaluation-2026-07-30",
+    target:
+      "Anonymous public Web, authenticated production Web, anonymous iOS Expo routes and deduplicated high-risk negative states",
+    testData:
+      "13 public Web routes at three widths; 25 authenticated Web routes at desktop/mobile widths plus three opened overlays and one popover; 48 anonymous iOS route/deep-link states; eight high-risk scenario families",
+    expected:
+      "Every counted leaf must exist in a rendered DOM/native tree and belong to an explicit state key. Shared implementation evidence may be reused only after per-route reachability/accounting; unavailable actors, writes, roles, platforms and states must remain explicit limitations rather than inferred passes.",
+    actual:
+      "The three non-overlapping manifests recorded 141 rendered state instances and 1,502 leaf occurrences: public Web 39/377, authenticated Web 54/769 and anonymous iOS 48/356. Authenticated Web separately accounted for all 1,120 current interaction occurrences and 23 overlays; one dynamic-contact Inbox occurrence was downgraded because its route did not render the trigger. The negative matrix passed eight families, failed none and retained one browser-network scenario as external-limited. Android, authenticated/second-actor native states, 106 authenticated Web write-risk leaves, dynamic contact/event success data and several overlays remain unresolved or external-limited.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/public-web-2026-07-29/manifest.json; runtime-leaf-denominator/authenticated-web-current/manifest.json; authenticated-web-current/validation.json; runtime-leaf-denominator/mobile-native-current/manifest.json; mobile-native-current/validation.json; shards/high-risk-negative-state-matrix-current/result.json; shards/high-risk-negative-state-matrix-current/provenance.json",
+    conclusion:
+      "pass as a state-local evidence merge with independently reproducible counts and honest route-level reuse boundaries; not a final product-wide rendered-leaf denominator or full necessary-state closure",
+  },
+  {
+    id: "home-party-event-identity-repair-2026-07-30",
+    target:
+      "Authenticated Home actor-owned event cards entering the Party route",
+    testData:
+      "A disposable actor-owned live event with an exact event:live-record:* identity, authenticated Home UI, direct Party control and isolated post-fix runtime replay",
+    expected:
+      "Every active or ended Home event card must preserve its concrete event identity when entering Party. The Party route must resolve that identity before evaluating attendee/recommendation readiness.",
+    actual:
+      "Before repair both Home event-card implementations called a parameterless enterEvent and navigated to /app/party, which rendered the no-event-selected state. After passing event.id through the existing canonical partyHrefForEvent helper, an independent isolated-runtime replay navigated to the exact encoded eventId and rendered the identity-resolved missing-reviewed-context state with a recovery link back to the same event.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-dynamic-states-current/p1-home-party-event-identity-loss.json; p1-owned-event-store-record.json; p1-home-party-fix-independent-validation.json; focused Home event and product-href tests 24/24",
+    conclusion:
+      "pass for actor-owned Home event identity preservation and Party identity resolution; Party success remains external-limited without reviewed attendee/recommendation context",
+  },
+  {
+    id: "fourth-round-rendered-state-and-dynamic-data-evaluation-2026-07-30",
+    target:
+      "Development Web routes, role/tenant gates, authenticated native state and dynamic Web data/overlay/write scenarios",
+    testData:
+      "All 56 current development paths at 1440x1000 and 390x1000; five admin/platform routes on an isolated origin; one disposable iOS credentials actor; two disposable Web actors, exact contacts/event/introduction records and exact cleanup",
+    expected:
+      "Only rendered DOM/native leaf occurrences with explicit non-overlapping state keys may enter the merged leaf observation. Behavior-scenario counts must remain separate. Role, Android, cookie-transport and broad Party data prerequisites must remain limited when formal actors or raw transport evidence are unavailable.",
+    actual:
+      "At the fourth-round checkpoint, Development Web added 112 responsive states and 1,130 leaf occurrences. Role/tenant added only three non-overlapping anonymous protected-route states and 24 leaves because its two public admin entries duplicate the public Web manifest. Native added one seven-leaf login-error state; cookie transport was still unresolved at that checkpoint and the one-off cold-launch red screen was excluded. Dynamic Web proved eight data/overlay states, ten passes, two Party limitations, one repeat-submission observation, cross-actor denial and exact 13-record cleanup, but its 13-count was behaviors rather than DOM leaves and was not summed. That checkpoint's six-manifest partial merge was 257 states, 2,663 leaf occurrences and 251 unique state keys; the fifth-round case below supersedes its native-cookie and rendered-leaf status.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/development-web-current/manifest.json; development-web-current/validation.json; role-tenant-matrix-current/manifest.json; native-authenticated-current/result.json; native-authenticated-current/validation.json; web-dynamic-states-current/result.json; web-dynamic-states-current/validation.json; coordinator/runtime-leaf-merge-policy.json",
+    conclusion:
+      "pass for the fourth-round checkpoint as a deduplicated state-local observation and dynamic-data behavior evaluation; its native-cookie limitation is superseded by the fifth-round repair case, while the product-wide leaf denominator, complete role/tenant matrix and Android result remain open",
+  },
+  {
+    id: "fifth-round-dynamic-leaf-and-native-cookie-repair-2026-07-30",
+    target:
+      "Six preserved dynamic Web DOM states plus native credentials acceptance, actor-owned profile data and cold SecureStore restoration on a brand-new iOS simulator",
+    testData:
+      "Exact accessibility DOM for Home success, Contact detail success, Schedule event success, Contact introductions overlay and two Party data gates; one disposable native actor; one credentials submission; warm and force-terminated cold /profile native trees",
+    expected:
+      "Only raw DOM/native-tree leaves may expand the state-local observation. Native requests carrying an explicit Auth.js Cookie must use one transport source, while browser-managed Web requests must retain HttpOnly cookie behavior. Credentials acceptance must precede SecureStore persistence and actor-owned private data.",
+    actual:
+      "The six preserved Web states contributed exactly 85 leaves and 47 conservative semantic implementation keys; Relationship Inbox and Today overlays remained excluded because their full DOM was not preserved. A fresh direct iOS run reproduced Invalid Compact JWE before repair. React Native source showed credentials=include preloading NSHTTPCookieStorage before addValue-appending Orbit's explicit Cookie. After switching explicit-cookie validation, API and sign-out requests to credentials=omit while retaining Web include behavior, an independent new-simulator run passed one credentials submission, /api/auth/session, the exact actor-owned /profile, SecureStore write/read and a 2.6-second cold restore with no JWE error. Warm and cold profile trees contributed 15 leaves each. The eight-manifest partial merge is now 265 states, 2,778 leaf occurrences and 259 unique state keys.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-dynamic-states-current/leaf-manifest-v2.json; leaf-validation-v2.json; runtime-leaf-denominator/native-direct-fresh-current/result.json; coordinator/evaluations/native-explicit-cookie-root-cause.json; runtime-leaf-denominator/native-explicit-cookie-fix-evaluator-current/result.json; validation.json; manifest.json; coordinator/runtime-leaf-merge-policy.json",
+    conclusion:
+      "pass for the six exact Web states and the repaired native credentials/profile/cold-restore chain with exact cleanup; still not a product-wide rendered-leaf denominator, Android result, native two-actor matrix or complete authenticated native route traversal",
+  },
+  {
+    id: "sixth-round-overlays-role-isolation-and-native-cache-repair-2026-07-30",
+    target:
+      "Relationship Inbox and Today overlays, authenticated Admin/Platform workspace isolation, two-actor native Contacts cache ownership and the cold initial-refreshToken hydration repair",
+    testData:
+      "Two disposable Web actors and one live Inbox draft; two isolated Web workspaces and one actor-A event; two disposable native actors, exact actor-keyed SQLite rows, a fresh iOS simulator, true Expo process restart, initial-token and later-token offline Contacts states",
+    expected:
+      "Overlay leaves must come from preserved rendered trees; writes must survive readback without duplicate mutation or cross-actor leakage; unavailable privileged roles must fail closed; native cache hydration must preserve actor ownership and may not remain loading when an exact offline snapshot exists.",
+    actual:
+      "Inbox compose issued one POST, disabled itself while pending, persisted one draft across reload, preserved the first payload and timestamp under a mutated same-request replay, hid actor A from actor B and cleaned seven records. Chat's route-state header initially fell outside the responsive selector owner; a route-local scope repair left exactly one actionable Inbox trigger at each breakpoint. Today contributed one 52-leaf overlay state. The role shard added six authenticated states and fourteen leaves: actor A's event persisted, actor B stayed empty, a cross-workspace session replay returned 401 and Platform remained explicitly unavailable because no privileged role/provider exists. Native two-actor evidence proved logout deletion, actor partitioning and warm/online cache behavior, then exposed a HIGH cold initial-token hydration race. The LOW-impact ContactsListScreen edge-trigger repair passed the exact same-process offline protocol at t0/t5/t15, later-token failure preservation, byte-stable SQLite and independent cleanup. After replacing two stale Chat base observations and excluding overlapping states plus a non-summable all-accessibility diagnostic, the thirteen-source partial merge is 279 states, 3,001 interactive leaf occurrences and 273 unique state keys.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-missing-overlays-and-inbox-compose-current/result.json; runtime-leaf-denominator/chat-route-state-scope-fix-evaluator-current/manifest.json; runtime-leaf-denominator/authenticated-role-tenant-matrix-v2-current/manifest.json; runtime-leaf-denominator/native-two-actor-cache-isolation-current/result.json; runtime-leaf-denominator/native-cold-snapshot-root-current/result.json; runtime-leaf-denominator/native-refresh-token-cold-cache-fix-evaluator-current/manifest.json; coordinator/evaluations/chat-route-state-scope-root-cause.json; coordinator/evaluations/native-refresh-token-cold-cache-root-cause.json; coordinator/runtime-leaf-merge-policy.json",
+    conclusion:
+      "pass for the selected non-overlapping overlay, role/workspace, two-actor native and repaired cold-cache states with exact persistence, isolation and cleanup evidence; the product-wide rendered-leaf denominator, Android, privileged Platform success and authenticated-stack prefetch timing remain unresolved or capability-limited",
+  },
+  {
+    id: "web-settings-feedback-delete-two-actor-lifecycle-2026-07-30",
+    target:
+      "Authenticated Settings result-learning deletion with pending, provider failure, retry, reload, duplicate activation and actor isolation",
+    testData:
+      "Two disposable authenticated actors in one formal workspace, one actor-A feedback record, zero actor-B feedback records, a controlled delayed 503 and the configured production Postgres store",
+    expected:
+      "Deletion must retain the record while pending, fail closed without removing it, succeed only after the real provider confirms, survive reload, converge under duplicate removal and never expose or mutate another actor's record.",
+    actual:
+      "Actor A rendered the exact record and disabled 正在删除… state. The delayed 503 restored the control and left the Postgres row intact. Retry removed it, hard navigation stayed empty, rapid double activation plus repeated service calls converged at zero, and actor B remained empty throughout.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-write-risk-activation-current/result.json; reconciliation.json; validation.json; actor/pending/error/success/reload DOM and screenshots; before/error/after/repeat/cleanup provider ledgers",
+    conclusion:
+      "pass for the selected conditional irreversible write, exact API/service/provider/store chain, persistence, controlled failure, retry, duplicate convergence, actor isolation and cleanup; four Agent composer route-leaf occurrences remain the sole runnable implementation group from the old 106 write-risk observations",
+  },
+  {
+    id: "production-live-only-and-mock-api-boundary-2026-07-30",
+    target:
+      "Production module/feature mode resolution, /api/mock scenario/reset handlers and configured Event matchmaking storage",
+    testData:
+      "NODE_ENV=production with missing, invalid, explicit mock and explicit hybrid mode inputs; a mock-only service factory; direct GET/POST calls to all three mock API handlers including an invalid reset body; Event matchmaking with all three durable database URLs absent",
+    expected:
+      "Production must resolve only live mode. A mock-only factory and configured Event matchmaking without durable storage must fail closed. Mock APIs must return an empty no-store 404 before reading inputs, creating mock services, exposing fixtures or mutating scenario state.",
+    actual:
+      "Both shared mode resolvers returned live for every production input. A mock-only factory returned NOT_IMPLEMENTED for omitted, mock, hybrid and invalid inputs, with production-safe live-provider guidance. The scenario list, scenario activation and reset handlers each returned an empty Cache-Control:no-store 404, including the malformed-body reset request. The Event matchmaking factory now throws a controlled configuration error in production when durable configuration is absent; its process-memory fallback is explicitly confined to non-production workflow development/tests. Development/test factory behavior and explicitly injected in-memory matchmaking tests remained unchanged.",
+    evidence:
+      "final focused production-mode/workflow/matchmaking tests 21/21; independent production-boundary matrix 42/42; mock scenario handler tests 5/5; complete Web suite 1417/1417; Web lint PASS; production build 39/39; coordinator/evaluations/production-mock-api-next-start-current.json; coordinator/evaluations/production-mock-api-next-start-raw-current.json",
+    conclusion:
+      "pass for production live-only resolution, mock-only provider failure, durable matchmaking configuration and authenticated rebuilt next-start mock-API fail-closed behavior; deployed-host provider configuration remains an environment gate",
+  },
+  {
+    id: "native-retained-contacts-focus-gate-2026-07-30",
+    target:
+      "Two-actor iOS retained Contacts route across logout, actor-B credentials acceptance, Profile focus and later explicit Contacts focus",
+    testData:
+      "One disposable simulator, ephemeral two-actor API stub, actor-A focused Contacts then formal sign-out, actor-B credentials/profile, a 31.073-second hidden observation window and explicit actor-B Contacts navigation",
+    expected:
+      "A preserved but unfocused route record must not mount ContactsScreen or issue private Contacts/suggestion reads. Explicit focus must mount normally, issue each read once, preserve actor ownership and render only actor B.",
+    actual:
+      "Root-cause instrumentation proved Expo retained the route record rather than the React child. Before repair the historical route remounted behind account/login and issued both actor-B reads 80 ms after mount. After the leaf route began returning null while useIsFocused was false, the same historical record remained at stack index zero while account/login was focused at index two, but ContactsListScreen did not mount and both actor-B endpoint counts stayed zero for 31.073 seconds. Explicit Contacts navigation mounted a new focused route, issued /api/contacts and /api/search/suggestions exactly once each 32 ms later and rendered Runtime Actor B Contact.",
+    evidence:
+      "runtime-leaf-denominator/native-retained-prefetch-root-current/result.json; native-retained-prefetch-root-current/validation.json; native-retained-prefetch-post-fix-current/result.json; native-retained-prefetch-post-fix-current/validation.json; native-retained-prefetch-post-fix-current/manifest.json",
+    conclusion:
+      "pass with HIGH evaluator confidence for the exact retained-route lifecycle, zero hidden reads, one focused read pair, actor isolation and complete simulator/listener cleanup; Android and any future explicit background-prefetch product contract remain separate",
+  },
+  {
+    id: "seventh-round-static-denominator-correction-2026-07-30",
+    target:
+      "Audit interaction and route-query denominators",
+    testData:
+      "All 94 route page-file nodes, DataCard optional onPress call sites, route-scoped rendered-symbol AST and known header/cookie/API/UUID false-positive probes",
+    expected:
+      "An internal control gated by an optional owner prop may be attributed only to routes that pass that prop. Route query keys must originate from route-local URL consumers and must remain separate from path parameters, headers, cookies, API query fields and arbitrary transitive get/set calls.",
+    actual:
+      "The DataCard Pressable route-instance count fell from 44 to the six routes that pass onPress, reducing the interaction denominator from 2340 to 2302 without changing the 921 implementation denominator. Route-query pairs fell from 1272 alleged pairs/71 keys to 119/30; mobile /account became empty, Contacts List retained its seven route keys, mobile /ai/[id] separated path id from initialMessage/source, and Web login retained created/email/next/orbitVisualSeed with all named false positives absent.",
+    evidence:
+      "audit generator; audit tests 10/10; coordinator/evaluations/seventh-round-denominators-current.json; coordinator/runtime-interaction-coverage-current.json; independent route-parameter root-cause review",
+    conclusion:
+      "pass for the two corrected static scanner rules; route page-file nodes are not terminal UI implementations, and alias/redirect/hash/custom-scheme contracts plus the rendered runtime leaf denominator remain explicitly unresolved",
+  },
 ];
+
+const RENDERED_LEAF_OBSERVATIONS = {
+  evidencePath:
+    "harness-state/evidence/full-product-functional-audit/coordinator/runtime-leaf-merge-policy.json",
+  leafControlOccurrences: 3001,
+  manifestCount: 13,
+  manifests: [
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/public-web-2026-07-29/manifest.json",
+      leafControlOccurrences: 377,
+      renderedStates: 39,
+      scope: "13 anonymous public Web base routes at three viewport widths",
+      uniqueStateKeys: 33,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/authenticated-web-current/manifest.json",
+      leafControlOccurrences: 751,
+      renderedStates: 52,
+      scope:
+        "Authenticated production Web states excluding the two stale Chat base states superseded by the independent post-fix evaluator",
+      uniqueStateKeys: 52,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/mobile-native-current/manifest.json",
+      leafControlOccurrences: 356,
+      renderedStates: 48,
+      scope: "48 anonymous iOS Expo route and deep-link states",
+      uniqueStateKeys: 48,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/development-web-current/manifest.json",
+      leafControlOccurrences: 1130,
+      renderedStates: 112,
+      scope:
+        "All 56 current development Web paths at exact 1440x1000 and 390x1000 viewports",
+      uniqueStateKeys: 112,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/role-tenant-matrix-current/manifest.json",
+      leafControlOccurrences: 24,
+      renderedStates: 3,
+      scope:
+        "Only the non-overlapping anonymous denial states for /app/admin, /app/admin/events and /app/platform",
+      uniqueStateKeys: 3,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/native-authenticated-current/manifest.json",
+      leafControlOccurrences: 7,
+      renderedStates: 1,
+      scope:
+        "One iOS credentials-login error state after a real disposable actor registration",
+      uniqueStateKeys: 1,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-dynamic-states-current/leaf-manifest-v2.json",
+      leafControlOccurrences: 85,
+      renderedStates: 6,
+      scope:
+        "Six exact dynamic Web success, overlay and data-gate states whose full accessibility DOM was preserved",
+      uniqueStateKeys: 6,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/native-explicit-cookie-fix-evaluator-current/manifest.json",
+      leafControlOccurrences: 30,
+      renderedStates: 2,
+      scope:
+        "Authenticated iOS profile and force-terminated cold-restored profile states after the explicit-cookie single-channel repair",
+      uniqueStateKeys: 2,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/web-missing-overlays-and-inbox-compose-current/result.json",
+      leafControlOccurrences: 52,
+      renderedStates: 1,
+      scope:
+        "One authenticated Today schedule overlay state; the pre-fix Chat overlay is excluded",
+      uniqueStateKeys: 1,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/chat-route-state-scope-fix-evaluator-current/manifest.json",
+      leafControlOccurrences: 55,
+      renderedStates: 4,
+      scope:
+        "Post-fix Chat empty base and Relationship Inbox overlay states at desktop/mobile widths; two base states supersede the excluded authenticated-Web observations",
+      uniqueStateKeys: 4,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/authenticated-role-tenant-matrix-v2-current/manifest.json",
+      leafControlOccurrences: 14,
+      renderedStates: 6,
+      scope:
+        "Authenticated actor-A/actor-B Admin, Admin Events and fail-closed Platform states across isolated workspaces",
+      uniqueStateKeys: 6,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/native-two-actor-cache-isolation-current/result.json",
+      leafControlOccurrences: 72,
+      renderedStates: 3,
+      scope:
+        "Selected non-overlapping actor-A online Contacts, actor-B online Contacts and actor-B warm-offline Contacts states; profile, repeat and pre-fix failure captures are excluded",
+      uniqueStateKeys: 3,
+    },
+    {
+      evidencePath:
+        "harness-state/evidence/full-product-functional-audit/runtime-leaf-denominator/native-refresh-token-cold-cache-fix-evaluator-current/manifest.json",
+      leafControlOccurrences: 48,
+      renderedStates: 2,
+      scope:
+        "Post-fix actor-B cold initial-token offline Contacts and later-token failed-refresh preservation states; overlapping online/profile states are excluded and the 225 all-accessibility diagnostic leaf observations are non-summable",
+      uniqueStateKeys: 2,
+    },
+  ],
+  renderedStates: 279,
+  scope:
+    "Thirteen normalized evidence sources covering anonymous/public/authenticated/development Web, anonymous and authenticated iOS, exact dynamic/overlay states, role/workspace isolation, two-actor Contacts and repaired native cold-cache lifecycle states; stale Chat bases and overlap states are excluded, while the broader all-accessibility diagnostic remains non-summable",
+  status: "state-local-observation-not-final-denominator",
+  uniqueStateKeys: 273,
+};
+
+const AUDIT_EXTERNAL_LIMITATIONS = [
+  {
+    id: "EXT-NATIVE-AUTH-STACK-PREFETCH",
+    scope: "Expo authenticated retained-route prefetch timing",
+    reason:
+      "Two independent native actors, logout deletion, actor-keyed SQLite ownership, warm/online/cold cache states and cross-actor non-leakage passed. The exact actor-B before-first-Contacts-network failure window was unavailable because the retained authenticated stack prefetched Contacts before the test could stop the service.",
+  },
+  {
+    id: "EXT-ANDROID-RUNTIME",
+    scope: "Expo Android",
+    reason:
+      "No Android SDK/emulator was available in the audit environment.",
+  },
+  {
+    id: "EXT-NATIVE-BUILD",
+    scope: "Standalone iOS native target",
+    reason:
+      "Xcode 26.1 / Swift 6.2 failed in expo-modules-jsi weak-let compilation before Orbit product code; the native runtime evidence therefore used Expo Go 57.",
+  },
+  {
+    id: "EXT-OAUTH-PROVIDERS",
+    scope: "OAuth and external integrations",
+    reason:
+      "No disposable real Google/OAuth or third-party provider credentials were available for success, denial and callback traversal.",
+  },
+  {
+    id: "EXT-PRIVILEGED-PLATFORM-CAPABILITY",
+    scope: "Privileged Platform success",
+    reason:
+      "Ordinary actor-A/actor-B Admin states and cross-workspace denial passed, but the product defines no persisted privileged Platform role or platform-wide provider. The success state is a product capability unavailable boundary rather than an inferred audit pass.",
+  },
+  {
+    id: "EXT-PROVIDER-STATE-MATRIX",
+    scope: "Party, Event and Agent provider outcomes",
+    reason:
+      "Real provider success/failure/concurrency states for Party, registration, attendee import, voice, match, history deletion and destructive failure were not all available without external fixtures or credentials.",
+  },
+  {
+    id: "EXT-ASSISTIVE-TECH",
+    scope: "Accessibility runtime",
+    reason:
+      "Manual VoiceOver/TalkBack and screen-reader announcement timing were not independently exercised.",
+  },
+];
+
+const AUDIT_REMAINING_GAPS = [
+  {
+    id: "GAP-RUNTIME-LEAF-DENOMINATOR",
+    scope: "Whole product",
+    status: "still-uncovered",
+    reason:
+      "The rendered DOM/native-tree leaf-control denominator remains state-local and unresolved; the current route-instance, unique-source-location and normalized-static-implementation counts in this inventory must not be treated as runtime leaf counts.",
+  },
+  {
+    id: "GAP-REMAINING-STATE-MATRICES",
+    scope: "Agent, Events, Party, Admin and account surfaces",
+    status: "still-uncovered",
+    reason:
+      "Several forced network failures, rapid duplicate activations, concurrent writes, uncommon empty/large-data states and responsive/keyboard variants remain only partially sampled; shard evidence records the exact scenario-level boundaries.",
+  },
+  {
+    id: "GAP-ROUTE-CONTRACT-MANIFEST",
+    scope: "All Web and Expo entry routes",
+    status: "still-uncovered",
+    reason:
+      "Route-local query false positives are repaired, but the audit still lacks one authoritative route-tree contract for global shell and diagnostic query namespaces, fixed redirect targets/query/hash behavior, alias and passthrough semantics, Expo custom-scheme/legacy handling, parameter cardinality/decoders/security and per-case runtime probes. The 94 page-file nodes therefore remain an entry-node denominator rather than 94 independently proved terminal UI contracts.",
+  },
+];
+
 const AUDIT_REMEDIATIONS = [
   {
     id: "AUDIT-P2-001",
@@ -5986,15 +6601,15 @@ const AUDIT_REMEDIATIONS = [
     id: "AUDIT-P1-103",
     severity: "P1",
     rootCause:
-      "AccountTopNav combined page-specific rightExtra content and the global RelationshipInboxTrigger inside one orbit-nav-extra boundary. The shared mobile contract correctly hid that desktop extras group, but Agent placed its only mobile history entry inside the same group, making the control present yet unreachable. Re-enabling the mixed group at the route level then exposed the inbox too, and its inline display:inline-flex overrode an ordinary responsive hide.",
+      "AccountTopNav originally combined page-specific rightExtra content and the global RelationshipInboxTrigger inside one desktop extras boundary, making Agent history unreachable on mobile. The first repair separated mobile history but intentionally kept Inbox desktop-only; whole-product review then showed this dropped the global relationship Inbox capability from every mobile account surface.",
     decision:
-      "Separate semantics at the shared navigation boundary. Add an optional mobileRightExtra slot to OrbitTopNav and AccountTopNav, render it in a dedicated mobile-only container, keep the existing rightExtra plus global inbox group unchanged for desktop/default callers, and pass only Agent history through the mobile slot. Remove the Agent-specific inbox selector instead of depending on child class names or inline-style priority.",
+      "Keep the dedicated page-specific mobile slot, but make AccountTopNav render a RelationshipInboxTrigger in both desktop and mobile action containers. Retain Agent history as a separate mobile extra so the two global/contextual capabilities coexist without selector or inline-style arbitration.",
     files:
       "repos/orbits/app/(app)/app/orbit-public-shell.tsx; repos/orbits/app/(app)/app/orbit-account-shell.tsx; repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/app/(app)/app/orbit-reference-styles.tsx; repos/orbits/tests/pages/app-agent-chat-history.test.ts; repos/orbits/tests/ui/orbit-top-nav-structure.test.ts",
     regression:
-      "Focused history/top-nav tests passed 29/29, the complete Web suite passed 1381/1381, lint/typecheck passed, and production build completed 39/39. At 390x844 the production Agent top bar exposed 对话历史 and 打开菜单 but not 打开收件箱; the entry opened the real drawer. /app/today retained its normal mobile top bar without a contextual extra. Commits 183f0052, 880c3b5a, and dbdc13ae. Pre-edit impact was HIGH for OrbitTopNav (18 symbols, two processes, three modules) and AccountTopNav (15 symbols, three processes, three modules); the optional-prop implementation retained all existing callers, and staged detection was LOW with exactly those two symbols and zero affected processes.",
+      "Focused Inbox/history/top-nav tests passed within the 40/40 contacts/chat set. Independent production-browser evaluation at 375x812 found one visible mobile Inbox trigger, one portal/dialog and only one consuming listener; /app/agent exposed both Inbox and history with one dialog each. AccountTopNav impact was CRITICAL (41 symbols, 24 direct dependants, ten processes), so the change stayed inside its established action-slot contract.",
     status:
-      "fixed and shared-boundary/mobile-slot/default-caller/hidden-inbox/visible-history/production-browser/focused/lint/build-verified; physical touch-device verification remains open",
+      "fixed and shared-boundary/global-mobile-Inbox/Agent-history-coexistence/single-dialog/single-consumer/production-browser/focused/build-verified; physical touch-device verification remains open",
   },
   {
     id: "AUDIT-P1-104",
@@ -6024,10 +6639,380 @@ const AUDIT_REMEDIATIONS = [
     status:
       "fixed and user-scope-copy/bilingual/pending-label/duplicate-submit-guard/auditable-accessible-name/production-browser/actor-isolation/no-write/reload/focused/full-suite/lint/build-verified; forced network failure and assistive-technology announcement timing remain open",
   },
+  {
+    id: "AUDIT-P1-106",
+    severity: "P1",
+    rootCause:
+      "Expo SQLite snapshot ownership omitted the authenticated actor, unsigned resource state could reuse private snapshots, and direct account replacement did not invalidate the previous actor cache.",
+    decision:
+      "Version snapshot identity by normalized server, actor and request path; purge legacy actor-less rows; skip private snapshot reads/writes while unsigned; clear snapshots before accepting a different actor on the same server.",
+    files:
+      "repos/orbit-app/src/data/snapshot-store.ts; repos/orbit-app/src/data/snapshot-store.web.ts; repos/orbit-app/src/hooks/useApiResource.ts; repos/orbit-app/src/api/AuthSessionProvider.tsx; repos/orbit-app/tests/snapshot-store.test.ts",
+    regression:
+      "Expo full suite passed 538/538 and typecheck passed. Focused tests cover server/actor/path key separation, unsigned reads/writes, legacy cleanup, sign-out/session-expiry cleanup and direct A-to-B replacement.",
+    status:
+      "fixed with source and unit/integration proof; native two-actor pre-network tree and SQLite row-ownership runtime remain open",
+  },
+  {
+    id: "AUDIT-P1-107",
+    severity: "P1",
+    rootCause:
+      "Relationship compose/create dropped canonical contactId, while follow-up adapters replaced null contact identity with display-name-derived synthetic ids and exposed person actions for task-only records.",
+    decision:
+      "Carry contactId through the relationship draft contract and provider boundary. Preserve null as null across follow-up adapters and render an explicit unlinked-task state without detail or compose actions.",
+    files:
+      "repos/orbits/features/chat/contract.ts; repos/orbits/features/chat/live-async-service.ts; repos/orbits/features/followups/live-service.ts; shared/mobile followup contracts; Followups/Today/Schedule adapters and tests",
+    regression:
+      "Focused relationship/follow-up/Today regressions passed 44/44; the complete Web suite passed 1398/1398; lint and production build passed.",
+    status:
+      "fixed with contract/provider/cross-surface regression proof; same-name two-actor UI write/readback and foreign-id runtime remain open",
+  },
+  {
+    id: "AUDIT-P1-108",
+    severity: "P1",
+    rootCause:
+      "Responsive shell siblings could both qualify as Relationship Inbox owners, badge loads duplicated, and create-draft-thread had no stable request identity, allowing retries to allocate another record.",
+    decision:
+      "Select the visible trigger from rendered geometry, share concurrent badge reads per language, add actor-bound requestId to the write contract, and replay the first provider record without overwriting it.",
+    files:
+      "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx; repos/orbits/app/api/chat/relationship-inbox/handler.ts; repos/orbits/features/chat/contract.ts; repos/orbits/features/chat/live-async-service.ts; repos/orbits/features/chat/storage/async-relationship-conversation-live-record-provider.ts; focused tests",
+    regression:
+      "Relationship Inbox component/provider regressions passed within the focused 40/40 set. Independent production-browser/provider evaluation proved one visible trigger/dialog, one consuming listener, durable same-actor replay with the first content and one active row, independent second-actor identity, and cleanup to an empty audit set.",
+    status:
+      "fixed and runtime-verified for responsive trigger ownership, portal/listener arbitration, same-actor request replay, first-write preservation, durable readback, actor isolation and cleanup",
+  },
+  {
+    id: "AUDIT-P2-109",
+    severity: "P2",
+    rootCause:
+      "Chat placed account/Inbox navigation inside success content, while Starfield mobile navigation lacked a complete disclosure/dismissal/focus contract.",
+    decision:
+      "Keep Chat route states under one shared shell boundary. Give the mobile menu explicit expanded/controlled state, hidden and inert closed content, Escape/outside/link dismissal, cleanup and focus return.",
+    files:
+      "repos/orbits/app/(app)/app/chat/page.tsx; repos/orbits/app/(app)/app/chat/chat-route-state-boundary.tsx; repos/orbits/app/(app)/app/orbit-starfield-mobile.tsx; repos/orbits/app/(app)/app/orbit-starfield-mobile-logic.ts; repos/orbits/app/(app)/app/orbit-starfield-mobile-menu.ts; focused tests",
+    regression:
+      "Chat tests passed 11/11, Starfield tests passed 32/32, and production browser traversal verified /app/chat plus / and /app at 390x844 without console errors.",
+    status:
+      "fixed and browser-verified for shared empty-state shell and pointer/keyboard menu lifecycle; physical touch and screen-reader announcements remain open",
+  },
+  {
+    id: "AUDIT-P1-110",
+    severity: "P1",
+    rootCause:
+      "Catalogue timestamps and a fixed authored 18:30-21:00 agenda acted as competing temporal authorities; some generated events ended at their start time.",
+    decision:
+      "Make startsAt/endsAt the only presentation clock, generate a positive two-hour duration, derive agenda offsets inside that interval, and fail closed with an unconfirmed end state for invalid bounds.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-event-temporal.ts; repos/orbits/app/(app)/app/orbit-event-presentation.ts; event detail adapter/view; orbit landing/schedule models; generated fixtures and focused tests",
+    regression:
+      "Event focused tests passed 18/18, the complete Web suite passed 1398/1398, lint/build passed, and production EVTSIGNUP03 rendered one consistent 18:00-20:00 interval and bounded agenda.",
+    status:
+      "fixed and runtime-verified for the exercised catalogue/detail path; all dynamic identities, provider failures, responsive and assistive states remain open",
+  },
+  {
+    id: "AUDIT-P1-111",
+    severity: "P1",
+    rootCause:
+      "The complete /dev route group remained anonymously reachable in production even though demos exposed internal metadata and some forms targeted normal actor live APIs.",
+    decision:
+      "Fail the route group closed with notFound in production so every current and future fixed/dynamic dev page inherits one boundary; keep local development available and label inert decision specimens as disabled examples.",
+    files:
+      "repos/orbits/app/dev/layout.tsx; repos/orbits/app/dev/production-boundary.ts; repos/orbits/app/dev/foundation/style/page.tsx; repos/orbits/tests/dev/production-dev-surface-boundary.test.tsx; repos/orbits/tests/dev/production-dev-runtime.test.mjs",
+    regression:
+      "The independent second-round shard mapped 384/384 route instances to 154 implementations. The exact local production build returned 404 for seven fixed paths, 49 registered slugs and one unknown slug while preserving /app and /api auth; development returned the expected route identities and a controlled unknown fallback. Formal tests passed 2/2.",
+    status:
+      "fixed and independently local-production/runtime-verified across all inventoried route instances; deployed edge/proxy host, authorized development-tunnel exposure and reliable 375/390 client-runtime traversal remain open",
+  },
+  {
+    id: "AUDIT-P2-112",
+    severity: "P2",
+    rootCause:
+      "Expo had no centralized private leaf render gate and post-auth navigation consumed raw next values. An initial boundary that unmounted the root navigator caused a maximum-update redirect loop; Stack.Protected fallback then lost root-route destinations.",
+    decision:
+      "Keep the root Stack mounted after auth restoration, gate grouped layouts and every root-level private leaf before its screen mounts, derive coverage from the route tree, and route every post-auth destination through the existing supported-native allowlist.",
+    files:
+      "repos/orbit-app/app/_layout.tsx; repos/orbit-app/app/(app)/_layout.tsx; private route entry files; repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx; repos/orbit-app/src/view-models/mobile-route-access.ts; account auth/initial-route models and tests",
+    regression:
+      "Expo full suite passed 538/538 and typecheck passed. Expo Web /contacts and /today preserved exact next queries; rebuilt signed-out /events rendered 13 public records, /events/event_signup_02 rendered the exact public detail, and registration preserved /events/event_signup_02/register through login. Route-tree enumeration proves every current root-level private entry and the deeper attendee/register leaves use the shared gate.",
+    status:
+      "fixed and Expo-Web-runtime-verified for private/public classification and normalized next; native cold/warm deep links, cached expiry, offline snapshots and physical-device parity remain open",
+  },
+  {
+    id: "AUDIT-P1-113",
+    severity: "P1",
+    rootCause:
+      "Contact introduction creation had no stable client request identity. A timeout or duplicate submission could allocate another durable introduction, and a retry with changed input had no first-write preservation contract.",
+    decision:
+      "Create one UUID per composer lifecycle, require requestId at the repository boundary, derive the durable id from actor plus requestId, and return an existing actor-owned record before any overwrite or allocation.",
+    files:
+      "repos/orbits/features/contacts/introduction-records.ts; introduction composer UI; introduction API/provider tests",
+    regression:
+      "Focused contacts/chat tests passed 40/40. Independent provider evaluation replayed altered content under the same actor/requestId and returned the first id/content with one active row; the same requestId for another actor returned an independent id. Ten disposable rows were removed and the final audit set was empty. Repository impact was HIGH with five upstream dependants; the POST handler and UI were LOW.",
+    status:
+      "fixed and provider-runtime-verified for stable request identity, same-actor replay, first-write preservation, actor isolation and cleanup; forced browser timeout and rapid double activation remain open",
+  },
+  {
+    id: "AUDIT-P1-114",
+    severity: "P1",
+    rootCause:
+      "Expo classified /events as public while EventsScreen and EventDetailScreen called private /api/events endpoints and mounted personalized modules unconditionally. Native signed-out traversal therefore produced a real 401 and 登录状态已失效 on a supposedly public route.",
+    decision:
+      "Give catalogue list/detail dedicated public endpoints and client paths, mount recommendation/readiness/post-event modules only for an authenticated session, and classify deeper registration/attendee leaves as private with exact next preservation.",
+    files:
+      "repos/orbit-app/src/screens/events/EventsScreen.tsx; repos/orbit-app/src/screens/events/EventDetailScreen.tsx; repos/orbit-app/src/api/endpoints.ts; repos/orbit-app/src/view-models/mobile-route-access.ts; Expo event route wrappers; repos/orbits/app/api/events/public/[id]/route.ts; repos/orbits/proxy.ts; focused tests",
+    regression:
+      "The defect was captured in native Expo Go iOS. Public API/proxy tests passed 6/6, Expo targeted tests passed 46/46, the full Expo suite passed 538/538, typecheck passed, and production build completed 39/39. Rebuilt signed-out Expo Web rendered 13 events and event_signup_02 detail with no private module, then routed registration to the exact encoded login next. The existing shared eventDetailPath had HIGH impact (36 upstream, three flows) and was deliberately left unchanged; a separate public path was added.",
+    status:
+      "fixed and API/Expo-Web-runtime/full-suite/typecheck/build-verified; post-fix native iOS, Android and authenticated personalized-module parity remain open",
+  },
+  {
+    id: "AUDIT-P1-115",
+    severity: "P1",
+    rootCause:
+      "The Starfield entry used the legacy iorbit_lang key while the application shell used orbit-lang cookie/localStorage, and the entry never synchronized documentElement.lang. English could survive the root reload while /app and assistive-language metadata returned to Chinese.",
+    decision:
+      "Resolve one canonical language in priority order from orbit-lang localStorage, orbit-lang cookie, legacy iorbit_lang and host; persist both canonical stores, migrate the legacy key, and synchronize the document language at initialization and selection.",
+    files:
+      "repos/orbits/app/(app)/app/orbit-starfield-language.ts; desktop/mobile Starfield logic; repos/orbits/tests/pages/orbit-starfield-language.test.ts",
+    regression:
+      "Focused language tests passed 7/7 and lint/build passed. In the production browser, English text and html lang=en survived root reload and direct /app navigation. Both Starfield runtime symbols had LOW impact with four upstream dependants each and zero affected processes.",
+    status:
+      "fixed and production-browser-verified for canonical persistence, legacy migration, document language and root-to-app continuity; cross-tab events and manual screen-reader language switching remain open",
+  },
+  {
+    id: "AUDIT-P1-116",
+    severity: "P1",
+    rootCause:
+      "The public Web event detail server model already exposed stats.authed=false, but the registration and matchmaking client modules ignored it and unconditionally called two actor-private APIs. The page itself returned 200 while both hidden subrequests returned 401.",
+    decision:
+      "Pass the authoritative authentication state into both client modules and fail closed before any private fetch when the visitor is anonymous. Extend browser evidence collection so HTTP 4xx/5xx subresponses are first-class failures instead of treating a 200 document as sufficient.",
+    files:
+      "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx; repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx; repos/orbits/tests/pages/app-event-detail-live-route-services.test.ts; harness/evidence.py; tests/test_harness_core.py",
+    regression:
+      "Focused event tests passed 17/17 and production build passed 39/39. Before/after production browser diagnostics changed from two private 401 subresponses to zero response/request/console failures; the complete 13-route anonymous base-state manifest also remained clean.",
+    status:
+      "fixed and production-browser-verified for the signed-out public event detail; authenticated matchmaking/registration states remain separately scoped",
+  },
+  {
+    id: "AUDIT-P1-117",
+    severity: "P1",
+    rootCause:
+      "The legacy Chat write contract had no stable request identity, appendMessage always allocated a count-derived id before unconditional upsert, and /app/chat exposed no mutation lifecycle. Duplicate activation therefore produced multiple durable rows while the live controlled-failure response leaked mock-boundary language.",
+    decision:
+      "Carry one requestId from the client and Idempotency-Key header through the API and live provider, derive an actor/workspace/conversation-scoped deterministic message id, preserve the first request evidence, and expose one storage-only composer with synchronous pending protection and retry identity reuse. Keep intentional same-body writes possible under a new requestId and make replay write provenance truthful.",
+    files:
+      "repos/orbits/app/(app)/app/chat/chat-message-composer.tsx; chat-workspace.tsx; repos/orbits/app/api/chat/conversations/[id]/messages/route.ts; repos/orbits/features/chat/contract.ts; live-service.ts; storage/chat-conversation-live-record-provider.ts; focused tests",
+    regression:
+      "Focused Chat and Agent-context regressions passed 29/29 and targeted TypeScript passed. Independent production UI/API/PostgreSQL evaluation passed 7/7: one POST/row/article under double activation, first-content replay, intentional repeat, controlled failure/retry and actor isolation. Follow-up proved first-write provenance true, stable-key replay false with byte-stable Postgres record, and new-key write true; all audit/probe rows were cleaned.",
+    status:
+      "fixed and independently production-runtime-verified for UI pending/duplicate control, idempotent replay, first-write preservation, intentional repeat, failure retry, durable readback and actor isolation; deletion/retention remains a separate lifecycle decision",
+  },
+  {
+    id: "AUDIT-P2-118",
+    severity: "P2",
+    rootCause:
+      "Event registration idempotency compared answer objects with JSON.stringify. PostgreSQL JSONB does not preserve application insertion order, so semantically identical eight-answer payloads were misclassified as changes and rewrote registration/profile updatedAt on every retry.",
+    decision:
+      "Compare only the canonical EVENT_PARTICIPANT_PROFILE_FIELDS values. This removes object-order dependence while preserving meaningful field changes and existing normalization limits.",
+    files:
+      "repos/orbits/features/events/registration/service.ts; repos/orbits/tests/capabilities/event-registration-live.test.ts",
+    regression:
+      "Focused registration tests passed 9/9. An independent production-handler/PostgreSQL evaluator replayed canonical, reversed and shuffled keys with stable ids/timestamps and one active row, then changed valueOffered and observed both update timestamps advance. Actor B remained isolated and includeDeleted cleanup count was zero.",
+    status:
+      "fixed and independently production-runtime-verified for semantic replay, legitimate updates, persistence, side-effect flags, actor isolation and cleanup; production provider failure injection remains externally limited",
+  },
+  {
+    id: "AUDIT-P1-119",
+    severity: "P1",
+    rootCause:
+      "Notifications and Relationship Inbox passed a zero-argument authenticated-actor resolver into factory-created handlers. Under Next.js 16 request execution that deferred resolver called auth() after the request store was no longer available, so authenticated requests threw headers outside request scope. The shared UI then presented the failure as Mailbox not connected or an apparently successful empty alert state.",
+    decision:
+      "Bind Auth.js at each concrete route export with auth(async request), derive the canonical actor from request.auth.user through a session-input resolver, and inject only that request-bound resolver into the shared handler. Preserve the direct mock handlers and anonymous 401 boundary; add a source boundary regression so these shared routes cannot silently return to zero-argument auth.",
+    files:
+      "repos/orbits/app/api/_shared/authenticated-actor.ts; repos/orbits/app/api/notifications/route.ts; repos/orbits/app/api/chat/relationship-inbox/route.ts; repos/orbits/tests/api/authenticated-actor-context.test.ts",
+    regression:
+      "Independent Next.js 16.2.9 development runtime traversed five authenticated surfaces: ten shared API reads returned 200, zero returned 500, and no headers-outside-request-scope stack occurred. Threads, Alerts and badge rendered mutually consistent actor-scoped empty state; two anonymous API reads remained 401. Canonical A/B and provider isolation tests passed, focused tests passed 27/27, the complete Web suite passed 1408/1408, lint passed, and the production build generated 39/39 pages. Pre-edit resolveAuthenticatedApiActor impact was CRITICAL with 31 direct callers and 16 execution flows; the change retained its zero-argument compatibility entry and routed only these two broken exports through the request-bound helper.",
+    status:
+      "fixed and independently development-runtime-verified for authenticated GET, anonymous denial, honest UI state and actor isolation across 130 affected route instances; valid live compose POST and production next start remain open",
+  },
+  {
+    id: "AUDIT-P1-120",
+    severity: "P1",
+    rootCause:
+      "The Contacts dashboard applied orbit-desktop-only to an inner child instead of the outer orbit-page main. At mobile width the empty outer main still occupied a full viewport height, while the mobile root inherited a global display:flex override without column direction and flowed beside that desktop box. The real mobile content therefore began off the first screen and widened the document.",
+    decision:
+      "Make the complete desktop main the mutually exclusive desktop root, keep its inner layout structural only, and define the mobile root as a min-width-zero full-width vertical flex container. Preserve one real dashboard implementation and responsive shell rather than adding route-specific offsets.",
+    files:
+      "repos/orbits/app/(app)/app/contacts/orbit-real-cards-dashboard.tsx; repos/orbits/tests/pages/app-contacts-dashboard-account-scope.test.ts",
+    regression:
+      "Pre-fix 390px browser evidence measured scrollWidth 641 and a mobile root beginning after the desktop viewport. Post-fix evidence measured document/body 390/390, desktop root 0x0 and inert/aria-hidden, mobile root 390x844 at 0,0 and no overflowing product node. Focused dashboard/a11y tests passed 6/6. OrbitRealCardsDashboard and AppShell pre-edit impacts were LOW.",
+    status:
+      "fixed and authenticated-browser-verified at 390x844 for responsive root exclusivity, content reachability and zero horizontal overflow; 375px was browser-clamped to 390px",
+  },
+  {
+    id: "AUDIT-P2-121",
+    severity: "P2",
+    rootCause:
+      "Both Agent-memory switches forced a long label and state chip into one non-wrapping row. The label could not shrink or wrap and the state chip had no explicit shrink contract, so the approved-learning switch extended the 390px settings page to 499px.",
+    decision:
+      "Use one shared responsive switch-row style, let the label shrink and wrap with overflow-safe words, and keep the state chip non-shrinking. Apply the same contract to both settings controls so translations and state values share one layout invariant.",
+    files:
+      "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx; repos/orbits/tests/pages/app-agent-memory-settings-responsive.test.ts",
+    regression:
+      "Pre-fix browser geometry identified exactly the long label and Off chip beyond the viewport. Post-fix document/body widths were 390/390 with zero overflowing nodes; the label wrapped inside the card and the Off chip remained visible. Focused settings tests passed 8/8. OrbitAgentMemorySettings pre-edit impact was LOW.",
+    status:
+      "fixed and authenticated-browser-verified for both English switches at 390x844 with zero horizontal overflow; Chinese and an unclamped 375px viewport remain uncaptured",
+  },
+  {
+    id: "AUDIT-P1-122",
+    severity: "P1",
+    rootCause:
+      "Both actor-owned Home event-card implementations called a parameterless enterEvent helper. That helper navigated to /party without eventId, discarding the event identity even though the canonical partyHrefForEvent builder already encoded the supported Party contract.",
+    decision:
+      "Pass the concrete event.id from both card implementations into enterEvent and delegate URL construction to the existing canonical partyHrefForEvent helper. Do not duplicate route encoding or modify the high-impact shared helper.",
+    files:
+      "repos/orbits/app/(app)/app/home/orbit-real-home.tsx; repos/orbits/tests/pages/app-home-events-source.test.ts",
+    regression:
+      "Pre-fix runtime evidence showed the exact actor-owned card reaching /app/party with no eventId and the no-selection state. Independent post-fix isolated-runtime replay reached the exact percent-encoded eventId, resolved the same actor-owned event and rendered the truthful missing-reviewed-context state. Focused Home event and product-href tests passed 24/24. Pre-edit enterEvent and OrbitRealHome impacts were LOW; the existing partyHrefForEvent helper was HIGH and was reused without modification.",
+    status:
+      "fixed and independently authenticated-runtime-verified for Home-to-Party event identity preservation; Party reviewed-attendee/recommendation success remains external-limited",
+  },
+  {
+    id: "AUDIT-P1-123",
+    severity: "P1",
+    rootCause:
+      "The native client sent its SecureStore Auth.js session Cookie explicitly while also using credentials=include. React Native iOS first loaded NSHTTPCookieStorage into the request and then addValue-appended the supplied Cookie header, creating an ambiguous same-name session-token transport that Auth.js rejected as Invalid Compact JWE.",
+    decision:
+      "Make the authentication transport single-source per platform. When an explicit native Cookie exists, session validation, authenticated API requests and sign-out use credentials=omit so the native jar is not merged. When no explicit Cookie exists, Web continues using credentials=include and its browser-managed HttpOnly session. During Web acceptance, validate with the browser cookie instead of attempting to supply the returned header.",
+    files:
+      "repos/orbit-app/src/api/mobile-auth.ts; repos/orbit-app/src/api/client.ts; repos/orbit-app/src/api/auth-session.ts; repos/orbit-app/src/api/AuthSessionProvider.tsx; focused auth/API tests",
+    regression:
+      "Focused authentication/API tests passed 32/32, the complete Expo suite passed 538/538 and typecheck passed. An isolated-index GitNexus evaluation reported seven files, nine symbols, zero affected processes and LOW structural risk. Independent direct iOS evaluation used a brand-new simulator and one credentials submission, passed /api/auth/session, the exact actor-owned /profile, SecureStore write/read and force-terminated cold restore, recorded 15 warm and 15 cold native leaves, observed no JWE/JWTSessionError, cleaned three actor records to zero, deleted the simulator and closed both listeners.",
+    status:
+      "fixed and independently fresh-native-runtime-verified for credentials acceptance, single-cookie transport, actor-owned private data, SecureStore persistence, cold restore, safe-read idempotency and cleanup; Android, Google OAuth, second-actor native cache isolation and the remaining authenticated native routes remain open",
+  },
+  {
+    id: "AUDIT-P1-124",
+    severity: "P1",
+    rootCause:
+      "The Chat empty/failure route rendered AccountTopNav outside the data-orbit-real-page selector owner used by the shared responsive navigation rules. Desktop therefore exposed both responsive Inbox trigger instances as actionable controls, while mobile hid the complete header and exposed no Inbox entry.",
+    decision:
+      "Repair selector ownership at the route-state boundary: wrap the existing AccountTopNav and StateView main in one route-local data-orbit-real-page=chat root. Do not modify the CRITICAL-impact shared AccountTopNav or duplicate its responsive logic.",
+    files:
+      "repos/orbits/app/(app)/app/chat/chat-route-state-boundary.tsx; repos/orbits/tests/pages/app-chat-page.test.tsx",
+    regression:
+      "Focused Chat tests passed 23/23 and the complete Web suite passed 1411/1411. Independent fresh-runtime evaluation measured one 36x36 actionable desktop trigger with the mobile slot at 0x0, and one 36x36 actionable mobile trigger with the desktop slot at 0x0. One click at each width opened exactly one Inbox dialog; actor fixtures were cleaned and the runtime port closed. GitNexus could not resolve the new untracked route-state symbol; nearest AppChatPage impact was LOW, while the intentionally untouched AccountTopNav impact was CRITICAL with 44 upstream symbols, 24 direct callers and 10 flows.",
+    status:
+      "fixed and independently authenticated-runtime-verified for desktop/mobile Chat empty-state header reachability, responsive trigger exclusivity and single-dialog activation; no shared shell symbol changed",
+  },
+  {
+    id: "AUDIT-P1-125",
+    severity: "P1",
+    rootCause:
+      "A truthy Contacts refreshToken was treated as an immediate first-mount refresh. That incremented useApiResource's refresh index while its initial actor-keyed snapshot read was awaiting, cancelled the only hydration continuation, then started a refresh branch that intentionally skipped snapshots. When the network failed, refresh semantics preserved the still-loading initial state forever.",
+    decision:
+      "Treat refreshToken as an edge trigger at the LOW-impact ContactsListScreen caller. Initialize the previous-token ref from the first render and refresh only when a mounted route later observes a different non-empty token. Preserve the CRITICAL-impact shared useApiResource and readSnapshot state machines, actor keys, schema and auth boundaries unchanged.",
+    files:
+      "repos/orbit-app/src/screens/contacts/ContactsScreen.tsx; repos/orbit-app/tests/contacts-screen-source.test.ts",
+    regression:
+      "Focused Contacts/snapshot tests passed 44/44, Expo typecheck passed and the complete Expo suite passed 538/538. Independent fresh-simulator evaluation created two actors and one exact B snapshot, proved a true process restart and online B profile restore, then stopped Next and delivered only the initial-token Contacts deep link to the same authenticated PID. B appeared by the first 1.18-second tree and remained at t5/t15 with no A, spinner or offline warning; a later-token failed refresh preserved B, the exact SQLite row stayed byte/hash/timestamp-stable, 12 fixtures were cleaned to zero and the simulator/listeners/temp Xcode artifacts were removed. ContactsListScreen impact was LOW; useApiResource and readSnapshot were CRITICAL and intentionally untouched.",
+    status:
+      "fixed and independently fresh-native-runtime-verified for cold initial-token snapshot hydration, later-token failure preservation, two-actor non-leakage, byte-stable persistence and cleanup; retained-stack timing is closed by AUDIT-P2-131 while Android remains external-limited",
+  },
+  {
+    id: "AUDIT-P1-126",
+    severity: "P1",
+    rootCause:
+      "Both shared runtime-mode resolvers defaulted missing or invalid values to mock in every environment and honored explicit mock/hybrid input in production. Hybrid service factories could then fall back to mock implementations.",
+    decision:
+      "Make production live-only at both shared resolution boundaries. NODE_ENV=production overrides missing, invalid, mock and hybrid inputs before any factory chooses an implementation; development and tests retain the deterministic mock default.",
+    files:
+      "repos/orbits/shared/services/module-mode.ts; repos/orbits/shared/config/feature-mode.ts; repos/orbits/tests/services/capability-registry.test.ts; repos/orbits/tests/api/envelope.test.ts",
+    regression:
+      "Focused mode/workflow/matchmaking tests passed 21/21, the complete Web suite passed 1417/1417, lint passed and the production build completed 39/39. GitNexus rated resolveModuleMode CRITICAL at 135 upstream symbols/10 flows and resolveFeatureMode CRITICAL at 216 symbols/24 flows; the full regression gate was therefore required.",
+    status:
+      "fixed and source/unit/full-suite/lint/build-verified for production live-only mode selection; exact deployed-host configuration and bundle-level removal of unused mock imports remain separate gates",
+  },
+  {
+    id: "AUDIT-P1-127",
+    severity: "P1",
+    rootCause:
+      "The production Next build still registered three /api/mock handlers. They directly listed, activated and reset the shared fixture scenario registry without a production environment gate.",
+    decision:
+      "Fail each handler closed with an empty no-store 404 before reading request input, resolving mode, creating a mock service or returning fixture state. Preserve the local development workbench contract.",
+    files:
+      "repos/orbits/app/api/mock/scenarios/route.ts; repos/orbits/app/api/mock/scenarios/[id]/activate/route.ts; repos/orbits/app/api/mock/reset/route.ts; mock scenario focused test",
+    regression:
+      "Focused mock scenario tests passed 5/5, including list/activate/reset production requests and an invalid reset body. GitNexus rated all three handler edits LOW with zero upstream callers and zero affected flows.",
+    status:
+      "fixed and handler-integration plus exact authenticated rebuilt-next-start verified: all three paths returned empty no-store 404 before parsing input; the disposable actor's three exact records were hard-deleted to zero",
+  },
+  {
+    id: "AUDIT-P1-130",
+    severity: "P1",
+    rootCause:
+      "Event matchmaking bypassed the shared mode factories. Its configured factory silently created createMemoryLiveRecordStore with workspace mock-event-matchmaking whenever all durable database URLs were absent, so production APIs and the Agent workflow could report process-local write success despite live-only mode resolution.",
+    decision:
+      "Require ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL or ORBIT_DATABASE_URL and fail closed before constructing or caching a production service. Confine the existing memory workspace to an explicit non-production branch for development workflows and tests; keep focused service tests on explicit dependency injection.",
+    files:
+      "repos/orbits/features/events/matchmaking/service.ts; repos/orbits/tests/capabilities/agent-matchmaking-context.test.ts",
+    regression:
+      "The focused regression sets NODE_ENV=production, removes all three database URLs and proves the configured factory throws instead of returning a nine-method memory service. The known workflow router plus injected-memory consent, scheduling and idempotency behavior remain covered in non-production. GitNexus rated the factory MEDIUM with seven direct callers, eleven impacted upstream symbols and two affected modules.",
+    status:
+      "fixed and focused/full-suite/lint/build verified for production durable-storage enforcement while preserving non-production workflows; exact deployed database configuration remains an environment gate",
+  },
+  {
+    id: "AUDIT-P2-131",
+    severity: "P2",
+    rootCause:
+      "Expo preserved the historical contacts/list route record across logout. Accepting actor B remounted the private child behind the still-focused login route, and ContactsListScreen's mount-driven resources had no visible-route activation policy, so two actor-correct but invisible reads ran without a product benefit.",
+    decision:
+      "Gate only the LOW-impact Contacts list leaf route with useIsFocused and return null before constructing ContactsScreen while hidden. Preserve the shared private-route boundary, actor-keyed cache and CRITICAL-impact useApiResource state machine.",
+    files:
+      "repos/orbit-app/app/contacts/list.tsx; repos/orbit-app/tests/contacts-screen-source.test.ts",
+    regression:
+      "Focused Contacts tests passed 16/16, Expo typecheck passed and the complete Expo suite passed 539/539. Independent iOS evaluation retained the old route record behind login, observed zero Contacts/suggestion reads for 31.073 seconds, then focused a new Contacts route and observed one request to each endpoint plus actor-B-only UI. Ports 8087/3427 were released and the disposable simulator was deleted. GitNexus rated ContactsListRoute LOW with zero upstream symbols or flows; useApiResource remained untouched.",
+    status:
+      "fixed and independently native-runtime-verified for hidden-route data minimization, focused fetch activation, actor isolation and cleanup; Android and any future named background-prefetch contract remain separate",
+  },
+  {
+    id: "AUDIT-P2-128",
+    severity: "P2",
+    rootCause:
+      "The route-transitive interaction scanner attributed DataCard's internal Pressable to every route that could import DataCard, even when the call site omitted optional onPress and DataCard returned non-interactive content.",
+    decision:
+      "Detect simple owner-prop early-return render gates and require route-scoped JSX prop evidence before attributing the gated internal control to that route.",
+    files:
+      "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+    regression:
+      "The DataCard Pressable now appears only on account, contacts/pipeline, followups, home/events, profile and settings. The route-instance denominator changed from 2340 to 2302 while source-location and implementation denominators remained 1254 and 921; audit tests passed 10/10.",
+    status:
+      "fixed for simple optional-prop early-return gates; the true rendered runtime leaf denominator remains unresolved",
+  },
+  {
+    id: "AUDIT-P2-129",
+    severity: "P2",
+    rootCause:
+      "Route query collection scanned the full transitive import closure with a receiver-blind get/set suffix regex. It treated headers, cookies, Map/storage keys, API query fields, internal variables and a prototype asset UUID as page parameters while losing route-local symbol boundaries.",
+    decision:
+      "Scan only reachable rendered-symbol statements, accept explicit searchParams/URLSearchParams reads, readSearchParam key arguments and Expo useLocalSearchParams declarations, then remove dynamic path bindings from the query namespace.",
+    files:
+      "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+    regression:
+      "Alleged route-query pairs fell from 1272/71 keys to 119/30. Focused assertions prove mobile /account excludes all transitive API/header keys, Contacts List retains seven real keys, mobile /ai/[id] separates id from query, Web login retains four real/global diagnostic keys and all named header/cookie/UUID probes are absent. Audit tests passed 10/10.",
+    status:
+      "fixed for route-local query-key classification; fixed redirects, aliases, hash preservation, custom schemes, ancestor auth/layout contracts and runtime route cases remain a separate explicit contract gap",
+  },
 ];
 
 function toPosix(filePath) {
   return filePath.split(path.sep).join("/");
+}
+
+function normalizedEvidenceText(value) {
+  return String(value ?? "")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function relativeToWorkspace(filePath) {
@@ -6459,6 +7444,35 @@ function scopedTopLevelNodes(source, statementStarts) {
   );
 }
 
+function collectRouteComponentPropEvidence(reachableUiScopes) {
+  const evidence = new Set();
+
+  for (const [filePath, statementStarts] of reachableUiScopes) {
+    const { source } = sourceFileFor(filePath);
+    const roots = scopedTopLevelNodes(source, statementStarts);
+
+    function visit(node) {
+      const parts = getJsxParts(node, source);
+      if (parts && /^[A-Z]/u.test(parts.tagName)) {
+        const componentName = parts.tagName.split(".").at(-1);
+        const attributes = attributeMap(parts.attributes, source);
+        for (const attributeName of attributes.keys()) {
+          if (attributeName !== "__spread") {
+            evidence.add(`${componentName}:${attributeName}`);
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    for (const root of roots) {
+      visit(root);
+    }
+  }
+
+  return evidence;
+}
+
 function attributeMap(attributes, source) {
   const result = new Map();
   for (const property of attributes.properties) {
@@ -6773,6 +7787,119 @@ function collectInteractions(
     discoverLabels(root);
   }
 
+  function enclosingOwnerName(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        (ts.isFunctionDeclaration(current) ||
+          ts.isMethodDeclaration(current) ||
+          ts.isFunctionExpression(current)) &&
+        current.name
+      ) {
+        return current.name.getText(source);
+      }
+      if (
+        ts.isArrowFunction(current) &&
+        ts.isVariableDeclaration(current.parent)
+      ) {
+        return current.parent.name.getText(source);
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function enclosingOwnerFunction(node) {
+    let current = node.parent;
+    while (current) {
+      if (
+        ts.isFunctionDeclaration(current) ||
+        ts.isMethodDeclaration(current) ||
+        ts.isFunctionExpression(current) ||
+        ts.isArrowFunction(current)
+      ) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  function destructuredOwnerProps(owner) {
+    const firstParameter = owner?.parameters?.[0];
+    if (!firstParameter || !ts.isObjectBindingPattern(firstParameter.name)) {
+      return new Set();
+    }
+    return new Set(
+      firstParameter.name.elements.flatMap((element) =>
+        ts.isIdentifier(element.name) ? [element.name.text] : [],
+      ),
+    );
+  }
+
+  function containsReturn(node) {
+    let found = false;
+    function visitReturn(current) {
+      if (ts.isReturnStatement(current)) {
+        found = true;
+        return;
+      }
+      if (!found) {
+        ts.forEachChild(current, visitReturn);
+      }
+    }
+    visitReturn(node);
+    return found;
+  }
+
+  function negatedIdentifier(condition) {
+    if (
+      ts.isPrefixUnaryExpression(condition) &&
+      condition.operator === ts.SyntaxKind.ExclamationToken &&
+      ts.isIdentifier(condition.operand)
+    ) {
+      return condition.operand.text;
+    }
+    return null;
+  }
+
+  function ownerPropRenderGates(node, handlers) {
+    const owner = enclosingOwnerFunction(node);
+    if (!owner || !owner.body || !ts.isBlock(owner.body)) {
+      return [];
+    }
+
+    const ownerProps = destructuredOwnerProps(owner);
+    const handlerPropNames = handlers.flatMap((handler) =>
+      /^[A-Za-z_$][\w$]*$/u.test(handler.expression) &&
+      ownerProps.has(handler.expression)
+        ? [handler.expression]
+        : [],
+    );
+    if (handlerPropNames.length === 0) {
+      return [];
+    }
+
+    const containingStatementIndex = owner.body.statements.findIndex(
+      (statement) =>
+        statement.pos <= node.pos && statement.end >= node.end,
+    );
+    if (containingStatementIndex < 0) {
+      return [];
+    }
+
+    return handlerPropNames.filter((propName) =>
+      owner.body.statements
+        .slice(0, containingStatementIndex)
+        .some(
+          (statement) =>
+            ts.isIfStatement(statement) &&
+            negatedIdentifier(statement.expression) === propName &&
+            containsReturn(statement.thenStatement),
+        ),
+    );
+  }
+
   function visit(node) {
     const parts = getJsxParts(node, source);
     if (parts) {
@@ -6803,6 +7930,7 @@ function collectInteractions(
         }));
         const imperative = imperativeHandlers(attributes, selectorEvidence);
         const handlers = [...declaredHandlers, ...imperative];
+        const renderGateProps = ownerPropRenderGates(node, handlers);
         const href = attributes.get("href") ?? null;
         const disabledCondition =
           attributes.get("disabled") ??
@@ -6857,6 +7985,8 @@ function collectInteractions(
         interactions.push({
           sourceFile: relativeToWorkspace(filePath),
           line: position.line + 1,
+          ownerSymbol: enclosingOwnerName(node),
+          renderGateProps,
           controlType: kind,
           tag: parts.tagName,
           visibleName: label || null,
@@ -7028,48 +8158,111 @@ function collectOverlays(filePath, statementStarts = null) {
   return overlays;
 }
 
-function collectRouteParameterSignals(reachableFiles) {
+function collectRouteParameterSignals(reachableUiScopes) {
   const queryParameters = new Set();
   const hashSignals = [];
   const deepLinkSignals = [];
 
-  for (const filePath of reachableFiles) {
-    const { source, sourceText } = sourceFileFor(filePath);
-    for (const match of sourceText.matchAll(
-      /(?:searchParams|get|readSearchParam|set)\s*\(\s*["']([A-Za-z0-9_-]+)["']/gu,
-    )) {
-      queryParameters.add(match[1]);
-    }
-    if (/location\.hash|\.hash\b|split\(\s*["']#["']/u.test(sourceText)) {
+  for (const [filePath, statementStarts] of reachableUiScopes) {
+    const { source } = sourceFileFor(filePath);
+    const roots = scopedTopLevelNodes(source, statementStarts);
+    const scopedText = roots.map((root) => root.getText(source)).join("\n");
+
+    if (/location\.hash|\.hash\b|split\(\s*["']#["']/u.test(scopedText)) {
       hashSignals.push(relativeToWorkspace(filePath));
     }
     if (
       /Linking\.|useLocalSearchParams|redirect\(|router\.(?:push|replace)|<Redirect\b/u.test(
-        sourceText,
+        scopedText,
       )
     ) {
       deepLinkSignals.push(relativeToWorkspace(filePath));
     }
 
+    function recordSearchParamsTypeMembers(node) {
+      for (const member of node.members ?? []) {
+        if (ts.isPropertySignature(member) && member.name) {
+          queryParameters.add(
+            member.name.getText(source).replace(/^["']|["']$/gu, ""),
+          );
+        }
+      }
+    }
+
+    function isSearchParamsReceiver(expression) {
+      const receiver = expression.getText(source);
+      return (
+        /(?:^|\.)(?:searchParams|params)$/u.test(receiver) ||
+        /\.searchParams$/u.test(receiver) ||
+        /^new URLSearchParams\(/u.test(receiver)
+      );
+    }
+
     function visit(node) {
-      if (
-        ts.isTypeLiteralNode(node) ||
-        ts.isInterfaceDeclaration(node) ||
-        ts.isTypeAliasDeclaration(node)
-      ) {
-        for (const member of node.members ?? []) {
+      if (ts.isCallExpression(node)) {
+        if (
+          ts.isPropertyAccessExpression(node.expression) &&
+          node.expression.name.text === "get" &&
+          isSearchParamsReceiver(node.expression.expression) &&
+          node.arguments[0] &&
+          ts.isStringLiteralLike(node.arguments[0])
+        ) {
+          queryParameters.add(node.arguments[0].text);
+        }
+
+        if (
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === "readSearchParam"
+        ) {
+          const keyArgument = node.arguments.find(
+            (argument, index) =>
+              index > 0 && ts.isStringLiteralLike(argument),
+          );
+          if (keyArgument && ts.isStringLiteralLike(keyArgument)) {
+            queryParameters.add(keyArgument.text);
+          }
+        }
+
+        if (
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === "useLocalSearchParams"
+        ) {
+          const typeArgument = node.typeArguments?.[0];
+          if (typeArgument && ts.isTypeLiteralNode(typeArgument)) {
+            recordSearchParamsTypeMembers(typeArgument);
+          }
           if (
-            ts.isPropertySignature(member) &&
-            member.name &&
-            /SearchParams/u.test(node.parent?.getText(source).slice(0, 160) ?? "")
+            ts.isVariableDeclaration(node.parent) &&
+            ts.isObjectBindingPattern(node.parent.name)
           ) {
-            queryParameters.add(member.name.getText(source).replace(/['"]/gu, ""));
+            for (const element of node.parent.name.elements) {
+              queryParameters.add(
+                element.propertyName?.getText(source) ??
+                  element.name.getText(source),
+              );
+            }
           }
         }
       }
+
+      if (
+        ts.isInterfaceDeclaration(node) &&
+        /SearchParams/u.test(node.name.text)
+      ) {
+        recordSearchParamsTypeMembers(node);
+      }
+      if (
+        ts.isTypeAliasDeclaration(node) &&
+        /SearchParams/u.test(node.name.text) &&
+        ts.isTypeLiteralNode(node.type)
+      ) {
+        recordSearchParamsTypeMembers(node.type);
+      }
       ts.forEachChild(node, visit);
     }
-    visit(source);
+    for (const root of roots) {
+      visit(root);
+    }
   }
 
   return {
@@ -7254,6 +8447,26 @@ function testEvidenceForSurface(surface, testFiles) {
 
 function stableGitMetadata() {
   try {
+    const authoritativeInputStatus = execFileSync(
+      "git",
+      [
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
+        "--",
+        "repos/orbits",
+        "repos/orbit-app",
+        "harness",
+        "tests",
+      ],
+      {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+      },
+    )
+      .trim()
+      .split("\n")
+      .filter(Boolean);
     return {
       commit: execFileSync("git", ["rev-parse", "HEAD"], {
         cwd: WORKSPACE_ROOT,
@@ -7263,9 +8476,19 @@ function stableGitMetadata() {
         cwd: WORKSPACE_ROOT,
         encoding: "utf8",
       }).trim(),
+      sourceState:
+        authoritativeInputStatus.length === 0
+          ? "clean-head"
+          : "head-plus-uncommitted-authoritative-inputs",
+      uncommittedAuthoritativeInputChanges: authoritativeInputStatus.length,
     };
   } catch {
-    return { commit: "unavailable", commitTime: "unavailable" };
+    return {
+      commit: "unavailable",
+      commitTime: "unavailable",
+      sourceState: "unavailable",
+      uncommittedAuthoritativeInputChanges: null,
+    };
   }
 }
 
@@ -7319,6 +8542,8 @@ export function buildFullProductFunctionalAuditInventory() {
       entry.clientRoot,
     );
     const selectorEvidence = collectImperativeSelectorEvidence(reachableFiles);
+    const componentPropEvidence =
+      collectRouteComponentPropEvidence(reachableUiScopes);
     const interactionMap = new Map();
     const contentMap = new Map();
     const overlayMap = new Map();
@@ -7330,6 +8555,17 @@ export function buildFullProductFunctionalAuditInventory() {
         selectorEvidence,
         statementStarts,
       )) {
+        if (
+          interaction.renderGateProps.length > 0 &&
+          interaction.renderGateProps.some(
+            (propName) =>
+              !componentPropEvidence.has(
+                `${interaction.ownerSymbol}:${propName.toLowerCase()}`,
+              ),
+          )
+        ) {
+          continue;
+        }
         interactionMap.set(
           `${interaction.sourceFile}:${interaction.line}:${interaction.controlType}:${interaction.tag}`,
           interaction,
@@ -7383,6 +8619,22 @@ export function buildFullProductFunctionalAuditInventory() {
           .map((handler) => `${handler.event}:${handler.expression}`)
           .join("|")}#${interaction.visibleName}`;
         const semanticInteractionEvidenceKey = `${interaction.sourceFile}#${interaction.visibleName}`;
+        const ownerStableInteractionEvidenceKey = `${
+          interaction.sourceFile
+        }#owner:${interaction.ownerSymbol ?? "unknown"}#${interaction.handlers
+          .map(
+            (handler) =>
+              `${handler.event}:${normalizedEvidenceText(handler.expression)}`,
+          )
+          .join("|")}#${normalizedEvidenceText(interaction.visibleName)}`;
+        const normalizedStableInteractionEvidenceKey = `${
+          interaction.sourceFile
+        }#${interaction.handlers
+          .map(
+            (handler) =>
+              `${handler.event}:${normalizedEvidenceText(handler.expression)}`,
+          )
+          .join("|")}#${normalizedEvidenceText(interaction.visibleName)}`;
         const runtimeEvidence = hasLiveProfileRuntimeEvidence
           ? LIVE_PROFILE_INTERACTION_EVIDENCE.get(
               `${interaction.sourceFile}:${interaction.line}`,
@@ -7404,9 +8656,12 @@ export function buildFullProductFunctionalAuditInventory() {
                     `${interaction.sourceFile}:${interaction.line}`,
                   )
                 : hasLiveMobileAuthRuntimeEvidence
-                  ? LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
+                  ? (LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
+                      stableInteractionEvidenceKey,
+                    ) ??
+                    LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
                       `${interaction.sourceFile}:${interaction.line}`,
-                    )
+                    ))
                 : hasLiveMobileContactAcquisitionRuntimeEvidence
                   ? (LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
                       stableInteractionEvidenceKey,
@@ -7421,6 +8676,12 @@ export function buildFullProductFunctionalAuditInventory() {
                     : liveWebAdditionalRuntimeEvidence
                       ? (LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
                           `${surfaceId}|${stableInteractionEvidenceKey}`,
+                        ) ??
+                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                          `${surfaceId}|${ownerStableInteractionEvidenceKey}`,
+                        ) ??
+                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                          `${surfaceId}|${normalizedStableInteractionEvidenceKey}`,
                         ) ??
                         LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
                           `${surfaceId}|${semanticInteractionEvidenceKey}`,
@@ -7446,11 +8707,16 @@ export function buildFullProductFunctionalAuditInventory() {
                   : liveWebAdditionalRuntimeEvidence
                     ? liveWebAdditionalRuntimeEvidence.verificationCase
                 : "live-contact-list-detail-persistence-isolation-2026-07-28");
+        const {
+          ownerSymbol: _ownerSymbol,
+          renderGateProps: _renderGateProps,
+          ...publicInteraction
+        } = interaction;
 
         return {
           interactionId: `${surfaceId}#interaction-${index + 1}`,
           surfaceId,
-          ...interaction,
+          ...publicInteraction,
           ...(runtimeEvidence
             ? {
                 actualResult: runtimeEvidence.actualResult,
@@ -7477,6 +8743,10 @@ export function buildFullProductFunctionalAuditInventory() {
     const pathParameters = [
       ...entry.route.matchAll(/\[([^\]]+)\]/gu),
     ].map((match) => match[1]);
+    const routeParameters = collectRouteParameterSignals(reachableUiScopes);
+    routeParameters.queryParameters = routeParameters.queryParameters.filter(
+      (parameter) => !pathParameters.includes(parameter),
+    );
 
     const surface = {
       surfaceId,
@@ -7566,7 +8836,7 @@ export function buildFullProductFunctionalAuditInventory() {
         screenReader: "not-runtime-verified",
         focusManagement: "not-runtime-verified",
       },
-      routeParameters: collectRouteParameterSignals(reachableFiles),
+      routeParameters,
       states: collectStateSignals(reachableFiles),
       interactions,
       overlays,
@@ -7714,6 +8984,9 @@ export function buildFullProductFunctionalAuditInventory() {
     schemaVersion: 1,
     generatedFromCommit: metadata.commit,
     deterministicSourceTime: metadata.commitTime,
+    sourceState: metadata.sourceState,
+    uncommittedAuthoritativeInputChanges:
+      metadata.uncommittedAuthoritativeInputChanges,
     scope:
       "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
     evidenceSemantics:
@@ -7739,6 +9012,30 @@ export function buildFullProductFunctionalAuditInventory() {
       overlayImplementations: overlayImplementations.size,
       overlayRouteInstances: overlays.length,
       interactionRouteInstances: interactions.length,
+      uniqueInteractionSourceLocations: new Set(
+        interactions.map(
+          (interaction) => `${interaction.sourceFile}:${interaction.line}`,
+        ),
+      ).size,
+      normalizedStaticBehaviorImplementations: new Set(
+        interactions.map((interaction) =>
+          [
+            interaction.sourceFile,
+            interaction.controlType,
+            interaction.tag,
+            JSON.stringify(interaction.handlers),
+            interaction.href ?? "",
+          ].join("|"),
+        ),
+      ).size,
+      renderedLeafControls: null,
+      renderedLeafControlStatus:
+        "unresolved-runtime-denominator; route instances, source locations, and normalized static implementations are not runtime leaf counts",
+      renderedLeafObservedOccurrences:
+        RENDERED_LEAF_OBSERVATIONS.leafControlOccurrences,
+      renderedLeafObservedStates: RENDERED_LEAF_OBSERVATIONS.renderedStates,
+      renderedLeafObservedUniqueStateKeys:
+        RENDERED_LEAF_OBSERVATIONS.uniqueStateKeys,
       interactionsRuntimeVerified: interactions.filter(
         (interaction) => interaction.actualResult !== "not-runtime-verified",
       ).length,
@@ -7756,6 +9053,8 @@ export function buildFullProductFunctionalAuditInventory() {
       ).length,
       documentedVerificationCases: VERIFIED_AUDIT_CASES.length,
       documentedRemediations: AUDIT_REMEDIATIONS.length,
+      externalLimitations: AUDIT_EXTERNAL_LIMITATIONS.length,
+      remainingAuditGaps: AUDIT_REMAINING_GAPS.length,
     },
     surfaces,
     overlayImplementations: [...overlayImplementations.values()].sort(
@@ -7764,7 +9063,9 @@ export function buildFullProductFunctionalAuditInventory() {
     ),
     verificationCases: VERIFIED_AUDIT_CASES,
     remediations: AUDIT_REMEDIATIONS,
-    externalLimitations: [],
+    renderedLeafObservations: RENDERED_LEAF_OBSERVATIONS,
+    externalLimitations: AUDIT_EXTERNAL_LIMITATIONS,
+    remainingAuditGaps: AUDIT_REMAINING_GAPS,
   };
 }
 
@@ -7781,16 +9082,23 @@ function renderReadme(inventory) {
     "# Orbit 全产品功能审计",
     "",
     `- 源码基线：\`${inventory.generatedFromCommit}\``,
+    `- 源码状态：${inventory.sourceState}；未提交权威输入改动：${inventory.uncommittedAuthoritativeInputChanges ?? "不可用"}`,
     `- Web 路由：${summary.webRoutes}（生产 ${summary.productionRoutes - summary.mobileRoutes}，开发 ${summary.developmentRoutes}）`,
     `- Expo 路由：${summary.mobileRoutes}`,
     `- 路由界面分母：${summary.routeSurfaces}`,
+    `- 渲染叶子控件观测：${summary.renderedLeafObservedOccurrences} 次 / ${summary.renderedLeafObservedStates} 个显式状态 / ${summary.renderedLeafObservedUniqueStateKeys} 个状态键（仅状态局部观测，最终分母仍未冻结）`,
     `- 弹层实现分母：${summary.overlayImplementations}；按路由可达实例：${summary.overlayRouteInstances}`,
     `- 交互控件按路由可达实例分母：${summary.interactionRouteInstances}`,
+    `- 唯一交互源码位置分母：${summary.uniqueInteractionSourceLocations}`,
+    `- 归一化静态行为实现分母：${summary.normalizedStaticBehaviorImplementations}`,
+    `- 真实渲染叶子控件分母：未解决（不得用上述三个静态分母替代）`,
     `- 已完成运行时界面验证：${summary.surfacesRuntimeVerified}/${summary.routeSurfaces}`,
     `- 已有部分运行时证据但尚未全状态关闭的界面：${summary.surfacesWithRuntimeEvidence}`,
     `- 已完成运行时交互验证：${summary.interactionsRuntimeVerified}/${summary.interactionRouteInstances}`,
     `- 已登记验证案例：${summary.documentedVerificationCases}`,
     `- 已登记修复闭环：${summary.documentedRemediations}`,
+    `- 外部环境限制：${summary.externalLimitations}`,
+    `- 仍待补齐的审计缺口组：${summary.remainingAuditGaps}`,
     "",
     "## 范围与方法",
     "",
@@ -7801,6 +9109,19 @@ function renderReadme(inventory) {
     "## 当前结论",
     "",
     "这是可追踪分母的第一版，不是完成声明。`inventory.json` 中的 `not-runtime-verified` 明确表示尚无足够证据；静态存在、测试文件命中、HTTP 200 或 schema 正确均不会自动变成通过。",
+    "",
+    "## 仍待补齐的审计缺口",
+    "",
+    ...inventory.remainingAuditGaps.map(
+      (item) =>
+        `- \`${item.id}\`（${item.scope}，${item.status}）：${item.reason}`,
+    ),
+    "",
+    "## 外部环境限制",
+    "",
+    ...inventory.externalLimitations.map(
+      (item) => `- \`${item.id}\`（${item.scope}）：${item.reason}`,
+    ),
     "",
     "## 当前静态候选",
     "",
@@ -7879,7 +9200,7 @@ function renderVerification(inventory) {
   return [
     "# 验证记录",
     "",
-    `运行时界面验证：${inventory.summary.surfacesRuntimeVerified}/${inventory.summary.routeSurfaces}。运行时交互验证：${inventory.summary.interactionsRuntimeVerified}/${inventory.summary.interactionRouteInstances}。`,
+    `运行时界面验证：${inventory.summary.surfacesRuntimeVerified}/${inventory.summary.routeSurfaces}。运行时交互验证：${inventory.summary.interactionsRuntimeVerified}/${inventory.summary.interactionRouteInstances}。另有 ${inventory.summary.renderedLeafObservedStates} 个显式渲染状态、${inventory.summary.renderedLeafObservedOccurrences} 次可见叶子控件观测；它们是状态局部证据，不是全产品叶子分母。`,
     "",
     "下列静态分母与渲染回归案例已经绑定当前源码。它们不会被计作运行时界面/交互通过；已有旧报告只作为定位线索，不自动继承为本审计的通过证据。后续运行时案例仍必须绑定当前 commit、真实入口、实际动态 ID、账户/角色/workspace、数据写入与刷新回读、最终 UI 文案和可复现命令。",
     "",

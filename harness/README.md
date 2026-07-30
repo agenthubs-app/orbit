@@ -400,7 +400,17 @@ empty evidence forces a failed verifier result.
 
 Browser evidence uses Playwright when available. It captures mobile, tablet, and desktop
 viewports (`375x812`, `768x1024`, and `1440x900`) with per-viewport screenshots and overflow
-records. Install the browser runtime once in this uv environment:
+records. Each viewport record also enumerates the visible leaf controls after removing hidden,
+inert, zero-geometry, and interactive-container ancestors. It records role, accessible name,
+disabled/required/read-only and ARIA state, link target, dialog owner, geometry, and DOM path,
+then hashes the behavior signature into a stable `state_key`. Counts are always scoped to the
+named rendered state; they are not summed into a whole-product denominator unless the caller
+also supplies explicit state coverage and equivalence rules.
+
+The collector navigates through `domcontentloaded` and treats a later `networkidle` timeout as a
+settlement warning when the page remains observable. HTTP 4xx/5xx subresource responses are
+recorded with their method and URL and fail the performance smoke even when the page itself
+returns 200. Install the browser runtime once in this uv environment:
 
 ```bash
 uv run python -m playwright install chromium

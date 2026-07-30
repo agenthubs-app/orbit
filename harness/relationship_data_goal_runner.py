@@ -649,7 +649,7 @@ def _as_percentage(score: object) -> int:
 
 
 def _ends_at(starts_at: str) -> str:
-    return starts_at.replace("10:00:00", "12:00:00")
+    return (datetime.fromisoformat(starts_at) + timedelta(hours=2)).isoformat()
 
 
 def _build_hybrid_runtime_fixture(

@@ -8087,6 +8087,33 @@ def test_browser_viewport_snapshot_helper_records_mobile_tablet_and_desktop(tmp_
                 "buttons": ["Continue"],
                 "inputs": [],
                 "links": [],
+                "dialogs": [],
+                "leaf_control_count": 1,
+                "leaf_controls": [
+                    {
+                        "index": 1,
+                        "tag": "button",
+                        "role": "button",
+                        "name": "Continue",
+                        "type": "button",
+                        "href": "",
+                        "disabled": False,
+                        "required": False,
+                        "readonly": False,
+                        "checked": None,
+                        "expanded": None,
+                        "pressed": None,
+                        "selected": None,
+                        "dialog_owner": "",
+                        "dom_path": "body>button",
+                        "rect": {
+                            "x": 16,
+                            "y": 20,
+                            "width": 120,
+                            "height": 44,
+                        },
+                    }
+                ],
                 "viewport": {"width": self.current_width, "height": self.current_height},
                 "overflow": {
                     "horizontal": self.current_width == 375,
@@ -8103,8 +8130,56 @@ def test_browser_viewport_snapshot_helper_records_mobile_tablet_and_desktop(tmp_
     assert [snapshot["name"] for snapshot in snapshots] == ["mobile", "tablet", "desktop"]
     assert snapshots[0]["overflow"]["horizontal"] is True
     assert snapshots[2]["snapshot"]["viewport"]["width"] == 1440
+    assert snapshots[0]["leaf_control_count"] == 1
+    assert snapshots[0]["leaf_controls"][0]["name"] == "Continue"
+    assert len(snapshots[0]["state_key"]) == 64
+    assert len({snapshot["state_key"] for snapshot in snapshots}) == 3
     assert all(Path(snapshot["screenshot_path"]).exists() for snapshot in snapshots)
     assert all(full_page for _path, full_page in page.screenshot_paths)
+
+
+def test_browser_snapshot_script_enumerates_visible_leaf_controls_and_dialog_state():
+    from playwright.sync_api import sync_playwright
+
+    from harness.evidence import BROWSER_SNAPSHOT_SCRIPT
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 375, "height": 812})
+        page.set_content(
+            """
+            <main>
+              <button type="button"><span>Continue</span></button>
+              <a href="/next" aria-label="Open next" style="display:block;width:20px;height:20px"></a>
+              <div role="button" tabindex="0" aria-label="Composite">
+                <input aria-label="Nested field" />
+              </div>
+              <button hidden>Hidden action</button>
+              <div role="dialog" aria-modal="true" aria-label="Review">
+                <button aria-label="Close review"></button>
+              </div>
+            </main>
+            """
+        )
+        snapshot = page.evaluate(BROWSER_SNAPSHOT_SCRIPT)
+        browser.close()
+
+    assert snapshot["leaf_control_count"] == 4
+    assert [control["name"] for control in snapshot["leaf_controls"]] == [
+        "Continue",
+        "Open next",
+        "Nested field",
+        "Close review",
+    ]
+    assert "Composite" not in [control["name"] for control in snapshot["leaf_controls"]]
+    assert snapshot["leaf_controls"][-1]["dialog_owner"] == "Review"
+    assert snapshot["dialogs"] == [
+        {
+            "name": "Review",
+            "modal": True,
+            "dom_path": "body>main>div:nth-of-type(2)",
+        }
+    ]
 
 
 def test_accessibility_smoke_uses_browser_headings_when_navigation_html_is_streamed(tmp_path):
@@ -8164,6 +8239,14 @@ def test_collect_evidence_records_accessibility_and_performance_smoke_artifacts(
             "overflow": {"horizontal": True, "scroll_width": 1600, "client_width": 1440},
             "console": [{"type": "error", "text": "Hydration failed"}],
             "request_failures": [{"url": f"{url}/missing.js", "method": "GET", "failure": "404"}],
+            "response_errors": [
+                {
+                    "url": f"{url}/api/private",
+                    "method": "GET",
+                    "status": 401,
+                    "status_text": "Unauthorized",
+                }
+            ],
         }
 
     try:
@@ -8187,6 +8270,7 @@ def test_collect_evidence_records_accessibility_and_performance_smoke_artifacts(
     assert any(issue["id"] == "horizontal-overflow" for issue in performance["issues"])
     assert any(issue["id"] == "console-errors" for issue in performance["issues"])
     assert any(issue["id"] == "request-failures" for issue in performance["issues"])
+    assert any(issue["id"] == "http-response-errors" for issue in performance["issues"])
     assert Path(performance["artifact_path"]).exists()
 
     saved_evidence = json.loads((paths["sprint_evidence"] / "evidence.json").read_text())
@@ -11251,3 +11335,11 @@ def test_verifier_accepts_browser_route_query_issue_evidence():
     assert result.verdict == "pass"
     assert result.experience_average == 4.0
     assert [issue.id for issue in result.issues] == ["UX-1"]
+
+
+def test_relationship_event_end_time_adds_two_hours_instead_of_replacing_one_clock():
+    from harness.relationship_data_goal_runner import _ends_at
+
+    assert _ends_at("2026-08-18T10:00:00+09:00") == "2026-08-18T12:00:00+09:00"
+    assert _ends_at("2026-09-01T14:00:00+09:00") == "2026-09-01T16:00:00+09:00"
+    assert _ends_at("2026-09-15T18:00:00+09:00") == "2026-09-15T20:00:00+09:00"

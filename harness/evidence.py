@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import subprocess
 import time
@@ -37,20 +38,164 @@ BROWSER_VIEWPORTS = [
     {"name": "desktop", "width": 1440, "height": 900},
 ]
 
-BROWSER_SNAPSHOT_SCRIPT = """() => ({
-    title: document.title,
-    text: document.body ? document.body.innerText.slice(0, 4000) : "",
-    buttons: Array.from(document.querySelectorAll("button")).map((el) => el.innerText.trim()).filter(Boolean).slice(0, 50),
-    inputs: Array.from(document.querySelectorAll("input, textarea, select")).map((el) => ({name: el.getAttribute("name") || "", type: el.getAttribute("type") || el.tagName.toLowerCase()})).slice(0, 50),
-    links: Array.from(document.querySelectorAll("a")).map((el) => ({href: el.getAttribute("href") || "", text: el.innerText.trim()})).slice(0, 50),
-    headings: Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6")).map((el) => ({level: Number(el.tagName.slice(1)), text: el.innerText.trim()})).filter((heading) => heading.text).slice(0, 50),
-    viewport: {width: window.innerWidth, height: window.innerHeight},
-    overflow: {
-        horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-        scroll_width: document.documentElement.scrollWidth,
-        client_width: document.documentElement.clientWidth
-    }
-})"""
+BROWSER_SNAPSHOT_SCRIPT = """() => {
+    const interactiveSelector = [
+        "button",
+        "a[href]",
+        "input:not([type='hidden'])",
+        "select",
+        "textarea",
+        "summary",
+        "[contenteditable='true']",
+        "[tabindex]:not([tabindex='-1'])",
+        "[role='button']",
+        "[role='link']",
+        "[role='checkbox']",
+        "[role='radio']",
+        "[role='switch']",
+        "[role='tab']",
+        "[role='menuitem']",
+        "[role='menuitemcheckbox']",
+        "[role='menuitemradio']",
+        "[role='option']",
+        "[role='slider']",
+        "[role='spinbutton']",
+        "[role='textbox']",
+        "[role='searchbox']",
+        "[role='combobox']",
+        "[role='treeitem']"
+    ].join(",");
+
+    const isVisible = (element) => {
+        if (!(element instanceof HTMLElement) || element.closest("[hidden], [inert], [aria-hidden='true']")) {
+            return false;
+        }
+        const style = window.getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) {
+            return false;
+        }
+        return Array.from(element.getClientRects()).some((rect) => rect.width > 0 && rect.height > 0);
+    };
+
+    const textFromIds = (value) => String(value || "")
+        .split(/\\s+/u)
+        .map((id) => document.getElementById(id)?.innerText?.trim() || "")
+        .filter(Boolean)
+        .join(" ");
+
+    const accessibleName = (element) => {
+        const labelled = textFromIds(element.getAttribute("aria-labelledby"));
+        return (
+            element.getAttribute("aria-label") ||
+            labelled ||
+            element.getAttribute("alt") ||
+            element.getAttribute("title") ||
+            element.getAttribute("placeholder") ||
+            element.innerText ||
+            element.textContent ||
+            element.getAttribute("name") ||
+            ""
+        ).trim().replace(/\\s+/gu, " ").slice(0, 300);
+    };
+
+    const inferredRole = (element) => {
+        const explicit = element.getAttribute("role");
+        if (explicit) return explicit;
+        const tag = element.tagName.toLowerCase();
+        if (tag === "a") return "link";
+        if (tag === "button" || tag === "summary") return "button";
+        if (tag === "select") return "combobox";
+        if (tag === "textarea") return "textbox";
+        if (tag !== "input") return tag;
+        const type = (element.getAttribute("type") || "text").toLowerCase();
+        if (type === "checkbox") return "checkbox";
+        if (type === "radio") return "radio";
+        if (["button", "submit", "reset", "image"].includes(type)) return "button";
+        if (type === "range") return "slider";
+        if (type === "number") return "spinbutton";
+        if (type === "search") return "searchbox";
+        return "textbox";
+    };
+
+    const domPath = (element) => {
+        const parts = [];
+        let current = element;
+        while (current && current !== document.body && parts.length < 10) {
+            const tag = current.tagName.toLowerCase();
+            const siblings = current.parentElement
+                ? Array.from(current.parentElement.children).filter((item) => item.tagName === current.tagName)
+                : [];
+            const suffix = siblings.length > 1 ? `:nth-of-type(${siblings.indexOf(current) + 1})` : "";
+            parts.unshift(`${tag}${suffix}`);
+            current = current.parentElement;
+        }
+        return ["body", ...parts].join(">");
+    };
+
+    const visibleCandidates = Array.from(document.querySelectorAll(interactiveSelector)).filter(isVisible);
+    const leafCandidates = visibleCandidates.filter(
+        (candidate) => !visibleCandidates.some(
+            (other) => other !== candidate && candidate.contains(other)
+        )
+    );
+    const leafControls = leafCandidates.map((element, index) => {
+        const rect = element.getBoundingClientRect();
+        const disabled = (
+            element.hasAttribute("disabled") ||
+            element.getAttribute("aria-disabled") === "true"
+        );
+        return {
+            index: index + 1,
+            tag: element.tagName.toLowerCase(),
+            role: inferredRole(element),
+            name: accessibleName(element),
+            type: element.getAttribute("type") || "",
+            href: element.getAttribute("href") || "",
+            disabled,
+            required: element.hasAttribute("required") || element.getAttribute("aria-required") === "true",
+            readonly: element.hasAttribute("readonly") || element.getAttribute("aria-readonly") === "true",
+            checked: element instanceof HTMLInputElement && ["checkbox", "radio"].includes(element.type)
+                ? element.checked
+                : element.getAttribute("aria-checked"),
+            expanded: element.getAttribute("aria-expanded"),
+            pressed: element.getAttribute("aria-pressed"),
+            selected: element.getAttribute("aria-selected"),
+            dialog_owner: element.closest("[role='dialog'], dialog")?.getAttribute("aria-label") || "",
+            dom_path: domPath(element),
+            rect: {
+                x: Math.round(rect.x * 100) / 100,
+                y: Math.round(rect.y * 100) / 100,
+                width: Math.round(rect.width * 100) / 100,
+                height: Math.round(rect.height * 100) / 100
+            }
+        };
+    });
+    const dialogs = Array.from(document.querySelectorAll("[role='dialog'], dialog"))
+        .filter(isVisible)
+        .map((element) => ({
+            name: accessibleName(element),
+            modal: element.getAttribute("aria-modal") === "true" || element instanceof HTMLDialogElement,
+            dom_path: domPath(element)
+        }));
+
+    return {
+        title: document.title,
+        text: document.body ? document.body.innerText.slice(0, 4000) : "",
+        buttons: Array.from(document.querySelectorAll("button")).map((el) => el.innerText.trim()).filter(Boolean).slice(0, 50),
+        inputs: Array.from(document.querySelectorAll("input, textarea, select")).map((el) => ({name: el.getAttribute("name") || "", type: el.getAttribute("type") || el.tagName.toLowerCase()})).slice(0, 50),
+        links: Array.from(document.querySelectorAll("a")).map((el) => ({href: el.getAttribute("href") || "", text: el.innerText.trim()})).slice(0, 50),
+        headings: Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6")).map((el) => ({level: Number(el.tagName.slice(1)), text: el.innerText.trim()})).filter((heading) => heading.text).slice(0, 50),
+        leaf_control_count: leafControls.length,
+        leaf_controls: leafControls,
+        dialogs,
+        viewport: {width: window.innerWidth, height: window.innerHeight},
+        overflow: {
+            horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+            scroll_width: document.documentElement.scrollWidth,
+            client_width: document.documentElement.clientWidth
+        }
+    };
+}"""
 
 
 def _clean_html_text(value: str) -> str:
@@ -284,12 +429,47 @@ def capture_viewport_snapshots(page: Any, paths: dict[str, Path], safe_name: str
         screenshot_path = paths["screenshots"] / f"{safe_name}-{viewport['name']}.png"
         page.screenshot(path=str(screenshot_path), full_page=True)
         snapshot = page.evaluate(BROWSER_SNAPSHOT_SCRIPT)
+        leaf_controls = snapshot.get("leaf_controls", []) if isinstance(snapshot, dict) else []
+        dialogs = snapshot.get("dialogs", []) if isinstance(snapshot, dict) else []
+        state_signature = {
+            "viewport": viewport["name"],
+            "leaf_controls": [
+                {
+                    key: control.get(key)
+                    for key in (
+                        "role",
+                        "name",
+                        "type",
+                        "href",
+                        "disabled",
+                        "required",
+                        "readonly",
+                        "checked",
+                        "expanded",
+                        "pressed",
+                        "selected",
+                        "dialog_owner",
+                        "dom_path",
+                    )
+                }
+                for control in leaf_controls
+                if isinstance(control, dict)
+            ],
+            "dialogs": dialogs,
+        }
+        state_key = hashlib.sha256(
+            json.dumps(state_signature, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
         snapshots.append({
             "name": viewport["name"],
             "width": viewport["width"],
             "height": viewport["height"],
             "screenshot_path": str(screenshot_path),
             "snapshot": snapshot,
+            "state_key": state_key,
+            "leaf_control_count": len(leaf_controls),
+            "leaf_controls": leaf_controls,
+            "dialogs": dialogs,
             "overflow": snapshot.get("overflow", {}) if isinstance(snapshot, dict) else {},
         })
     return snapshots
@@ -418,6 +598,15 @@ def collect_performance_smoke_evidence(
             "count": len(request_failures),
             "examples": request_failures[:5],
         })
+    response_errors = browser_record.get("response_errors", [])
+    if response_errors:
+        issues.append({
+            "id": "http-response-errors",
+            "severity": "serious",
+            "message": "Browser requests received HTTP error responses.",
+            "count": len(response_errors),
+            "examples": response_errors[:10],
+        })
 
     record = {
         "url": route_url,
@@ -478,6 +667,7 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
     safe_name = _safe_route_name(route_key)
     browser_path = paths["browser"] / f"{safe_name}.json"
     try:
+        from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except Exception as exc:
         record = {
@@ -492,6 +682,8 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
 
     console_messages: list[dict[str, str]] = []
     request_failures: list[dict[str, str]] = []
+    response_errors: list[dict[str, Any]] = []
+    settle_warnings: list[dict[str, str]] = []
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
@@ -507,7 +699,31 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
                     }
                 ),
             )
-            response = page.goto(url, wait_until="networkidle", timeout=15000)
+            page.on(
+                "response",
+                lambda response: response_errors.append(
+                    {
+                        "url": response.url,
+                        "method": response.request.method,
+                        "status": response.status,
+                        "status_text": response.status_text,
+                    }
+                )
+                if response.status >= 400
+                else None,
+            )
+            response = page.goto(url, wait_until="domcontentloaded", timeout=15000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except PlaywrightTimeoutError as exc:
+                settle_warnings.append(
+                    {
+                        "id": "networkidle-timeout",
+                        "classification": "page-remained-observable",
+                        "message": str(exc),
+                    }
+                )
+            page.wait_for_timeout(250)
             viewport_snapshots = capture_viewport_snapshots(page, paths, safe_name)
             browser.close()
         browser_data = viewport_snapshots[-1]["snapshot"] if viewport_snapshots else {}
@@ -526,8 +742,27 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
             "inputs": browser_data.get("inputs", []),
             "links": browser_data.get("links", []),
             "headings": browser_data.get("headings", []),
+            "leaf_control_count": browser_data.get("leaf_control_count", 0),
+            "leaf_controls": browser_data.get("leaf_controls", []),
+            "dialogs": browser_data.get("dialogs", []),
+            "rendered_states": [
+                {
+                    "name": item.get("name"),
+                    "width": item.get("width"),
+                    "height": item.get("height"),
+                    "state_key": item.get("state_key"),
+                    "leaf_control_count": item.get("leaf_control_count", 0),
+                    "leaf_controls": item.get("leaf_controls", []),
+                    "dialogs": item.get("dialogs", []),
+                    "overflow": item.get("overflow", {}),
+                    "screenshot_path": item.get("screenshot_path", ""),
+                }
+                for item in viewport_snapshots
+            ],
             "console": console_messages,
             "request_failures": request_failures,
+            "response_errors": response_errors,
+            "settle_warnings": settle_warnings,
             "artifact_path": str(browser_path),
         })
     except Exception as exc:
@@ -538,6 +773,8 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
             "error": f"Browser evidence failed: {type(exc).__name__}: {exc}",
             "console": console_messages,
             "request_failures": request_failures,
+            "response_errors": response_errors,
+            "settle_warnings": settle_warnings,
             "artifact_path": str(browser_path),
         }
     browser_path.write_text(json.dumps(record, indent=2, ensure_ascii=False))

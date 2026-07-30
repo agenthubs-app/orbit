@@ -118,6 +118,78 @@ test("every route-reachable interaction has a stable identity and audit fields",
   }
 });
 
+test("prop-gated DataCard pressables are counted only on routes that pass onPress", () => {
+  const dataCardPressableSurfaces = inventory.surfaces
+    .filter((surface) =>
+      surface.interactions.some(
+        (interaction) =>
+          interaction.sourceFile ===
+            "repos/orbit-app/src/components/DataCard.tsx" &&
+          interaction.tag === "Pressable",
+      ),
+    )
+    .map((surface) => surface.surfaceId)
+    .sort();
+
+  assert.deepEqual(dataCardPressableSurfaces, [
+    "mobile:/account",
+    "mobile:/contacts/pipeline",
+    "mobile:/followups",
+    "mobile:/home/events",
+    "mobile:/profile",
+    "mobile:/settings",
+  ]);
+});
+
+test("route query parameters come from route-local URL consumers, not transitive get/set calls", () => {
+  const routeParameters = (surfaceId: string): string[] => {
+    const surface = inventory.surfaces.find(
+      (candidate) => candidate.surfaceId === surfaceId,
+    );
+    assert.ok(surface, surfaceId);
+    return surface.routeParameters.queryParameters;
+  };
+
+  assert.deepEqual(routeParameters("mobile:/account"), []);
+  assert.deepEqual(routeParameters("mobile:/contacts/list"), [
+    "q",
+    "query",
+    "refreshToken",
+    "source",
+    "status",
+    "tag",
+    "value",
+  ]);
+  assert.deepEqual(routeParameters("mobile:/ai/[id]"), [
+    "initialMessage",
+    "source",
+  ]);
+  assert.deepEqual(routeParameters("web:/app/account/login"), [
+    "created",
+    "email",
+    "next",
+    "orbitVisualSeed",
+  ]);
+
+  const allRouteQueryParameters = inventory.surfaces.flatMap(
+    (surface) => surface.routeParameters.queryParameters,
+  );
+  for (const falsePositive of [
+    "Content-Type",
+    "Set-Cookie",
+    "X-Orbit-Feature-Mode",
+    "X-Orbit-Privacy",
+    "X-Orbit-Runtime-Boundary",
+    "4636af91-bda9-4959-bb19-8ab1c003d4e6",
+  ]) {
+    assert.equal(
+      allRouteQueryParameters.includes(falsePositive),
+      false,
+      falsePositive,
+    );
+  }
+});
+
 test("route UI inventory follows imported exports instead of sibling components", () => {
   const adminAccess = inventory.surfaces.find(
     (surface) => surface.surfaceId === "web:/app/admin/access",
@@ -261,6 +333,113 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
   assert.equal(
     inventory.summary.interactionsRuntimeVerified,
     runtimeVerifiedInteractions.length,
+  );
+  assert.equal(inventory.summary.uniqueInteractionSourceLocations, 1254);
+  assert.equal(
+    inventory.summary.normalizedStaticBehaviorImplementations,
+    921,
+  );
+  assert.equal(inventory.summary.renderedLeafControls, null);
+  assert.match(
+    inventory.summary.renderedLeafControlStatus,
+    /unresolved-runtime-denominator/u,
+  );
+  assert.equal(inventory.summary.renderedLeafObservedOccurrences, 3001);
+  assert.equal(inventory.summary.renderedLeafObservedStates, 279);
+  assert.equal(inventory.summary.renderedLeafObservedUniqueStateKeys, 273);
+  assert.equal(inventory.renderedLeafObservations.manifestCount, 13);
+  assert.equal(
+    inventory.renderedLeafObservations.manifests.reduce(
+      (sum, manifest) => sum + manifest.leafControlOccurrences,
+      0,
+    ),
+    inventory.summary.renderedLeafObservedOccurrences,
+  );
+  assert.equal(
+    inventory.renderedLeafObservations.status,
+    "state-local-observation-not-final-denominator",
+  );
+  assert.match(
+    inventory.sourceState,
+    /^(clean-head|head-plus-uncommitted-authoritative-inputs)$/u,
+  );
+  assert.equal(
+    Number.isInteger(inventory.uncommittedAuthoritativeInputChanges),
+    true,
+  );
+  assert.equal(
+    runtimeVerifiedInteractions.some(
+      (interaction) =>
+        interaction.surfaceId === "mobile:/account/login" &&
+        interaction.sourceFile ===
+          "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx" &&
+        interaction.tag === "AuthField" &&
+        interaction.handlers.some(
+          (handler) =>
+            handler.event === "onchange" &&
+            handler.expression === "(value) => updateValue(field, value)",
+        ),
+    ),
+    true,
+    "mobile auth runtime evidence must survive unrelated source-line shifts",
+  );
+  const memorySettingsInteractions = runtimeVerifiedInteractions.filter(
+    (interaction) =>
+      interaction.surfaceId === "web:/app/settings" &&
+      interaction.sourceFile ===
+        "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx",
+  );
+  assert.equal(memorySettingsInteractions.length, 11);
+  assert.match(
+    memorySettingsInteractions.find((interaction) =>
+      interaction.visibleName?.includes("Use memory in Agent replies"),
+    )?.actualResult ?? "",
+    /^Use memory changed/u,
+  );
+  assert.match(
+    memorySettingsInteractions.find((interaction) =>
+      interaction.visibleName?.includes(
+        "Allow approved learning from conversations",
+      ),
+    )?.actualResult ?? "",
+    /^Approved conversation learning changed/u,
+  );
+  assert.equal(
+    runtimeVerifiedInteractions.some(
+      (interaction) =>
+        interaction.surfaceId === "web:/app/today" &&
+        interaction.sourceFile ===
+          "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx" &&
+        interaction.visibleName === "Got it / 知道了" &&
+        interaction.handlers.some(
+          (handler) =>
+            handler.event === "onclick" && handler.expression === "onClose",
+        ),
+    ),
+    true,
+    "Today dialog runtime evidence must survive unrelated source-line shifts",
+  );
+  const homeEventRuntimeInteractions = runtimeVerifiedInteractions.filter(
+    (interaction) =>
+      interaction.sourceFile ===
+        "repos/orbits/app/(app)/app/home/orbit-real-home.tsx" &&
+      interaction.visibleName === "{content}" &&
+      interaction.testEvidence.some((evidence) =>
+        [
+          "web-home-private-event-boundaries-2026-07-29",
+          "home-party-event-identity-repair-2026-07-30",
+        ].includes(evidence),
+      ),
+  );
+  assert.equal(homeEventRuntimeInteractions.length, 3);
+  assert.equal(
+    homeEventRuntimeInteractions.some((interaction) =>
+      interaction.testEvidence.includes(
+        "home-party-event-identity-repair-2026-07-30",
+      ),
+    ),
+    true,
+    "Home event evidence must be keyed by owner plus behavior, not source line",
   );
   assert.equal(publicEventDetailInteractions.length, 20);
   assert.equal(publicOrganizerNavigationInteractions.length, 3);
