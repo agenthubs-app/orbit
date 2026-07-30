@@ -13,8 +13,42 @@ test("register invite screen routes signed-out users through account auth", () =
   assert.match(screenSource, /useOrbitAuthSession/u);
   assert.match(screenSource, /auth\.ready/u);
   assert.match(screenSource, /auth\.signedIn/u);
-  assert.match(screenSource, /authenticated=\{auth\.signedIn\}/u);
+  assert.match(screenSource, /AuthenticatedRegisterInviteEventScreen/u);
+  assert.match(screenSource, /authenticated=\{false\}/u);
   assert.match(screenSource, /registerInviteToView\(\{[\s\S]*authenticated/u);
+});
+
+test("anonymous register invites do not mount the private profile resource", () => {
+  const eventBoundaryStart = screenSource.indexOf(
+    "function RegisterInviteEventScreen"
+  );
+  const authenticatedBoundaryStart = screenSource.indexOf(
+    "function AuthenticatedRegisterInviteEventScreen"
+  );
+  const resourceBoundaryStart = screenSource.indexOf(
+    "function RegisterInviteResourceScreen"
+  );
+  const eventBoundary = screenSource.slice(
+    eventBoundaryStart,
+    authenticatedBoundaryStart
+  );
+  const authenticatedBoundary = screenSource.slice(
+    authenticatedBoundaryStart,
+    resourceBoundaryStart
+  );
+
+  assert.ok(eventBoundaryStart > -1);
+  assert.ok(authenticatedBoundaryStart > eventBoundaryStart);
+  assert.ok(resourceBoundaryStart > authenticatedBoundaryStart);
+  assert.match(eventBoundary, /auth\.signedIn \?/u);
+  assert.match(eventBoundary, /profileState=\{null\}/u);
+  assert.doesNotMatch(eventBoundary, /ORBIT_API_ENDPOINTS\.profile/u);
+  assert.match(authenticatedBoundary, /ORBIT_API_ENDPOINTS\.profile/u);
+});
+
+test("register invites read public event detail for both auth states", () => {
+  assert.match(screenSource, /publicEventDetailPath\(inviteCode\)/u);
+  assert.doesNotMatch(screenSource, /\beventDetailPath\(inviteCode\)/u);
 });
 
 test("register invite screen opens with registration readiness before detail cards", () => {

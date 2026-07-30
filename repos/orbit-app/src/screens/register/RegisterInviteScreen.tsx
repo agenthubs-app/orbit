@@ -2,7 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { eventDetailPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import {
+  ORBIT_API_ENDPOINTS,
+  publicEventDetailPath
+} from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -65,28 +68,79 @@ function RegisterInviteCodeRequired() {
 
 function RegisterInviteEventScreen({ inviteCode }: { inviteCode: string }) {
   const auth = useOrbitAuthSession();
-  const eventState = useApiResource<unknown>(
-    eventDetailPath(inviteCode),
-    () => false
+
+  if (!auth.ready) {
+    return (
+      <AppScreen eyebrow="活动报名" title="报名资料准备">
+        <LoadingState />
+      </AppScreen>
+    );
+  }
+
+  return auth.signedIn ? (
+    <AuthenticatedRegisterInviteEventScreen inviteCode={inviteCode} />
+  ) : (
+    <RegisterInviteResourceScreen
+      authenticated={false}
+      inviteCode={inviteCode}
+      profileState={null}
+    />
   );
+}
+
+function AuthenticatedRegisterInviteEventScreen({
+  inviteCode
+}: {
+  inviteCode: string;
+}) {
   const profileState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.profile,
     () => false
   );
 
+  return (
+    <RegisterInviteResourceScreen
+      authenticated
+      inviteCode={inviteCode}
+      profileState={profileState}
+    />
+  );
+}
+
+function RegisterInviteResourceScreen({
+  authenticated,
+  inviteCode,
+  profileState
+}: {
+  authenticated: boolean;
+  inviteCode: string;
+  profileState: ReturnType<typeof useApiResource<unknown>> | null;
+}) {
+  const eventState = useApiResource<unknown>(
+    publicEventDetailPath(inviteCode),
+    () => false
+  );
+
   function refreshAll() {
     eventState.refresh();
-    profileState.refresh();
+    profileState?.refresh();
   }
 
   const loading =
-    !auth.ready ||
     eventState.kind === "loading" ||
-    profileState.kind === "loading";
+    profileState?.kind === "loading";
   const offline =
-    eventState.kind === "offline" ? eventState : profileState.kind === "offline" ? profileState : null;
+    eventState.kind === "offline"
+      ? eventState
+      : profileState?.kind === "offline"
+        ? profileState
+        : null;
   const failure =
-    eventState.kind === "failure" ? eventState : profileState.kind === "failure" ? profileState : null;
+    eventState.kind === "failure"
+      ? eventState
+      : profileState?.kind === "failure"
+        ? profileState
+        : null;
 
   return (
     <AppScreen
@@ -94,7 +148,7 @@ function RegisterInviteEventScreen({ inviteCode }: { inviteCode: string }) {
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
-          refreshing={eventState.refreshing || profileState.refreshing}
+          refreshing={eventState.refreshing || Boolean(profileState?.refreshing)}
           tintColor={colors.accent}
         />
       }
@@ -107,7 +161,7 @@ function RegisterInviteEventScreen({ inviteCode }: { inviteCode: string }) {
       {failure ? <ErrorState message={failure.error.message} /> : null}
       {!loading && !offline && !failure ? (
         <RegisterInviteContent
-          authenticated={auth.signedIn}
+          authenticated={authenticated}
           eventPayload={
             eventState.kind === "success" || eventState.kind === "empty"
               ? eventState.data
@@ -115,7 +169,7 @@ function RegisterInviteEventScreen({ inviteCode }: { inviteCode: string }) {
           }
           inviteCode={inviteCode}
           profilePayload={
-            profileState.kind === "success" || profileState.kind === "empty"
+            profileState?.kind === "success" || profileState?.kind === "empty"
               ? profileState.data
               : null
           }
