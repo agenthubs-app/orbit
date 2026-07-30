@@ -170,6 +170,9 @@ test("route query parameters come from route-local URL consumers, not transitive
     "next",
     "orbitVisualSeed",
   ]);
+  assert.deepEqual(routeParameters("web:/app/contacts/dashboard"), [
+    "orbitVisualSeed",
+  ]);
 
   const allRouteQueryParameters = inventory.surfaces.flatMap(
     (surface) => surface.routeParameters.queryParameters,
@@ -231,8 +234,7 @@ test("route UI inventory follows imported exports instead of sibling components"
 test("visible controls do not rely on missing static behavior evidence", () => {
   const missingHandlers = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
-      (interaction) =>
-        interaction.conclusion === "candidate-missing-handler",
+      (interaction) => interaction.conclusion === "candidate-missing-handler",
     ),
   );
 
@@ -265,11 +267,8 @@ test("visible controls have static accessible-name evidence", () => {
 });
 
 test("browser base-state evidence is scoped to the 20 currently direct Web surfaces", () => {
-  const browserEvidenceSurfaces = inventory.surfaces.filter(
-    (surface) =>
-      surface.runtimeEvidence.includes(
-        "in-app browser base-state at 1440x900",
-      ),
+  const browserEvidenceSurfaces = inventory.surfaces.filter((surface) =>
+    surface.runtimeEvidence.includes("in-app browser base-state at 1440x900"),
   );
 
   assert.equal(browserEvidenceSurfaces.length, 20);
@@ -279,9 +278,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     );
     assert.ok(surface, route);
     assert.equal(
-      surface.runtimeEvidence.includes(
-        "in-app browser base-state at 1440x900",
-      ),
+      surface.runtimeEvidence.includes("in-app browser base-state at 1440x900"),
       false,
       route,
     );
@@ -293,9 +290,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     );
     assert.ok(surface, route);
     assert.equal(
-      surface.runtimeEvidence.includes(
-        "in-app browser base-state at 1440x900",
-      ),
+      surface.runtimeEvidence.includes("in-app browser base-state at 1440x900"),
       true,
       route,
     );
@@ -335,10 +330,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     runtimeVerifiedInteractions.length,
   );
   assert.equal(inventory.summary.uniqueInteractionSourceLocations, 1254);
-  assert.equal(
-    inventory.summary.normalizedStaticBehaviorImplementations,
-    921,
-  );
+  assert.equal(inventory.summary.normalizedStaticBehaviorImplementations, 924);
   assert.equal(inventory.summary.renderedLeafControls, null);
   assert.match(
     inventory.summary.renderedLeafControlStatus,
@@ -419,6 +411,43 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     true,
     "Today dialog runtime evidence must survive unrelated source-line shifts",
   );
+  const currentAgentRetryInteraction = runtimeVerifiedInteractions.find(
+    (interaction) =>
+      interaction.surfaceId === "web:/app/agent" &&
+      interaction.sourceFile ===
+        "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+      interaction.visibleName === "重新提交请求 / Retry request" &&
+      interaction.handlers.some(
+        (handler) =>
+          handler.event === "onclick" &&
+          handler.expression ===
+            "() => void ask(message.retryRequest!, index)",
+      ),
+  );
+  assert.equal(
+    currentAgentRetryInteraction?.testEvidence.includes(
+      "web-agent-retry-idempotent-current-handler-2026-07-30",
+    ),
+    true,
+    "changed handlers require runtime evidence bound to the current stable handler key",
+  );
+  assert.equal(
+    runtimeVerifiedInteractions.some(
+      (interaction) =>
+        interaction.surfaceId === "web:/app/agent" &&
+        interaction.sourceFile ===
+          "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+        interaction.visibleName === "重新提交请求 / Retry request" &&
+        interaction.handlers.some(
+          (handler) =>
+            handler.event === "onclick" &&
+            handler.expression !==
+              "() => void ask(message.retryRequest!, index)",
+        ),
+    ),
+    false,
+    "a matching label or source line must not promote any other retry handler",
+  );
   const homeEventRuntimeInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
       interaction.sourceFile ===
@@ -492,9 +521,8 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     "runtime-partially-verified-expo-contact-acquisition-live-boundaries",
   );
   assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/home",
-    )?.verificationConclusion,
+    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/home")
+      ?.verificationConclusion,
     "runtime-partially-verified-web-actor-scoped-home-event",
   );
   assert.equal(
@@ -504,9 +532,8 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     "runtime-partially-verified-web-home-events-filter-and-detail",
   );
   assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/today",
-    )?.verificationConclusion,
+    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/today")
+      ?.verificationConclusion,
     "runtime-partially-verified-web-today-meeting-service-boundary",
   );
   assert.equal(
@@ -554,10 +581,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     );
   }
   for (const [surfaceId, verificationConclusion] of [
-    [
-      "mobile:/ai",
-      "runtime-partially-verified-expo-ai-history-persistence",
-    ],
+    ["mobile:/ai", "runtime-partially-verified-expo-ai-history-persistence"],
     [
       "mobile:/ai/[id]",
       "runtime-partially-verified-expo-ai-conversation-readback",
@@ -572,10 +596,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
       "runtime-partially-verified-expo-contact-missing-boundary",
     ],
     ["mobile:/events", "runtime-partially-verified-expo-live-event-chain"],
-    [
-      "mobile:/events/[id]",
-      "runtime-partially-verified-expo-live-event-chain",
-    ],
+    ["mobile:/events/[id]", "runtime-partially-verified-expo-live-event-chain"],
     [
       "mobile:/events/[id]/attendees",
       "runtime-partially-verified-expo-live-event-chain",
@@ -584,7 +605,10 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
       "mobile:/events/[id]/register",
       "runtime-partially-verified-expo-live-event-chain",
     ],
-    ["mobile:/party", "runtime-partially-verified-expo-party-truthful-boundary"],
+    [
+      "mobile:/party",
+      "runtime-partially-verified-expo-party-truthful-boundary",
+    ],
     [
       "mobile:/party/checkin",
       "runtime-partially-verified-expo-party-truthful-boundary",
@@ -732,17 +756,14 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     true,
   );
   assert.equal(
-    inventory.surfaces
-      .find((surface) => surface.surfaceId === "web:/app/chat")
+    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/chat")
       ?.runtimeEvidence.length,
     4,
   );
   assert.equal(
-    inventory.surfaces
-      .find(
-        (surface) => surface.surfaceId === "web:/app/contacts/all-actions",
-      )
-      ?.runtimeEvidence.length,
+    inventory.surfaces.find(
+      (surface) => surface.surfaceId === "web:/app/contacts/all-actions",
+    )?.runtimeEvidence.length,
     3,
   );
   for (const [surfaceId, evidenceCount] of [
@@ -767,8 +788,7 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     inventory.surfaces
       .find((surface) => surface.surfaceId === "web:/app/profile")
       ?.interactions.filter(
-        (interaction) =>
-          interaction.actualResult !== "not-runtime-verified",
+        (interaction) => interaction.actualResult !== "not-runtime-verified",
       ).length,
     18,
   );
@@ -778,10 +798,7 @@ test("overlay implementation and route-instance denominators are internally cons
   const routeInstances = inventory.surfaces.flatMap(
     (surface) => surface.overlays,
   );
-  assert.equal(
-    routeInstances.length,
-    inventory.summary.overlayRouteInstances,
-  );
+  assert.equal(routeInstances.length, inventory.summary.overlayRouteInstances);
   assert.equal(
     new Set(
       inventory.overlayImplementations.map(
@@ -827,10 +844,7 @@ test("generated documents and machine inventory share the same denominators", ()
       readFileSync(path.join(outputRoot, "inventory.json"), "utf8"),
     );
     const readme = readFileSync(path.join(outputRoot, "README.md"), "utf8");
-    const surfaces = readFileSync(
-      path.join(outputRoot, "surfaces.md"),
-      "utf8",
-    );
+    const surfaces = readFileSync(path.join(outputRoot, "surfaces.md"), "utf8");
     const interactions = readFileSync(
       path.join(outputRoot, "interaction-matrix.md"),
       "utf8",
@@ -847,14 +861,16 @@ test("generated documents and machine inventory share the same denominators", ()
     );
     assert.match(
       interactions,
-      new RegExp(`当前分母为 ${written.summary.interactionRouteInstances}`, "u"),
+      new RegExp(
+        `当前分母为 ${written.summary.interactionRouteInstances}`,
+        "u",
+      ),
     );
     assert.equal(
       surfaces
         .split("\n")
         .filter(
-          (line) =>
-            line.startsWith("| `web:") || line.startsWith("| `mobile:"),
+          (line) => line.startsWith("| `web:") || line.startsWith("| `mobile:"),
         ).length,
       written.summary.routeSurfaces,
     );

@@ -92,19 +92,19 @@ const BROWSER_SMOKE_WEB_ROUTES = new Set([
   "/dev/orbit-ai/trace",
 ]);
 const LIVE_PROFILE_RUNTIME_SURFACE = "web:/app/profile";
-const LIVE_EVENT_REGISTRATION_RUNTIME_SURFACE =
-  "web:/app/events/[id]/register";
-const LIVE_BUSINESS_CARD_RESTRICTED_RUNTIME_SURFACE =
-  "web:/app/contacts/new";
+const LIVE_EVENT_REGISTRATION_RUNTIME_SURFACE = "web:/app/events/[id]/register";
+const LIVE_BUSINESS_CARD_RESTRICTED_RUNTIME_SURFACE = "web:/app/contacts/new";
 const LIVE_CONTACTS_LIST_RUNTIME_SURFACE = "web:/app/contacts";
 const LIVE_CONTACT_DETAIL_RUNTIME_SURFACE = "web:/app/contacts/[id]";
-const LIVE_MOBILE_CONTACT_ACQUISITION_RUNTIME_SURFACE =
-  "mobile:/contacts/new";
+const LIVE_MOBILE_CONTACT_ACQUISITION_RUNTIME_SURFACE = "mobile:/contacts/new";
 const LIVE_MOBILE_AUTH_RUNTIME_SURFACES = new Set([
   "mobile:/account",
   "mobile:/account/login",
   "mobile:/account/permissions",
   "mobile:/profile",
+]);
+const HANDLER_BOUND_RUNTIME_EVIDENCE_INTERACTIONS = new Set([
+  "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#重新提交请求 / Retry request",
 ]);
 const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
@@ -196,25 +196,23 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-live-event-chain",
     },
   ]),
-  ...[
-    "mobile:/party",
-    "mobile:/party/checkin",
-    "mobile:/party/graph",
-  ].map((surfaceId) => [
-    surfaceId,
-    {
-      entryBehavior: "expo-web-party-live-data-boundary-entry-verified",
-      runtimeEvidence: [
-        "party mode resolved only from the selected live event and its available roster",
-        "no fixed access code was generated",
-        "check-in exposed the missing service/write boundary instead of local success",
-        "graph center and status copy described available relationship data without claiming attendance",
-      ],
-      verificationCase: "expo-party-no-synthetic-checkin-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-expo-party-truthful-boundary",
-    },
-  ]),
+  ...["mobile:/party", "mobile:/party/checkin", "mobile:/party/graph"].map(
+    (surfaceId) => [
+      surfaceId,
+      {
+        entryBehavior: "expo-web-party-live-data-boundary-entry-verified",
+        runtimeEvidence: [
+          "party mode resolved only from the selected live event and its available roster",
+          "no fixed access code was generated",
+          "check-in exposed the missing service/write boundary instead of local success",
+          "graph center and status copy described available relationship data without claiming attendance",
+        ],
+        verificationCase: "expo-party-no-synthetic-checkin-2026-07-29",
+        verificationConclusion:
+          "runtime-partially-verified-expo-party-truthful-boundary",
+      },
+    ],
+  ),
   [
     "mobile:/o/[slug]",
     {
@@ -225,8 +223,7 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "private actor event did not appear in the public organizer result",
         "unknown slug rendered a zero-event not-found state without verified badge or first-event fallback",
       ],
-      verificationCase:
-        "expo-organizer-public-private-isolation-2026-07-29",
+      verificationCase: "expo-organizer-public-private-isolation-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-expo-organizer-public-isolation",
     },
@@ -269,8 +266,7 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "event card navigated to the matching encoded schedule preview",
       ],
       verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-expo-live-schedule",
+      verificationConclusion: "runtime-partially-verified-expo-live-schedule",
     },
   ],
   [
@@ -358,25 +354,23 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-mobile-google-fallback",
     },
   ],
-  ...[
-    "mobile:/admin",
-    "mobile:/admin/events",
-    "mobile:/admin/access",
-  ].map((surfaceId) => [
-    surfaceId,
-    {
-      entryBehavior: "expo-web-truthful-readonly-admin-entry-verified",
-      runtimeEvidence: [
-        "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
-        "storage implementation wording was replaced by controlled Chinese event context",
-        "no local event-creation draft or simulated write action remained",
-        "no member email was inferred when the profile API returned no explicit email",
-      ],
-      verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-expo-admin-readonly-boundary",
-    },
-  ]),
+  ...["mobile:/admin", "mobile:/admin/events", "mobile:/admin/access"].map(
+    (surfaceId) => [
+      surfaceId,
+      {
+        entryBehavior: "expo-web-truthful-readonly-admin-entry-verified",
+        runtimeEvidence: [
+          "actor-owned event data remained read-only and opened the matching real event detail where a valid private detail route existed",
+          "storage implementation wording was replaced by controlled Chinese event context",
+          "no local event-creation draft or simulated write action remained",
+          "no member email was inferred when the profile API returned no explicit email",
+        ],
+        verificationCase: "expo-admin-truthful-boundaries-2026-07-29",
+        verificationConclusion:
+          "runtime-partially-verified-expo-admin-readonly-boundary",
+      },
+    ],
+  ),
   [
     "mobile:/login-admin",
     {
@@ -423,14 +417,14 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
     "mobile:/contacts",
     {
-      entryBehavior: "expo-web-relationship-workbench-navigation-entry-verified",
+      entryBehavior:
+        "expo-web-relationship-workbench-navigation-entry-verified",
       runtimeEvidence: [
         "the overview rendered six distinct relationship destinations without loading a hidden fallback contact list",
         "the primary graph card navigated to /contacts/graph",
         "the destination preserved the actor-scoped zero-connection state",
       ],
-      verificationCase:
-        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationCase: "expo-empty-relationship-surface-boundaries-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-expo-relationship-workbench-navigation",
     },
@@ -450,8 +444,7 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "the surface rendered its domain-specific empty title and recovery copy",
         "no fallback person, count, opportunity, connection, or action was synthesized",
       ],
-      verificationCase:
-        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationCase: "expo-empty-relationship-surface-boundaries-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary",
     },
@@ -459,23 +452,20 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
     "mobile:/contacts/list",
     {
-      entryBehavior: "expo-web-empty-contact-list-and-suggestions-entry-verified",
+      entryBehavior:
+        "expo-web-empty-contact-list-and-suggestions-entry-verified",
       runtimeEvidence: [
         "all contact status counts remained zero and the list rendered 暂无联系人",
         "runtime first reproduced three fixed live search suggestions that claimed actor evidence despite a zero-result graph",
         "after repair the suggestion API returned an empty state and no evidence-backed recommendation card rendered",
         "generic search intent and industry filters remained available without claiming stored evidence",
       ],
-      verificationCase:
-        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationCase: "expo-empty-relationship-surface-boundaries-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-expo-empty-contact-search-boundary",
     },
   ],
-  ...[
-    "mobile:/today",
-    "mobile:/contacts/all-actions",
-  ].map((surfaceId) => [
+  ...["mobile:/today", "mobile:/contacts/all-actions"].map((surfaceId) => [
     surfaceId,
     {
       entryBehavior: "expo-web-actor-scoped-empty-agent-ledger-entry-verified",
@@ -519,10 +509,7 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "runtime-partially-verified-expo-empty-inbox-compose-boundary",
     },
   ],
-  ...[
-    "mobile:/",
-    "mobile:/home",
-  ].map((surfaceId) => [
+  ...["mobile:/", "mobile:/home"].map((surfaceId) => [
     surfaceId,
     {
       entryBehavior: "expo-web-canonical-ai-entry-redirect-verified",
@@ -567,6 +554,23 @@ const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   ],
 ]);
 const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
+  [
+    "web:/dev/capabilities/[slug]",
+    {
+      entryBehavior:
+        "authenticated-browser-current-debug-api-probe-slugs-verified",
+      runtimeEvidence: [
+        "contact detail and relationship profile slugs rendered their exact intended capability panels",
+        "five normalized form implementations and eight exact route occurrences issued their declared GET/PATCH requests",
+        "contact query variants and edit bodies were preserved while success, controlled failure, and validation envelopes rendered in the UI",
+        "the disposable actor created zero live domain records and was cleaned to activeAfter=0",
+      ],
+      verificationCase:
+        "web-debug-api-probe-method-query-ui-2026-07-30",
+      verificationConclusion:
+        "runtime-partially-verified-current-debug-api-probe-method-query-ui",
+    },
+  ],
   [
     "web:/app/admin",
     {
@@ -626,8 +630,7 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
         "before repair, scenario=empty replaced all 13 approved events with a synthetic no-events state on the production public route",
         "after repair, the identical URL preserved all 13 events plus the catalogue search, filters, and map controls",
       ],
-      verificationCase:
-        "web-public-event-catalogue-query-isolation-2026-07-29",
+      verificationCase: "web-public-event-catalogue-query-isolation-2026-07-29",
       verificationConclusion:
         "runtime-partially-verified-web-public-event-catalogue-controls",
     },
@@ -1017,8 +1020,10 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "The signed-out permissions gate opened /account/login with next=/account/permissions and exposed no actor permission record or raw API 401.",
-      testData: "Signed-out Expo Web runtime after a first account had one pending calendar review",
-      idempotency: "Navigation only; no permission record was read into the signed-out UI or written.",
+      testData:
+        "Signed-out Expo Web runtime after a first account had one pending calendar review",
+      idempotency:
+        "Navigation only; no permission record was read into the signed-out UI or written.",
     },
   ],
   [
@@ -1043,8 +1048,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account with an unresolved browser camera permission prompt",
       idempotency:
         "Mode selection changed local UI state only; it performed no API call, scan, candidate staging, or persistent write.",
-      verificationCase:
-        "expo-qr-permission-pending-cancellation-2026-07-29",
+      verificationCase: "expo-qr-permission-pending-cancellation-2026-07-29",
     },
   ],
   [
@@ -1056,8 +1060,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account; repository PNG test asset; production API with the cloud OCR provider intentionally unconfigured",
       idempotency:
         "Hard navigation cleared the local image/error state and still showed zero saved drafts; the failed request performed no candidate, contact, or database write.",
-      verificationCase:
-        "expo-business-card-media-failure-closed-2026-07-29",
+      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
     },
   ],
   [
@@ -1069,8 +1072,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account in QR mode with no existing camera decision in the in-app browser",
       idempotency:
         "The pending permission request performed no QR read, API call, candidate staging, or persistent write.",
-      verificationCase:
-        "expo-qr-permission-pending-cancellation-2026-07-29",
+      verificationCase: "expo-qr-permission-pending-cancellation-2026-07-29",
     },
   ],
   [
@@ -1082,8 +1084,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account and repos/orbits/public/iorbit-starfield/avatars/mobile/ava0.png",
       idempotency:
         "Selecting media only updated the in-memory form; it made no API call or persistent write.",
-      verificationCase:
-        "expo-business-card-media-failure-closed-2026-07-29",
+      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
     },
   ],
   [
@@ -1095,8 +1096,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account and repos/orbits/public/iorbit-starfield/avatars/mobile/ava0.png",
       idempotency:
         "Selecting media only updated the in-memory form; it made no API call or persistent write.",
-      verificationCase:
-        "expo-business-card-media-failure-closed-2026-07-29",
+      verificationCase: "expo-business-card-media-failure-closed-2026-07-29",
     },
   ],
   [
@@ -1108,8 +1108,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit account with no actor-owned external-contact records",
       idempotency:
         "Filter selection performed no provider sync, file parse, candidate staging, contact write, or database write.",
-      verificationCase:
-        "expo-live-external-source-truthfulness-2026-07-29",
+      verificationCase: "expo-live-external-source-truthfulness-2026-07-29",
     },
   ],
 ]);
@@ -1143,8 +1142,7 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "生成候选 completed against the actor-owned empty queue and rendered an explicit zero-candidate review result without creating a task.",
-      testData:
-        "Authenticated Expo Web audit actor with zero follow-up tasks",
+      testData: "Authenticated Expo Web audit actor with zero follow-up tasks",
       idempotency:
         "The generation read produced zero candidates and wrote no task, reminder, message, contact, or external action.",
       verificationCase: "expo-empty-work-queue-boundaries-2026-07-29",
@@ -1195,8 +1193,7 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated Expo Web audit actor with zero contacts and zero connection graph records",
       idempotency:
         "Navigation only; no contact, connection, evidence, or relationship record was written.",
-      verificationCase:
-        "expo-empty-relationship-surface-boundaries-2026-07-29",
+      verificationCase: "expo-empty-relationship-surface-boundaries-2026-07-29",
     },
   ],
   [
@@ -1278,7 +1275,8 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "The missing-context registration entry navigated to the live event catalogue without constructing a demo event.",
-      testData: "Direct authenticated Expo Web navigation to /register with no code",
+      testData:
+        "Direct authenticated Expo Web navigation to /register with no code",
       idempotency:
         "Navigation only; no event, invite, or registration record was written.",
       verificationCase: "expo-register-invite-boundaries-2026-07-29",
@@ -1313,8 +1311,7 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "The two preview exits were exercised independently: 返回日程 opened /schedule and 查看活动列表 opened /events.",
-      testData:
-        "Read-only preview for event:live-record:20260729",
+      testData: "Read-only preview for event:live-record:20260729",
       idempotency:
         "Both exits were navigation-only and preserved the event and registration records.",
       verificationCase: "expo-schedule-title-preview-runtime-2026-07-29",
@@ -1729,8 +1726,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "At 390x844 the visible 活动管理 tab opened /app/admin/events and 仪表盘 returned to /app/admin.",
-      testData:
-        "Authenticated Admin dashboard at a 390x844 browser viewport",
+      testData: "Authenticated Admin dashboard at a 390x844 browser viewport",
       idempotency:
         "Responsive route navigation only; no source or operational record was written.",
       verificationCase: "web-admin-navigation-capability-truth-2026-07-29",
@@ -1855,7 +1851,8 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "Searching EVT01 returned exactly 东京餐饮入境客增长会; a nonexistent Chinese query returned the explicit no-match state.",
-      testData: "Approved catalogue code EVT01 plus a nonexistent Chinese query",
+      testData:
+        "Approved catalogue code EVT01 plus a nonexistent Chinese query",
       idempotency:
         "Client-side search only; no event, search-history, preference, or external record was written.",
       verificationCase: "web-public-event-catalogue-controls-2026-07-29",
@@ -1866,7 +1863,8 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "即将开始 returned 3 events, 进行中 returned a truthful empty state, 已结束 returned 10 events, and 全部 restored 13.",
-      testData: "13 approved public events with 3 upcoming, 0 active, and 10 ended",
+      testData:
+        "13 approved public events with 3 upcoming, 0 active, and 10 ended",
       idempotency:
         "Client-side status filtering only; no event, registration, preference, or external record was written.",
       verificationCase: "web-public-event-catalogue-controls-2026-07-29",
@@ -1966,12 +1964,11 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#attendeeNames[0] ?? \"输入联系人姓名\"",
+    'web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#attendeeNames[0] ?? "输入联系人姓名"',
     {
       actualResult:
         "The contact field accepted Chinese multi-word and same-name queries and reset any prior selected or duplicate-review state on edit.",
-      testData:
-        "会后验证 唯一; 会后验证 同名; a nonexistent Chinese query",
+      testData: "会后验证 唯一; 会后验证 同名; a nonexistent Chinese query",
       idempotency:
         "Field edits were local only and did not create or merge a contact.",
       verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
@@ -2002,7 +1999,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#{contact.displayName} {[contact.role, contact.organization] .filter(Boolean) .join(\" · \") || contact.id}",
+    'web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx#{contact.displayName} {[contact.role, contact.organization] .filter(Boolean) .join(" · ") || contact.id}',
     {
       actualResult:
         "The duplicate-contact radio group distinguished 东京商事 from 关西商事 and enabled continuation only after one exact contact was chosen.",
@@ -2030,8 +2027,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "The note field preserved the entered Chinese commitment text through confirmation and into the source-backed review artifact.",
-      testData:
-        "会后 follow-up note for the selected 关西商事 contact",
+      testData: "会后 follow-up note for the selected 关西商事 contact",
       idempotency:
         "Editing the note was local only; persistence occurred only after explicit confirmation.",
       verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
@@ -2050,7 +2046,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#t({ en: \"Back to previous page\", zh: \"返回上一页\" })",
+    'web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx#t({ en: "Back to previous page", zh: "返回上一页" })',
     {
       actualResult:
         "返回上一页 returned EVT01 to its distinct same-origin source: /app/events from the catalogue and /app/o/evt01 from the organizer; a direct entry with no referrer safely fell back to /app/events.",
@@ -2074,7 +2070,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx#t({ en: \"Back to events\", zh: \"返回活动\" })",
+    'web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx#t({ en: "Back to events", zh: "返回活动" })',
     {
       actualResult:
         "返回活动 navigated from /app/o/evt01 to /app/events and restored the complete 13-event catalogue.",
@@ -2093,8 +2089,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Unknown public slug not-a-real-organizer under the Chinese locale",
       idempotency:
         "Local disclosure state only; no public or private event, organizer, registration, contact, or external record was read into the page or written.",
-      verificationCase:
-        "web-public-organizer-unknown-slug-boundary-2026-07-29",
+      verificationCase: "web-public-organizer-unknown-slug-boundary-2026-07-29",
     },
   ],
   [
@@ -2106,8 +2101,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Localized unknown-organizer not-found state with no event or organizer fallback",
       idempotency:
         "Read-only navigation only; no public or private event, organizer, registration, contact, or external record was written.",
-      verificationCase:
-        "web-public-organizer-unknown-slug-boundary-2026-07-29",
+      verificationCase: "web-public-organizer-unknown-slug-boundary-2026-07-29",
     },
   ],
   [
@@ -2150,8 +2144,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "问 iOrbit 这场活动 opened Agent with event_01, exact title, venue, date, 已结束 status, and a no-external-action constraint; the terminal answer used that one record instead of an unrelated fallback.",
-      testData:
-        "东京餐饮入境客增长会 · event_01 · 已结束 · 大阪 · 2026-02-15",
+      testData: "东京餐饮入境客增长会 · event_01 · 已结束 · 大阪 · 2026-02-15",
       idempotency:
         "The Agent produced one local conversation and one source-backed recommendation artifact; no message, registration, calendar, contact, task, reminder, or external action occurred, and both audit conversations were deleted after verification.",
       verificationCase: "web-public-event-detail-lifecycle-2026-07-29",
@@ -2295,8 +2288,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Independent Chrome session for actor user_ms2on5yh_60z90f, distinct from the first audit actor user_ms5llhof_wrbpuq",
       idempotency:
         "Opening the account menu changed local disclosure state only; it created no session, Run, action, task, reminder, contact, event, or external record.",
-      verificationCase:
-        "web-agent-action-second-actor-isolation-2026-07-29",
+      verificationCase: "web-agent-action-second-actor-isolation-2026-07-29",
     },
   ],
   [
@@ -2312,15 +2304,15 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#重新提交请求 / Retry request",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:() => void ask(message.retryRequest!, index)#重新提交请求 / Retry request",
     {
       actualResult:
-        "Stopping the production server caused a real conversation fetch failure with a retry control; after restart the control replayed the exact Network Retry Audit request and completed a new 6/6 run.",
+        "An explicit missing DeepSeek key produced one real 503 failure and the exact message retry control. Restoring the configured provider and rapidly activating retry twice emitted one retry request with empty history, replaced the stale failure with one successful assistant turn, survived refresh, and remained absent for actor B.",
       testData:
-        "Authenticated live actor, read-only Network Retry Audit 20260729 request, deliberate production-server outage followed by restart",
+        "Two disposable authenticated actors, formal Next production conversation API, configured Postgres live store, explicit provider failure followed by repository-configured provider recovery",
       idempotency:
-        "The message-level control was disabled during replay, generated no proposed action or write, and the failure plus successful retry survived hard reload/history reopen.",
-      verificationCase: "web-agent-failed-request-replay-2026-07-29",
+        "Two rapid activations produced one retry; the final store contained one user and one successful assistant turn, zero stale failure/retry messages, zero action/outbox/domain writes, and exact cleanup activeAfter=0.",
+      verificationCase: "web-agent-retry-idempotent-current-handler-2026-07-30",
     },
   ],
   [
@@ -2332,8 +2324,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated live actor, action action:natural-language:a34dc77e, and one persisted follow-up task due 2026-09-03T23:59:59.000Z",
       idempotency:
         "Navigation was read-only; the action retained one completed execution receipt and the due-date task count remained one before undo.",
-      verificationCase:
-        "web-agent-confirm-undo-idempotency-2026-07-29",
+      verificationCase: "web-agent-confirm-undo-idempotency-2026-07-29",
     },
   ],
   [
@@ -2345,8 +2336,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "The completed create_followup_task action for 联系 Undo Audit Person",
       idempotency:
         "Navigation and audit readback wrote no record; the ledger still contained one outbox item and one completed execution receipt.",
-      verificationCase:
-        "web-agent-confirm-undo-idempotency-2026-07-29",
+      verificationCase: "web-agent-confirm-undo-idempotency-2026-07-29",
     },
   ],
   [
@@ -2358,8 +2348,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Run run:natural-language:05879e7b with one selected create_followup_task operation for 联系 Undo Audit Person",
       idempotency:
         "The repeated confirmation gesture converged on one action, one outbox item, one execution receipt, and one task; no reminder operation or record existed.",
-      verificationCase:
-        "web-agent-confirm-undo-idempotency-2026-07-29",
+      verificationCase: "web-agent-confirm-undo-idempotency-2026-07-29",
     },
   ],
   [
@@ -2371,8 +2360,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Completed action action:natural-language:a34dc77e with one completed operation and one compensating follow-up delete",
       idempotency:
         "Two further formal undoAction calls both returned undone; live-store readback retained exactly one completed execution receipt, one undo receipt, and one outbox item.",
-      verificationCase:
-        "web-agent-confirm-undo-idempotency-2026-07-29",
+      verificationCase: "web-agent-confirm-undo-idempotency-2026-07-29",
     },
   ],
   [
@@ -2397,8 +2385,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Live actor user_ms5llhof_wrbpuq, persisted session agent-session-ms5t5ozq-x2bv2k, and latest assistant message from run run:conversation:aa176da4-fcb7-4d1b-8d68-332d87817637",
       idempotency:
         "Copying changed only clipboard/local presentation state; it wrote no conversation, Run, feedback, action, task, contact, or external record.",
-      verificationCase:
-        "web-agent-message-copy-feedback-2026-07-29",
+      verificationCase: "web-agent-message-copy-feedback-2026-07-29",
     },
   ],
   [
@@ -2410,8 +2397,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Actor A user_ms5llhof_wrbpuq, actor B user_ms2on5yh_60z90f, Run run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f, and four unique event evidence ids",
       idempotency:
         "Each rating upsert updated one actor-and-Run feedback record rather than appending another record; the final record retained one feedback id and one four-id evidence set.",
-      verificationCase:
-        "web-agent-evidence-source-disclosure-2026-07-29",
+      verificationCase: "web-agent-evidence-source-disclosure-2026-07-29",
     },
   ],
   [
@@ -2423,12 +2409,11 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Source-backed Run run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f with sourceModules orbit-ai/events and four unique event evidence ids",
       idempotency:
         "All three controls converged on one feedback record keyed by the actor-owned Run; no duplicate outcome or feedback record was created.",
-      verificationCase:
-        "web-agent-evidence-source-disclosure-2026-07-29",
+      verificationCase: "web-agent-evidence-source-disclosure-2026-07-29",
     },
   ],
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#onclick:() => void cancelRun()#正在取消… / Canceling… / 取消本次请求 / Cancel this request',
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx#onclick:() => void cancelRun()#正在取消… / Canceling… / 取消本次请求 / Cancel this request",
     {
       actualResult:
         "Clicking the user-facing 取消本次请求 control changed each independently created awaiting-confirmation task proposal into 已取消, removed the run-cancel and Confirm/Later/Ignore controls, and survived exact-session reload. Formal readback returned Run=canceled and action=canceled for actor A, null for actor B, zero outbox/receipts, and zero matching task records.",
@@ -2448,8 +2433,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Actor user_ms5llhof_wrbpuq; independent actor user_ms2on5yh_60z90f; session agent-session-ms6020sv-r84o50; Run run:natural-language:82c9cc7d; action action:natural-language:ed36fb20; one unexecuted create_followup_task proposal for Transition Audit Person",
       idempotency:
         "The first transition persisted one deferred status and no domain side effect. A second Later click originally returned the stable transition conflict; after repair the invalid control is absent for deferred actions, so duplicate submission cannot be initiated from the current UI.",
-      verificationCase:
-        "web-agent-review-transition-state-machine-2026-07-29",
+      verificationCase: "web-agent-review-transition-state-machine-2026-07-29",
     },
   ],
   [
@@ -2461,8 +2445,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "The same actor-owned deferred action action:natural-language:ed36fb20 and Run run:natural-language:82c9cc7d, with configured live task storage queried for Transition Audit Person",
       idempotency:
         "Rejected is terminal in the review state map, so the UI exposes no repeat Ignore or other write control. No task, reminder, message, contact, outbox event, receipt, or external write was created.",
-      verificationCase:
-        "web-agent-review-transition-state-machine-2026-07-29",
+      verificationCase: "web-agent-review-transition-state-machine-2026-07-29",
     },
   ],
   [
@@ -2474,8 +2457,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Actor user_ms5llhof_wrbpuq; sessions agent-session-ms5y03iq-c0phvh and agent-session-ms5yf1pi-bsibno; runs run:conversation:ad4cf600-e3cc-4529-b5c0-925aa8978e98 and run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f; four unique event evidence records",
       idempotency:
         "Disclosure changed only the native details open state. Repeated parsing grouped equivalent and overlapping references by source snapshot and evidence id, persisted one normalized four-record reference, and final cleanup returned both sessions and both feedback records as null.",
-      verificationCase:
-        "web-agent-evidence-source-disclosure-2026-07-29",
+      verificationCase: "web-agent-evidence-source-disclosure-2026-07-29",
     },
   ],
   [
@@ -2487,8 +2469,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
       idempotency:
         "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2500,8 +2481,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
       idempotency:
         "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2513,8 +2493,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
       idempotency:
         "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2526,8 +2505,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
       idempotency:
         "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2539,8 +2517,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
       idempotency:
         "Repeated menu open and close changed only local disclosure state and wrote no history record.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2552,8 +2529,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
       idempotency:
         "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2561,12 +2537,10 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
-      testData:
-        "Pinned live History Lifecycle Audit session",
+      testData: "Pinned live History Lifecycle Audit session",
       idempotency:
         "Opening rename changed only local editor state and did not write until explicit save.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2578,8 +2552,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Selected History Lifecycle Audit 20260729 session with two persisted messages",
       idempotency:
         "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2587,12 +2560,9 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "保留对话 closed the destructive confirmation, kept the selected session and its assistant reply visible, and left the history row present.",
-      testData:
-        "Open delete confirmation for agent-session-ms5w1kuk-o68abs",
-      idempotency:
-        "Cancel sent no DELETE request and changed no live record.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      testData: "Open delete confirmation for agent-session-ms5w1kuk-o68abs",
+      idempotency: "Cancel sent no DELETE request and changed no live record.",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2604,8 +2574,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Live actor user_ms5llhof_wrbpuq, session agent-session-ms5w1kuk-o68abs, and isolated actor user_ms2on5yh_60z90f",
       idempotency:
         "Before deletion the second actor returned null for the session. After deletion both actors returned null; no cross-actor record or orphaned visible session remained.",
-      verificationCase:
-        "web-agent-history-lifecycle-2026-07-29",
+      verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
   [
@@ -2617,8 +2586,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions and active session agent-session-ms5tz2ay-zx6dfl",
       idempotency:
         "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
-      verificationCase:
-        "web-agent-history-navigation-resize-2026-07-29",
+      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
     },
   ],
   [
@@ -2630,8 +2598,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated actor user_ms5llhof_wrbpuq, production Web /app/agent at 390x844, six actor-owned persisted sessions",
       idempotency:
         "Opening, focus traversal, Escape, and reopening changed only drawer presentation state. They made no session, message, action, task, inbox, or external write.",
-      verificationCase:
-        "web-agent-mobile-history-navigation-2026-07-29",
+      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
     },
   ],
   [
@@ -2643,8 +2610,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions; selected Undo Audit session agent-session-ms5tz2ay-zx6dfl; 390x844 production viewport",
       idempotency:
         "Mobile New chat reset only active client state and URL. The history row count remained 6 before and 6 after, proving it did not delete a session or domain record.",
-      verificationCase:
-        "web-agent-mobile-history-navigation-2026-07-29",
+      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
     },
   ],
   [
@@ -2656,8 +2622,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "Authenticated desktop Agent production page with the focusable history separator",
       idempotency:
         "Keyboard resizing changed only local layout state and wrote no session, preference, message, action, or external record; reload restored the product default.",
-      verificationCase:
-        "web-agent-history-navigation-resize-2026-07-29",
+      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
     },
   ],
   [
@@ -2689,8 +2654,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "添加联系人 opened /app/contacts/new, which preserved the explicit unconfigured OCR/import boundary and created no contact.",
-      testData:
-        "Authenticated actor-scoped empty relationship dashboard",
+      testData: "Authenticated actor-scoped empty relationship dashboard",
       idempotency:
         "Navigation only; no image was uploaded and no contact, draft, signal, relationship metric, or external record was written.",
       verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
@@ -2747,8 +2711,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     {
       actualResult:
         "添加联系人 left the repaired picker and opened the fail-closed import hub.",
-      testData:
-        "Repaired introduction picker with zero source-backed contacts",
+      testData: "Repaired introduction picker with zero source-backed contacts",
       idempotency:
         "Navigation only; no image was uploaded and no contact, introduction, draft, or external record was written.",
       verificationCase: "web-relationship-derived-zero-surfaces-2026-07-29",
@@ -2873,6 +2836,51 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-schedule-dynamic-event-identity-2026-07-29",
     },
   ],
+  ...[
+    [
+      "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx#onsubmit:(event) =>\n        void submit(event, {\n          action: \"/api/connections/demo-connection-1/profile\",\n          method: \"PATCH\",\n        })#Mock relationship profile form",
+      "Mock relationship profile form issued PATCH with the rendered relationship type/context body and rendered a 200 success envelope.",
+    ],
+    [
+      "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx#onsubmit:(event) =>\n            void submit(event, {\n              action: \"/api/connections/demo-connection-1/stage\",\n              method: \"PATCH\",\n            })#Run relationship stage probe",
+      "Run relationship stage probe issued a bodyless PATCH and rendered its deterministic 400 VALIDATION_ERROR instead of silently falling back to GET, POST, or 405.",
+    ],
+    [
+      "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx#onsubmit:(event) =>\n            void submit(event, {\n              action: \"/api/connections/demo-connection-1/profile\",\n              method: \"PATCH\",\n            })#Run relationship profile probe",
+      "Run relationship profile probe issued a bodyless PATCH and rendered its deterministic 400 VALIDATION_ERROR instead of silently falling back to GET, POST, or 405.",
+    ],
+    [
+      "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx#onsubmit:(event) =>\n        void submit(event, {\n          action: \"/api/contacts/demo-contact-1\",\n          arrayFields: [\"addTags\"],\n          method: \"PATCH\",\n        })#Mock contact detail tag and status edit form",
+      "Mock contact detail tag and status edit form issued PATCH with the rendered status/tag/note body and rendered a 200 success envelope.",
+    ],
+    [
+      "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx#onsubmit:(event) => void submitGet(event)#Run contact detail API probe",
+      "Run contact detail API probe issued GET /api/contacts/demo-contact-1 and rendered a 200 success envelope.",
+    ],
+    [
+      "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx#onsubmit:(event) => void submitGet(event)#Run empty contact detail API probe",
+      "Run empty contact detail API probe preserved scenario=empty on GET and rendered a 200 empty envelope.",
+    ],
+    [
+      "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx#onsubmit:(event) => void submitGet(event)#Run pending contact detail API probe",
+      "Run pending contact detail API probe preserved scenario=pending on GET and rendered a 200 pending envelope.",
+    ],
+    [
+      "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx#onsubmit:(event) => void submitGet(event)#Run controlled failure contact detail API probe",
+      "Run controlled failure contact detail API probe preserved scenario=failure on GET and rendered the controlled 503 SERVICE_UNAVAILABLE envelope.",
+    ],
+  ].map(([stableKey, actualResult]) => [
+    `web:/dev/capabilities/[slug]|${stableKey}`,
+    {
+      actualResult,
+      testData:
+        "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+      idempotency:
+        "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
+      verificationCase:
+        "web-debug-api-probe-method-query-ui-2026-07-30",
+    },
+  ]),
 ]);
 const LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE = new Map([
   [
@@ -2882,7 +2890,8 @@ const LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE = new Map([
         "Selecting the Kansai result opened its canonical source-backed dynamic detail instead of a failure boundary.",
       testData:
         "Account C; 林 美咲 at 关西质量协作实验室; contact:business-card:9395a193212602a291845769",
-      idempotency: "Navigation only; no contact or relationship record was written.",
+      idempotency:
+        "Navigation only; no contact or relationship record was written.",
     },
   ],
   [
@@ -2892,7 +2901,8 @@ const LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE = new Map([
         "Searching 林 美咲 returned exactly two contacts and preserved their distinct Kansai and Tokyo organizations while excluding 王 伟.",
       testData:
         "Account C; three live business-card contacts including two same-name records",
-      idempotency: "Client-side filtering only; the four persisted records remained unchanged.",
+      idempotency:
+        "Client-side filtering only; the four persisted records remained unchanged.",
     },
   ],
 ]);
@@ -2904,7 +2914,8 @@ const LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE = new Map([
         "返回名片夹 navigated from the source-backed contact detail to /app/contacts and restored all three account-C contacts.",
       testData:
         "Account C; Kansai source-backed contact detail in Chinese locale",
-      idempotency: "Navigation only; no contact or relationship record was written.",
+      idempotency:
+        "Navigation only; no contact or relationship record was written.",
     },
   ],
 ]);
@@ -2983,7 +2994,8 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
         actualResult:
           "With the server offline, generation returned to the interview with Failed to fetch and wrote zero records; retry after restart saved one record before revealing the persona.",
         testData: "Account C; 正在探索; intentional next-start outage",
-        idempotency: "failed attempt wrote zero rows; retry wrote one stable user/event record",
+        idempotency:
+          "failed attempt wrote zero rows; retry wrote one stable user/event record",
       },
     ],
     [
@@ -2992,7 +3004,8 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
         actualResult:
           "Cancel registration opened an alert dialog and performed no write until explicit confirmation.",
         testData: "Account B registered summary",
-        idempotency: "opening and dismissing the dialog did not mutate the registration",
+        idempotency:
+          "opening and dismissing the dialog did not mutate the registration",
       },
     ],
     [
@@ -3001,7 +3014,8 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
         actualResult:
           "Register again returned the cancelled record to the interview; successful submission reactivated the same record ID.",
         testData: "Account B; 再次报名，寻找关西质量合作伙伴",
-        idempotency: "reactivation reused the original registration and participant-profile IDs",
+        idempotency:
+          "reactivation reused the original registration and participant-profile IDs",
       },
     ],
     [
@@ -3019,7 +3033,8 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
         actualResult:
           "Confirm cancellation persisted status=cancelled, rendered the cancelled result, and survived full refresh; later reactivation reused the same row.",
         testData: "Account B event_signup_01 registration",
-        idempotency: "one user/event record remained before and after cancel/reactivate",
+        idempotency:
+          "one user/event record remained before and after cancel/reactivate",
       },
     ],
   ].map(([line, evidence]) => [
@@ -3062,8 +3077,7 @@ const VERIFIED_AUDIT_CASES = [
     testData: "Fresh uv lock resolution from pyproject.toml dependency groups",
     expected:
       "The documented uv run pytest command installs its own runner and executes Harness tests without relying on a globally installed pytest",
-    actual:
-      "uv lock added pytest and uv run pytest -q completed 310/310 tests",
+    actual: "uv lock added pytest and uv run pytest -q completed 310/310 tests",
     evidence: "uv lock && uv run pytest -q",
     conclusion: "pass",
   },
@@ -4748,8 +4762,7 @@ const VERIFIED_AUDIT_CASES = [
   },
   {
     id: "anonymous-web-event-detail-private-request-repair-2026-07-29",
-    target:
-      "Signed-out Web /app/events/event_signup_02 data-access boundary",
+    target: "Signed-out Web /app/events/event_signup_02 data-access boundary",
     testData:
       "Exact local production event detail observed with HTTP response-error collection before and after repair",
     expected:
@@ -4958,8 +4971,7 @@ const VERIFIED_AUDIT_CASES = [
   },
   {
     id: "seventh-round-static-denominator-correction-2026-07-30",
-    target:
-      "Audit interaction and route-query denominators",
+    target: "Audit interaction and route-query denominators",
     testData:
       "All 94 route page-file nodes, DataCard optional onPress call sites, route-scoped rendered-symbol AST and known header/cookie/API/UUID false-positive probes",
     expected:
@@ -4970,6 +4982,21 @@ const VERIFIED_AUDIT_CASES = [
       "audit generator; audit tests 10/10; coordinator/evaluations/seventh-round-denominators-current.json; coordinator/runtime-interaction-coverage-current.json; independent route-parameter root-cause review",
     conclusion:
       "pass for the two corrected static scanner rules; route page-file nodes are not terminal UI implementations, and alias/redirect/hash/custom-scheme contracts plus the rendered runtime leaf denominator remain explicitly unresolved",
+  },
+  {
+    id: "web-debug-api-probe-method-query-ui-2026-07-30",
+    target:
+      "Contact detail and relationship profile development capability API probe forms",
+    testData:
+      "Two exact development slugs, five normalized form-submit implementations, eight route occurrences, a disposable authenticated actor, process-scoped mock mode, current source hashes and zero pre-existing actor-owned domain rows",
+    expected:
+      "The server route must resolve both slugs while client controls issue the declared GET/PATCH method, preserve query/body input, render success or controlled failure envelopes, create no live domain record and clean the actor exactly.",
+    actual:
+      "Both slugs rendered their intended terminal panel. Four contact GET controls preserved base, empty, pending and failure query states and rendered 200/200/200/503. Contact edit and relationship profile edit issued PATCH with their rendered bodies and returned 200. The bodyless relationship stage/profile probes issued PATCH and rendered deterministic 400 VALIDATION_ERROR rather than GET, POST or 405. All five implementation keys and eight route occurrences passed; domain rows remained zero.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/continuation-20260730T105558+0900/next-round-03/remediation-debug-api-probes/result.json; evaluation.json; raw/runtime-observations.json; cleanup.json; focused API-probe/capability tests 36/36",
+    conclusion:
+      "pass for the exact current five implementation keys, all eight route-local occurrences, declared methods/query/body, rendered success/failure states, zero live-domain writes and exact cleanup",
   },
 ];
 
@@ -5112,8 +5139,7 @@ const AUDIT_EXTERNAL_LIMITATIONS = [
   {
     id: "EXT-ANDROID-RUNTIME",
     scope: "Expo Android",
-    reason:
-      "No Android SDK/emulator was available in the audit environment.",
+    reason: "No Android SDK/emulator was available in the audit environment.",
   },
   {
     id: "EXT-NATIVE-BUILD",
@@ -5600,8 +5626,7 @@ const AUDIT_REMEDIATIONS = [
       "repos/orbit-app/src/view-models/relationship-inbox.ts; repos/orbit-app/tests/relationship-inbox-view-model.test.ts",
     regression:
       "The regression test covers both blank and trimmed named recipients. Expo full suite 525/525 and typecheck passed; runtime composer rendered 您好： and blank-recipient creation still failed closed with 先写收件人。",
-    status:
-      "fixed and runtime-verified for blank and named default greetings",
+    status: "fixed and runtime-verified for blank and named default greetings",
   },
   {
     id: "AUDIT-P1-032",
@@ -5831,7 +5856,7 @@ const AUDIT_REMEDIATIONS = [
     id: "AUDIT-P2-048",
     severity: "P2",
     rootCause:
-      "The shared event mapper treated Intl.DateTimeFormat(..., { day: \"2-digit\" }).format() as a locale-neutral day number. In zh-CN that call returns a localized token that already includes 日, while the map rail and selected-event card correctly add their own Chinese suffix. The boundary therefore produced 9月15日日 and 2月15日日 in every map date.",
+      'The shared event mapper treated Intl.DateTimeFormat(..., { day: "2-digit" }).format() as a locale-neutral day number. In zh-CN that call returns a localized token that already includes 日, while the map rail and selected-event card correctly add their own Chinese suffix. The boundary therefore produced 9月15日日 and 2月15日日 in every map date.',
     decision:
       "Keep MappedEvent.day as the numeric semantic token already assumed by all consumers. Extract the day value from formatToParts at the formatter boundary, retain the existing localized month and map composition, and cover both English and Chinese tokens with one focused regression test.",
     files:
@@ -7003,6 +7028,48 @@ const AUDIT_REMEDIATIONS = [
     status:
       "fixed for route-local query-key classification; fixed redirects, aliases, hash preservation, custom schemes, ancestor auth/layout contracts and runtime route cases remain a separate explicit contract gap",
   },
+  {
+    id: "AUDIT-P2-132",
+    severity: "P2",
+    rootCause:
+      "Contact detail and relationship profile development probes were ordinary HTML forms. PATCH actions therefore submitted as POST and returned 405, the failure query was embedded in action while FormData serialization discarded it, and making the whole debug module a client component made its exported slug constant unreadable to the Server Component dispatcher.",
+    decision:
+      "Keep the debug view and slug export server-readable, move only interactive controls into feature-local client modules, and use one shared request builder that preserves action query, exact GET/PATCH methods, JSON arrays and rendered success/failure envelopes.",
+    files:
+      "repos/orbits/shared/ui/api-probe-form.tsx; repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx; repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx; repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx; repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx; repos/orbits/tests/ui/api-probe-form.test.ts",
+    regression:
+      "Focused tests passed 36/36. Independent authenticated runtime reached both exact slugs, exercised five normalized implementations and eight route occurrences, preserved four GET query variants, issued every update/action probe as PATCH, rendered 200/503/400 envelopes, created zero live domain rows and cleaned the actor to activeAfter=0.",
+    status:
+      "fixed and independently runtime-verified for exact current handler keys, route-local reachability/auth/params/ownership, method/query/body preservation, honest failure UI and cleanup",
+  },
+  {
+    id: "AUDIT-P2-133",
+    severity: "P2",
+    rootCause:
+      "Retrying a failed Agent message called the normal ask path with the original request while leaving the preceding user turn and failed assistant turn in both visible messages and outgoing history. The same user request was appended again, so one logical turn became duplicated and stale failure UI survived.",
+    decision:
+      "Prepare retry from the exact failed assistant index, remove that failure plus its nearest preceding user turn from request history, retain the one existing user turn in visible state, and pass the index through the retry control so the normal conversation endpoint creates only the replacement assistant result.",
+    files:
+      "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx; repos/orbits/tests/pages/app-agent-general-conversation.test.tsx",
+    regression:
+      "Focused tests passed 69/69. A disposable authenticated actor produced a real 503, restored the configured provider and rapidly activated the exact retry twice. Only one retry request with history=[] was sent; the live store retained one user plus one successful assistant, zero stale failure/retry messages, zero action/outbox/domain writes, refresh readback and actor-B isolation, followed by exact activeAfter=0 cleanup.",
+    status:
+      "fixed and independently live-provider/runtime/store-verified for logical-turn conservation, duplicate activation, refresh, actor isolation and cleanup",
+  },
+  {
+    id: "AUDIT-P2-134",
+    severity: "P2",
+    rootCause:
+      "Additional Web runtime evidence could fall back from handler-bound keys to sourceFile+visibleName or sourceFile:line. After the Agent retry handler changed, the generator silently inherited a 2026-07-29 PASS for the old behavior.",
+    decision:
+      "Require exact or normalized handler-bound evidence for the changed retry interaction and bind the new post-fix runtime proof to its current stable onclick key. Retain explicitly scoped legacy compatibility only for interactions not placed behind this handler-bound gate.",
+    files:
+      "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+    regression:
+      "Before current runtime evidence was bound, the generator honestly reduced coverage to 243/924 and strict occurrences to 208/2302. After binding the exact current handler proof, it restored only that implementation/occurrence to 244/924 and 209/2302. Audit tests assert that no other same-label handler inherits the PASS.",
+    status:
+      "fixed for the remediated Agent retry interaction with handler-bound current runtime evidence; broader legacy evidence migration remains explicit compatibility debt rather than silent proof",
+  },
 ];
 
 function toPosix(filePath) {
@@ -7012,7 +7079,37 @@ function toPosix(filePath) {
 function normalizedEvidenceText(value) {
   return String(value ?? "")
     .replace(/\s+/gu, " ")
+    .replace(/,\s*([}\]])/gu, " $1")
     .trim();
+}
+
+const normalizedEvidenceMapCache = new WeakMap();
+
+function lookupEvidenceByStableKeys(evidenceMap, keys) {
+  for (const key of keys) {
+    const exact = evidenceMap.get(key);
+    if (exact) {
+      return exact;
+    }
+  }
+
+  let normalizedMap = normalizedEvidenceMapCache.get(evidenceMap);
+  if (!normalizedMap) {
+    normalizedMap = new Map(
+      [...evidenceMap].map(([key, value]) => [
+        normalizedEvidenceText(key),
+        value,
+      ]),
+    );
+    normalizedEvidenceMapCache.set(evidenceMap, normalizedMap);
+  }
+  for (const key of keys) {
+    const normalized = normalizedMap.get(normalizedEvidenceText(key));
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return undefined;
 }
 
 function relativeToWorkspace(filePath) {
@@ -7267,7 +7364,10 @@ function collectReachableUiScopes(entryFile, clientRoot) {
         if (!resolved) {
           continue;
         }
-        if (statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+        if (
+          statement.exportClause &&
+          ts.isNamedExports(statement.exportClause)
+        ) {
           for (const element of statement.exportClause.elements) {
             addBinding(exportedBindings, element.name.text, {
               kind: "target",
@@ -7533,7 +7633,10 @@ function expressionText(expression, source) {
       .filter(Boolean)
       .join(" / ");
   }
-  if (ts.isCallExpression(expression) && ts.isIdentifier(expression.expression)) {
+  if (
+    ts.isCallExpression(expression) &&
+    ts.isIdentifier(expression.expression)
+  ) {
     const functionName = expression.expression.text;
     const localizedCopy =
       functionName === "t"
@@ -7644,7 +7747,9 @@ function callNamesFromText(value) {
     return [];
   }
   const calls = [];
-  for (const match of value.matchAll(/\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/gu)) {
+  for (const match of value.matchAll(
+    /\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(/gu,
+  )) {
     if (!["if", "for", "while", "switch", "function"].includes(match[1])) {
       calls.push(match[1]);
     }
@@ -7673,10 +7778,7 @@ function accessibleNameFromAncestor(node, source) {
   while (parent && !ts.isSourceFile(parent)) {
     if (ts.isJsxElement(parent)) {
       const tagName = parent.openingElement.tagName.getText(source);
-      const attributes = attributeMap(
-        parent.openingElement.attributes,
-        source,
-      );
+      const attributes = attributeMap(parent.openingElement.attributes, source);
       if (tagName.toLowerCase() === "label") {
         return (
           attributes.get("aria-label") ??
@@ -7711,9 +7813,7 @@ function collectImperativeSelectorEvidence(reachableFiles) {
         /querySelector(?:All)?(?:<[^>]+>)?\(\s*["'`]([^"'`]+)["'`]\s*\)/gu,
       ),
       ...sourceText.matchAll(/\$\(\s*["'`]([A-Za-z][\w-]+)["'`]\s*\)/gu),
-    ].map((match) =>
-      match[0].startsWith("$(") ? `#${match[1]}` : match[1],
-    );
+    ].map((match) => (match[0].startsWith("$(") ? `#${match[1]}` : match[1]));
     for (const selector of selectors) {
       const items = evidence.get(selector) ?? [];
       items.push({
@@ -7770,10 +7870,7 @@ function collectInteractions(
     if (ts.isJsxElement(node)) {
       const tagName = node.openingElement.tagName.getText(source).toLowerCase();
       if (tagName === "label") {
-        const attributes = attributeMap(
-          node.openingElement.attributes,
-          source,
-        );
+        const attributes = attributeMap(node.openingElement.attributes, source);
         const target = attributes.get("htmlfor") ?? attributes.get("for");
         const text = childText(node, source);
         if (target && text) {
@@ -7881,8 +7978,7 @@ function collectInteractions(
     }
 
     const containingStatementIndex = owner.body.statements.findIndex(
-      (statement) =>
-        statement.pos <= node.pos && statement.end >= node.end,
+      (statement) => statement.pos <= node.pos && statement.end >= node.end,
     );
     if (containingStatementIndex < 0) {
       return [];
@@ -7970,17 +8066,17 @@ function collectInteractions(
           attributes.get("aria-hidden") === "true"
             ? "intentionally-hidden-pointer-target"
             : kind === "form-submit-boundary" || isCallbackBoundary
-            ? "not-applicable-structural-boundary"
-            : attributes.get("accessibilitylabel") ||
-                attributes.get("aria-label") ||
-                attributes.get("aria-labelledby") ||
-                label
-              ? label.startsWith("{")
-                ? "dynamic-static-expression"
-                : "present-static"
-              : attributes.has("__spread")
-                ? "delegated-props"
-                : "missing-static";
+              ? "not-applicable-structural-boundary"
+              : attributes.get("accessibilitylabel") ||
+                  attributes.get("aria-label") ||
+                  attributes.get("aria-labelledby") ||
+                  label
+                ? label.startsWith("{")
+                  ? "dynamic-static-expression"
+                  : "present-static"
+                : attributes.has("__spread")
+                  ? "delegated-props"
+                  : "missing-static";
 
         interactions.push({
           sourceFile: relativeToWorkspace(filePath),
@@ -7991,7 +8087,8 @@ function collectInteractions(
           tag: parts.tagName,
           visibleName: label || null,
           accessibleNameEvidence,
-          triggerCondition: "user-initiated; runtime preconditions not yet verified",
+          triggerCondition:
+            "user-initiated; runtime preconditions not yet verified",
           disabledCondition,
           handlers,
           href,
@@ -8002,23 +8099,23 @@ function collectInteractions(
               : WRITE_HINT.test(`${label} ${handlerText}`)
                 ? "write-or-external-effect"
                 : "read-or-local-state-requires-runtime-verification",
-          confirmation:
-            /confirm|alertdialog|dialog/i.test(sourceSlice)
-              ? "present-static-signal"
-              : "not-proven",
+          confirmation: /confirm|alertdialog|dialog/i.test(sourceSlice)
+            ? "present-static-signal"
+            : "not-proven",
           idempotency: "not-runtime-verified",
-          expectedLoading:
-            /loading|pending|submitting|saving|uploading/i.test(sourceSlice)
-              ? "present-static-signal"
-              : "not-proven",
-          expectedSuccess:
-            /success|saved|sent|created|updated/i.test(sourceSlice)
-              ? "present-static-signal"
-              : "not-proven",
-          expectedError:
-            /error|failed|failure|retry/i.test(sourceSlice)
-              ? "present-static-signal"
-              : "not-proven",
+          expectedLoading: /loading|pending|submitting|saving|uploading/i.test(
+            sourceSlice,
+          )
+            ? "present-static-signal"
+            : "not-proven",
+          expectedSuccess: /success|saved|sent|created|updated/i.test(
+            sourceSlice,
+          )
+            ? "present-static-signal"
+            : "not-proven",
+          expectedError: /error|failed|failure|retry/i.test(sourceSlice)
+            ? "present-static-signal"
+            : "not-proven",
           actualResult: "not-runtime-verified",
           testData: null,
           testEvidence: [],
@@ -8069,7 +8166,9 @@ function collectVisibleContent(filePath, statementStarts = null) {
         }
       }
 
-      const position = source.getLineAndCharacterOfPosition(node.getStart(source));
+      const position = source.getLineAndCharacterOfPosition(
+        node.getStart(source),
+      );
       for (const value of values.filter(Boolean)) {
         content.push({
           sourceFile: relativeToWorkspace(filePath),
@@ -8101,7 +8200,9 @@ function collectOverlays(filePath, statementStarts = null) {
   const roots = scopedTopLevelNodes(source, statementStarts);
 
   function record(node, kind, label) {
-    const position = source.getLineAndCharacterOfPosition(node.getStart(source));
+    const position = source.getLineAndCharacterOfPosition(
+      node.getStart(source),
+    );
     overlays.push({
       implementationId: `${relativeToWorkspace(filePath)}:${position.line + 1}`,
       sourceFile: relativeToWorkspace(filePath),
@@ -8158,10 +8259,190 @@ function collectOverlays(filePath, statementStarts = null) {
   return overlays;
 }
 
-function collectRouteParameterSignals(reachableUiScopes) {
+function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
   const queryParameters = new Set();
   const hashSignals = [];
   const deepLinkSignals = [];
+  const functionInfoByLocation = new Map();
+  const callSitesByName = new Map();
+
+  function addIndexedValue(map, key, value) {
+    const values = map.get(key) ?? [];
+    values.push(value);
+    map.set(key, values);
+  }
+
+  function functionName(node, source) {
+    if (
+      (ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isClassDeclaration(node)) &&
+      node.name &&
+      ts.isIdentifier(node.name)
+    ) {
+      return node.name.text;
+    }
+    if (
+      (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
+      ts.isVariableDeclaration(node.parent) &&
+      ts.isIdentifier(node.parent.name)
+    ) {
+      return node.parent.name.text;
+    }
+    return null;
+  }
+
+  function isFunctionLike(node) {
+    return (
+      ts.isFunctionDeclaration(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isArrowFunction(node)
+    );
+  }
+
+  for (const [filePath, statementStarts] of reachableUiScopes) {
+    const { source } = sourceFileFor(filePath);
+    const roots = scopedTopLevelNodes(source, statementStarts);
+
+    function index(node, parentFunction = null, routeEntryRoot = null) {
+      let currentFunction = parentFunction;
+      if (isFunctionLike(node)) {
+        const name = functionName(node, source);
+        const info = {
+          filePath,
+          isRouteEntry: filePath === entryFilePath && routeEntryRoot === node,
+          name,
+          node,
+          parameters: node.parameters ?? [],
+          source,
+        };
+        functionInfoByLocation.set(
+          `${filePath}:${node.getStart(source)}`,
+          info,
+        );
+        currentFunction = info;
+      }
+
+      if (
+        currentFunction &&
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression)
+      ) {
+        addIndexedValue(callSitesByName, node.expression.text, {
+          arguments: node.arguments,
+          caller: currentFunction,
+        });
+      }
+      ts.forEachChild(node, (child) =>
+        index(child, currentFunction, routeEntryRoot),
+      );
+    }
+
+    for (const root of roots) {
+      const routeEntryRoot =
+        filePath === entryFilePath &&
+        isFunctionLike(root) &&
+        root.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+        )
+          ? root
+          : null;
+      index(root, null, routeEntryRoot);
+    }
+  }
+
+  function unwrapExpression(expression) {
+    let current = expression;
+    while (
+      ts.isAwaitExpression(current) ||
+      ts.isParenthesizedExpression(current) ||
+      ts.isAsExpression(current) ||
+      ts.isNonNullExpression(current) ||
+      ts.isTypeAssertionExpression(current)
+    ) {
+      current = current.expression;
+    }
+    return current;
+  }
+
+  function parameterIndexForIdentifier(functionInfo, identifier) {
+    return functionInfo.parameters.findIndex((parameter) => {
+      if (ts.isIdentifier(parameter.name)) {
+        return parameter.name.text === identifier.text;
+      }
+      if (ts.isObjectBindingPattern(parameter.name)) {
+        return parameter.name.elements.some(
+          (element) =>
+            ts.isIdentifier(element.name) &&
+            element.name.text === identifier.text,
+        );
+      }
+      return false;
+    });
+  }
+
+  function hasRouteSearchProvenance(
+    expression,
+    functionInfo,
+    seenParameters = new Set(),
+  ) {
+    const current = unwrapExpression(expression);
+    if (
+      ts.isIdentifier(current) &&
+      ["undefined", "null"].includes(current.text)
+    ) {
+      return false;
+    }
+    if (
+      ts.isNewExpression(current) &&
+      ts.isIdentifier(current.expression) &&
+      current.expression.text === "URLSearchParams"
+    ) {
+      return true;
+    }
+    if (
+      ts.isCallExpression(current) &&
+      ts.isIdentifier(current.expression) &&
+      ["useLocalSearchParams", "useSearchParams"].includes(
+        current.expression.text,
+      )
+    ) {
+      return true;
+    }
+    if (!ts.isIdentifier(current) || !functionInfo) {
+      return false;
+    }
+
+    const parameterIndex = parameterIndexForIdentifier(functionInfo, current);
+    if (parameterIndex < 0) {
+      return false;
+    }
+    if (
+      functionInfo.isRouteEntry &&
+      /^(?:query|searchParams)$/u.test(current.text)
+    ) {
+      return true;
+    }
+    if (!functionInfo.name) {
+      return false;
+    }
+
+    const parameterKey = `${functionInfo.filePath}:${functionInfo.name}:${parameterIndex}`;
+    if (seenParameters.has(parameterKey)) {
+      return false;
+    }
+    const nextSeen = new Set(seenParameters);
+    nextSeen.add(parameterKey);
+    return (callSitesByName.get(functionInfo.name) ?? []).some((callSite) => {
+      const argument = callSite.arguments[parameterIndex];
+      return (
+        argument &&
+        hasRouteSearchProvenance(argument, callSite.caller, nextSeen)
+      );
+    });
+  }
 
   for (const [filePath, statementStarts] of reachableUiScopes) {
     const { source } = sourceFileFor(filePath);
@@ -8198,7 +8479,10 @@ function collectRouteParameterSignals(reachableUiScopes) {
       );
     }
 
-    function visit(node) {
+    function visit(node, parentFunction = null) {
+      const currentFunction =
+        functionInfoByLocation.get(`${filePath}:${node.getStart(source)}`) ??
+        parentFunction;
       if (ts.isCallExpression(node)) {
         if (
           ts.isPropertyAccessExpression(node.expression) &&
@@ -8214,11 +8498,16 @@ function collectRouteParameterSignals(reachableUiScopes) {
           ts.isIdentifier(node.expression) &&
           node.expression.text === "readSearchParam"
         ) {
+          const receiverArgument = node.arguments[0];
           const keyArgument = node.arguments.find(
-            (argument, index) =>
-              index > 0 && ts.isStringLiteralLike(argument),
+            (argument, index) => index > 0 && ts.isStringLiteralLike(argument),
           );
-          if (keyArgument && ts.isStringLiteralLike(keyArgument)) {
+          if (
+            receiverArgument &&
+            hasRouteSearchProvenance(receiverArgument, currentFunction) &&
+            keyArgument &&
+            ts.isStringLiteralLike(keyArgument)
+          ) {
             queryParameters.add(keyArgument.text);
           }
         }
@@ -8258,7 +8547,7 @@ function collectRouteParameterSignals(reachableUiScopes) {
       ) {
         recordSearchParamsTypeMembers(node.type);
       }
-      ts.forEachChild(node, visit);
+      ts.forEachChild(node, (child) => visit(child, currentFunction));
     }
     for (const root of roots) {
       visit(root);
@@ -8316,9 +8605,15 @@ function collectStateSignals(reachableFiles) {
     empty: /\bempty\b|no results|no data|not found/iu.test(combined),
     success: /success|saved|created|updated|sent/iu.test(combined),
     failure: /error|failed|failure|retry/iu.test(combined),
-    offline: /offline|network unavailable|network request failed/iu.test(combined),
-    unauthenticated: /unauthenticated|sign in|log in|未登录|登录/iu.test(combined),
-    forbidden: /forbidden|permission denied|unauthori[sz]ed|无权限/iu.test(combined),
+    offline: /offline|network unavailable|network request failed/iu.test(
+      combined,
+    ),
+    unauthenticated: /unauthenticated|sign in|log in|未登录|登录/iu.test(
+      combined,
+    ),
+    forbidden: /forbidden|permission denied|unauthori[sz]ed|无权限/iu.test(
+      combined,
+    ),
     unavailable: /unavailable|not configured|未配置|不可用/iu.test(combined),
     partialFailure: /partial|degraded|部分失败/iu.test(combined),
     timeout: /timeout|timed out|超时/iu.test(combined),
@@ -8389,12 +8684,17 @@ function accessForSurface(
     }
     return {
       roles: ["anonymous", "authenticated-user"],
-      policy: "public-at-web-boundary; page authorization requires verification",
+      policy:
+        "public-at-web-boundary; page authorization requires verification",
     };
   }
 
   return {
-    roles: ["anonymous", "authenticated-user", "role-requires-runtime-verification"],
+    roles: [
+      "anonymous",
+      "authenticated-user",
+      "role-requires-runtime-verification",
+    ],
     policy:
       "mobile screen/provider enforcement must be verified per route; no central route guard found",
   };
@@ -8425,8 +8725,13 @@ function inferPurpose(route) {
 }
 
 function testFilesForClient(client) {
-  const root = client === "web" ? path.join(WEB_ROOT, "tests") : path.join(MOBILE_ROOT, "tests");
-  return listFiles(root, (filePath) => /\.test\.(?:ts|tsx|js|jsx)$/u.test(filePath));
+  const root =
+    client === "web"
+      ? path.join(WEB_ROOT, "tests")
+      : path.join(MOBILE_ROOT, "tests");
+  return listFiles(root, (filePath) =>
+    /\.test\.(?:ts|tsx|js|jsx)$/u.test(filePath),
+  );
 }
 
 function testEvidenceForSurface(surface, testFiles) {
@@ -8437,7 +8742,8 @@ function testEvidenceForSurface(surface, testFiles) {
       const text = readFileSync(testFile, "utf8");
       return (
         text.includes(surface.route) ||
-        (routeWithoutParameters.length > 2 && text.includes(routeWithoutParameters)) ||
+        (routeWithoutParameters.length > 2 &&
+          text.includes(routeWithoutParameters)) ||
         text.includes(routeSource)
       );
     })
@@ -8618,7 +8924,6 @@ export function buildFullProductFunctionalAuditInventory() {
         }#${interaction.handlers
           .map((handler) => `${handler.event}:${handler.expression}`)
           .join("|")}#${interaction.visibleName}`;
-        const semanticInteractionEvidenceKey = `${interaction.sourceFile}#${interaction.visibleName}`;
         const ownerStableInteractionEvidenceKey = `${
           interaction.sourceFile
         }#owner:${interaction.ownerSymbol ?? "unknown"}#${interaction.handlers
@@ -8641,72 +8946,73 @@ export function buildFullProductFunctionalAuditInventory() {
             )
           : hasLiveEventRegistrationRuntimeEvidence
             ? LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE.get(
-              `${interaction.sourceFile}:${interaction.line}`,
-            )
-          : hasLiveBusinessCardRestrictedRuntimeEvidence
-            ? LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE.get(
                 `${interaction.sourceFile}:${interaction.line}`,
               )
-            : hasLiveContactsListRuntimeEvidence
-              ? LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE.get(
+            : hasLiveBusinessCardRestrictedRuntimeEvidence
+              ? LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE.get(
                   `${interaction.sourceFile}:${interaction.line}`,
                 )
-              : hasLiveContactDetailRuntimeEvidence
-                ? LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE.get(
+              : hasLiveContactsListRuntimeEvidence
+                ? LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE.get(
                     `${interaction.sourceFile}:${interaction.line}`,
                   )
-                : hasLiveMobileAuthRuntimeEvidence
-                  ? (LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
-                      stableInteractionEvidenceKey,
-                    ) ??
-                    LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
+                : hasLiveContactDetailRuntimeEvidence
+                  ? LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE.get(
                       `${interaction.sourceFile}:${interaction.line}`,
-                    ))
-                : hasLiveMobileContactAcquisitionRuntimeEvidence
-                  ? (LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
-                      stableInteractionEvidenceKey,
-                    ) ??
-                    LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
-                      `${interaction.sourceFile}:${interaction.line}`,
-                    ))
-                  : liveMobileAdditionalRuntimeEvidence
-                    ? LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                        `${surfaceId}|${stableInteractionEvidenceKey}`,
-                      )
-                    : liveWebAdditionalRuntimeEvidence
-                      ? (LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                          `${surfaceId}|${stableInteractionEvidenceKey}`,
+                    )
+                  : hasLiveMobileAuthRuntimeEvidence
+                    ? (LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
+                        stableInteractionEvidenceKey,
+                      ) ??
+                      LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE.get(
+                        `${interaction.sourceFile}:${interaction.line}`,
+                      ))
+                    : hasLiveMobileContactAcquisitionRuntimeEvidence
+                      ? (LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
+                          stableInteractionEvidenceKey,
                         ) ??
-                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                          `${surfaceId}|${ownerStableInteractionEvidenceKey}`,
-                        ) ??
-                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                          `${surfaceId}|${normalizedStableInteractionEvidenceKey}`,
-                        ) ??
-                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                          `${surfaceId}|${semanticInteractionEvidenceKey}`,
-                        ) ??
-                        LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE.get(
-                          `${surfaceId}|${interaction.sourceFile}:${interaction.line}`,
+                        LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE.get(
+                          `${interaction.sourceFile}:${interaction.line}`,
                         ))
-            : undefined;
+                      : liveMobileAdditionalRuntimeEvidence
+                        ? LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE.get(
+                            `${surfaceId}|${stableInteractionEvidenceKey}`,
+                          )
+                        : liveWebAdditionalRuntimeEvidence
+                          ? lookupEvidenceByStableKeys(
+                              LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE,
+                              [
+                                `${surfaceId}|${stableInteractionEvidenceKey}`,
+                                `${surfaceId}|${ownerStableInteractionEvidenceKey}`,
+                                `${surfaceId}|${normalizedStableInteractionEvidenceKey}`,
+                                ...(HANDLER_BOUND_RUNTIME_EVIDENCE_INTERACTIONS.has(
+                                  `${interaction.sourceFile}#${interaction.visibleName}`,
+                                )
+                                  ? []
+                                  : [
+                                      `${surfaceId}|${interaction.sourceFile}#${interaction.visibleName}`,
+                                      `${surfaceId}|${interaction.sourceFile}:${interaction.line}`,
+                                    ]),
+                              ],
+                            )
+                          : undefined;
         const runtimeVerificationCase =
           runtimeEvidence?.verificationCase ??
           (hasLiveProfileRuntimeEvidence
             ? "web-profile-complete-lifecycle-2026-07-29"
             : hasLiveEventRegistrationRuntimeEvidence
               ? "live-event-registration-persistence-cancellation-isolation-2026-07-28"
-            : hasLiveBusinessCardRestrictedRuntimeEvidence
-              ? "live-business-card-unconfigured-failure-closed-2026-07-28"
-              : hasLiveMobileAuthRuntimeEvidence
-                ? hasLiveMobilePermissionRuntimeEvidence
-                  ? "expo-web-permission-persistence-cors-isolation-2026-07-29"
-                  : "expo-web-auth-profile-account-privacy-2026-07-28"
-                : liveMobileAdditionalRuntimeEvidence
-                  ? liveMobileAdditionalRuntimeEvidence.verificationCase
-                  : liveWebAdditionalRuntimeEvidence
-                    ? liveWebAdditionalRuntimeEvidence.verificationCase
-                : "live-contact-list-detail-persistence-isolation-2026-07-28");
+              : hasLiveBusinessCardRestrictedRuntimeEvidence
+                ? "live-business-card-unconfigured-failure-closed-2026-07-28"
+                : hasLiveMobileAuthRuntimeEvidence
+                  ? hasLiveMobilePermissionRuntimeEvidence
+                    ? "expo-web-permission-persistence-cors-isolation-2026-07-29"
+                    : "expo-web-auth-profile-account-privacy-2026-07-28"
+                  : liveMobileAdditionalRuntimeEvidence
+                    ? liveMobileAdditionalRuntimeEvidence.verificationCase
+                    : liveWebAdditionalRuntimeEvidence
+                      ? liveWebAdditionalRuntimeEvidence.verificationCase
+                      : "live-contact-list-detail-persistence-isolation-2026-07-28");
         const {
           ownerSymbol: _ownerSymbol,
           renderGateProps: _renderGateProps,
@@ -8736,14 +9042,18 @@ export function buildFullProductFunctionalAuditInventory() {
     const overlays = [...overlayMap.values()].map((overlay) => ({
       overlayInstanceId: `${surfaceId}#overlay-${overlay.implementationId}`,
       parentSurfaceId: surfaceId,
-      trigger: "reachable from route source; exact control requires runtime verification",
+      trigger:
+        "reachable from route source; exact control requires runtime verification",
       enterExitBehavior: "not-runtime-verified",
       ...overlay,
     }));
-    const pathParameters = [
-      ...entry.route.matchAll(/\[([^\]]+)\]/gu),
-    ].map((match) => match[1]);
-    const routeParameters = collectRouteParameterSignals(reachableUiScopes);
+    const pathParameters = [...entry.route.matchAll(/\[([^\]]+)\]/gu)].map(
+      (match) => match[1],
+    );
+    const routeParameters = collectRouteParameterSignals(
+      reachableUiScopes,
+      entry.pageFile,
+    );
     routeParameters.queryParameters = routeParameters.queryParameters.filter(
       (parameter) => !pathParameters.includes(parameter),
     );
@@ -8764,7 +9074,8 @@ export function buildFullProductFunctionalAuditInventory() {
         privateWebPrefixes,
         publicWebPathExceptions,
       ),
-      prerequisites: "runtime data, session, role, and configuration require verification",
+      prerequisites:
+        "runtime data, session, role, and configuration require verification",
       dataSources: collectDataSignals(reachableFiles),
       goal: inferPurpose(entry.route),
       visibleContent: [...contentMap.values()],
@@ -8772,42 +9083,40 @@ export function buildFullProductFunctionalAuditInventory() {
         ? "browser-base-state-verified-at-1440x900-and-390x844"
         : "source-inventoried; rendered structure requires viewport verification",
       entryBehavior: hasLiveProfileRuntimeEvidence
-          ? "authenticated-browser-signup-login-profile-entry-verified"
-          : hasLiveEventRegistrationRuntimeEvidence
-            ? "catalogue-detail-authenticated-registration-entry-verified"
-            : hasLiveBusinessCardRestrictedRuntimeEvidence
-              ? "authenticated-browser-restricted-capability-entry-verified"
+        ? "authenticated-browser-signup-login-profile-entry-verified"
+        : hasLiveEventRegistrationRuntimeEvidence
+          ? "catalogue-detail-authenticated-registration-entry-verified"
+          : hasLiveBusinessCardRestrictedRuntimeEvidence
+            ? "authenticated-browser-restricted-capability-entry-verified"
             : hasLiveContactsListRuntimeEvidence
               ? "authenticated-browser-live-contact-list-entry-verified"
-            : hasLiveContactDetailRuntimeEvidence
-              ? "authenticated-browser-live-contact-detail-entry-verified"
-            : hasLiveMobileContactAcquisitionRuntimeEvidence
-              ? "expo-web-live-external-source-empty-entry-verified"
-            : hasLiveMobilePermissionRuntimeEvidence
-              ? "expo-web-auth-permission-write-readback-entry-verified"
-            : hasLiveMobileAuthRuntimeEvidence
-              ? "expo-web-auth-session-entry-verified"
-            : liveMobileAdditionalRuntimeEvidence
-              ? liveMobileAdditionalRuntimeEvidence.entryBehavior
-            : liveWebAdditionalRuntimeEvidence
-              ? liveWebAdditionalRuntimeEvidence.entryBehavior
-            : hasBrowserSmokeEvidence
-              ? "browser-base-state-rendered-with-non-empty-content"
-              : "not-runtime-verified",
-      exitBehavior:
-        hasLiveProfileRuntimeEvidence
-          ? "back-and-cancel-navigation-to-/app/home-verified"
-          : hasLiveBusinessCardRestrictedRuntimeEvidence ||
-        hasLiveContactDetailRuntimeEvidence
+              : hasLiveContactDetailRuntimeEvidence
+                ? "authenticated-browser-live-contact-detail-entry-verified"
+                : hasLiveMobileContactAcquisitionRuntimeEvidence
+                  ? "expo-web-live-external-source-empty-entry-verified"
+                  : hasLiveMobilePermissionRuntimeEvidence
+                    ? "expo-web-auth-permission-write-readback-entry-verified"
+                    : hasLiveMobileAuthRuntimeEvidence
+                      ? "expo-web-auth-session-entry-verified"
+                      : liveMobileAdditionalRuntimeEvidence
+                        ? liveMobileAdditionalRuntimeEvidence.entryBehavior
+                        : liveWebAdditionalRuntimeEvidence
+                          ? liveWebAdditionalRuntimeEvidence.entryBehavior
+                          : hasBrowserSmokeEvidence
+                            ? "browser-base-state-rendered-with-non-empty-content"
+                            : "not-runtime-verified",
+      exitBehavior: hasLiveProfileRuntimeEvidence
+        ? "back-and-cancel-navigation-to-/app/home-verified"
+        : hasLiveBusinessCardRestrictedRuntimeEvidence ||
+            hasLiveContactDetailRuntimeEvidence
           ? "browser-return-to-contacts-verified"
           : "not-runtime-verified",
       nextSurfaces: [
         ...new Set(interactions.map((item) => item.href).filter(Boolean)),
       ].sort(),
-      backCloseBehavior:
-        hasLiveProfileRuntimeEvidence
-          ? "back-and-cancel-discarded-unsaved-state-and-opened-/app/home"
-          : hasLiveBusinessCardRestrictedRuntimeEvidence
+      backCloseBehavior: hasLiveProfileRuntimeEvidence
+        ? "back-and-cancel-discarded-unsaved-state-and-opened-/app/home"
+        : hasLiveBusinessCardRestrictedRuntimeEvidence
           ? "restricted-state-return-link-navigated-to-/app/contacts"
           : hasLiveContactDetailRuntimeEvidence
             ? "detail-return-link-navigated-to-/app/contacts"
@@ -8816,16 +9125,16 @@ export function buildFullProductFunctionalAuditInventory() {
         desktop: hasLiveProfileRuntimeEvidence
           ? "full-profile-lifecycle-verified-at-default-desktop-width"
           : hasBrowserSmokeEvidence
-          ? "base-state-no-horizontal-overflow-at-1440x900"
-          : entry.client === "web"
-            ? "not-runtime-verified"
-            : "not-applicable",
+            ? "base-state-no-horizontal-overflow-at-1440x900"
+            : entry.client === "web"
+              ? "not-runtime-verified"
+              : "not-applicable",
         tablet: "not-runtime-verified",
         mobile: hasLiveProfileRuntimeEvidence
           ? "full-profile-form-save-and-hard-navigation-readback-verified-at-390x844"
           : hasBrowserSmokeEvidence
-          ? "base-state-no-horizontal-overflow-at-390x844"
-          : "not-runtime-verified",
+            ? "base-state-no-horizontal-overflow-at-390x844"
+            : "not-runtime-verified",
       },
       accessibility: {
         keyboard: hasLiveProfileRuntimeEvidence
@@ -8842,26 +9151,26 @@ export function buildFullProductFunctionalAuditInventory() {
       overlays,
       testEvidence: [],
       runtimeEvidence: hasLiveProfileRuntimeEvidence
+        ? [
+            "production-build entry from /app and account menu",
+            "live Postgres profile write and projected record ownership",
+            "structured extraction empty and success boundaries",
+            "desktop validation, save, GET readback, and hard-navigation persistence",
+            "cancelled unsaved edit and verified /app/home profile consumption",
+            "390x844 mobile save and hard-navigation readback",
+            "two-account isolation",
+            "duplicate-signup and invalid-password failure paths",
+            "final UI cleanup and original 20% profile readback",
+          ]
+        : hasLiveEventRegistrationRuntimeEvidence
           ? [
-              "production-build entry from /app and account menu",
-              "live Postgres profile write and projected record ownership",
-              "structured extraction empty and success boundaries",
-              "desktop validation, save, GET readback, and hard-navigation persistence",
-              "cancelled unsaved edit and verified /app/home profile consumption",
-              "390x844 mobile save and hard-navigation readback",
-              "two-account isolation",
-              "duplicate-signup and invalid-password failure paths",
-              "final UI cleanup and original 20% profile readback",
+              "production-build catalogue → detail → registration traversal",
+              "live Postgres registration write and projected record ownership",
+              "browser exact-answer and cancelled-state refresh readback",
+              "two-account isolation and one-record-per-account idempotency",
+              "cancel confirmation, dismiss, confirm, and same-record reactivation",
+              "server-offline persistence failure and successful retry",
             ]
-          : hasLiveEventRegistrationRuntimeEvidence
-            ? [
-                "production-build catalogue → detail → registration traversal",
-                "live Postgres registration write and projected record ownership",
-                "browser exact-answer and cancelled-state refresh readback",
-                "two-account isolation and one-record-per-account idempotency",
-                "cancel confirmation, dismiss, confirm, and same-record reactivation",
-                "server-offline persistence failure and successful retry",
-              ]
           : hasLiveBusinessCardRestrictedRuntimeEvidence
             ? [
                 "production-build authenticated import-hub entry",
@@ -8870,79 +9179,79 @@ export function buildFullProductFunctionalAuditInventory() {
                 "browser restricted-state exit to /app/contacts",
                 "live Postgres zero-contact projection before and after",
               ]
-          : hasLiveContactsListRuntimeEvidence
-            ? [
-                "production-build authenticated contacts-list entry",
-                "formal live business-card contact service replay",
-                "browser three-vs-one account-isolated list readback",
-                "browser same-name search with distinct organizations",
-                "zero fabricated event, AI-basis, or strength claims",
-                "live Postgres C=3/B=1 owner/count projection",
-              ]
-          : hasLiveContactDetailRuntimeEvidence
-            ? [
-                "production-build encoded dynamic contact entry",
-                "source-only contact detail without relationship enrichment",
-                "browser exact-field, provenance, and refresh readback",
-                "browser detail-to-list return navigation",
-                "two-account detail isolation",
-                "formal write replay with no additional writes",
-              ]
-          : hasLiveMobileContactAcquisitionRuntimeEvidence
-            ? [
-                "browser-owned QR camera permission pending state",
-                "duplicate-request guard and source-mode cancellation",
-                "zero residual camera/video and zero draft write after leaving QR",
-                "runtime 44-point shared navigation and acquisition touch-target measurement",
-                "runtime tablist/tab and radiogroup/radio selected-state ARIA projection",
-                "browser camera and photo-library image input traversal",
-                "real PNG preview, filename, size, and pending-state recovery",
-                "credentialed business-card upload with localized OCR-unconfigured failure",
-                "hard-navigation proof of zero persisted candidate or draft",
-                "zero new browser console warnings or errors",
-                "production-build actor-scoped live external-source read",
-                "browser zero-candidate source truthfulness check",
-                "browser source-filter selection with disabled import",
-                "zero provider sync, file parse, candidate staging, or contact write",
-              ]
-          : hasLiveMobilePermissionRuntimeEvidence
-            ? [
-                "Expo Web signed-out permission privacy boundary and login return route",
-                "credentialed explicit-origin CORS preflight returned data-free 204",
-                "empty-account calendar review wrote one actor-scoped pending row",
-                "hard-navigation and sign-out/re-login persistence readback",
-                "two-account permission isolation and stable repeated upsert",
-              ]
-          : hasLiveMobileAuthRuntimeEvidence
-            ? [
-                "Expo Web signed-out profile/account privacy boundary",
-                "live credentials sign-in with browser-managed HttpOnly session",
-                "actor-owned profile/account readback and hard-navigation restore",
-                "truthful missing-profile-field presentation",
-                "server cookie invalidation and protected hard-navigation after sign-out",
-              ]
-          : liveMobileAdditionalRuntimeEvidence
-            ? liveMobileAdditionalRuntimeEvidence.runtimeEvidence
-          : liveWebAdditionalRuntimeEvidence
-            ? [
-                ...liveWebAdditionalRuntimeEvidence.runtimeEvidence,
-                ...(hasBrowserSmokeEvidence
+            : hasLiveContactsListRuntimeEvidence
+              ? [
+                  "production-build authenticated contacts-list entry",
+                  "formal live business-card contact service replay",
+                  "browser three-vs-one account-isolated list readback",
+                  "browser same-name search with distinct organizations",
+                  "zero fabricated event, AI-basis, or strength claims",
+                  "live Postgres C=3/B=1 owner/count projection",
+                ]
+              : hasLiveContactDetailRuntimeEvidence
+                ? [
+                    "production-build encoded dynamic contact entry",
+                    "source-only contact detail without relationship enrichment",
+                    "browser exact-field, provenance, and refresh readback",
+                    "browser detail-to-list return navigation",
+                    "two-account detail isolation",
+                    "formal write replay with no additional writes",
+                  ]
+                : hasLiveMobileContactAcquisitionRuntimeEvidence
                   ? [
-                      "production-build transport smoke",
-                      "in-app browser base-state at 1440x900",
-                      "in-app browser base-state at 390x844",
-                      "browser console warning/error check",
+                      "browser-owned QR camera permission pending state",
+                      "duplicate-request guard and source-mode cancellation",
+                      "zero residual camera/video and zero draft write after leaving QR",
+                      "runtime 44-point shared navigation and acquisition touch-target measurement",
+                      "runtime tablist/tab and radiogroup/radio selected-state ARIA projection",
+                      "browser camera and photo-library image input traversal",
+                      "real PNG preview, filename, size, and pending-state recovery",
+                      "credentialed business-card upload with localized OCR-unconfigured failure",
+                      "hard-navigation proof of zero persisted candidate or draft",
+                      "zero new browser console warnings or errors",
+                      "production-build actor-scoped live external-source read",
+                      "browser zero-candidate source truthfulness check",
+                      "browser source-filter selection with disabled import",
+                      "zero provider sync, file parse, candidate staging, or contact write",
                     ]
-                  : []),
-              ]
-          : hasBrowserSmokeEvidence
-            ? [
-                "production-build transport smoke",
-                "in-app browser base-state at 1440x900",
-                "in-app browser base-state at 390x844",
-                "browser console warning/error check",
-              ]
-            : [],
+                  : hasLiveMobilePermissionRuntimeEvidence
+                    ? [
+                        "Expo Web signed-out permission privacy boundary and login return route",
+                        "credentialed explicit-origin CORS preflight returned data-free 204",
+                        "empty-account calendar review wrote one actor-scoped pending row",
+                        "hard-navigation and sign-out/re-login persistence readback",
+                        "two-account permission isolation and stable repeated upsert",
+                      ]
+                    : hasLiveMobileAuthRuntimeEvidence
+                      ? [
+                          "Expo Web signed-out profile/account privacy boundary",
+                          "live credentials sign-in with browser-managed HttpOnly session",
+                          "actor-owned profile/account readback and hard-navigation restore",
+                          "truthful missing-profile-field presentation",
+                          "server cookie invalidation and protected hard-navigation after sign-out",
+                        ]
+                      : liveMobileAdditionalRuntimeEvidence
+                        ? liveMobileAdditionalRuntimeEvidence.runtimeEvidence
+                        : liveWebAdditionalRuntimeEvidence
+                          ? [
+                              ...liveWebAdditionalRuntimeEvidence.runtimeEvidence,
+                              ...(hasBrowserSmokeEvidence
+                                ? [
+                                    "production-build transport smoke",
+                                    "in-app browser base-state at 1440x900",
+                                    "in-app browser base-state at 390x844",
+                                    "browser console warning/error check",
+                                  ]
+                                : []),
+                            ]
+                          : hasBrowserSmokeEvidence
+                            ? [
+                                "production-build transport smoke",
+                                "in-app browser base-state at 1440x900",
+                                "in-app browser base-state at 390x844",
+                                "browser console warning/error check",
+                              ]
+                            : [],
       verificationConclusion:
         surfaceId === "web:/dev/capabilities/[slug]"
           ? "runtime-partially-verified-six-ids"
@@ -8950,25 +9259,25 @@ export function buildFullProductFunctionalAuditInventory() {
             ? "runtime-partially-verified-web-profile-complete-lifecycle"
             : hasLiveEventRegistrationRuntimeEvidence
               ? "runtime-partially-verified-live-event-registration"
-            : hasLiveBusinessCardRestrictedRuntimeEvidence
-              ? "runtime-partially-verified-external-capability-restricted"
-            : hasLiveContactsListRuntimeEvidence
-              ? "runtime-partially-verified-live-contact-list"
-            : hasLiveContactDetailRuntimeEvidence
-              ? "runtime-partially-verified-live-contact-detail"
-            : hasLiveMobileContactAcquisitionRuntimeEvidence
-              ? "runtime-partially-verified-expo-contact-acquisition-live-boundaries"
-            : hasLiveMobilePermissionRuntimeEvidence
-              ? "runtime-partially-verified-expo-web-permission-persistence"
-            : hasLiveMobileAuthRuntimeEvidence
-              ? "runtime-partially-verified-expo-web-auth-profile-account"
-            : liveMobileAdditionalRuntimeEvidence
-              ? liveMobileAdditionalRuntimeEvidence.verificationConclusion
-            : liveWebAdditionalRuntimeEvidence
-              ? liveWebAdditionalRuntimeEvidence.verificationConclusion
-          : hasBrowserSmokeEvidence
-            ? "runtime-partially-verified-browser-base-state"
-          : "inventory-complete-runtime-verification-pending",
+              : hasLiveBusinessCardRestrictedRuntimeEvidence
+                ? "runtime-partially-verified-external-capability-restricted"
+                : hasLiveContactsListRuntimeEvidence
+                  ? "runtime-partially-verified-live-contact-list"
+                  : hasLiveContactDetailRuntimeEvidence
+                    ? "runtime-partially-verified-live-contact-detail"
+                    : hasLiveMobileContactAcquisitionRuntimeEvidence
+                      ? "runtime-partially-verified-expo-contact-acquisition-live-boundaries"
+                      : hasLiveMobilePermissionRuntimeEvidence
+                        ? "runtime-partially-verified-expo-web-permission-persistence"
+                        : hasLiveMobileAuthRuntimeEvidence
+                          ? "runtime-partially-verified-expo-web-auth-profile-account"
+                          : liveMobileAdditionalRuntimeEvidence
+                            ? liveMobileAdditionalRuntimeEvidence.verificationConclusion
+                            : liveWebAdditionalRuntimeEvidence
+                              ? liveWebAdditionalRuntimeEvidence.verificationConclusion
+                              : hasBrowserSmokeEvidence
+                                ? "runtime-partially-verified-browser-base-state"
+                                : "inventory-complete-runtime-verification-pending",
     };
     surface.testEvidence = testEvidenceForSurface(
       surface,
@@ -9000,15 +9309,17 @@ export function buildFullProductFunctionalAuditInventory() {
     summary: {
       routeSurfaces: surfaces.length,
       webRoutes: surfaces.filter((surface) => surface.client === "web").length,
-      mobileRoutes: surfaces.filter((surface) => surface.client === "mobile").length,
+      mobileRoutes: surfaces.filter((surface) => surface.client === "mobile")
+        .length,
       productionRoutes: surfaces.filter(
         (surface) => surface.environment === "production",
       ).length,
       developmentRoutes: surfaces.filter(
         (surface) => surface.environment === "development",
       ).length,
-      dynamicRoutes: surfaces.filter((surface) => surface.routeKind === "dynamic")
-        .length,
+      dynamicRoutes: surfaces.filter(
+        (surface) => surface.routeKind === "dynamic",
+      ).length,
       overlayImplementations: overlayImplementations.size,
       overlayRouteInstances: overlays.length,
       interactionRouteInstances: interactions.length,
@@ -9049,7 +9360,8 @@ export function buildFullProductFunctionalAuditInventory() {
         (interaction) => interaction.conclusion === "candidate-missing-handler",
       ).length,
       accessibleNameCandidates: interactions.filter(
-        (interaction) => interaction.accessibleNameEvidence === "missing-static",
+        (interaction) =>
+          interaction.accessibleNameEvidence === "missing-static",
       ).length,
       documentedVerificationCases: VERIFIED_AUDIT_CASES.length,
       documentedRemediations: AUDIT_REMEDIATIONS.length,
