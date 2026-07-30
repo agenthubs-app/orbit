@@ -14,6 +14,29 @@ import type { ContactsListSearchAndFilterService } from "./service";
 
 type LiveContactsProviderResult<TResult> = TResult | Promise<TResult>;
 
+export interface LiveContactDetailStoredNote {
+  authorLabel: string;
+  body: string;
+  createdAt: string;
+  noteId: string;
+}
+
+export interface LiveContactDetailStoredInteraction {
+  channel: string;
+  occurredAt: string;
+  summary: string;
+}
+
+export interface LiveContactDetailState {
+  actorId: string;
+  contactId: string;
+  lastInteraction?: LiveContactDetailStoredInteraction;
+  notes: readonly LiveContactDetailStoredNote[];
+  status: string;
+  tags: readonly string[];
+  updatedAt: string;
+}
+
 export interface LiveContactsGraphProvider {
   source: string;
   sourceLabel: string;
@@ -28,6 +51,13 @@ export interface LiveContactsGraphProvider {
     contactId: string,
     actorId?: string,
   ) => LiveContactsProviderResult<LocalRemoteContactGraph>;
+  readContactDetailState?: (
+    contactId: string,
+    actorId: string,
+  ) => LiveContactsProviderResult<LiveContactDetailState | null>;
+  upsertContactDetailState?: (
+    state: LiveContactDetailState,
+  ) => LiveContactsProviderResult<LiveContactDetailState>;
 }
 
 export interface LiveContactsListSearchAndFilterServiceOptions {

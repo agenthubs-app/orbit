@@ -89,6 +89,7 @@ test("contact detail tag and status contract exposes detail tags status notes la
     "CONTACT_DETAIL_UPDATE_PENDING",
     "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
     "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
+    "CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED",
   ]);
   assert.equal(
     contract.CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS

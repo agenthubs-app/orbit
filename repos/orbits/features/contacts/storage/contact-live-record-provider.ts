@@ -20,12 +20,18 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 import type { ContactsListSearchFilterInput } from "../contract";
-import type { LiveContactsGraphProvider } from "../live-service";
+import type {
+  LiveContactDetailState,
+  LiveContactDetailStoredInteraction,
+  LiveContactDetailStoredNote,
+  LiveContactsGraphProvider,
+} from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
   contacts: "contacts",
+  detailStates: "contact_detail_states",
   evidence: "evidence",
 } as const;
 
@@ -64,6 +70,81 @@ function stringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => nonEmptyString(item))
     : [];
+}
+
+function storedNote(value: unknown): LiveContactDetailStoredNote | null {
+  if (
+    !isRecord(value) ||
+    !nonEmptyString(value.noteId) ||
+    !nonEmptyString(value.body) ||
+    !nonEmptyString(value.authorLabel) ||
+    !nonEmptyString(value.createdAt)
+  ) {
+    return null;
+  }
+
+  return {
+    noteId: value.noteId,
+    body: value.body,
+    authorLabel: value.authorLabel,
+    createdAt: value.createdAt,
+  };
+}
+
+function storedInteraction(
+  value: unknown,
+): LiveContactDetailStoredInteraction | undefined {
+  if (
+    !isRecord(value) ||
+    !nonEmptyString(value.channel) ||
+    !nonEmptyString(value.occurredAt) ||
+    !nonEmptyString(value.summary)
+  ) {
+    return undefined;
+  }
+
+  return {
+    channel: value.channel,
+    occurredAt: value.occurredAt,
+    summary: value.summary,
+  };
+}
+
+function contactDetailStateFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+  actorId: string,
+  contactId: string,
+): LiveContactDetailState | null {
+  if (
+    !record ||
+    record.userId !== actorId ||
+    !isRecord(record.payload) ||
+    record.payload.actorId !== actorId ||
+    record.payload.contactId !== contactId ||
+    !nonEmptyString(record.payload.status) ||
+    !nonEmptyString(record.payload.updatedAt)
+  ) {
+    return null;
+  }
+  const notes = Array.isArray(record.payload.notes)
+    ? record.payload.notes
+        .map(storedNote)
+        .filter((note): note is LiveContactDetailStoredNote => note !== null)
+    : [];
+
+  return {
+    actorId,
+    contactId,
+    tags: stringArray(record.payload.tags),
+    status: record.payload.status,
+    notes,
+    lastInteraction: storedInteraction(record.payload.lastInteraction),
+    updatedAt: record.payload.updatedAt,
+  };
+}
+
+function contactDetailStateRecordId(actorId: string, contactId: string): string {
+  return `contact-detail:${encodeURIComponent(actorId)}:${encodeURIComponent(contactId)}`;
 }
 
 function evidenceIds(value: unknown): readonly [string, ...string[]] | null {
@@ -386,6 +467,85 @@ export function createStorageContactGraphProvider({
         store,
         workspaceId,
       });
+    },
+    async readContactDetailState(contactId: string, actorId: string) {
+      const normalizedActorId = actorId.trim();
+      const normalizedContactId = contactId.trim();
+      if (!normalizedActorId || !normalizedContactId) {
+        return null;
+      }
+      const record = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
+        recordId: contactDetailStateRecordId(
+          normalizedActorId,
+          normalizedContactId,
+        ),
+      });
+
+      return contactDetailStateFromRecord(
+        record,
+        normalizedActorId,
+        normalizedContactId,
+      );
+    },
+    async upsertContactDetailState(state: LiveContactDetailState) {
+      const actorId = state.actorId.trim();
+      const contactId = state.contactId.trim();
+      if (!actorId || !contactId) {
+        throw new Error(
+          "Contact detail state requires an actor and contact identifier.",
+        );
+      }
+      const recordId = contactDetailStateRecordId(actorId, contactId);
+      const existing = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
+        recordId,
+        includeDeleted: true,
+      });
+      const record = await store.upsertRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
+        recordId,
+        userId: actorId,
+        sourceType: "manual",
+        sourceId: `contact-detail:${contactId}`,
+        sourceLabel: sourceLabel,
+        provider: source ?? `live-record-store:contacts:${workspaceId}`,
+        providerRecordId: contactId,
+        evidenceIds: [],
+        targetType: "contact",
+        targetId: contactId,
+        occurredAt: state.updatedAt,
+        createdAt: existing?.createdAt ?? state.updatedAt,
+        updatedAt: state.updatedAt,
+        deletedAt: null,
+        lifecycleState: "active",
+        searchText: [
+          state.status,
+          ...state.tags,
+          ...state.notes.map((note) => note.body),
+          state.lastInteraction?.summary ?? "",
+        ].join(" "),
+        payload: {
+          actorId,
+          contactId,
+          tags: [...state.tags],
+          status: state.status,
+          notes: state.notes.map((note) => ({ ...note })),
+          lastInteraction: state.lastInteraction
+            ? { ...state.lastInteraction }
+            : undefined,
+          updatedAt: state.updatedAt,
+        },
+      });
+      const persisted = contactDetailStateFromRecord(record, actorId, contactId);
+      if (!persisted) {
+        throw new Error("Persisted contact detail state failed validation.");
+      }
+
+      return persisted;
     },
   };
 }

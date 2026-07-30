@@ -64,7 +64,7 @@ function activeRecord(input: {
   };
 }
 
-test("live contact detail reads generated contact graph and previews tag status updates", async () => {
+test("live contact detail persists actor-scoped tag status note and interaction updates", async () => {
   const actorId = "actor:contact-detail-live";
   const workspaceId = "workspace:contact-detail-live";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
@@ -133,7 +133,7 @@ test("live contact detail reads generated contact graph and previews tag status 
     },
     note: {
       authorLabel: "Orbit operator",
-      body: "Previewed a live contact detail status update without writing Contacts.",
+      body: "Persisted a live contact detail status update.",
     },
     status: "active",
   });
@@ -144,7 +144,7 @@ test("live contact detail reads generated contact graph and previews tag status 
   assert.ok(updated.data.contact?.tags.includes("topic:venture-ecosystem"));
   assert.match(
     updated.data.contact?.notes.at(-1)?.body ?? "",
-    /Previewed a live contact detail status update/,
+    /Persisted a live contact detail status update/,
   );
   assert.equal(
     updated.data.contact?.lastInteraction.summary,
@@ -152,11 +152,125 @@ test("live contact detail reads generated contact graph and previews tag status 
   );
   assert.equal(
     updated.data.provenance.generationMethod,
-    "live-store-preview-update",
+    "live-store-update",
   );
   assert.equal(updated.data.provenance.databaseReadExecuted, true);
-  assert.equal(updated.data.provenance.databaseWriteExecuted, false);
+  assert.equal(updated.data.provenance.databaseWriteExecuted, true);
   assert.equal(updated.data.provenance.productionAuditLogWriteExecuted, false);
+  assert.equal(updated.data.contact?.databaseWriteExecuted, true);
+  assert.equal(updated.data.contact?.tagWriteExecuted, true);
+  assert.equal(updated.data.contact?.statusWriteExecuted, true);
+  assert.equal(updated.data.contact?.noteWriteExecuted, true);
+
+  const refreshed = await service.getContactDetail({
+    actorId,
+    contactId: "contact_078",
+  });
+  assert.equal(refreshed.success, true);
+  assert.equal(refreshed.data.provenance.generationMethod, "live-store-query");
+  assert.equal(refreshed.data.provenance.databaseWriteExecuted, false);
+  assert.ok(
+    refreshed.data.contact?.tags.includes("topic:venture-ecosystem"),
+  );
+  assert.equal(
+    refreshed.data.contact?.notes.filter((note) =>
+      note.body.includes("Persisted a live contact detail status update"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    refreshed.data.contact?.lastInteraction.summary,
+    "Operator reviewed live contact detail after the event.",
+  );
+
+  const replayed = await service.updateContactDetail({
+    actorId,
+    addTags: ["topic:venture-ecosystem"],
+    contactId: "contact_078",
+    lastInteraction: {
+      channel: "manual_note",
+      occurredAt: "2026-07-02T02:10:00.000Z",
+      summary: "Operator reviewed live contact detail after the event.",
+    },
+    note: {
+      authorLabel: "Orbit operator",
+      body: "Persisted a live contact detail status update.",
+    },
+    status: "active",
+  });
+  assert.equal(replayed.success, true);
+  const replayReadback = await service.getContactDetail({
+    actorId,
+    contactId: "contact_078",
+  });
+  assert.equal(replayReadback.success, true);
+  assert.equal(
+    replayReadback.data.contact?.notes.filter((note) =>
+      note.body.includes("Persisted a live contact detail status update"),
+    ).length,
+    1,
+  );
+
+  assert.equal(
+    await provider.readContactDetailState?.(
+      "contact_078",
+      "actor:contact-detail-isolation",
+    ),
+    null,
+  );
+});
+
+test("live contact detail write failure returns failure and leaves no detail state", async () => {
+  const actorId = "actor:contact-detail-write-failure";
+  const workspaceId = "workspace:contact-detail-write-failure";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now: () => "2026-07-02T03:00:00.000Z",
+    store,
+    workspaceId,
+  });
+  for (const collectionName of ["contacts", "connections", "evidence"]) {
+    const records = await store.listRecords({ collectionName, workspaceId });
+    for (const record of records) {
+      await store.upsertRecord({
+        ...record,
+        userId: actorId,
+        payload: { ...record.payload, accountId: actorId },
+      });
+    }
+  }
+  const storageProvider = createStorageContactGraphProvider({
+    store,
+    workspaceId,
+  });
+  const service = createLiveContactDetailTagStatusService({
+    now: () => "2026-07-02T03:05:00.000Z",
+    provider: {
+      ...storageProvider,
+      async upsertContactDetailState() {
+        throw new Error("injected storage failure");
+      },
+    },
+  });
+
+  const failed = await service.updateContactDetail({
+    actorId,
+    contactId: "contact_078",
+    note: "This must not be reported as saved.",
+  });
+
+  assert.equal(failed.success, false);
+  if (!failed.success) {
+    assert.equal(
+      failed.error.code,
+      "CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED",
+    );
+    assert.equal(failed.error.provenance.databaseWriteExecuted, false);
+  }
+  assert.equal(
+    await storageProvider.readContactDetailState?.("contact_078", actorId),
+    null,
+  );
 });
 
 test("live contact detail reads only evidence for the selected contact graph", async () => {

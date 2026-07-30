@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   ConnectionDTO,
   ContactDTO,
@@ -29,7 +31,10 @@ import {
   type ContactDetailTagStatusUpdatePendingError,
   type ContactDetailUpdateInput,
 } from "./detail-contract";
-import type { LiveContactsGraphProvider } from "./live-service";
+import type {
+  LiveContactDetailState,
+  LiveContactsGraphProvider,
+} from "./live-service";
 
 export interface LiveContactDetailTagStatusServiceOptions {
   now?: () => string;
@@ -477,6 +482,7 @@ function detailFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
   evidence: readonly RelationshipEvidenceDTO[];
+  persistedState?: LiveContactDetailState | null;
 }): ContactDetail {
   const evidenceIds = uniqueStrings([
     ...input.contact.evidenceIds,
@@ -495,6 +501,30 @@ function detailFor(input: {
     labelRelationshipText(input.connection?.summary ?? "") ||
     labelRelationshipText(input.contact.profileSnippet ?? "") ||
     "Live relationship context is available for this contact.";
+  const baseNotes = notesFor({
+    collectedAt: input.collectedAt,
+    contact: input.contact,
+    evidence: evidenceRecords,
+    evidenceIds,
+    relationshipContext,
+    source,
+  });
+  const persistedNotes = (input.persistedState?.notes ?? []).map((note) => ({
+    ...note,
+    source,
+    evidenceIds: input.contact.evidenceIds,
+    noteWriteExecuted: false,
+    productionAuditLogWriteExecuted: false as const,
+  }));
+  const baseLastInteraction = lastInteractionFor({
+    contact: input.contact,
+    evidence: latestEvidence,
+    evidenceIds,
+    occurredAt: input.connection?.updatedAt ?? input.contact.updatedAt,
+    relationshipContext,
+    source,
+  });
+  const persistedLastInteraction = input.persistedState?.lastInteraction;
 
   return {
     id: input.contact.id,
@@ -525,31 +555,36 @@ function detailFor(input: {
       capturedAt: record.occurredAt,
       createdBy: "mock-contact-detail-tag-status-service",
     })),
-    tags: tagsFor({
-      contact: input.contact,
-      connection: input.connection,
-    }),
-    status: statusFor(input.contact),
-    notes: notesFor({
-      collectedAt: input.collectedAt,
-      contact: input.contact,
-      evidence: evidenceRecords,
-      evidenceIds,
-      relationshipContext,
-      source,
-    }),
-    lastInteraction: lastInteractionFor({
-      contact: input.contact,
-      evidence: latestEvidence,
-      evidenceIds,
-      occurredAt: input.connection?.updatedAt ?? input.contact.updatedAt,
-      relationshipContext,
-      source,
-    }),
+    tags: input.persistedState
+      ? (input.persistedState.tags.filter((tag) =>
+          supportedTags.has(tag as ContactDetailTagOption),
+        ) as ContactDetailTagOption[])
+      : tagsFor({
+          contact: input.contact,
+          connection: input.connection,
+        }),
+    status:
+      input.persistedState &&
+      supportedStatuses.has(
+        input.persistedState.status as ContactDetailStatusOption,
+      )
+        ? (input.persistedState.status as ContactDetailStatusOption)
+        : statusFor(input.contact),
+    notes: [...baseNotes, ...persistedNotes],
+    lastInteraction: persistedLastInteraction
+      ? {
+          ...baseLastInteraction,
+          channel: normalizeInteractionChannel(
+            persistedLastInteraction.channel,
+          ),
+          occurredAt: persistedLastInteraction.occurredAt,
+          summary: persistedLastInteraction.summary,
+        }
+      : baseLastInteraction,
     nextAction:
       labelRelationshipText(input.connection?.suggestedActions[0] ?? "") ||
       "Review the live contact detail before taking action.",
-    updatedAt: input.contact.updatedAt,
+    updatedAt: input.persistedState?.updatedAt ?? input.contact.updatedAt,
     tagWriteExecuted: false,
     statusWriteExecuted: false,
     noteWriteExecuted: false,
@@ -570,6 +605,7 @@ function payloadFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
   evidence: readonly RelationshipEvidenceDTO[];
+  persistedState?: LiveContactDetailState | null;
   provider: LiveContactsGraphProvider;
 }): ContactDetailTagStatusPayload {
   const contact = detailFor({
@@ -577,6 +613,7 @@ function payloadFor(input: {
     contact: input.contact,
     connection: input.connection,
     evidence: input.evidence,
+    persistedState: input.persistedState,
   });
 
   return {
@@ -712,6 +749,7 @@ function normalizeNoteInput(
 }
 
 function buildNote(input: {
+  actorId: string;
   contact: ContactDetail;
   note?: ContactDetailUpdateInput["note"];
   now: string;
@@ -722,8 +760,20 @@ function buildNote(input: {
     return null;
   }
 
+  const noteId = createHash("sha256")
+    .update(
+      [
+        input.actorId,
+        input.contact.id,
+        noteInput.authorLabel || "Orbit operator",
+        noteInput.body,
+      ].join("\u0000"),
+    )
+    .digest("hex")
+    .slice(0, 24);
+
   return {
-    noteId: `note:live-contact-detail-preview:${input.contact.id}:${input.now}`,
+    noteId: `note:live-contact-detail-update:${noteId}`,
     body: noteInput.body,
     authorLabel: noteInput.authorLabel || "Orbit operator",
     createdAt: input.now,
@@ -768,6 +818,7 @@ function buildLastInteraction(
 }
 
 function previewUpdatePayload(input: {
+  actorId: string;
   base: ContactDetailTagStatusPayload;
   collectedAt: string;
   update: ContactDetailUpdateInput;
@@ -781,11 +832,19 @@ function previewUpdatePayload(input: {
   const tags = applyTagRules(contact, input.update);
   const status = normalizeStatus(contact, input.update.status);
   const note = buildNote({
+    actorId: input.actorId,
     contact,
     note: input.update.note,
     now: input.collectedAt,
   });
-  const notes = note ? [...contact.notes, note] : contact.notes;
+  const notes = note
+    ? [
+        ...contact.notes.filter(
+          (existingNote) => existingNote.noteId !== note.noteId,
+        ),
+        note,
+      ]
+    : contact.notes;
   const lastInteraction = buildLastInteraction(
     contact,
     input.update.lastInteraction,
@@ -817,6 +876,79 @@ function previewUpdatePayload(input: {
   };
 }
 
+function persistedStateFor(input: {
+  actorId: string;
+  collectedAt: string;
+  contact: ContactDetail;
+}): LiveContactDetailState {
+  return {
+    actorId: input.actorId,
+    contactId: input.contact.id,
+    tags: [...input.contact.tags],
+    status: input.contact.status,
+    notes: input.contact.notes
+      .filter((note) =>
+        note.noteId.startsWith("note:live-contact-detail-update:"),
+      )
+      .map((note) => ({
+        noteId: note.noteId,
+        body: note.body,
+        authorLabel: note.authorLabel,
+        createdAt: note.createdAt,
+      })),
+    lastInteraction: {
+      channel: input.contact.lastInteraction.channel,
+      occurredAt: input.contact.lastInteraction.occurredAt,
+      summary: input.contact.lastInteraction.summary,
+    },
+    updatedAt: input.collectedAt,
+  };
+}
+
+function persistedUpdatePayload(input: {
+  payload: ContactDetailTagStatusPayload;
+  update: ContactDetailUpdateInput;
+}): ContactDetailTagStatusPayload {
+  const contact = input.payload.contact;
+  if (!contact) {
+    return input.payload;
+  }
+  const wroteTags =
+    input.update.tags !== undefined ||
+    input.update.addTags !== undefined ||
+    input.update.removeTags !== undefined;
+  const wroteStatus = Boolean(input.update.status?.trim());
+  const noteInput = normalizeNoteInput(input.update.note);
+
+  return {
+    ...input.payload,
+    contact: {
+      ...contact,
+      notes: contact.notes.map((note) => ({
+        ...note,
+        noteWriteExecuted:
+          noteInput !== null &&
+          note.noteId.startsWith("note:live-contact-detail-update:") &&
+          note.body === noteInput.body &&
+          note.authorLabel === (noteInput.authorLabel || "Orbit operator"),
+      })),
+      tagWriteExecuted: wroteTags,
+      statusWriteExecuted: wroteStatus,
+      noteWriteExecuted: noteInput !== null,
+      databaseWriteExecuted: true,
+    },
+    summary: "Live contact detail update was persisted.",
+    provenance: {
+      ...input.payload.provenance,
+      generationMethod: "live-store-update",
+      databaseReadExecuted: true,
+      databaseWriteExecuted: true,
+    },
+    nextAction: "The actor-scoped update is saved and ready for refresh.",
+    updateSummary: `Saved ${contact.displayName} with ${contact.status}, ${contact.tags.length} tags and ${contact.notes.length} notes.`,
+  };
+}
+
 export function createLiveContactDetailTagStatusService({
   now = () => new Date().toISOString(),
   provider = null,
@@ -841,12 +973,14 @@ export function createLiveContactDetailTagStatusService({
       });
     }
 
-    const graph = provider.readContactGraphForContact
-      ? await provider.readContactGraphForContact(
-          input.contactId.trim(),
-          actorId,
-        )
-      : await provider.readContactGraph(actorId);
+    const [graph, persistedState] = await Promise.all([
+      provider.readContactGraphForContact
+        ? provider.readContactGraphForContact(input.contactId.trim(), actorId)
+        : provider.readContactGraph(actorId),
+      provider.readContactDetailState
+        ? provider.readContactDetailState(input.contactId.trim(), actorId)
+        : null,
+    ]);
     const contact =
       graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
 
@@ -866,6 +1000,7 @@ export function createLiveContactDetailTagStatusService({
           contact,
           connection: connectionFor(contact, graph.connections),
           evidence: graph.evidence,
+          persistedState,
           provider,
         }),
       ),
@@ -919,12 +1054,54 @@ export function createLiveContactDetailTagStatusService({
         return loaded;
       }
 
+      if (!provider?.upsertContactDetailState) {
+        return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
+          collectedAt,
+          databaseReadExecuted: true,
+          provider,
+        });
+      }
+      const actorId = input.actorId?.trim();
+      if (!actorId) {
+        return failure("CONTACT_DETAIL_ACTOR_REQUIRED", {
+          collectedAt,
+          provider,
+        });
+      }
+      const preview = previewUpdatePayload({
+        actorId,
+        base: loaded.data,
+        collectedAt,
+        update: input,
+      });
+      if (!preview.contact) {
+        return failure("CONTACT_DETAIL_NOT_FOUND", {
+          collectedAt,
+          databaseReadExecuted: true,
+          provider,
+        });
+      }
+      try {
+        await provider.upsertContactDetailState(
+          persistedStateFor({
+            actorId,
+            collectedAt,
+            contact: preview.contact,
+          }),
+        );
+      } catch {
+        return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
+          collectedAt,
+          databaseReadExecuted: true,
+          provider,
+        });
+      }
+
       return {
         success: true,
         data: clonePayload(
-          previewUpdatePayload({
-            base: loaded.data,
-            collectedAt,
+          persistedUpdatePayload({
+            payload: preview,
             update: input,
           }),
         ),

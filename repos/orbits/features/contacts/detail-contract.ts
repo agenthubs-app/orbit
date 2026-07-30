@@ -6,8 +6,8 @@ import type { AppErrorCode } from "../../shared/errors/app-error";
 import { AppError } from "../../shared/errors/app-error";
 import type { ContactStatusFilter, ContactTagFilter } from "./contract";
 
-// Contact detail contract 描述单个联系人详情、标签/状态预览更新和来源证据。
-// 当前实现仍在 mock 边界内，不执行真实联系人存储或生产审计日志写入。
+// Contact detail contract 描述单个联系人详情、标签/状态更新和来源证据。
+// mock 模式不执行存储；live 模式通过 actor-scoped provider 持久化。
 // detail 页允许编辑的标签和状态是显式白名单。
 // mock update 只预览结果；真实写入必须另接 live service 和权限确认。
 export const CONTACT_DETAIL_TAG_OPTIONS = [
@@ -44,6 +44,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_UPDATE_PENDING",
   "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
   "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
+  "CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED",
 ] as const;
 
 export type ContactDetailTagStatusErrorCode =
@@ -124,6 +125,13 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     recovery:
       "Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before using live contact details.",
   },
+  CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED: {
+    code: "CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live contact detail update could not be persisted.",
+    recovery:
+      "Keep the draft, verify the actor-scoped live store, and retry without reporting the update as saved.",
+  },
 } as const satisfies Record<
   ContactDetailTagStatusErrorCode,
   ContactDetailTagStatusErrorDefinition
@@ -192,7 +200,7 @@ export interface ContactDetailNote {
   createdAt: string;
   source: ContactDetailSourceReference;
   evidenceIds: readonly string[];
-  noteWriteExecuted: false;
+  noteWriteExecuted: boolean;
   productionAuditLogWriteExecuted: false;
 }
 
@@ -233,12 +241,12 @@ export interface ContactDetail {
   lastInteraction: ContactDetailLastInteractionMetadata;
   nextAction: string;
   updatedAt: string;
-  tagWriteExecuted: false;
-  statusWriteExecuted: false;
-  noteWriteExecuted: false;
+  tagWriteExecuted: boolean;
+  statusWriteExecuted: boolean;
+  noteWriteExecuted: boolean;
   productionAuditLogWriteExecuted: false;
   databaseReadExecuted: boolean;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   externalNetworkRequested: false;
   deviceRequested: false;
   aiProviderRequested: false;
@@ -247,7 +255,7 @@ export interface ContactDetail {
   notificationDelivered: false;
 }
 
-// Detail provenance 记录这次详情读取或预览更新的来源和副作用边界。
+// Detail provenance 记录这次详情读取或 live 更新的来源和副作用边界。
 export interface ContactDetailTagStatusProvenance {
   source: string;
   sourceLabel: string;
@@ -258,9 +266,10 @@ export interface ContactDetailTagStatusProvenance {
     | "fixture"
     | "rule-based-contact-detail-tag-status"
     | "live-store-query"
-    | "live-store-preview-update";
+    | "live-store-preview-update"
+    | "live-store-update";
   databaseReadExecuted: boolean;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   productionAuditLogWriteExecuted: false;
   externalNetworkRequested: false;
   deviceRequested: false;
@@ -299,7 +308,7 @@ export interface ContactDetailLastInteractionInput {
 }
 
 // Update input 支持替换/增删 tags、状态、note 和 lastInteraction。
-// mock service 会把这些输入变成预览 payload，不会真正保存。
+// mock service 生成预览；live service 必须在返回 success 前完成持久化回读。
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
   tags?: readonly (ContactDetailTagOption | string)[] | null;
   addTags?: readonly (ContactDetailTagOption | string)[] | null;
