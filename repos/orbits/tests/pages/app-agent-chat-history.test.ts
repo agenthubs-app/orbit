@@ -98,6 +98,43 @@ test("agent chat history parser keeps refreshable sessions under the older group
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
 });
 
+test("agent chat history parser preserves minimal persisted assistant messages", () => {
+  const sessions = parseAgentChatHistoryStorage(
+    JSON.stringify([
+      {
+        createdAt: "2026-07-30T18:52:05.854Z",
+        id: "minimal-assistant-session",
+        messages: [
+          { role: "user", text: "保留这段对话" },
+          { role: "assistant", text: "这条消息来自共享会话存储合同。" },
+        ],
+        pinned: false,
+        title: "共享存储合同",
+        updatedAt: "2026-07-30T18:52:05.854Z",
+      },
+    ]),
+  );
+
+  assert.equal(sessions.length, 1);
+  assert.deepEqual(
+    sessions[0].messages.map((message) => ({
+      role: message.role,
+      text: message.text,
+    })),
+    [
+      { role: "user", text: "保留这段对话" },
+      { role: "assistant", text: "这条消息来自共享会话存储合同。" },
+    ],
+  );
+  assert.deepEqual(sessions[0].messages[1], {
+    items: [],
+    kind: "people",
+    panelTitle: "",
+    role: "assistant",
+    text: "这条消息来自共享会话存储合同。",
+  });
+});
+
 test("agent chat history merges duplicate and overlapping persisted evidence references", () => {
   const duplicateReference = {
     evidenceIds: ["evidence:event:1", "evidence:event:2"],

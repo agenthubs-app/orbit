@@ -182,3 +182,29 @@ test("Orbit Agent chat session provider isolates the same session id by actor", 
   assert.equal(await bob.getSession("shared-client-session-id"), null);
   assert.equal((await alice.getSession("shared-client-session-id"))?.title, "Alice private prompt");
 });
+
+test("Orbit Agent chat session deletion is idempotent", async () => {
+  const workspaceId = "workspace:orbit-agent-chat-session-delete-idempotency";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:delete-owner",
+    store,
+    workspaceId,
+  });
+
+  await provider.upsertSession({
+    createdAt: "2026-07-30T18:52:05.854Z",
+    id: "delete-once-session",
+    messages: [
+      { role: "user", text: "删除这段对话" },
+      { role: "assistant", text: "删除后重复请求应保持收敛。" },
+    ],
+    title: "删除幂等",
+    updatedAt: "2026-07-30T18:52:05.854Z",
+  });
+
+  assert.equal(await provider.deleteSession("delete-once-session"), true);
+  assert.equal(await provider.deleteSession("delete-once-session"), false);
+  assert.equal(await provider.getSession("delete-once-session"), null);
+  assert.deepEqual(await provider.listSessions(), []);
+});

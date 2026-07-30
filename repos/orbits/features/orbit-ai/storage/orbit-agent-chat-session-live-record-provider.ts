@@ -376,12 +376,20 @@ export function createStorageOrbitAgentChatSessionProvider({
 
     async deleteSession(sessionId) {
       const deletedAt = new Date().toISOString();
-      const session = await store.deleteRecord({
+      const activeSession = await store.getRecord({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-        deletedAt,
         recordId: sessionId,
         workspaceId: actorWorkspaceId,
       });
+      const deletedSession = activeSession
+        ? await store.deleteRecord({
+            collectionName:
+              ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+            deletedAt,
+            recordId: sessionId,
+            workspaceId: actorWorkspaceId,
+          })
+        : null;
       const messages = await store.listRecords({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
         includeDeleted: true,
@@ -401,10 +409,10 @@ export function createStorageOrbitAgentChatSessionProvider({
               recordId: message.recordId,
               workspaceId: actorWorkspaceId,
             }),
-          ),
+        ),
       );
 
-      return Boolean(session);
+      return Boolean(deletedSession);
     },
 
     async getSession(sessionId) {

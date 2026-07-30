@@ -480,6 +480,33 @@ export interface AgentStoredChatSession {
   updatedAt: string;
 }
 
+function parseStoredAgentMessage(value: unknown): AgentMessage | null {
+  if (isStoredAgentMessage(value)) {
+    return value.role === "assistant" && value.evidenceRefs
+      ? {
+          ...value,
+          evidenceRefs: uniqueAgentEvidenceRefs(value.evidenceRefs),
+        }
+      : value;
+  }
+
+  if (
+    isRecord(value) &&
+    value.role === "assistant" &&
+    typeof value.text === "string"
+  ) {
+    return {
+      items: [],
+      kind: "people",
+      panelTitle: "",
+      role: "assistant",
+      text: value.text,
+    };
+  }
+
+  return null;
+}
+
 function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
   if (!Array.isArray(value)) {
     return [];
@@ -491,15 +518,11 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
       id: typeof session.id === "string" ? session.id : "",
       messages: Array.isArray(session.messages)
         ? session.messages
-            .filter(isStoredAgentMessage)
-            .map((message) =>
-              message.role === "assistant" && message.evidenceRefs
-                ? {
-                    ...message,
-                    evidenceRefs: uniqueAgentEvidenceRefs(message.evidenceRefs),
-                  }
-                : message,
-            )
+            .flatMap((message) => {
+              const parsed = parseStoredAgentMessage(message);
+
+              return parsed ? [parsed] : [];
+            })
         : [],
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
       createdAt:
