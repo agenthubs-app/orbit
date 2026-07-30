@@ -264,6 +264,7 @@ export function createLiveAsyncRelationshipConversationService({
           `contact:draft:${participantName.normalize("NFKC")}`,
         organization: trimmed(input.organization),
         participantName,
+        requestId: trimmed(input.requestId) || undefined,
         sourceLabel,
         stagedAt,
         subject,

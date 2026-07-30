@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   resolveAuthenticatedApiActorIdentity,
@@ -7,6 +10,8 @@ import {
 import type {
   LiveAccountSessionGraph,
 } from "../../features/account/storage/account-live-record-provider";
+
+const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 const graph: LiveAccountSessionGraph = {
   accounts: [
@@ -106,4 +111,21 @@ test("mock actor remains self-owned when no live membership graph exists", () =>
 
   assert.equal(actor?.id, "mock:user");
   assert.equal(actor?.accountId, "mock:user");
+});
+
+test("shared-shell API routes bind actor resolution to the Auth.js request", () => {
+  for (const filePath of [
+    "app/api/notifications/route.ts",
+    "app/api/chat/relationship-inbox/route.ts",
+  ]) {
+    const source = readFileSync(join(projectRoot, filePath), "utf8");
+
+    assert.match(source, /\bauth\s*\(\s*async\s*\(request\)/u, filePath);
+    assert.match(
+      source,
+      /resolveAuthenticatedApiActorFromSession/u,
+      filePath,
+    );
+    assert.match(source, /request\.auth\?\.user/u, filePath);
+  }
 });

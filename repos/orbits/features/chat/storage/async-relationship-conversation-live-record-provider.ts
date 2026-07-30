@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
@@ -49,6 +49,7 @@ export interface SaveAsyncRelationshipDraftInput {
   contactId: string;
   organization: string;
   participantName: string;
+  requestId?: string;
   sourceLabel: string;
   stagedAt: string;
   subject: string;
@@ -374,7 +375,27 @@ async function saveDraftThread(
   createId: () => string,
   input: SaveAsyncRelationshipDraftInput,
 ): Promise<StoredAsyncRelationshipThread> {
-  const conversationId = `relationship-draft:${createId()}`;
+  const requestId = text(input.requestId);
+  const conversationId = requestId
+    ? `relationship-draft:${createHash("sha256")
+        .update(`${input.actorId}\u0000${requestId}`)
+        .digest("hex")
+        .slice(0, 32)}`
+    : `relationship-draft:${createId()}`;
+  const existing = await store.getRecord({
+    collectionName: ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.drafts,
+    recordId: conversationId,
+    workspaceId,
+  });
+
+  if (existing) {
+    const stored = stagedThreadFromRecord(existing);
+    if (stored && stored.actorId === input.actorId) {
+      return stored;
+    }
+    throw new Error("Existing relationship draft failed ownership validation.");
+  }
+
   const messageId = `${conversationId}:message:1`;
   const evidenceId = `evidence:${conversationId}`;
   const payload = {
@@ -387,6 +408,7 @@ async function saveDraftThread(
     messageId,
     organization: input.organization,
     participantName: input.participantName,
+    requestId: requestId || null,
     relationshipSummary: `已保存一封发给${input.participantName}的内部草稿，尚未外发。`,
     sourceLabel: input.sourceLabel,
     stagedAt: input.stagedAt,

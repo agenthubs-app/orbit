@@ -389,7 +389,10 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /role="dialog"/);
   assert.match(source, /mobileRightExtra=\{\(/);
   assert.doesNotMatch(source, /rightExtra=\{\([\s\S]{0,240}orbit-agent-history-btn/);
-  assert.match(accountShell, /mobileRightExtra=\{mobileRightExtra\}/);
+  assert.match(
+    accountShell,
+    /mobileRightExtra=\{\s*<>\s*\{mobileRightExtra\}\s*<RelationshipInboxTrigger \/>/,
+  );
   assert.match(publicShell, /className="orbit-nav-mobile-extra"/);
   assert.match(
     styles,

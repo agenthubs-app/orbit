@@ -63,6 +63,7 @@ test("openRelationshipInboxCompose dispatches a compose event with the seed", as
 
   const events: {
     body?: string;
+    contactId?: string;
     recipient?: string;
     organization?: string;
     subject?: string;
@@ -73,6 +74,7 @@ test("openRelationshipInboxCompose dispatches a compose event with the seed", as
   target.addEventListener(mod.RELATIONSHIP_INBOX_COMPOSE_EVENT, handler);
   mod.openRelationshipInboxCompose({
     body: "曾伟，感谢昨天的交流。",
+    contactId: "contact:zeng-wei",
     recipient: "曾伟",
     organization: "味道餐饮",
     subject: "昨天活动的后续",
@@ -81,10 +83,87 @@ test("openRelationshipInboxCompose dispatches a compose event with the seed", as
   (globalThis as { window?: unknown }).window = previousWindow;
 
   assert.equal(events.length, 1);
+  assert.equal(events[0].contactId, "contact:zeng-wei");
   assert.equal(events[0].recipient, "曾伟");
   assert.equal(events[0].organization, "味道餐饮");
   assert.equal(events[0].subject, "昨天活动的后续");
   assert.equal(events[0].body, "曾伟，感谢昨天的交流。");
+});
+
+test("exact contact identity survives compose seed and create-thread POST", async () => {
+  const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
+  const previousFetch = globalThis.fetch;
+  let submittedBody: Record<string, unknown> | null = null;
+
+  globalThis.fetch = (async (_input, init) => {
+    submittedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ success: false }), { status: 400 });
+  }) as typeof fetch;
+
+  try {
+    const created = await mod.createThreadFromDraft(
+      {
+        body: "很高兴认识你。",
+        contactId: "contact:misaki-a",
+        organization: "青空商事",
+        participantName: "林 美咲",
+        requestId: "request:misaki-a:1",
+        subject: "活动后续",
+      },
+      "zh",
+    );
+
+    assert.equal(created, null);
+    assert.equal(submittedBody?.contactId, "contact:misaki-a");
+    assert.equal(submittedBody?.requestId, "request:misaki-a:1");
+
+    const source = await import("node:fs").then((fs) =>
+      fs.readFileSync(
+        new URL(
+          "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    assert.match(source, /contactId: detail\.contactId/);
+    assert.match(source, /contactId: initialContactId/);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("responsive compose arbitration ignores a mounted trigger with no rendered area", async () => {
+  const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
+  const rectangle = (width: number, height: number) => ({
+    getBoundingClientRect: () =>
+      ({
+        bottom: height,
+        height,
+        left: 0,
+        right: width,
+        top: 0,
+        width,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect,
+  });
+
+  assert.equal(mod.hasRenderedComposeTriggerArea(rectangle(0, 0)), false);
+  assert.equal(mod.hasRenderedComposeTriggerArea(rectangle(36, 36)), true);
+
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL(
+        "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  assert.doesNotMatch(source, /offsetParent === null/);
+  assert.match(source, /badgeCountRequests\.get\(language\)/);
 });
 
 test("contact detail card connection routes 起草邮件 into the inbox compose flow", async () => {

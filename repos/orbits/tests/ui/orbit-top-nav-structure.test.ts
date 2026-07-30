@@ -102,10 +102,16 @@ test("session account control and inbox extras stay in the actions segment", () 
   assert.ok(actions.includes("orbit-nav-mobile-extra"));
   assert.ok(actions.includes("orbit-nav-account-slot"));
   assert.ok(actions.includes("orbit-nav-extra"));
-  assert.ok(accountShell.includes("mobileRightExtra={mobileRightExtra}"));
+  const mobileExtraIdx = accountShell.indexOf("mobileRightExtra={");
+  const rightExtraIdx = accountShell.indexOf("rightExtra={", mobileExtraIdx);
+  const mobileExtras = accountShell.slice(mobileExtraIdx, rightExtraIdx);
+  const rightExtraEnd = accountShell.indexOf("/>", rightExtraIdx);
+  const desktopExtras = accountShell.slice(rightExtraIdx, rightExtraEnd);
+  assert.ok(mobileExtras.includes("{mobileRightExtra}"));
+  assert.ok(mobileExtras.includes("<RelationshipInboxTrigger />"));
   assert.ok(
-    accountShell.indexOf("{rightExtra}") <
-      accountShell.indexOf("<RelationshipInboxTrigger />"),
+    desktopExtras.indexOf("{rightExtra}") <
+      desktopExtras.indexOf("<RelationshipInboxTrigger"),
     "desktop extras keep page actions and the global inbox together",
   );
 });

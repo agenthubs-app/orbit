@@ -107,6 +107,16 @@ export async function resolveAuthenticatedApiActor(): Promise<AuthenticatedApiAc
     return null;
   }
 
+  return resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+}
+
+export async function resolveAuthenticatedApiActorFromSession(
+  session: AuthenticatedApiSessionIdentity,
+): Promise<AuthenticatedApiActor | null> {
   const mode = resolveFeatureMode(
     process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
   );
@@ -118,11 +128,7 @@ export async function resolveAuthenticatedApiActor(): Promise<AuthenticatedApiAc
   return resolveAuthenticatedApiActorIdentity({
     graph,
     mode,
-    session: {
-      email: session.user.email,
-      name: session.user.name,
-      userId: session.user.id,
-    },
+    session,
     workspaceId,
   });
 }

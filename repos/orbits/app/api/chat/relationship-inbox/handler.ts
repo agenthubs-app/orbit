@@ -152,6 +152,7 @@ export function createRelationshipInboxPostHandler(
     const input: AsyncConversationCreateFromDraftInput = {
       actorDisplayName: actor?.name,
       actorId: actor?.id,
+      requestId: readString(body.requestId),
       contactId: readString(body.contactId),
       participantName: readString(body.participantName),
       organization: readString(body.organization),

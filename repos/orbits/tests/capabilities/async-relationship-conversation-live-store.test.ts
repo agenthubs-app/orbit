@@ -116,6 +116,48 @@ test("live relationship inbox fails closed without actor or configured storage",
   }
 });
 
+test("live relationship inbox replays one request id without creating a duplicate draft", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  let generatedIds = 0;
+  const provider = createStorageAsyncRelationshipConversationProvider({
+    createId: () => `generated-${++generatedIds}`,
+    store,
+    workspaceId: "workspace:async-inbox-idempotency",
+  });
+  const service = createLiveAsyncRelationshipConversationService({ provider });
+  const input = {
+    actorDisplayName: "测试用户",
+    actorId: "actor:a",
+    body: "第一次确认的正文。",
+    contactId: "contact:lin-mei",
+    organization: "港湾创投",
+    participantName: "林玫",
+    requestId: "request:stable:001",
+    sourceLabel: "联系人详情页草稿",
+    stagedAt: "2026-07-29T05:00:00.000Z",
+    subject: "第一次确认的主题",
+  };
+
+  const first = await service.createConversationFromDraft(input);
+  const replay = await service.createConversationFromDraft({
+    ...input,
+    body: "重放时被篡改的正文不应覆盖第一次确认。",
+    stagedAt: "2026-07-29T05:01:00.000Z",
+    subject: "重放时被篡改的主题",
+  });
+  const workspace = await service.getCorrespondenceWorkspace({
+    actorId: "actor:a",
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(replay.success, true);
+  if (!first.success || !replay.success || !workspace.success) return;
+  assert.equal(first.data.thread.conversationId, replay.data.thread.conversationId);
+  assert.equal(replay.data.thread.subject, "第一次确认的主题");
+  assert.equal(workspace.data.inbox.conversations.length, 1);
+  assert.equal(generatedIds, 0, "requestId-backed drafts must not use random identity");
+});
+
 test("configured relationship inbox cache is isolated by database connection and stable within one database", () => {
   const shared = {
     ORBIT_WORKSPACE_ID: "workspace:async-inbox-cache-isolation",

@@ -111,18 +111,41 @@ function initialOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
+const badgeCountRequests = new Map<OrbitLanguage, Promise<number>>();
+
 // badge 聚合：未读对话数 + 来源明确的待处理提醒数。fail-closed 返回 0。
+// 响应式页面可能同时挂载 desktop/mobile 两棵顶栏；同语言的并发读取共享一次请求。
 async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
-  try {
-    const [inbox, reminders] = await Promise.all([
-      fetchInboxWorkspace(undefined, language).catch(() => null),
-      fetchReminderAlerts(language),
-    ]);
-    const unreadThreads = inbox ? unreadThreadCount(inbox.threads) : 0;
-    return unreadThreads + reminders.length;
-  } catch {
-    return 0;
-  }
+  const pending = badgeCountRequests.get(language);
+  if (pending) return pending;
+
+  const request = (async () => {
+    try {
+      const [inbox, reminders] = await Promise.all([
+        fetchInboxWorkspace(undefined, language).catch(() => null),
+        fetchReminderAlerts(language),
+      ]);
+      const unreadThreads = inbox ? unreadThreadCount(inbox.threads) : 0;
+      return unreadThreads + reminders.length;
+    } catch {
+      return 0;
+    }
+  })();
+
+  badgeCountRequests.set(language, request);
+  void request.finally(() => {
+    if (badgeCountRequests.get(language) === request) {
+      badgeCountRequests.delete(language);
+    }
+  });
+  return request;
+}
+
+export function hasRenderedComposeTriggerArea(
+  element: Pick<HTMLElement, "getBoundingClientRect">,
+): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
 }
 
 // 用当前账户的人脉证据生成首封 AI 草稿（subject + body），供发起新对话预填。
@@ -162,8 +185,10 @@ export async function generateMessageDraft(input: {
 }
 
 // draft→thread：从确认后的草稿创建一个新的本地 staged 对话线程。
-async function createThreadFromDraft(
+export async function createThreadFromDraft(
   input: {
+    contactId?: string;
+    requestId: string;
     participantName: string;
     organization: string;
     subject: string;
@@ -591,8 +616,15 @@ function NewThreadForm({
   const [organization, setOrganization] = useState(initialOrganization ?? "");
   const [subject, setSubject] = useState(initialSubject ?? "");
   const [body, setBody] = useState(initialBody ?? "");
+  const requestIdRef = useRef<string | null>(null);
   const [busy, setBusy] = useState<"idle" | "generating" | "creating">("idle");
   const [error, setError] = useState(false);
+
+  if (!requestIdRef.current) {
+    requestIdRef.current =
+      globalThis.crypto?.randomUUID?.() ??
+      `relationship-draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
 
   const onGenerate = async () => {
     setBusy("generating");
@@ -617,6 +649,8 @@ function NewThreadForm({
     setError(false);
     const created = await createThreadFromDraft(
       {
+        contactId: initialContactId,
+        requestId: requestIdRef.current,
         participantName: recipient,
         organization,
         subject,
@@ -1357,12 +1391,16 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
     function onCompose(event: Event) {
       // 多数页面同时保留 desktop/mobile DOM，再由 CSS 只显示其中一个。
       // 只有当前可见的 trigger 消费全局 compose 事件，避免两个 portal 同时打开。
-      if (!triggerRef.current || triggerRef.current.offsetParent === null) {
+      if (
+        !triggerRef.current ||
+        !hasRenderedComposeTriggerArea(triggerRef.current)
+      ) {
         return;
       }
       const detail = (event as CustomEvent<NewThreadSeed>).detail ?? {};
       setSeed({
         body: detail.body,
+        contactId: detail.contactId,
         recipient: detail.recipient,
         organization: detail.organization,
         subject: detail.subject,

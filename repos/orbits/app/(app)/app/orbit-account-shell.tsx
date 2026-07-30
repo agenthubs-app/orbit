@@ -36,7 +36,12 @@ export function AccountTopNav({
       active={active}
       agentActive={agentTone ? agentTone === "selected" : active === "agent"}
       meHref="/app/profile"
-      mobileRightExtra={mobileRightExtra}
+      mobileRightExtra={
+        <>
+          {mobileRightExtra}
+          <RelationshipInboxTrigger />
+        </>
+      }
       rightExtra={
         // 关系收件箱入口在所有 /app/** 顶栏默认出现；页面传入的 rightExtra 仍保留。
         <>
