@@ -1,5 +1,8 @@
 import { PartyModeScreen } from "../../src/screens/party/PartyModeScreen";
+import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
-export default function PartyGraphRoute() {
+function PartyGraphRoute() {
   return <PartyModeScreen variant="graph" />;
 }
+
+export default withOrbitPrivateRoute(PartyGraphRoute);

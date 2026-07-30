@@ -1,3 +1,4 @@
 import { AgentActionsScreen } from "../src/screens/ai/AgentActionsScreen";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default AgentActionsScreen;
+export default withOrbitPrivateRoute(AgentActionsScreen);

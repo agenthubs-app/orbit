@@ -1,3 +1,4 @@
 import { RelationshipChatDetailScreen } from "../../src/screens/chat/RelationshipChatDetailScreen";
+import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
-export default RelationshipChatDetailScreen;
+export default withOrbitPrivateRoute(RelationshipChatDetailScreen);

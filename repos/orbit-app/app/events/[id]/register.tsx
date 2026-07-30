@@ -1,3 +1,4 @@
 import { EventRegistrationScreen } from "../../../src/screens/events/EventRegistrationScreen";
+import { withOrbitPrivateRoute } from "../../../src/components/OrbitRouteAccessBoundary";
 
-export default EventRegistrationScreen;
+export default withOrbitPrivateRoute(EventRegistrationScreen);

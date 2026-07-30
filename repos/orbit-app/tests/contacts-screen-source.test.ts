@@ -84,7 +84,21 @@ test("contacts screen refreshes when the add-contact flow returns with a refresh
   assert.match(screenSource, /contactRefreshToken/u);
   assert.match(
     screenSource,
-    /useEffect\(\(\) => \{[\s\S]*state\.refresh\(\);[\s\S]*relationshipSuggestionsState\.refresh\(\);[\s\S]*contactRefreshToken/u
+    /const previousContactRefreshToken = useRef\(contactRefreshToken\)/u
+  );
+  assert.match(
+    screenSource,
+    /previousContactRefreshToken\.current === contactRefreshToken[\s\S]*previousContactRefreshToken\.current = contactRefreshToken;[\s\S]*state\.refresh\(\);[\s\S]*relationshipSuggestionsState\.refresh\(\);[\s\S]*contactRefreshToken/u
+  );
+});
+
+test("retained contacts route does not mount data resources while unfocused", () => {
+  const contactsListRouteSource = readFileSync(contactsListRoutePath, "utf8");
+
+  assert.match(contactsListRouteSource, /useIsFocused/u);
+  assert.match(
+    contactsListRouteSource,
+    /const isFocused = useIsFocused\(\);[\s\S]*if \(!isFocused\) \{[\s\S]*return null;[\s\S]*<ContactsScreen mode="list" \/>/u
   );
 });
 

@@ -1,5 +1,8 @@
 import { AdminScreen } from "../src/screens/admin/AdminScreen";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default function AdminRoute() {
+function AdminRoute() {
   return <AdminScreen surface="dashboard" />;
 }
+
+export default withOrbitPrivateRoute(AdminRoute);

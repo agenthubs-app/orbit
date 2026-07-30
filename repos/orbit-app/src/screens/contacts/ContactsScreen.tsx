@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 import {
@@ -1359,6 +1360,7 @@ function ContactsListScreen() {
   const contactRefreshToken = Array.isArray(refreshToken)
     ? refreshToken[0]
     : refreshToken;
+  const previousContactRefreshToken = useRef(contactRefreshToken);
   const [query, setQuery] = useState(
     firstRouteParam(queryParam) || firstRouteParam(queryAliasParam)
   );
@@ -1443,9 +1445,15 @@ function ContactsListScreen() {
 
   useEffect(() => {
     if (!contactRefreshToken) {
+      previousContactRefreshToken.current = contactRefreshToken;
       return;
     }
 
+    if (previousContactRefreshToken.current === contactRefreshToken) {
+      return;
+    }
+
+    previousContactRefreshToken.current = contactRefreshToken;
     state.refresh();
     relationshipSuggestionsState.refresh();
   }, [

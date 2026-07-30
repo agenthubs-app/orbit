@@ -1,5 +1,8 @@
 import { HomeScreen } from "../../src/screens/home/HomeScreen";
+import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
-export default function HomeEventsRoute() {
+function HomeEventsRoute() {
   return <HomeScreen mode="events" />;
 }
+
+export default withOrbitPrivateRoute(HomeEventsRoute);

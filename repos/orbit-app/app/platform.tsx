@@ -1,5 +1,8 @@
 import { PlatformScreen } from "../src/screens/platform/PlatformScreen";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default function PlatformRoute() {
+function PlatformRoute() {
   return <PlatformScreen />;
 }
+
+export default withOrbitPrivateRoute(PlatformRoute);

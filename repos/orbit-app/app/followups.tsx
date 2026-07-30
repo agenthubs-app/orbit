@@ -1,5 +1,8 @@
 import { FollowupsScreen } from "../src/screens/followups/FollowupsScreen";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default function FollowupsRoute() {
+function FollowupsRoute() {
   return <FollowupsScreen />;
 }
+
+export default withOrbitPrivateRoute(FollowupsRoute);

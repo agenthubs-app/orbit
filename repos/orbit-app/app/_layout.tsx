@@ -1,4 +1,3 @@
-import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OrbitAuthSessionProvider } from "../src/api/AuthSessionProvider";
@@ -7,6 +6,7 @@ import {
   AppErrorBoundary,
   AppErrorScreen
 } from "../src/components/AppErrorBoundary";
+import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
 
 // expo-router 会把这个导出当作根段的错误边界：出错时只重置这一段，
 // 导航器保持挂载，retry() 之后跳转仍然可用。
@@ -28,7 +28,7 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
-            <Stack screenOptions={{ headerShown: false }} />
+            <OrbitRouteAccessBoundary />
             <StatusBar style="dark" />
           </OrbitAuthSessionProvider>
         </OrbitApiBaseUrlProvider>

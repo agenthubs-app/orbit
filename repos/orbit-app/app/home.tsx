@@ -1,5 +1,8 @@
 import { Redirect } from "expo-router";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default function HomeRoute() {
+function HomeRoute() {
   return <Redirect href="/ai" />;
 }
+
+export default withOrbitPrivateRoute(HomeRoute);

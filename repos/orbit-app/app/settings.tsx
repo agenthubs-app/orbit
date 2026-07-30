@@ -1,3 +1,4 @@
 import { SettingsScreen } from "../src/screens/settings/SettingsScreen";
+import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
 
-export default SettingsScreen;
+export default withOrbitPrivateRoute(SettingsScreen);
