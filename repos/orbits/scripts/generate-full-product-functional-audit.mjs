@@ -1686,6 +1686,56 @@ const LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE = new Map(
 );
 const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ...LIVE_WEB_SETTINGS_INTERACTION_EVIDENCE,
+  ...[
+    {
+      actualResult:
+        "The exact authenticated Settings account menu exposed one Sign out / 退出登录 control. Activation preserved lang=ja in the callback, terminated the session, and browser Back did not restore it.",
+      idempotency:
+        "Session navigation only; business records stayed byte-identical and the disposable actor cleanup ended at activeAfter=0.",
+      lines: [178],
+      sourceFile: "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+      surfaceId: "web:/app/settings",
+      testData:
+        "Disposable authenticated actor at /app/settings?lang=ja and a measured 1440x900 viewport",
+    },
+    {
+      actualResult:
+        "Each exact encounter-note form and submit control was activated in mock mode and matched its rendered action/method plus 201/400/409/503/200 status and envelope contract.",
+      idempotency:
+        "Every declared success safety flag stayed false, durable business rows remained 0→0, and actor cleanup ended at activeAfter=0.",
+      lines: [
+        398, 420, 444, 449, 453, 458, 462, 467, 471, 476, 480, 485, 489,
+        494, 498, 503, 507, 512,
+      ],
+      sourceFile: "repos/orbits/features/events/encounter-note/debug-view.tsx",
+      surfaceId: "web:/dev/capabilities/[slug]",
+      testData:
+        "Disposable authenticated actor on the encounter-note development capability under process-scoped mock mode",
+    },
+    {
+      actualResult:
+        "All eight exact email/calendar signal controls were activated in mock mode and matched the declared 200/503/403/404 response matrix while exposing exactly three success signals.",
+      idempotency:
+        "Provider network, sync, body ingest, durable write and notification flags stayed false; business rows remained 0→0 and cleanup ended at activeAfter=0.",
+      lines: [328, 358, 367, 376, 385, 394, 403, 412],
+      sourceFile:
+        "repos/orbits/features/acquisition/email-and-calendar-relationship-signal-mock/debug-view.tsx",
+      surfaceId: "web:/dev/capabilities/[slug]",
+      testData:
+        "Disposable authenticated actor on the email/calendar signal development capability under process-scoped mock mode",
+    },
+  ].flatMap((group) =>
+    group.lines.map((line) => [
+      `${group.surfaceId}|${group.sourceFile}:${line}`,
+      {
+        actualResult: group.actualResult,
+        idempotency: group.idempotency,
+        testData: group.testData,
+        verificationCase:
+          "navigation-nonpass-runtime-replay-2026-07-30",
+      },
+    ]),
+  ),
   [
     "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-feedback-settings.tsx#onclick:() => void remove(item.runId)#Deleting… / 正在删除… / Delete learning record / 删除学习记录",
     {
@@ -4984,6 +5034,21 @@ const VERIFIED_AUDIT_CASES = [
       "pass for the two corrected static scanner rules; route page-file nodes are not terminal UI implementations, and alias/redirect/hash/custom-scheme contracts plus the rendered runtime leaf denominator remain explicitly unresolved",
   },
   {
+    id: "navigation-nonpass-runtime-replay-2026-07-30",
+    target:
+      "Authenticated Settings sign-out and the encounter-note plus email/calendar development capability controls",
+    testData:
+      "One disposable authenticated actor, measured 1440x900 Settings, exact process-scoped mock capability controls, rendered action/method contracts, API status/envelope ledgers and zero initial business rows",
+    expected:
+      "The exact Settings occurrence must preserve language and terminate the session without Back restoration. Every declared debug form/control must activate under mock mode, match its rendered request contract, execute no undeclared provider or durable business side effect and clean all disposable records.",
+    actual:
+      "Settings exposed one account menu and one sign-out control; it preserved lang=ja, terminated the session and stayed signed out after Back. Nine encounter buttons, nine encounter form boundaries and eight email/calendar buttons all activated and matched their 201/400/409/503/200 and 200/503/403/404 matrices. Declared safety flags stayed false, business rows remained 0→0 and cleanup ended at activeAfter=0.",
+    evidence:
+      "harness-state/evidence/full-product-functional-audit/continuation-20260730T105558+0900/next-round-06/navigation-nonpass-runtime-replay/result.json; evaluation.json; raw/runtime-observations.json; cleanup.json; generator-navigation-evaluator/result.json; evaluation.json",
+    conclusion:
+      "pass for four exact shared implementations and 27 exact route occurrences; the other 20 routes consuming the shared sign-out implementation remain route-local NOT_RUN",
+  },
+  {
     id: "web-debug-api-probe-method-query-ui-2026-07-30",
     target:
       "Contact detail and relationship profile development capability API probe forms",
@@ -7282,6 +7347,162 @@ function collectReachableUiScopes(entryFile, clientRoot) {
   const queue = [{ filePath: entryFile, symbol: "default" }];
   const visitedTargets = new Set();
 
+  function serializedPropValues(propValues) {
+    return [...(propValues ?? new Map()).entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, value]) => `${name}=${value}`)
+      .join("&");
+  }
+
+  function jsxLiteralPropValues(attributes, source) {
+    const values = new Map();
+    for (const property of attributes.properties) {
+      if (!ts.isJsxAttribute(property)) {
+        continue;
+      }
+      const name = property.name.getText(source).toLowerCase();
+      if (!property.initializer) {
+        values.set(name, true);
+      } else if (ts.isStringLiteral(property.initializer)) {
+        values.set(name, property.initializer.text);
+      } else if (
+        ts.isJsxExpression(property.initializer) &&
+        property.initializer.expression &&
+        (ts.isStringLiteral(property.initializer.expression) ||
+          ts.isNoSubstitutionTemplateLiteral(
+            property.initializer.expression,
+          ) ||
+          property.initializer.expression.kind ===
+            ts.SyntaxKind.TrueKeyword ||
+          property.initializer.expression.kind ===
+            ts.SyntaxKind.FalseKeyword)
+      ) {
+        const expression = property.initializer.expression;
+        values.set(
+          name,
+          expression.kind === ts.SyntaxKind.TrueKeyword
+            ? true
+            : expression.kind === ts.SyntaxKind.FalseKeyword
+              ? false
+              : expression.text,
+        );
+      }
+    }
+    return values;
+  }
+
+  function knownOwnerPropValues(node, source, explicitValues) {
+    const values = new Map(explicitValues ?? []);
+    if (
+      !(
+        ts.isFunctionDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node)
+      )
+    ) {
+      return values;
+    }
+    const firstParameter = node.parameters?.[0];
+    if (!firstParameter || !ts.isObjectBindingPattern(firstParameter.name)) {
+      return values;
+    }
+    for (const element of firstParameter.name.elements) {
+      if (
+        !ts.isIdentifier(element.name) ||
+        values.has(element.name.text.toLowerCase()) ||
+        !element.initializer
+      ) {
+        continue;
+      }
+      if (
+        ts.isStringLiteral(element.initializer) ||
+        ts.isNoSubstitutionTemplateLiteral(element.initializer)
+      ) {
+        values.set(element.name.text.toLowerCase(), element.initializer.text);
+      } else if (
+        element.initializer.kind === ts.SyntaxKind.TrueKeyword ||
+        element.initializer.kind === ts.SyntaxKind.FalseKeyword
+      ) {
+        values.set(
+          element.name.text.toLowerCase(),
+          element.initializer.kind === ts.SyntaxKind.TrueKeyword,
+        );
+      }
+    }
+    return values;
+  }
+
+  function literalConditionValue(expression) {
+    if (
+      ts.isStringLiteral(expression) ||
+      ts.isNoSubstitutionTemplateLiteral(expression)
+    ) {
+      return expression.text;
+    }
+    if (expression.kind === ts.SyntaxKind.TrueKeyword) {
+      return true;
+    }
+    if (expression.kind === ts.SyntaxKind.FalseKeyword) {
+      return false;
+    }
+    return undefined;
+  }
+
+  function evaluateKnownCondition(expression, propValues) {
+    if (
+      ts.isPrefixUnaryExpression(expression) &&
+      expression.operator === ts.SyntaxKind.ExclamationToken
+    ) {
+      const value = evaluateKnownCondition(expression.operand, propValues);
+      return value === undefined ? undefined : !value;
+    }
+    if (ts.isIdentifier(expression)) {
+      const value = propValues.get(expression.text.toLowerCase());
+      return typeof value === "boolean" ? value : undefined;
+    }
+    if (!ts.isBinaryExpression(expression)) {
+      return undefined;
+    }
+    const leftIdentifier = ts.isIdentifier(expression.left)
+      ? expression.left.text.toLowerCase()
+      : null;
+    const rightIdentifier = ts.isIdentifier(expression.right)
+      ? expression.right.text.toLowerCase()
+      : null;
+    const leftLiteral = literalConditionValue(expression.left);
+    const rightLiteral = literalConditionValue(expression.right);
+    const actual =
+      leftIdentifier && rightLiteral !== undefined
+        ? propValues.get(leftIdentifier)
+        : rightIdentifier && leftLiteral !== undefined
+          ? propValues.get(rightIdentifier)
+          : undefined;
+    const expected =
+      leftIdentifier && rightLiteral !== undefined
+        ? rightLiteral
+        : rightIdentifier && leftLiteral !== undefined
+          ? leftLiteral
+          : undefined;
+    if (actual === undefined || expected === undefined) {
+      return undefined;
+    }
+    if (
+      expression.operatorToken.kind ===
+        ts.SyntaxKind.EqualsEqualsEqualsToken ||
+      expression.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken
+    ) {
+      return actual === expected;
+    }
+    if (
+      expression.operatorToken.kind ===
+        ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+      expression.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken
+    ) {
+      return actual !== expected;
+    }
+    return undefined;
+  }
+
   function addBinding(map, name, value) {
     const bindings = map.get(name) ?? [];
     bindings.push(value);
@@ -7469,14 +7690,24 @@ function collectReachableUiScopes(entryFile, clientRoot) {
       bindings = info.exportedBindings.get(target.symbol) ?? [];
       if (bindings.length === 0) {
         for (const wildcardFile of info.wildcardExports) {
-          queue.push({ filePath: wildcardFile, symbol: target.symbol });
+          queue.push({
+            filePath: wildcardFile,
+            symbol: target.symbol,
+            ...(target.propValues
+              ? { propValues: target.propValues }
+              : {}),
+          });
         }
       }
     }
 
     for (const binding of bindings) {
       if (binding.kind === "target") {
-        queue.push({ filePath: binding.filePath, symbol: binding.symbol });
+        queue.push({
+          filePath: binding.filePath,
+          symbol: binding.symbol,
+          ...(target.propValues ? { propValues: target.propValues } : {}),
+        });
         continue;
       }
       if (binding.kind === "local") {
@@ -7484,6 +7715,7 @@ function collectReachableUiScopes(entryFile, clientRoot) {
           filePath: target.filePath,
           local: true,
           symbol: binding.symbol,
+          ...(target.propValues ? { propValues: target.propValues } : {}),
         });
         continue;
       }
@@ -7491,7 +7723,9 @@ function collectReachableUiScopes(entryFile, clientRoot) {
         continue;
       }
 
-      const nodeKey = `${target.filePath}:${binding.node.getStart(info.source)}`;
+      const nodeKey = `${target.filePath}:${binding.node.getStart(
+        info.source,
+      )}:${serializedPropValues(target.propValues)}`;
       if (visitedTargets.has(nodeKey)) {
         continue;
       }
@@ -7500,9 +7734,90 @@ function collectReachableUiScopes(entryFile, clientRoot) {
       statementStarts.add(binding.node.getStart(info.source));
       scopes.set(target.filePath, statementStarts);
 
+      const propValues = knownOwnerPropValues(
+        binding.node,
+        info.source,
+        target.propValues,
+      );
+
+      function queueIdentifier(name, jsxPropValues = null) {
+        for (const imported of info.importedBindings.get(name) ?? []) {
+          if (imported.kind !== "namespace") {
+            queue.push({
+              ...imported,
+              ...(jsxPropValues ? { propValues: jsxPropValues } : {}),
+            });
+          }
+        }
+        if (info.localDeclarations.has(name)) {
+          queue.push({
+            filePath: target.filePath,
+            local: true,
+            symbol: name,
+            ...(jsxPropValues ? { propValues: jsxPropValues } : {}),
+          });
+        }
+      }
+
       function visit(node) {
+        if (ts.isConditionalExpression(node)) {
+          const condition = evaluateKnownCondition(node.condition, propValues);
+          visit(node.condition);
+          if (condition === true) {
+            visit(node.whenTrue);
+          } else if (condition === false) {
+            visit(node.whenFalse);
+          } else {
+            visit(node.whenTrue);
+            visit(node.whenFalse);
+          }
+          return;
+        }
+        if (ts.isIfStatement(node)) {
+          const condition = evaluateKnownCondition(node.expression, propValues);
+          visit(node.expression);
+          if (condition === true) {
+            visit(node.thenStatement);
+          } else if (condition === false) {
+            if (node.elseStatement) {
+              visit(node.elseStatement);
+            }
+          } else {
+            visit(node.thenStatement);
+            if (node.elseStatement) {
+              visit(node.elseStatement);
+            }
+          }
+          return;
+        }
         if (ts.isIdentifier(node)) {
           const name = node.text;
+          const parent = node.parent;
+          const isDeclarationName =
+            ((ts.isFunctionDeclaration(parent) ||
+              ts.isFunctionExpression(parent) ||
+              ts.isClassDeclaration(parent) ||
+              ts.isVariableDeclaration(parent) ||
+              ts.isParameter(parent)) &&
+              parent.name === node) ||
+            (ts.isBindingElement(parent) && parent.name === node);
+          if (isDeclarationName) {
+            return;
+          }
+          const isOpeningTag =
+            (ts.isJsxOpeningElement(parent) ||
+              ts.isJsxSelfClosingElement(parent)) &&
+            parent.tagName === node;
+          if (isOpeningTag) {
+            queueIdentifier(
+              name,
+              jsxLiteralPropValues(parent.attributes, info.source),
+            );
+            return;
+          }
+          if (ts.isJsxClosingElement(parent) && parent.tagName === node) {
+            return;
+          }
           for (const imported of info.importedBindings.get(name) ?? []) {
             if (
               imported.kind === "namespace" &&
@@ -7513,17 +7828,9 @@ function collectReachableUiScopes(entryFile, clientRoot) {
                 filePath: imported.filePath,
                 symbol: node.parent.name.text,
               });
-            } else if (imported.kind !== "namespace") {
-              queue.push(imported);
             }
           }
-          if (info.localDeclarations.has(name)) {
-            queue.push({
-              filePath: target.filePath,
-              local: true,
-              symbol: name,
-            });
-          }
+          queueIdentifier(name);
         }
         ts.forEachChild(node, visit);
       }
@@ -7545,7 +7852,8 @@ function scopedTopLevelNodes(source, statementStarts) {
 }
 
 function collectRouteComponentPropEvidence(reachableUiScopes) {
-  const evidence = new Set();
+  const names = new Set();
+  const values = new Map();
 
   for (const [filePath, statementStarts] of reachableUiScopes) {
     const { source } = sourceFileFor(filePath);
@@ -7556,9 +7864,18 @@ function collectRouteComponentPropEvidence(reachableUiScopes) {
       if (parts && /^[A-Z]/u.test(parts.tagName)) {
         const componentName = parts.tagName.split(".").at(-1);
         const attributes = attributeMap(parts.attributes, source);
-        for (const attributeName of attributes.keys()) {
+        for (const [attributeName, attributeValue] of attributes) {
           if (attributeName !== "__spread") {
-            evidence.add(`${componentName}:${attributeName}`);
+            const key = `${componentName}:${attributeName}`;
+            names.add(key);
+            if (
+              attributeValue !== "{expression}" &&
+              !attributeValue.startsWith("{")
+            ) {
+              const knownValues = values.get(key) ?? new Set();
+              knownValues.add(attributeValue);
+              values.set(key, knownValues);
+            }
           }
         }
       }
@@ -7570,7 +7887,7 @@ function collectRouteComponentPropEvidence(reachableUiScopes) {
     }
   }
 
-  return evidence;
+  return { names, values };
 }
 
 function attributeMap(attributes, source) {
@@ -7996,6 +8313,100 @@ function collectInteractions(
     );
   }
 
+  function ownerPropBranchConditions(node) {
+    const owner = enclosingOwnerFunction(node);
+    const ownerProps = destructuredOwnerProps(owner);
+    const conditions = [];
+    let current = node;
+
+    function branchLiteralValue(expression) {
+      if (
+        ts.isStringLiteral(expression) ||
+        ts.isNoSubstitutionTemplateLiteral(expression)
+      ) {
+        return expression.text;
+      }
+      if (expression.kind === ts.SyntaxKind.TrueKeyword) {
+        return true;
+      }
+      if (expression.kind === ts.SyntaxKind.FalseKeyword) {
+        return false;
+      }
+      return undefined;
+    }
+
+    function comparison(expression) {
+      if (!ts.isBinaryExpression(expression)) {
+        return null;
+      }
+      const leftName = ts.isIdentifier(expression.left)
+        ? expression.left.text
+        : null;
+      const rightName = ts.isIdentifier(expression.right)
+        ? expression.right.text
+        : null;
+      const leftValue = branchLiteralValue(expression.left);
+      const rightValue = branchLiteralValue(expression.right);
+      const propName =
+        leftName && ownerProps.has(leftName)
+          ? leftName
+          : rightName && ownerProps.has(rightName)
+            ? rightName
+            : null;
+      const value =
+        propName === leftName
+          ? rightValue
+          : propName === rightName
+            ? leftValue
+            : undefined;
+      if (propName === null || value === undefined) {
+        return null;
+      }
+      const equality =
+        expression.operatorToken.kind ===
+          ts.SyntaxKind.EqualsEqualsEqualsToken ||
+        expression.operatorToken.kind === ts.SyntaxKind.EqualsEqualsToken;
+      const inequality =
+        expression.operatorToken.kind ===
+          ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+        expression.operatorToken.kind ===
+          ts.SyntaxKind.ExclamationEqualsToken;
+      return equality || inequality
+        ? { propName, value, equality }
+        : null;
+    }
+
+    while (current.parent && current.parent !== owner) {
+      const parent = current.parent;
+      if (ts.isConditionalExpression(parent)) {
+        const condition = comparison(parent.condition);
+        if (condition && (current === parent.whenTrue || current === parent.whenFalse)) {
+          const trueBranch = current === parent.whenTrue;
+          conditions.push({
+            propName: condition.propName,
+            value: condition.value,
+            matches: condition.equality === trueBranch,
+          });
+        }
+      } else if (ts.isIfStatement(parent)) {
+        const condition = comparison(parent.expression);
+        if (
+          condition &&
+          (current === parent.thenStatement || current === parent.elseStatement)
+        ) {
+          const trueBranch = current === parent.thenStatement;
+          conditions.push({
+            propName: condition.propName,
+            value: condition.value,
+            matches: condition.equality === trueBranch,
+          });
+        }
+      }
+      current = parent;
+    }
+    return conditions;
+  }
+
   function visit(node) {
     const parts = getJsxParts(node, source);
     if (parts) {
@@ -8083,6 +8494,7 @@ function collectInteractions(
           line: position.line + 1,
           ownerSymbol: enclosingOwnerName(node),
           renderGateProps,
+          ownerPropBranchConditions: ownerPropBranchConditions(node),
           controlType: kind,
           tag: parts.tagName,
           visibleName: label || null,
@@ -8865,10 +9277,26 @@ export function buildFullProductFunctionalAuditInventory() {
           interaction.renderGateProps.length > 0 &&
           interaction.renderGateProps.some(
             (propName) =>
-              !componentPropEvidence.has(
+              !componentPropEvidence.names.has(
                 `${interaction.ownerSymbol}:${propName.toLowerCase()}`,
               ),
           )
+        ) {
+          continue;
+        }
+        if (
+          interaction.ownerPropBranchConditions.some((condition) => {
+            const knownValues = componentPropEvidence.values.get(
+              `${interaction.ownerSymbol}:${condition.propName.toLowerCase()}`,
+            );
+            return (
+              knownValues &&
+              knownValues.size > 0 &&
+              [...knownValues].every(
+                (value) => (value === condition.value) !== condition.matches,
+              )
+            );
+          })
         ) {
           continue;
         }

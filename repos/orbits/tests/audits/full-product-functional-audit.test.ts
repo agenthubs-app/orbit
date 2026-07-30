@@ -135,10 +135,105 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
     "mobile:/account",
     "mobile:/contacts/pipeline",
     "mobile:/followups",
-    "mobile:/home/events",
     "mobile:/profile",
     "mobile:/settings",
   ]);
+});
+
+test("literal route props exclude unreachable component branches", () => {
+  const homeEvents = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "mobile:/home/events",
+  );
+  assert.ok(homeEvents);
+  assert.equal(
+    homeEvents.interactions.some(
+      (interaction) =>
+        interaction.sourceFile ===
+          "repos/orbit-app/src/screens/home/HomeScreen.tsx" &&
+        interaction.tag === "HomeHubContent",
+    ),
+    false,
+  );
+  assert.equal(
+    homeEvents.interactions.some(
+      (interaction) =>
+        interaction.sourceFile ===
+          "repos/orbit-app/src/screens/home/HomeScreen.tsx" &&
+        interaction.ownerSymbol === "HomeHubContent",
+    ),
+    false,
+  );
+  assert.equal(
+    homeEvents.interactions.some(
+      (interaction) =>
+        interaction.sourceFile ===
+          "repos/orbit-app/src/screens/home/HomeScreen.tsx" &&
+        interaction.tag === "HomeEventsContent",
+    ),
+    true,
+  );
+
+  const contactsOverview = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "mobile:/contacts",
+  );
+  const contactsList = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "mobile:/contacts/list",
+  );
+  assert.ok(contactsOverview);
+  assert.ok(contactsList);
+  assert.equal(
+    contactsOverview.interactions.some(
+      (interaction) => interaction.tag === "ContactsListContent",
+    ),
+    false,
+  );
+  assert.equal(
+    contactsList.interactions.some(
+      (interaction) => interaction.tag === "ContactsOverviewContent",
+    ),
+    false,
+  );
+  assert.equal(
+    contactsList.routeParameters.queryParameters.includes("refreshToken"),
+    true,
+  );
+});
+
+test("navigation replay credits only its 27 exact route occurrences", () => {
+  const replayEvidence =
+    "navigation-nonpass-runtime-replay-2026-07-30";
+  const credited = inventory.surfaces.flatMap((surface) =>
+    surface.interactions.filter((interaction) =>
+      interaction.testEvidence.includes(replayEvidence),
+    ),
+  );
+  const settingsSignOut = inventory.surfaces
+    .find((surface) => surface.surfaceId === "web:/app/settings")
+    ?.interactions.find(
+      (interaction) =>
+        interaction.sourceFile ===
+          "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
+        interaction.line === 178,
+    );
+  const siblingSignOuts = inventory.surfaces.flatMap((surface) =>
+    surface.interactions.filter(
+      (interaction) =>
+        surface.surfaceId !== "web:/app/settings" &&
+        interaction.sourceFile ===
+          "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
+        interaction.line === 178,
+    ),
+  );
+
+  assert.equal(credited.length, 27);
+  assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
+  assert.equal(siblingSignOuts.length, 20);
+  assert.equal(
+    siblingSignOuts.every(
+      (interaction) => interaction.conclusion === "inventoried-static-only",
+    ),
+    true,
+  );
 });
 
 test("route query parameters come from route-local URL consumers, not transitive get/set calls", () => {
@@ -329,8 +424,8 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     inventory.summary.interactionsRuntimeVerified,
     runtimeVerifiedInteractions.length,
   );
-  assert.equal(inventory.summary.uniqueInteractionSourceLocations, 1254);
-  assert.equal(inventory.summary.normalizedStaticBehaviorImplementations, 924);
+  assert.equal(inventory.summary.uniqueInteractionSourceLocations, 1244);
+  assert.equal(inventory.summary.normalizedStaticBehaviorImplementations, 915);
   assert.equal(inventory.summary.renderedLeafControls, null);
   assert.match(
     inventory.summary.renderedLeafControlStatus,
