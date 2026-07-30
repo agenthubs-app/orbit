@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   agentChatSessionPayloadToThreadView,
   agentHistorySessionsToSummaries,
+  agentSessionCreateRequestFromThread,
   agentSessionUpdateRequestFromThread
 } from "../src/view-models/agent-history";
 
@@ -204,6 +205,57 @@ test("agentSessionUpdateRequestFromThread builds a web session snapshot after an
       pinned: true,
       title: "关西活动准备",
       updatedAt: "2026-07-24T09:00:05.000Z"
+    }
+  });
+});
+
+test("agentSessionCreateRequestFromThread builds a durable mobile handoff snapshot", () => {
+  const request = agentSessionCreateRequestFromThread({
+    createdAt: "2026-07-30T12:00:00.000Z",
+    sessionId: "agent-session-mobile-run-001",
+    thread: {
+      activeConversationId: "live-orbit-agent-conversation",
+      assistantMessage: "可以先确认活动目标。",
+      messages: [
+        {
+          content: "帮我准备明天的活动",
+          createdAt: "2026-07-30T12:00:01.000Z",
+          id: "message-user",
+          role: "user"
+        },
+        {
+          content: "可以先确认活动目标。",
+          createdAt: "2026-07-30T12:00:02.000Z",
+          id: "message-assistant",
+          role: "assistant"
+        }
+      ],
+      nextAction: "继续问一个具体问题。",
+      proposedToolIntents: [],
+      title: "Orbit AI 对话"
+    }
+  });
+
+  assert.deepEqual(request, {
+    session: {
+      createdAt: "2026-07-30T12:00:00.000Z",
+      id: "agent-session-mobile-run-001",
+      messages: [
+        {
+          role: "user",
+          text: "帮我准备明天的活动"
+        },
+        {
+          items: [],
+          kind: "people",
+          panelTitle: "",
+          role: "assistant",
+          text: "可以先确认活动目标。"
+        }
+      ],
+      pinned: false,
+      title: "帮我准备明天的活动",
+      updatedAt: "2026-07-30T12:00:02.000Z"
     }
   });
 });

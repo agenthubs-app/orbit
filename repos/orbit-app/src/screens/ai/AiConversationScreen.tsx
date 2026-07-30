@@ -25,6 +25,7 @@ import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
+  agentSessionCreateRequestFromThread,
   agentChatSessionPayloadToThreadView,
   agentSessionUpdateRequestFromThread
 } from "../../view-models/agent-history";
@@ -168,6 +169,48 @@ export function AiConversationScreen() {
       : undefined;
   }
 
+  async function persistAndCanonicalizeDraftConversation(
+    data: unknown,
+    thread: ConversationThreadView
+  ): Promise<boolean> {
+    const activeConversationId = thread.activeConversationId;
+    if (!isDraftConversation || !activeConversationId) {
+      return false;
+    }
+
+    const runId = conversationAiRunReferencesFor(data)[0]?.id ?? "";
+    const identity = (
+      runId || `${activeConversationId}-${Date.now()}`
+    ).replace(/[^A-Za-z0-9_-]/gu, "-");
+    const sessionId = `agent-session-mobile-${identity}`;
+    const sessionRequest = agentSessionCreateRequestFromThread({
+      createdAt: new Date().toISOString(),
+      sessionId,
+      thread
+    });
+
+    if (!sessionRequest) {
+      setSendError("这次回复缺少可保存的对话内容，请留在当前页面重试。");
+      return true;
+    }
+
+    const saved = await client.post<unknown>(
+      ORBIT_API_ENDPOINTS.aiConversationSessions,
+      { body: sessionRequest }
+    );
+
+    if (!saved.success) {
+      setSendError(`回复已生成，但保存失败：${saved.error.message}`);
+      return true;
+    }
+
+    router.replace({
+      params: { id: sessionId, source: "session" },
+      pathname: "/ai/[id]"
+    });
+    return true;
+  }
+
   async function sendMessage() {
     const message = draftMessage.trim();
 
@@ -211,7 +254,9 @@ export function AiConversationScreen() {
           });
         }
       }
-      state.refresh();
+      if (!(await persistAndCanonicalizeDraftConversation(result.data, nextThread))) {
+        state.refresh();
+      }
     } else {
       setSendError(result.error.message);
     }
@@ -245,11 +290,12 @@ export function AiConversationScreen() {
           message: initialPrompt
         }
       })
-      .then((result) => {
+      .then(async (result) => {
         if (result.success) {
           const nextThread = conversationPayloadToThreadView(result.data);
           setLatestData(result.data);
           setResolvedConversationId(nextThread.activeConversationId);
+          await persistAndCanonicalizeDraftConversation(result.data, nextThread);
         } else {
           setSendError(result.error.message);
         }

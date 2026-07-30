@@ -22,6 +22,21 @@ test("AI conversation screen persists iOS continuations back to web history sess
   assert.match(screenSource, /previousSessionData/u);
 });
 
+test("AI conversation persists a consumed initial message before canonical navigation", () => {
+  assert.match(screenSource, /function persistAndCanonicalizeDraftConversation/u);
+  assert.match(screenSource, /agentSessionCreateRequestFromThread/u);
+  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.aiConversationSessions/u);
+  assert.match(screenSource, /if \(!saved\.success\)/u);
+  assert.match(
+    screenSource,
+    /params: \{ id: sessionId, source: "session" \}/u
+  );
+  assert.match(
+    screenSource,
+    /await persistAndCanonicalizeDraftConversation\(result\.data, nextThread\)/u
+  );
+});
+
 test("AI conversation screen renders markdown markers and quotes distinctly", () => {
   assert.match(screenSource, /block\.marker \?\? "•"/u);
   assert.match(screenSource, /styles\.markdownQuoteBlock/u);

@@ -393,6 +393,44 @@ function latestThreadTimestamp(thread: ConversationThreadView): string {
     .find((message) => message.createdAt.trim())?.createdAt ?? "";
 }
 
+export function agentSessionCreateRequestFromThread({
+  createdAt,
+  sessionId,
+  thread
+}: {
+  createdAt: string;
+  sessionId: string;
+  thread: ConversationThreadView;
+}): { session: Record<string, unknown> } | null {
+  const id = sessionId.trim();
+  const fallbackTimestamp = createdAt.trim();
+  const messages = thread.messages
+    .map(storedMessageFromChatMessage)
+    .filter((message): message is NonNullable<typeof message> => message !== null);
+  const firstUserMessage = messages.find((message) => message.role === "user");
+
+  if (!id || !fallbackTimestamp || !firstUserMessage) {
+    return null;
+  }
+
+  const updatedAt = latestThreadTimestamp(thread) || fallbackTimestamp;
+  const title =
+    cleanTitle(firstUserMessage.text) ||
+    cleanTitle(thread.title) ||
+    "Orbit AI 对话";
+
+  return {
+    session: {
+      createdAt: fallbackTimestamp,
+      id,
+      messages,
+      pinned: false,
+      title,
+      updatedAt
+    }
+  };
+}
+
 export function agentSessionUpdateRequestFromThread({
   previousSession,
   thread
