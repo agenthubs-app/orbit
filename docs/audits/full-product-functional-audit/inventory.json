@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "317dc83222edb7ff3ea68f62c7ec525d57b4c67b",
-  "deterministicSourceTime": "2026-07-30T14:44:35+09:00",
-  "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 6,
+  "generatedFromCommit": "e1261468022598b86ef82f2db797b46af98ace2d",
+  "deterministicSourceTime": "2026-07-30T17:49:11+09:00",
+  "sourceState": "clean-head",
+  "uncommittedAuthoritativeInputChanges": 0,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -40,19 +40,19 @@
     "overlayRouteInstances": 31,
     "interactionRouteInstances": 2302,
     "uniqueInteractionSourceLocations": 1254,
-    "normalizedStaticBehaviorImplementations": 921,
+    "normalizedStaticBehaviorImplementations": 924,
     "renderedLeafControls": null,
     "renderedLeafControlStatus": "unresolved-runtime-denominator; route instances, source locations, and normalized static implementations are not runtime leaf counts",
     "renderedLeafObservedOccurrences": 3001,
     "renderedLeafObservedStates": 279,
     "renderedLeafObservedUniqueStateKeys": 273,
-    "interactionsRuntimeVerified": 209,
+    "interactionsRuntimeVerified": 217,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 130,
-    "documentedRemediations": 131,
+    "documentedVerificationCases": 131,
+    "documentedRemediations": 134,
     "externalLimitations": 7,
     "remainingAuditGaps": 3
   },
@@ -38925,6 +38925,7 @@
         "repos/orbits/tests/storage/configured-live-record-store.test.ts",
         "repos/orbits/tests/storage/live-provider-pool-reuse.test.ts",
         "repos/orbits/tests/ui/api-auth-proxy-boundary.test.ts",
+        "repos/orbits/tests/ui/api-probe-form.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts",
         "repos/orbits/tests/ui/orbit-a11y-runtime-mounted.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
@@ -44460,115 +44461,115 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 837,
+          "line": 876,
           "tag": "button",
           "text": "t({ en: \"Copy message\", zh: \"复制消息\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 837,
+          "line": 876,
           "tag": "button",
           "text": "copied ? t({ en: \"Copied\", zh: \"已复制\" }) : t({ en: \"Copy\", zh: \"复制\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1051,
+          "line": 1090,
           "tag": "input",
           "text": "t({ en: \"Rename conversation\", zh: \"重命名对话\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1077,
+          "line": 1116,
           "tag": "button",
           "text": "t({ en: \"Save conversation name\", zh: \"保存对话名称\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1077,
+          "line": 1116,
           "tag": "button",
           "text": "t({ en: \"Save\", zh: \"保存\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1088,
+          "line": 1127,
           "tag": "button",
           "text": "t({ en: \"Cancel conversation rename\", zh: \"取消重命名对话\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1088,
+          "line": 1127,
           "tag": "button",
           "text": "t({ en: \"Cancel\", zh: \"取消\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1101,
+          "line": 1140,
           "tag": "button",
           "text": "item.q || item.title"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1119,
+          "line": 1158,
           "tag": "button",
           "text": "t({ en: \"More actions\", zh: \"更多操作\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1267,
+          "line": 1306,
           "tag": "h2",
           "text": "Delete this conversation? / 删除这个对话？"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1441,
+          "line": 1480,
           "tag": "h2",
           "text": "I am iOrbit / 我是 iOrbit"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1669,
+          "line": 1708,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit about contacts, events, and relationship to-dos\", zh: \"询问 Orbit 人脉、活动与关系待办\", })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1669,
+          "line": 1708,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit: what you want to do, who to meet, which event to attend…\", zh: \"问问 Orbit：想做什么、想认识谁、想去什么活动…\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1696,
+          "line": 1735,
           "tag": "button",
           "text": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2486,
+          "line": 2540,
           "tag": "h1",
           "text": "iOrbit Agent workspace / iOrbit Agent 工作区"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2502,
+          "line": 2556,
           "tag": "button",
           "text": "t({ en: \"Chat history\", zh: \"对话历史\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2524,
+          "line": 2578,
           "tag": "button",
           "text": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2573,
+          "line": 2627,
           "tag": "h3",
           "text": "{panel.panelTitle}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2653,
+          "line": 2707,
           "tag": "button",
           "text": "t({ en: \"Dismiss\", zh: \"关闭提示\" })"
         },
@@ -45456,7 +45457,7 @@
           "interactionId": "web:/app/agent#interaction-15",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 814,
+          "line": 853,
           "controlType": "link",
           "tag": "a",
           "visibleName": "{children}",
@@ -45482,7 +45483,7 @@
           "interactionId": "web:/app/agent#interaction-16",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 837,
+          "line": 876,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Copy message\", zh: \"复制消息\" })",
@@ -45519,7 +45520,7 @@
           "interactionId": "web:/app/agent#interaction-17",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 902,
+          "line": 941,
           "controlType": "disclosure",
           "tag": "summary",
           "visibleName": "{t({ en: `Sources · ${totalItems} records`, zh: `查看依据 · ${totalItems} 条真实记录`, })}",
@@ -45535,7 +45536,7 @@
           "href": null,
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
-          "confirmation": "alertdialog-confirmation-runtime-verified",
+          "confirmation": "not-proven",
           "idempotency": "Disclosure changed only the native details open state. Repeated parsing grouped equivalent and overlapping references by source snapshot and evidence id, persisted one normalized four-record reference, and final cleanup returned both sessions and both feedback records as null.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
@@ -45552,7 +45553,7 @@
           "interactionId": "web:/app/agent#interaction-18",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1044,
+          "line": 1083,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": null,
@@ -45586,7 +45587,7 @@
           "interactionId": "web:/app/agent#interaction-19",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1051,
+          "line": 1090,
           "controlType": "field",
           "tag": "input",
           "visibleName": "t({ en: \"Rename conversation\", zh: \"重命名对话\" })",
@@ -45627,7 +45628,7 @@
           "interactionId": "web:/app/agent#interaction-20",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1077,
+          "line": 1116,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Save conversation name\", zh: \"保存对话名称\" })",
@@ -45655,7 +45656,7 @@
           "interactionId": "web:/app/agent#interaction-21",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1088,
+          "line": 1127,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Cancel conversation rename\", zh: \"取消重命名对话\" })",
@@ -45688,7 +45689,7 @@
           "interactionId": "web:/app/agent#interaction-22",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1101,
+          "line": 1140,
           "controlType": "button",
           "tag": "button",
           "visibleName": "item.q || item.title",
@@ -45724,7 +45725,7 @@
           "interactionId": "web:/app/agent#interaction-23",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1119,
+          "line": 1158,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"More actions\", zh: \"更多操作\" })",
@@ -45759,7 +45760,7 @@
           "interactionId": "web:/app/agent#interaction-24",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1157,
+          "line": 1196,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Unpin / 取消置顶 / Pin / 置顶",
@@ -45795,7 +45796,7 @@
           "interactionId": "web:/app/agent#interaction-25",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1172,
+          "line": 1211,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Rename / 重命名",
@@ -45830,7 +45831,7 @@
           "interactionId": "web:/app/agent#interaction-26",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1185,
+          "line": 1224,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Delete / 删除对话",
@@ -45866,7 +45867,7 @@
           "interactionId": "web:/app/agent#interaction-27",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1288,
+          "line": 1327,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Keep conversation / 保留对话",
@@ -45899,7 +45900,7 @@
           "interactionId": "web:/app/agent#interaction-28",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1297,
+          "line": 1336,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Deleting… / 正在删除… / Delete conversation / 删除对话",
@@ -45932,7 +45933,7 @@
           "interactionId": "web:/app/agent#interaction-29",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1350,
+          "line": 1389,
           "controlType": "callback-control",
           "tag": "div",
           "visibleName": null,
@@ -45963,7 +45964,7 @@
           "interactionId": "web:/app/agent#interaction-30",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1368,
+          "line": 1407,
           "controlType": "callback-control",
           "tag": "IconButton",
           "visibleName": null,
@@ -45994,7 +45995,7 @@
           "interactionId": "web:/app/agent#interaction-31",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1371,
+          "line": 1410,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -46027,7 +46028,7 @@
           "interactionId": "web:/app/agent#interaction-32",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1384,
+          "line": 1423,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{label}",
@@ -46061,7 +46062,7 @@
           "interactionId": "web:/app/agent#interaction-33",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1402,
+          "line": 1441,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -46096,7 +46097,7 @@
           "interactionId": "web:/app/agent#interaction-34",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1452,
+          "line": 1491,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{agentSuggestLabel(suggest.label, language === \"ja\" ? \"en\" : language)}",
@@ -46129,7 +46130,7 @@
           "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1476,
+          "line": 1515,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{connection.displayName} {[connection.title, connection.company].filter(Boolean).join(\" · \")} {item.match} % Match / 匹配度 {status.label} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{connection.industry}</span>} / {null} {item.reason} Why this person / 推荐依据 {item.opener} View contact / 查看名片",
@@ -46162,7 +46163,7 @@
           "interactionId": "web:/app/agent#interaction-36",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1527,
+          "line": 1566,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{event.name} {dateLabel} {item.score} Score / 匹配分 {event.place} {item.reason} How to network on site / 怎么在现场社交 {item.howto} View event / 查看活动",
@@ -46195,7 +46196,7 @@
           "interactionId": "web:/app/agent#interaction-37",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1575,
+          "line": 1614,
           "controlType": "button",
           "tag": "button",
           "visibleName": "{item.title} {[item.contactName, item.organization].filter(Boolean).join(\" · \")} {item.due} Due / 到期 {item.priority} {<span className=\"chip\" style={{ height: 24, maxWidth: 180, overflow: \"hidden\", textOverflow: \"ellipsis\", whiteSpace: \"nowrap\" }}>{item.sourceLabel}</span>} / {null} {<div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>} / {null} {<div style={{ background: \"var(--accent-softer)\", borderRadius: \"var(--r-sm)\", display: \"flex\", gap: 8, marginTop: 11, padding: 11 }}> <Icon name=\"clock\" size={15} color=\"var(--accent)\" style={{ flexShrink: 0, marginTop: 1 }} /> <div style={{ minWidth: 0 }}> <div style={{ color: \"var(--accent)\", fontSize: 12, fontWeight: 600 }}>{t({ en: \"Suggested action\", zh: \"建议动作\" })}</div> <div style={{ color: \"var(--text-2)\", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.task}</div> </div> </div>} / {null} Open schedule / 查看日程",
@@ -46228,7 +46229,7 @@
           "interactionId": "web:/app/agent#interaction-38",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1669,
+          "line": 1708,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "t({\n          en: \"Ask Orbit about contacts, events, and relationship to-dos\",\n          zh: \"询问 Orbit 人脉、活动与关系待办\",\n        })",
@@ -46267,7 +46268,7 @@
           "interactionId": "web:/app/agent#interaction-39",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1696,
+          "line": 1735,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })",
@@ -46298,7 +46299,7 @@
           "interactionId": "web:/app/agent#interaction-40",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2426,
+          "line": 2480,
           "controlType": "callback-control",
           "tag": "AgentActionStatusCard",
           "visibleName": null,
@@ -46333,7 +46334,7 @@
           "interactionId": "web:/app/agent#interaction-41",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2441,
+          "line": 2495,
           "controlType": "button",
           "tag": "button",
           "visibleName": "重新提交请求 / Retry request",
@@ -46343,7 +46344,7 @@
           "handlers": [
             {
               "event": "onclick",
-              "expression": "() => void ask(message.retryRequest!)"
+              "expression": "() => void ask(message.retryRequest!, index)"
             }
           ],
           "href": null,
@@ -46352,14 +46353,14 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "The message-level control was disabled during replay, generated no proposed action or write, and the failure plus successful retry survived hard reload/history reopen.",
+          "idempotency": "Two rapid activations produced one retry; the final store contained one user and one successful assistant turn, zero stale failure/retry messages, zero action/outbox/domain writes, and exact cleanup activeAfter=0.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "present-static-signal",
-          "actualResult": "Stopping the production server caused a real conversation fetch failure with a retry control; after restart the control replayed the exact Network Retry Audit request and completed a new 6/6 run.",
-          "testData": "Authenticated live actor, read-only Network Retry Audit 20260729 request, deliberate production-server outage followed by restart",
+          "actualResult": "An explicit missing DeepSeek key produced one real 503 failure and the exact message retry control. Restoring the configured provider and rapidly activating retry twice emitted one retry request with empty history, replaced the stale failure with one successful assistant turn, survived refresh, and remained absent for actor B.",
+          "testData": "Two disposable authenticated actors, formal Next production conversation API, configured Postgres live store, explicit provider failure followed by repository-configured provider recovery",
           "testEvidence": [
-            "web-agent-failed-request-replay-2026-07-29"
+            "web-agent-retry-idempotent-current-handler-2026-07-30"
           ],
           "conclusion": "runtime-verified-exercised-case",
           "severity": null
@@ -46368,7 +46369,7 @@
           "interactionId": "web:/app/agent#interaction-42",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2502,
+          "line": 2556,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Chat history\", zh: \"对话历史\" })",
@@ -46403,7 +46404,7 @@
           "interactionId": "web:/app/agent#interaction-43",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2512,
+          "line": 2566,
           "controlType": "button",
           "tag": "button",
           "visibleName": "New chat / 新对话",
@@ -46436,7 +46437,7 @@
           "interactionId": "web:/app/agent#interaction-44",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2521,
+          "line": 2575,
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
           "visibleName": null,
@@ -46471,7 +46472,7 @@
           "interactionId": "web:/app/agent#interaction-45",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2524,
+          "line": 2578,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })",
@@ -46508,7 +46509,7 @@
           "interactionId": "web:/app/agent#interaction-46",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2562,
+          "line": 2616,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -46543,7 +46544,7 @@
           "interactionId": "web:/app/agent#interaction-47",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2598,
+          "line": 2652,
           "controlType": "callback-control",
           "tag": "ChatBox",
           "visibleName": null,
@@ -46578,7 +46579,7 @@
           "interactionId": "web:/app/agent#interaction-48",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2603,
+          "line": 2657,
           "controlType": "callback-control",
           "tag": "AgentMobileHistoryDrawer",
           "visibleName": null,
@@ -46619,7 +46620,7 @@
           "interactionId": "web:/app/agent#interaction-49",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2618,
+          "line": 2672,
           "controlType": "callback-control",
           "tag": "AgentHistoryDeleteDialog",
           "visibleName": null,
@@ -46658,7 +46659,7 @@
           "interactionId": "web:/app/agent#interaction-50",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2653,
+          "line": 2707,
           "controlType": "button",
           "tag": "button",
           "visibleName": "t({ en: \"Dismiss\", zh: \"关闭提示\" })",
@@ -48098,25 +48099,25 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1248",
+          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
           "parentSurfaceId": "web:/app/agent",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1248",
+          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1248,
+          "line": 1287,
           "kind": "alertdialog",
           "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1355",
+          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
           "parentSurfaceId": "web:/app/agent",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1355",
+          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1355,
+          "line": 1394,
           "kind": "dialog",
           "visibleName": "Chat history / 对话历史 New chat / 新对话 Go to / 前往 {[ [\"/\", \"home\", t({ en: \"Home\", zh: \"首页\" })], [\"/explore\", \"calendar\", t({ en: \"Events\", zh: \"活动\" })], [\"/home/schedule\", \"clock\", t({ en: \"Calendar\", zh: \"日程\" })], [\"/home/cards\", \"wallet\", t({ en: \"Contacts\", zh: \"人脉\" })], ].map(([href, icon, label]) => ( <button className=\"btn btn-quiet\" key={href} onClick={() => { onClose(); onNavigate(href); }} style={{ height: \"auto\", justifyContent: \"flex-start\", padding: \"9px 8px\", width: \"100%\" }} type=\"button\" > <Icon name={icon} size={17} color=\"var(--accent)\" /> {label} </button> ))} Chat history / 对话历史",
           "runtimeStatus": "not-runtime-verified"
@@ -57955,8 +57956,7 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "orbitVisualSeed",
-          "query"
+          "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
@@ -73399,7 +73399,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "language",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [
@@ -75497,7 +75496,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "language",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
@@ -77054,8 +77052,7 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "orbitVisualSeed",
-          "query"
+          "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
@@ -79694,8 +79691,7 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "orbitVisualSeed",
-          "query"
+          "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
@@ -82061,9 +82057,7 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "mode",
-          "orbitVisualSeed",
-          "scenario"
+          "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": []
@@ -83272,8 +83266,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
-          "eventId",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
@@ -84905,8 +84897,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
-          "eventId",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
@@ -85478,8 +85468,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
-          "eventId",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
@@ -89333,9 +89321,7 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [
-          "code"
-        ],
+        "queryParameters": [],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbits/app/(app)/app/register/page.tsx"
@@ -98965,8 +98951,10 @@
           "repos/orbits/features/chat/summary-contract.ts",
           "repos/orbits/features/connections/connection-and-evidence-service-mock/debug-view.tsx",
           "repos/orbits/features/connections/mock-profile-service.ts",
+          "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
           "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
           "repos/orbits/features/connections/service.ts",
+          "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
           "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
           "repos/orbits/features/contacts/contacts-list-search-and-filter-mock/debug-view.tsx",
           "repos/orbits/features/contacts/detail-contract.ts",
@@ -99021,7 +99009,8 @@
           "repos/orbits/shared/mock/mock-data-mutation-reset-and-scenario-switcher/debug-view.tsx",
           "repos/orbits/shared/mock/reset.ts",
           "repos/orbits/shared/mock/scenarios.ts",
-          "repos/orbits/shared/services/capability-registry.ts"
+          "repos/orbits/shared/services/capability-registry.ts",
+          "repos/orbits/shared/ui/api-probe-form.tsx"
         ],
         "live": [
           "repos/orbits/features/acquisition/business-card-review-and-confirm-flow/debug-view.tsx",
@@ -99136,8 +99125,10 @@
           "repos/orbits/features/connections/mock-service.ts",
           "repos/orbits/features/connections/profile-contract.ts",
           "repos/orbits/features/connections/profile-fixtures.ts",
+          "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
           "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
           "repos/orbits/features/connections/service.ts",
+          "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
           "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
           "repos/orbits/features/contacts/contacts-list-search-and-filter-mock/debug-view.tsx",
           "repos/orbits/features/contacts/contract.ts",
@@ -99465,6 +99456,7 @@
           "repos/orbits/features/connections/fixtures.ts",
           "repos/orbits/features/connections/profile-contract.ts",
           "repos/orbits/features/connections/profile-fixtures.ts",
+          "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
           "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
           "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
           "repos/orbits/features/contacts/contacts-list-search-and-filter-mock/debug-view.tsx",
@@ -102700,193 +102692,145 @@
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 157,
+          "line": 160,
           "tag": "div",
           "text": "Contact detail evidence"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 169,
+          "line": 172,
           "tag": "div",
           "text": "Contact detail tags"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 207,
+          "line": 210,
           "tag": "article",
           "text": "`Contact detail evidence for ${contact.displayName}`"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 215,
+          "line": 218,
           "tag": "h3",
           "text": "{contact.displayName}"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 275,
+          "line": 278,
           "tag": "dl",
           "text": "Mock-only execution checks"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 312,
+          "line": 315,
           "tag": "WorkbenchSurface",
           "text": "Detail edits stay fixture-backed"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 322,
+          "line": 325,
           "tag": "dl",
           "text": "Contact detail operator checkpoint"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 358,
+          "line": 361,
           "tag": "WorkbenchSurface",
           "text": "Edit contact tags and status with context"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 368,
-          "tag": "form",
-          "text": "Mock contact detail tag and status edit form"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 374,
-          "tag": "Field",
-          "text": "Status"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 382,
-          "tag": "Field",
-          "text": "Add tag"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 393,
-          "tag": "Field",
-          "text": "Note"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 404,
+          "line": 372,
           "tag": "div",
           "text": "Contact detail guardrails"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 415,
+          "line": 383,
           "tag": "div",
           "text": "Contact detail tag and status API probe actions"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 425,
-          "tag": "form",
-          "text": "Run contact detail API probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 434,
-          "tag": "form",
-          "text": "Run empty contact detail API probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 444,
-          "tag": "form",
-          "text": "Run pending contact detail API probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 454,
-          "tag": "form",
-          "text": "Run controlled failure contact detail API probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 519,
+          "line": 448,
           "tag": "h1",
           "text": "Contact detail tag and status mock"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 531,
+          "line": 460,
           "tag": "section",
           "text": "Contact detail tag and status states"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 535,
+          "line": 464,
           "tag": "WorkbenchSurface",
           "text": "Success state"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 551,
+          "line": 480,
           "tag": "WorkbenchSurface",
           "text": "Empty state"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 574,
+          "line": 503,
           "tag": "WorkbenchSurface",
           "text": "Pending state"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 597,
+          "line": 526,
           "tag": "WorkbenchSurface",
           "text": "Failure state"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 622,
+          "line": 551,
           "tag": "WorkbenchSurface",
           "text": "Relationship detail stays explainable"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 638,
+          "line": 567,
           "tag": "WorkbenchSurface",
           "text": "Rule-based tag and status changes are deterministic"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 645,
+          "line": 574,
           "tag": "div",
           "text": "Updated contact tags"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 657,
+          "line": 586,
           "tag": "WorkbenchSurface",
           "text": "No live persistence happens in the mock"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 676,
+          "line": 605,
           "tag": "WorkbenchSurface",
           "text": "Contact detail route uses shared envelopes"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 700,
+          "line": 629,
           "tag": "dl",
           "text": "Contact detail tag and status API probes"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 716,
+          "line": 645,
           "tag": "WorkbenchSurface",
           "text": "Replacement notes stay with the capability"
         },
         {
           "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 737,
+          "line": 666,
           "tag": "div",
           "text": "Contact detail live handoff excerpts"
         },
@@ -103084,145 +103028,115 @@
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 133,
+          "line": 136,
           "tag": "div",
           "text": "Relationship profile evidence ids"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 197,
+          "line": 204,
           "tag": "WorkbenchSurface",
           "text": "Relationship profile stays source-backed"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 207,
+          "line": 214,
           "tag": "dl",
           "text": "Relationship stage profile operator checkpoint"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 238,
+          "line": 245,
           "tag": "WorkbenchSurface",
           "text": "Preview deterministic relationship profiling"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 247,
-          "tag": "form",
-          "text": "Mock relationship profile form"
-        },
-        {
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 253,
-          "tag": "Field",
-          "text": "Relationship type"
-        },
-        {
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 262,
-          "tag": "Field",
-          "text": "Context"
-        },
-        {
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 273,
+          "line": 255,
           "tag": "div",
           "text": "Relationship profile guardrails"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 284,
+          "line": 266,
           "tag": "div",
           "text": "Relationship stage and profile API probe actions"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 293,
-          "tag": "form",
-          "text": "Run relationship stage probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 301,
-          "tag": "form",
-          "text": "Run relationship profile probe"
-        },
-        {
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 357,
+          "line": 322,
           "tag": "h1",
           "text": "Relationship stage and profile mock"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 369,
+          "line": 334,
           "tag": "section",
           "text": "Relationship stage and profile service states"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 373,
+          "line": 338,
           "tag": "WorkbenchSurface",
           "text": "Success state"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 389,
+          "line": 354,
           "tag": "WorkbenchSurface",
           "text": "Empty state"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 412,
+          "line": 380,
           "tag": "WorkbenchSurface",
           "text": "Pending state"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 435,
+          "line": 403,
           "tag": "WorkbenchSurface",
           "text": "Failure state"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 460,
+          "line": 428,
           "tag": "WorkbenchSurface",
           "text": "Relationship profile remains explainable"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 468,
+          "line": 436,
           "tag": "div",
           "text": "Mutual value types"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 479,
+          "line": 449,
           "tag": "WorkbenchSurface",
           "text": "No live automation runs in the mock"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 506,
+          "line": 477,
           "tag": "WorkbenchSurface",
           "text": "Relationship routes use shared envelopes"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 530,
+          "line": 502,
           "tag": "dl",
           "text": "Relationship stage and profile API probes"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 546,
+          "line": 518,
           "tag": "WorkbenchSurface",
           "text": "Replacement notes stay with the capability"
         },
         {
           "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 566,
+          "line": 539,
           "tag": "div",
           "text": "Relationship profile live handoff excerpts"
         },
@@ -106123,10 +106037,88 @@
           "line": 206,
           "tag": "label",
           "text": "{label} {children} {helper && <small>{helper}</small>}"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 10,
+          "tag": "form",
+          "text": "Mock contact detail tag and status edit form"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 25,
+          "tag": "Field",
+          "text": "Status"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 33,
+          "tag": "Field",
+          "text": "Add tag"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 44,
+          "tag": "Field",
+          "text": "Note"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 74,
+          "tag": "form",
+          "text": "Run contact detail API probe"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 84,
+          "tag": "form",
+          "text": "Run empty contact detail API probe"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 95,
+          "tag": "form",
+          "text": "Run pending contact detail API probe"
+        },
+        {
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 106,
+          "tag": "form",
+          "text": "Run controlled failure contact detail API probe"
+        },
+        {
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 11,
+          "tag": "form",
+          "text": "Mock relationship profile form"
+        },
+        {
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 25,
+          "tag": "Field",
+          "text": "Relationship type"
+        },
+        {
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 34,
+          "tag": "Field",
+          "text": "Context"
+        },
+        {
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 57,
+          "tag": "form",
+          "text": "Run relationship stage probe"
+        },
+        {
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 72,
+          "tag": "form",
+          "text": "Run relationship profile probe"
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
-      "entryBehavior": "browser-base-state-rendered-with-non-empty-content",
+      "entryBehavior": "authenticated-browser-current-debug-api-probe-slugs-verified",
       "exitBehavior": "not-runtime-verified",
       "nextSurfaces": [
         "#agent-action-queue-scenario-controls",
@@ -106153,7 +106145,9 @@
         "queryParameters": [
           "scenario"
         ],
-        "hashEvidenceFiles": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/shared/ui/api-probe-form.tsx"
+        ],
         "deepLinkEvidenceFiles": []
       },
       "states": {
@@ -110567,34 +110561,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-170",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 247,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 11,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Mock relationship profile form",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) =>\n        void submit(event, {\n          action: \"/api/connections/demo-connection-1/profile\",\n          method: \"PATCH\",\n        })"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submit"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Mock relationship profile form issued PATCH with the rendered relationship type/context body and rendered a 200 success envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-171",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 254,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 26,
           "controlType": "field",
           "tag": "select",
           "visibleName": "{RELATIONSHIP_PROFILE_TYPES.map((relationshipType) => ( <option key={relationshipType} value={relationshipType}> {relationshipType} </option> ))}",
@@ -110619,8 +110622,8 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-172",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 263,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 35,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "Context",
@@ -110645,8 +110648,8 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-173",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 269,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 41,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Preview profile update",
@@ -110671,34 +110674,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-174",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 293,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 57,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run relationship stage probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) =>\n            void submit(event, {\n              action: \"/api/connections/demo-connection-1/stage\",\n              method: \"PATCH\",\n            })"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submit"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run relationship stage probe issued a bodyless PATCH and rendered its deterministic 400 VALIDATION_ERROR instead of silently falling back to GET, POST, or 405.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-175",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 297,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 68,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run stage probe",
@@ -110723,34 +110735,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-176",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 301,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 72,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run relationship profile probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) =>\n            void submit(event, {\n              action: \"/api/connections/demo-connection-1/profile\",\n              method: \"PATCH\",\n            })"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submit"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run relationship profile probe issued a bodyless PATCH and rendered its deterministic 400 VALIDATION_ERROR instead of silently falling back to GET, POST, or 405.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-177",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
-          "line": 305,
+          "sourceFile": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+          "line": 83,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run profile probe",
@@ -110775,34 +110796,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-178",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 368,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 10,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Mock contact detail tag and status edit form",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) =>\n        void submit(event, {\n          action: \"/api/contacts/demo-contact-1\",\n          arrayFields: [\"addTags\"],\n          method: \"PATCH\",\n        })"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submit"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "present-static-signal",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Mock contact detail tag and status edit form issued PATCH with the rendered status/tag/note body and rendered a 200 success envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-179",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 375,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 26,
           "controlType": "field",
           "tag": "select",
           "visibleName": "Active Needs follow-up Nurture Archived",
@@ -110827,8 +110857,8 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-180",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 383,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 34,
           "controlType": "field",
           "tag": "select",
           "visibleName": "topic:venture-ecosystem topic:storage-pilots priority:warm-follow-up",
@@ -110853,8 +110883,8 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-181",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 394,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 45,
           "controlType": "field",
           "tag": "textarea",
           "visibleName": "Note",
@@ -110879,8 +110909,8 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-182",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 400,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 51,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Preview mock update",
@@ -110905,34 +110935,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-183",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 425,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 74,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run contact detail API probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) => void submitGet(event)"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submitGet"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run contact detail API probe issued GET /api/contacts/demo-contact-1 and rendered a 200 success envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-184",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 430,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 80,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run detail probe",
@@ -110957,34 +110996,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-185",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 434,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 84,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run empty contact detail API probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) => void submitGet(event)"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submitGet"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run empty contact detail API probe preserved scenario=empty on GET and rendered a 200 empty envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-186",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 440,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 91,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run empty probe",
@@ -111009,34 +111057,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-187",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 444,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 95,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run pending contact detail API probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) => void submitGet(event)"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submitGet"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run pending contact detail API probe preserved scenario=pending on GET and rendered a 200 pending envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-188",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 450,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 102,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run pending probe",
@@ -111061,34 +111118,43 @@
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-189",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 454,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 106,
           "controlType": "form-submit-boundary",
           "tag": "form",
           "visibleName": "Run controlled failure contact detail API probe",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
-          "handlers": [],
+          "handlers": [
+            {
+              "event": "onsubmit",
+              "expression": "(event) => void submitGet(event)"
+            }
+          ],
           "href": null,
-          "downstreamCallHints": [],
-          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "downstreamCallHints": [
+            "submitGet"
+          ],
+          "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "All probes created zero live domain records; the disposable actor was removed with activeAfter=0 and the browser/server were finalized.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "present-static-signal",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Run controlled failure contact detail API probe preserved scenario=failure on GET and rendered the controlled 503 SERVICE_UNAVAILABLE envelope.",
+          "testData": "Disposable authenticated actor on the exact development capability slug with process-scoped mock mode and source-hashed client controls",
+          "testEvidence": [
+            "web-debug-api-probe-method-query-ui-2026-07-30"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/dev/capabilities/[slug]#interaction-190",
           "surfaceId": "web:/dev/capabilities/[slug]",
-          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
-          "line": 459,
+          "sourceFile": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+          "line": 113,
           "controlType": "button",
           "tag": "button",
           "visibleName": "Run controlled failure probe",
@@ -114938,6 +115004,10 @@
         "repos/orbits/tests/services/capability-registry.test.ts"
       ],
       "runtimeEvidence": [
+        "contact detail and relationship profile slugs rendered their exact intended capability panels",
+        "five normalized form implementations and eight exact route occurrences issued their declared GET/PATCH requests",
+        "contact query variants and edit bodies were preserved while success, controlled failure, and validation envelopes rendered in the UI",
+        "the disposable actor created zero live domain records and was cleaned to activeAfter=0",
         "production-build transport smoke",
         "in-app browser base-state at 1440x900",
         "in-app browser base-state at 390x844",
@@ -115928,14 +115998,7 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [
-          "category",
-          "document",
-          "history",
-          "learning",
-          "page",
-          "topic"
-        ],
+        "queryParameters": [],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": []
       },
@@ -117180,17 +117243,17 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1248",
+      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
       "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-      "line": 1248,
+      "line": 1287,
       "kind": "alertdialog",
       "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1355",
+      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
       "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-      "line": 1355,
+      "line": 1394,
       "kind": "dialog",
       "visibleName": "Chat history / 对话历史 New chat / 新对话 Go to / 前往 {[ [\"/\", \"home\", t({ en: \"Home\", zh: \"首页\" })], [\"/explore\", \"calendar\", t({ en: \"Events\", zh: \"活动\" })], [\"/home/schedule\", \"clock\", t({ en: \"Calendar\", zh: \"日程\" })], [\"/home/cards\", \"wallet\", t({ en: \"Contacts\", zh: \"人脉\" })], ].map(([href, icon, label]) => ( <button className=\"btn btn-quiet\" key={href} onClick={() => { onClose(); onNavigate(href); }} style={{ height: \"auto\", justifyContent: \"flex-start\", padding: \"9px 8px\", width: \"100%\" }} type=\"button\" > <Icon name={icon} size={17} color=\"var(--accent)\" /> {label} </button> ))} Chat history / 对话历史",
       "runtimeStatus": "not-runtime-verified"
@@ -118390,6 +118453,15 @@
       "actual": "The DataCard Pressable route-instance count fell from 44 to the six routes that pass onPress, reducing the interaction denominator from 2340 to 2302 without changing the 921 implementation denominator. Route-query pairs fell from 1272 alleged pairs/71 keys to 119/30; mobile /account became empty, Contacts List retained its seven route keys, mobile /ai/[id] separated path id from initialMessage/source, and Web login retained created/email/next/orbitVisualSeed with all named false positives absent.",
       "evidence": "audit generator; audit tests 10/10; coordinator/evaluations/seventh-round-denominators-current.json; coordinator/runtime-interaction-coverage-current.json; independent route-parameter root-cause review",
       "conclusion": "pass for the two corrected static scanner rules; route page-file nodes are not terminal UI implementations, and alias/redirect/hash/custom-scheme contracts plus the rendered runtime leaf denominator remain explicitly unresolved"
+    },
+    {
+      "id": "web-debug-api-probe-method-query-ui-2026-07-30",
+      "target": "Contact detail and relationship profile development capability API probe forms",
+      "testData": "Two exact development slugs, five normalized form-submit implementations, eight route occurrences, a disposable authenticated actor, process-scoped mock mode, current source hashes and zero pre-existing actor-owned domain rows",
+      "expected": "The server route must resolve both slugs while client controls issue the declared GET/PATCH method, preserve query/body input, render success or controlled failure envelopes, create no live domain record and clean the actor exactly.",
+      "actual": "Both slugs rendered their intended terminal panel. Four contact GET controls preserved base, empty, pending and failure query states and rendered 200/200/200/503. Contact edit and relationship profile edit issued PATCH with their rendered bodies and returned 200. The bodyless relationship stage/profile probes issued PATCH and rendered deterministic 400 VALIDATION_ERROR rather than GET, POST or 405. All five implementation keys and eight route occurrences passed; domain rows remained zero.",
+      "evidence": "harness-state/evidence/full-product-functional-audit/continuation-20260730T105558+0900/next-round-03/remediation-debug-api-probes/result.json; evaluation.json; raw/runtime-observations.json; cleanup.json; focused API-probe/capability tests 36/36",
+      "conclusion": "pass for the exact current five implementation keys, all eight route-local occurrences, declared methods/query/body, rendered success/failure states, zero live-domain writes and exact cleanup"
     }
   ],
   "remediations": [
@@ -119571,6 +119643,33 @@
       "files": "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts",
       "regression": "Alleged route-query pairs fell from 1272/71 keys to 119/30. Focused assertions prove mobile /account excludes all transitive API/header keys, Contacts List retains seven real keys, mobile /ai/[id] separates id from query, Web login retains four real/global diagnostic keys and all named header/cookie/UUID probes are absent. Audit tests passed 10/10.",
       "status": "fixed for route-local query-key classification; fixed redirects, aliases, hash preservation, custom schemes, ancestor auth/layout contracts and runtime route cases remain a separate explicit contract gap"
+    },
+    {
+      "id": "AUDIT-P2-132",
+      "severity": "P2",
+      "rootCause": "Contact detail and relationship profile development probes were ordinary HTML forms. PATCH actions therefore submitted as POST and returned 405, the failure query was embedded in action while FormData serialization discarded it, and making the whole debug module a client component made its exported slug constant unreadable to the Server Component dispatcher.",
+      "decision": "Keep the debug view and slug export server-readable, move only interactive controls into feature-local client modules, and use one shared request builder that preserves action query, exact GET/PATCH methods, JSON arrays and rendered success/failure envelopes.",
+      "files": "repos/orbits/shared/ui/api-probe-form.tsx; repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx; repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx; repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx; repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx; repos/orbits/tests/ui/api-probe-form.test.ts",
+      "regression": "Focused tests passed 36/36. Independent authenticated runtime reached both exact slugs, exercised five normalized implementations and eight route occurrences, preserved four GET query variants, issued every update/action probe as PATCH, rendered 200/503/400 envelopes, created zero live domain rows and cleaned the actor to activeAfter=0.",
+      "status": "fixed and independently runtime-verified for exact current handler keys, route-local reachability/auth/params/ownership, method/query/body preservation, honest failure UI and cleanup"
+    },
+    {
+      "id": "AUDIT-P2-133",
+      "severity": "P2",
+      "rootCause": "Retrying a failed Agent message called the normal ask path with the original request while leaving the preceding user turn and failed assistant turn in both visible messages and outgoing history. The same user request was appended again, so one logical turn became duplicated and stale failure UI survived.",
+      "decision": "Prepare retry from the exact failed assistant index, remove that failure plus its nearest preceding user turn from request history, retain the one existing user turn in visible state, and pass the index through the retry control so the normal conversation endpoint creates only the replacement assistant result.",
+      "files": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx; repos/orbits/tests/pages/app-agent-chat-actions.test.tsx; repos/orbits/tests/pages/app-agent-general-conversation.test.tsx",
+      "regression": "Focused tests passed 69/69. A disposable authenticated actor produced a real 503, restored the configured provider and rapidly activated the exact retry twice. Only one retry request with history=[] was sent; the live store retained one user plus one successful assistant, zero stale failure/retry messages, zero action/outbox/domain writes, refresh readback and actor-B isolation, followed by exact activeAfter=0 cleanup.",
+      "status": "fixed and independently live-provider/runtime/store-verified for logical-turn conservation, duplicate activation, refresh, actor isolation and cleanup"
+    },
+    {
+      "id": "AUDIT-P2-134",
+      "severity": "P2",
+      "rootCause": "Additional Web runtime evidence could fall back from handler-bound keys to sourceFile+visibleName or sourceFile:line. After the Agent retry handler changed, the generator silently inherited a 2026-07-29 PASS for the old behavior.",
+      "decision": "Require exact or normalized handler-bound evidence for the changed retry interaction and bind the new post-fix runtime proof to its current stable onclick key. Retain explicitly scoped legacy compatibility only for interactions not placed behind this handler-bound gate.",
+      "files": "repos/orbits/scripts/generate-full-product-functional-audit.mjs; repos/orbits/tests/audits/full-product-functional-audit.test.ts",
+      "regression": "Before current runtime evidence was bound, the generator honestly reduced coverage to 243/924 and strict occurrences to 208/2302. After binding the exact current handler proof, it restored only that implementation/occurrence to 244/924 and 209/2302. Audit tests assert that no other same-label handler inherits the PASS.",
+      "status": "fixed for the remediated Agent retry interaction with handler-bound current runtime evidence; broader legacy evidence migration remains explicit compatibility debt rather than silent proof"
     }
   ],
   "renderedLeafObservations": {
