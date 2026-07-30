@@ -17,6 +17,7 @@ import { generateEventRegistrationQuestions } from "../../../../../../features/e
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
 import { createProfileService } from "../../../../../../features/profile/service-factory";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
+import { eventRegistrationReturnPath } from "./registration-return-path";
 import { redirect } from "next/navigation";
 
 type EventRegistrationSearchParams = Record<
@@ -97,14 +98,16 @@ export default async function AppEventRegistrationGuidePage({
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const preferredLanguage = readSearchParam(query, "language");
   const actorContext = await currentRegistrationActor();
   if (actorContext.requestScoped && !actorContext.actor?.id) {
     redirect(
-      `/app/account/login?next=${encodeURIComponent(`/app/events/${id}/register`)}`,
+      `/app/account/login?next=${encodeURIComponent(
+        eventRegistrationReturnPath(id, preferredLanguage),
+      )}`,
     );
   }
   const actor = actorContext.actor;
-  const preferredLanguage = readSearchParam(query, "language");
   const language = await getEventRegistrationPageLanguage(preferredLanguage);
   const event = await loadEventForRegistration(id, actor?.id);
 

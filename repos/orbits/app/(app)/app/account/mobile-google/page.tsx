@@ -8,9 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function MobileGooglePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ request?: string }>;
+  searchParams?: Promise<{ request?: string | string[] }>;
 }) {
-  const request = (await searchParams)?.request?.trim() ?? "";
+  const requestValue = (await searchParams)?.request;
+  const request = (
+    Array.isArray(requestValue) ? requestValue[0] : requestValue
+  )?.trim() ?? "";
   const mode = resolveFeatureMode();
   const googleAvailable = resolveMobileAuthService(mode)
     .enabledProviders()

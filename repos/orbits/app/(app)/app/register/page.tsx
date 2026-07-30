@@ -54,7 +54,7 @@ export default async function AppRegisterPage({
 
     const suffix = destination.size > 0 ? `?${destination.toString()}` : "";
     redirect(
-      `/app/events/${encodeURIComponent(routeModel.register.event.id)}/register${suffix}`,
+      `/app/events/${encodeURIComponent(routeModel.register.event.id)}/register${suffix}#`,
     );
   }
 

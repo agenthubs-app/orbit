@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test, { after } from "node:test";
 import { fileURLToPath } from "node:url";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import { NextRequest } from "next/server";
 
@@ -196,6 +197,22 @@ test("Google start redirects only to the Orbit broker page", async () => {
   assert.equal(target.origin, "https://orbit.example");
   assert.equal(target.pathname, "/app/account/mobile-google");
   assert.ok(target.searchParams.get("request"));
+});
+
+test("Google broker page decodes repeated request values with first-value semantics", async () => {
+  const Page = (await import(
+    "../../app/(app)/app/account/mobile-google/page"
+  )).default;
+  const html = renderToStaticMarkup(
+    await Page({
+      searchParams: Promise.resolve({
+        request: ["", "must-not-be-selected"],
+      }),
+    }),
+  );
+
+  assert.match(html, /Google 登录暂时不可用/);
+  assert.doesNotMatch(html, /data-orbit-mobile-google-auth/u);
 });
 
 test("Google completion rejects a request without an authenticated Web session", async () => {

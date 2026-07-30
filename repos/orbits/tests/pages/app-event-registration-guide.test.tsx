@@ -62,7 +62,22 @@ test("public event detail stays readable while registration itself requires auth
   assert.doesNotMatch(registerSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(registerSource, /readSearchParam\(query, "scenario"\)/);
   assert.match(registerSource, /\/app\/account\/login\?next=/);
-  assert.match(registerSource, /\/app\/events\/\$\{id\}\/register/);
+  assert.match(registerSource, /eventRegistrationReturnPath\(id, preferredLanguage\)/);
+});
+
+test("event registration auth return preserves the first language value and encodes route parameters", async () => {
+  const { eventRegistrationReturnPath } = await import(
+    "../../app/(app)/app/events/[id]/register/registration-return-path"
+  );
+
+  assert.equal(
+    eventRegistrationReturnPath("event/with space", "ja"),
+    "/app/events/event%2Fwith%20space/register?language=ja",
+  );
+  assert.equal(
+    eventRegistrationReturnPath("event_signup_01"),
+    "/app/events/event_signup_01/register",
+  );
 });
 
 test("/app/events/[id]/register renders public event questions without a mock query", async () => {

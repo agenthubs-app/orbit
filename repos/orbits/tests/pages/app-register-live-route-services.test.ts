@@ -75,10 +75,33 @@ test("/app/register redirects a reviewed code without propagating fixture contro
       error instanceof Error &&
       error.message === "NEXT_REDIRECT" &&
       error.digest.includes(
-        "/app/events/event_signup_01/register?language=en",
+        "/app/events/event_signup_01/register?language=en#",
       ) &&
       !error.digest.includes("mode=") &&
       !error.digest.includes("scenario="),
+  );
+});
+
+test("/app/register uses first-value decoders and explicitly clears an inherited fragment", async () => {
+  const Page = (await import("../../app/(app)/app/register/page"))
+    .default as (props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }) => Promise<React.ReactElement>;
+
+  await assert.rejects(
+    () =>
+      Page({
+        searchParams: Promise.resolve({
+          code: ["EVTSIGNUP01", "must-not-win"],
+          language: ["ja", "must-not-win"],
+        }),
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message === "NEXT_REDIRECT" &&
+      error.digest.includes(
+        "/app/events/event_signup_01/register?language=ja#",
+      ),
   );
 });
 
