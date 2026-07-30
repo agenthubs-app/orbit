@@ -29,3 +29,22 @@ test("contacts dashboard has a real zero-data state and no demo metrics or peopl
   assert.doesNotMatch(dashboardSource, /Emily Wong|佐藤花|陈伟|刘洋/);
   assert.doesNotMatch(dashboardSource, /value: "128"|128 contacts|共 128 位/);
 });
+
+test("contacts dashboard responsive roots do not occupy or flow beside each other", () => {
+  const dashboardSource = source(
+    "app/(app)/app/contacts/orbit-real-cards-dashboard.tsx",
+  );
+
+  assert.match(
+    dashboardSource,
+    /className="orbit-page orbit-desktop-only"/,
+  );
+  assert.match(
+    dashboardSource,
+    /className="orbit-mobile-only"[\s\S]*?flexDirection: "column"/,
+  );
+  assert.doesNotMatch(
+    dashboardSource,
+    /className="orbit-page" data-orbit-real-page="contacts-dashboard"/,
+  );
+});

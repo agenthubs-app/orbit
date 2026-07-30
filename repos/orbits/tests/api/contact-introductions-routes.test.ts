@@ -52,6 +52,7 @@ test("contact introduction POST forwards only the authenticated actor id", async
         contactAId: "contact-a",
         contactBId: "contact-b",
         blurb: "A sourced introduction note.",
+        requestId: "route-request-1",
       }),
     }),
   );

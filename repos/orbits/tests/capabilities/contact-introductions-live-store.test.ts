@@ -74,6 +74,7 @@ test("contact introductions persist as actor-scoped drafts", async () => {
     contactAId: "contact-a",
     contactBId: "contact-b",
     blurb: "Aiko and Mei should compare their Japan market work.",
+    requestId: "persist-draft",
   });
 
   assert.equal(created.status, "draft");
@@ -100,6 +101,7 @@ test("contact introduction lists use the contacts' current display names", async
     contactAId: "contact-a",
     contactBId: "contact-b",
     blurb: "A saved introduction remains linked to both contact records.",
+    requestId: "current-names",
   });
   await store.upsertRecord(
     contactRecord("actor-a", "contact-a", "联系人甲"),
@@ -128,6 +130,7 @@ test("contact introductions reject cross-account contacts and blank notes", asyn
       contactAId: "contact-a",
       contactBId: "contact-b",
       blurb: "Cross-account draft",
+      requestId: "cross-account",
     }),
     (error: unknown) =>
       error instanceof AppError && error.code === "NOT_FOUND",
@@ -137,6 +140,7 @@ test("contact introductions reject cross-account contacts and blank notes", asyn
       contactAId: "contact-a",
       contactBId: "contact-a",
       blurb: "",
+      requestId: "blank-note",
     }),
     (error: unknown) =>
       error instanceof AppError && error.code === "VALIDATION_ERROR",
@@ -166,7 +170,65 @@ test("contact introductions accept contacts linked through an actor-owned connec
     contactAId: "contact-a",
     contactBId: "contact-linked",
     blurb: "Both contacts are visible in actor A's relationship graph.",
+    requestId: "linked-contact",
   });
 
   assert.equal(created.labelB, "Linked Contact");
+});
+
+test("contact introduction request ids preserve the first actor-scoped draft", async () => {
+  const store = createMemoryLiveRecordStore([
+    contactRecord("actor-a", "contact-a", "Aiko Tanaka"),
+    contactRecord("actor-a", "contact-b", "Mei Lin"),
+    contactRecord("actor-b", "contact-c", "Other A"),
+    contactRecord("actor-b", "contact-d", "Other B"),
+  ]);
+  const repository = createContactIntroductionRepository({
+    store,
+    workspaceId: "test-workspace",
+  });
+
+  const first = await repository.create("actor-a", {
+    contactAId: "contact-a",
+    contactBId: "contact-b",
+    blurb: "Keep the first draft.",
+    requestId: "retry-1",
+  });
+  const replay = await repository.create("actor-a", {
+    contactAId: "contact-b",
+    contactBId: "contact-a",
+    blurb: "Do not overwrite the first draft.",
+    requestId: "retry-1",
+  });
+  const otherActor = await repository.create("actor-b", {
+    contactAId: "contact-c",
+    contactBId: "contact-d",
+    blurb: "The same client request id is actor scoped.",
+    requestId: "retry-1",
+  });
+
+  assert.deepEqual(replay, first);
+  assert.notEqual(otherActor.id, first.id);
+  assert.equal((await repository.list("actor-a")).length, 1);
+  assert.equal((await repository.list("actor-b")).length, 1);
+});
+
+test("contact introductions require a stable request id", async () => {
+  const repository = createContactIntroductionRepository({
+    store: createMemoryLiveRecordStore([
+      contactRecord("actor-a", "contact-a", "Aiko Tanaka"),
+      contactRecord("actor-a", "contact-b", "Mei Lin"),
+    ]),
+    workspaceId: "test-workspace",
+  });
+
+  await assert.rejects(
+    repository.create("actor-a", {
+      contactAId: "contact-a",
+      contactBId: "contact-b",
+      blurb: "Missing request id.",
+    }),
+    (error: unknown) =>
+      error instanceof AppError && error.code === "VALIDATION_ERROR",
+  );
 });

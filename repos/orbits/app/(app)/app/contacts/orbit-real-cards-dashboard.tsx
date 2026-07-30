@@ -392,8 +392,11 @@ function AppShell({
   viewModel: OrbitContactsViewModel;
 }) {
   return (
-    <main className="orbit-page" data-orbit-real-page="contacts-dashboard">
-      <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+    <main
+      className="orbit-page orbit-desktop-only"
+      data-orbit-real-page="contacts-dashboard"
+    >
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <CrmSidebar active="dashboard" counts={{ list: viewModel.connections.length }} />
@@ -416,7 +419,17 @@ export function OrbitRealCardsDashboard({
       <AppShell viewModel={viewModel}>
         <DashboardBody viewModel={viewModel} />
       </AppShell>
-      <main className="orbit-mobile-only" data-orbit-real-page="contacts-dashboard" style={{ background: "var(--bg)", minHeight: "100dvh" }}>
+      <main
+        className="orbit-mobile-only"
+        data-orbit-real-page="contacts-dashboard"
+        style={{
+          background: "var(--bg)",
+          flexDirection: "column",
+          minHeight: "100dvh",
+          minWidth: 0,
+          width: "100%",
+        }}
+      >
         <AccountTopNav active="cards" />
         <div className="scroll" data-appscroll style={{ padding: "18px 18px 42px" }}>
           <DashboardBody compact viewModel={viewModel} />

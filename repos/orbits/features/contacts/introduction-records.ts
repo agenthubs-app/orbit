@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { AppError } from "../../shared/errors/app-error";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
@@ -30,6 +30,7 @@ export interface CreateContactIntroductionInput {
   contactAId?: string | null;
   contactBId?: string | null;
   blurb?: string | null;
+  requestId?: string | null;
 }
 
 export interface ContactIntroductionRepository {
@@ -200,6 +201,34 @@ export function createContactIntroductionRepository(input: {
       const contactAId = text(createInput.contactAId);
       const contactBId = text(createInput.contactBId);
       const blurb = text(createInput.blurb);
+      const requestId = text(createInput.requestId);
+
+      if (!requestId) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "A stable request id is required to save an introduction.",
+        );
+      }
+
+      const id = `intro_${createHash("sha256")
+        .update(`${normalizedActorId}\u0000${requestId}`)
+        .digest("hex")
+        .slice(0, 32)}`;
+      const existingRecord = await input.store.getRecord({
+        collectionName: INTRODUCTION_COLLECTION,
+        recordId: id,
+        workspaceId: input.workspaceId,
+      });
+      if (existingRecord) {
+        const existing = introductionFromRecord(existingRecord);
+        if (existing && belongsToActor(existingRecord, normalizedActorId)) {
+          return existing;
+        }
+        throw new AppError(
+          "CONFLICT",
+          "The introduction request id is already owned by another record.",
+        );
+      }
 
       if (!contactAId || !contactBId || contactAId === contactBId) {
         throw new AppError(
@@ -229,7 +258,6 @@ export function createContactIntroductionRepository(input: {
       }
 
       const now = new Date().toISOString();
-      const id = `intro_${randomUUID()}`;
       const introduction: ContactIntroduction = {
         id,
         contactAId,
@@ -263,6 +291,7 @@ export function createContactIntroductionRepository(input: {
         payload: {
           ...introduction,
           actorId: normalizedActorId,
+          requestId,
         },
       });
 

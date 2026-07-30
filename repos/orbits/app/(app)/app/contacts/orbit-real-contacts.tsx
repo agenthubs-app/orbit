@@ -1156,6 +1156,7 @@ function IntroComposerModal({
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   const selectedA = viewModel.connections.find((contact) => contact.id === aId) || null;
   const selectedB = viewModel.connections.find((contact) => contact.id === bId) || null;
   const queryTokens = contactSearchTokens(query);
@@ -1188,6 +1189,7 @@ function IntroComposerModal({
           contactAId: aId,
           contactBId: bId,
           blurb,
+          requestId,
         }),
       });
       const envelope = (await response.json()) as {
