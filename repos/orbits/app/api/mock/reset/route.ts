@@ -51,6 +51,13 @@ async function readInput(request: Request): Promise<MockResetInput> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, {
+      headers: { "Cache-Control": "no-store" },
+      status: 404,
+    });
+  }
+
   // resetMockData 不触达 live 数据源，只重建 mock registry/state。
   const mode = resolveFeatureMode();
   const resetService = createMockDataResetService();

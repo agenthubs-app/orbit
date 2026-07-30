@@ -69,7 +69,7 @@ test("module mode service factories default to mock and expose controlled live f
     error: {
       code: "NOT_IMPLEMENTED",
       message:
-        'Live service for capability "contacts" is not implemented. Use mock mode until a live provider is registered.',
+        'Live service for capability "contacts" is not implemented. Configure a live provider before using this capability in production.',
       capabilityId: "contacts",
       requestedMode: "live",
       availableModes: ["mock", "hybrid"],
@@ -93,7 +93,6 @@ test("module mode service factories honor ORBIT_MODULE_MODE when mode is omitted
       }),
     },
   });
-
   try {
     process.env.ORBIT_MODULE_MODE = "live";
 
@@ -110,6 +109,70 @@ test("module mode service factories honor ORBIT_MODULE_MODE when mode is omitted
       delete process.env.ORBIT_MODULE_MODE;
     } else {
       process.env.ORBIT_MODULE_MODE = previousMode;
+    }
+  }
+});
+
+test("production module mode is live-only even for missing or explicit mock input", () => {
+  const runtimeEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = runtimeEnv.NODE_ENV;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const serviceFactory = createModuleServiceFactory({
+    capabilityId: "production-provider-boundary",
+    defaultMode: "mock",
+    implementations: {
+      live: ({ requestedMode }) => ({ requestedMode }),
+      mock: ({ requestedMode }) => ({ requestedMode }),
+    },
+  });
+  const mockOnlyServiceFactory = createModuleServiceFactory({
+    capabilityId: "production-mock-only-boundary",
+    defaultMode: "mock",
+    implementations: {
+      mock: ({ requestedMode }) => ({ requestedMode }),
+    },
+  });
+
+  try {
+    runtimeEnv.NODE_ENV = "production";
+    delete process.env.ORBIT_MODULE_MODE;
+    delete process.env.ORBIT_FEATURE_MODE;
+
+    assert.equal(resolveModuleMode(), "live");
+    assert.equal(resolveModuleMode("mock"), "live");
+    assert.equal(resolveModuleMode("hybrid"), "live");
+    assert.equal(resolveModuleMode("invalid"), "live");
+    assert.deepEqual(serviceFactory.create("mock"), {
+      success: true,
+      mode: "live",
+      service: { requestedMode: "live" },
+    });
+    for (const input of [undefined, "mock", "hybrid", "invalid"]) {
+      const resolution = mockOnlyServiceFactory.create(input);
+      assert.equal(resolution.success, false, String(input));
+      if (!resolution.success) {
+        assert.equal(resolution.error.requestedMode, "live");
+        assert.deepEqual(resolution.error.availableModes, ["mock"]);
+        assert.match(resolution.error.message, /Configure a live provider/u);
+        assert.doesNotMatch(resolution.error.message, /Use mock mode/u);
+      }
+    }
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete runtimeEnv.NODE_ENV;
+    } else {
+      runtimeEnv.NODE_ENV = previousNodeEnv;
+    }
+    if (previousModuleMode === undefined) {
+      delete process.env.ORBIT_MODULE_MODE;
+    } else {
+      process.env.ORBIT_MODULE_MODE = previousModuleMode;
+    }
+    if (previousFeatureMode === undefined) {
+      delete process.env.ORBIT_FEATURE_MODE;
+    } else {
+      process.env.ORBIT_FEATURE_MODE = previousFeatureMode;
     }
   }
 });

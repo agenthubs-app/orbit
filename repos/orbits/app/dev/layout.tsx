@@ -8,7 +8,15 @@
  */
 import "../globals.css";
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import { shouldHideDevSurface } from "./production-boundary";
 
 export default function DevLayout({ children }: { children: ReactNode }) {
+  // `/dev/**` 是内部 harness，而不是产品 surface。生产构建必须在 route-group
+  // 入口统一失败关闭，避免新增 page 或 dynamic slug 忘记重复加权限判断。
+  if (shouldHideDevSurface(process.env.NODE_ENV)) {
+    notFound();
+  }
+
   return <div className="orbit-dev-root">{children}</div>;
 }

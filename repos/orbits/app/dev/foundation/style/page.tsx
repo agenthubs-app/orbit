@@ -200,9 +200,14 @@ export default function StyleFoundationPage() {
                 tone="warning"
                 value="Locked until confirmed"
               />
+              <p className="type-caption">
+                Static specimen only. Decision controls stay disabled because
+                this foundation route has no local state transition or product
+                write boundary.
+              </p>
               <div className="button-row">
-                <PrimaryAction>Confirm next step</PrimaryAction>
-                <SecondaryAction>Keep as draft</SecondaryAction>
+                <PrimaryAction disabled>Confirm next step</PrimaryAction>
+                <SecondaryAction disabled>Keep as draft</SecondaryAction>
                 <SecondaryAction disabled>Send externally locked</SecondaryAction>
               </div>
               <details>

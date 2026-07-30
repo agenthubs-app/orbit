@@ -184,6 +184,32 @@ test("feature mode resolves mock by default and only accepts known runtime modes
   }
 });
 
+test("production feature mode is live-only for env and request inputs", () => {
+  const runtimeEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = runtimeEnv.NODE_ENV;
+  const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
+  const previousModuleMode = process.env.ORBIT_MODULE_MODE;
+
+  try {
+    runtimeEnv.NODE_ENV = "production";
+    delete process.env.ORBIT_FEATURE_MODE;
+    delete process.env.ORBIT_MODULE_MODE;
+
+    assert.equal(resolveFeatureMode(), "live");
+    assert.equal(resolveFeatureMode("mock"), "live");
+    assert.equal(resolveFeatureMode("hybrid"), "live");
+    assert.equal(resolveFeatureMode("unsupported"), "live");
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete runtimeEnv.NODE_ENV;
+    } else {
+      runtimeEnv.NODE_ENV = previousNodeEnv;
+    }
+    restoreFeatureMode(previousFeatureMode);
+    restoreModuleMode(previousModuleMode);
+  }
+});
+
 test("feature mode defaults to ORBIT_MODULE_MODE before ORBIT_FEATURE_MODE", () => {
   const previousFeatureMode = process.env.ORBIT_FEATURE_MODE;
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;

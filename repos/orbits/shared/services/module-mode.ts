@@ -65,6 +65,12 @@ function modeLabel(mode: ModuleMode): string {
 export function resolveModuleMode(
   mode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
 ): ModuleMode {
+  // Production runtime may never select mock or hybrid, even when a request
+  // supplies one explicitly. Both modes can resolve fixture-backed services.
+  if (process.env.NODE_ENV === "production") {
+    return "live";
+  }
+
   const normalizedMode = mode?.trim().toLowerCase() ?? "";
 
   if (isModuleMode(normalizedMode)) {
@@ -85,7 +91,7 @@ export function createNotImplementedFailure(
     success: false,
     error: {
       code: NOT_IMPLEMENTED_ERROR_CODE,
-      message: `${modeLabel(requestedMode)} service for capability "${capabilityId}" is not implemented. Use mock mode until a live provider is registered.`,
+      message: `${modeLabel(requestedMode)} service for capability "${capabilityId}" is not implemented. Configure a live provider before using this capability in production.`,
       capabilityId,
       requestedMode,
       availableModes,

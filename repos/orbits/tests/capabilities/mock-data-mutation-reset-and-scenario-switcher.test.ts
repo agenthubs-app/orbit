@@ -418,6 +418,56 @@ test("mock scenario API routes return stable envelopes with empty and failure pa
   });
 });
 
+test("production mock scenario APIs fail closed before exposing or mutating fixtures", async () => {
+  const runtimeEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = runtimeEnv.NODE_ENV;
+  const scenariosRoute = await importProjectModule<{
+    GET: () => Promise<Response>;
+  }>("app/api/mock/scenarios/route.ts");
+  const activateRoute = await importProjectModule<{
+    POST: (
+      request: Request,
+      context: { params: Promise<{ id: string }> },
+    ) => Promise<Response>;
+  }>("app/api/mock/scenarios/[id]/activate/route.ts");
+  const resetRoute = await importProjectModule<{
+    POST: (request: Request) => Promise<Response>;
+  }>("app/api/mock/reset/route.ts");
+
+  try {
+    runtimeEnv.NODE_ENV = "production";
+
+    const responses = await Promise.all([
+      scenariosRoute.GET(),
+      activateRoute.POST(
+        new Request(
+          "https://orbit.local/api/mock/scenarios/post-event-demo/activate",
+          { method: "POST" },
+        ),
+        { params: Promise.resolve({ id: "post-event-demo" }) },
+      ),
+      resetRoute.POST(
+        new Request("https://orbit.local/api/mock/reset", {
+          body: "{not-json",
+          method: "POST",
+        }),
+      ),
+    ]);
+
+    for (const response of responses) {
+      assert.equal(response.status, 404);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.equal(await response.text(), "");
+    }
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete runtimeEnv.NODE_ENV;
+    } else {
+      runtimeEnv.NODE_ENV = previousNodeEnv;
+    }
+  }
+});
+
 test("mock data scenario dev route renders state matrix and live handoff", async () => {
   const debugView = await importProjectModule<{
     MOCK_DATA_SCENARIO_SWITCHER_SLUG: string;

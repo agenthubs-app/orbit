@@ -17,6 +17,13 @@ export const dynamic = "force-dynamic";
 // mock scenarios route 返回可用的演示/测试场景列表。
 // route 不修改状态，只读取 shared mock scenario registry。
 export async function GET(): Promise<Response> {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, {
+      headers: { "Cache-Control": "no-store" },
+      status: 404,
+    });
+  }
+
   // mode header 仍会输出，方便调试当前 runtime boundary。
   const mode = resolveFeatureMode();
   const scenarioService = createMockScenarioService();

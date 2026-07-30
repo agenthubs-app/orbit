@@ -14,6 +14,13 @@ function isFeatureMode(value: string): value is FeatureMode {
 export function resolveFeatureMode(
   mode = process.env.ORBIT_MODULE_MODE ?? process.env.ORBIT_FEATURE_MODE,
 ): FeatureMode {
+  // API callers can supply a mode, but production must remain live-only.
+  // This also makes a missing or invalid production setting fail closed at
+  // the live provider boundary instead of exposing fixture-backed behavior.
+  if (process.env.NODE_ENV === "production") {
+    return "live";
+  }
+
   // mode 可以来自环境变量、测试注入或 query 参数；统一 trim/lowercase 后解析。
   const normalizedMode = mode?.trim().toLowerCase() ?? "";
 

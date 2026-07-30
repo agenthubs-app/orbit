@@ -26,6 +26,13 @@ export async function POST(
   _request: Request,
   context: MockScenarioActivationRouteContext,
 ): Promise<Response> {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, {
+      headers: { "Cache-Control": "no-store" },
+      status: 404,
+    });
+  }
+
   // activateScenario 只影响 mock 场景状态，不触达真实业务数据。
   const mode = resolveFeatureMode();
   const { id } = await context.params;
