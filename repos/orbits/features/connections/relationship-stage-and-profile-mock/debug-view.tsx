@@ -5,13 +5,15 @@
  */
 import {
   Chip,
-  Field,
   WorkbenchFrame,
   WorkbenchSurface,
 } from "../../../shared/ui/primitives";
 import {
+  RelationshipApiProbeForms,
+  RelationshipProfileEditForm,
+} from "./api-probe-controls";
+import {
   RELATIONSHIP_PROFILE_ERROR_DEFINITIONS,
-  RELATIONSHIP_PROFILE_TYPES,
   type RelationshipProfilePayload,
   type RelationshipProfileRecord,
   type RelationshipProfileResult,
@@ -106,7 +108,8 @@ const relationshipProfileApiProbes = [
   },
   {
     label: "Pending profile",
-    command: "PATCH /api/connections/demo-connection-1/profile?scenario=pending",
+    command:
+      "PATCH /api/connections/demo-connection-1/profile?scenario=pending",
     expectedStatus: 200,
     expectation:
       "Expect 200 pending envelope while profile fixture review waits.",
@@ -184,7 +187,11 @@ function ProfileSummary({ profile }: { profile: RelationshipProfileRecord }) {
   );
 }
 
-function OperatorCheckpoint({ payload }: { payload: RelationshipProfilePayload }) {
+function OperatorCheckpoint({
+  payload,
+}: {
+  payload: RelationshipProfilePayload;
+}) {
   const profile = payload.profile;
   const databaseReads =
     payload.provenance.databaseReadExecuted === false ? "false" : "true";
@@ -244,32 +251,7 @@ function ProfileEditPanel() {
         The form posts to the mock profile route with local fields only. The
         route returns a stable envelope and does not write profile state.
       </p>
-      <form
-        action="/api/connections/demo-connection-1/profile"
-        aria-label="Mock relationship profile form"
-        className="control-stack"
-        method="post"
-      >
-        <Field label="Relationship type" helper="Local profile types only.">
-          <select name="relationshipType" defaultValue="customer_candidate">
-            {RELATIONSHIP_PROFILE_TYPES.map((relationshipType) => (
-              <option key={relationshipType} value={relationshipType}>
-                {relationshipType}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Context" helper="No external context source is queried.">
-          <textarea
-            name="context"
-            defaultValue="Kenji asked for a storage pilot operator introduction after the climate founders dinner."
-            rows={3}
-          />
-        </Field>
-        <button className="primary-action" type="submit">
-          Preview profile update
-        </button>
-      </form>
+      <RelationshipProfileEditForm />
       <div className="chip-row" aria-label="Relationship profile guardrails">
         <Chip tone="evidence">source-backed</Chip>
         <Chip tone="privacy">mock only</Chip>
@@ -289,24 +271,7 @@ function ApiProbeActions() {
         These probes exercise stage update, profile update, empty, pending, and
         controlled failure paths inside the relationship profile mock boundary.
       </p>
-      <div className="button-row">
-        <form
-          action="/api/connections/demo-connection-1/stage"
-          aria-label="Run relationship stage probe"
-        >
-          <button className="secondary-action" type="submit">
-            Run stage probe
-          </button>
-        </form>
-        <form
-          action="/api/connections/demo-connection-1/profile"
-          aria-label="Run relationship profile probe"
-        >
-          <button className="secondary-action" type="submit">
-            Run profile probe
-          </button>
-        </form>
-      </div>
+      <RelationshipApiProbeForms />
     </div>
   );
 }
@@ -386,7 +351,10 @@ export function RelationshipStageAndProfileMockDemo() {
             )}
           </WorkbenchSurface>
 
-          <WorkbenchSurface eyebrow="No connection selected" title="Empty state">
+          <WorkbenchSurface
+            eyebrow="No connection selected"
+            title="Empty state"
+          >
             {emptyState.success && (
               <>
                 <p className="type-body">{emptyState.data.nextAction}</p>
@@ -466,11 +434,13 @@ export function RelationshipStageAndProfileMockDemo() {
               <p className="type-body">{profilePayload.updateSummary}</p>
               <ProfileSummary profile={profilePayload.profile} />
               <div className="chip-row" aria-label="Mutual value types">
-                {profilePayload.profile.mutualValue.valueTypes.map((valueType) => (
-                  <Chip key={valueType} tone="confirmation">
-                    {valueType}
-                  </Chip>
-                ))}
+                {profilePayload.profile.mutualValue.valueTypes.map(
+                  (valueType) => (
+                    <Chip key={valueType} tone="confirmation">
+                      {valueType}
+                    </Chip>
+                  ),
+                )}
               </div>
             </>
           )}
@@ -495,7 +465,8 @@ export function RelationshipStageAndProfileMockDemo() {
                     {String(successPayload.profile.databaseReadExecuted)};
                     database writes{" "}
                     {String(successPayload.profile.databaseWriteExecuted)}; ai{" "}
-                    provider {String(successPayload.profile.aiProviderRequested)}
+                    provider{" "}
+                    {String(successPayload.profile.aiProviderRequested)}
                   </dd>
                 </div>
               </dl>
@@ -510,7 +481,8 @@ export function RelationshipStageAndProfileMockDemo() {
           <p className="type-body">
             The declared probes cover stage and profile updates. Empty, pending,
             invalid body, invalid stage, not-found, and controlled failure
-            probes document non-success states without leaving the mock boundary.
+            probes document non-success states without leaving the mock
+            boundary.
           </p>
           <dl className="relationship-meta">
             <div>
@@ -535,8 +507,8 @@ export function RelationshipStageAndProfileMockDemo() {
               <div key={probe.command}>
                 <dt>{probe.label}</dt>
                 <dd>
-                  <code style={pathWrapStyle}>{probe.command}</code>{" "}
-                  returns {probe.expectedStatus}. {probe.expectation}
+                  <code style={pathWrapStyle}>{probe.command}</code> returns{" "}
+                  {probe.expectedStatus}. {probe.expectation}
                 </dd>
               </div>
             ))}
@@ -559,7 +531,8 @@ export function RelationshipStageAndProfileMockDemo() {
               <dd>
                 Live service and provider files, switch mechanism, required env
                 vars and permissions, privacy and provenance constraints, and
-                replacement tests are documented before live providers are wired.
+                replacement tests are documented before live providers are
+                wired.
               </dd>
             </div>
           </dl>

@@ -5,10 +5,13 @@
  */
 import {
   Chip,
-  Field,
   WorkbenchFrame,
   WorkbenchSurface,
 } from "../../../shared/ui/primitives";
+import {
+  ContactDetailApiProbeForms,
+  ContactDetailEditForm,
+} from "./api-probe-controls";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
@@ -365,42 +368,7 @@ function ContactDetailEditPanel() {
         the detail panel can show tag editing, status changes, notes, and last
         interaction metadata before live persistence exists.
       </p>
-      <form
-        action="/api/contacts/demo-contact-1"
-        aria-label="Mock contact detail tag and status edit form"
-        className="control-stack"
-        method="post"
-      >
-        <Field label="Status" helper="No live contact store is written.">
-          <select name="status" defaultValue="active">
-            <option value="active">Active</option>
-            <option value="needs_follow_up">Needs follow-up</option>
-            <option value="nurture">Nurture</option>
-            <option value="archived">Archived</option>
-          </select>
-        </Field>
-        <Field label="Add tag" helper="Local fixture tag options only.">
-          <select name="addTags" defaultValue="topic:venture-ecosystem">
-            <option value="topic:venture-ecosystem">
-              topic:venture-ecosystem
-            </option>
-            <option value="topic:storage-pilots">topic:storage-pilots</option>
-            <option value="priority:warm-follow-up">
-              priority:warm-follow-up
-            </option>
-          </select>
-        </Field>
-        <Field label="Note" helper="Stored only in the deterministic response.">
-          <textarea
-            name="note"
-            defaultValue="Confirmed partner review context before changing status."
-            rows={3}
-          />
-        </Field>
-        <button className="primary-action" type="submit">
-          Preview mock update
-        </button>
-      </form>
+      <ContactDetailEditForm />
       <div className="chip-row" aria-label="Contact detail guardrails">
         <Chip tone="evidence">source evidence</Chip>
         <Chip tone="privacy">no live persistence</Chip>
@@ -421,46 +389,7 @@ function ApiProbeActions() {
         and controlled failure paths inside the contact detail tag and status
         mock boundary.
       </p>
-      <div className="button-row">
-        <form
-          action="/api/contacts/demo-contact-1"
-          aria-label="Run contact detail API probe"
-          method="get"
-        >
-          <button className="secondary-action" type="submit">
-            Run detail probe
-          </button>
-        </form>
-        <form
-          action="/api/contacts/demo-contact-1"
-          aria-label="Run empty contact detail API probe"
-          method="get"
-        >
-          <input name="scenario" type="hidden" value="empty" />
-          <button className="secondary-action" type="submit">
-            Run empty probe
-          </button>
-        </form>
-        <form
-          action="/api/contacts/demo-contact-1"
-          aria-label="Run pending contact detail API probe"
-          method="get"
-        >
-          <input name="scenario" type="hidden" value="pending" />
-          <button className="secondary-action" type="submit">
-            Run pending probe
-          </button>
-        </form>
-        <form
-          action="/api/contacts/demo-contact-1?scenario=failure"
-          aria-label="Run controlled failure contact detail API probe"
-          method="get"
-        >
-          <button className="secondary-action" type="submit">
-            Run controlled failure probe
-          </button>
-        </form>
-      </div>
+      <ContactDetailApiProbeForms />
     </div>
   );
 }
@@ -705,8 +634,8 @@ export function ContactDetailTagAndStatusMockDemo() {
               <div key={probe.command}>
                 <dt>{probe.label}</dt>
                 <dd>
-                  <code style={pathWrapStyle}>{probe.command}</code>{" "}
-                  returns {probe.expectedStatus}. {probe.expectation}
+                  <code style={pathWrapStyle}>{probe.command}</code> returns{" "}
+                  {probe.expectedStatus}. {probe.expectation}
                 </dd>
               </div>
             ))}
@@ -727,9 +656,9 @@ export function ContactDetailTagAndStatusMockDemo() {
             <div>
               <dt>Required coverage</dt>
               <dd>
-                Live service and provider files, switch mechanism, required
-                env vars and permissions, privacy and provenance constraints,
-                and replacement tests are documented before live providers are
+                Live service and provider files, switch mechanism, required env
+                vars and permissions, privacy and provenance constraints, and
+                replacement tests are documented before live providers are
                 wired.
               </dd>
             </div>
