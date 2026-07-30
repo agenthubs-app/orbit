@@ -4,65 +4,65 @@
 
 | ID | 客户端 | 环境 | 路由 | 父界面 | 动态参数 | 可达弹层 | 控件 | 测试源码命中 | 运行时结论 |
 | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |
-| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 91 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
+| `mobile:/` | mobile | production | `/` | — |  | 0 | 0 | 92 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
 | `mobile:/[...legacy]` | mobile | production | `/[...legacy]` | `mobile:/` | ...legacy | 0 | 0 | 0 | runtime-partially-verified-expo-legacy-allowlist-boundary |
-| `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 13 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 10 | 2 | runtime-partially-verified-expo-password-reset-restricted |
-| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 10 | 5 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/account` | mobile | production | `/account` | `mobile:/` |  | 0 | 9 | 14 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/account/forgot-password` | mobile | production | `/account/forgot-password` | `mobile:/account` |  | 0 | 9 | 2 | runtime-partially-verified-expo-password-reset-restricted |
+| `mobile:/account/login` | mobile | production | `/account/login` | `mobile:/account` |  | 0 | 9 | 6 | runtime-partially-verified-expo-web-auth-profile-account |
 | `mobile:/account/mobile-google` | mobile | production | `/account/mobile-google` | `mobile:/account` |  | 0 | 0 | 1 | runtime-partially-verified-expo-mobile-google-fallback |
-| `mobile:/account/permissions` | mobile | production | `/account/permissions` | `mobile:/account` |  | 0 | 5 | 1 | runtime-partially-verified-expo-web-permission-persistence |
-| `mobile:/account/signup` | mobile | production | `/account/signup` | `mobile:/account` |  | 0 | 10 | 4 | runtime-partially-verified-expo-signup-validation |
-| `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 6 | 2 | runtime-partially-verified-expo-admin-readonly-boundary |
-| `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
-| `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 6 | 1 | runtime-partially-verified-expo-admin-readonly-boundary |
-| `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 5 | 10 | runtime-partially-verified-expo-agent-actor-scoped-empty-state |
-| `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 31 | 10 | runtime-partially-verified-expo-ai-history-persistence |
-| `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 26 | 5 | runtime-partially-verified-expo-ai-conversation-readback |
-| `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-chat-empty-boundary |
-| `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 9 | 4 | runtime-partially-verified-expo-chat-missing-boundary |
-| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 34 | 16 | runtime-partially-verified-expo-relationship-workbench-navigation |
-| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 19 | 8 | runtime-partially-verified-expo-contact-missing-boundary |
-| `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 8 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
-| `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 12 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
-| `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 10 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
-| `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 14 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
-| `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 34 | 2 | runtime-partially-verified-expo-empty-contact-search-boundary |
-| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 55 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
+| `mobile:/account/permissions` | mobile | production | `/account/permissions` | `mobile:/account` |  | 0 | 4 | 2 | runtime-partially-verified-expo-web-permission-persistence |
+| `mobile:/account/signup` | mobile | production | `/account/signup` | `mobile:/account` |  | 0 | 9 | 4 | runtime-partially-verified-expo-signup-validation |
+| `mobile:/admin` | mobile | production | `/admin` | `mobile:/` |  | 0 | 5 | 3 | runtime-partially-verified-expo-admin-readonly-boundary |
+| `mobile:/admin/access` | mobile | production | `/admin/access` | `mobile:/admin` |  | 0 | 5 | 2 | runtime-partially-verified-expo-admin-readonly-boundary |
+| `mobile:/admin/events` | mobile | production | `/admin/events` | `mobile:/admin` |  | 0 | 5 | 2 | runtime-partially-verified-expo-admin-readonly-boundary |
+| `mobile:/agent` | mobile | production | `/agent` | `mobile:/` |  | 0 | 4 | 11 | runtime-partially-verified-expo-agent-actor-scoped-empty-state |
+| `mobile:/ai` | mobile | production | `/ai` | `mobile:/` |  | 3 | 30 | 11 | runtime-partially-verified-expo-ai-history-persistence |
+| `mobile:/ai/[id]` | mobile | production | `/ai/[id]` | `mobile:/ai` | id | 0 | 25 | 6 | runtime-partially-verified-expo-ai-conversation-readback |
+| `mobile:/chat` | mobile | production | `/chat` | `mobile:/` |  | 0 | 6 | 10 | runtime-partially-verified-expo-chat-empty-boundary |
+| `mobile:/chat/[id]` | mobile | production | `/chat/[id]` | `mobile:/chat` | id | 0 | 8 | 5 | runtime-partially-verified-expo-chat-missing-boundary |
+| `mobile:/contacts` | mobile | production | `/contacts` | `mobile:/` |  | 0 | 33 | 18 | runtime-partially-verified-expo-relationship-workbench-navigation |
+| `mobile:/contacts/[id]` | mobile | production | `/contacts/[id]` | `mobile:/contacts` | id | 0 | 18 | 10 | runtime-partially-verified-expo-contact-missing-boundary |
+| `mobile:/contacts/all-actions` | mobile | production | `/contacts/all-actions` | `mobile:/contacts` |  | 0 | 7 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
+| `mobile:/contacts/dashboard` | mobile | production | `/contacts/dashboard` | `mobile:/contacts` |  | 0 | 11 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/graph` | mobile | production | `/contacts/graph` | `mobile:/contacts` |  | 0 | 9 | 1 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/intros` | mobile | production | `/contacts/intros` | `mobile:/contacts` |  | 0 | 13 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/contacts/list` | mobile | production | `/contacts/list` | `mobile:/contacts` |  | 0 | 33 | 4 | runtime-partially-verified-expo-empty-contact-search-boundary |
+| `mobile:/contacts/new` | mobile | production | `/contacts/new` | `mobile:/contacts` |  | 0 | 54 | 2 | runtime-partially-verified-expo-contact-acquisition-live-boundaries |
 | `mobile:/contacts/pipeline` | mobile | production | `/contacts/pipeline` | `mobile:/contacts` |  | 0 | 7 | 0 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
-| `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 7 | 9 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
-| `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 20 | runtime-partially-verified-expo-live-event-chain |
-| `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 15 | 11 | runtime-partially-verified-expo-live-event-chain |
-| `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
-| `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 13 | 0 | runtime-partially-verified-expo-live-event-chain |
-| `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 5 | runtime-partially-verified-expo-empty-followup-generation-boundary |
-| `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 3 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
-| `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 1 | runtime-partially-verified-expo-home-events-filter-and-detail |
-| `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 32 | 3 | runtime-partially-verified-expo-empty-inbox-compose-boundary |
-| `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 3 | 1 | runtime-partially-verified-expo-admin-account-entry |
-| `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 8 | 1 | runtime-partially-verified-expo-organizer-public-isolation |
-| `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 13 | 4 | runtime-partially-verified-expo-party-truthful-boundary |
-| `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
-| `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 13 | 1 | runtime-partially-verified-expo-party-truthful-boundary |
-| `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 3 | 2 | runtime-partially-verified-expo-platform-public-readonly-boundary |
-| `mobile:/profile` | mobile | production | `/profile` | `mobile:/` |  | 0 | 24 | 17 | runtime-partially-verified-expo-web-auth-profile-account |
-| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 5 | 5 | runtime-partially-verified-expo-register-missing-context |
-| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 5 | 1 | runtime-partially-verified-expo-register-live-preview |
-| `mobile:/schedule` | mobile | production | `/schedule` | `mobile:/` |  | 0 | 7 | 7 | runtime-partially-verified-expo-live-schedule |
-| `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 4 | 2 | runtime-partially-verified-expo-live-schedule-preview |
-| `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 5 | runtime-partially-verified-expo-settings-destinations |
-| `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 6 | 1 | runtime-partially-verified-expo-api-settings-persistence |
-| `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 8 | 0 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
-| `web:/` | web | production | `/` | — |  | 0 | 42 | 286 | runtime-partially-verified-browser-base-state |
-| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 154 | runtime-partially-verified-browser-base-state |
+| `mobile:/dashboard` | mobile | production | `/dashboard` | `mobile:/` |  | 0 | 6 | 10 | runtime-partially-verified-expo-actor-scoped-empty-relationship-boundary |
+| `mobile:/events` | mobile | production | `/events` | `mobile:/` |  | 0 | 17 | 21 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]` | mobile | production | `/events/[id]` | `mobile:/events` | id | 0 | 14 | 12 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]/attendees` | mobile | production | `/events/[id]/attendees` | `mobile:/events/[id]` | id | 0 | 12 | 0 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/events/[id]/register` | mobile | production | `/events/[id]/register` | `mobile:/events/[id]` | id | 0 | 12 | 0 | runtime-partially-verified-expo-live-event-chain |
+| `mobile:/followups` | mobile | production | `/followups` | `mobile:/` |  | 0 | 11 | 6 | runtime-partially-verified-expo-empty-followup-generation-boundary |
+| `mobile:/home` | mobile | production | `/home` | `mobile:/` |  | 0 | 0 | 4 | runtime-partially-verified-expo-canonical-ai-entry-redirect |
+| `mobile:/home/events` | mobile | production | `/home/events` | `mobile:/home` |  | 0 | 21 | 2 | runtime-partially-verified-expo-home-events-filter-and-detail |
+| `mobile:/inbox` | mobile | production | `/inbox` | `mobile:/` |  | 0 | 31 | 4 | runtime-partially-verified-expo-empty-inbox-compose-boundary |
+| `mobile:/login-admin` | mobile | production | `/login-admin` | `mobile:/` |  | 0 | 2 | 2 | runtime-partially-verified-expo-admin-account-entry |
+| `mobile:/o/[slug]` | mobile | production | `/o/[slug]` | `mobile:/` | slug | 0 | 7 | 2 | runtime-partially-verified-expo-organizer-public-isolation |
+| `mobile:/party` | mobile | production | `/party` | `mobile:/` |  | 0 | 12 | 6 | runtime-partially-verified-expo-party-truthful-boundary |
+| `mobile:/party/checkin` | mobile | production | `/party/checkin` | `mobile:/party` |  | 0 | 12 | 2 | runtime-partially-verified-expo-party-truthful-boundary |
+| `mobile:/party/graph` | mobile | production | `/party/graph` | `mobile:/party` |  | 0 | 12 | 2 | runtime-partially-verified-expo-party-truthful-boundary |
+| `mobile:/platform` | mobile | production | `/platform` | `mobile:/` |  | 0 | 2 | 3 | runtime-partially-verified-expo-platform-public-readonly-boundary |
+| `mobile:/profile` | mobile | production | `/profile` | `mobile:/` |  | 0 | 24 | 18 | runtime-partially-verified-expo-web-auth-profile-account |
+| `mobile:/register` | mobile | production | `/register` | `mobile:/` |  | 0 | 4 | 6 | runtime-partially-verified-expo-register-missing-context |
+| `mobile:/register/[code]` | mobile | production | `/register/[code]` | `mobile:/register` | code | 0 | 4 | 2 | runtime-partially-verified-expo-register-live-preview |
+| `mobile:/schedule` | mobile | production | `/schedule` | `mobile:/` |  | 0 | 6 | 8 | runtime-partially-verified-expo-live-schedule |
+| `mobile:/schedule/events/[id]` | mobile | production | `/schedule/events/[id]` | `mobile:/schedule` | id | 0 | 3 | 3 | runtime-partially-verified-expo-live-schedule-preview |
+| `mobile:/settings` | mobile | production | `/settings` | `mobile:/` |  | 0 | 3 | 7 | runtime-partially-verified-expo-settings-destinations |
+| `mobile:/settings/api` | mobile | production | `/settings/api` | `mobile:/settings` |  | 0 | 5 | 2 | runtime-partially-verified-expo-api-settings-persistence |
+| `mobile:/today` | mobile | production | `/today` | `mobile:/` |  | 0 | 7 | 3 | runtime-partially-verified-expo-empty-agent-ledger-boundary |
+| `web:/` | web | production | `/` | — |  | 0 | 42 | 290 | runtime-partially-verified-browser-base-state |
+| `web:/app` | web | production | `/app` | `web:/` |  | 0 | 42 | 158 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/forgot-password` | web | production | `/app/account/forgot-password` | `web:/app` |  | 1 | 13 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 13 | 5 | runtime-partially-verified-browser-base-state |
+| `web:/app/account/login` | web | production | `/app/account/login` | `web:/app` |  | 1 | 13 | 7 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/mobile-google` | web | production | `/app/account/mobile-google` | `web:/app` |  | 0 | 2 | 1 | runtime-partially-verified-browser-base-state |
 | `web:/app/account/signup` | web | production | `/app/account/signup` | `web:/app` |  | 1 | 13 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin` | web | production | `/app/admin` | `web:/app` |  | 0 | 5 | 6 | runtime-partially-verified-web-actor-scoped-admin-dashboard |
 | `web:/app/admin/access` | web | production | `/app/admin/access` | `web:/app/admin` |  | 0 | 1 | 2 | runtime-partially-verified-browser-base-state |
 | `web:/app/admin/events` | web | production | `/app/admin/events` | `web:/app/admin` |  | 0 | 5 | 3 | runtime-partially-verified-web-actor-scoped-admin-events |
 | `web:/app/agent` | web | production | `/app/agent` | `web:/app` |  | 3 | 96 | 27 | runtime-partially-verified-web-agent-session-actor-isolation |
-| `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 1 | 48 | 11 | runtime-partially-verified-web-chat-workspace-actor-isolation |
+| `web:/app/chat` | web | production | `/app/chat` | `web:/app` |  | 1 | 51 | 11 | runtime-partially-verified-web-chat-workspace-actor-isolation |
 | `web:/app/contacts` | web | production | `/app/contacts` | `web:/app` |  | 1 | 61 | 34 | runtime-partially-verified-live-contact-list |
 | `web:/app/contacts/[id]` | web | production | `/app/contacts/[id]` | `web:/app/contacts` | id | 1 | 54 | 31 | runtime-partially-verified-live-contact-detail |
 | `web:/app/contacts/all-actions` | web | production | `/app/contacts/all-actions` | `web:/app/contacts` |  | 1 | 56 | 10 | runtime-partially-verified-web-all-actions-empty-ledger |
@@ -72,7 +72,7 @@
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 1 | 72 | 5 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 1 | 48 | 3 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/dashboard` | web | production | `/app/dashboard` | `web:/app` |  | 1 | 45 | 8 | runtime-partially-verified-web-actor-scoped-relationship-dashboard |
-| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 34 | 29 | runtime-partially-verified-web-public-event-catalogue-controls |
+| `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 0 | 34 | 30 | runtime-partially-verified-web-public-event-catalogue-controls |
 | `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 1 | 52 | 25 | runtime-partially-verified-web-public-event-detail-lifecycle |
 | `web:/app/events/[id]/register` | web | production | `/app/events/[id]/register` | `web:/app/events/[id]` | id | 1 | 22 | 5 | runtime-partially-verified-live-event-registration |
 | `web:/app/followups` | web | production | `/app/followups` | `web:/app` |  | 0 | 0 | 7 | runtime-partially-verified-web-followups-today-compatibility-route |
@@ -88,16 +88,16 @@
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 2 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/app/schedule` | web | production | `/app/schedule` | `web:/app` |  | 0 | 0 | 9 | runtime-partially-verified-web-schedule-today-compatibility-route |
 | `web:/app/schedule/events/[id]` | web | production | `/app/schedule/events/[id]` | `web:/app/schedule` | id | 1 | 44 | 3 | runtime-partially-verified-web-schedule-dynamic-event-identity |
-| `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 1 | 90 | 8 | runtime-partially-verified-web-settings-actor-scoped-lifecycle |
+| `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 1 | 90 | 10 | runtime-partially-verified-web-settings-actor-scoped-lifecycle |
 | `web:/app/today` | web | production | `/app/today` | `web:/app` |  | 2 | 79 | 18 | runtime-partially-verified-web-today-meeting-service-boundary |
-| `web:/dev/agent-test-report` | web | development | `/dev/agent-test-report` | `web:/` |  | 0 | 5 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/dev/capabilities` | web | development | `/dev/capabilities` | `web:/` |  | 0 | 1 | 52 | runtime-partially-verified-browser-base-state |
-| `web:/dev/capabilities/[slug]` | web | development | `/dev/capabilities/[slug]` | `web:/dev/capabilities` | slug | 0 | 335 | 52 | runtime-partially-verified-six-ids |
-| `web:/dev/foundation/domain` | web | development | `/dev/foundation/domain` | `web:/` |  | 0 | 0 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/dev/foundation/mock-registry` | web | development | `/dev/foundation/mock-registry` | `web:/` |  | 0 | 0 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/dev/foundation/style` | web | development | `/dev/foundation/style` | `web:/` |  | 0 | 8 | 1 | runtime-partially-verified-browser-base-state |
-| `web:/dev/knowledge` | web | development | `/dev/knowledge` | `web:/` |  | 0 | 22 | 2 | runtime-partially-verified-browser-base-state |
-| `web:/dev/orbit-ai/trace` | web | development | `/dev/orbit-ai/trace` | `web:/` |  | 0 | 13 | 2 | runtime-partially-verified-browser-base-state |
+| `web:/dev/agent-test-report` | web | development | `/dev/agent-test-report` | `web:/` |  | 0 | 5 | 2 | runtime-partially-verified-browser-base-state |
+| `web:/dev/capabilities` | web | development | `/dev/capabilities` | `web:/` |  | 0 | 1 | 53 | runtime-partially-verified-browser-base-state |
+| `web:/dev/capabilities/[slug]` | web | development | `/dev/capabilities/[slug]` | `web:/dev/capabilities` | slug | 0 | 335 | 53 | runtime-partially-verified-six-ids |
+| `web:/dev/foundation/domain` | web | development | `/dev/foundation/domain` | `web:/` |  | 0 | 0 | 2 | runtime-partially-verified-browser-base-state |
+| `web:/dev/foundation/mock-registry` | web | development | `/dev/foundation/mock-registry` | `web:/` |  | 0 | 0 | 2 | runtime-partially-verified-browser-base-state |
+| `web:/dev/foundation/style` | web | development | `/dev/foundation/style` | `web:/` |  | 0 | 8 | 2 | runtime-partially-verified-browser-base-state |
+| `web:/dev/knowledge` | web | development | `/dev/knowledge` | `web:/` |  | 0 | 22 | 3 | runtime-partially-verified-browser-base-state |
+| `web:/dev/orbit-ai/trace` | web | development | `/dev/orbit-ai/trace` | `web:/` |  | 0 | 13 | 3 | runtime-partially-verified-browser-base-state |
 
 ## 弹层实现
 
@@ -110,5 +110,5 @@
 | `repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1248` | alertdialog | Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话 | `repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1248` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1355` | dialog | Chat history / 对话历史 New chat / 新对话 Go to / 前往 {[ ["/", "home", t({ en: "Home", zh: "首页" })], ["/explore", "calendar", t({ en: "Events", zh: "活动" })], ["/home/schedule", "clock", t({ en: "Calendar", zh: "日程" })], ["/home/cards", "wallet", t({ en: "Contacts", zh: "人脉" })], ].map(([href, icon, label]) => ( <button className="btn btn-quiet" key={href} onClick={() => { onClose(); onNavigate(href); }} style={{ height: "auto", justifyContent: "flex-start", padding: "9px 8px", width: "100%" }} type="button" > <Icon name={icon} size={17} color="var(--accent)" /> {label} </button> ))} Chat history / 对话历史 | `repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1355` | not-runtime-verified |
 | `repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243` | alertdialog | Cancel this event registration? / 确认取消这次活动报名？ You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later. / 取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。 {<div className="orbit-alert error" role="alert"> {error} </div>} / {null} Keep registration / 保留报名 Cancelling… / 取消中… / Confirm cancellation / 确认取消报名 | `repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1243` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1070` | dialog | t({ en: "Relationship inbox", zh: "关系收件箱" }) | `repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1070` | not-runtime-verified |
-| `repos/orbits/app/(app)/app/orbit-account-shell.tsx:165` | dialog | label ?? t({ en: "Dialog", zh: "对话框" }) | `repos/orbits/app/(app)/app/orbit-account-shell.tsx:165` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1104` | dialog | t({ en: "Relationship inbox", zh: "关系收件箱" }) | `repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx:1104` | not-runtime-verified |
+| `repos/orbits/app/(app)/app/orbit-account-shell.tsx:170` | dialog | label ?? t({ en: "Dialog", zh: "对话框" }) | `repos/orbits/app/(app)/app/orbit-account-shell.tsx:170` | not-runtime-verified |
