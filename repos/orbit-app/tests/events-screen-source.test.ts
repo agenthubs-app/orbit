@@ -10,6 +10,10 @@ const screenSource = readFileSync(
 );
 
 test("events screen loads global event value recommendations", () => {
+  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
+  assert.match(screenSource, /useOrbitAuthSession/u);
+  assert.match(screenSource, /signedIn \? \(/u);
+  assert.match(screenSource, /AuthenticatedEventValueRecommendations/u);
   assert.match(screenSource, /useOrbitApiClient/u);
   assert.match(screenSource, /eventValueRecommendationsPath/u);
   assert.match(screenSource, /eventValueRecommendationAcceptPath/u);

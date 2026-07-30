@@ -48,11 +48,11 @@ test("类组件边界只留给 router 之外的层，并且包住整棵树", () 
 
   const boundaryIndex = rootLayoutSource.indexOf("<AppErrorBoundary>");
   const providerIndex = rootLayoutSource.indexOf("<OrbitApiBaseUrlProvider>");
-  const stackIndex = rootLayoutSource.indexOf("<Stack");
+  const navigatorIndex = rootLayoutSource.indexOf("<OrbitRouteAccessBoundary");
 
   assert.notEqual(boundaryIndex, -1);
   assert.ok(boundaryIndex < providerIndex);
-  assert.ok(providerIndex < stackIndex);
+  assert.ok(providerIndex < navigatorIndex);
 
   // 重置整棵树没法在卸载状态下导航，所以这条路不再承担「切走」的职责。
   assert.doesNotMatch(rootLayoutSource, /router\.replace/u);

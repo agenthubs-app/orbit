@@ -16,6 +16,7 @@ import {
   eventValueRecommendationsPath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -301,26 +302,17 @@ function eventSummaryById(events: EventSummary[]): Map<string, EventSummary> {
 export function EventsScreen() {
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const client = useOrbitApiClient();
+  const { signedIn } = useOrbitAuthSession();
   const state = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
+    ORBIT_API_ENDPOINTS.publicEvents,
     (data) => eventsToSummaries(data).length === 0
   );
-  const recommendationsState = useApiResource<unknown>(
-    eventValueRecommendationsPath({ limit: 3 }),
-    (data) => eventValueRecommendationsToView(data).recommendations.length === 0
-  );
-  const [acceptedRecommendation, setAcceptedRecommendation] =
-    useState<EventValueRecommendationAcceptanceView | null>(null);
-  const [acceptError, setAcceptError] = useState<string | null>(null);
-  const [pendingAcceptEventId, setPendingAcceptEventId] = useState<string | null>(
-    null
-  );
+  const [recommendationRefreshKey, setRecommendationRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<EventDiscoveryStatusFilter>("all");
   const [topicFilter, setTopicFilter] = useState("");
-  const refreshing = state.refreshing || recommendationsState.refreshing;
+  const refreshing = state.refreshing;
   const events = state.kind === "success" ? eventsToSummaries(state.data) : [];
   const filteredEvents = filterEventSummaries(events, {
     query,
@@ -335,10 +327,8 @@ export function EventsScreen() {
       : `${filteredEvents.length} / ${events.length} 场活动`;
 
   function refreshAll() {
-    setAcceptedRecommendation(null);
-    setAcceptError(null);
     state.refresh();
-    recommendationsState.refresh();
+    setRecommendationRefreshKey((current) => current + 1);
   }
 
   function openEvent(id: string) {
@@ -350,29 +340,6 @@ export function EventsScreen() {
 
   function openEventRegistration(id: string) {
     router.push(`/events/${encodeURIComponent(id)}/register` as Href);
-  }
-
-  async function acceptEventRecommendation(
-    recommendation: EventValueRecommendationCardView
-  ) {
-    setPendingAcceptEventId(recommendation.id);
-    setAcceptedRecommendation(null);
-    setAcceptError(null);
-
-    const result = await client.post<unknown>(
-      eventValueRecommendationAcceptPath(recommendation.id)
-    );
-
-    if (result.success) {
-      setAcceptedRecommendation(
-        eventValueRecommendationAcceptanceToView(result.data)
-      );
-      recommendationsState.refresh();
-    } else {
-      setAcceptError(result.error.message);
-    }
-
-    setPendingAcceptEventId(null);
   }
 
   return (
@@ -421,20 +388,81 @@ export function EventsScreen() {
           title="没有匹配的活动"
         />
       ) : null}
-      {recommendationsState.kind !== "loading" ? (
-        <EventValueRecommendationsModule
-          acceptError={acceptError}
-          acceptedRecommendation={acceptedRecommendation}
+      {signedIn ? (
+        <AuthenticatedEventValueRecommendations
           baseUrl={baseUrl}
           events={events}
-          onAcceptEvent={acceptEventRecommendation}
+          key={recommendationRefreshKey}
           onOpenEvent={openEvent}
           onRegisterEvent={openEventRegistration}
-          pendingAcceptEventId={pendingAcceptEventId}
-          state={recommendationsState}
         />
       ) : null}
     </AppScreen>
+  );
+}
+
+function AuthenticatedEventValueRecommendations({
+  baseUrl,
+  events,
+  onOpenEvent,
+  onRegisterEvent
+}: {
+  baseUrl: string;
+  events: EventSummary[];
+  onOpenEvent: (id: string) => void;
+  onRegisterEvent: (id: string) => void;
+}) {
+  const client = useOrbitApiClient();
+  const recommendationsState = useApiResource<unknown>(
+    eventValueRecommendationsPath({ limit: 3 }),
+    (data) => eventValueRecommendationsToView(data).recommendations.length === 0
+  );
+  const [acceptedRecommendation, setAcceptedRecommendation] =
+    useState<EventValueRecommendationAcceptanceView | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [pendingAcceptEventId, setPendingAcceptEventId] = useState<string | null>(
+    null
+  );
+
+  async function acceptEventRecommendation(
+    recommendation: EventValueRecommendationCardView
+  ) {
+    setPendingAcceptEventId(recommendation.id);
+    setAcceptedRecommendation(null);
+    setAcceptError(null);
+
+    const result = await client.post<unknown>(
+      eventValueRecommendationAcceptPath(recommendation.id)
+    );
+
+    if (result.success) {
+      setAcceptedRecommendation(
+        eventValueRecommendationAcceptanceToView(result.data)
+      );
+      recommendationsState.refresh();
+    } else {
+      setAcceptError(result.error.message);
+    }
+
+    setPendingAcceptEventId(null);
+  }
+
+  if (recommendationsState.kind === "loading") {
+    return null;
+  }
+
+  return (
+    <EventValueRecommendationsModule
+      acceptError={acceptError}
+      acceptedRecommendation={acceptedRecommendation}
+      baseUrl={baseUrl}
+      events={events}
+      onAcceptEvent={acceptEventRecommendation}
+      onOpenEvent={onOpenEvent}
+      onRegisterEvent={onRegisterEvent}
+      pendingAcceptEventId={pendingAcceptEventId}
+      state={recommendationsState}
+    />
   );
 }
 

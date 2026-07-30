@@ -80,6 +80,10 @@ export function eventDetailPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.events, id);
 }
 
+export function publicEventDetailPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.publicEvents, id);
+}
+
 export function agentActionAcceptPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.agentActions, id)}/accept`;
 }

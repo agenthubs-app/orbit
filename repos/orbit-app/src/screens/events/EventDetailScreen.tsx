@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ImageBackground,
   Pressable,
@@ -12,14 +12,15 @@ import {
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
-  eventDetailPath,
   eventGoalPath,
   eventOpeningLinePath,
   eventPostEventConfirmPath,
   eventPostEventPath,
+  publicEventDetailPath,
   eventReadinessPath,
   eventRecommendationsPath
 } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
@@ -61,19 +62,9 @@ export function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const { baseUrl } = useOrbitApiBaseUrl();
-  const state = useApiResource<unknown>(eventDetailPath(eventId), () => false);
-  const readinessState = useApiResource<unknown>(
-    eventReadinessPath(eventId),
-    () => false
-  );
-  const recommendationsState = useApiResource<unknown>(
-    eventRecommendationsPath(eventId, 3),
-    (data) => eventRecommendationsToView(data).people.length === 0
-  );
-  const postEventState = useApiResource<unknown>(
-    eventPostEventPath(eventId),
-    (data) => eventPostEventReviewToView(data).contacts.length === 0
-  );
+  const { signedIn } = useOrbitAuthSession();
+  const state = useApiResource<unknown>(publicEventDetailPath(eventId), () => false);
+  const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
 
   return (
     <AppScreen
@@ -82,16 +73,9 @@ export function EventDetailScreen() {
         <RefreshControl
           onRefresh={() => {
             state.refresh();
-            readinessState.refresh();
-            recommendationsState.refresh();
-            postEventState.refresh();
+            setPersonalizedRefreshKey((current) => current + 1);
           }}
-          refreshing={
-            state.refreshing ||
-            readinessState.refreshing ||
-            recommendationsState.refreshing ||
-            postEventState.refreshing
-          }
+          refreshing={state.refreshing}
           tintColor={colors.accent}
         />
       }
@@ -108,9 +92,14 @@ export function EventDetailScreen() {
         <EventDetailCard
           baseUrl={baseUrl}
           data={state.data}
-          postEventState={postEventState}
-          readinessState={readinessState}
-          recommendationsState={recommendationsState}
+          personalizedModules={
+            signedIn ? (
+              <AuthenticatedEventDetailModules
+                eventId={eventId}
+                key={personalizedRefreshKey}
+              />
+            ) : null
+          }
         />
       ) : null}
     </AppScreen>
@@ -162,15 +151,11 @@ function EventActionButton({
 function EventDetailCard({
   baseUrl,
   data,
-  postEventState,
-  readinessState,
-  recommendationsState
+  personalizedModules
 }: {
   baseUrl: string;
   data: unknown;
-  postEventState: ApiResourceState<unknown>;
-  readinessState: ApiResourceState<unknown>;
-  recommendationsState: ApiResourceState<unknown>;
+  personalizedModules: ReactNode;
 }) {
   const router = useRouter();
   const event = eventDetailToSummary(data);
@@ -231,21 +216,42 @@ function EventDetailCard({
       <DataCard detail={event.relationshipContext} title="会前重点">
         <Text style={styles.bodyText}>{event.preparation}</Text>
       </DataCard>
+      {personalizedModules}
+      <DataCard detail={event.nextAction} title="下一步" />
+    </>
+  );
+}
+
+function AuthenticatedEventDetailModules({ eventId }: { eventId: string }) {
+  const readinessState = useApiResource<unknown>(
+    eventReadinessPath(eventId),
+    () => false
+  );
+  const recommendationsState = useApiResource<unknown>(
+    eventRecommendationsPath(eventId, 3),
+    (data) => eventRecommendationsToView(data).people.length === 0
+  );
+  const postEventState = useApiResource<unknown>(
+    eventPostEventPath(eventId),
+    (data) => eventPostEventReviewToView(data).contacts.length === 0
+  );
+
+  return (
+    <>
       <EventReadinessModule
-        eventId={event.id}
+        eventId={eventId}
         onGoalConfirmed={readinessState.refresh}
         state={readinessState}
       />
       <EventRecommendationsModule
-        eventId={event.id}
+        eventId={eventId}
         state={recommendationsState}
       />
       <EventPostEventReviewModule
-        eventId={event.id}
+        eventId={eventId}
         onConfirmed={postEventState.refresh}
         state={postEventState}
       />
-      <DataCard detail={event.nextAction} title="下一步" />
     </>
   );
 }
