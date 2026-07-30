@@ -2,13 +2,54 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEventMatchmakingContextService } from "../../features/events/matchmaking/context-service";
-import { createEventMatchmakingService } from "../../features/events/matchmaking/service";
+import {
+  createConfiguredEventMatchmakingService,
+  createEventMatchmakingService,
+} from "../../features/events/matchmaking/service";
 import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
 } from "../../features/events/registration/service";
 import { mockEventRecords } from "../../features/events/event-crud-and-import/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+
+test("configured event matchmaking fails closed without durable storage", () => {
+  const runtimeEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = runtimeEnv.NODE_ENV;
+  const keys = [
+    "ORBIT_EVENT_DATABASE_URL",
+    "ORBIT_LIVE_DATABASE_URL",
+    "ORBIT_DATABASE_URL",
+  ] as const;
+  const previous = Object.fromEntries(
+    keys.map((key) => [key, runtimeEnv[key]]),
+  ) as Record<(typeof keys)[number], string | undefined>;
+
+  try {
+    runtimeEnv.NODE_ENV = "production";
+    for (const key of keys) {
+      delete runtimeEnv[key];
+    }
+
+    assert.throws(
+      () => createConfiguredEventMatchmakingService(),
+      /Event matchmaking requires ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL/u,
+    );
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete runtimeEnv.NODE_ENV;
+    } else {
+      runtimeEnv.NODE_ENV = previousNodeEnv;
+    }
+    for (const key of keys) {
+      if (previous[key] === undefined) {
+        delete runtimeEnv[key];
+      } else {
+        runtimeEnv[key] = previous[key];
+      }
+    }
+  }
+});
 
 test("event matching derives actors from registrations and completes consent plus manual scheduling", async () => {
   const event = mockEventRecords.find(

@@ -47,7 +47,7 @@ test("event detail component renders the restored desktop hierarchy from one exa
   assert.match(html, /Aiko Mori|Luis Ortega|Priya Shah/);
   assert.match(html, /报名|Registration/);
   assert.match(html, /参会者|Attendees/);
-  assert.match(html, /当晚议程|Agenda/);
+  assert.match(html, /活动议程|Agenda/);
   assert.doesNotMatch(html, /Event workspace could not load/);
   assert.doesNotMatch(html, /<details/i);
 });

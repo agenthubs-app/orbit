@@ -7,6 +7,7 @@ import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
 import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
+import { partyHrefForEvent } from "../orbit-product-href";
 import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import {
@@ -179,8 +180,8 @@ function statusCounts(events: OrbitLandingEventView[]) {
   };
 }
 
-function enterEvent() {
-  orbitNavigate("/party");
+function enterEvent(eventId: string) {
+  orbitNavigate(partyHrefForEvent(eventId));
 }
 
 function eventPlace(event: OrbitLandingEventView, t: Translate) {
@@ -223,7 +224,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
     return <a className="card-hover orbit-home-event-row" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={rowStyle}>{content}</a>;
   }
 
-  return <button className="card-hover orbit-home-event-row" onClick={enterEvent} style={rowStyle} type="button">{content}</button>;
+  return <button className="card-hover orbit-home-event-row" onClick={() => enterEvent(event.id)} style={rowStyle} type="button">{content}</button>;
 }
 
 function MyEventsBlock({ events, language, t }: { events: OrbitLandingEventView[]; language: OrbitLanguage; t: Translate }) {
@@ -306,7 +307,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
     return <a {...dataProps} className="card card-hover orbit-account-event-module-card" href={`/app/events/${event.code}`} onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }} style={{ textDecoration: "none" }}>{content}</a>;
   }
 
-  return <button {...dataProps} className="card card-hover orbit-account-event-module-card" onClick={enterEvent} type="button">{content}</button>;
+  return <button {...dataProps} className="card card-hover orbit-account-event-module-card" onClick={() => enterEvent(event.id)} type="button">{content}</button>;
 }
 
 function AccountEventsBlock({ events, language, t }: { events: OrbitLandingEventView[]; language: OrbitLanguage; t: Translate }) {

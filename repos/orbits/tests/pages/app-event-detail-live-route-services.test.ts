@@ -10,10 +10,11 @@ import {
   loadAppEventDetailRoute,
   type AppEventDetailBoundaryModel,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import {
-  eventDetailRouteToOrbitLandingEventView,
-} from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
-import { canUseEventDetailHistoryBack } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+  canUseEventDetailHistoryBack,
+  eventTime,
+} from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -129,10 +130,7 @@ test("app event detail route composes the recommended event with relationship co
 
   if (routeModel.routeState === "success") {
     assert.equal(routeModel.canonicalEvent.id, "demo-event-1");
-    assert.equal(
-      routeModel.canonicalEvent.title,
-      "Climate founders dinner",
-    );
+    assert.equal(routeModel.canonicalEvent.title, "Climate founders dinner");
     assert.equal(routeModel.attendeeRoster.event.id, "demo-event-1");
     assert.equal(routeModel.recommendations.event.id, "demo-event-1");
     assert.equal(routeModel.readiness.event.id, "demo-event-1");
@@ -173,7 +171,6 @@ test("app event detail route preserves success shape through presenter-owned vie
     assert.equal(eventView.stats.youRsvped, true);
     assert.ok(eventView.agenda.length >= 3);
     assert.ok(eventView.stats.attendees.length > 0);
-
   }
 });
 
@@ -246,17 +243,18 @@ test("/app/events/[id] serves public catalogue detail before private owner fallb
     ),
     /actionResult|buildWantConnectActionResult|selectWantConnectTargetContactId/,
   );
-  assert.doesNotMatch(pageSource, /loadRegistrationProfileGuideForCurrentTestUser/);
+  assert.doesNotMatch(
+    pageSource,
+    /loadRegistrationProfileGuideForCurrentTestUser/,
+  );
   assert.doesNotMatch(pageSource, /RegistrationProfileGuide/);
 });
 
 test("public event presentation preserves aggregate count without attendee names", async () => {
-  const { getOrbitLandingViewModel } = await import(
-    "../../app/(app)/app/orbit-landing-route-view-model"
-  );
-  const { presentOrbitEvent } = await import(
-    "../../app/(app)/app/orbit-event-presentation"
-  );
+  const { getOrbitLandingViewModel } =
+    await import("../../app/(app)/app/orbit-landing-route-view-model");
+  const { presentOrbitEvent } =
+    await import("../../app/(app)/app/orbit-event-presentation");
   const event = getOrbitLandingViewModel().events.find(
     (item) => item.id === "event_01",
   );
@@ -273,12 +271,50 @@ test("public event presentation preserves aggregate count without attendee names
   assert.ok(presented.about?.length);
 });
 
+test("event detail presents invalid end times honestly instead of a zero-duration range", async () => {
+  const { getOrbitLandingViewModel } =
+    await import("../../app/(app)/app/orbit-landing-route-view-model");
+  const { presentOrbitEvent } =
+    await import("../../app/(app)/app/orbit-event-presentation");
+  const { sourceBoundedAgenda } =
+    await import("../../app/(app)/app/orbit-event-temporal");
+  const event = getOrbitLandingViewModel().events.find(
+    (item) => item.id === "event_01",
+  );
+  assert.ok(event);
+
+  const invalidEvent = {
+    ...event,
+    agenda: [],
+    endsAt: event.startsAt,
+  };
+  const presented = presentOrbitEvent(invalidEvent, "zh");
+  const time = eventTime(presented, (copy) => copy.zh, "zh");
+  const logistics = presented.about?.find((section) => section.icon === "📍");
+
+  assert.deepEqual(
+    sourceBoundedAgenda({
+      startsAt: event.startsAt,
+      endsAt: event.startsAt,
+      items: [{ label: "must not render", description: "" }],
+    }),
+    [],
+  );
+  assert.deepEqual(presented.agenda, []);
+  assert.match(time.time, /结束时间待确认/u);
+  assert.doesNotMatch(time.time, / - /u);
+  assert.match(logistics?.body ?? "", /结束时间待确认/u);
+});
+
 test("event detail reads registration state from the registration record API", () => {
   const detailSource = source(
     "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
   );
 
-  assert.match(detailSource, /\/api\/events\/.*\/registration\?questions=false/);
+  assert.match(
+    detailSource,
+    /\/api\/events\/.*\/registration\?questions=false/,
+  );
   assert.match(detailSource, /registrationStatus/);
   assert.match(detailSource, /Manage registration|管理报名/);
   assert.match(detailSource, /Register again|重新报名/);
@@ -288,6 +324,24 @@ test("event detail reads registration state from the registration record API", (
     detailSource,
     /canSeeAttendees = youRsvped \|\| event\.status === "ended"/,
   );
+});
+
+test("public event detail keeps registration and matchmaking requests behind auth state", () => {
+  const detailSource = source(
+    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+  );
+  const matchmakingSource = source(
+    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
+  );
+
+  assert.match(detailSource, /if \(!event\.stats\.authed\)/);
+  assert.match(
+    detailSource,
+    /authenticated=\{event\.stats\.authed\}/,
+  );
+  assert.match(matchmakingSource, /if \(!authenticated\)/);
+  assert.match(matchmakingSource, /useState\(!authenticated\)/);
+  assert.match(matchmakingSource, /登录后使用撮合/);
 });
 
 test("event detail with no organizer source renders a non-link pending boundary", () => {
@@ -305,10 +359,7 @@ test("event detail returns only to a distinct same-origin Orbit product page", (
   const current = "http://localhost:3110/app/events/EVT01";
 
   assert.equal(
-    canUseEventDetailHistoryBack(
-      "http://localhost:3110/app/o/evt01",
-      current,
-    ),
+    canUseEventDetailHistoryBack("http://localhost:3110/app/o/evt01", current),
     true,
   );
   assert.equal(
@@ -357,10 +408,7 @@ test("ended event matchmaking does not offer a dead registration route", () => {
     "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
   );
 
-  assert.match(
-    detailSource,
-    /registrationOpen=\{event\.status !== "ended"\}/,
-  );
+  assert.match(detailSource, /registrationOpen=\{event\.status !== "ended"\}/);
   assert.match(matchmakingSource, /会后撮合仅限结束前已确认报名的参与者/);
   assert.match(matchmakingSource, /活动已结束，报名已关闭/);
   assert.match(matchmakingSource, /\{registrationOpen \? \(/);

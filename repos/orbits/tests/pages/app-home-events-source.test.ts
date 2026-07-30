@@ -32,3 +32,21 @@ test("/app/home/events applies the same event presentation layer as /app/events"
   assert.match(pageSource, /presentOrbitEvents/u);
   assert.match(pageSource, /events:\s*presentOrbitEvents\(routeModel\.home\.events,\s*language \?\? "zh"\)/u);
 });
+
+test("active and ended Home event cards preserve the actor-owned event identity when entering Party", () => {
+  const homeSource = source("app/(app)/app/home/orbit-real-home.tsx");
+
+  assert.match(
+    homeSource,
+    /import \{ partyHrefForEvent \} from "\.\.\/orbit-product-href"/u,
+  );
+  assert.match(
+    homeSource,
+    /function enterEvent\(eventId: string\) \{\s*orbitNavigate\(partyHrefForEvent\(eventId\)\);\s*\}/u,
+  );
+  assert.equal(
+    homeSource.match(/onClick=\{\(\) => enterEvent\(event\.id\)\}/gu)?.length,
+    2,
+  );
+  assert.doesNotMatch(homeSource, /orbitNavigate\("\/party"\)/u);
+});

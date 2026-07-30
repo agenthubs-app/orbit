@@ -535,18 +535,29 @@ export function createConfiguredEventMatchmakingService(): EventMatchmakingServi
     new Map<string, EventMatchmakingService>();
   runtimeGlobal.__orbitEventMatchmakingServices = services;
   const configured = createConfiguredPostgresLiveRecordStore();
-  const workspaceId = configured?.workspaceId ?? "mock-event-matchmaking";
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "Event matchmaking requires ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL.",
+      );
+    }
+    const developmentWorkspaceId = "development-event-matchmaking";
+    const developmentCached = services.get(developmentWorkspaceId);
+    if (developmentCached) return developmentCached;
+    const developmentService = createEventMatchmakingService({
+      store: createMemoryLiveRecordStore(),
+      workspaceId: developmentWorkspaceId,
+    });
+    services.set(developmentWorkspaceId, developmentService);
+    return developmentService;
+  }
+  const workspaceId = configured.workspaceId;
   const cached = services.get(workspaceId);
   if (cached) return cached;
-  const service = configured
-    ? createEventMatchmakingService({
-        store: configured.store,
-        workspaceId: configured.workspaceId,
-      })
-    : createEventMatchmakingService({
-        store: createMemoryLiveRecordStore(),
-        workspaceId,
-      });
+  const service = createEventMatchmakingService({
+    store: configured.store,
+    workspaceId,
+  });
   services.set(workspaceId, service);
   return service;
 }

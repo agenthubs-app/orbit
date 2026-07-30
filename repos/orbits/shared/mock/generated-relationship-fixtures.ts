@@ -196,7 +196,7 @@ export const generatedRelationshipFixtures = {
       "name": "东京 AI 落地伙伴对接会",
       "location": "东京",
       "startsAt": "2026-09-01T14:00:00+09:00",
-      "endsAt": "2026-09-01T14:00:00+09:00",
+      "endsAt": "2026-09-01T16:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_signup_02",
@@ -211,7 +211,7 @@ export const generatedRelationshipFixtures = {
       "name": "日中投资人与创业者沙龙",
       "location": "东京",
       "startsAt": "2026-09-15T18:00:00+09:00",
-      "endsAt": "2026-09-15T18:00:00+09:00",
+      "endsAt": "2026-09-15T20:00:00+09:00",
       "source": {
         "type": "event_import",
         "id": "source:event_signup_03",

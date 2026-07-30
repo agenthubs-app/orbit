@@ -3,6 +3,7 @@ import type {
 } from "../../../../../features/events/event-crud-and-import/contract";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
+import { sourceBoundedAgenda } from "../../orbit-event-temporal";
 import type { AppEventDetailSuccessModel } from "./event-detail-route-service";
 
 function codeForEvent(id: string): string {
@@ -42,27 +43,24 @@ function statusFor(input: {
 
 function agendaFor(model: AppEventDetailSuccessModel) {
   const event = model.eventDetail.event;
-  const start = new Date(event.startsAt);
-  const startHour = Number.isFinite(start.getTime()) ? start.getHours() : 18;
-  const pad = (value: number) => String(value).padStart(2, "0");
-
-  return [
-    {
-      description: event.recommendedPreparation || model.readiness.summary,
-      label: "Preparation",
-      time: `${pad(startHour)}:00`,
-    },
-    {
-      description: model.recommendations.summary,
-      label: "Relationship matching",
-      time: `${pad((startHour + 1) % 24)}:00`,
-    },
-    {
-      description: model.postEventReview.summary,
-      label: "Post-event follow-up",
-      time: `${pad((startHour + 2) % 24)}:00`,
-    },
-  ];
+  return sourceBoundedAgenda({
+    startsAt: model.canonicalEvent.startsAt,
+    endsAt: model.canonicalEvent.endsAt,
+    items: [
+      {
+        description: event.recommendedPreparation || model.readiness.summary,
+        label: "Preparation",
+      },
+      {
+        description: model.recommendations.summary,
+        label: "Relationship matching",
+      },
+      {
+        description: model.postEventReview.summary,
+        label: "Post-event follow-up",
+      },
+    ],
+  });
 }
 
 function attendeeViews(model: AppEventDetailSuccessModel) {

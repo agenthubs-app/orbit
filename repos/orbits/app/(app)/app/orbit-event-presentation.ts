@@ -16,14 +16,14 @@
 
 import type { OrbitLanguage } from "./orbit-language-core";
 import type {
-  OrbitEventAgendaItem,
   OrbitLandingEventView,
   OrbitLandingViewModel,
 } from "./orbit-landing-route-view-model";
 import {
-  EVENT_CONTENT,
-  type EventLocalizedText,
-} from "./orbit-event-content";
+  sourceEventRangeLabel,
+  type SourceAgendaItem,
+} from "./orbit-event-temporal";
+import { EVENT_CONTENT, type EventLocalizedText } from "./orbit-event-content";
 
 function pick(text: EventLocalizedText, language: OrbitLanguage): string {
   return text[language] ?? text.zh;
@@ -39,29 +39,77 @@ export function eventTitleForId(
   return content ? pick(content.title, language) : null;
 }
 
-// A clean, generic agenda per language. Replaces the seed adapters' agenda,
-// which packed the raw relationshipContext blob (ids + JA:/ZH:/EN: + operator
-// metadata) into the "当晚议程" section.
-const AGENDA_BY_LANG: Record<OrbitLanguage, OrbitEventAgendaItem[]> = {
+// Localized agenda copy. The clock stays on the source-bounded agenda created
+// by the route adapter; presentation may translate labels but never replace
+// those source-derived times.
+const AGENDA_CONTENT_BY_LANG: Record<OrbitLanguage, SourceAgendaItem[]> = {
   zh: [
-    { time: "18:30", label: "签到与欢迎酒会", description: "入场签到，自由交流与欢迎饮品。" },
-    { time: "19:00", label: "主题环节", description: "围绕当晚主题的分享与圆桌讨论。" },
-    { time: "20:00", label: "结构化对接", description: "按算法匹配的桌次进行相互介绍。" },
-    { time: "21:00", label: "自由交流与合影", description: "延伸交流、交换名片与后续跟进。" },
+    { label: "签到与欢迎", description: "入场签到，自由交流与欢迎。" },
+    { label: "主题环节", description: "围绕活动主题的分享与圆桌讨论。" },
+    { label: "结构化对接", description: "按算法匹配的桌次进行相互介绍。" },
+    { label: "后续确认", description: "确认后续负责人、联系方式与下一步。" },
   ],
   en: [
-    { time: "18:30", label: "Check-in & welcome drinks", description: "Registration, open mingling and welcome drinks." },
-    { time: "19:00", label: "Main session", description: "Theme talk and roundtable discussion." },
-    { time: "20:00", label: "Structured matching", description: "Guided introductions at algorithm-matched tables." },
-    { time: "21:00", label: "Open networking", description: "Extended networking, cards and follow-ups." },
+    {
+      label: "Check-in & welcome",
+      description: "Registration, open mingling and welcome.",
+    },
+    {
+      label: "Main session",
+      description: "Theme talk and roundtable discussion.",
+    },
+    {
+      label: "Structured matching",
+      description: "Guided introductions at algorithm-matched tables.",
+    },
+    {
+      label: "Follow-up confirmation",
+      description: "Confirm owners, contact details and next steps.",
+    },
   ],
   ja: [
-    { time: "18:30", label: "受付・ウェルカムドリンク", description: "受付、自由交流とウェルカムドリンク。" },
-    { time: "19:00", label: "メインセッション", description: "テーマトークとラウンドテーブル。" },
-    { time: "20:00", label: "構造化マッチング", description: "アルゴリズムが組んだ席で相互紹介。" },
-    { time: "21:00", label: "自由交流", description: "延長ネットワーキングと名刺交換。" },
+    { label: "受付・ウェルカム", description: "受付、自由交流とウェルカム。" },
+    {
+      label: "メインセッション",
+      description: "テーマトークとラウンドテーブル。",
+    },
+    {
+      label: "構造化マッチング",
+      description: "アルゴリズムが組んだ席で相互紹介。",
+    },
+    {
+      label: "フォローアップ確認",
+      description: "担当者、連絡先、次のアクションを確認。",
+    },
   ],
 };
+
+function sourceLogisticsBody(
+  event: OrbitLandingEventView,
+  language: OrbitLanguage,
+): string {
+  const range =
+    sourceEventRangeLabel(event.startsAt, event.endsAt, language) ??
+    {
+      en: "Time TBD",
+      ja: "日時未定",
+      zh: "时间待确认",
+    }[language];
+  const venue = event.venue.trim()
+    ? event.venue
+    : {
+        en: "Venue TBD",
+        ja: "会場未定",
+        zh: "地点待确认",
+      }[language];
+  const fee = {
+    en: "Fee and entry terms follow the organizer's latest source record.",
+    ja: "参加費と入場条件は、主催者の最新ソース記録に従います。",
+    zh: "费用与入场条件以主办方最新来源记录为准。",
+  }[language];
+
+  return `• ${range}\n• ${venue}\n• ${fee}`;
+}
 
 function presentEvent(
   event: OrbitLandingEventView,
@@ -73,8 +121,13 @@ function presentEvent(
   }
 
   const summary = pick(content.summary, language);
+  const agendaContent =
+    AGENDA_CONTENT_BY_LANG[language] ?? AGENDA_CONTENT_BY_LANG.zh;
   const about = content.about.map((section) => ({
-    body: pick(section.body, language),
+    body:
+      section.icon === "📍"
+        ? sourceLogisticsBody(event, language)
+        : pick(section.body, language),
     icon: section.icon,
     label: pick(section.label, language),
   }));
@@ -87,7 +140,11 @@ function presentEvent(
     industry: content.industry,
     theme: content.theme,
     tags: [...content.tags],
-    agenda: AGENDA_BY_LANG[language] ?? AGENDA_BY_LANG.zh,
+    agenda: event.agenda.map((item, index) => ({
+      ...item,
+      description: agendaContent[index]?.description ?? item.description,
+      label: agendaContent[index]?.label ?? item.label,
+    })),
     about,
     summaryZh: summary,
     descriptionZh: summary,

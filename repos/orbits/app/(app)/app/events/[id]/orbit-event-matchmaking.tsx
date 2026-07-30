@@ -270,17 +270,19 @@ function RequestCard({
 }
 
 export function OrbitEventMatchmaking({
+  authenticated = true,
   eventId,
   registrationOpen = true,
 }: {
+  authenticated?: boolean;
   eventId: string;
   registrationOpen?: boolean;
 }) {
   const { t } = useOrbitLanguage();
   const [workspace, setWorkspace] =
     useState<EventMatchmakingWorkspace | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [unauthorized, setUnauthorized] = useState(false);
+  const [loading, setLoading] = useState(authenticated);
+  const [unauthorized, setUnauthorized] = useState(!authenticated);
   const [error, setError] = useState("");
   const [working, setWorking] = useState<string | null>(null);
   const visibleError = error
@@ -291,6 +293,12 @@ export function OrbitEventMatchmaking({
     : "";
 
   const load = useCallback(async () => {
+    if (!authenticated) {
+      setUnauthorized(true);
+      setWorkspace(null);
+      return;
+    }
+
     const response = await fetch(
       `/api/events/${encodeURIComponent(eventId)}/matchmaking`,
       { cache: "no-store" },
@@ -306,9 +314,17 @@ export function OrbitEventMatchmaking({
     if (!response.ok || !body.data) throw new Error(messageFrom(body));
     setUnauthorized(false);
     setWorkspace(body.data);
-  }, [eventId]);
+  }, [authenticated, eventId]);
 
   useEffect(() => {
+    if (!authenticated) {
+      setLoading(false);
+      setUnauthorized(true);
+      setWorkspace(null);
+      setError("");
+      return;
+    }
+
     let active = true;
     setLoading(true);
     void load()

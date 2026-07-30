@@ -166,7 +166,9 @@ test("private event composition rejects recommendation and readiness data from a
 
   assert.equal(model.state, "success");
   if (model.state !== "success") {
-    throw new Error("Actor event must remain visible when optional data is foreign.");
+    throw new Error(
+      "Actor event must remain visible when optional data is foreign.",
+    );
   }
 
   assert.deepEqual(
@@ -183,8 +185,7 @@ test("private event composition rejects recommendation and readiness data from a
     0,
   );
   assert.equal(
-    landingEvent.agenda.find((item) => item.label === "Readiness")
-      ?.description,
+    landingEvent.agenda.find((item) => item.label === "Readiness")?.description,
     "Readiness unavailable",
   );
   assert.doesNotMatch(
@@ -275,9 +276,8 @@ test("/app/events renders the public event catalogue without requiring authentic
 });
 
 test("the public event catalogue keeps the full previously approved demo set", async () => {
-  const module = await import(
-    "../../app/(app)/app/orbit-landing-route-view-model"
-  );
+  const module =
+    await import("../../app/(app)/app/orbit-landing-route-view-model");
   const catalogue = module.getOrbitLandingViewModel();
 
   assert.equal(catalogue.events.length, 13);
@@ -301,15 +301,69 @@ test("the public event catalogue keeps the full previously approved demo set", a
   );
 });
 
+test("public event presentation derives agenda clocks from canonical source ranges", async () => {
+  const { getOrbitLandingViewModel } =
+    await import("../../app/(app)/app/orbit-landing-route-view-model");
+  const { presentOrbitEvent } =
+    await import("../../app/(app)/app/orbit-event-presentation");
+  const catalogue = getOrbitLandingViewModel();
+  const expected = {
+    event_01: {
+      code: "EVT01",
+      endsAt: "2026-02-15T12:00:00+09:00",
+      times: ["10:00", "10:30", "11:00", "11:30"],
+    },
+    event_signup_01: {
+      code: "EVTSIGNUP01",
+      endsAt: "2026-08-18T12:00:00+09:00",
+      times: ["10:00", "10:30", "11:00", "11:30"],
+    },
+    event_signup_02: {
+      code: "EVTSIGNUP02",
+      endsAt: "2026-09-01T16:00:00+09:00",
+      times: ["14:00", "14:30", "15:00", "15:30"],
+    },
+    event_signup_03: {
+      code: "EVTSIGNUP03",
+      endsAt: "2026-09-15T20:00:00+09:00",
+      times: ["18:00", "18:30", "19:00", "19:30"],
+    },
+  } as const;
+
+  for (const [eventId, source] of Object.entries(expected)) {
+    const event = catalogue.events.find((item) => item.id === eventId);
+    assert.ok(event, `missing ${eventId}`);
+    assert.equal(event.code, source.code);
+    assert.equal(event.endsAt, source.endsAt);
+    assert.ok(Date.parse(event.endsAt) > Date.parse(event.startsAt));
+
+    const presented = presentOrbitEvent(event, "zh");
+    const logistics = presented.about?.find((section) => section.icon === "📍");
+
+    assert.deepEqual(
+      presented.agenda.map((item) => item.time),
+      source.times,
+    );
+    assert.ok(
+      presented.agenda.every((item) => {
+        const [hour, minute] = item.time.split(":").map(Number);
+        const agendaTime = new Date(event.startsAt);
+        agendaTime.setHours(hour ?? 0, minute ?? 0, 0, 0);
+        return agendaTime.getTime() < Date.parse(event.endsAt);
+      }),
+    );
+    assert.match(logistics?.body ?? "", new RegExp(event.venue, "u"));
+    assert.doesNotMatch(logistics?.body ?? "", /平日晚间|工作日午后|约三小时/u);
+  }
+});
+
 test("registered catalogue attendee access follows persisted registration lifecycle", async () => {
   const actorId = "actor:catalogue-roster-lifecycle";
   const eventId = "event_01";
-  const { eventRegistrationRuntimeService } = await import(
-    "../../features/events/registration/runtime"
-  );
-  const { getOrbitRegisteredEventViewModel } = await import(
-    "../../app/(app)/app/orbit-registered-event-route-view-model"
-  );
+  const { eventRegistrationRuntimeService } =
+    await import("../../features/events/registration/runtime");
+  const { getOrbitRegisteredEventViewModel } =
+    await import("../../app/(app)/app/orbit-registered-event-route-view-model");
 
   assert.equal(
     await getOrbitRegisteredEventViewModel({ actorId, eventId }),

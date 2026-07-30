@@ -236,3 +236,55 @@ test("registration provider persists one live record per event and user", async 
   assert.equal(records[0]?.targetId, "demo-event-2");
   assert.equal(records[0]?.payload.registrationId, registration.id);
 });
+
+test("registration replay ignores JSON object key order", async () => {
+  const memoryProvider = createMemoryEventRegistrationProvider();
+  const firstService = createEventRegistrationService({
+    now: () => "2026-07-24T07:00:00.000Z",
+    provider: memoryProvider,
+  });
+  const input = {
+    answers: {
+      positioning: "Building relationship infrastructure",
+      desiredOutcome: "Meet one climate operator",
+    },
+    eventId: "demo-event-1",
+    userId: "profile_jsonb_order",
+  };
+  const registered = await firstService.register(input);
+  let saves = 0;
+  const jsonbOrderedRegistration = {
+    ...registered,
+    participantProfile: {
+      ...registered.participantProfile,
+      answers: {
+        desiredOutcome: registered.participantProfile.answers.desiredOutcome,
+        positioning: registered.participantProfile.answers.positioning,
+      },
+    },
+  };
+  const replayService = createEventRegistrationService({
+    now: () => "2026-07-24T08:00:00.000Z",
+    provider: {
+      async getRegistration() {
+        return jsonbOrderedRegistration;
+      },
+      async listRegistrations() {
+        return [jsonbOrderedRegistration];
+      },
+      async saveRegistration(registration) {
+        saves += 1;
+        return registration;
+      },
+    },
+  });
+
+  const replayed = await replayService.register(input);
+
+  assert.equal(saves, 0);
+  assert.equal(replayed.updatedAt, registered.updatedAt);
+  assert.equal(
+    replayed.participantProfile.updatedAt,
+    registered.participantProfile.updatedAt,
+  );
+});

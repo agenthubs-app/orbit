@@ -6,6 +6,7 @@ import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
 import { partyHrefForEvent } from "../../orbit-product-href";
 import { agentHrefForContext } from "../../orbit-agent-context-href";
+import { eventTemporalBounds } from "../../orbit-event-temporal";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
@@ -30,11 +31,11 @@ function fmtDay(date: Date, language: OrbitLanguage) {
   return new Intl.DateTimeFormat(dateLocale(language), { day: "2-digit", ...tz }).format(date);
 }
 
-function eventTime(event: OrbitLandingEventView, t: Translate, language: OrbitLanguage) {
-  const start = new Date(event.startsAt);
-  const end = new Date(event.endsAt);
+export function eventTime(event: OrbitLandingEventView, t: Translate, language: OrbitLanguage) {
+  const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
+  const start = bounds.start;
 
-  if (!Number.isFinite(start.getTime())) {
+  if (start === null) {
     return { date: t({ en: "Time TBD", zh: "时间待定" }), day: "--", month: "--", time: t({ en: "Start time TBD", zh: "开始时间待定" }) };
   }
 
@@ -44,7 +45,9 @@ function eventTime(event: OrbitLandingEventView, t: Translate, language: OrbitLa
     date,
     day: fmtDay(start, language),
     month: fmtMonth(start, language),
-    time: Number.isFinite(end.getTime()) ? `${timeFormatter.format(start)} - ${timeFormatter.format(end)}` : timeFormatter.format(start),
+    time: bounds.hasValidRange && bounds.end !== null
+      ? `${timeFormatter.format(start)} - ${timeFormatter.format(bounds.end)}`
+      : `${timeFormatter.format(start)} · ${t({ en: "End time TBD", zh: "结束时间待确认" })}`,
   };
 }
 
@@ -240,6 +243,11 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
   const hiddenAttendeeCount = allAttendees.length - attendees.length;
 
   useEffect(() => {
+    if (!event.stats.authed) {
+      setRegistrationStatus(null);
+      return;
+    }
+
     const controller = new AbortController();
 
     void fetch(
@@ -265,7 +273,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
       });
 
     return () => controller.abort();
-  }, [event.id]);
+  }, [event.id, event.stats.authed]);
 
   return (
     <>
@@ -289,6 +297,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
       ) : null}
 
       <OrbitEventMatchmaking
+        authenticated={event.stats.authed}
         eventId={event.id}
         registrationOpen={event.status !== "ended"}
       />
@@ -314,7 +323,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
 
       {event.agenda.length ? (
         <section>
-          <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "Agenda", zh: "当晚议程" })}</h3>
+          <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "Agenda", zh: "活动议程" })}</h3>
           <div style={{ position: "relative", paddingLeft: 4 }}>
             {event.agenda.map((item, index) => (
               <div key={`${item.time}-${item.label}`} style={{ display: "flex", gap: 16, paddingBottom: index < event.agenda.length - 1 ? 18 : 0 }}>

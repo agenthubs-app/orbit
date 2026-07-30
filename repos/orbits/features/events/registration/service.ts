@@ -64,7 +64,9 @@ function sameAnswers(
   left: EventParticipantProfileAnswers,
   right: EventParticipantProfileAnswers,
 ): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return EVENT_PARTICIPANT_PROFILE_FIELDS.every(
+    (field) => left[field] === right[field],
+  );
 }
 
 function noExternalSideEffects(): EventRegistration["sideEffects"] {

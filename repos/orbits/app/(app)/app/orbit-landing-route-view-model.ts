@@ -10,9 +10,9 @@ import {
   eventStatusFor,
   eventTagsFor,
   eventThemeFor,
-  formatDuration,
   initialFor,
 } from "./orbit-event-view-helpers";
+import { sourceBoundedAgenda } from "./orbit-event-temporal";
 
 export interface OrbitLandingEventView {
   about?: OrbitEventAboutSection[];
@@ -122,32 +122,28 @@ function mapPositionFor(event: EventDTO): [number, number] {
 }
 
 function agendaFor(event: EventDTO): OrbitEventAgendaItem[] {
-  const startHour = Number(event.startsAt.slice(11, 13));
-  const firstHour = Number.isFinite(startHour) ? startHour : 18;
-  const pad = (value: number) => String(value).padStart(2, "0");
-
-  return [
-    {
-      time: `${pad(firstHour)}:00`,
-      label: "签到与资料确认",
-      description: "根据本地数据库中的来源资料确认身份和目标。",
-    },
-    {
-      time: `${pad((firstHour + 1) % 24)}:00`,
-      label: "主题交流",
-      description: `${eventIndustryFor(event)} 相关的结构化交流。`,
-    },
-    {
-      time: `${pad((firstHour + 2) % 24)}:00`,
-      label: "关系匹配",
-      description: "使用 source-backed 关系图生成推荐与后续动作。",
-    },
-    {
-      time: `${pad((firstHour + 3) % 24)}:00`,
-      label: "会后跟进",
-      description: `预计活动时长 ${formatDuration(event.startsAt, event.endsAt)}。`,
-    },
-  ];
+  return sourceBoundedAgenda({
+    startsAt: event.startsAt,
+    endsAt: event.endsAt ?? "",
+    items: [
+      {
+        label: "签到与资料确认",
+        description: "根据本地数据库中的来源资料确认身份和目标。",
+      },
+      {
+        label: "主题交流",
+        description: `${eventIndustryFor(event)} 相关的结构化交流。`,
+      },
+      {
+        label: "关系匹配",
+        description: "使用 source-backed 关系图生成推荐与后续动作。",
+      },
+      {
+        label: "会后跟进",
+        description: "活动结束前确认后续负责人和下一步。",
+      },
+    ],
+  });
 }
 
 function eventView(
