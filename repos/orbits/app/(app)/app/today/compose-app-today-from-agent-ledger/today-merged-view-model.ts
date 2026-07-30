@@ -298,6 +298,7 @@ function confirmedEventTimelineItems(
     });
     items.push({
       cid: connectionId,
+      contactId: null,
       date: parsed.date,
       detailHref: arrangement.href,
       dur: durationLabel(parsed.durationMinutes),

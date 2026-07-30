@@ -109,6 +109,7 @@ test("live followup task generation reads generated tasks from shared live stora
     expectedTask.connectionId,
   );
   assert.equal(generatedResult.data.tasks[0]?.contactName, expectedContact.displayName);
+  assert.equal(generatedResult.data.tasks[0]?.contactId, expectedContact.id);
   assert.equal(
     generatedResult.data.tasks[0]?.organization,
     expectedContact.organization,

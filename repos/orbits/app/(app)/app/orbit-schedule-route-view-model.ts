@@ -9,6 +9,12 @@ export interface OrbitScheduleConnectionView {
 
 export interface OrbitScheduleItemView {
   cid: string;
+  /**
+   * `undefined` preserves legacy schedule behavior and uses `cid` as a contact.
+   * `null` explicitly means this timeline item has no contact identity, so the
+   * shared row must not fabricate a contact link or compose recipient.
+   */
+  contactId?: string | null;
   date: string;
   /**
    * Optional override for the card's "查看名片/起草邮件" links. Defaults to

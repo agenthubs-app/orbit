@@ -65,7 +65,12 @@ export function SchedRow({
   const status = scheduleStatusColor(schedule.status);
   const topic = localizeTopic(schedule.topic, connection, language);
   const role = localizeRole(connection.title, language);
-  const detailHref = schedule.detailHref ?? `/app/contacts/${connection.id}`;
+  const contactId =
+    schedule.contactId === null
+      ? null
+      : (schedule.contactId ?? connection.id);
+  const detailHref =
+    schedule.detailHref ?? (contactId ? `/app/contacts/${contactId}` : null);
 
   return (
     <div className={`sch-card${open ? " is-open" : ""}`}>
@@ -102,23 +107,35 @@ export function SchedRow({
             </span>
           ) : null}
           <div className="sch-detail-actions">
-            <a className="btn btn-ghost btn-sm" href={detailHref}>
-              <Icon name="user" size={14} />{t({ en: "View contact", zh: "查看名片" })}
-            </a>
-            <button
-              className="btn btn-primary btn-sm"
-              data-inbox-compose
-              onClick={() =>
-                openRelationshipInboxCompose({
-                  organization: connection.company,
-                  recipient: connection.displayName,
-                  subject: topic,
-                })
-              }
-              type="button"
-            >
-              <Icon name="mail" size={14} />{t({ en: "Draft email", zh: "起草邮件" })}
-            </button>
+            {contactId && detailHref ? (
+              <>
+                <a className="btn btn-ghost btn-sm" href={detailHref}>
+                  <Icon name="user" size={14} />{t({ en: "View contact", zh: "查看名片" })}
+                </a>
+                <button
+                  className="btn btn-primary btn-sm"
+                  data-inbox-compose
+                  onClick={() =>
+                    openRelationshipInboxCompose({
+                      contactId,
+                      organization: connection.company,
+                      recipient: connection.displayName,
+                      subject: topic,
+                    })
+                  }
+                  type="button"
+                >
+                  <Icon name="mail" size={14} />{t({ en: "Draft email", zh: "起草邮件" })}
+                </button>
+              </>
+            ) : (
+              <span className="text-caption">
+                {t({
+                  en: "No contact is linked to this item.",
+                  zh: "此事项未关联联系人，无法查看名片或起草邮件。",
+                })}
+              </span>
+            )}
           </div>
         </div>
       ) : null}

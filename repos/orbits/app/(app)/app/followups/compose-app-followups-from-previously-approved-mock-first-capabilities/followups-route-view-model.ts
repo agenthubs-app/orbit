@@ -441,7 +441,11 @@ function workflowCardsViewModel(input: {
   const cards: AppFollowupsWorkflowCardViewModel[] = [];
 
   for (const task of input.tasks) {
-    const targetContactId = contactIdFromConnectionIdentity(task.connectionId);
+    const targetContactId =
+      task.contactId === null
+        ? null
+        : (task.contactId ??
+          contactIdFromConnectionIdentity(task.connectionId));
 
     cards.push({
       body: task.recommendedAction,
@@ -470,9 +474,13 @@ function workflowCardsViewModel(input: {
           task.organization.normalize("NFKC") ===
             input.draft?.organization.normalize("NFKC"),
       ) ?? null;
-    const targetContactId = matchingTask
-      ? contactIdFromConnectionIdentity(matchingTask.connectionId)
-      : null;
+    const targetContactId =
+      matchingTask?.contactId === null
+        ? null
+        : matchingTask
+          ? (matchingTask.contactId ??
+            contactIdFromConnectionIdentity(matchingTask.connectionId))
+          : null;
 
     cards.push({
       body: input.draft.body,

@@ -90,9 +90,11 @@ export function followupsRouteToOrbitScheduleViewModel(
   const ensureConnection = (
     relationship: string,
     targetContactId?: string | null,
+    fallbackId = "priority",
   ): OrbitScheduleConnectionView => {
-    const { company, name } = splitRelationship(relationship);
-    const id = targetContactId ?? connectionIdFor(name);
+    const { company: relationshipCompany, name } = splitRelationship(relationship);
+    const company = targetContactId ? relationshipCompany : "";
+    const id = targetContactId ?? `task:${fallbackId}`;
     const existing = connections.get(id);
 
     if (existing) {
@@ -105,7 +107,7 @@ export function followupsRouteToOrbitScheduleViewModel(
       g: "g-violet",
       id,
       initial: initialFor(name),
-      title: "Relationship contact",
+      title: targetContactId ? "Relationship contact" : "Follow-up task",
     };
 
     connections.set(id, connection);
@@ -123,10 +125,12 @@ export function followupsRouteToOrbitScheduleViewModel(
       const connection = ensureConnection(
         card.relationship,
         card.targetContactId,
+        card.id,
       );
 
       return {
         cid: connection.id,
+        contactId: card.targetContactId ?? null,
         date: dateForCard(card, index),
         dur: "30 分钟",
         id: `${card.id}:${index}`,

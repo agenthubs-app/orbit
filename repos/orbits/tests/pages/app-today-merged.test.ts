@@ -448,6 +448,47 @@ test("meeting cards expose a real compose action without repeating their topic",
   );
 });
 
+test("timeline items without a canonical contact render no contact or compose action", () => {
+  const fixture: OrbitScheduleViewModel = {
+    connections: [
+      {
+        company: "",
+        displayName: "未关联联系人",
+        g: "g-violet",
+        id: "task:unlinked",
+        initial: "未",
+        title: "Relationship task",
+      },
+    ],
+    schedules: [
+      {
+        cid: "task:unlinked",
+        contactId: null,
+        date: "2026-07-20",
+        dur: "30 分钟",
+        id: "schedule:unlinked",
+        place: "",
+        status: "待确认",
+        time: "09:30",
+        topic: "复核未关联任务",
+      },
+    ],
+    today: { d: 20, m: 6, y: 2026 },
+  };
+
+  const html = renderToStaticMarkup(
+    createElement(OrbitTodayTimeSpine, {
+      initialSelected: { d: 20, m: 6, y: 2026 },
+      initialView: "day",
+      viewModel: fixture,
+    }),
+  );
+
+  assert.match(html, /此事项未关联联系人，无法查看名片或起草邮件/);
+  assert.doesNotMatch(html, /href="\/app\/contacts\//);
+  assert.doesNotMatch(html, /data-inbox-compose/);
+});
+
 // ---- T2: decision cards become inline accordions (design doc §2, §5) ----
 
 test("without ?entry= no decision card is expanded", async () => {

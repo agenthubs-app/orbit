@@ -61,6 +61,7 @@ export interface FollowupTaskContract {
   priority: FollowupPriorityCode;
   dueAt?: string;
   dueInDays: number;
+  contactId?: string | null;
   connectionId: string;
   contactName: string;
   organization: string;

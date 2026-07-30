@@ -663,4 +663,44 @@ test("followup schedules preserve real contact ids instead of display-name slugs
 
   assert.equal(schedule.connections[0]?.id, "contact_021");
   assert.equal(schedule.schedules[0]?.cid, "contact_021");
+  assert.equal(schedule.schedules[0]?.contactId, "contact_021");
+});
+
+test("followup schedules keep an unlinked task explicit and never synthesize a contact id", () => {
+  const schedule = followupsRouteToOrbitScheduleViewModel({
+    state: "success",
+    workspace: {
+      ledger: {
+        draftCount: 0,
+        dueTodayCount: 1,
+        reminderCount: 0,
+        taskCount: 1,
+      },
+      priority: null,
+      reminderQueue: {
+        entries: [],
+        evidenceIds: [],
+      },
+      workflowCards: [
+        {
+          body: "Review the task without inventing a person",
+          due: "Due today",
+          evidenceIds: ["evidence:task:unlinked"],
+          id: "task:unlinked",
+          recordIds: [],
+          relationship: "未关联联系人 · ",
+          reviewStatus: "Held for review",
+          sourceContext: "live task",
+          stepLabel: "Review",
+          targetContactId: null,
+          title: "Review an unlinked task",
+        },
+      ],
+    },
+  });
+
+  assert.equal(schedule.connections[0]?.id, "task:task:unlinked");
+  assert.equal(schedule.schedules[0]?.cid, "task:task:unlinked");
+  assert.equal(schedule.schedules[0]?.contactId, null);
+  assert.doesNotMatch(schedule.connections[0]?.id ?? "", /^contact:/);
 });
