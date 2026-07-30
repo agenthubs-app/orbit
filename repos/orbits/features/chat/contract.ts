@@ -65,6 +65,7 @@ export interface ChatMessageThreadInput {
 export interface ChatSendMessageInput {
   conversationId?: string | null;
   body?: string | null;
+  requestId?: string | null;
   scenario?: ChatConversationMockScenario | string | null;
 }
 
@@ -131,9 +132,9 @@ export const CHAT_CONVERSATION_MOCK_ERROR_DEFINITIONS = {
     code: "CHAT_CONVERSATION_MOCK_FAILED",
     appCode: "SERVICE_UNAVAILABLE",
     message:
-      "The chat conversation and message mock boundary is pinned to a controlled failure scenario.",
+      "Chat message recording is temporarily unavailable because a controlled failure scenario is active.",
     recovery:
-      "Render the controlled failure state and do not retry live chat transport, websocket subscriptions, production message storage, network, device, database, AI, email, calendar, or notification services.",
+      "Keep the message for review and retry recording after the controlled failure scenario is cleared.",
   },
   CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED: {
     code: "CHAT_CONVERSATION_LIVE_STORE_UNCONFIGURED",
@@ -601,6 +602,7 @@ export type AsyncConversationStageResult =
 export interface AsyncConversationCreateFromDraftInput {
   actorDisplayName?: string | null;
   actorId?: string | null;
+  requestId?: string | null;
   contactId?: string | null;
   participantName?: string | null;
   organization?: string | null;

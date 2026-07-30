@@ -233,3 +233,89 @@ test("chat conversation factory registers live mode and fails closed without dat
     }
   }
 });
+
+test("live chat message request identity makes retries idempotent", async () => {
+  const workspaceId = "workspace:chat-conversation-idempotency-test";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    store,
+    workspaceId,
+  });
+
+  const service = createLiveChatConversationMessageService({
+    provider: createStorageChatConversationMessageProvider({
+      sourceLabel: "Chat idempotency memory storage",
+      store,
+      workspaceId,
+    }),
+  });
+  const listed = await service.listConversations();
+  assert.equal(listed.success, true);
+  const conversationId = listed.success
+    ? listed.data.conversations[0]?.conversationId
+    : null;
+  assert.ok(conversationId);
+
+  const input = {
+    body: "Record this note exactly once.",
+    conversationId,
+    requestId: "request:chat-retry:stable-001",
+  };
+  const first = await service.sendMessage(input);
+  const replay = await service.sendMessage(input);
+  const alteredReplay = await service.sendMessage({
+    ...input,
+    body: "A changed retry must not overwrite the first write.",
+  });
+  const intentionalRepeat = await service.sendMessage({
+    ...input,
+    requestId: "request:chat-retry:stable-002",
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(replay.success, true);
+  assert.equal(alteredReplay.success, true);
+  assert.equal(intentionalRepeat.success, true);
+  if (
+    !first.success ||
+    !replay.success ||
+    !alteredReplay.success ||
+    !intentionalRepeat.success
+  ) {
+    return;
+  }
+
+  assert.equal(replay.data.message.messageId, first.data.message.messageId);
+  assert.equal(replay.data.message.liveDatabaseWriteExecuted, false);
+  assert.equal(replay.data.provenance.liveDatabaseWriteExecuted, false);
+  assert.equal(
+    alteredReplay.data.message.messageId,
+    first.data.message.messageId,
+  );
+  assert.equal(alteredReplay.data.message.body, input.body);
+  assert.equal(alteredReplay.data.provenance.liveDatabaseWriteExecuted, false);
+  assert.equal(
+    intentionalRepeat.data.provenance.liveDatabaseWriteExecuted,
+    true,
+  );
+  assert.notEqual(
+    intentionalRepeat.data.message.messageId,
+    first.data.message.messageId,
+  );
+  assert.equal(
+    intentionalRepeat.data.messages.filter(
+      (message) => message.body === input.body,
+    ).length,
+    2,
+  );
+  assert.equal(
+    store
+      .listRecords({
+        collectionName: "messages",
+        workspaceId,
+      })
+      .filter((record) => record.payload.body === input.body).length,
+    2,
+  );
+});

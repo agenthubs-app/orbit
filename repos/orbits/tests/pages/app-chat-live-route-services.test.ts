@@ -147,6 +147,9 @@ test("chat adjunct live storage adapters reuse the configured chat record store"
 
 test("/app/chat page authenticates before loading the actor-scoped route adapter", () => {
   const pageSource = source("app/(app)/app/chat/page.tsx");
+  const boundarySource = source(
+    "app/(app)/app/chat/chat-route-state-boundary.tsx",
+  );
   const routeSource = source(
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
@@ -159,7 +162,9 @@ test("/app/chat page authenticates before loading the actor-scoped route adapter
   assert.match(pageSource, /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /ChatWorkspace/);
-  assert.match(pageSource, /StateView/);
+  assert.match(pageSource, /ChatRouteStateBoundary/);
+  assert.match(boundarySource, /StateView/);
+  assert.match(boundarySource, /AccountTopNav/);
   assert.doesNotMatch(pageSource, /loadAppAsyncChatCommandCenterViewModel/);
   assert.doesNotMatch(
     pageSource,

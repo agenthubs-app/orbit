@@ -598,7 +598,7 @@ test("chat conversation API routes return stable envelopes with empty and failur
     error: {
       code: "SERVICE_UNAVAILABLE",
       message:
-        "The chat conversation and message mock boundary is pinned to a controlled failure scenario.",
+        "Chat message recording is temporarily unavailable because a controlled failure scenario is active.",
       context: {
         boundary: "developer-admin",
         chatConversationMockErrorCode: "CHAT_CONVERSATION_MOCK_FAILED",

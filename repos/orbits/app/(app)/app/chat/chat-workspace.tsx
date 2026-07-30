@@ -1,6 +1,7 @@
 import type { OrbitLanguage } from "../orbit-language-core";
 import { AccountTopNav } from "../orbit-account-shell";
 import { Icon } from "../orbit-reference-primitives";
+import { ChatMessageComposer } from "./chat-message-composer";
 import type { AppChatWorkspaceViewModel } from "./compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
 
 function copy(
@@ -139,7 +140,7 @@ export function ChatWorkspace({
           </div>
 
           <footer>
-            <div>
+            <div className="orbit-chat-review">
               <span className="eyebrow">
                 {copy(language, { en: "Review-only suggestion", zh: "仅供复核的建议" })}
               </span>
@@ -147,18 +148,16 @@ export function ChatWorkspace({
                 {workspace.primaryAssist?.suggestedText ??
                   workspace.relationshipContext.recommendedFollowup}
               </p>
-              <small>
-                {copy(language, {
-                  en: "Nothing is sent or saved from this page.",
-                  zh: "此页面不会发送消息或保存草稿。",
-                })}
-              </small>
             </div>
             <a className="btn btn-soft btn-sm" href={agentHref}>
               <Icon name="sparkle" size={15} />
               {copy(language, { en: "Plan with iOrbit", zh: "让 iOrbit 帮我规划" })}
             </a>
           </footer>
+          <ChatMessageComposer
+            conversationId={selected.conversationId}
+            language={language}
+          />
         </section>
 
         <aside
@@ -237,6 +236,15 @@ export function ChatWorkspace({
         .orbit-chat-thread > footer { align-items: flex-end; background: var(--surface); border-top: 1px solid var(--border); display: flex; gap: 16px; justify-content: space-between; padding: 16px 24px; }
         .orbit-chat-thread footer p { color: var(--ink); font-size: 13px; line-height: 1.5; margin: 5px 0 3px; }
         .orbit-chat-thread footer small { color: var(--text-3); }
+        .orbit-chat-composer { background: var(--surface); border-top: 1px solid var(--border); display: grid; gap: 8px; padding: 14px 24px 18px; }
+        .orbit-chat-composer > label { color: var(--ink); font-size: 12px; font-weight: 700; }
+        .orbit-chat-composer > div { align-items: flex-end; display: flex; gap: 10px; }
+        .orbit-chat-composer textarea { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md); color: var(--ink); flex: 1; font: inherit; line-height: 1.45; min-height: 44px; padding: 10px 12px; resize: vertical; }
+        .orbit-chat-composer textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent-softer); }
+        .orbit-chat-composer small { color: var(--text-3); }
+        .orbit-chat-composer p { font-size: 12px; margin: 0; }
+        .orbit-chat-composer p.is-error { color: var(--danger); }
+        .orbit-chat-composer p.is-success { color: var(--success); }
         .orbit-chat-context { background: var(--bg-sunken); border-left: 1px solid var(--border); padding: 20px; }
         .orbit-chat-context section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); margin-bottom: 12px; padding: 15px; }
         .orbit-chat-context h3 { color: var(--ink); font-size: 15px; line-height: 1.4; margin: 7px 0; }
@@ -255,6 +263,8 @@ export function ChatWorkspace({
           .orbit-chat-list nav a { flex: 0 0 240px; }
           .orbit-chat-thread { min-height: 65dvh; }
           .orbit-chat-thread > header, .orbit-chat-thread > footer { padding: 16px 18px; }
+          .orbit-chat-composer { padding: 14px 18px 18px; }
+          .orbit-chat-composer > div { align-items: stretch; flex-direction: column; }
           .orbit-chat-messages { padding: 18px; }
           .orbit-chat-messages article { max-width: 90%; }
           .orbit-chat-thread > footer { align-items: stretch; flex-direction: column; }

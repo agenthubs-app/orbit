@@ -92,6 +92,9 @@ async function readInput(
       messageBody ??
       (body.hasBody ? null : CHAT_CONVERSATION_MOCK_DEFAULT_MESSAGE_BODY),
     conversationId,
+    requestId:
+      request.headers.get("idempotency-key") ??
+      readString(body.value.requestId),
     scenario: searchParams.get("scenario") ?? readString(body.value.scenario),
   };
 }

@@ -55,6 +55,8 @@ test("/app/chat renders the source-backed conversation workspace", async () => {
     assert.match(html, /data-orbit-real-page="chat"/);
     assert.match(html, /会话|Conversations/);
     assert.match(html, /消息线程|Message thread/);
+    assert.match(html, /记录一条消息/);
+    assert.match(html, /不会向外部发送/);
     assert.doesNotMatch(html, /app-chat-command-center|Relationship inbox/);
   });
 });
@@ -138,6 +140,19 @@ test("public Chat query input cannot activate scenarios or run an Agent turn", a
     if (controlledState.state === "route-state") {
       assert.equal(controlledState.routeState.scenario, "empty");
       assert.equal(controlledState.routeState.errorCode, null);
+
+      const { ChatRouteStateBoundary } = await import(
+        "../../app/(app)/app/chat/chat-route-state-boundary"
+      );
+      const stateHtml = renderToStaticMarkup(
+        React.createElement(ChatRouteStateBoundary, {
+          routeState: controlledState.routeState,
+        }),
+      );
+      assert.match(stateHtml, /data-orbit-route="app-chat-route-state"/);
+      assert.match(stateHtml, /data-orbit-real-page="chat"/);
+      assert.match(stateHtml, /class="hit-44 ri-trigger"/);
+      assert.match(stateHtml, /aria-label="打开收件箱"/);
     }
   });
 });
@@ -173,13 +188,18 @@ test("/app/chat fails closed when live chat storage is unavailable", async () =>
 
 test("app chat route has one production composition and no dead mock command center", () => {
   const pageSource = source("app/(app)/app/chat/page.tsx");
+  const boundarySource = source(
+    "app/(app)/app/chat/chat-route-state-boundary.tsx",
+  );
   const routeSource = source(
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
 
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /ChatWorkspace/);
-  assert.match(pageSource, /StateView/);
+  assert.match(pageSource, /ChatRouteStateBoundary/);
+  assert.match(boundarySource, /StateView/);
+  assert.match(boundarySource, /AccountTopNav/);
   assert.doesNotMatch(
     pageSource,
     /ChatCommandCenter|chatRouteToOrbitAgentViewModel|OrbitRealAgent/,

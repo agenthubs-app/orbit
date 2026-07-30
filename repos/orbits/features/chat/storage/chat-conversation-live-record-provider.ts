@@ -4,6 +4,7 @@ import type {
   ConversationDTO,
   MessageDTO,
 } from "../../../shared/domain/contracts";
+import { createHash } from "node:crypto";
 import {
   isRelationshipStage,
   isRelationshipTrustLevel,
@@ -377,6 +378,26 @@ function nextMessageId(
   return `${prefix}_${Date.now()}`;
 }
 
+function idempotentMessageId(input: {
+  accountId?: string;
+  conversationId: string;
+  requestId: string;
+  workspaceId: string;
+}): string {
+  const digest = createHash("sha256")
+    .update(
+      [
+        input.workspaceId,
+        input.accountId ?? "shared",
+        input.conversationId,
+        input.requestId,
+      ].join("\u0000"),
+    )
+    .digest("hex");
+
+  return `message_live_request_${digest}`;
+}
+
 function messagePayload(input: {
   body: string;
   conversationId: string;
@@ -427,7 +448,18 @@ async function appendMessage(
   ) {
     return graph;
   }
-  const messageId = nextMessageId(input.conversationId, graph.messages);
+  const requestId = input.requestId?.trim();
+  const messageId = requestId
+    ? idempotentMessageId({
+        accountId,
+        conversationId: input.conversationId,
+        requestId,
+        workspaceId,
+      })
+    : nextMessageId(input.conversationId, graph.messages);
+  if (graph.messages.some((message) => message.id === messageId)) {
+    return graph;
+  }
   const ids =
     input.evidenceIds.length > 0
       ? ([input.evidenceIds[0], ...input.evidenceIds.slice(1)] as readonly [

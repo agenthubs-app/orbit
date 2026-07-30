@@ -25,6 +25,7 @@ import type {
   ConversationDTO,
   MessageDTO,
 } from "../../shared/domain/contracts";
+import { createHash } from "node:crypto";
 import type { ChatConversationMessageService } from "./service";
 
 type LiveChatProviderResult<TResult> = TResult | Promise<TResult>;
@@ -42,6 +43,7 @@ export interface LiveChatAppendMessageInput {
   body: string;
   conversationId: string;
   evidenceIds: readonly string[];
+  requestId?: string;
   sentAt: string;
 }
 
@@ -103,6 +105,18 @@ function normalizeScenario(
 
 function readText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function requestEvidenceId(
+  conversationId: string,
+  requestId: string,
+): string {
+  const digest = createHash("sha256")
+    .update(`${conversationId}\u0000${requestId}`)
+    .digest("hex")
+    .slice(0, 32);
+
+  return `evidence:chat-message-request:${digest}`;
 }
 
 function executionFlags(input: {
@@ -509,6 +523,7 @@ function sendPayload(input: {
   conversation: ConversationDTO;
   graph: LiveChatConversationGraph;
   provider: LiveChatConversationMessageProvider;
+  writeExecuted: boolean;
   writtenMessageId: string;
 }): ChatSendMessagePayload {
   const messages = messagesForConversation(
@@ -527,7 +542,8 @@ function sendPayload(input: {
     toChatMessage({
       graph: input.graph,
       message,
-      writeExecuted: message.id === input.writtenMessageId,
+      writeExecuted:
+        input.writeExecuted && message.id === input.writtenMessageId,
       generatedBy:
         message.id === input.writtenMessageId
           ? "live-store-send"
@@ -537,7 +553,7 @@ function sendPayload(input: {
   const conversationSummary = toConversationSummary({
     conversation: input.conversation,
     graph: input.graph,
-    writeExecuted: true,
+    writeExecuted: input.writeExecuted,
   });
 
   return {
@@ -547,7 +563,7 @@ function sendPayload(input: {
       generatedBy: "live-store-send",
       graph: input.graph,
       message: written,
-      writeExecuted: true,
+      writeExecuted: input.writeExecuted,
     }),
     messages: chatMessages,
     sendMessageState: readySendMessageState,
@@ -562,7 +578,7 @@ function sendPayload(input: {
       provider: input.provider,
       readExecuted: true,
       sourceLabel: input.provider.sourceLabel,
-      writeExecuted: true,
+      writeExecuted: input.writeExecuted,
     }),
     nextAction:
       "Keep transport delivery behind explicit provider replacement and confirmation.",
@@ -780,6 +796,7 @@ export function createLiveChatConversationMessageService({
       const graph = await provider.readChatGraph();
       const conversationId = readText(input.conversationId);
       const body = readText(input.body);
+      const requestId = readText(input.requestId);
 
       if (!conversationId) {
         return failure({
@@ -821,18 +838,36 @@ export function createLiveChatConversationMessageService({
         });
       }
 
-      const nextGraph = await provider.appendMessage({
-        body,
-        conversationId,
-        evidenceIds: conversation.evidenceIds,
-        sentAt: nextTimestampAfter(graph.generatedAt),
-      });
+      const requestEvidence = requestId
+        ? requestEvidenceId(conversationId, requestId)
+        : null;
+      const replayedMessage = requestEvidence
+        ? messagesForConversation(conversationId, graph.messages).find(
+            (message) => message.evidenceIds.includes(requestEvidence),
+          )
+        : null;
+      const writeExecuted = !replayedMessage;
+      const nextGraph = replayedMessage
+        ? graph
+        : await provider.appendMessage({
+            body,
+            conversationId,
+            evidenceIds: requestEvidence
+              ? [...conversation.evidenceIds, requestEvidence]
+              : conversation.evidenceIds,
+            requestId: requestId ?? undefined,
+            sentAt: nextTimestampAfter(graph.generatedAt),
+          });
       const nextConversation =
         nextGraph.conversations.find((item) => item.id === conversationId) ??
         conversation;
-      const written = messagesForConversation(conversationId, nextGraph.messages)
-        .filter((message) => message.body === body)
-        .at(-1);
+      const written = requestEvidence
+        ? messagesForConversation(conversationId, nextGraph.messages).find(
+            (message) => message.evidenceIds.includes(requestEvidence),
+          )
+        : messagesForConversation(conversationId, nextGraph.messages)
+            .filter((message) => message.body === body)
+            .at(-1);
 
       if (!written) {
         return failure({
@@ -849,6 +884,7 @@ export function createLiveChatConversationMessageService({
           conversation: nextConversation,
           graph: nextGraph,
           provider,
+          writeExecuted,
           writtenMessageId: written.id,
         }),
       );
