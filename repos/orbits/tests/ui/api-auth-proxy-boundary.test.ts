@@ -28,6 +28,10 @@ test("API proxy permits data-free CORS preflight before authenticating the real 
 test("API proxy public allowlist is narrow and explicit", () => {
   assert.match(proxySource, /pathname === "\/api\/health"/);
   assert.match(proxySource, /pathname\.startsWith\("\/api\/auth\/"\)/);
+  assert.match(
+    proxySource,
+    /pathname\.startsWith\("\/api\/events\/public"\)/,
+  );
   assert.match(proxySource, /integrations/);
   assert.doesNotMatch(proxySource, /pathname\.startsWith\("\/api\/chat/);
   assert.doesNotMatch(proxySource, /pathname\.startsWith\("\/api\/dashboard/);

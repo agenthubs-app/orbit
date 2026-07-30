@@ -1,26 +1,23 @@
 /**
  * `/app` 路由组的语言偏好 proxy。
  *
- * 用户通过 `?lang=zh|en` 切换语言时，这里把语言写入请求头和 cookie。
+ * 用户通过 `?lang=zh|en|ja` 切换语言时，这里把语言写入请求头和 cookie。
  * 页面 layout 再从 `x-orbit-lang` 或 `orbit-lang` cookie 恢复语言上下文。
  */
 import { NextResponse } from "next/server";
 
+import { parseOrbitLanguage } from "./app/(app)/app/orbit-language-core";
 import { auth } from "./auth";
 import {
   isOrbitPrivateAppPath,
   normalizeOrbitAuthReturnPath,
 } from "./features/auth/app-auth-routing";
 
-function normalizeOrbitLanguage(value: string | null) {
-  // 只允许产品声明过的语言值进入 header/cookie，避免任意 query 污染请求上下文。
-  return value === "en" ? "en" : value === "zh" ? "zh" : null;
-}
-
 function isPublicApiPath(pathname: string): boolean {
   return (
     pathname === "/api/health" ||
     pathname === "/api/health/error" ||
+    pathname.startsWith("/api/events/public") ||
     pathname.startsWith("/api/auth/") ||
     /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
   );
@@ -28,7 +25,8 @@ function isPublicApiPath(pathname: string): boolean {
 
 export const proxy = auth((request) => {
   // Next proxy 不能直接改原 request，因此复制 headers 后交给 NextResponse.next。
-  const language = normalizeOrbitLanguage(request.nextUrl.searchParams.get("lang"));
+  // 复用产品语言命名空间，但保留 null 语义，避免非法 query 污染 header/cookie。
+  const language = parseOrbitLanguage(request.nextUrl.searchParams.get("lang"));
   const requestHeaders = new Headers(request.headers);
 
   // CORS preflight 按规范不携带业务会话，只声明随后请求的方法和 headers。

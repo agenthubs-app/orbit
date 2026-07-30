@@ -1,9 +1,14 @@
 export type OrbitLanguage = "en" | "zh" | "ja";
 
+export function parseOrbitLanguage(
+  value: string | null | undefined,
+): OrbitLanguage | null {
+  if (value === "en" || value === "zh" || value === "ja") return value;
+  return null;
+}
+
 export function normalizeOrbitLanguage(value: string | null | undefined): OrbitLanguage {
-  if (value === "en") return "en";
-  if (value === "ja") return "ja";
-  return "zh";
+  return parseOrbitLanguage(value) ?? "zh";
 }
 
 export function withOrbitLanguageHref(href: string, language: OrbitLanguage): string {
