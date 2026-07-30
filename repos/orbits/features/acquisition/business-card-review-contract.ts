@@ -159,7 +159,7 @@ export interface BusinessCardReviewProvenance {
     | "live-store-review"
     | "rule-based-card-review";
   liveDatabaseReadExecuted?: boolean;
-  databaseWriteExecuted?: false;
+  databaseWriteExecuted?: boolean;
   contactWriteExecuted?: false;
   externalNetworkRequested?: false;
   ocrProviderRequested?: false;
@@ -225,7 +225,7 @@ export interface BusinessCardReviewDraft {
   suggestedNextAction: string;
   confirmation: BusinessCardReviewConfirmation;
   contactWriteExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   aiProviderCalled: false;
   ocrProviderCalled: false;
   notificationDelivered: false;

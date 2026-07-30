@@ -12,6 +12,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { BusinessCardReviewedFields } from "../business-card-review-contract";
 
 export interface LiveBusinessCardReviewGraph {
   contacts: readonly ContactDTO[];
@@ -22,17 +23,42 @@ export interface LiveBusinessCardReviewGraph {
 export type LiveBusinessCardReviewProviderResult<TResult> =
   TResult | Promise<TResult>;
 
+export interface LiveBusinessCardReviewDraftState {
+  draftId: string;
+  reviewedFields: BusinessCardReviewedFields;
+  reviewedAt: string;
+  reviewerLabel: string;
+}
+
+export interface LiveBusinessCardReviewDraftWriteInput
+  extends LiveBusinessCardReviewDraftState {
+  actorId: string;
+}
+
+export interface LiveBusinessCardReviewDraftWriteResult {
+  databaseWriteExecuted: boolean;
+  draft: LiveBusinessCardReviewDraftState;
+}
+
 export interface LiveBusinessCardReviewProvider {
   source: string;
   sourceLabel: string;
   readBusinessCardReviewGraph: (
     actorId: string,
   ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewGraph>;
+  readBusinessCardReviewDraft: (
+    actorId: string,
+    draftId: string,
+  ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewDraftState | null>;
+  upsertBusinessCardReviewDraft: (
+    input: LiveBusinessCardReviewDraftWriteInput,
+  ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewDraftWriteResult>;
 }
 
 export const BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS = {
   contacts: "contacts",
   evidence: "evidence",
+  reviewDrafts: "businessCardReviewDrafts",
 } as const;
 
 export interface StorageBusinessCardReviewProviderOptions {
@@ -148,6 +174,81 @@ function evidenceFromRecord(
   };
 }
 
+function reviewedFieldsFromRecord(
+  value: unknown,
+): BusinessCardReviewedFields | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fields = {
+    displayName: value.displayName,
+    role: value.role,
+    organization: value.organization,
+    email: value.email,
+    phone: value.phone,
+  };
+
+  return Object.values(fields).every(
+    (fieldValue) => typeof fieldValue === "string",
+  )
+    ? (fields as BusinessCardReviewedFields)
+    : null;
+}
+
+function reviewDraftFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+  actorId: string,
+  draftId: string,
+): LiveBusinessCardReviewDraftState | null {
+  if (!record || record.userId !== actorId) {
+    return null;
+  }
+
+  const reviewedFields = reviewedFieldsFromRecord(
+    record.payload.reviewedFields,
+  );
+
+  if (
+    record.payload.draftId !== draftId ||
+    !reviewedFields ||
+    !nonEmptyString(record.payload.reviewedAt) ||
+    !nonEmptyString(record.payload.reviewerLabel)
+  ) {
+    return null;
+  }
+
+  return {
+    draftId,
+    reviewedFields,
+    reviewedAt: record.payload.reviewedAt,
+    reviewerLabel: record.payload.reviewerLabel,
+  };
+}
+
+function reviewDraftRecordId(actorId: string, draftId: string): string {
+  return [
+    "business-card-review-draft",
+    encodeURIComponent(actorId),
+    encodeURIComponent(draftId),
+  ].join(":");
+}
+
+function sameReviewDraft(
+  left: LiveBusinessCardReviewDraftState,
+  right: LiveBusinessCardReviewDraftWriteInput,
+): boolean {
+  return (
+    left.draftId === right.draftId &&
+    left.reviewerLabel === right.reviewerLabel &&
+    left.reviewedFields.displayName === right.reviewedFields.displayName &&
+    left.reviewedFields.role === right.reviewedFields.role &&
+    left.reviewedFields.organization === right.reviewedFields.organization &&
+    left.reviewedFields.email === right.reviewedFields.email &&
+    left.reviewedFields.phone === right.reviewedFields.phone
+  );
+}
+
 function latestTimestamp(
   records: readonly LiveRecord<Record<string, unknown>>[],
 ): string {
@@ -226,6 +327,102 @@ export function createStorageBusinessCardReviewProvider({
               evidence !== null,
           ),
         generatedAt: latestTimestamp([...contactRecords, ...evidenceRecords]),
+      };
+    },
+    async readBusinessCardReviewDraft(
+      actorId,
+      draftId,
+    ): Promise<LiveBusinessCardReviewDraftState | null> {
+      const normalizedActorId = actorId.trim();
+      const normalizedDraftId = draftId.trim();
+
+      if (!normalizedActorId || !normalizedDraftId) {
+        return null;
+      }
+
+      const record = await store.getRecord({
+        workspaceId,
+        collectionName:
+          BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+        recordId: reviewDraftRecordId(
+          normalizedActorId,
+          normalizedDraftId,
+        ),
+      });
+
+      return reviewDraftFromRecord(
+        record,
+        normalizedActorId,
+        normalizedDraftId,
+      );
+    },
+    async upsertBusinessCardReviewDraft(
+      input,
+    ): Promise<LiveBusinessCardReviewDraftWriteResult> {
+      const actorId = input.actorId.trim();
+      const draftId = input.draftId.trim();
+
+      if (!actorId || !draftId) {
+        throw new Error(
+          "Business card review draft writes require an actor and draft id.",
+        );
+      }
+
+      const recordId = reviewDraftRecordId(actorId, draftId);
+      const existingRecord = await store.getRecord({
+        workspaceId,
+        collectionName:
+          BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+        recordId,
+      });
+      const existingDraft = reviewDraftFromRecord(
+        existingRecord,
+        actorId,
+        draftId,
+      );
+
+      if (existingDraft && sameReviewDraft(existingDraft, input)) {
+        return {
+          databaseWriteExecuted: false,
+          draft: existingDraft,
+        };
+      }
+
+      const saved = await store.upsertRecord({
+        workspaceId,
+        collectionName:
+          BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+        recordId,
+        userId: actorId,
+        sourceType: "business_card_ocr",
+        sourceId: draftId,
+        sourceLabel: "Reviewed business card fields",
+        provider: "orbit-business-card-review-live-service",
+        providerRecordId: draftId,
+        evidenceIds: [],
+        targetType: "contact",
+        targetId: draftId,
+        occurredAt: input.reviewedAt,
+        createdAt: existingRecord?.createdAt ?? input.reviewedAt,
+        updatedAt: input.reviewedAt,
+        lifecycleState: "active",
+        searchText: null,
+        payload: {
+          draftId,
+          reviewedFields: input.reviewedFields,
+          reviewedAt: input.reviewedAt,
+          reviewerLabel: input.reviewerLabel,
+        },
+      });
+      const savedDraft = reviewDraftFromRecord(saved, actorId, draftId);
+
+      if (!savedDraft) {
+        throw new Error("Stored business card review draft is invalid.");
+      }
+
+      return {
+        databaseWriteExecuted: true,
+        draft: savedDraft,
       };
     },
   };

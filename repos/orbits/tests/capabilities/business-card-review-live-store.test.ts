@@ -8,7 +8,10 @@ import {
 import { createConfirmContactDraftHandler } from "../../app/api/contact-drafts/[id]/confirm/handler";
 import { createLiveBusinessCardReviewService } from "../../features/acquisition/live-business-card-review-service";
 import { createBusinessCardReviewService } from "../../features/acquisition/service-factory";
-import { createStorageBusinessCardReviewProvider } from "../../features/acquisition/storage/business-card-review-live-record-provider";
+import {
+  BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS,
+  createStorageBusinessCardReviewProvider,
+} from "../../features/acquisition/storage/business-card-review-live-record-provider";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
@@ -46,7 +49,7 @@ async function createSeedStore() {
   return store;
 }
 
-test("business card review live service derives review drafts from business-card contacts without writes", async () => {
+test("business card review live service persists actor-scoped review drafts without writing contacts", async () => {
   const store = await createSeedStore();
   const provider = createStorageBusinessCardReviewProvider({
     store,
@@ -64,6 +67,11 @@ test("business card review live service derives review drafts from business-card
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
+  const reviewDraftsBefore = store.listRecords({
+    workspaceId: WORKSPACE_ID,
+    collectionName:
+      BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+  }).length;
 
   const lookup = await service.getReviewDraft({
     actorId: ACTOR_ID,
@@ -78,7 +86,33 @@ test("business card review live service derives review drafts from business-card
     },
     reviewerLabel: "Live reviewer",
   });
-  const confirm = await service.confirmReviewedDraft({
+  const failedUpdate = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: {
+      email: "must-not-be-persisted@example.test",
+    },
+    reviewerLabel: "Live reviewer",
+    scenario: "failure",
+  });
+  const repeatedUpdate = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: {
+      email: "chihiro.yamada@example.test",
+      phone: "+81-90-0000-0012",
+    },
+    reviewerLabel: "Live reviewer",
+  });
+  const refreshedService = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider,
+  });
+  const refreshedLookup = await refreshedService.getReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+  });
+  const confirm = await refreshedService.confirmReviewedDraft({
     actorId: ACTOR_ID,
     actorLabel: "Live operator",
     draftId: LIVE_DRAFT_ID,
@@ -87,6 +121,11 @@ test("business card review live service derives review drafts from business-card
     actorId: "account:other-business-card-review-owner",
     draftId: LIVE_DRAFT_ID,
   });
+  const foreignPersistedReview =
+    await provider.readBusinessCardReviewDraft(
+      "account:other-business-card-review-owner",
+      LIVE_DRAFT_ID,
+    );
   const contactsAfter = store.listRecords({
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
@@ -95,6 +134,11 @@ test("business card review live service derives review drafts from business-card
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
+  const reviewDraftRecords = store.listRecords({
+    workspaceId: WORKSPACE_ID,
+    collectionName:
+      BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+  });
 
   assert.equal(lookup.success, true);
   assert.equal(lookup.data.state, "success");
@@ -125,7 +169,30 @@ test("business card review live service derives review drafts from business-card
     "chihiro.yamada@example.test",
   );
   assert.equal(update.data.reviewEvidence?.createdBy, "live-business-card-review-service");
-  assert.equal(update.data.provenance.databaseWriteExecuted, false);
+  assert.equal(update.data.reviewDraft?.databaseWriteExecuted, true);
+  assert.equal(update.data.provenance.databaseWriteExecuted, true);
+  assert.equal(failedUpdate.success, false);
+  assert.equal(failedUpdate.error.code, "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED");
+  assert.equal(repeatedUpdate.success, true);
+  assert.equal(
+    repeatedUpdate.data.reviewDraft?.reviewedAt,
+    update.data.reviewDraft?.reviewedAt,
+  );
+  assert.equal(
+    repeatedUpdate.data.provenance.databaseWriteExecuted,
+    false,
+  );
+  assert.equal(refreshedLookup.success, true);
+  assert.equal(refreshedLookup.data.reviewDraft?.status, "reviewed");
+  assert.equal(
+    refreshedLookup.data.reviewDraft?.extractedFields.email.reviewedValue,
+    "chihiro.yamada@example.test",
+  );
+  assert.equal(refreshedLookup.data.reviewDraft?.databaseWriteExecuted, false);
+  assert.equal(
+    refreshedLookup.data.provenance.databaseWriteExecuted,
+    false,
+  );
 
   assert.equal(confirm.success, true);
   assert.equal(confirm.data.confirmedDraft.status, "confirmed");
@@ -133,14 +200,64 @@ test("business card review live service derives review drafts from business-card
   assert.equal(confirm.data.createdEvidence.createdBy, "live-business-card-review-service");
   assert.equal(confirm.data.contactCandidate.readyForContactWrite, true);
   assert.equal(confirm.data.contactCandidate.contactWriteExecuted, false);
+  assert.equal(
+    confirm.data.contactCandidate.email,
+    "chihiro.yamada@example.test",
+  );
   assert.equal(confirm.data.provenance.databaseWriteExecuted, false);
   assert.equal(foreignLookup.success, true);
   assert.equal(foreignLookup.data.state, "empty");
   assert.equal(foreignLookup.data.reviewDraft, null);
+  assert.equal(foreignPersistedReview, null);
 
   assert.equal(contactsBefore, defaultMockFixtures.contacts.length);
   assert.equal(contactsAfter, contactsBefore);
   assert.equal(contactDraftsAfter, contactDraftsBefore);
+  assert.equal(reviewDraftRecords.length, reviewDraftsBefore + 1);
+  assert.equal(reviewDraftRecords[0]?.userId, ACTOR_ID);
+  assert.equal(
+    (
+      reviewDraftRecords[0]?.payload.reviewedFields as {
+        email?: string;
+      }
+    )?.email,
+    "chihiro.yamada@example.test",
+  );
+});
+
+test("business card review live service fails closed when review-draft persistence fails", async () => {
+  const store = await createSeedStore();
+  const storageProvider = createStorageBusinessCardReviewProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider: {
+      ...storageProvider,
+      upsertBusinessCardReviewDraft() {
+        throw new Error("controlled review-draft write failure");
+      },
+    },
+  });
+
+  const result = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: {
+      displayName: "Must not persist",
+    },
+    reviewerLabel: "Live reviewer",
+  });
+  const reviewDraftRecords = store.listRecords({
+    workspaceId: WORKSPACE_ID,
+    collectionName:
+      BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED");
+  assert.equal(reviewDraftRecords.length, 0);
 });
 
 test("business card review live service fails closed when storage is unconfigured", async () => {
@@ -276,6 +393,12 @@ test("business card review requires an actor and draft APIs reject unauthenticat
           evidence: [],
           generatedAt: NOW,
         };
+      },
+      readBusinessCardReviewDraft() {
+        return null;
+      },
+      upsertBusinessCardReviewDraft() {
+        throw new Error("must not write without an actor");
       },
     },
   });

@@ -27,6 +27,8 @@ import {
   type BusinessCardReviewedFields,
 } from "./business-card-review-contract";
 import type {
+  LiveBusinessCardReviewDraftState,
+  LiveBusinessCardReviewDraftWriteResult,
   LiveBusinessCardReviewGraph,
   LiveBusinessCardReviewProvider,
 } from "./storage/business-card-review-live-record-provider";
@@ -154,6 +156,7 @@ function actorRequiredProvenance(now: string): BusinessCardReviewProvenance {
 }
 
 function provenanceFor(input: {
+  databaseWriteExecuted?: boolean;
   evidenceIds: readonly string[];
   generatedAt: string;
   generationMethod?: BusinessCardReviewProvenance["generationMethod"];
@@ -171,7 +174,7 @@ function provenanceFor(input: {
     privacy: "live-business-card-review",
     generationMethod: input.generationMethod ?? "live-store-query",
     liveDatabaseReadExecuted: input.readExecuted ?? true,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: input.databaseWriteExecuted ?? false,
     contactWriteExecuted: false,
     externalNetworkRequested: false,
     ocrProviderRequested: false,
@@ -449,11 +452,13 @@ function buildConfirmEvidence(input: {
 
 function buildDraft(input: {
   contact: ContactDTO;
+  databaseWriteExecuted?: boolean;
   generatedAt: string;
   graph: LiveBusinessCardReviewGraph;
   mode: "confirmed" | "pending" | "reviewed";
   now: string;
   provider: LiveBusinessCardReviewProvider;
+  reviewedAt?: string;
   reviewedFields?: Partial<BusinessCardReviewedFields> | null;
   reviewerLabel?: string | null;
   actorLabel?: string | null;
@@ -471,7 +476,7 @@ function buildDraft(input: {
     input.mode === "reviewed" || input.mode === "confirmed"
       ? buildReviewEvidence({
           contact: input.contact,
-          now: input.now,
+          now: input.reviewedAt ?? input.now,
           reviewerLabel: input.reviewerLabel,
         })
       : null;
@@ -505,6 +510,7 @@ function buildDraft(input: {
           ? "live-store-review"
           : "live-store-query",
     provider: input.provider,
+    databaseWriteExecuted: input.databaseWriteExecuted,
   });
   const draft: BusinessCardReviewDraft = {
     id: draftIdFor(input.contact.id),
@@ -538,7 +544,7 @@ function buildDraft(input: {
         : {}),
     },
     contactWriteExecuted: false,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: input.databaseWriteExecuted ?? false,
     aiProviderCalled: false,
     ocrProviderCalled: false,
     notificationDelivered: false,
@@ -547,7 +553,7 @@ function buildDraft(input: {
     createdAt: input.contact.createdAt,
     ...(input.mode === "reviewed" || input.mode === "confirmed"
       ? {
-          reviewedAt: input.now,
+          reviewedAt: input.reviewedAt ?? input.now,
           reviewedBy: actorLabelFor(input.reviewerLabel),
         }
       : {}),
@@ -625,20 +631,24 @@ function findContact(input: {
 
 function buildReviewPayload(input: {
   contact: ContactDTO;
+  databaseWriteExecuted?: boolean;
   graph: LiveBusinessCardReviewGraph;
   mode: "pending" | "reviewed";
   now: string;
   provider: LiveBusinessCardReviewProvider;
+  reviewedAt?: string;
   reviewedFields?: Partial<BusinessCardReviewedFields> | null;
   reviewerLabel?: string | null;
 }): BusinessCardReviewPayload {
   const { draft, provenance, reviewEvidence } = buildDraft({
     contact: input.contact,
+    databaseWriteExecuted: input.databaseWriteExecuted,
     generatedAt: input.graph.generatedAt,
     graph: input.graph,
     mode: input.mode,
     now: input.now,
     provider: input.provider,
+    reviewedAt: input.reviewedAt,
     reviewedFields: input.reviewedFields,
     reviewerLabel: input.reviewerLabel,
   });
@@ -724,13 +734,37 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
+      let persistedReview: LiveBusinessCardReviewDraftState | null;
+
+      try {
+        persistedReview =
+          await readResult.provider.readBusinessCardReviewDraft(
+            actorId,
+            input.draftId,
+          );
+      } catch {
+        return failure(
+          "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              "evidence:business-card-review-live-draft-read-failed",
+            ],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
       return success(
         buildReviewPayload({
           contact,
           graph: readResult.graph,
-          mode: "pending",
+          mode: persistedReview ? "reviewed" : "pending",
           now: now(),
           provider: readResult.provider,
+          reviewedAt: persistedReview?.reviewedAt,
+          reviewedFields: persistedReview?.reviewedFields,
+          reviewerLabel: persistedReview?.reviewerLabel,
         }),
       );
     },
@@ -833,15 +867,76 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
+      const reviewedAt = now();
+      const reviewedPayload = buildReviewPayload({
+        contact,
+        graph: readResult.graph,
+        mode: "reviewed",
+        now: reviewedAt,
+        provider: readResult.provider,
+        reviewedFields: input.reviewedFields,
+        reviewerLabel: input.reviewerLabel,
+      });
+      const reviewedDraft = reviewedPayload.reviewDraft;
+
+      if (!reviewedDraft) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              "evidence:business-card-review-live-draft-write-failed",
+            ],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      let writeResult: LiveBusinessCardReviewDraftWriteResult;
+
+      try {
+        writeResult =
+          await readResult.provider.upsertBusinessCardReviewDraft({
+            actorId,
+            draftId: input.draftId,
+            reviewedAt,
+            reviewedFields: {
+              displayName: reviewedDraft.displayName,
+              role: reviewedDraft.role,
+              organization: reviewedDraft.organization,
+              email: reviewedDraft.email,
+              phone: reviewedDraft.phone,
+            },
+            reviewerLabel: reviewedDraft.reviewedBy ?? actorLabelFor(
+              input.reviewerLabel,
+            ),
+          });
+      } catch {
+        return failure(
+          "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              "evidence:business-card-review-live-draft-write-failed",
+            ],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      const persistedReview = writeResult.draft;
+
       return success(
         buildReviewPayload({
           contact,
+          databaseWriteExecuted: writeResult.databaseWriteExecuted,
           graph: readResult.graph,
           mode: "reviewed",
-          now: now(),
+          now: persistedReview.reviewedAt,
           provider: readResult.provider,
-          reviewedFields: input.reviewedFields,
-          reviewerLabel: input.reviewerLabel,
+          reviewedAt: persistedReview.reviewedAt,
+          reviewedFields: persistedReview.reviewedFields,
+          reviewerLabel: persistedReview.reviewerLabel,
         }),
       );
     },
@@ -918,20 +1013,55 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
+      let persistedReview: LiveBusinessCardReviewDraftState | null;
+
+      try {
+        persistedReview =
+          await readResult.provider.readBusinessCardReviewDraft(
+            actorId,
+            input.draftId,
+          );
+      } catch {
+        return failure(
+          "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              "evidence:business-card-review-live-draft-read-failed",
+            ],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      if (!persistedReview) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_PENDING",
+          provenanceFor({
+            evidenceIds: ["evidence:business-card-review-live-pending"],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      const confirmedAt = now();
       const { confirmEvidence, draft, provenance } = buildDraft({
         actorLabel: input.actorLabel,
         contact,
         generatedAt: readResult.graph.generatedAt,
         graph: readResult.graph,
         mode: "confirmed",
-        now: now(),
+        now: confirmedAt,
         provider: readResult.provider,
-        reviewerLabel: input.actorLabel,
+        reviewedAt: persistedReview.reviewedAt,
+        reviewedFields: persistedReview.reviewedFields,
+        reviewerLabel: persistedReview.reviewerLabel,
       });
       const createdEvidence = confirmEvidence ?? buildConfirmEvidence({
         actorLabel: input.actorLabel,
         contact,
-        now: now(),
+        now: confirmedAt,
       });
 
       return confirmationSuccess({
@@ -951,7 +1081,7 @@ export function createLiveBusinessCardReviewService({
           contactWriteExecuted: false,
         },
         createdEvidence,
-        confirmedAt: now(),
+        confirmedAt,
         provenance,
         nextAction:
           "Send the reviewed live business card candidate to the contact service with source and evidence ids intact.",
