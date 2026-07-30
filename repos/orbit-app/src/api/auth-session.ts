@@ -433,7 +433,8 @@ export async function signOutOrbitSession({
     response = await fetchImpl(
       authUrl(baseUrl, ORBIT_API_ENDPOINTS.accountSessionSignOut),
       {
-        credentials: "include",
+        // 与普通 API 请求保持同一单通道契约，避免原生 jar 与显式 Cookie 合并。
+        credentials: cookieHeader.trim() ? "omit" : "include",
         headers: requestHeaders(cookieHeader, { Accept: "application/json" }),
         method: "POST"
       }

@@ -29,6 +29,7 @@ export function useApiResource<TData>(
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
+  const actorId = auth.user?.id ?? null;
   const client = useMemo(
     () =>
       createOrbitApiClient({
@@ -71,8 +72,8 @@ export function useApiResource<TData>(
     async function load(): Promise<void> {
       let cached: RouteState<TData> | null = null;
 
-      if (!isRefresh) {
-        const snapshot = await readSnapshot<TData>(baseUrl, path);
+      if (!isRefresh && actorId) {
+        const snapshot = await readSnapshot<TData>(baseUrl, actorId, path);
 
         if (!active) {
           return;
@@ -93,7 +94,9 @@ export function useApiResource<TData>(
 
         if (result.success) {
           setState(resultToRouteState(result, isEmptyRef.current));
-          void writeSnapshot(baseUrl, path, result);
+          if (actorId) {
+            void writeSnapshot(baseUrl, actorId, path, result);
+          }
           return;
         }
 
@@ -129,7 +132,7 @@ export function useApiResource<TData>(
     return () => {
       active = false;
     };
-  }, [auth.ready, baseUrl, client, path, refreshIndex]);
+  }, [actorId, auth.ready, baseUrl, client, path, refreshIndex]);
 
   return {
     ...state,

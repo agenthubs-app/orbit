@@ -21,6 +21,7 @@ test("Orbit API client unwraps success envelopes and runtime headers", async () 
       (init?.headers as Record<string, string>).Accept,
       "application/json"
     );
+    assert.equal(init?.credentials, "include");
     return response(JSON.stringify({ success: true, data: { ok: true } }));
   };
   const client = createOrbitApiClient({
@@ -238,14 +239,20 @@ test("Orbit API client includes stored auth cookies when provided", async () => 
     fetchImpl
   });
 
-  const result = await client.get<{ ok: boolean }>("/api/account/me");
+  const getResult = await client.get<{ ok: boolean }>("/api/account/me");
+  const postResult = await client.post<{ ok: boolean }>("/api/account/me", {
+    body: { displayName: "小雨" }
+  });
 
-  assert.equal(result.success, true);
-  assert.equal(
-    (calls[0]?.init?.headers as Record<string, string>).Cookie,
-    "authjs.session-token=session-token"
-  );
-  assert.equal(calls[0]?.init?.credentials, "include");
+  assert.equal(getResult.success, true);
+  assert.equal(postResult.success, true);
+  for (const call of calls) {
+    assert.equal(
+      (call.init?.headers as Record<string, string>).Cookie,
+      "authjs.session-token=session-token"
+    );
+    assert.equal(call.init?.credentials, "omit");
+  }
 });
 
 test("Orbit API client reports non JSON responses as controlled failures", async () => {

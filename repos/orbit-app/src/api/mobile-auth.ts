@@ -428,7 +428,9 @@ export async function validateAuthSession({
       endpoint(baseUrl, ORBIT_API_ENDPOINTS.authSession),
       {
         cache: "no-store",
-        credentials: "include",
+        // 原生会话以 SecureStore 中的显式 Cookie 为唯一来源；若同时 include
+        // 原生 cookie jar，React Native 会追加两个 Cookie 值并破坏 JWE。
+        credentials: normalizedCookieHeader ? "omit" : "include",
         headers: {
           Accept: "application/json",
           ...(normalizedCookieHeader

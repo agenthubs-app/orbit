@@ -10,10 +10,14 @@ import { Platform } from "react-native";
 //
 // 快照里是真实人脉数据，所以登出时必须整表清空，见 clearSnapshots。
 
-// 快照按「服务器 + 路径」建键。App 支持切换服务器（设置里的服务器地址），
-// 只按 path 建键会让换服务器之后读到上一台的数据。
-function snapshotKey(baseUrl: string, path: string): string {
-  return `${baseUrl}|${path}`;
+// 快照按「服务器 + 登录用户 + 路径」建键。服务器和路径不足以表达数据归属：
+// 同一台服务器切换账号时，旧账号的离线人脉不能作为新账号的首屏内容。
+export function snapshotKey(
+  baseUrl: string,
+  actorId: string,
+  path: string
+): string {
+  return `v2|${encodeURIComponent(baseUrl)}|${encodeURIComponent(actorId)}|${path}`;
 }
 
 interface SnapshotRow {
@@ -77,8 +81,8 @@ async function database(): Promise<Database | null> {
       };
       const db = await sqlite.openDatabaseAsync(DATABASE_NAME);
       await db.execAsync(CREATE_TABLE);
-      // 早期版本只按 path 建键，那些行现在永远读不到，清掉省空间。
-      await db.runAsync("DELETE FROM api_snapshots WHERE path NOT LIKE '%|%'");
+      // v1 快照没有 actor 归属，不能安全迁移；升级后一次性清除。
+      await db.runAsync("DELETE FROM api_snapshots WHERE path NOT LIKE 'v2|%'");
       return db;
     } catch (error) {
       return reportUnavailable(error);
@@ -90,6 +94,7 @@ async function database(): Promise<Database | null> {
 
 export async function readSnapshot<TData>(
   baseUrl: string,
+  actorId: string,
   path: string
 ): Promise<SnapshotRecord<TData> | null> {
   const db = await database();
@@ -101,7 +106,7 @@ export async function readSnapshot<TData>(
   try {
     const row = await db.getFirstAsync(
       "SELECT payload, status, synced_at FROM api_snapshots WHERE path = ?",
-      snapshotKey(baseUrl, path)
+      snapshotKey(baseUrl, actorId, path)
     );
 
     if (!row) {
@@ -126,6 +131,7 @@ export async function readSnapshot<TData>(
 
 export async function writeSnapshot<TData>(
   baseUrl: string,
+  actorId: string,
   path: string,
   result: ApiResult<TData>
 ): Promise<void> {
@@ -147,7 +153,7 @@ export async function writeSnapshot<TData>(
          payload = excluded.payload,
          status = excluded.status,
          synced_at = excluded.synced_at`,
-      snapshotKey(baseUrl, path),
+      snapshotKey(baseUrl, actorId, path),
       JSON.stringify(result.data),
       result.status,
       new Date().toISOString()

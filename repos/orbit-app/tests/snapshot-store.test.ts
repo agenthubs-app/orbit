@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   clearSnapshots,
   readSnapshot,
+  snapshotKey,
   writeSnapshot
 } from "../src/data/snapshot-store";
 
@@ -18,7 +19,11 @@ const hookSource = readFileSync(
 // 缓存是优化不是依赖，任何一步失败都必须降级成空操作，而不是把请求带崩。
 
 test("SQLite 不可用时读取快照返回空而不是抛错", async () => {
-  const snapshot = await readSnapshot<unknown>("http://localhost:3000", "/api/contacts");
+  const snapshot = await readSnapshot<unknown>(
+    "http://localhost:3000",
+    "actor-a",
+    "/api/contacts"
+  );
   assert.equal(snapshot, null);
 });
 
@@ -42,7 +47,7 @@ test("Web 端明确跳过原生 SQLite 快照层", () => {
 
 test("SQLite 不可用时写入快照静默降级", async () => {
   await assert.doesNotReject(
-    writeSnapshot("http://localhost:3000", "/api/contacts", {
+    writeSnapshot("http://localhost:3000", "actor-a", "/api/contacts", {
       data: { contacts: [] },
       meta: { featureMode: null, privacy: null, runtimeBoundary: null },
       status: 200,
@@ -55,14 +60,22 @@ test("SQLite 不可用时清除快照静默降级", async () => {
   await assert.doesNotReject(clearSnapshots());
 });
 
-test("快照按服务器加路径建键，换服务器不会读到上一台的数据", () => {
+test("快照按服务器、actor 与路径建键，换账号或服务器都不会串数据", () => {
   const storeSource = readFileSync(
     join(repoRoot, "src", "data", "snapshot-store.ts"),
     "utf8"
   );
 
-  assert.match(storeSource, /return `\$\{baseUrl\}\|\$\{path\}`/u);
-  assert.match(storeSource, /snapshotKey\(baseUrl, path\)/u);
+  assert.notEqual(
+    snapshotKey("http://localhost:3000", "actor-a", "/api/contacts"),
+    snapshotKey("http://localhost:3000", "actor-b", "/api/contacts")
+  );
+  assert.notEqual(
+    snapshotKey("http://localhost:3000", "actor-a", "/api/contacts"),
+    snapshotKey("http://localhost:4000", "actor-a", "/api/contacts")
+  );
+  assert.match(storeSource, /snapshotKey\(baseUrl, actorId, path\)/u);
+  assert.match(storeSource, /DELETE FROM api_snapshots WHERE path NOT LIKE 'v2\|%'/u);
 });
 
 test("失败的响应不写快照", async () => {
@@ -79,15 +92,31 @@ test("失败的响应不写快照", async () => {
 });
 
 test("取数先出快照，网络回来再覆盖", () => {
-  assert.match(hookSource, /const snapshot = await readSnapshot<TData>\(baseUrl, path\)/u);
-  assert.match(hookSource, /void writeSnapshot\(baseUrl, path, result\)/u);
+  assert.match(
+    hookSource,
+    /const snapshot = await readSnapshot<TData>\(baseUrl, actorId, path\)/u
+  );
+  assert.match(
+    hookSource,
+    /void writeSnapshot\(baseUrl, actorId, path, result\)/u
+  );
 
-  const snapshotIndex = hookSource.indexOf("readSnapshot<TData>(baseUrl, path)");
+  const snapshotIndex = hookSource.indexOf(
+    "readSnapshot<TData>(baseUrl, actorId, path)"
+  );
   const networkIndex = hookSource.indexOf("await client.get<TData>(path)");
 
   assert.notEqual(snapshotIndex, -1);
   assert.notEqual(networkIndex, -1);
   assert.ok(snapshotIndex < networkIndex);
+});
+
+test("未登录时不读取或写入私有快照", () => {
+  assert.match(hookSource, /if \(!isRefresh && actorId\) \{/u);
+  assert.match(
+    hookSource,
+    /if \(actorId\) \{\s*void writeSnapshot\(baseUrl, actorId, path, result\);/u
+  );
 });
 
 test("网络失败但有快照时继续显示快照，不退回错误屏", () => {
@@ -111,5 +140,17 @@ test("登出与会话过期都清空本地快照", () => {
   assert.ok(
     occurrences.length >= 2,
     "主动登出和 401 过期两条路径都要清快照"
+  );
+});
+
+test("同一服务器直接更换账号时先清除旧账号快照", () => {
+  const providerSource = readFileSync(
+    join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
+    "utf8"
+  );
+
+  assert.match(
+    providerSource,
+    /if \(user && user\.id !== validation\.data\.user\.id\) \{\s*await clearSnapshots\(\);/u
   );
 });

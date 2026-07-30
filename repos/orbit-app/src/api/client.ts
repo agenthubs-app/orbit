@@ -199,22 +199,30 @@ function requestInit(
   options: OrbitApiRequestOptions,
   authCookieHeader: string
 ): RequestInit {
+  const normalizedAuthCookieHeader = authCookieHeader.trim();
   const headers: Record<string, string> = {
     Accept: "application/json",
     ...(options.headers ?? {})
   };
 
-  if (authCookieHeader.trim()) {
-    headers.Cookie = authCookieHeader.trim();
+  if (normalizedAuthCookieHeader) {
+    headers.Cookie = normalizedAuthCookieHeader;
   }
 
   if (options.body === undefined) {
-    return { credentials: "include", headers, method };
+    return {
+      // React Native 先从原生 cookie jar 写 Cookie，再把这里的显式 Cookie
+      // 追加进去。显式会话存在时必须关闭 jar，避免同名 token 被合并后损坏。
+      credentials: normalizedAuthCookieHeader ? "omit" : "include",
+      headers,
+      method
+    };
   }
 
   return {
     body: JSON.stringify(options.body),
-    credentials: "include",
+    // Web 不提供显式 Cookie，仍由浏览器管理 HttpOnly 会话。
+    credentials: normalizedAuthCookieHeader ? "omit" : "include",
     headers: {
       ...headers,
       "Content-Type": "application/json"

@@ -158,7 +158,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     async (session: MobileAuthSession): Promise<AuthActionResult> => {
       const validation = await validateAuthSession({
         baseUrl,
-        cookieHeader: session.cookieHeader
+        // Web 依赖刚由响应写入的 HttpOnly cookie；原生只使用返回 envelope
+        // 中的 cookie，并在校验通过后写入 SecureStore。
+        cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader
       });
 
       if (!validation.success) {
@@ -170,6 +172,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
       if (!usesBrowserManagedSession) {
         try {
+          if (user && user.id !== validation.data.user.id) {
+            await clearSnapshots();
+          }
           await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
         } catch {
           return {
@@ -183,7 +188,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setUser(validation.data.user);
       return { success: true };
     },
-    [baseUrl]
+    [baseUrl, user]
   );
 
   const signIn = useCallback(

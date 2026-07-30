@@ -275,6 +275,7 @@ test("signOutOrbitSession clears the stored session through the account sign-out
       new Headers(init.headers).get("Cookie"),
       "authjs.session-token=session-token"
     );
+    assert.equal(init.credentials, "omit");
 
     return jsonResponse({
       success: true,

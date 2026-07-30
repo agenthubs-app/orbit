@@ -236,7 +236,7 @@ test("session validation sends the stored Cookie and requires a real user", asyn
         new Headers(init?.headers).get("Cookie"),
         session.cookieHeader
       );
-      assert.equal(init?.credentials, "include");
+      assert.equal(init?.credentials, "omit");
 
       return jsonResponse({
         expires: session.expiresAt,
