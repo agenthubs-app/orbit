@@ -8,6 +8,11 @@ import {
   bindStarfieldAgentPrompt,
   updateStarfieldPromptPreview,
 } from "./orbit-starfield-agent-prompt";
+import {
+  initializeStarfieldLanguage,
+  persistStarfieldLanguage,
+} from "./orbit-starfield-language";
+import { bindStarfieldMobileMenu } from "./orbit-starfield-mobile-menu";
 
 export function runStarfieldMobile(host: HTMLElement): () => void {
   const self: any = { props: {} };
@@ -91,7 +96,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         rightParaHtml:'<span style="display:block;">Turn an event into <b style="font-weight:500;color:#fff;">the right crowd</b>.</span><span style="display:block;margin-top:3px;">Orbit charts an orbit for every guest.</span>'
       }
     };
-    let LANG=(()=>{try{const s=localStorage.getItem('iorbit_lang');if(s==='en'||s==='zh')return s;}catch(e){}return (host.getAttribute('data-lang')==='en')?'en':'zh';})();
+    let LANG=initializeStarfieldLanguage(host);
     const T=()=>DICT[LANG];
     const AVA=['1573496359142-b8d87734a5a2','1494790108377-be9c29b29330','1507003211169-0a1dd7228f2d','1438761681033-6461ffad8d80','1599566150163-29194dcaad36','1544005313-94ddf0286df2','1580489944761-15a19d654956','1573497019940-1c28c88b4f3e','1560250097-0b93528c311a','1551836022-deb4988cc6c0','1568602471122-7832951cc4c5','1521119989659-a83eee488004','1531123897727-8f129e1688ce','1488161628813-04466f872be2','1500648767791-00dcc994a43e','1607990281513-2c110a25bd8c'];
     const avaURL=(i)=>{const idx=((i%AVA.length)+AVA.length)%AVA.length;return '/iorbit-starfield/avatars/mobile/ava' + idx + '.png';};
@@ -457,7 +462,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     {let dsx=0,dsy=0;demoWrap.addEventListener('touchstart',e=>{dsx=e.touches[0].clientX;dsy=e.touches[0].clientY;},{passive:true});
      demoWrap.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-dsx,dy=e.changedTouches[0].clientY-dsy;if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>32){e.stopPropagation();advanceDemo(dx<0?1:-1);resetDemoTimer();}},{passive:true});
      demoEls.forEach((el,j)=>{el.addEventListener('click',()=>{if(self._demoI!==j&&stopIdx===1){self._demoI=j;updateCarousel();resetDemoTimer();}});});}
-    {const burger=$('skBurger'),menu=$('skMenu');if(burger&&menu){burger.addEventListener('click',e=>{e.stopPropagation();menu.style.display=(menu.style.display==='flex')?'none':'flex';});const menuDocClick=(e)=>{if(menu.style.display==='flex'&&!menu.contains(e.target)&&!burger.contains(e.target))menu.style.display='none';};document.addEventListener('click',menuDocClick);self._menuDocClick=menuDocClick;menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{menu.style.display='none';}));}}
+    self._menuCleanup=bindStarfieldMobileMenu(host);
     cue.addEventListener('click',()=>{if(stopIdx===STOPS.length-1)goStop(0);else onIntent(1);});
     // ending mini popout-card carousel (toC visual)
     {const MS=[31,42,53];let mci=0;const setMini=()=>{const a=$('skMiniAva'),n=$('skMiniName'),h=$('skMiniHelp');if(!a)return;const d=card(MS[mci%MS.length]);if(a.dataset.s!==d.av){a.dataset.s=d.av;a.src=d.av;}n.textContent=d.name;h.textContent=d.help;};self._setMini=setMini;setMini();self._miniIv=setInterval(()=>{const w=$('skMiniCard');if(!w)return;w.style.opacity='0';setTimeout(()=>{mci++;setMini();w.style.opacity='1';},280);},2900);}
@@ -484,7 +489,8 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
       try{
         LANG=(lng==='en')?'en':'zh';
         host.setAttribute('data-lang',LANG);
-        if(persist){try{localStorage.setItem('iorbit_lang',LANG);}catch(e){}}
+        host.setAttribute('data-orbit-language',LANG);
+        if(persist)persistStarfieldLanguage(LANG);
         QUERY=T().query;SLO2=T().slo2;PROC1=T().proc1;PROC2=T().proc2;
         applyDOM();
         words=[].slice.call(host.querySelectorAll('.sk-word'));   // H1 spans are rebuilt by applyDOM
@@ -499,7 +505,7 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:0,visible:false});
         updateLangBtns();
       }catch(err){
-        try{localStorage.setItem('iorbit_lang',(lng==='en')?'en':'zh');}catch(e){}
+        persistStarfieldLanguage((lng==='en')?'en':'zh');
         location.reload();
       }
     };
@@ -517,5 +523,5 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
 
   // React-only additions to the reference unmount: the reference page never
   // unmounts, so it leaks head styles and a document-level listener; we must not.
-  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._promptCleanup)self._promptCleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();if(self._menuDocClick)document.removeEventListener('click',self._menuDocClick);};
+  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._menuCleanup)self._menuCleanup();if(self._promptCleanup)self._promptCleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();};
 }

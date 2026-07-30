@@ -119,7 +119,7 @@ export function OrbitStarfieldMobile({
               {' '}
             </div>
             {' '}
-            <button id="skBurger" type="button" aria-label="菜单 / Menu" style={{"flex":"0 0 auto","width":"44px","height":"44px","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center","gap":"4px","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)","borderRadius":"12px","cursor":"pointer","pointerEvents":"auto"}}>
+            <button id="skBurger" type="button" aria-controls="skMenu" aria-expanded="false" aria-label="菜单 / Menu" style={{"flex":"0 0 auto","width":"44px","height":"44px","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center","gap":"4px","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)","borderRadius":"12px","cursor":"pointer","pointerEvents":"auto"}}>
               {' '}
               <span style={{"width":"16px","height":"1.6px","background":"#e6e4f4","borderRadius":"2px"}}>
               </span>
@@ -138,7 +138,7 @@ export function OrbitStarfieldMobile({
         {' '}
         {/* NAV MENU (mobile) */}
         {' '}
-        <div id="skMenu" style={{"position":"absolute","top":"62px","right":"16px","zIndex":"70","display":"none","flexDirection":"column","minWidth":"150px","padding":"8px","borderRadius":"16px","background":"rgba(14,12,24,0.95)","border":"1px solid rgba(150,145,200,0.18)","backdropFilter":"blur(18px)","WebkitBackdropFilter":"blur(18px)","boxShadow":"0 22px 54px -22px rgba(0,0,0,0.85)","pointerEvents":"auto"}}>
+        <nav id="skMenu" aria-label="移动端导航 / Mobile navigation" hidden style={{"position":"absolute","top":"62px","right":"16px","zIndex":"70","display":"none","flexDirection":"column","minWidth":"150px","padding":"8px","borderRadius":"16px","background":"rgba(14,12,24,0.95)","border":"1px solid rgba(150,145,200,0.18)","backdropFilter":"blur(18px)","WebkitBackdropFilter":"blur(18px)","boxShadow":"0 22px 54px -22px rgba(0,0,0,0.85)","pointerEvents":"auto"}}>
           {' '}
           <a href="/app/agent" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
             {"iOrbit"}
@@ -179,7 +179,7 @@ export function OrbitStarfieldMobile({
             </>
           )}
           {' '}
-        </div>
+        </nav>
         {' '}
         {/* FIXED CANVAS SCENE */}
         {' '}

@@ -8,6 +8,10 @@ import {
   bindStarfieldAgentPrompt,
   updateStarfieldPromptPreview,
 } from "./orbit-starfield-agent-prompt";
+import {
+  initializeStarfieldLanguage,
+  persistStarfieldLanguage,
+} from "./orbit-starfield-language";
 
 export function runStarfieldDesktop(host: HTMLElement): () => void {
   const self: any = { props: {} };
@@ -95,7 +99,7 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
         rightParaHtml:'<span style="display:block;white-space:nowrap;">Turn one event</span><span style="display:block;white-space:nowrap;">from a crowd into <b style="font-weight:500;color:#fff;">the right crowd</b>.</span><span style="display:block;white-space:nowrap;">iOrbit charts an orbit for every guest,</span><span style="display:block;white-space:nowrap;">seating you among the right people.</span>'
       }
     };
-    let LANG=(()=>{try{const s=localStorage.getItem('iorbit_lang');if(s==='en'||s==='zh')return s;}catch(e){}return (host.getAttribute('data-lang')==='en')?'en':'zh';})();
+    let LANG=initializeStarfieldLanguage(host);
     const T=()=>DICT[LANG];
     const card=(i)=>{const D=DICT[LANG];return {_i:i,name:D.name(i),company:pick(D.ORG,i*5),role:pick(D.ROLE,i*2+1),tag:pick(D.TAG,i),help:pick(D.HELP,i*3+1),deal:pick(D.DEAL,i*2),av:avaURL(i*5+3)};};
 
@@ -459,7 +463,8 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
       try{
         LANG=(lng==='en')?'en':'zh';
         host.setAttribute('data-lang',LANG);
-        if(persist){try{localStorage.setItem('iorbit_lang',LANG);}catch(e){}}
+        host.setAttribute('data-orbit-language',LANG);
+        if(persist)persistStarfieldLanguage(LANG);
         QUERY=T().query;SLO2=T().slo2;PROC1=T().proc1;PROC2=T().proc2;
         applyDOM();
         words=[].slice.call(host.querySelectorAll('.sk-word'));   // H1 spans are rebuilt by applyDOM
@@ -474,7 +479,7 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
         updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:0,visible:false});
         updateLangBtns();
       }catch(err){
-        try{localStorage.setItem('iorbit_lang',(lng==='en')?'en':'zh');}catch(e){}
+        persistStarfieldLanguage((lng==='en')?'en':'zh');
         location.reload();
       }
     };
