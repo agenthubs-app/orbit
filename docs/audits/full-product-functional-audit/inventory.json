@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "3ef3283101fe3e9deada79ca47c5c2b8a024143d",
-  "deterministicSourceTime": "2026-07-30T21:57:31+09:00",
+  "generatedFromCommit": "7d32de1710070f48f07006c580ff4aa9a93aeeb1",
+  "deterministicSourceTime": "2026-07-30T23:04:36+09:00",
   "sourceState": "clean-head",
   "uncommittedAuthoritativeInputChanges": 0,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
@@ -103,9 +103,7 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [
-          "code"
-        ],
+        "queryParameters": [],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/app/index.tsx"
@@ -275,9 +273,7 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [
-          "code"
-        ],
+        "queryParameters": [],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/app/[...legacy].tsx"
@@ -1113,7 +1109,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
           "created",
           "email",
           "next"
@@ -1660,7 +1655,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
           "created",
           "email",
           "next"
@@ -2719,7 +2713,6 @@
       },
       "routeParameters": {
         "queryParameters": [
-          "code",
           "created",
           "email",
           "next"
@@ -74847,6 +74840,7 @@
       },
       "routeParameters": {
         "queryParameters": [
+          "language",
           "orbitVisualSeed"
         ],
         "hashEvidenceFiles": [],
@@ -105899,9 +105893,7 @@
         "focusManagement": "not-runtime-verified"
       },
       "routeParameters": {
-        "queryParameters": [
-          "scenario"
-        ],
+        "queryParameters": [],
         "hashEvidenceFiles": [
           "repos/orbits/shared/ui/api-probe-form.tsx"
         ],
