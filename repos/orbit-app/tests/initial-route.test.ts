@@ -42,6 +42,8 @@ describe("resolveInitialRouteHref", () => {
       "/account/forgot-password"
     );
     assert.equal(resolveInitialRouteHref("settings/api"), "/settings/api");
+    assert.equal(resolveInitialRouteHref("settings"), "/settings");
+    assert.equal(resolveInitialRouteHref("today"), "/today");
     assert.equal(resolveInitialRouteHref("party"), "/party");
     assert.equal(resolveInitialRouteHref("platform"), "/platform");
     assert.equal(resolveInitialRouteHref("register"), "/register");
@@ -155,13 +157,25 @@ describe("resolveInitialRouteHref", () => {
       "/party/checkin?eventId=event_signup_03"
     );
     assert.equal(
+      resolveInitialRouteHref(
+        "/party?code=event_signup_03&code=event_signup_04&view=graph#relationship-map"
+      ),
+      "/party?code=event_signup_03&code=event_signup_04&view=graph#relationship-map"
+    );
+    assert.equal(
+      resolveInitialRouteHref(
+        "/contacts/contact_029?tab=history#recent-activity"
+      ),
+      "/contacts/contact_029?tab=history#recent-activity"
+    );
+    assert.equal(
       resolveInitialRouteHref("/inbox?contactId=contact_029"),
       "/inbox?contactId=contact_029"
     );
   });
 
   it("falls back to the AI tab for unsupported values", () => {
-    assert.equal(resolveInitialRouteHref("settings"), "/ai");
+    assert.equal(resolveInitialRouteHref("unknown-route"), "/ai");
     assert.equal(resolveInitialRouteHref("contacts/../../settings"), "/ai");
   });
 });

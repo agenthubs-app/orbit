@@ -26,6 +26,12 @@ test("account auth screen can start the mobile Google login bridge", () => {
   assert.match(screenSource, /oauthActions/u);
 });
 
+test("account auth screen normalizes next before every post-auth navigation", () => {
+  assert.match(screenSource, /normalizedNext\(firstParam\(params\.next/u);
+  assert.match(screenSource, /nextHrefForAccountAuthSubmit/u);
+  assert.doesNotMatch(screenSource, /router\.replace\(next as Href\)/u);
+});
+
 test("mobile Google broker route falls back to the native login screen", () => {
   assert.ok(existsSync(mobileGoogleRoutePath));
 

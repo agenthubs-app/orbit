@@ -1,3 +1,5 @@
+import { resolveSupportedInitialRouteHref } from "./initial-route";
+
 export type AccountAuthMode = "forgot" | "login" | "signup";
 
 export interface AccountAuthFieldView {
@@ -40,6 +42,11 @@ interface AccountAuthOptions {
 
 const defaultNext = "/dashboard";
 const boundary = "使用网页端同一组邮箱和密码。";
+const authEntryPaths = new Set([
+  "/account/forgot-password",
+  "/account/login",
+  "/account/signup"
+]);
 
 const modeCopy: Record<
   AccountAuthMode,
@@ -133,12 +140,15 @@ function oauthActionsForMode(
   return [{ id: "google", label: "使用 Google 登录" }];
 }
 
-function normalizedNext(next: string | undefined): string {
-  if (!next?.trim().startsWith("/")) {
+export function normalizedNext(next: string | undefined): string {
+  const supported = resolveSupportedInitialRouteHref(next?.trim());
+  const pathname = supported?.split(/[?#]/u, 1)[0];
+
+  if (!supported || !pathname || authEntryPaths.has(pathname)) {
     return defaultNext;
   }
 
-  return next.trim();
+  return supported;
 }
 
 export function accountAuthToView(

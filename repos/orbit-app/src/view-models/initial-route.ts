@@ -27,7 +27,9 @@ type InitialRoutePath =
   | "/register"
   | `/register/${string}`
   | "/schedule"
+  | "/settings"
   | "/settings/api"
+  | "/today"
   | `/schedule/events/${string}`
   | "/profile"
   | `/ai/${string}`
@@ -37,7 +39,10 @@ type InitialRoutePath =
   | `/events/${string}/attendees`
   | `/events/${string}/register`;
 
-export type InitialRouteHref = InitialRoutePath | `${InitialRoutePath}?${string}`;
+export type InitialRouteHref =
+  | InitialRoutePath
+  | `${InitialRoutePath}?${string}`
+  | `${InitialRoutePath}#${string}`;
 
 const routeByKey: Record<string, InitialRoutePath> = {
   account: "/account",
@@ -68,10 +73,13 @@ const routeByKey: Record<string, InitialRoutePath> = {
   profile: "/profile",
   register: "/register",
   schedule: "/schedule",
+  settings: "/settings",
   "settings/api": "/settings/api",
+  today: "/today",
 };
 
 function parsedConfiguredRoute(configuredRoute?: string): {
+  rawHash: string;
   rawQuery: string;
   routeKey: string;
   searchParams: URLSearchParams;
@@ -82,7 +90,9 @@ function parsedConfiguredRoute(configuredRoute?: string): {
     return null;
   }
 
-  const [withoutHash = ""] = route.split("#", 1);
+  const hashIndex = route.indexOf("#");
+  const withoutHash = hashIndex === -1 ? route : route.slice(0, hashIndex);
+  const rawHash = hashIndex === -1 ? "" : route.slice(hashIndex + 1);
   const queryIndex = withoutHash.indexOf("?");
   const rawPath =
     queryIndex === -1 ? withoutHash : withoutHash.slice(0, queryIndex);
@@ -92,6 +102,7 @@ function parsedConfiguredRoute(configuredRoute?: string): {
     .replace(/^app(?:\/|$)/u, "");
 
   return {
+    rawHash,
     rawQuery,
     routeKey,
     searchParams: new URLSearchParams(rawQuery)
@@ -193,17 +204,23 @@ function detailRouteHref(routeKey: string): InitialRoutePath | null {
   return `/${match[1]}/${match[2]}` as InitialRoutePath;
 }
 
-function hrefWithQuery(path: InitialRoutePath, rawQuery: string): InitialRouteHref {
-  return rawQuery ? `${path}?${rawQuery}` as InitialRouteHref : path;
+function hrefWithQuery(
+  path: InitialRoutePath,
+  rawQuery: string,
+  rawHash: string
+): InitialRouteHref {
+  const href = rawQuery ? `${path}?${rawQuery}` : path;
+
+  return rawHash ? `${href}#${rawHash}` as InitialRouteHref : href as InitialRouteHref;
 }
 
-export function resolveInitialRouteHref(
-  configuredRoute = process.env.EXPO_PUBLIC_ORBIT_INITIAL_ROUTE,
-): InitialRouteHref {
+export function resolveSupportedInitialRouteHref(
+  configuredRoute: string | undefined,
+): InitialRouteHref | null {
   const parsedRoute = parsedConfiguredRoute(configuredRoute);
 
   if (!parsedRoute) {
-    return "/ai";
+    return null;
   }
 
   const routeKey = webShellRouteKey(parsedRoute.routeKey);
@@ -212,19 +229,29 @@ export function resolveInitialRouteHref(
     const codeRoute = registerCodeRoute(parsedRoute.searchParams);
 
     if (codeRoute) {
-      return codeRoute;
+      return hrefWithQuery(codeRoute, "", parsedRoute.rawHash);
     }
   }
 
   if (routeKey === "contacts" && hasContactsListQuery(parsedRoute.searchParams)) {
-    return hrefWithQuery("/contacts/list", parsedRoute.rawQuery);
+    return hrefWithQuery(
+      "/contacts/list",
+      parsedRoute.rawQuery,
+      parsedRoute.rawHash
+    );
   }
 
   const route = routeByKey[routeKey] ?? detailRouteHref(routeKey);
 
   if (!route) {
-    return "/ai";
+    return null;
   }
 
-  return hrefWithQuery(route, parsedRoute.rawQuery);
+  return hrefWithQuery(route, parsedRoute.rawQuery, parsedRoute.rawHash);
+}
+
+export function resolveInitialRouteHref(
+  configuredRoute = process.env.EXPO_PUBLIC_ORBIT_INITIAL_ROUTE,
+): InitialRouteHref {
+  return resolveSupportedInitialRouteHref(configuredRoute) ?? "/ai";
 }

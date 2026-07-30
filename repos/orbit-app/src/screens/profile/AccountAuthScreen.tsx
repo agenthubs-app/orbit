@@ -14,6 +14,8 @@ import { DataCard } from "../../components/DataCard";
 import { colors, radius, spacing, typography } from "../../design/tokens";
 import {
   accountAuthToView,
+  nextHrefForAccountAuthSubmit,
+  normalizedNext,
   type AccountAuthFieldView,
   type AccountAuthMode
 } from "../../view-models/account-auth";
@@ -52,7 +54,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled }),
     [auth.googleEnabled, mode]
   );
-  const next = firstParam(params.next, view.defaultNext);
+  const next = normalizedNext(firstParam(params.next, view.defaultNext));
   const created = firstParam(params.created) === "1";
 
   function updateValue(field: AccountAuthFieldView, value: string) {
@@ -89,9 +91,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         }
 
         router.replace(
-          `/account/login?created=1&email=${encodeURIComponent(
-            values.email.trim()
-          )}&next=${encodeURIComponent(next)}` as Href
+          nextHrefForAccountAuthSubmit({
+            email: values.email,
+            mode,
+            next
+          }) as Href
         );
         return;
       }
@@ -107,7 +111,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      router.replace(next as Href);
+      router.replace(
+        nextHrefForAccountAuthSubmit({
+          email: values.email,
+          mode,
+          next
+        }) as Href
+      );
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +140,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         return;
       }
 
-      router.replace(next as Href);
+      router.replace(
+        nextHrefForAccountAuthSubmit({
+          email: values.email,
+          mode,
+          next
+        }) as Href
+      );
     } finally {
       setSubmitting(false);
     }

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   accountAuthToView,
   nextHrefForAccountAuthSubmit,
+  normalizedNext,
   type AccountAuthMode
 } from "../src/view-models/account-auth";
 
@@ -132,4 +133,25 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
     }),
     "/account/login?next=%2Fdashboard"
   );
+});
+
+test("normalizedNext accepts supported app routes and rejects redirect or route-policy bypasses", () => {
+  assert.equal(normalizedNext("/profile"), "/profile");
+  assert.equal(normalizedNext(" /events?tab=mine "), "/events?tab=mine");
+  assert.equal(normalizedNext("/app/contacts?query=tokyo"), "/contacts/list?query=tokyo");
+  assert.equal(
+    normalizedNext(
+      "/party?code=event_1&code=event_2&view=graph#relationship-map"
+    ),
+    "/party?code=event_1&code=event_2&view=graph#relationship-map"
+  );
+  assert.equal(normalizedNext("/today"), "/today");
+  assert.equal(normalizedNext("/settings"), "/settings");
+  assert.equal(normalizedNext("https://attacker.example"), "/dashboard");
+  assert.equal(normalizedNext("//attacker.example/path"), "/dashboard");
+  assert.equal(normalizedNext("/\\attacker.example/path"), "/dashboard");
+  assert.equal(normalizedNext("/unknown-route"), "/dashboard");
+  assert.equal(normalizedNext("/account/login?next=%2Faccount%2Flogin"), "/dashboard");
+  assert.equal(normalizedNext("/account/signup"), "/dashboard");
+  assert.equal(normalizedNext(undefined), "/dashboard");
 });
