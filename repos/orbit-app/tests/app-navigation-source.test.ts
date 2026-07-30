@@ -37,10 +37,10 @@ test("the Orbit AI drawer exposes the relationship inbox with its unread badge",
   );
 });
 
-test("the inbox badge count stays a shared hook over the same three sources", () => {
+test("the inbox badge count reads only durable inbox and notification sources", () => {
   assert.match(badgeHookSource, /relationshipInboxPath\(\)/u);
   assert.match(badgeHookSource, /ORBIT_API_ENDPOINTS\.notifications/u);
-  assert.match(badgeHookSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
+  assert.doesNotMatch(badgeHookSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
   assert.match(badgeHookSource, /relationshipInboxBadgeCount/u);
   assert.match(badgeHookSource, /Math\.min\(count, 99\)/u);
 });

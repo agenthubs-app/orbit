@@ -15,15 +15,10 @@ export function useRelationshipInboxBadgeCount(): number | undefined {
     ORBIT_API_ENDPOINTS.notifications,
     () => false
   );
-  const proactiveState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.proactiveTurns,
-    () => false
-  );
 
   if (
     inboxState.kind !== "success" &&
-    notificationsState.kind !== "success" &&
-    proactiveState.kind !== "success"
+    notificationsState.kind !== "success"
   ) {
     return undefined;
   }
@@ -33,8 +28,7 @@ export function useRelationshipInboxBadgeCount(): number | undefined {
       ? relationshipInboxToView(inboxState.data)
       : relationshipInboxToView(null);
   const alerts = relationshipAlertsToView(
-    notificationsState.kind === "success" ? notificationsState.data : null,
-    proactiveState.kind === "success" ? proactiveState.data : null
+    notificationsState.kind === "success" ? notificationsState.data : null
   );
   const count = relationshipInboxBadgeCount(inbox, alerts);
 

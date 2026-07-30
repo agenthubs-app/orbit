@@ -114,10 +114,6 @@ export function RelationshipInboxScreen() {
     ORBIT_API_ENDPOINTS.notifications,
     (data) => relationshipAlertsToView(data).alerts.length === 0
   );
-  const proactiveState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.proactiveTurns,
-    () => false
-  );
   const signalsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
     (data) => relationshipSignalsToView(data).signals.length === 0
@@ -142,7 +138,6 @@ export function RelationshipInboxScreen() {
   function refreshAll() {
     state.refresh();
     notificationsState.refresh();
-    proactiveState.refresh();
     signalsState.refresh();
   }
 
@@ -155,7 +150,6 @@ export function RelationshipInboxScreen() {
           refreshing={
             state.refreshing ||
             notificationsState.refreshing ||
-            proactiveState.refreshing ||
             signalsState.refreshing
           }
           tintColor={colors.accent}
@@ -181,9 +175,6 @@ export function RelationshipInboxScreen() {
           }
           onCreateThread={setCreatedThread}
           onSelectConversation={setSelectedConversationId}
-          proactiveData={
-            proactiveState.kind === "success" ? proactiveState.data : null
-          }
           onRefreshSignals={signalsState.refresh}
           selectedConversationId={selectedConversationId}
           seed={{
@@ -223,7 +214,6 @@ function InboxContent({
   onCreateThread,
   onSelectConversation,
   onRefreshSignals,
-  proactiveData,
   seed,
   selectedConversationId,
   signalsData,
@@ -240,7 +230,6 @@ function InboxContent({
   onCreateThread: (thread: RelationshipCreatedThreadView | null) => void;
   onSelectConversation: (conversationId: string | null) => void;
   onRefreshSignals: () => void;
-  proactiveData: unknown;
   seed: { contactId: string; organization: string; participantName: string };
   selectedConversationId: string | null;
   signalsData: unknown;
@@ -249,7 +238,7 @@ function InboxContent({
   setComposing: (value: boolean) => void;
 }) {
   const view = relationshipInboxToView(data);
-  const alertsView = relationshipAlertsToView(notificationsData, proactiveData);
+  const alertsView = relationshipAlertsToView(notificationsData);
   const signalsView = relationshipSignalsToView(signalsData);
   const signalCount = signalsView.signals.length;
   const pendingSignalCount = signalsView.signals.filter(

@@ -23,6 +23,11 @@ test("relationship inbox alerts can be dismissed locally like the web inbox pane
   assert.match(screenSource, /label="忽略"/u);
 });
 
+test("relationship inbox does not GET the POST-only proactive signal endpoint", () => {
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
+  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.notifications/u);
+});
+
 test("relationship inbox can rewrite reply drafts through the web assist boundary", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite/u);
   assert.match(screenSource, /buildRelationshipRewriteRequest/u);
