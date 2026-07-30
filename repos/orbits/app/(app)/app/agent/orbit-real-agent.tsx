@@ -64,6 +64,45 @@ export function agentRetryRequestForAssistant(
   return null;
 }
 
+export function prepareAgentFailedRequestRetry(
+  messages: readonly AgentMessage[],
+  assistantIndex: number,
+): {
+  historyMessages: AgentMessage[];
+  query: string;
+  visibleMessages: AgentMessage[];
+} | null {
+  const failedMessage = messages[assistantIndex];
+  if (
+    failedMessage?.role !== "assistant" ||
+    !failedMessage.retryRequest?.trim()
+  ) {
+    return null;
+  }
+
+  let userIndex = -1;
+  for (let index = assistantIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === "user") {
+      userIndex = index;
+      break;
+    }
+  }
+  if (userIndex < 0) {
+    return null;
+  }
+
+  return {
+    historyMessages: messages.filter(
+      (_message, index) => index !== userIndex && index !== assistantIndex,
+    ),
+    query: failedMessage.retryRequest.trim(),
+    visibleMessages: messages.filter(
+      (_message, index) => index !== assistantIndex,
+    ),
+  };
+}
+
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
 type AgentHistoryLanguage = "en" | "zh" | "ja";
@@ -1892,7 +1931,10 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
   // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
   // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
-  const ask = useCallback(async (query: string) => {
+  const ask = useCallback(async (
+    query: string,
+    retryAssistantIndex?: number,
+  ) => {
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
       locale === "zh"
@@ -1901,12 +1943,24 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
 
     // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
     // 推荐轮附带结构化明细，追问时间/地点/理由时模型可直接作答。
-    const history = messagesRef.current
+    const retry =
+      typeof retryAssistantIndex === "number"
+        ? prepareAgentFailedRequestRetry(
+            messagesRef.current,
+            retryAssistantIndex,
+          )
+        : null;
+    const historySource = retry?.historyMessages ?? messagesRef.current;
+    const history = historySource
       .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
       .filter((turn) => turn.content)
       .slice(-8);
 
-    setMessages((current) => [...current, { role: "user", text: query }]);
+    if (retry) {
+      setMessages(retry.visibleMessages);
+    } else {
+      setMessages((current) => [...current, { role: "user", text: query }]);
+    }
     setThinking(true);
     // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
@@ -2442,7 +2496,7 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
                       className="btn btn-quiet"
                       data-agent-message-retry-request
                       disabled={thinking}
-                      onClick={() => void ask(message.retryRequest!)}
+                      onClick={() => void ask(message.retryRequest!, index)}
                       style={{ marginTop: 10 }}
                       type="button"
                     >

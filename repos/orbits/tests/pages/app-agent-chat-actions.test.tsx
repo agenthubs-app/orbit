@@ -14,7 +14,10 @@ import {
   agentLedgerErrorMessage,
   agentLedgerReviewTransitionsForStatus,
 } from "../../features/agent/ledger/presentation";
-import { agentRetryRequestForAssistant } from "../../app/(app)/app/agent/orbit-real-agent";
+import {
+  agentRetryRequestForAssistant,
+  prepareAgentFailedRequestRetry,
+} from "../../app/(app)/app/agent/orbit-real-agent";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
 test("conversation response links actions from exactly one shared run", () => {
@@ -96,17 +99,22 @@ test("chat narrows run actions to the action ids linked by the conversation API"
 });
 
 test("chat action state labels are product-readable in Chinese and English", () => {
-  assert.equal(agentChatActionStatusLabel("awaiting_confirmation", "zh"), "等待确认");
+  assert.equal(
+    agentChatActionStatusLabel("awaiting_confirmation", "zh"),
+    "等待确认",
+  );
   assert.equal(agentChatActionStatusLabel("completed", "en"), "Completed");
-  assert.equal(agentChatActionStatusLabel("new-server-state", "zh"), "正在同步");
+  assert.equal(
+    agentChatActionStatusLabel("new-server-state", "zh"),
+    "正在同步",
+  );
 });
 
 test("review controls follow the ledger state machine and localize stale-state errors", () => {
-  assert.deepEqual(agentLedgerReviewTransitionsForStatus("awaiting_confirmation"), [
-    "confirm",
-    "defer",
-    "reject",
-  ]);
+  assert.deepEqual(
+    agentLedgerReviewTransitionsForStatus("awaiting_confirmation"),
+    ["confirm", "defer", "reject"],
+  );
   assert.deepEqual(agentLedgerReviewTransitionsForStatus("deferred"), [
     "confirm",
     "reject",
@@ -121,7 +129,8 @@ test("review controls follow the ledger state machine and localize stale-state e
           context: {
             agentLedgerErrorCode: "AGENT_LEDGER_TRANSITION_INVALID",
           },
-          message: "That transition is not allowed from the entry's current status.",
+          message:
+            "That transition is not allowed from the entry's current status.",
         },
       },
       "zh",
@@ -134,7 +143,8 @@ test("review controls follow the ledger state machine and localize stale-state e
         success: false,
         error: {
           code: "CONFLICT",
-          message: "That transition is not allowed from the entry's current status.",
+          message:
+            "That transition is not allowed from the entry's current status.",
         },
       },
       "zh",
@@ -245,6 +255,55 @@ test("failed Agent requests replay the nearest preceding user request", () => {
     ),
     null,
   );
+});
+
+test("failed Agent request retry consumes the failure without duplicating its user turn", () => {
+  const retry = prepareAgentFailedRequestRetry(
+    [
+      { role: "user", text: "先找人" },
+      {
+        items: [],
+        kind: "people",
+        panelTitle: "",
+        role: "assistant",
+        text: "第一轮",
+      },
+      { role: "user", text: "重新检查这段关系" },
+      {
+        items: [],
+        kind: "people",
+        panelTitle: "",
+        retryRequest: "重新检查这段关系",
+        role: "assistant",
+        text: "Provider unavailable",
+      },
+    ],
+    3,
+  );
+
+  assert.ok(retry);
+  assert.equal(retry.query, "重新检查这段关系");
+  assert.deepEqual(retry.visibleMessages, [
+    { role: "user", text: "先找人" },
+    {
+      items: [],
+      kind: "people",
+      panelTitle: "",
+      role: "assistant",
+      text: "第一轮",
+    },
+    { role: "user", text: "重新检查这段关系" },
+  ]);
+  assert.deepEqual(retry.historyMessages, [
+    { role: "user", text: "先找人" },
+    {
+      items: [],
+      kind: "people",
+      panelTitle: "",
+      role: "assistant",
+      text: "第一轮",
+    },
+  ]);
 });
 
 test("chat never offers one-click confirmation for external actions", () => {
