@@ -8677,6 +8677,33 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
   const deepLinkSignals = [];
   const functionInfoByLocation = new Map();
   const callSitesByName = new Map();
+  const routeSearchTypeNames = new Set();
+  const routeSearchTypeDeclarations = new Map();
+
+  function collectRouteSearchTypeEvidence(typeNode, source) {
+    if (!typeNode) return;
+    if (
+      ts.isTypeReferenceNode(typeNode) &&
+      ts.isIdentifier(typeNode.typeName) &&
+      !["Array", "Promise", "Readonly", "Record"].includes(
+        typeNode.typeName.text,
+      )
+    ) {
+      routeSearchTypeNames.add(typeNode.typeName.text);
+    }
+    if (ts.isTypeLiteralNode(typeNode)) {
+      for (const member of typeNode.members) {
+        if (ts.isPropertySignature(member) && member.name) {
+          queryParameters.add(
+            member.name.getText(source).replace(/^["']|["']$/gu, ""),
+          );
+        }
+      }
+    }
+    ts.forEachChild(typeNode, (child) =>
+      collectRouteSearchTypeEvidence(child, source),
+    );
+  }
 
   function addIndexedValue(map, key, value) {
     const values = map.get(key) ?? [];
@@ -8735,6 +8762,16 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
           info,
         );
         currentFunction = info;
+        if (info.isRouteEntry) {
+          for (const parameter of info.parameters) {
+            if (
+              ts.isIdentifier(parameter.name) &&
+              /^(?:query|searchParams)$/u.test(parameter.name.text)
+            ) {
+              collectRouteSearchTypeEvidence(parameter.type, source);
+            }
+          }
+        }
       }
 
       if (
@@ -8745,6 +8782,25 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
         addIndexedValue(callSitesByName, node.expression.text, {
           arguments: node.arguments,
           caller: currentFunction,
+        });
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        ["useLocalSearchParams", "useSearchParams"].includes(
+          node.expression.text,
+        )
+      ) {
+        collectRouteSearchTypeEvidence(node.typeArguments?.[0], source);
+      }
+      if (
+        (ts.isInterfaceDeclaration(node) ||
+          ts.isTypeAliasDeclaration(node)) &&
+        node.name
+      ) {
+        routeSearchTypeDeclarations.set(node.name.text, {
+          node,
+          source,
         });
       }
       ts.forEachChild(node, (child) =>
@@ -8763,6 +8819,15 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
           : null;
       index(root, null, routeEntryRoot);
     }
+  }
+
+  for (const typeName of routeSearchTypeNames) {
+    const declaration = routeSearchTypeDeclarations.get(typeName);
+    if (!declaration) continue;
+    const typeNode = ts.isTypeAliasDeclaration(declaration.node)
+      ? declaration.node.type
+      : declaration.node;
+    collectRouteSearchTypeEvidence(typeNode, declaration.source);
   }
 
   function unwrapExpression(expression) {
@@ -8812,7 +8877,16 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
       ts.isIdentifier(current.expression) &&
       current.expression.text === "URLSearchParams"
     ) {
-      return true;
+      const argument = current.arguments?.[0];
+      return Boolean(
+        argument &&
+          (/(?:^|\.)location\.search$/u.test(argument.getText(functionInfo?.source)) ||
+            hasRouteSearchProvenance(
+              argument,
+              functionInfo,
+              seenParameters,
+            )),
+      );
     }
     if (
       ts.isCallExpression(current) &&
@@ -8825,6 +8899,35 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
     }
     if (!ts.isIdentifier(current) || !functionInfo) {
       return false;
+    }
+
+    let localInitializer = null;
+    function findLocalInitializer(node) {
+      if (localInitializer) return;
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === current.text &&
+        node.initializer
+      ) {
+        localInitializer = node.initializer;
+        return;
+      }
+      ts.forEachChild(node, findLocalInitializer);
+    }
+    findLocalInitializer(functionInfo.node);
+    if (localInitializer) {
+      const localKey = `${functionInfo.filePath}:${functionInfo.name ?? "<anonymous>"}:local:${current.text}`;
+      if (seenParameters.has(localKey)) {
+        return false;
+      }
+      const nextSeen = new Set(seenParameters);
+      nextSeen.add(localKey);
+      return hasRouteSearchProvenance(
+        localInitializer,
+        functionInfo,
+        nextSeen,
+      );
     }
 
     const parameterIndex = parameterIndexForIdentifier(functionInfo, current);
@@ -8882,15 +8985,6 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
       }
     }
 
-    function isSearchParamsReceiver(expression) {
-      const receiver = expression.getText(source);
-      return (
-        /(?:^|\.)(?:searchParams|params)$/u.test(receiver) ||
-        /\.searchParams$/u.test(receiver) ||
-        /^new URLSearchParams\(/u.test(receiver)
-      );
-    }
-
     function visit(node, parentFunction = null) {
       const currentFunction =
         functionInfoByLocation.get(`${filePath}:${node.getStart(source)}`) ??
@@ -8899,7 +8993,10 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
         if (
           ts.isPropertyAccessExpression(node.expression) &&
           node.expression.name.text === "get" &&
-          isSearchParamsReceiver(node.expression.expression) &&
+          hasRouteSearchProvenance(
+            node.expression.expression,
+            currentFunction,
+          ) &&
           node.arguments[0] &&
           ts.isStringLiteralLike(node.arguments[0])
         ) {
@@ -8946,18 +9043,18 @@ function collectRouteParameterSignals(reachableUiScopes, entryFilePath) {
         }
       }
 
+      // Type names alone do not prove that the page URL owns those keys.
+      // Reachable debug controls often declare API-request `*SearchParams`
+      // types whose values are sent to a nested `/api/*` endpoint.
       if (
-        ts.isInterfaceDeclaration(node) &&
-        /SearchParams/u.test(node.name.text)
+        (ts.isInterfaceDeclaration(node) ||
+          ts.isTypeAliasDeclaration(node)) &&
+        node.name &&
+        routeSearchTypeNames.has(node.name.text)
       ) {
-        recordSearchParamsTypeMembers(node);
-      }
-      if (
-        ts.isTypeAliasDeclaration(node) &&
-        /SearchParams/u.test(node.name.text) &&
-        ts.isTypeLiteralNode(node.type)
-      ) {
-        recordSearchParamsTypeMembers(node.type);
+        recordSearchParamsTypeMembers(
+          ts.isTypeAliasDeclaration(node) ? node.type : node,
+        );
       }
       ts.forEachChild(node, (child) => visit(child, currentFunction));
     }

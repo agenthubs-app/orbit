@@ -268,6 +268,11 @@ test("route query parameters come from route-local URL consumers, not transitive
   assert.deepEqual(routeParameters("web:/app/contacts/dashboard"), [
     "orbitVisualSeed",
   ]);
+  assert.deepEqual(routeParameters("web:/app/home"), ["orbitVisualSeed"]);
+  assert.deepEqual(routeParameters("web:/app/home/events"), [
+    "orbitVisualSeed",
+  ]);
+  assert.deepEqual(routeParameters("web:/dev/capabilities/[slug]"), []);
 
   const allRouteQueryParameters = inventory.surfaces.flatMap(
     (surface) => surface.routeParameters.queryParameters,
