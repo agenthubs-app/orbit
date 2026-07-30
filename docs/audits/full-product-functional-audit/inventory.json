@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "7d32de1710070f48f07006c580ff4aa9a93aeeb1",
-  "deterministicSourceTime": "2026-07-30T23:04:36+09:00",
+  "generatedFromCommit": "7b539373ae5fcda75f03f5655437e80618ab75b1",
+  "deterministicSourceTime": "2026-07-31T04:19:42+09:00",
   "sourceState": "clean-head",
   "uncommittedAuthoritativeInputChanges": 0,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
@@ -25164,649 +25164,649 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 150,
+          "line": 145,
           "tag": "AppScreen",
           "text": "关系收件箱"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 168,
+          "line": 162,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 315,
+          "line": 304,
           "tag": "DataCard",
           "text": "view.title"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 320,
+          "line": 309,
           "tag": "MetricPill",
           "text": "待处理"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 321,
+          "line": 310,
           "tag": "MetricPill",
           "text": "线索"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 322,
+          "line": 311,
           "tag": "MetricPill",
           "text": "提醒"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 323,
+          "line": 312,
           "tag": "MetricPill",
           "text": "对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 357,
+          "line": 346,
           "tag": "ActionButton",
           "text": "写一段新跟进"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 383,
+          "line": 372,
           "tag": "DataCard",
           "text": "暂无对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 384,
+          "line": 373,
           "tag": "Text",
           "text": "可以先写一段跟进草稿，确认后再放进收件箱复核。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 457,
+          "line": 446,
           "tag": "DataCard",
           "text": "关系线索"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 458,
+          "line": 447,
           "tag": "Text",
           "text": "正在读取关系线索。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 459,
+          "line": 448,
           "tag": "Text",
           "text": "{error}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 460,
+          "line": 449,
           "tag": "Text",
           "text": "{actionError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 463,
+          "line": 452,
           "tag": "Text",
           "text": "{confirmation.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 464,
+          "line": 453,
           "tag": "Text",
           "text": "{confirmation.contactLine}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 465,
+          "line": 454,
           "tag": "Text",
           "text": "{confirmation.detail} · {confirmation.confirmedAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 468,
+          "line": 457,
           "tag": "Text",
           "text": "{confirmation.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 476,
+          "line": 465,
           "tag": "Text",
           "text": "{signal.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 479,
+          "line": 468,
           "tag": "Text",
           "text": "{signal.occurredAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 481,
+          "line": 470,
           "tag": "Text",
           "text": "{signal.metaLine}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 484,
+          "line": 473,
           "tag": "Text",
           "text": "{signal.context}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 487,
+          "line": 476,
           "tag": "Text",
           "text": "{signal.evidenceExcerpt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 491,
+          "line": 480,
           "tag": "Text",
           "text": "{signal.sourceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 492,
+          "line": 481,
           "tag": "Text",
           "text": "{signal.confidenceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 493,
+          "line": 482,
           "tag": "Text",
           "text": "{signal.statusLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 494,
+          "line": 483,
           "tag": "Text",
           "text": "{signal.permissionLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 496,
+          "line": 485,
           "tag": "Text",
           "text": "{signal.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 498,
+          "line": 487,
           "tag": "ActionButton",
           "text": "确认线索"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 512,
+          "line": 501,
           "tag": "Text",
           "text": "暂无关系线索"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 513,
+          "line": 502,
           "tag": "Text",
           "text": "{view.emptyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 516,
+          "line": 505,
           "tag": "Text",
           "text": "{view.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 524,
+          "line": 513,
           "tag": "Text",
           "text": "{value}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 525,
+          "line": 514,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 543,
+          "line": 532,
           "tag": "SegmentButton",
           "text": "待处理"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 550,
+          "line": 539,
           "tag": "SegmentButton",
           "text": "对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 589,
+          "line": 578,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 597,
+          "line": 586,
           "tag": "Text",
           "text": "{count}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 610,
+          "line": 599,
           "tag": "Pressable",
           "text": "label"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 620,
+          "line": 609,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 633,
+          "line": 622,
           "tag": "DataCard",
           "text": "提醒"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 639,
+          "line": 628,
           "tag": "Text",
           "text": "{alert.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 642,
+          "line": 631,
           "tag": "Text",
           "text": "{alert.dueLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 645,
+          "line": 634,
           "tag": "Text",
           "text": "{alert.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 650,
+          "line": 639,
           "tag": "Text",
           "text": "{alert.priorityLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 659,
+          "line": 648,
           "tag": "AlertDismissButton",
           "text": "忽略"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 670,
+          "line": 659,
           "tag": "Text",
           "text": "暂无提醒"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 671,
+          "line": 660,
           "tag": "Text",
           "text": "有需要准备的会面、跟进或 Orbit AI 提示时，会先出现在这里。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 676,
+          "line": 665,
           "tag": "Text",
           "text": "{view.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 708,
+          "line": 697,
           "tag": "DataCard",
           "text": "对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 711,
+          "line": 700,
           "tag": "TextInput",
           "text": "搜索对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 733,
+          "line": 722,
           "tag": "Text",
           "text": "{conversation.name}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 736,
+          "line": 725,
           "tag": "Text",
           "text": "{conversation.lastAt}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 738,
+          "line": 727,
           "tag": "Text",
           "text": "{conversation.subject}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 741,
+          "line": 730,
           "tag": "Text",
           "text": "{conversation.preview}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 746,
+          "line": 735,
           "tag": "Text",
           "text": "{conversation.unreadLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 748,
+          "line": 737,
           "tag": "Text",
           "text": "{conversation.nextAction}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 757,
+          "line": 746,
           "tag": "Text",
           "text": "没有匹配对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 758,
+          "line": 747,
           "tag": "Text",
           "text": "换一个姓名、公司或主题试试。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 776,
+          "line": 765,
           "tag": "DataCard",
           "text": "detail.subject"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 780,
+          "line": 769,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 793,
+          "line": 782,
           "tag": "Text",
           "text": "{message.sender}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 794,
+          "line": 783,
           "tag": "Text",
           "text": "{message.time}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 796,
+          "line": 785,
           "tag": "Text",
           "text": "{message.body}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 900,
+          "line": 889,
           "tag": "Text",
           "text": "隐私控制"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 901,
+          "line": 890,
           "tag": "Text",
           "text": "正在读取这段对话的隐私状态。 / 隐私控制暂时不可用。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 904,
+          "line": 893,
           "tag": "Text",
           "text": "{privacyError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 906,
+          "line": 895,
           "tag": "ActionButton",
           "text": "重试"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 921,
+          "line": 910,
           "tag": "Text",
           "text": "{privacy.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 922,
+          "line": 911,
           "tag": "Text",
           "text": "{privacy.summary}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 924,
+          "line": 913,
           "tag": "Text",
           "text": "{privacy.sourceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 927,
+          "line": 916,
           "tag": "Text",
           "text": "{privacy.analysisLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 928,
+          "line": 917,
           "tag": "Text",
           "text": "{privacy.privateNotesLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 929,
+          "line": 918,
           "tag": "Text",
           "text": "{privacy.shareLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 931,
+          "line": 920,
           "tag": "Text",
           "text": "{privacy.analysisDetail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 932,
+          "line": 921,
           "tag": "Text",
           "text": "{privacy.deletionLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 933,
+          "line": 922,
           "tag": "Text",
           "text": "{privacy.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 934,
+          "line": 923,
           "tag": "Text",
           "text": "{privacyError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 935,
+          "line": 924,
           "tag": "ActionButton",
           "text": "privacy.toggleLabel"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1020,
+          "line": 1009,
           "tag": "Text",
           "text": "已暂存待复核，未发送"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1021,
+          "line": 1010,
           "tag": "Text",
           "text": "{staged}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1022,
+          "line": 1011,
           "tag": "ActionButton",
           "text": "继续编辑"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1034,
+          "line": 1023,
           "tag": "Text",
           "text": "回复草稿"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1035,
+          "line": 1024,
           "tag": "TextInput",
           "text": "先写一版要说的话。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1048,
+          "line": 1037,
           "tag": "Text",
           "text": "{rewriteDraftView.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1049,
+          "line": 1038,
           "tag": "Text",
           "text": "{rewriteDraftView.rationale}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1050,
+          "line": 1039,
           "tag": "Text",
           "text": "{rewriteDraftView.sourceLabel}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1051,
+          "line": 1040,
           "tag": "Text",
           "text": "{rewriteDraftView.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1054,
+          "line": 1043,
           "tag": "Text",
           "text": "{rewriteError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1055,
+          "line": 1044,
           "tag": "Text",
           "text": "{detail.safetyText}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1057,
+          "line": 1046,
           "tag": "ActionButton",
           "text": "润色草稿"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1064,
+          "line": 1053,
           "tag": "ActionButton",
           "text": "暂存待复核"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1141,
+          "line": 1130,
           "tag": "DataCard",
           "text": "新跟进草稿"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1143,
+          "line": 1132,
           "tag": "LabeledInput",
           "text": "收件人"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1143,
+          "line": 1132,
           "tag": "LabeledInput",
           "text": "联系人姓名"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1149,
+          "line": 1138,
           "tag": "LabeledInput",
           "text": "公司/组织"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1149,
+          "line": 1138,
           "tag": "LabeledInput",
           "text": "选填"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1155,
+          "line": 1144,
           "tag": "LabeledInput",
           "text": "主题"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1155,
+          "line": 1144,
           "tag": "LabeledInput",
           "text": "这次跟进的主题"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1161,
+          "line": 1150,
           "tag": "Text",
           "text": "正文"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1162,
+          "line": 1151,
           "tag": "TextInput",
           "text": "写下第一条跟进内容。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1170,
+          "line": 1159,
           "tag": "Text",
           "text": "创建后只是放进收件箱复核，不会发送消息或创建日程。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1173,
+          "line": 1162,
           "tag": "Text",
           "text": "{error}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1175,
+          "line": 1164,
           "tag": "ActionButton",
           "text": "取消"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1181,
+          "line": 1170,
           "tag": "ActionButton",
           "text": "busy ? \"创建中\" : \"创建草稿\""
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1206,
+          "line": 1195,
           "tag": "Text",
           "text": "{label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1207,
+          "line": 1196,
           "tag": "TextInput",
           "text": "placeholder"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1250,
+          "line": 1239,
           "tag": "Text",
           "text": "{label}"
         },
@@ -25933,7 +25933,7 @@
           "interactionId": "mobile:/inbox#interaction-2",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 153,
+          "line": 148,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RefreshControl",
@@ -25965,7 +25965,7 @@
           "interactionId": "mobile:/inbox#interaction-3",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 174,
+          "line": 168,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "InboxContent",
@@ -26005,7 +26005,7 @@
           "interactionId": "mobile:/inbox#interaction-4",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 325,
+          "line": 314,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "InboxSegmentedControl",
@@ -26037,7 +26037,7 @@
           "interactionId": "mobile:/inbox#interaction-5",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 335,
+          "line": 324,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RelationshipSignalsCard",
@@ -26069,7 +26069,7 @@
           "interactionId": "mobile:/inbox#interaction-6",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 342,
+          "line": 331,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AlertsCard",
@@ -26105,7 +26105,7 @@
           "interactionId": "mobile:/inbox#interaction-7",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 357,
+          "line": 346,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26141,7 +26141,7 @@
           "interactionId": "mobile:/inbox#interaction-8",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 364,
+          "line": 353,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "NewThreadComposer",
@@ -26181,7 +26181,7 @@
           "interactionId": "mobile:/inbox#interaction-9",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 377,
+          "line": 366,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ConversationList",
@@ -26213,7 +26213,7 @@
           "interactionId": "mobile:/inbox#interaction-10",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 498,
+          "line": 487,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26247,7 +26247,7 @@
           "interactionId": "mobile:/inbox#interaction-11",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 543,
+          "line": 532,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "SegmentButton",
@@ -26281,7 +26281,7 @@
           "interactionId": "mobile:/inbox#interaction-12",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 550,
+          "line": 539,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "SegmentButton",
@@ -26315,7 +26315,7 @@
           "interactionId": "mobile:/inbox#interaction-13",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 575,
+          "line": 564,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -26347,7 +26347,7 @@
           "interactionId": "mobile:/inbox#interaction-14",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 610,
+          "line": 599,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -26379,7 +26379,7 @@
           "interactionId": "mobile:/inbox#interaction-15",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 659,
+          "line": 648,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AlertDismissButton",
@@ -26413,7 +26413,7 @@
           "interactionId": "mobile:/inbox#interaction-16",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 711,
+          "line": 700,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -26445,7 +26445,7 @@
           "interactionId": "mobile:/inbox#interaction-17",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 722,
+          "line": 711,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -26479,7 +26479,7 @@
           "interactionId": "mobile:/inbox#interaction-18",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 906,
+          "line": 895,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26511,7 +26511,7 @@
           "interactionId": "mobile:/inbox#interaction-19",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 935,
+          "line": 924,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26543,7 +26543,7 @@
           "interactionId": "mobile:/inbox#interaction-20",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1022,
+          "line": 1011,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26577,7 +26577,7 @@
           "interactionId": "mobile:/inbox#interaction-21",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1035,
+          "line": 1024,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -26612,7 +26612,7 @@
           "interactionId": "mobile:/inbox#interaction-22",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1057,
+          "line": 1046,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26644,7 +26644,7 @@
           "interactionId": "mobile:/inbox#interaction-23",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1064,
+          "line": 1053,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26679,7 +26679,7 @@
           "interactionId": "mobile:/inbox#interaction-24",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1143,
+          "line": 1132,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "LabeledInput",
@@ -26711,7 +26711,7 @@
           "interactionId": "mobile:/inbox#interaction-25",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1149,
+          "line": 1138,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "LabeledInput",
@@ -26743,7 +26743,7 @@
           "interactionId": "mobile:/inbox#interaction-26",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1155,
+          "line": 1144,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "LabeledInput",
@@ -26775,7 +26775,7 @@
           "interactionId": "mobile:/inbox#interaction-27",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1162,
+          "line": 1151,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -26807,7 +26807,7 @@
           "interactionId": "mobile:/inbox#interaction-28",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1175,
+          "line": 1164,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26839,7 +26839,7 @@
           "interactionId": "mobile:/inbox#interaction-29",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1181,
+          "line": 1170,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ActionButton",
@@ -26873,7 +26873,7 @@
           "interactionId": "mobile:/inbox#interaction-30",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1207,
+          "line": 1196,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -26905,7 +26905,7 @@
           "interactionId": "mobile:/inbox#interaction-31",
           "surfaceId": "mobile:/inbox",
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
-          "line": 1234,
+          "line": 1223,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -43061,115 +43061,115 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 876,
+          "line": 899,
           "tag": "button",
           "text": "t({ en: \"Copy message\", zh: \"复制消息\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 876,
+          "line": 899,
           "tag": "button",
           "text": "copied ? t({ en: \"Copied\", zh: \"已复制\" }) : t({ en: \"Copy\", zh: \"复制\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1090,
+          "line": 1113,
           "tag": "input",
           "text": "t({ en: \"Rename conversation\", zh: \"重命名对话\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1116,
+          "line": 1139,
           "tag": "button",
           "text": "t({ en: \"Save conversation name\", zh: \"保存对话名称\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1116,
+          "line": 1139,
           "tag": "button",
           "text": "t({ en: \"Save\", zh: \"保存\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1127,
+          "line": 1150,
           "tag": "button",
           "text": "t({ en: \"Cancel conversation rename\", zh: \"取消重命名对话\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1127,
+          "line": 1150,
           "tag": "button",
           "text": "t({ en: \"Cancel\", zh: \"取消\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1140,
+          "line": 1163,
           "tag": "button",
           "text": "item.q || item.title"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1158,
+          "line": 1181,
           "tag": "button",
           "text": "t({ en: \"More actions\", zh: \"更多操作\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1306,
+          "line": 1329,
           "tag": "h2",
           "text": "Delete this conversation? / 删除这个对话？"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1480,
+          "line": 1503,
           "tag": "h2",
           "text": "I am iOrbit / 我是 iOrbit"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1708,
+          "line": 1731,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit about contacts, events, and relationship to-dos\", zh: \"询问 Orbit 人脉、活动与关系待办\", })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1708,
+          "line": 1731,
           "tag": "textarea",
           "text": "t({ en: \"Ask Orbit: what you want to do, who to meet, which event to attend…\", zh: \"问问 Orbit：想做什么、想认识谁、想去什么活动…\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1735,
+          "line": 1758,
           "tag": "button",
           "text": "t({ en: \"Send Ask Orbit message\", zh: \"发送给 Orbit\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2540,
+          "line": 2563,
           "tag": "h1",
           "text": "iOrbit Agent workspace / iOrbit Agent 工作区"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2556,
+          "line": 2579,
           "tag": "button",
           "text": "t({ en: \"Chat history\", zh: \"对话历史\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2578,
+          "line": 2601,
           "tag": "button",
           "text": "t({ en: \"Resize chat history\", zh: \"调整历史宽度\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2627,
+          "line": 2650,
           "tag": "h3",
           "text": "{panel.panelTitle}"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2707,
+          "line": 2730,
           "tag": "button",
           "text": "t({ en: \"Dismiss\", zh: \"关闭提示\" })"
         },
@@ -44071,7 +44071,7 @@
           "interactionId": "web:/app/agent#interaction-15",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 853,
+          "line": 876,
           "ownerPropBranchConditions": [],
           "controlType": "link",
           "tag": "a",
@@ -44098,7 +44098,7 @@
           "interactionId": "web:/app/agent#interaction-16",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 876,
+          "line": 899,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44136,7 +44136,7 @@
           "interactionId": "web:/app/agent#interaction-17",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 941,
+          "line": 964,
           "ownerPropBranchConditions": [],
           "controlType": "disclosure",
           "tag": "summary",
@@ -44170,7 +44170,7 @@
           "interactionId": "web:/app/agent#interaction-18",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1083,
+          "line": 1106,
           "ownerPropBranchConditions": [],
           "controlType": "form-submit-boundary",
           "tag": "form",
@@ -44205,7 +44205,7 @@
           "interactionId": "web:/app/agent#interaction-19",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1090,
+          "line": 1113,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -44247,7 +44247,7 @@
           "interactionId": "web:/app/agent#interaction-20",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1116,
+          "line": 1139,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44276,7 +44276,7 @@
           "interactionId": "web:/app/agent#interaction-21",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1127,
+          "line": 1150,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44310,7 +44310,7 @@
           "interactionId": "web:/app/agent#interaction-22",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1140,
+          "line": 1163,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44347,7 +44347,7 @@
           "interactionId": "web:/app/agent#interaction-23",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1158,
+          "line": 1181,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44383,7 +44383,7 @@
           "interactionId": "web:/app/agent#interaction-24",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1196,
+          "line": 1219,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44420,7 +44420,7 @@
           "interactionId": "web:/app/agent#interaction-25",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1211,
+          "line": 1234,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44456,7 +44456,7 @@
           "interactionId": "web:/app/agent#interaction-26",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1224,
+          "line": 1247,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44493,7 +44493,7 @@
           "interactionId": "web:/app/agent#interaction-27",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1327,
+          "line": 1350,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44527,7 +44527,7 @@
           "interactionId": "web:/app/agent#interaction-28",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1336,
+          "line": 1359,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44561,7 +44561,7 @@
           "interactionId": "web:/app/agent#interaction-29",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1389,
+          "line": 1412,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "div",
@@ -44593,7 +44593,7 @@
           "interactionId": "web:/app/agent#interaction-30",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1407,
+          "line": 1430,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "IconButton",
@@ -44625,7 +44625,7 @@
           "interactionId": "web:/app/agent#interaction-31",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1410,
+          "line": 1433,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44659,7 +44659,7 @@
           "interactionId": "web:/app/agent#interaction-32",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1423,
+          "line": 1446,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44694,7 +44694,7 @@
           "interactionId": "web:/app/agent#interaction-33",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1441,
+          "line": 1464,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
@@ -44730,7 +44730,7 @@
           "interactionId": "web:/app/agent#interaction-34",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1491,
+          "line": 1514,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44764,7 +44764,7 @@
           "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1515,
+          "line": 1538,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44798,7 +44798,7 @@
           "interactionId": "web:/app/agent#interaction-36",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1566,
+          "line": 1589,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44832,7 +44832,7 @@
           "interactionId": "web:/app/agent#interaction-37",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1614,
+          "line": 1637,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44866,7 +44866,7 @@
           "interactionId": "web:/app/agent#interaction-38",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1708,
+          "line": 1731,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "textarea",
@@ -44906,7 +44906,7 @@
           "interactionId": "web:/app/agent#interaction-39",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1735,
+          "line": 1758,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -44938,7 +44938,7 @@
           "interactionId": "web:/app/agent#interaction-40",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2480,
+          "line": 2503,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentActionStatusCard",
@@ -44974,7 +44974,7 @@
           "interactionId": "web:/app/agent#interaction-41",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2495,
+          "line": 2518,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -45010,7 +45010,7 @@
           "interactionId": "web:/app/agent#interaction-42",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2556,
+          "line": 2579,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -45046,7 +45046,7 @@
           "interactionId": "web:/app/agent#interaction-43",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2566,
+          "line": 2589,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -45080,7 +45080,7 @@
           "interactionId": "web:/app/agent#interaction-44",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2575,
+          "line": 2598,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentHistoryList",
@@ -45116,7 +45116,7 @@
           "interactionId": "web:/app/agent#interaction-45",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2578,
+          "line": 2601,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -45154,7 +45154,7 @@
           "interactionId": "web:/app/agent#interaction-46",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2616,
+          "line": 2639,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ChatBox",
@@ -45190,7 +45190,7 @@
           "interactionId": "web:/app/agent#interaction-47",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2652,
+          "line": 2675,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ChatBox",
@@ -45226,7 +45226,7 @@
           "interactionId": "web:/app/agent#interaction-48",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2657,
+          "line": 2680,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentMobileHistoryDrawer",
@@ -45268,7 +45268,7 @@
           "interactionId": "web:/app/agent#interaction-49",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2672,
+          "line": 2695,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentHistoryDeleteDialog",
@@ -45308,7 +45308,7 @@
           "interactionId": "web:/app/agent#interaction-50",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 2707,
+          "line": 2730,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -46795,25 +46795,25 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
+          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1310",
           "parentSurfaceId": "web:/app/agent",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
+          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1310",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1287,
+          "line": 1310,
           "kind": "alertdialog",
           "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
+          "overlayInstanceId": "web:/app/agent#overlay-repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1417",
           "parentSurfaceId": "web:/app/agent",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
+          "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1417",
           "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-          "line": 1394,
+          "line": 1417,
           "kind": "dialog",
           "visibleName": "Chat history / 对话历史 New chat / 新对话 Go to / 前往 {[ [\"/\", \"home\", t({ en: \"Home\", zh: \"首页\" })], [\"/explore\", \"calendar\", t({ en: \"Events\", zh: \"活动\" })], [\"/home/schedule\", \"clock\", t({ en: \"Calendar\", zh: \"日程\" })], [\"/home/cards\", \"wallet\", t({ en: \"Contacts\", zh: \"人脉\" })], ].map(([href, icon, label]) => ( <button className=\"btn btn-quiet\" key={href} onClick={() => { onClose(); onNavigate(href); }} style={{ height: \"auto\", justifyContent: \"flex-start\", padding: \"9px 8px\", width: \"100%\" }} type=\"button\" > <Icon name={icon} size={17} color=\"var(--accent)\" /> {label} </button> ))} Chat history / 对话历史",
           "runtimeStatus": "not-runtime-verified"
@@ -117422,17 +117422,17 @@
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1287",
+      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1310",
       "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-      "line": 1287,
+      "line": 1310,
       "kind": "alertdialog",
       "visibleName": "Delete this conversation? / 删除这个对话？ {t({ en: `“${history.title}” and its messages will be permanently removed from your chat history. This cannot be undone.`, zh: `“${history.title}”及其中的消息将从你的对话历史中永久删除，且无法撤销。`, })} {<p role=\"alert\" style={{ color: \"var(--danger)\", fontSize: 13, margin: 0 }}> {error} </p>} / {null} Keep conversation / 保留对话 Deleting… / 正在删除… / Delete conversation / 删除对话",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1394",
+      "implementationId": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx:1417",
       "sourceFile": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
-      "line": 1394,
+      "line": 1417,
       "kind": "dialog",
       "visibleName": "Chat history / 对话历史 New chat / 新对话 Go to / 前往 {[ [\"/\", \"home\", t({ en: \"Home\", zh: \"首页\" })], [\"/explore\", \"calendar\", t({ en: \"Events\", zh: \"活动\" })], [\"/home/schedule\", \"clock\", t({ en: \"Calendar\", zh: \"日程\" })], [\"/home/cards\", \"wallet\", t({ en: \"Contacts\", zh: \"人脉\" })], ].map(([href, icon, label]) => ( <button className=\"btn btn-quiet\" key={href} onClick={() => { onClose(); onNavigate(href); }} style={{ height: \"auto\", justifyContent: \"flex-start\", padding: \"9px 8px\", width: \"100%\" }} type=\"button\" > <Icon name={icon} size={17} color=\"var(--accent)\" /> {label} </button> ))} Chat history / 对话历史",
       "runtimeStatus": "not-runtime-verified"
