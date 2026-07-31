@@ -118,6 +118,7 @@ test("referral recommendation helpers stage review-only contact drafts", () => {
         ],
         id: "referral-draft:demo-recommendation-1",
         organization: "GridLoop",
+        recommendationId: "demo-recommendation-1",
         recommender: {
           displayName: "Maya Chen",
           organization: "North Pier Labs",
@@ -184,6 +185,7 @@ test("referral recommendation helpers stage review-only contact drafts", () => {
   assert.deepEqual(view.recommendations, [
     {
       confidenceLabel: "高可信",
+      confirmed: false,
       detail: "GridLoop · Commercial Lead",
       id: "demo-recommendation-1",
       introductionPath: "先请推荐人确认可介绍，再准备一段很短的说明。",
@@ -195,6 +197,8 @@ test("referral recommendation helpers stage review-only contact drafts", () => {
       sourceLabel: "创始人引荐"
     }
   ]);
+  assert.equal(view.drafts[0]?.recommendationId, "demo-recommendation-1");
+  assert.equal(view.drafts[0]?.sourceKind, "founder_referral");
   assert.equal(view.drafts[0]?.title, "Kai Mori");
   assert.equal(view.drafts[0]?.sourceLabel, "朋友引荐");
   assert.deepEqual(view.drafts[0]?.evidenceExcerpts, []);
@@ -202,6 +206,41 @@ test("referral recommendation helpers stage review-only contact drafts", () => {
     view.drafts[0]?.nextAction,
     "先核对来源证据，再决定是否加入联系人。"
   );
+});
+
+test("persisted referral draft confirmation state survives re-staging readback", () => {
+  const view = contactReferralRecommendationsToView({
+    contactDrafts: [
+      {
+        confidence: "high",
+        contactWriteExecuted: false,
+        databaseWriteExecuted: true,
+        confirmedAt: "2026-07-31T12:00:00.000Z",
+        displayName: "Kai Mori",
+        evidence: [],
+        id: "referral-draft:live:0123456789abcdef0123456789abcdef",
+        organization: "GridLoop",
+        recommendationId: "demo-recommendation-1",
+        recommender: { displayName: "Maya Chen" },
+        role: "Commercial Lead",
+        source: {
+          label: "Founder referral fixture",
+          sourceKind: "founder_referral",
+          type: "referral"
+        },
+        sourceKind: "founder_referral",
+        userConfirmed: true,
+        suggestedNextAction: "Already confirmed earlier."
+      }
+    ],
+    recommendations: [],
+    referralSources: [],
+    state: "success"
+  });
+
+  assert.equal(view.drafts[0]?.canConfirm, false);
+  assert.equal(view.drafts[0]?.confirmLabel, "已确认候选");
+  assert.equal(view.drafts[0]?.stateLabel, "已确认");
 });
 
 test("contactExternalCandidatesToView maps external contact sources and candidates", () => {

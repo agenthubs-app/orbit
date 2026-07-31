@@ -450,6 +450,18 @@ export function ContactAcquisitionScreen() {
               }
             : current
         );
+        setReferralResult((current) =>
+          current
+            ? {
+                ...current,
+                drafts: current.drafts.map((draft) =>
+                  draft.draftId === confirmedSummary.draftId
+                    ? { ...draft, ...confirmedSummary }
+                    : draft
+                )
+              }
+            : current
+        );
         if (confirmedSummary.contactId) {
           setContactsRefreshToken(Date.now().toString());
         }
@@ -659,6 +671,28 @@ export function ContactAcquisitionScreen() {
       if (response.success) {
         setRecommendedConfirmResult(
           recommendedContactConfirmationToView(response.data)
+        );
+        setReferralResult((current) =>
+          current
+            ? {
+                ...current,
+                drafts: current.drafts.map((draft) =>
+                  draft.recommendationId === recommendationId
+                    ? {
+                        ...draft,
+                        canConfirm: false,
+                        confirmLabel: "已确认候选",
+                        stateLabel: "已确认"
+                      }
+                    : draft
+                ),
+                recommendations: current.recommendations.map((recommendation) =>
+                  recommendation.id === recommendationId
+                    ? { ...recommendation, confirmed: true }
+                    : recommendation
+                )
+              }
+            : current
         );
         refreshReviewSurfaces();
       } else {
@@ -1780,7 +1814,7 @@ function ReferralRecommendationsCard({
       ) ?? []
     : view?.recommendations ?? [];
   const visibleDrafts = activeSource
-    ? view?.drafts.filter((draft) => draft.sourceLabel === "朋友引荐") ?? []
+    ? view?.drafts.filter((draft) => draft.sourceKind === activeSource) ?? []
     : view?.drafts ?? [];
   const visibleReviewDrafts = visibleDrafts.filter(
     (draft) => !dismissedDraftIds.has(draft.draftId)
@@ -1937,17 +1971,21 @@ function ReferralRecommendationItem({
       <Text style={styles.helperText}>{recommendation.nextAction}</Text>
       <Pressable
         accessibilityRole="button"
-        disabled={confirming}
+        disabled={confirming || recommendation.confirmed}
         onPress={() => onConfirm(recommendation.id)}
         style={({ pressed }) => [
           styles.secondaryButton,
-          confirming ? styles.disabled : null,
+          confirming || recommendation.confirmed ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
         <Ionicons color={colors.accent} name="checkmark-outline" size={18} />
         <Text style={styles.secondaryButtonText}>
-          {confirming ? "确认中" : "确认推荐"}
+          {recommendation.confirmed
+            ? "已确认推荐"
+            : confirming
+              ? "确认中"
+              : "确认推荐"}
         </Text>
       </Pressable>
     </View>

@@ -177,6 +177,7 @@ export interface ContactReferralSourceView {
 
 export interface ContactReferralRecommendationView {
   confidenceLabel: string;
+  confirmed: boolean;
   detail: string;
   id: string;
   introductionPath: string;
@@ -188,8 +189,13 @@ export interface ContactReferralRecommendationView {
   sourceLabel: string;
 }
 
+export interface ContactReferralDraftView extends ContactAcquisitionSummary {
+  recommendationId: string;
+  sourceKind: string;
+}
+
 export interface ContactReferralRecommendationsView {
-  drafts: ContactAcquisitionSummary[];
+  drafts: ContactReferralDraftView[];
   emptyText: string;
   nextAction: string;
   recommendations: ContactReferralRecommendationView[];
@@ -1119,6 +1125,8 @@ export function acquisitionResultToSummary(
   const confirmed =
     stringField(payload, "state").toLowerCase() === "confirmed" ||
     stringField(draft, "status").toLowerCase() === "confirmed" ||
+    stringField(confirmation, "state").toLowerCase() === "confirmed" ||
+    booleanField(draft, "userConfirmed") ||
     booleanField(contactCandidate, "readyForContactWrite");
   const draftId = stringField(draft, "id");
   const reviewFields = reviewFieldsFromDraft(draft);
@@ -1167,7 +1175,10 @@ export function acquisitionResultToSummary(
         }
       : {}),
     sourceLabel: sourceLabel(draft),
-    stateLabel: stateLabel(stringField(draft, "status", stringField(payload, "state"))),
+    stateLabel: stateLabel(
+      stringField(draft, "status", stringField(payload, "state")) ||
+        (confirmed ? "confirmed" : "")
+    ),
     title: displayName,
     writeState: candidateWriteState(draft, contactCandidate, confirmed)
   };
@@ -1400,8 +1411,12 @@ export function contactReferralRecommendationsToView(
         return null;
       }
 
+      const confirmation = nestedRecord(recommendation, "confirmation");
+
       return {
         confidenceLabel: confidenceLabel(stringField(recommendation, "confidence")),
+        confirmed:
+          stringField(confirmation, "state").toLowerCase() === "confirmed",
         detail: [
           stringField(recommendation, "organization"),
           stringField(recommendation, "role")
@@ -1432,7 +1447,9 @@ export function contactReferralRecommendationsToView(
 
       return {
         ...summary,
-        evidenceExcerpts: summary.evidenceExcerpts.filter(segmentLooksChinese)
+        evidenceExcerpts: summary.evidenceExcerpts.filter(segmentLooksChinese),
+        recommendationId: stringField(draft, "recommendationId"),
+        sourceKind: stringField(draft, "sourceKind")
       };
     });
 

@@ -128,6 +128,29 @@ test("contact acquisition can stage referral recommendations as review-only draf
   assert.doesNotMatch(screenSource, /自动触达|已写入联系人|发送消息/u);
 });
 
+test("referral confirmation synchronizes local recommendation and draft state", () => {
+  assert.match(
+    screenSource,
+    /setReferralResult\(\(current\) =>[\s\S]*draft\.recommendationId === recommendationId[\s\S]*"已确认候选"[\s\S]*recommendation\.id === recommendationId[\s\S]*confirmed: true/u
+  );
+  assert.match(
+    screenSource,
+    /setReferralResult\(\(current\) =>[\s\S]*draft\.draftId === confirmedSummary\.draftId/u
+  );
+  assert.match(screenSource, /"已确认推荐"/u);
+});
+
+test("referral source filter matches drafts by sourceKind, not a fixed label", () => {
+  assert.match(
+    screenSource,
+    /view\?\.drafts\.filter\(\(draft\) => draft\.sourceKind === activeSource\)/u
+  );
+  assert.doesNotMatch(
+    screenSource,
+    /draft\.sourceLabel === "朋友引荐"/u
+  );
+});
+
 test("contact acquisition can confirm duplicate merge previews through the web apply API", () => {
   assert.match(screenSource, /contactDraftMergeSuggestionApplyPath/u);
   assert.match(screenSource, /buildContactMergeApplyRequest/u);
