@@ -103,6 +103,13 @@ test("contact acquisition can stage external contacts as review-only drafts", ()
   assert.doesNotMatch(screenSource, /读取真实通讯录|同步 Google/u);
 });
 
+test("generic confirmation synchronizes the matching external import result", () => {
+  assert.match(
+    screenSource,
+    /setExternalImportResult\(\(current\) =>[\s\S]*current\.drafts\.map\(\(draft\) =>[\s\S]*draft\.draftId === confirmedSummary\.draftId[\s\S]*confirmedSummary[\s\S]*: draft/u
+  );
+});
+
 test("contact acquisition can stage referral recommendations as review-only drafts", () => {
   assert.match(screenSource, /buildReferralRecommendationsRequest/u);
   assert.match(screenSource, /buildRecommendedContactConfirmRequest/u);

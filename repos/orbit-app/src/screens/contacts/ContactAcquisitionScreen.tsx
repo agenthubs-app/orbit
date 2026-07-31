@@ -438,6 +438,18 @@ export function ContactAcquisitionScreen() {
       if (response.success) {
         const confirmedSummary = acquisitionResultToSummary(response.data);
         setResult(confirmedSummary);
+        setExternalImportResult((current) =>
+          current
+            ? {
+                ...current,
+                drafts: current.drafts.map((draft) =>
+                  draft.draftId === confirmedSummary.draftId
+                    ? confirmedSummary
+                    : draft
+                )
+              }
+            : current
+        );
         if (confirmedSummary.contactId) {
           setContactsRefreshToken(Date.now().toString());
         }
