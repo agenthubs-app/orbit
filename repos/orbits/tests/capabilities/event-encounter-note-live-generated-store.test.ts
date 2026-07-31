@@ -84,4 +84,14 @@ test("live event encounter note generates a note base from generated attendees a
   assert.match(evidence.data.evidence.excerpt, /restaurant CRM pilot/);
   assert.equal(evidence.data.provenance.generationMethod, "live-store-evidence");
   assert.equal(evidence.data.provenance.liveDatabaseWriteExecuted, true);
+
+  const persistedEvidence = await provider.getPayload("event_01");
+  assert.deepEqual(persistedEvidence, evidence.data);
+
+  const replayedEvidence = await service.createEncounterEvidence({
+    eventId: "event_01",
+    encounterId: captured.data.encounter?.encounterId,
+  });
+  assert.deepEqual(replayedEvidence, evidence);
+  assert.deepEqual(await provider.getPayload("event_01"), evidence.data);
 });

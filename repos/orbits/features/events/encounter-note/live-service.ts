@@ -275,7 +275,19 @@ export function createLiveEventEncounterNoteService({
         });
       }
 
-      const payload = await loadNote(eventId);
+      const storedPayload = await provider.getPayload(eventId);
+      if (
+        storedPayload &&
+        !isNotePayload(storedPayload) &&
+        storedPayload.encounterId === encounterId
+      ) {
+        return {
+          success: true,
+          data: clonePayload(storedPayload),
+        };
+      }
+      const payload =
+        storedPayload && isNotePayload(storedPayload) ? storedPayload : null;
 
       if (!payload || !payload.evidenceDraft) {
         return failure("EVENT_ENCOUNTER_NOTE_EVENT_NOT_FOUND", {
@@ -306,6 +318,10 @@ export function createLiveEventEncounterNoteService({
         nextAction:
           "Attach the live encounter evidence to the relationship before drafting follow-up.",
       };
+
+      await provider.upsertPayload(eventId, data, {
+        evidenceIds: data.provenance.evidenceIds,
+      });
 
       return {
         success: true,
