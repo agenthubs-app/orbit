@@ -623,9 +623,22 @@ export function createStorageEventAttendeeImportProvider({
         ),
       );
       const writtenIndexes: number[] = [];
+      const normalizedActorId = actorId?.trim() || null;
 
       try {
         for (const [index, record] of records.entries()) {
+          const previous = previousRecords[index];
+
+          if (previous && previous.lifecycleState !== "deleted") {
+            if ((previous.userId ?? null) !== normalizedActorId) {
+              throw new Error(
+                `Contact draft ${record.recordId} belongs to another actor`,
+              );
+            }
+
+            continue;
+          }
+
           await store.upsertRecord(record);
           writtenIndexes.push(index);
         }
