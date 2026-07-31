@@ -21,7 +21,11 @@ test("Orbit AI home uses a compact Chinese chat entry", () => {
 });
 
 test("Orbit AI home pins the composer to the bottom of the chat", () => {
-  assert.match(screenSource, /KeyboardAvoidingView/u);
+  assert.doesNotMatch(screenSource, /KeyboardAvoidingView/u);
+  assert.match(screenSource, /Keyboard\.isVisible\(\)/u);
+  assert.match(screenSource, /keyboardWillChangeFrame/u);
+  assert.match(screenSource, /keyboardBottomInset > 0/u);
+  assert.match(screenSource, /paddingBottom: keyboardBottomInset/u);
   assert.match(screenSource, /<ChatTranscript/u);
   assert.match(screenSource, /<ChatComposer/u);
   assert.doesNotMatch(screenSource, /<AppScreen/u);

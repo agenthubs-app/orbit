@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Modal,
   PanResponder,
   Platform,
@@ -12,9 +12,13 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets
+} from "react-native-safe-area-context";
 import {
   ORBIT_API_ENDPOINTS,
   aiConversationSessionPath
@@ -176,9 +180,75 @@ function optionalParam(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+type KeyboardFrame = {
+  height: number;
+  screenY: number;
+};
+
+function useStableKeyboardBottomInset(): number {
+  const { bottom: safeAreaBottom } = useSafeAreaInsets();
+  const { height: viewportHeight } = useWindowDimensions();
+  const [keyboardFrame, setKeyboardFrame] = useState<KeyboardFrame | null>(
+    () => {
+      const metrics =
+        Platform.OS === "ios" && Keyboard.isVisible()
+          ? Keyboard.metrics()
+          : undefined;
+
+      return metrics
+        ? { height: metrics.height, screenY: metrics.screenY }
+        : null;
+    }
+  );
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") {
+      return;
+    }
+
+    const frameSubscription = Keyboard.addListener(
+      "keyboardWillChangeFrame",
+      (event) => {
+        const nextFrame = {
+          height: event.endCoordinates.height,
+          screenY: event.endCoordinates.screenY
+        };
+
+        setKeyboardFrame((currentFrame) =>
+          currentFrame?.height === nextFrame.height &&
+          currentFrame.screenY === nextFrame.screenY
+            ? currentFrame
+            : nextFrame
+        );
+      }
+    );
+    const hideSubscription = Keyboard.addListener("keyboardWillHide", () => {
+      setKeyboardFrame(null);
+    });
+
+    return () => {
+      frameSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  if (!keyboardFrame) {
+    return 0;
+  }
+
+  const viewportBottom = viewportHeight - safeAreaBottom;
+  const keyboardBottom = keyboardFrame.screenY + keyboardFrame.height;
+  const keyboardIsDocked = keyboardBottom >= viewportBottom - 1;
+
+  return keyboardIsDocked
+    ? Math.max(0, viewportBottom - keyboardFrame.screenY)
+    : 0;
+}
+
 export function AiScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ drawer?: string | string[] }>();
+  const keyboardBottomInset = useStableKeyboardBottomInset();
   const client = useOrbitApiClient();
   const inboxBadge = useRelationshipInboxBadgeCount();
   const state = useApiResource<unknown>(
@@ -331,9 +401,13 @@ export function AiScreen() {
           onOpenDrawer={() => setDrawerOpen(true)}
           onOpenHistory={() => setHistoryOpen(true)}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.chatBody}
+        <View
+          style={[
+            styles.chatBody,
+            keyboardBottomInset > 0
+              ? { paddingBottom: keyboardBottomInset }
+              : null
+          ]}
         >
           <ChatTranscript
             chat={homeChat}
@@ -379,7 +453,7 @@ export function AiScreen() {
             onOpenMenu={() => setComposerMenuOpen(true)}
             onSend={sendMessage}
           />
-        </KeyboardAvoidingView>
+        </View>
       </View>
       <OrbitAiDrawer
         inboxBadge={inboxBadge}
