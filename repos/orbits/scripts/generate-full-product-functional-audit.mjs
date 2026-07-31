@@ -1454,6 +1454,71 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "expo-account-entry-boundaries-2026-07-29",
     },
   ],
+  [
+    "mobile:/events/[id]/attendees|repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx#onpress:importEventAttendeesIntoRoster#导入中 / 导入名册",
+    {
+      actualResult:
+        "The authenticated native roster action imported the formal attendee roster into the actor-owned event boundary, survived refresh and cold readback, rejected foreign and missing event IDs, converged under replay, and left no active audit records after cleanup.",
+      testData:
+        "Two disposable registered actors, actor-owned/foreign/missing event fixtures, and the configured API and Postgres record store",
+      idempotency:
+        "Rapid activation and lost-response replay preserved one actor-owned roster result; controlled failure and denied requests left no roster mutation.",
+      verificationCase:
+        "native-event-owned-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "mobile:/events/[id]/attendees|repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx#onpress:importEventAttendeesAsDrafts#导入中 / 导入为候选",
+    {
+      actualResult:
+        "The authenticated native draft action persisted one canonical actor-owned contactDraft record, exposed it through cold queue readback, preserved its record ID, payload hash, and updatedAt on replay, and kept actors A and B isolated.",
+      testData:
+        "Two disposable registered actors with disjoint attendee fixtures and configured contactDraft persistence",
+      idempotency:
+        "A controlled 503 produced zero mutation; a dropped response committed one draft; the identical cold replay retained the exact record set and payload; batch store failure rolled back every newly written draft.",
+      verificationCase:
+        "native-event-owned-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "mobile:/events/[id]/attendees|repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx#oncreateevidence:createEncounterEvidence|onsaveencounter:saveEncounterNote#null",
+    {
+      actualResult:
+        "The native attendee card saved the encounter note through the authenticated event-attendee service and exposed the persisted actor-owned encounter for the evidence continuation after refresh and cold readback.",
+      testData:
+        "Disposable actor A and B accounts with owned, foreign, encoded, duplicate, and missing event/attendee inputs",
+      idempotency:
+        "Duplicate activation and lost-response replay converged on the same encounter; validation, controlled failure, unauthenticated, missing, and foreign requests left no dirty encounter or evidence data.",
+      verificationCase:
+        "native-event-owned-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "mobile:/events/[id]/attendees|repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx#onpress:() => onCreateEvidence(attendee, savedEncounter)#生成中 / 生成关系证据",
+    {
+      actualResult:
+        "The native evidence action converted the saved encounter into one actor-owned relationship-evidence record and preserved the same terminal result across refresh, cold start, and replay.",
+      testData:
+        "The actor-owned saved encounter produced by the same native attendee lifecycle",
+      idempotency:
+        "Rapid activation and response-loss replay created no duplicate evidence; foreign and missing ownership boundaries failed closed without leakage or mutation.",
+      verificationCase:
+        "native-event-owned-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "mobile:/events/[id]/register|repos/orbit-app/src/screens/events/EventRegistrationScreen.tsx#oncancel:cancelRegistration|onsubmit:submitRegistration#null",
+    {
+      actualResult:
+        "The authenticated native registration form executed both submit/update and cancel against the configured registration store; each terminal survived refresh and cold start and remained scoped to the owning actor.",
+      testData:
+        "Two disposable registered actors with owned, foreign, encoded, duplicate, and missing event IDs",
+      idempotency:
+        "Repeated submission, cancellation, rapid activation, and lost-response replay converged on one registration record; validation and controlled failures preserved the last-good state.",
+      verificationCase:
+        "native-event-owned-write-lifecycle-2026-07-31",
+    },
+  ],
 ]);
 const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
   [
@@ -3304,6 +3369,21 @@ const VERIFIED_AUDIT_CASES = [
       "today-write-execution-evaluator-iteration2 DOM and 13 JPEG screenshots; probe-pre.json; snapshot-after-local-rejections.json; snapshot-after-ui.json; verify-post.json; cleanup.json; result.json; independent-evaluator.json SHA-256 9965277984efdc5bfc528e29ff0f49148710ebe9dc2589ca48b9806a047ee529",
     conclusion:
       "pass for the six exact /app/today implementation keys and their six route-local occurrences; first independent evaluation correctly granted zero credit for discarded screenshot buffers, and the final evaluator granted 6/6 only after 34/34 artifact hashes and 58→0 cleanup passed",
+  },
+  {
+    id: "native-event-owned-write-lifecycle-2026-07-31",
+    target:
+      "Authenticated iOS event attendees and registration controls → API/service/provider → configured Postgres → refresh/cold readback → ownership/replay/failure/cleanup",
+    testData:
+      "Two disposable registered actors on an iPhone 17 Pro simulator; disjoint actor-owned events and attendees; owned, foreign, missing, encoded, and duplicate IDs; configured live API and Postgres stores",
+    expected:
+      "Encounter notes, relationship evidence, contact drafts, attendee rosters, and registration submit/update/cancel must persist only for the owning actor, survive refresh and cold start, converge under duplicate activation and lost-response replay, fail without dirty data, and clean to zero",
+    actual:
+      "The independent final evaluator granted all five exact implementations and occurrences. Native trees, real screenshots, request ledgers, service responses, Postgres projections, cold readback, two-actor isolation, controlled 503/store failures, duplicate activation, lost-response replay, and validation boundaries passed. Contact-draft remediation persisted a canonical actor-owned row while preserving record ID, payload hash, and updatedAt on replay. The original run verified 87/87 artifacts, the remediation run verified 61/61, and every actor and fixture cleanup ledger ended at activeAfter=0.",
+    evidence:
+      "native-event-write-execution-iteration2/execution-final2; native-event-write-execution-iteration2/execution-draft-remediation-final2; native-event-write-final-independent-evaluator/independent-evaluator.json SHA-256 9962114068b3e58e70fdb609fd828415350c9e631cb670607de82b1bbeebe965; commits a75c17b0, c5bf877b, b2892dcb, a1ad3684, adef25da",
+    conclusion:
+      "pass for the five frozen mobile event write implementation keys and their five exact route occurrences; no other Events, Contacts, Agent, navigation, or read behavior receives credit from this case",
   },
   {
     id: "live-event-registration-persistence-cancellation-isolation-2026-07-28",
