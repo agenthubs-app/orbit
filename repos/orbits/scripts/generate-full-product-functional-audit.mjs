@@ -1100,6 +1100,84 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
 ]);
 const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:863",
+    {
+      actualResult:
+        "The authenticated native source selector chose the actor-backed external source and rendered the exact available candidate count before import.",
+      testData:
+        "Disposable actor A with two live networkPeople fixtures and actor B with the same provider person IDs under a separate account",
+      idempotency:
+        "Selecting the source changed only session-local presentation and did not write a contactDraft or contact.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:872",
+    {
+      actualResult:
+        "The native external result card displayed the two centrally persisted actor-owned drafts, confirmed one through the generic contact-draft endpoint, and hid the other only for the current session.",
+      testData:
+        "The two canonical external drafts returned by the same live import, including one confirmed result and one session-local dismissal",
+      idempotency:
+        "Generic confirmation updated the same central draft without creating a contact; session-local dismissal performed no server delete or rejection.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:924",
+    {
+      actualResult:
+        "After native relaunch and credential restoration, the central draft queue read both imported drafts from the formal API and preserved the earlier confirmed state.",
+      testData:
+        "The same disposable actor after Expo relaunch, SecureStore session restoration, and a fresh GET /api/contact-drafts",
+      idempotency:
+        "Cold readback created no draft or contact and retained the exact actor-owned record IDs.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1588",
+    {
+      actualResult:
+        "The native import control sent one formal live import request under rapid double activation and rendered two canonical central contactDrafts.",
+      testData:
+        "Two source-backed external candidates for disposable actor A against the configured API, live external provider, and Postgres record store",
+      idempotency:
+        "Rapid activation issued one import request; lost-response replay retained stable actor-scoped IDs, timestamps, payloads, and row count; controlled batch failure rolled back all staged drafts.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1717",
+    {
+      actualResult:
+        "Confirming the selected external result updated that exact central draft to confirmed and synchronized the result card with the persisted terminal state.",
+      testData:
+        "One pending external result draft produced by the actor-owned native import",
+      idempotency:
+        "Concurrent and lost-response confirmation replay converged on one confirmed draft with one stable evidence payload and zero contact writes.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2037",
+    {
+      actualResult:
+        "Confirming the remaining draft from the cold-start central queue updated the same Postgres row and survived a subsequent queue readback as confirmed.",
+      testData:
+        "The pending imported draft recovered through GET /api/contact-drafts after native relaunch",
+      idempotency:
+        "The generic confirm replay returned the persisted terminal payload without creating another draft, evidence record, or contact.",
+      verificationCase:
+        "native-external-contact-draft-lifecycle-2026-07-31",
+    },
+  ],
+  [
     "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => selectMode(item.mode)#{item.label}",
     {
       actualResult:
@@ -3384,6 +3462,21 @@ const VERIFIED_AUDIT_CASES = [
       "native-event-write-execution-iteration2/execution-final2; native-event-write-execution-iteration2/execution-draft-remediation-final2; native-event-write-final-independent-evaluator/independent-evaluator.json SHA-256 9962114068b3e58e70fdb609fd828415350c9e631cb670607de82b1bbeebe965; commits a75c17b0, c5bf877b, b2892dcb, a1ad3684, adef25da",
     conclusion:
       "pass for the five frozen mobile event write implementation keys and their five exact route occurrences; no other Events, Contacts, Agent, navigation, or read behavior receives credit from this case",
+  },
+  {
+    id: "native-external-contact-draft-lifecycle-2026-07-31",
+    target:
+      "Authenticated iOS external source selection and import → live external provider → atomic actor-owned contactDrafts → generic confirm → cold queue readback → isolation/replay/failure/cleanup",
+    testData:
+      "Disposable actors A and B using identical provider person IDs; two source-backed live networkPeople fixtures; configured API, service/provider, and Postgres record store; native iPhone 17 Pro simulator",
+    expected:
+      "Import must atomically persist stable actor-scoped central drafts, generic confirmation must update the same draft without creating a contact, session-local dismissal must remain presentation-only, cold readback must preserve terminal state, actor ownership and replay must converge, failures must leave no partial data, and cleanup must reach zero",
+    actual:
+      "Independent evaluation passed all five normalized implementations and six exact route occurrences. The final native run exercised source selection, double-activation import, external-result confirmation, session-local dismissal, cold queue readback, and queue confirmation with matching accessibility trees, real screenshots, request ledgers, API responses, Postgres projections, and artifact hashes. Formal backend iteration 4 verified atomic batch staging, actor-scoped stable IDs, A/B isolation with identical provider IDs, confirmed-state preservation, lost-response replay, concurrent generic confirmation, controlled failure rollback, unchanged contacts, and activeAfter=0 cleanup.",
+    evidence:
+      "continuation-20260731-mobile-contacts-external-import-remediation/iteration-4/backend-contract-result.json SHA-256 011cb2aad25d1bd94a291df1c9b5629728bd504922d04f762bf4828e81f6466f; native-iteration-11; independent-evaluator/result.json; commits 99a0b393, 52eebdd8, 4f4588f2",
+    conclusion:
+      "pass for the frozen five /contacts/new external-import implementation keys and exact interactions 7, 8, 11, 40, 42, and 51; interaction 47 Referral and all Business Card, Manual, QR, and unrelated Contacts behavior remain outside this case",
   },
   {
     id: "live-event-registration-persistence-cancellation-isolation-2026-07-28",
