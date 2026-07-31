@@ -143,7 +143,10 @@ export interface ContactDraftEvidence {
   excerpt: string;
   capturedFields: readonly string[];
   createdAt: string;
-  createdBy: "live-contact-acquisition-draft-service" | "mock-pipeline";
+  createdBy:
+    | "live-contact-acquisition-draft-service"
+    | "live-external-contacts-import-service"
+    | "mock-pipeline";
 }
 
 // confirmation 是草稿进入真实联系人写入前的人工复核门。

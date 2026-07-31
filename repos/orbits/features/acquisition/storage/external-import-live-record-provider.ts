@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 import type {
   ContactDTO,
   NetworkPersonDTO,
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
+import type { ContactAcquisitionDraft } from "../contract";
 import {
   EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
   type ExternalContactsImportSourceKind,
@@ -17,6 +20,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 
 export interface LiveExternalContactPerson extends NetworkPersonDTO {
   externalSourceKind?: ExternalContactsImportSourceKind;
@@ -33,19 +37,29 @@ export type LiveExternalContactsImportProviderResult<TResult> =
   TResult | Promise<TResult>;
 
 export interface LiveExternalContactsImportProvider {
+  actorScopeId: string;
   source: string;
   sourceLabel: string;
   readExternalContactsImportGraph: () => LiveExternalContactsImportProviderResult<LiveExternalContactsImportGraph>;
+  stageContactDrafts: (
+    drafts: readonly ContactAcquisitionDraft[],
+  ) => LiveExternalContactsImportProviderResult<readonly ContactAcquisitionDraft[]>;
 }
 
 export const EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS = {
+  contactDrafts: "contactDrafts",
   contacts: "contacts",
   evidence: "evidence",
   networkPeople: "networkPeople",
 } as const;
 
+export type AtomicExternalContactDraftWriter = (
+  records: readonly LiveRecord<Record<string, unknown>>[],
+) => Promise<void>;
+
 export interface StorageExternalContactsImportProviderOptions {
-  actorId?: string;
+  actorId: string;
+  atomicDraftWriter?: AtomicExternalContactDraftWriter;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -74,6 +88,280 @@ function stringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => nonEmptyString(item))
     : [];
+}
+
+function actorScopeIdFor(actorId: string): string {
+  return createHash("sha256")
+    .update(`orbit:external-contact-draft-actor:${actorId}`)
+    .digest("hex")
+    .slice(0, 24);
+}
+
+function contactDraftFromRecord(
+  record: LiveRecord<Record<string, unknown>> | null,
+): ContactAcquisitionDraft | null {
+  if (!record || !isRecord(record.payload)) {
+    return null;
+  }
+
+  const payload = record.payload;
+
+  return nonEmptyString(payload.id) &&
+    (payload.status === "pending_confirmation" ||
+      payload.status === "confirmed") &&
+    isRecord(payload.source) &&
+    isRecord(payload.confirmation) &&
+    Array.isArray(payload.evidence) &&
+    isRecord(payload.provenance)
+    ? (payload as unknown as ContactAcquisitionDraft)
+    : null;
+}
+
+function contactDraftRecord(input: {
+  actorId: string;
+  draft: ContactAcquisitionDraft;
+  workspaceId: string;
+}): LiveRecord<Record<string, unknown>> {
+  const { actorId, draft, workspaceId } = input;
+
+  return {
+    workspaceId,
+    collectionName: EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    recordId: draft.id,
+    userId: actorId,
+    sourceType: draft.source.type,
+    sourceId: draft.source.id,
+    sourceLabel: draft.source.label,
+    provider: "orbit-external-contacts-import-live-service",
+    providerRecordId: draft.id,
+    evidenceIds: draft.provenance.evidenceIds,
+    targetType: "contact",
+    targetId: draft.id,
+    occurredAt: draft.createdAt,
+    createdAt: draft.createdAt,
+    updatedAt: draft.createdAt,
+    lifecycleState: "active",
+    searchText: [
+      draft.displayName,
+      draft.organization,
+      draft.role,
+      draft.relationshipContext,
+    ].join(" "),
+    payload: draft as unknown as Record<string, unknown>,
+  };
+}
+
+async function writeDraftRecordsWithRollback(
+  store: LiveRecordStoreLike<Record<string, unknown>>,
+  records: readonly LiveRecord<Record<string, unknown>>[],
+): Promise<void> {
+  const previousRecords = await Promise.all(
+    records.map((record) =>
+      store.getRecord({
+        workspaceId: record.workspaceId,
+        collectionName: record.collectionName,
+        recordId: record.recordId,
+        includeDeleted: true,
+      }),
+    ),
+  );
+
+  for (const [index, existing] of previousRecords.entries()) {
+    const next = records[index];
+
+    if (
+      existing &&
+      next &&
+      (existing.userId?.trim() || null) !== (next.userId?.trim() || null)
+    ) {
+      throw new Error(
+        `External contact draft ${next.recordId} belongs to another actor.`,
+      );
+    }
+  }
+
+  const writtenIndexes: number[] = [];
+
+  try {
+    for (const [index, record] of records.entries()) {
+      const existing = previousRecords[index];
+
+      if (existing?.lifecycleState === "active") {
+        continue;
+      }
+
+      await store.upsertRecord(record);
+      writtenIndexes.push(index);
+    }
+  } catch (error) {
+    for (const index of [...writtenIndexes].reverse()) {
+      const record = records[index];
+      const previous = previousRecords[index];
+
+      if (!record) {
+        continue;
+      }
+
+      if (previous) {
+        await store.upsertRecord(previous);
+      } else {
+        await store.deleteRecord({
+          workspaceId: record.workspaceId,
+          collectionName: record.collectionName,
+          recordId: record.recordId,
+          deletedAt: record.updatedAt,
+        });
+      }
+    }
+
+    throw error;
+  }
+}
+
+function postgresDraftBatchRows(
+  records: readonly LiveRecord<Record<string, unknown>>[],
+) {
+  return records.map((record) => ({
+    workspace_id: record.workspaceId,
+    collection_name: record.collectionName,
+    record_id: record.recordId,
+    user_id: record.userId ?? null,
+    source_type: record.sourceType,
+    source_id: record.sourceId,
+    source_label: record.sourceLabel ?? null,
+    provider: record.provider ?? null,
+    provider_record_id: record.providerRecordId ?? null,
+    evidence_ids: [...record.evidenceIds],
+    target_type: record.targetType ?? null,
+    target_id: record.targetId ?? null,
+    occurred_at: record.occurredAt ?? null,
+    lifecycle_state: record.lifecycleState,
+    search_text: record.searchText ?? "",
+    payload: record.payload,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+    deleted_at: record.deletedAt ?? null,
+  }));
+}
+
+export function createPostgresExternalContactDraftAtomicWriter(
+  client: LiveRecordSqlClient,
+): AtomicExternalContactDraftWriter {
+  return async (records) => {
+    if (records.length === 0) {
+      return;
+    }
+
+    const result = await client.query<{ record_id: string }>(
+      `
+        with incoming as materialized (
+          select *
+          from jsonb_to_recordset($1::jsonb) as row(
+            workspace_id text,
+            collection_name text,
+            record_id text,
+            user_id text,
+            source_type text,
+            source_id text,
+            source_label text,
+            provider text,
+            provider_record_id text,
+            evidence_ids jsonb,
+            target_type text,
+            target_id text,
+            occurred_at timestamptz,
+            lifecycle_state text,
+            search_text text,
+            payload jsonb,
+            created_at timestamptz,
+            updated_at timestamptz,
+            deleted_at timestamptz
+          )
+        ),
+        record_locks as materialized (
+          select pg_advisory_xact_lock(
+            hashtextextended(
+              incoming.workspace_id || chr(31) ||
+              incoming.collection_name || chr(31) ||
+              incoming.record_id,
+              0
+            )
+          )
+          from incoming
+          order by incoming.workspace_id, incoming.collection_name, incoming.record_id
+        ),
+        lock_guard as materialized (
+          select count(*) as acquired from record_locks
+        ),
+        ownership_conflicts as materialized (
+          select existing.record_id
+          from incoming
+          cross join lock_guard
+          join orbit_records as existing
+            on existing.workspace_id = incoming.workspace_id
+           and existing.collection_name = incoming.collection_name
+           and existing.record_id = incoming.record_id
+          where existing.user_id is distinct from incoming.user_id
+        )
+        insert into orbit_records (
+          workspace_id,
+          collection_name,
+          record_id,
+          user_id,
+          source_type,
+          source_id,
+          source_label,
+          provider,
+          provider_record_id,
+          evidence_ids,
+          target_type,
+          target_id,
+          occurred_at,
+          lifecycle_state,
+          search_text,
+          payload,
+          created_at,
+          updated_at,
+          deleted_at
+        )
+        select
+          incoming.workspace_id,
+          incoming.collection_name,
+          incoming.record_id,
+          incoming.user_id,
+          incoming.source_type,
+          incoming.source_id,
+          incoming.source_label,
+          incoming.provider,
+          incoming.provider_record_id,
+          array(
+            select jsonb_array_elements_text(incoming.evidence_ids)
+          ),
+          incoming.target_type,
+          incoming.target_id,
+          incoming.occurred_at,
+          incoming.lifecycle_state,
+          incoming.search_text,
+          incoming.payload,
+          incoming.created_at,
+          incoming.updated_at,
+          incoming.deleted_at
+        from incoming
+        where not exists (select 1 from ownership_conflicts)
+        on conflict (workspace_id, collection_name, record_id)
+        do update set record_id = orbit_records.record_id
+        where orbit_records.user_id is not distinct from excluded.user_id
+        returning record_id
+      `,
+      [JSON.stringify(postgresDraftBatchRows(records))],
+    );
+
+    if (result.rows.length !== records.length) {
+      throw new Error(
+        "External contact draft batch was rejected because an existing record belongs to another actor.",
+      );
+    }
+  };
 }
 
 function evidenceIds(value: unknown): readonly [string, ...string[]] | null {
@@ -247,19 +535,32 @@ async function listCollection(
 
 export function createStorageExternalContactsImportProvider({
   actorId,
+  atomicDraftWriter,
   source,
   sourceLabel = "External contacts import shared live storage",
   store,
   workspaceId,
 }: StorageExternalContactsImportProviderOptions): LiveExternalContactsImportProvider {
+  const normalizedActorId = actorId.trim();
+
+  if (!normalizedActorId) {
+    throw new Error("External contacts import provider requires an actor id.");
+  }
+
+  const writeAtomically =
+    atomicDraftWriter ??
+    ((records: readonly LiveRecord<Record<string, unknown>>[]) =>
+      writeDraftRecordsWithRollback(store, records));
+
   return {
+    actorScopeId: actorScopeIdFor(normalizedActorId),
     source: source ?? `live-record-store:external-contacts-import:${workspaceId}`,
     sourceLabel,
     async readExternalContactsImportGraph(): Promise<LiveExternalContactsImportGraph> {
       const [contactRecords, evidenceRecords, personRecords] = await Promise.all([
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.contacts, actorId),
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.evidence, actorId),
-        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.networkPeople, actorId),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.contacts, normalizedActorId),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.evidence, normalizedActorId),
+        listCollection(store, workspaceId, EXTERNAL_IMPORT_LIVE_RECORD_COLLECTIONS.networkPeople, normalizedActorId),
       ]);
 
       return {
@@ -284,6 +585,58 @@ export function createStorageExternalContactsImportProvider({
           ),
       };
     },
+    async stageContactDrafts(
+      drafts: readonly ContactAcquisitionDraft[],
+    ): Promise<readonly ContactAcquisitionDraft[]> {
+      if (drafts.length === 0) {
+        return [];
+      }
+
+      const records = drafts.map((draft) =>
+        contactDraftRecord({
+          actorId: normalizedActorId,
+          draft,
+          workspaceId,
+        }),
+      );
+      const uniqueRecordIds = new Set(records.map((record) => record.recordId));
+
+      if (uniqueRecordIds.size !== records.length) {
+        throw new Error(
+          "External contacts import produced duplicate actor-scoped draft ids.",
+        );
+      }
+
+      await writeAtomically(records);
+
+      const storedDrafts = await Promise.all(
+        records.map(async (record) => {
+          const stored = await store.getRecord({
+            workspaceId,
+            collectionName: record.collectionName,
+            recordId: record.recordId,
+          });
+
+          if ((stored?.userId?.trim() || null) !== normalizedActorId) {
+            throw new Error(
+              `External contact draft ${record.recordId} was not stored for the authenticated actor.`,
+            );
+          }
+
+          const storedDraft = contactDraftFromRecord(stored);
+
+          if (!storedDraft) {
+            throw new Error(
+              `External contact draft ${record.recordId} could not be read back after staging.`,
+            );
+          }
+
+          return storedDraft;
+        }),
+      );
+
+      return storedDrafts;
+    },
   };
 }
 
@@ -292,6 +645,12 @@ export function createConfiguredStorageExternalContactsImportProvider({
   env,
   sourceLabel = "External contacts import Postgres live storage",
 }: ConfiguredStorageExternalContactsImportProviderOptions = {}): LiveExternalContactsImportProvider | null {
+  const normalizedActorId = actorId?.trim();
+
+  if (!normalizedActorId) {
+    return null;
+  }
+
   const configuredStore = createConfiguredPostgresLiveRecordStore({
     env,
   });
@@ -301,7 +660,10 @@ export function createConfiguredStorageExternalContactsImportProvider({
   }
 
   return createStorageExternalContactsImportProvider({
-    actorId,
+    actorId: normalizedActorId,
+    atomicDraftWriter: createPostgresExternalContactDraftAtomicWriter(
+      configuredStore.client,
+    ),
     source: `postgres-live-record-store:external-contacts-import:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

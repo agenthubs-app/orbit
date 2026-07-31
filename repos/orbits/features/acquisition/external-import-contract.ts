@@ -23,6 +23,7 @@ export const EXTERNAL_CONTACTS_IMPORT_ERROR_CODES = [
   "EXTERNAL_CONTACTS_IMPORT_MOCK_FAILED",
   "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_UNCONFIGURED",
   "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_FAILED",
+  "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_WRITE_FAILED",
 ] as const;
 
 export type ExternalContactsImportErrorCode =
@@ -97,6 +98,13 @@ export const EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS = {
     recovery:
       "Keep external contact import in review mode and retry only after the live record store is healthy.",
   },
+  EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_WRITE_FAILED: {
+    code: "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The live external contact drafts could not be staged atomically.",
+    recovery:
+      "Keep the external candidates unconfirmed and retry only after the actor-owned contact draft store is healthy.",
+  },
 } as const satisfies Record<
   ExternalContactsImportErrorCode,
   ExternalContactsImportErrorDefinition
@@ -109,7 +117,7 @@ export type ExternalContactsSourceReference = SourceReferenceDTO & {
   batchId: string;
 };
 
-// provenance 是外部联系人导入的安全账本，所有真实 provider/file/job 写入都为 false。
+// provenance 是外部联系人导入的安全账本；候选读取不写库，成功导入会原子写入中央草稿队列。
 export interface ExternalContactsImportProvenance {
   source: string;
   sourceLabel: string;
@@ -121,14 +129,16 @@ export interface ExternalContactsImportProvenance {
   generationMethod:
     | "fixture"
     | "rule-based-external-contacts-import"
-    | "live-store-query";
+    | "live-store-query"
+    | "live-store-staging";
   liveDatabaseReadExecuted?: boolean;
   phoneAddressBookReadExecuted: false;
   googleContactsSyncExecuted: false;
   csvParsedAtScale: false;
   customerListJobExecuted: false;
   externalNetworkRequested: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
+  contactDraftWriteExecuted?: boolean;
   aiProviderRequested: false;
   notificationDelivered: false;
 }
@@ -206,7 +216,7 @@ export interface ExternalContactDraft {
   readyForReview: true;
   providerSyncRequested: false;
   contactWriteExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   notificationDelivered: false;
   productionImportJobEnqueued: false;
 }

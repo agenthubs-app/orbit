@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 import type {
   ContactDTO,
   NetworkPersonDTO,
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
+import type { ContactAcquisitionDraft } from "./contract";
 import {
   EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS,
   EXTERNAL_CONTACTS_IMPORT_SOURCE_KINDS,
@@ -147,6 +150,7 @@ function unconfiguredProvenance(now: string): ExternalContactsImportProvenance {
     customerListJobExecuted: false,
     externalNetworkRequested: false,
     databaseWriteExecuted: false,
+    contactDraftWriteExecuted: false,
     aiProviderRequested: false,
     notificationDelivered: false,
   };
@@ -157,6 +161,7 @@ function provenanceFor(input: {
   generatedAt: string;
   provider: LiveExternalContactsImportProvider;
   readExecuted?: boolean;
+  writeExecuted?: boolean;
 }): ExternalContactsImportProvenance {
   return {
     source: input.provider.source,
@@ -167,14 +172,17 @@ function provenanceFor(input: {
         : ["evidence:external-import-live-empty"],
     collectedAt: input.generatedAt,
     privacy: "live-external-contacts-import",
-    generationMethod: "live-store-query",
+    generationMethod: input.writeExecuted
+      ? "live-store-staging"
+      : "live-store-query",
     liveDatabaseReadExecuted: input.readExecuted ?? true,
     phoneAddressBookReadExecuted: false,
     googleContactsSyncExecuted: false,
     csvParsedAtScale: false,
     customerListJobExecuted: false,
     externalNetworkRequested: false,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: input.writeExecuted ?? false,
+    contactDraftWriteExecuted: input.writeExecuted ?? false,
     aiProviderRequested: false,
     notificationDelivered: false,
   };
@@ -358,6 +366,7 @@ function buildCandidateRecord(input: {
   person: LiveExternalContactPerson & {
     externalSourceKind: ExternalContactsImportSourceKind;
   };
+  provider: LiveExternalContactsImportProvider;
 }): LiveExternalContactCandidateRecord {
   const sourceKind = input.person.externalSourceKind;
   const source = sourceReferenceFor({
@@ -377,8 +386,14 @@ function buildCandidateRecord(input: {
   const suggestedNextAction = matchingContact
     ? "Review the existing live contact before staging a duplicate draft."
     : "Review the source-backed external contact before creating a central contact draft.";
+  const actorScopedEntityId = createHash("sha256")
+    .update(
+      `orbit:external-contact-draft:${input.provider.actorScopeId}:${input.person.id}`,
+    )
+    .digest("hex")
+    .slice(0, 32);
   const candidate: ExternalContactCandidate = {
-    candidateId: `external-candidate:live:${input.person.id}`,
+    candidateId: `external-candidate:live:${actorScopedEntityId}`,
     displayName: input.person.displayName,
     role: input.person.role ?? "External contact",
     organization: input.person.organization ?? "",
@@ -405,7 +420,7 @@ function buildCandidateRecord(input: {
   return {
     candidate,
     draft: {
-      id: `external-draft:live:${input.person.id}`,
+      id: `external-draft:live:${actorScopedEntityId}`,
       candidateId: candidate.candidateId,
       displayName: candidate.displayName,
       role: candidate.role,
@@ -421,16 +436,7 @@ function buildCandidateRecord(input: {
       provenance: provenanceFor({
         evidenceIds: candidate.evidenceIds,
         generatedAt: input.person.updatedAt,
-        provider: {
-          source: source.id,
-          sourceLabel: source.label,
-          readExternalContactsImportGraph: () => ({
-            contacts: [],
-            evidence: [],
-            generatedAt: input.person.updatedAt,
-            networkPeople: [],
-          }),
-        },
+        provider: input.provider,
       }),
       readyForReview: true,
       providerSyncRequested: false,
@@ -452,12 +458,14 @@ function withPayloadProvenance(
 ): ExternalContactDraft {
   return {
     ...draft,
+    databaseWriteExecuted: provenance.databaseWriteExecuted,
     provenance,
   };
 }
 
 function buildRecords(
   graph: LiveExternalContactsImportGraph,
+  provider: LiveExternalContactsImportProvider,
 ): readonly LiveExternalContactCandidateRecord[] {
   return graph.networkPeople
     .filter(
@@ -474,8 +482,57 @@ function buildRecords(
         contacts: graph.contacts,
         evidence: graph.evidence,
         person,
+        provider,
       }),
     );
+}
+
+function toCanonicalContactDraft(
+  draft: ExternalContactDraft,
+): ContactAcquisitionDraft {
+  const createdAt =
+    draft.evidence[0]?.createdAt ?? draft.provenance.collectedAt;
+
+  return {
+    id: draft.id,
+    status: "pending_confirmation",
+    source: draft.source,
+    displayName: draft.displayName,
+    role: draft.role,
+    organization: draft.organization,
+    relationshipContext: draft.relationshipContext,
+    suggestedNextAction: draft.suggestedNextAction,
+    confidence: draft.confidence,
+    createdAt,
+    confirmation: {
+      required: true,
+      state: "pending",
+      question: `Confirm ${draft.displayName} as a reviewed contact candidate?`,
+      writeTargets: ["contact"],
+    },
+    evidence: draft.evidence.map((evidence) => ({
+      evidenceId: evidence.evidenceId,
+      source: evidence.source,
+      sourceLabel: evidence.sourceLabel,
+      excerpt: evidence.excerpt,
+      capturedFields: evidence.capturedFields,
+      createdAt: evidence.createdAt,
+      createdBy: "live-external-contacts-import-service",
+    })),
+    provenance: {
+      source: draft.provenance.source,
+      sourceLabel: draft.provenance.sourceLabel,
+      evidenceIds: draft.provenance.evidenceIds,
+      collectedAt: draft.provenance.collectedAt,
+      privacy: "live-contact-acquisition-drafts",
+      generationMethod: "live-store-query",
+      liveDatabaseReadExecuted:
+        draft.provenance.liveDatabaseReadExecuted ?? true,
+      contactDraftWriteExecuted: true,
+      contactWriteExecuted: false,
+      externalNetworkRequested: false,
+    },
+  };
 }
 
 function sourceSummariesFor(
@@ -578,7 +635,7 @@ function buildCandidatesPayload(input: {
   provider: LiveExternalContactsImportProvider;
   sourceKind: ExternalContactsImportSourceKind | null;
 }): ExternalContactsCandidatesPayload {
-  const records = buildRecords(input.graph);
+  const records = buildRecords(input.graph, input.provider);
   const filteredRecords = filterRecords(records, input.sourceKind);
   const evidenceIds = filteredRecords.flatMap(
     (record) => record.candidate.evidenceIds,
@@ -609,14 +666,24 @@ function buildImportPayload(
   candidatesPayload: ExternalContactsCandidatesPayload,
   records: readonly LiveExternalContactCandidateRecord[],
 ): ExternalContactsImportPayload {
+  const provenance: ExternalContactsImportProvenance = {
+    ...candidatesPayload.provenance,
+    generationMethod: records.length > 0
+      ? "live-store-staging"
+      : candidatesPayload.provenance.generationMethod,
+    databaseWriteExecuted: records.length > 0,
+    contactDraftWriteExecuted: records.length > 0,
+  };
+
   return {
     ...candidatesPayload,
     contactDrafts: records.map((record) =>
-      withPayloadProvenance(record.draft, candidatesPayload.provenance),
+      withPayloadProvenance(record.draft, provenance),
     ),
+    provenance,
     summary:
       records.length > 0
-        ? `Staged ${records.length} live external contact drafts for review without writing contacts.`
+        ? `Persisted ${records.length} actor-owned external contact drafts to the central review queue without writing contacts.`
         : candidatesPayload.summary,
   };
 }
@@ -716,13 +783,34 @@ export function createLiveExternalContactsImportService({
         return graphResult;
       }
 
-      const records = buildRecords(graphResult.graph);
+      const records = buildRecords(graphResult.graph, graphResult.provider);
       const filteredRecords = filterRecords(records, sourceKind);
       const candidatesPayload = buildCandidatesPayload({
         graph: graphResult.graph,
         provider: graphResult.provider,
         sourceKind,
       });
+
+      try {
+        await graphResult.provider.stageContactDrafts(
+          filteredRecords.map((record) =>
+            toCanonicalContactDraft(record.draft),
+          ),
+        );
+      } catch {
+        return failure(
+          "EXTERNAL_CONTACTS_IMPORT_LIVE_STORE_WRITE_FAILED",
+          provenanceFor({
+            evidenceIds: filteredRecords.flatMap(
+              (record) => record.candidate.evidenceIds,
+            ),
+            generatedAt,
+            provider: graphResult.provider,
+            readExecuted: true,
+            writeExecuted: false,
+          }),
+        );
+      }
 
       return importSuccess(buildImportPayload(candidatesPayload, filteredRecords));
     },
