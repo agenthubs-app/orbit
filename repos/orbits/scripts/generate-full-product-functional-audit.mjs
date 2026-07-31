@@ -985,6 +985,66 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
 ]);
 const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
   [
+    'repos/orbit-app/src/screens/profile/ProfileScreen.tsx#onopenaccount:() => router.push("/account" as Href)|onsaveprofile:onSaveProfile#null',
+    {
+      actualResult:
+        "A disposable authenticated iOS actor saved a complete profile through ProfileCard.onSaveProfile; the native success tree, one PUT ledger entry, API response, configured Postgres row, refresh, and cold-start readback all agreed on the run-unique displayName, headline, and bio.",
+      testData:
+        "Two disposable registered actors; iPhone 17 Pro simulator at 390x844; run-unique displayName, headline, and bio markers; configured live Postgres store",
+      idempotency:
+        "Two identical actor-A retries converged on one actor-owned profile row; actor B wrote an independent row; a blank-name local submission issued zero PUTs, the service rejected the invalid payload, and both actor ledgers ended activeAfter=0.",
+      verificationCase: "native-profile-durable-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/profile/ProfileScreen.tsx#onsave:onSaveProfile#null",
+    {
+      actualResult:
+        "The native ProfileManualEditCard forwarded the complete reviewed draft to its save callback and reached one authenticated profile PUT; the success terminal, API response, Postgres row, refresh, and cold-start form all preserved the same three values.",
+      testData:
+        "Disposable actor A with a complete run-unique profile draft, plus actor B for independent-write and isolation checks",
+      idempotency:
+        "Repeated and controlled-retry saves preserved one semantic profile record; the empty required-name path stopped locally with 先写名字。, issued zero PUTs, and left the last-good payload unchanged.",
+      verificationCase: "native-profile-durable-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    'repos/orbit-app/src/screens/profile/ProfileScreen.tsx#onchangetext:(value) => updateDraft("displayName", value)#null',
+    {
+      actualResult:
+        "Replacing 名字 with the run-unique actor-A marker, saving, refreshing, and cold-starting showed the same display name in the native tree, authenticated API response, and exact actor-owned Postgres profile row.",
+      testData:
+        "Disposable actors A/B and Profile Audit 20260731093223-22663 display-name marker",
+      idempotency:
+        "The same value survived repeated saves without a duplicate row; actor B retained its independent name; clearing the field produced 先写名字。 with Profile PUT=0 and no dirty data.",
+      verificationCase: "native-profile-durable-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    'repos/orbit-app/src/screens/profile/ProfileScreen.tsx#onchangetext:(value) => updateDraft("headline", value)#null',
+    {
+      actualResult:
+        "Replacing 标题 with the run-unique actor-A marker persisted through the authenticated profile PUT, configured Postgres row, refresh, and native cold-start readback.",
+      testData:
+        "Disposable actors A/B and Durable Headline 20260731093223-22663 marker",
+      idempotency:
+        "Repeated and retried writes converged on one actor-A row, actor B retained a disjoint headline, and the later invalid blank-name attempt did not partially apply another headline.",
+      verificationCase: "native-profile-durable-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
+    'repos/orbit-app/src/screens/profile/ProfileScreen.tsx#onchangetext:(value) => updateDraft("bio", value)#null',
+    {
+      actualResult:
+        "Replacing 简介 with the run-unique actor-A marker persisted through the authenticated profile PUT, payload.publicProfile.bio in the configured Postgres row, refresh, and native cold-start readback.",
+      testData:
+        "Disposable actors A/B and Durable Bio 20260731093223-22663 marker",
+      idempotency:
+        "Repeated and retried writes converged on one actor-A row, actor B retained a disjoint bio, and local plus service validation failures preserved the last-good bio without a dirty write.",
+      verificationCase: "native-profile-durable-write-lifecycle-2026-07-31",
+    },
+  ],
+  [
     "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
     {
       actualResult:
@@ -3189,6 +3249,21 @@ const VERIFIED_AUDIT_CASES = [
       "Production-build in-app browser traversal from /app → 我的 and from the account menu; desktop and 390x844 DOM snapshots; actor-scoped PUT /api/profile followed by GET readback; fresh /app/home and /app/profile entries; tests/pages/app-profile-live-route-services.test.ts",
     conclusion:
       "pass for every rendered Profile-specific control in the exercised authenticated desktop/mobile lifecycle; offline/server-error, tablet, screen-reader, and a second current-session browser actor remain pending",
+  },
+  {
+    id: "native-profile-durable-write-lifecycle-2026-07-31",
+    target:
+      "Authenticated iOS Profile field edits → callback boundaries → PUT /api/profile → configured Postgres profile → refresh/cold-start readback → validation/failure/retry/two-actor isolation → cleanup",
+    testData:
+      "Two disposable registered actors on an iPhone 17 Pro simulator at 390x844; run-unique displayName, headline, and bio values; formal credentials session and SecureStore restoration; configured live Postgres store",
+    expected:
+      "The three selected fields and both callback boundaries must produce one complete actor-owned update; success must survive refresh and cold start; blank required names and controlled service failures must leave the last-good record unchanged; retries must converge; actors must remain isolated; cleanup must leave zero active records",
+    actual:
+      "The native write, cold readback, and deterministic blank-name tests all passed. The successful UI action produced one profile PUT and exact success state; the blank-name action displayed 先写名字。 and produced zero profile PUTs. Independent service recomputation passed 11/11 write/readback/retry/invalid-write/isolation assertions against API and configured Postgres data. Actors A and B owned disjoint profile rows and both cleanup ledgers reported activeAfter=0.",
+    evidence:
+      "profile-write-execution-iterationcontinuation-final2 native trees/screenshots/request ledgers; service-verify-recomputed.json; actor-a-verify-clean.json; actor-b-verify-clean.json; independent-evaluator.json",
+    conclusion:
+      "pass for the five exact /profile write implementations and their five exercised route occurrences; unrelated Profile extraction, account navigation, refresh, and suggestion controls remain outside this case",
   },
   {
     id: "live-event-registration-persistence-cancellation-isolation-2026-07-28",
