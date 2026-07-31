@@ -16,6 +16,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import {
   CONTACT_ACQUISITION_DRAFT_SOURCE_TYPES,
   type ContactAcquisitionDraft,
@@ -58,7 +59,23 @@ export interface LiveContactAcquisitionDraftProvider {
     draft: ContactAcquisitionDraft,
     updatedAt: string,
   ) => LiveContactAcquisitionDraftProviderResult<ContactAcquisitionDraft>;
+  confirmContactDraft: (
+    draft: ContactAcquisitionDraft,
+    updatedAt: string,
+  ) => LiveContactAcquisitionDraftProviderResult<ContactDraftConfirmationWriteResult>;
 }
+
+export interface ContactDraftConfirmationWriteResult {
+  draft: ContactAcquisitionDraft;
+  transitionApplied: boolean;
+}
+
+export type AtomicContactDraftConfirmer = (input: {
+  actorId: string | null;
+  draft: ContactAcquisitionDraft;
+  updatedAt: string;
+  workspaceId: string;
+}) => Promise<ContactDraftConfirmationWriteResult>;
 
 export const CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS = {
   attendees: "attendees",
@@ -71,6 +88,7 @@ export const CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS = {
 
 export interface StorageContactAcquisitionDraftProviderOptions {
   actorId?: string;
+  atomicContactDraftConfirmer?: AtomicContactDraftConfirmer;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -350,6 +368,104 @@ function latestTimestamp(
   );
 }
 
+function contactDraftRecord(input: {
+  actorId?: string;
+  draft: ContactAcquisitionDraft;
+  updatedAt: string;
+  workspaceId: string;
+}): LiveRecord<Record<string, unknown>> {
+  const { actorId, draft, updatedAt, workspaceId } = input;
+
+  return {
+    workspaceId,
+    collectionName: CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    recordId: draft.id,
+    userId: actorId?.trim() || null,
+    sourceType: draft.source.type,
+    sourceId: draft.source.id,
+    sourceLabel: draft.source.label,
+    provider: "orbit-contact-acquisition-draft-live-service",
+    providerRecordId: draft.id,
+    evidenceIds: draft.provenance.evidenceIds,
+    targetType: "contact",
+    targetId: draft.id,
+    occurredAt: draft.createdAt,
+    createdAt: draft.createdAt,
+    updatedAt,
+    lifecycleState: "active",
+    searchText: [
+      draft.displayName,
+      draft.organization,
+      draft.role,
+      draft.relationshipContext,
+    ].join(" "),
+    payload: draft as unknown as Record<string, unknown>,
+  };
+}
+
+function createPostgresAtomicContactDraftConfirmer(
+  client: LiveRecordSqlClient,
+): AtomicContactDraftConfirmer {
+  return async ({ actorId, draft, updatedAt, workspaceId }) => {
+    const result = await client.query<{
+      payload: Record<string, unknown> | string;
+      transition_applied: boolean;
+    }>(
+      `
+        with updated as (
+          update orbit_records
+          set evidence_ids = $4::text[],
+              payload = $5::jsonb,
+              updated_at = $6
+          where workspace_id = $1
+            and collection_name = 'contactDrafts'
+            and record_id = $2
+            and lifecycle_state <> 'deleted'
+            and user_id is not distinct from $3
+            and payload->>'status' = 'pending_confirmation'
+          returning payload
+        )
+        select true as transition_applied, payload
+        from updated
+        union all
+        select false as transition_applied, payload
+        from orbit_records
+        where workspace_id = $1
+          and collection_name = 'contactDrafts'
+          and record_id = $2
+          and lifecycle_state <> 'deleted'
+          and user_id is not distinct from $3
+          and not exists (select 1 from updated)
+        limit 1
+      `,
+      [
+        workspaceId,
+        draft.id,
+        actorId,
+        [...draft.provenance.evidenceIds],
+        JSON.stringify(draft),
+        updatedAt,
+      ],
+    );
+    const row = result.rows[0];
+    const payload =
+      typeof row?.payload === "string"
+        ? JSON.parse(row.payload) as Record<string, unknown>
+        : row?.payload;
+
+    if (!row || !payload) {
+      throw new Error(
+        `Contact draft ${draft.id} could not be confirmed for this actor.`,
+      );
+    }
+
+    return {
+      draft: payload as unknown as ContactAcquisitionDraft,
+      transitionApplied: row.transition_applied,
+    };
+  };
+}
+
 async function listCollection(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
@@ -377,11 +493,17 @@ async function listCollection(
 
 export function createStorageContactAcquisitionDraftProvider({
   actorId,
+  atomicContactDraftConfirmer,
   source,
   sourceLabel = "Contact acquisition draft shared live storage",
   store,
   workspaceId,
 }: StorageContactAcquisitionDraftProviderOptions): LiveContactAcquisitionDraftProvider {
+  const confirmationWrites = new Map<
+    string,
+    Promise<ContactDraftConfirmationWriteResult>
+  >();
+
   return {
     source: source ?? `live-record-store:contact-drafts:${workspaceId}`,
     sourceLabel,
@@ -447,34 +569,68 @@ export function createStorageContactAcquisitionDraftProvider({
       draft: ContactAcquisitionDraft,
       updatedAt: string,
     ): Promise<ContactAcquisitionDraft> {
-      const record: LiveRecord<Record<string, unknown>> = {
-        workspaceId,
-        collectionName: CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts,
-        recordId: draft.id,
-        userId: actorId?.trim() || null,
-        sourceType: draft.source.type,
-        sourceId: draft.source.id,
-        sourceLabel: draft.source.label,
-        provider: "orbit-contact-acquisition-draft-live-service",
-        providerRecordId: draft.id,
-        evidenceIds: draft.provenance.evidenceIds,
-        targetType: "contact",
-        targetId: draft.id,
-        occurredAt: draft.createdAt,
-        createdAt: draft.createdAt,
+      const record = contactDraftRecord({
+        actorId,
+        draft,
         updatedAt,
-        lifecycleState: "active",
-        searchText: [
-          draft.displayName,
-          draft.organization,
-          draft.role,
-          draft.relationshipContext,
-        ].join(" "),
-        payload: draft as unknown as Record<string, unknown>,
-      };
+        workspaceId,
+      });
       const saved = await store.upsertRecord(record);
 
       return (draftFromRecord(saved) ?? draft);
+    },
+    async confirmContactDraft(
+      draft: ContactAcquisitionDraft,
+      updatedAt: string,
+    ): Promise<ContactDraftConfirmationWriteResult> {
+      if (atomicContactDraftConfirmer) {
+        return atomicContactDraftConfirmer({
+          actorId: actorId?.trim() || null,
+          draft,
+          updatedAt,
+          workspaceId,
+        });
+      }
+
+      const previous = confirmationWrites.get(draft.id) ??
+        Promise.resolve({
+          draft,
+          transitionApplied: false,
+        });
+      const next = previous.then(async () => {
+        const existingRecord = await store.getRecord({
+          workspaceId,
+          collectionName: CONTACT_DRAFT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+          recordId: draft.id,
+        });
+        const existingDraft = existingRecord
+          ? draftFromRecord(existingRecord)
+          : null;
+
+        if (existingDraft?.status === "confirmed") {
+          return {
+            draft: existingDraft,
+            transitionApplied: false,
+          };
+        }
+
+        const saved = await store.upsertRecord(
+          contactDraftRecord({ actorId, draft, updatedAt, workspaceId }),
+        );
+        return {
+          draft: draftFromRecord(saved) ?? draft,
+          transitionApplied: true,
+        };
+      });
+      confirmationWrites.set(draft.id, next);
+
+      try {
+        return await next;
+      } finally {
+        if (confirmationWrites.get(draft.id) === next) {
+          confirmationWrites.delete(draft.id);
+        }
+      }
     },
   };
 }
@@ -494,6 +650,9 @@ export function createConfiguredStorageContactAcquisitionDraftProvider({
 
   return createStorageContactAcquisitionDraftProvider({
     actorId,
+    atomicContactDraftConfirmer: createPostgresAtomicContactDraftConfirmer(
+      configuredStore.client,
+    ),
     source: `postgres-live-record-store:contact-drafts:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

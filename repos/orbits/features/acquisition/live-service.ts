@@ -555,10 +555,19 @@ async function confirmDraft(input: {
       writeExecuted: true,
     }),
   };
-  const savedDraft = await input.provider.upsertContactDraft(
+  const confirmationWrite = await input.provider.confirmContactDraft(
     confirmedDraft,
     input.now,
   );
+  const savedDraft = confirmationWrite.draft;
+  const savedEvidence =
+    savedDraft.evidence.find(
+      (evidence) => evidence.evidenceId === createdEvidence.evidenceId,
+    ) ?? createdEvidence;
+  const confirmedAt =
+    savedDraft.confirmation.state === "confirmed"
+      ? savedDraft.confirmation.confirmedAt
+      : input.now;
 
   return confirmationSuccess({
     state: "confirmed",
@@ -574,8 +583,8 @@ async function confirmDraft(input: {
       readyForContactWrite: true,
       contactWriteExecuted: false,
     },
-    createdEvidence,
-    confirmedAt: input.now,
+    createdEvidence: savedEvidence,
+    confirmedAt,
     provenance: savedDraft.provenance,
     nextAction:
       "Send this candidate to the contact record service only after preserving the source and evidence ids.",

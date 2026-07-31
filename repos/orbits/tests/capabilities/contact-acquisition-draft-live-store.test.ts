@@ -185,6 +185,46 @@ test("contact acquisition draft live confirmation updates only contactDrafts sto
   assert.equal(contacts.length, 0);
 });
 
+test("concurrent draft confirmation returns one stable persisted result", async () => {
+  const store = createSeedStore();
+  const provider = createStorageContactAcquisitionDraftProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  let call = 0;
+  const service = createLiveContactAcquisitionDraftService({
+    now: () => call++ === 0 ? NOW : "2026-07-02T12:10:01.000Z",
+    provider,
+  });
+
+  const [first, second] = await Promise.all([
+    service.confirmContactDraft({
+      actorLabel: "Live reviewer",
+      draftId: DRAFT_ID,
+    }),
+    service.confirmContactDraft({
+      actorLabel: "Live reviewer",
+      draftId: DRAFT_ID,
+    }),
+  ]);
+  const saved = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: DRAFT_ID,
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.deepEqual(first, second);
+  assert.equal(saved?.payload.status, "confirmed");
+  assert.equal(
+    Array.isArray(saved?.payload.evidence)
+      ? saved.payload.evidence.length
+      : 0,
+    2,
+  );
+});
+
 test("contact acquisition draft live service fails closed when storage is unconfigured", async () => {
   const service = createLiveContactAcquisitionDraftService({
     now: () => NOW,
