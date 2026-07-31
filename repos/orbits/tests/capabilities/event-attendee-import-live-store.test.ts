@@ -5,12 +5,17 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { createLiveEventAttendeeImportService } from "../../features/acquisition/live-event-attendee-import-service";
+import { createLiveContactAcquisitionDraftService } from "../../features/acquisition/live-service";
 import { resolveEventAttendeeImportService } from "../../features/acquisition/service-factory";
+import { createStorageContactAcquisitionDraftProvider } from "../../features/acquisition/storage/contact-draft-live-record-provider";
 import {
   EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
   createStorageEventAttendeeImportProvider,
 } from "../../features/acquisition/storage/event-attendee-live-record-provider";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import {
+  createMemoryLiveRecordStore,
+  type LiveRecordStoreLike,
+} from "../../shared/storage/live-record-store";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
@@ -134,10 +139,39 @@ test("live event attendee import reads generated attendees and intents from shar
   assert.equal(firstAttendee.databaseWriteExecuted, false);
 });
 
-test("live event attendee import stages review drafts without creating contacts", async () => {
+test("live event attendee import persists actor-owned canonical drafts idempotently without creating contacts", async () => {
+  const { store, workspaceId } = await seededStore();
+  const actorId = "account:event-attendee-draft-owner";
+
+  for (const collectionName of Object.values(
+    EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
+  )) {
+    const records = store.listRecords({
+      workspaceId,
+      collectionName,
+    });
+
+    for (const item of records) {
+      await store.upsertRecord({
+        ...item,
+        userId: actorId,
+      });
+    }
+  }
+
   const service = createLiveEventAttendeeImportService({
-    provider: await seededProvider(),
+    now: () => "2026-07-31T08:00:00.000Z",
+    provider: createStorageEventAttendeeImportProvider({
+      actorId,
+      store,
+      workspaceId,
+    }),
   });
+  const contactsBefore = store.listRecords({
+    workspaceId,
+    collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
+    userId: actorId,
+  }).length;
 
   const imported = await service.importEventAttendees({
     eventId: "event_01",
@@ -148,6 +182,7 @@ test("live event attendee import stages review drafts without creating contacts"
   assert.equal(imported.data.event.id, "event_01");
   assert.equal(imported.data.provenance.generationMethod, "live-store-draft-stage");
   assert.equal(imported.data.provenance.bulkDatabaseImportExecuted, false);
+  assert.equal(imported.data.provenance.contactDraftWriteExecuted, true);
   assert.equal(imported.data.provenance.liveDatabaseReadExecuted, true);
   assert.ok(imported.data.contactDrafts.length > 0);
   assert.equal(imported.data.attendees.length, imported.data.contactDrafts.length);
@@ -157,9 +192,105 @@ test("live event attendee import stages review drafts without creating contacts"
         draft.relationshipStatus.code === "known_contact" &&
         draft.readyForReview === true &&
         draft.contactWriteExecuted === false &&
+        draft.contactDraftWriteExecuted === true &&
         draft.bulkDatabaseImportExecuted === false &&
         draft.notificationDelivered === false,
     ),
+  );
+
+  const firstWriteRecords = store.listRecords({
+    workspaceId,
+    collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    userId: actorId,
+  });
+  const replay = await service.importEventAttendees({
+    eventId: "event_01",
+    relationshipStatusFilter: "known_contact",
+  });
+  const replayRecords = store.listRecords({
+    workspaceId,
+    collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    userId: actorId,
+  });
+
+  assert.equal(replay.success, true);
+  assert.deepEqual(
+    replay.data.contactDrafts.map((draft) => draft.id),
+    imported.data.contactDrafts.map((draft) => draft.id),
+  );
+  assert.equal(firstWriteRecords.length, imported.data.contactDrafts.length);
+  assert.equal(replayRecords.length, firstWriteRecords.length);
+  assert.deepEqual(
+    replayRecords.map((record) => record.recordId),
+    firstWriteRecords.map((record) => record.recordId),
+  );
+  assert.ok(replayRecords.every((record) => record.userId === actorId));
+  assert.equal(
+    store.listRecords({
+      workspaceId,
+      collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
+      userId: actorId,
+    }).length,
+    contactsBefore,
+  );
+
+  const coldReadback = await createLiveContactAcquisitionDraftService({
+    provider: createStorageContactAcquisitionDraftProvider({
+      actorId,
+      store,
+      workspaceId,
+    }),
+  }).listContactDrafts();
+
+  assert.equal(coldReadback.success, true);
+  assert.ok(
+    coldReadback.data.drafts.some(
+      (draft) => draft.id === imported.data.contactDrafts[0]?.id,
+    ),
+  );
+});
+
+test("event attendee draft batch rolls back every new draft when the store fails mid-write", async () => {
+  const { store, workspaceId } = await seededStore();
+  let contactDraftWrites = 0;
+  const failingStore: LiveRecordStoreLike<Record<string, unknown>> = {
+    deleteRecord: (input) => store.deleteRecord(input),
+    getRecord: (input) => store.getRecord(input),
+    listRecords: (input) => store.listRecords(input),
+    upsertRecord(record) {
+      if (
+        record.collectionName ===
+        EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts
+      ) {
+        contactDraftWrites += 1;
+
+        if (contactDraftWrites === 2) {
+          throw new Error("AUDIT_CONTROLLED_CONTACT_DRAFT_STORE_FAILURE");
+        }
+      }
+
+      return store.upsertRecord(record);
+    },
+  };
+  const service = createLiveEventAttendeeImportService({
+    now: () => "2026-07-31T08:05:00.000Z",
+    provider: createStorageEventAttendeeImportProvider({
+      store: failingStore,
+      workspaceId,
+    }),
+  });
+
+  await assert.rejects(
+    async () => service.importEventAttendees({ eventId: "event_01" }),
+    /AUDIT_CONTROLLED_CONTACT_DRAFT_STORE_FAILURE/u,
+  );
+  assert.equal(contactDraftWrites, 2);
+  assert.equal(
+    store.listRecords({
+      workspaceId,
+      collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    }).length,
+    0,
   );
 });
 
