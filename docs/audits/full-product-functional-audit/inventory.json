@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "75df3ff040b5db25b3dc9e1f34f0c5c46806c183",
-  "deterministicSourceTime": "2026-07-31T10:21:59+09:00",
+  "generatedFromCommit": "c790220b1d810b35b0435be5eeed90808abd9c66",
+  "deterministicSourceTime": "2026-07-31T11:17:22+09:00",
   "sourceState": "clean-head",
   "uncommittedAuthoritativeInputChanges": 0,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
@@ -46,12 +46,12 @@
     "renderedLeafObservedOccurrences": 3001,
     "renderedLeafObservedStates": 279,
     "renderedLeafObservedUniqueStateKeys": 273,
-    "interactionsRuntimeVerified": 249,
+    "interactionsRuntimeVerified": 255,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 133,
+    "documentedVerificationCases": 134,
     "documentedRemediations": 134,
     "externalLimitations": 7,
     "remainingAuditGaps": 3
@@ -97150,14 +97150,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97184,14 +97186,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97218,14 +97222,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97252,14 +97258,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "present-static-signal",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97286,14 +97294,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -97320,14 +97330,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The final independent evaluator recomputed six distinct implementations and six exact /app/today occurrences, 34/34 artifact hashes including 13 same-run JPEG screenshots, three replay conflicts, actor isolation, controlled failure without dirty domain data, signed-out state, and 58→0 cleanup.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated actor edited the exact Today message, task title/due, and reminder title/due controls, then confirmed once through the formal ledger transition. The action completed with three completed outbox items, three completed receipts, and exactly one actor-owned messageDraft, task, and notification; all edited values survived hard reload. Empty message and missing reminder time were rejected locally with zero transition or domain rows. Separate actions durably deferred and rejected with zero downstream outputs and survived hard reload. A second actor could not access actor A, completed its own draft write, and remained isolated. Confirm/defer/reject replays returned 409 without duplicate output, a controlled single-operation executor failure produced no domain row, and cleanup deleted 58/58 records with activeAfter=0.",
+          "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; one actor-B own-write action; one actor-B controlled-failure action; run-unique edited draft/task/reminder values",
+          "testEvidence": [
+            "web-today-durable-decision-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -117614,6 +117626,15 @@
       "actual": "The native write, cold readback, and deterministic blank-name tests all passed. The successful UI action produced one profile PUT and exact success state; the blank-name action displayed 先写名字。 and produced zero profile PUTs. Independent service recomputation passed 11/11 write/readback/retry/invalid-write/isolation assertions against API and configured Postgres data. Actors A and B owned disjoint profile rows and both cleanup ledgers reported activeAfter=0.",
       "evidence": "profile-write-execution-iterationcontinuation-final2 native trees/screenshots/request ledgers; service-verify-recomputed.json; actor-a-verify-clean.json; actor-b-verify-clean.json; independent-evaluator.json",
       "conclusion": "pass for the five exact /profile write implementations and their five exercised route occurrences; unrelated Profile extraction, account navigation, refresh, and suggestion controls remain outside this case"
+    },
+    {
+      "id": "web-today-durable-decision-write-lifecycle-2026-07-31",
+      "target": "Authenticated Web Today decision fields and confirm/defer/reject controls → actor-scoped ledger transition → live runtime outbox/receipts → internal messageDraft/task/notification stores → hard-reload readback → isolation/replay/failure/cleanup",
+      "testData": "Two disposable registered actors on today.localhost; three actor-A awaiting actions for confirm/defer/reject; actor-B own-write and controlled-failure actions; run-unique edited draft/task/reminder values",
+      "expected": "Empty required inputs stop locally; confirm persists each edited internal output exactly once; defer/reject create no downstream output; Actor B cannot access Actor A and can write only its own record; replays do not duplicate; controlled executor failure leaves no domain row; all terminals survive hard reload; cleanup reaches zero active records",
+      "actual": "The final bounded browser iteration rendered and edited all five values, locally rejected empty message and reminder time with zero transition/domain rows, completed confirm with three outbox items, three receipts and exactly one actor-A messageDraft/task/notification, and preserved exact ISO-normalized values after hard reload. Defer and reject reached stable terminals with zero downstream output. Actor B received 404 for actor-A ids, completed one isolated draft write, and a controlled missing-title execution produced only retry/receipt control-plane evidence with no task. Confirm/defer/reject replays returned 409 without new output. The actor signed out and cleanup deleted 58/58 active records.",
+      "evidence": "today-write-execution-evaluator-iteration2 DOM and 13 JPEG screenshots; probe-pre.json; snapshot-after-local-rejections.json; snapshot-after-ui.json; verify-post.json; cleanup.json; result.json; independent-evaluator.json SHA-256 9965277984efdc5bfc528e29ff0f49148710ebe9dc2589ca48b9806a047ee529",
+      "conclusion": "pass for the six exact /app/today implementation keys and their six route-local occurrences; first independent evaluation correctly granted zero credit for discarded screenshot buffers, and the final evaluator granted 6/6 only after 34/34 artifact hashes and 58→0 cleanup passed"
     },
     {
       "id": "live-event-registration-persistence-cancellation-isolation-2026-07-28",
