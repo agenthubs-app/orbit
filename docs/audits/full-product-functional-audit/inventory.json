@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "7b539373ae5fcda75f03f5655437e80618ab75b1",
-  "deterministicSourceTime": "2026-07-31T04:19:42+09:00",
+  "generatedFromCommit": "75df3ff040b5db25b3dc9e1f34f0c5c46806c183",
+  "deterministicSourceTime": "2026-07-31T10:21:59+09:00",
   "sourceState": "clean-head",
   "uncommittedAuthoritativeInputChanges": 0,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
@@ -46,12 +46,12 @@
     "renderedLeafObservedOccurrences": 3001,
     "renderedLeafObservedStates": 279,
     "renderedLeafObservedUniqueStateKeys": 273,
-    "interactionsRuntimeVerified": 244,
+    "interactionsRuntimeVerified": 249,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 94,
     "candidateMissingHandlers": 0,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 132,
+    "documentedVerificationCases": 133,
     "documentedRemediations": 134,
     "externalLimitations": 7,
     "remainingAuditGaps": 3
@@ -3126,13 +3126,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -4149,13 +4149,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -4661,13 +4661,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -5082,6 +5082,7 @@
           "repos/orbit-app/src/api/client.ts",
           "repos/orbit-app/src/api/contract/orbit-ai.ts",
           "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/hooks/useOrbitApiClient.ts",
@@ -5119,242 +5120,254 @@
       "goal": "ai product surface; exact user goal requires runtime verification",
       "visibleContent": [
         {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 64,
+          "tag": "View",
+          "text": "正在确认登录状态"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 70,
+          "tag": "Text",
+          "text": "正在确认登录状态…"
+        },
+        {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 345,
+          "line": 419,
           "tag": "ErrorState",
           "text": "服务器连不上"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 368,
+          "line": 442,
           "tag": "Text",
           "text": "{prompt.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 374,
+          "line": 448,
           "tag": "Text",
           "text": "{sendError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 419,
+          "line": 493,
           "tag": "Pressable",
           "text": "打开侧栏"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 430,
+          "line": 504,
           "tag": "Text",
           "text": "Orbit AI"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 431,
+          "line": 505,
           "tag": "Pressable",
           "text": "对话历史"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 503,
+          "line": 577,
           "tag": "Text",
           "text": "{message.content}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 513,
+          "line": 587,
           "tag": "Text",
           "text": "{when}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 523,
+          "line": 597,
           "tag": "Text",
           "text": "{intent.label}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 549,
+          "line": 623,
           "tag": "Pressable",
           "text": "更多操作"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 560,
+          "line": 634,
           "tag": "TextInput",
           "text": "询问 Orbit AI"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 568,
+          "line": 642,
           "tag": "Pressable",
           "text": "发送"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 608,
+          "line": 682,
           "tag": "Pressable",
           "text": "关闭菜单"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 625,
+          "line": 699,
           "tag": "Text",
           "text": "扫名片"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 638,
+          "line": 712,
           "tag": "Text",
           "text": "新对话"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 665,
+          "line": 739,
           "tag": "Pressable",
           "text": "关闭侧栏"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 672,
+          "line": 746,
           "tag": "Text",
           "text": "人脉入口"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 673,
+          "line": 747,
           "tag": "Pressable",
           "text": "关闭侧栏"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 700,
+          "line": 774,
           "tag": "Text",
           "text": "更多入口"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 749,
+          "line": 823,
           "tag": "Text",
           "text": "{badge}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 753,
+          "line": 827,
           "tag": "Text",
           "text": "{entry.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 757,
+          "line": 831,
           "tag": "Text",
           "text": "{entry.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 787,
+          "line": 861,
           "tag": "Text",
           "text": "{entry.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 791,
+          "line": 865,
           "tag": "Text",
           "text": "{entry.detail}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 845,
+          "line": 919,
           "tag": "Pressable",
           "text": "关闭历史"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 852,
+          "line": 926,
           "tag": "Text",
           "text": "历史记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 853,
+          "line": 927,
           "tag": "Pressable",
           "text": "关闭历史"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 866,
+          "line": 940,
           "tag": "Text",
           "text": "{historyDeleteError}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 870,
+          "line": 944,
           "tag": "TextInput",
           "text": "搜索历史"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 925,
+          "line": 999,
           "tag": "Text",
           "text": "正在读取历史记录。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 929,
+          "line": 1003,
           "tag": "Text",
           "text": "历史记录暂时不可用。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 934,
+          "line": 1008,
           "tag": "Text",
           "text": "还没有历史记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 935,
+          "line": 1009,
           "tag": "Text",
           "text": "从一个问题开始，后续会出现在这里。"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 955,
+          "line": 1029,
           "tag": "Pressable",
           "text": "`打开历史记录：${item.title}`"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 966,
+          "line": 1040,
           "tag": "Text",
           "text": "{item.when}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 973,
+          "line": 1047,
           "tag": "Text",
           "text": "{item.title}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 976,
+          "line": 1050,
           "tag": "Text",
           "text": "{item.preview || \"继续问一个具体问题。\"}"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 982,
+          "line": 1056,
           "tag": "Pressable",
           "text": "删除历史记录"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 995,
+          "line": 1069,
           "tag": "Text",
           "text": "删除中"
         },
         {
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 997,
+          "line": 1071,
           "tag": "Text",
           "text": "删除"
         },
@@ -5404,6 +5417,7 @@
         ],
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/screens/ai/AiScreen.tsx"
         ]
       },
@@ -5425,7 +5439,7 @@
           "interactionId": "mobile:/ai#interaction-1",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 330,
+          "line": 400,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ChatTopBar",
@@ -5464,7 +5478,7 @@
           "interactionId": "mobile:/ai#interaction-2",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 338,
+          "line": 412,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ChatTranscript",
@@ -5496,7 +5510,7 @@
           "interactionId": "mobile:/ai#interaction-3",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 354,
+          "line": 428,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5530,7 +5544,7 @@
           "interactionId": "mobile:/ai#interaction-4",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 376,
+          "line": 450,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ChatComposer",
@@ -5568,7 +5582,7 @@
           "interactionId": "mobile:/ai#interaction-5",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 384,
+          "line": 458,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "OrbitAiDrawer",
@@ -5606,7 +5620,7 @@
           "interactionId": "mobile:/ai#interaction-6",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 390,
+          "line": 464,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "OrbitAiHistoryPanel",
@@ -5648,7 +5662,7 @@
           "interactionId": "mobile:/ai#interaction-7",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 400,
+          "line": 474,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ComposerMenuSheet",
@@ -5687,7 +5701,7 @@
           "interactionId": "mobile:/ai#interaction-8",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 419,
+          "line": 493,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5719,7 +5733,7 @@
           "interactionId": "mobile:/ai#interaction-9",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 431,
+          "line": 505,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5751,7 +5765,7 @@
           "interactionId": "mobile:/ai#interaction-10",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 484,
+          "line": 558,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "RefreshControl",
@@ -5783,7 +5797,7 @@
           "interactionId": "mobile:/ai#interaction-11",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 549,
+          "line": 623,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5815,7 +5829,7 @@
           "interactionId": "mobile:/ai#interaction-12",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 560,
+          "line": 634,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -5847,7 +5861,7 @@
           "interactionId": "mobile:/ai#interaction-13",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 568,
+          "line": 642,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5879,7 +5893,7 @@
           "interactionId": "mobile:/ai#interaction-14",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 608,
+          "line": 682,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5911,7 +5925,7 @@
           "interactionId": "mobile:/ai#interaction-15",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 614,
+          "line": 688,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5943,7 +5957,7 @@
           "interactionId": "mobile:/ai#interaction-16",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 627,
+          "line": 701,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -5975,7 +5989,7 @@
           "interactionId": "mobile:/ai#interaction-17",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 665,
+          "line": 739,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6007,7 +6021,7 @@
           "interactionId": "mobile:/ai#interaction-18",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 673,
+          "line": 747,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6039,7 +6053,7 @@
           "interactionId": "mobile:/ai#interaction-19",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 692,
+          "line": 766,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "FeaturedCapabilityTile",
@@ -6073,7 +6087,7 @@
           "interactionId": "mobile:/ai#interaction-20",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 703,
+          "line": 777,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "CapabilityRow",
@@ -6107,7 +6121,7 @@
           "interactionId": "mobile:/ai#interaction-21",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 712,
+          "line": 786,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "CapabilityRow",
@@ -6141,7 +6155,7 @@
           "interactionId": "mobile:/ai#interaction-22",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 735,
+          "line": 809,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6173,7 +6187,7 @@
           "interactionId": "mobile:/ai#interaction-23",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 775,
+          "line": 849,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6205,7 +6219,7 @@
           "interactionId": "mobile:/ai#interaction-24",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 845,
+          "line": 919,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6237,7 +6251,7 @@
           "interactionId": "mobile:/ai#interaction-25",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 853,
+          "line": 927,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6269,7 +6283,7 @@
           "interactionId": "mobile:/ai#interaction-26",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 870,
+          "line": 944,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "TextInput",
@@ -6301,7 +6315,7 @@
           "interactionId": "mobile:/ai#interaction-27",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 878,
+          "line": 952,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "DrawerHistoryList",
@@ -6337,7 +6351,7 @@
           "interactionId": "mobile:/ai#interaction-28",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 912,
+          "line": 986,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "DrawerHistoryRow",
@@ -6376,7 +6390,7 @@
           "interactionId": "mobile:/ai#interaction-29",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 955,
+          "line": 1029,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6410,7 +6424,7 @@
           "interactionId": "mobile:/ai#interaction-30",
           "surfaceId": "mobile:/ai",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 982,
+          "line": 1056,
           "ownerPropBranchConditions": [],
           "controlType": "native-control",
           "tag": "Pressable",
@@ -6441,37 +6455,37 @@
       ],
       "overlays": [
         {
-          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:601",
+          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:675",
           "parentSurfaceId": "mobile:/ai",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:601",
+          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:675",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 601,
+          "line": 675,
           "kind": "Modal",
           "visibleName": "扫名片 新对话",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:658",
+          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:732",
           "parentSurfaceId": "mobile:/ai",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:658",
+          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:732",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 658,
+          "line": 732,
           "kind": "Modal",
           "visibleName": "人脉入口 {featuredCapabilities.map((entry) => ( <FeaturedCapabilityTile badge={entry.href === \"/inbox\" ? inboxBadge : undefined} entry={entry} key={String(entry.href)} onPress={() => onOpenCapability(entry.href)} /> ))} 更多入口 {secondaryCapabilities.map((entry) => ( <CapabilityRow entry={entry} key={String(entry.href)} onPress={() => onOpenCapability(entry.href)} /> ))}",
           "runtimeStatus": "not-runtime-verified"
         },
         {
-          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:838",
+          "overlayInstanceId": "mobile:/ai#overlay-repos/orbit-app/src/screens/ai/AiScreen.tsx:912",
           "parentSurfaceId": "mobile:/ai",
           "trigger": "reachable from route source; exact control requires runtime verification",
           "enterExitBehavior": "not-runtime-verified",
-          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:838",
+          "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:912",
           "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-          "line": 838,
+          "line": 912,
           "kind": "Modal",
           "visibleName": "历史记录 {<Text style={styles.errorText}>{historyDeleteError}</Text>} / {null}",
           "runtimeStatus": "not-runtime-verified"
@@ -6585,13 +6599,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -8150,13 +8164,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -8629,13 +8643,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -9283,6 +9297,7 @@
           "repos/orbit-app/src/api/client.ts",
           "repos/orbit-app/src/api/contract/contacts.ts",
           "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/hooks/useOrbitApiClient.ts",
@@ -9318,6 +9333,18 @@
       },
       "goal": "contacts product surface; exact user goal requires runtime verification",
       "visibleContent": [
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 64,
+          "tag": "View",
+          "text": "正在确认登录状态"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 70,
+          "tag": "Text",
+          "text": "正在确认登录状态…"
+        },
         {
           "sourceFile": "repos/orbit-app/src/screens/contacts/ContactsScreen.tsx",
           "line": 872,
@@ -9459,6 +9486,7 @@
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/src/components/AppScreen.tsx",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/screens/contacts/ContactsScreen.tsx"
         ]
       },
@@ -9838,13 +9866,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -10951,13 +10979,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -11532,13 +11560,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -12356,13 +12384,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -13119,13 +13147,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -13988,13 +14016,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -15428,13 +15456,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -18419,13 +18447,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -18977,13 +19005,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -21855,13 +21883,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -22704,13 +22732,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -23457,13 +23485,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -24400,13 +24428,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         }
@@ -24533,13 +24561,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -25131,6 +25159,7 @@
         "api": [
           "repos/orbit-app/src/api/client.ts",
           "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/hooks/useOrbitApiClient.ts",
@@ -25162,6 +25191,18 @@
       },
       "goal": "inbox product surface; exact user goal requires runtime verification",
       "visibleContent": [
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 64,
+          "tag": "View",
+          "text": "正在确认登录状态"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 70,
+          "tag": "Text",
+          "text": "正在确认登录状态…"
+        },
         {
           "sourceFile": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx",
           "line": 145,
@@ -25877,6 +25918,7 @@
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/src/components/AppScreen.tsx",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx"
         ]
       },
@@ -27766,13 +27808,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -28724,13 +28766,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -29678,13 +29720,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -30631,13 +30673,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -30941,6 +30983,7 @@
           "repos/orbit-app/src/api/client.ts",
           "repos/orbit-app/src/api/contract/profile.ts",
           "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/hooks/useOrbitApiClient.ts",
@@ -30972,6 +31015,18 @@
       },
       "goal": "profile product surface; exact user goal requires runtime verification",
       "visibleContent": [
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 64,
+          "tag": "View",
+          "text": "正在确认登录状态"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 70,
+          "tag": "Text",
+          "text": "正在确认登录状态…"
+        },
         {
           "sourceFile": "repos/orbit-app/src/screens/profile/ProfileScreen.tsx",
           "line": 209,
@@ -31557,6 +31612,7 @@
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/src/components/AppScreen.tsx",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/screens/profile/ProfileScreen.tsx"
         ]
       },
@@ -31748,14 +31804,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Two identical actor-A retries converged on one actor-owned profile row; actor B wrote an independent row; a blank-name local submission issued zero PUTs, the service rejected the invalid payload, and both actor ledgers ended activeAfter=0.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "present-static-signal",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "A disposable authenticated iOS actor saved a complete profile through ProfileCard.onSaveProfile; the native success tree, one PUT ledger entry, API response, configured Postgres row, refresh, and cold-start readback all agreed on the run-unique displayName, headline, and bio.",
+          "testData": "Two disposable registered actors; iPhone 17 Pro simulator at 390x844; run-unique displayName, headline, and bio markers; configured live Postgres store",
+          "testEvidence": [
+            "native-profile-durable-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -31780,14 +31838,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated and controlled-retry saves preserved one semantic profile record; the empty required-name path stopped locally with 先写名字。, issued zero PUTs, and left the last-good payload unchanged.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "present-static-signal",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The native ProfileManualEditCard forwarded the complete reviewed draft to its save callback and reached one authenticated profile PUT; the success terminal, API response, Postgres row, refresh, and cold-start form all preserved the same three values.",
+          "testData": "Disposable actor A with a complete run-unique profile draft, plus actor B for independent-write and isolation checks",
+          "testEvidence": [
+            "native-profile-durable-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -32110,14 +32170,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "The same value survived repeated saves without a duplicate row; actor B retained its independent name; clearing the field produced 先写名字。 with Profile PUT=0 and no dirty data.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "present-static-signal",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Replacing 名字 with the run-unique actor-A marker, saving, refreshing, and cold-starting showed the same display name in the native tree, authenticated API response, and exact actor-owned Postgres profile row.",
+          "testData": "Disposable actors A/B and Profile Audit 20260731093223-22663 display-name marker",
+          "testEvidence": [
+            "native-profile-durable-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -32144,14 +32206,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated and retried writes converged on one actor-A row, actor B retained a disjoint headline, and the later invalid blank-name attempt did not partially apply another headline.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "present-static-signal",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Replacing 标题 with the run-unique actor-A marker persisted through the authenticated profile PUT, configured Postgres row, refresh, and native cold-start readback.",
+          "testData": "Disposable actors A/B and Durable Headline 20260731093223-22663 marker",
+          "testEvidence": [
+            "native-profile-durable-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -32178,14 +32242,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Repeated and retried writes converged on one actor-A row, actor B retained a disjoint bio, and local plus service validation failures preserved the last-good bio without a dirty write.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "present-static-signal",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Replacing 简介 with the run-unique actor-A marker persisted through the authenticated profile PUT, payload.publicProfile.bio in the configured Postgres row, refresh, and native cold-start readback.",
+          "testData": "Disposable actors A/B and Durable Bio 20260731093223-22663 marker",
+          "testEvidence": [
+            "native-profile-durable-write-lifecycle-2026-07-31"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -33419,6 +33485,7 @@
           "repos/orbit-app/src/api/contract/events.ts",
           "repos/orbit-app/src/api/contract/followups.ts",
           "repos/orbit-app/src/api/endpoints.ts",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/data/snapshot-store.ts",
           "repos/orbit-app/src/hooks/useApiResource.ts",
           "repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx",
@@ -33453,6 +33520,18 @@
       },
       "goal": "schedule product surface; exact user goal requires runtime verification",
       "visibleContent": [
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 64,
+          "tag": "View",
+          "text": "正在确认登录状态"
+        },
+        {
+          "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
+          "line": 70,
+          "tag": "Text",
+          "text": "正在确认登录状态…"
+        },
         {
           "sourceFile": "repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx",
           "line": 69,
@@ -33690,6 +33769,7 @@
         "hashEvidenceFiles": [],
         "deepLinkEvidenceFiles": [
           "repos/orbit-app/src/components/AppScreen.tsx",
+          "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
           "repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx"
         ]
       },
@@ -33989,13 +34069,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -34327,13 +34407,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -34591,13 +34671,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -34959,13 +35039,13 @@
       "visibleContent": [
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 70,
+          "line": 64,
           "tag": "View",
           "text": "正在确认登录状态"
         },
         {
           "sourceFile": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx",
-          "line": 76,
+          "line": 70,
           "tag": "Text",
           "text": "正在确认登录状态…"
         },
@@ -117390,25 +117470,25 @@
   ],
   "overlayImplementations": [
     {
-      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:601",
+      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:675",
       "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-      "line": 601,
+      "line": 675,
       "kind": "Modal",
       "visibleName": "扫名片 新对话",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:658",
+      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:732",
       "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-      "line": 658,
+      "line": 732,
       "kind": "Modal",
       "visibleName": "人脉入口 {featuredCapabilities.map((entry) => ( <FeaturedCapabilityTile badge={entry.href === \"/inbox\" ? inboxBadge : undefined} entry={entry} key={String(entry.href)} onPress={() => onOpenCapability(entry.href)} /> ))} 更多入口 {secondaryCapabilities.map((entry) => ( <CapabilityRow entry={entry} key={String(entry.href)} onPress={() => onOpenCapability(entry.href)} /> ))}",
       "runtimeStatus": "not-runtime-verified"
     },
     {
-      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:838",
+      "implementationId": "repos/orbit-app/src/screens/ai/AiScreen.tsx:912",
       "sourceFile": "repos/orbit-app/src/screens/ai/AiScreen.tsx",
-      "line": 838,
+      "line": 912,
       "kind": "Modal",
       "visibleName": "历史记录 {<Text style={styles.errorText}>{historyDeleteError}</Text>} / {null}",
       "runtimeStatus": "not-runtime-verified"
@@ -117525,6 +117605,15 @@
       "actual": "Empty extraction and whitespace-only name each produced explicit Chinese errors. Labeled extraction populated only supported fields. Desktop save persisted a 100% profile and all three tag groups; /app/home consumed the same data. Cancel discarded an unsaved title. Mobile Save persisted a distinct headline and survived hard navigation. The import link rendered the unconfigured no-upload/no-write boundary. Final UI cleanup restored the original name, company, auth email, 20% completion, empty optional fields, and zero tags after hard navigation.",
       "evidence": "Production-build in-app browser traversal from /app → 我的 and from the account menu; desktop and 390x844 DOM snapshots; actor-scoped PUT /api/profile followed by GET readback; fresh /app/home and /app/profile entries; tests/pages/app-profile-live-route-services.test.ts",
       "conclusion": "pass for every rendered Profile-specific control in the exercised authenticated desktop/mobile lifecycle; offline/server-error, tablet, screen-reader, and a second current-session browser actor remain pending"
+    },
+    {
+      "id": "native-profile-durable-write-lifecycle-2026-07-31",
+      "target": "Authenticated iOS Profile field edits → callback boundaries → PUT /api/profile → configured Postgres profile → refresh/cold-start readback → validation/failure/retry/two-actor isolation → cleanup",
+      "testData": "Two disposable registered actors on an iPhone 17 Pro simulator at 390x844; run-unique displayName, headline, and bio values; formal credentials session and SecureStore restoration; configured live Postgres store",
+      "expected": "The three selected fields and both callback boundaries must produce one complete actor-owned update; success must survive refresh and cold start; blank required names and controlled service failures must leave the last-good record unchanged; retries must converge; actors must remain isolated; cleanup must leave zero active records",
+      "actual": "The native write, cold readback, and deterministic blank-name tests all passed. The successful UI action produced one profile PUT and exact success state; the blank-name action displayed 先写名字。 and produced zero profile PUTs. Independent service recomputation passed 11/11 write/readback/retry/invalid-write/isolation assertions against API and configured Postgres data. Actors A and B owned disjoint profile rows and both cleanup ledgers reported activeAfter=0.",
+      "evidence": "profile-write-execution-iterationcontinuation-final2 native trees/screenshots/request ledgers; service-verify-recomputed.json; actor-a-verify-clean.json; actor-b-verify-clean.json; independent-evaluator.json",
+      "conclusion": "pass for the five exact /profile write implementations and their five exercised route occurrences; unrelated Profile extraction, account navigation, refresh, and suggestion controls remain outside this case"
     },
     {
       "id": "live-event-registration-persistence-cancellation-isolation-2026-07-28",
