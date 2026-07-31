@@ -146,6 +146,7 @@ export interface ContactDraftEvidence {
   createdBy:
     | "live-contact-acquisition-draft-service"
     | "live-external-contacts-import-service"
+    | "live-referral-recommendation-service"
     | "mock-pipeline";
 }
 

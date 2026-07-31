@@ -3,21 +3,29 @@ import test from "node:test";
 
 import { createConfirmRecommendedContactPostHandler } from "../../app/api/contact-drafts/recommended/[id]/confirm/handler";
 import { createReferralRecommendationPostHandler } from "../../app/api/contact-drafts/referral/handler";
+import type { ContactAcquisitionDraft } from "../../features/acquisition/contract";
+import { createLiveContactAcquisitionDraftService } from "../../features/acquisition/live-service";
 import { createLiveReferralRecommendationService } from "../../features/acquisition/live-referral-service";
 import { createReferralRecommendationService } from "../../features/acquisition/service-factory";
+import { createStorageContactAcquisitionDraftProvider } from "../../features/acquisition/storage/contact-draft-live-record-provider";
 import { createStorageReferralRecommendationProvider } from "../../features/acquisition/storage/referral-live-record-provider";
 import {
   createMemoryLiveRecordStore,
   type LiveRecord,
+  type LiveRecordStoreLike,
 } from "../../shared/storage/live-record-store";
 
 const WORKSPACE_ID = "workspace:referral-live-test";
 const NOW = "2026-07-02T10:20:00.000Z";
 const RECOMMENDATION_ID = "recommendation_live_mika";
+const SECOND_RECOMMENDATION_ID = "recommendation_live_rin";
+const ACTOR_A = "account:referral-a";
+const ACTOR_B = "account:referral-b";
 
 function record(
   collectionName: string,
   payload: Record<string, unknown>,
+  actorId: string = ACTOR_A,
 ): LiveRecord<Record<string, unknown>> {
   const recordId =
     typeof payload.id === "string" ? payload.id : `${collectionName}:unknown`;
@@ -29,7 +37,7 @@ function record(
     workspaceId: WORKSPACE_ID,
     collectionName,
     recordId,
-    userId: null,
+    userId: actorId,
     sourceType: "referral",
     sourceId: `source:${collectionName}:${recordId}`,
     sourceLabel: `Live ${collectionName} seed`,
@@ -47,8 +55,11 @@ function record(
   };
 }
 
-function createSeedStore() {
-  return createMemoryLiveRecordStore<Record<string, unknown>>([
+function seedRecords(
+  actorId: string,
+  options: { withSecondRecommendation?: boolean } = {},
+): LiveRecord<Record<string, unknown>>[] {
+  const records = [
     record("networkPeople", {
       id: "person_live_mika",
       personKind: "external_contact",
@@ -64,7 +75,7 @@ function createSeedStore() {
       evidenceIds: ["evidence:person:mika"],
       createdAt: NOW,
       updatedAt: NOW,
-    }),
+    }, actorId),
     record("networkPeople", {
       id: "person_live_eli",
       personKind: "external_contact",
@@ -80,7 +91,7 @@ function createSeedStore() {
       evidenceIds: ["evidence:person:eli"],
       createdAt: NOW,
       updatedAt: NOW,
-    }),
+    }, actorId),
     record("matchRecommendations", {
       id: RECOMMENDATION_ID,
       eventId: "event_live_referral",
@@ -100,7 +111,7 @@ function createSeedStore() {
       evidenceIds: ["evidence:recommendation:mika"],
       createdAt: NOW,
       updatedAt: NOW,
-    }),
+    }, actorId),
     record("evidence", {
       id: "evidence:recommendation:mika",
       sourceType: "referral",
@@ -110,7 +121,7 @@ function createSeedStore() {
       occurredAt: NOW,
       confidence: 0.91,
       createdBy: "profile_live_operator",
-    }),
+    }, actorId),
     record("evidence", {
       id: "evidence:person:eli",
       sourceType: "referral",
@@ -119,13 +130,59 @@ function createSeedStore() {
       occurredAt: NOW,
       confidence: 0.86,
       createdBy: "profile_live_operator",
-    }),
-  ]);
+    }, actorId),
+  ];
+
+  if (options.withSecondRecommendation) {
+    records.push(
+      record("matchRecommendations", {
+        id: SECOND_RECOMMENDATION_ID,
+        eventId: "event_live_referral",
+        targetPersonId: "person_live_mika",
+        introducedByPersonId: "person_live_eli",
+        recommendationType: "context_share",
+        score: 0.7,
+        businessRelevanceScore: 74,
+        sharedTopics: ["community referrals"],
+        suggestedActions: ["Confirm context before any outreach"],
+        reason: "Community members shared Mika's partnership context.",
+        source: {
+          type: "referral",
+          id: "source:recommendation:rin",
+          label: "Live referral recommendation",
+        },
+        evidenceIds: ["evidence:recommendation:mika"],
+        createdAt: NOW,
+        updatedAt: NOW,
+      }, actorId),
+    );
+  }
+
+  return records;
 }
 
-test("referral live service derives recommended contacts from live match recommendations without writes", async () => {
+function createSeedStore(
+  actorId: string = ACTOR_A,
+  options: { withSecondRecommendation?: boolean } = {},
+) {
+  return createMemoryLiveRecordStore<Record<string, unknown>>(
+    seedRecords(actorId, options),
+  );
+}
+
+function activeContactDrafts(
+  store: ReturnType<typeof createSeedStore>,
+): readonly LiveRecord<Record<string, unknown>>[] {
+  return store.listRecords({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+  });
+}
+
+test("referral staging persists actor-owned contact drafts to the central queue without contact writes", async () => {
   const store = createSeedStore();
   const provider = createStorageReferralRecommendationProvider({
+    actorId: ACTOR_A,
     store,
     workspaceId: WORKSPACE_ID,
   });
@@ -139,10 +196,7 @@ test("referral live service derives recommended contacts from live match recomme
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
-  const contactDrafts = store.listRecords({
-    workspaceId: WORKSPACE_ID,
-    collectionName: "contactDrafts",
-  });
+  const contactDrafts = activeContactDrafts(store);
 
   assert.equal(result.success, true);
   assert.equal(result.data.state, "success");
@@ -153,22 +207,47 @@ test("referral live service derives recommended contacts from live match recomme
   assert.equal(result.data.recommendations[0]?.sourceKind, "investor_intro");
   assert.equal(result.data.recommendations[0]?.recommender.displayName, "Eli Kapoor");
   assert.equal(result.data.recommendations[0]?.contactWriteExecuted, false);
-  assert.equal(result.data.recommendations[0]?.databaseWriteExecuted, false);
-  assert.equal(result.data.contactDrafts[0]?.id, `referral-draft:live:${RECOMMENDATION_ID}`);
-  assert.equal(result.data.contactDrafts[0]?.contactWriteExecuted, false);
-  assert.equal(result.data.contactDrafts[0]?.databaseWriteExecuted, false);
+
+  const draft = result.data.contactDrafts[0];
+
+  assert.ok(draft);
+  assert.match(draft.id, /^referral-draft:live:[a-f0-9]{32}$/);
+  assert.doesNotMatch(draft.id, /recommendation_live_mika|account:referral-a/);
+  assert.equal(draft.recommendationId, RECOMMENDATION_ID);
+  assert.equal(draft.userConfirmed, false);
+  assert.equal(draft.contactWriteExecuted, false);
+  assert.equal(draft.databaseWriteExecuted, true);
+  assert.equal(draft.provenance.contactDraftWriteExecuted, true);
+
   assert.equal(result.data.provenance.privacy, "live-referral-recommendations");
-  assert.equal(result.data.provenance.generationMethod, "live-store-query");
+  assert.equal(result.data.provenance.generationMethod, "live-store-staging");
   assert.equal(result.data.provenance.liveDatabaseReadExecuted, true);
-  assert.equal(result.data.provenance.databaseWriteExecuted, false);
+  assert.equal(result.data.provenance.databaseWriteExecuted, true);
+  assert.equal(result.data.provenance.contactDraftWriteExecuted, true);
   assert.equal(result.data.provenance.externalNetworkRequested, false);
+
   assert.equal(contacts.length, 0);
-  assert.equal(contactDrafts.length, 0);
+  assert.equal(contactDrafts.length, 1);
+  assert.equal(contactDrafts[0]?.userId, ACTOR_A);
+  assert.equal(contactDrafts[0]?.recordId, draft.id);
+
+  const storedPayload = contactDrafts[0]?.payload as unknown as
+    | ContactAcquisitionDraft
+    | undefined;
+
+  assert.equal(storedPayload?.status, "pending_confirmation");
+  assert.equal(storedPayload?.confirmation.state, "pending");
+  assert.equal(storedPayload?.source.type, "referral");
+  assert.equal(
+    storedPayload?.evidence[0]?.createdBy,
+    "live-referral-recommendation-service",
+  );
 });
 
-test("referral live confirmation returns a review preview without contact or outreach writes", async () => {
+test("referral confirmation persists the confirmed draft state for the owning actor", async () => {
   const store = createSeedStore();
   const provider = createStorageReferralRecommendationProvider({
+    actorId: ACTOR_A,
     store,
     workspaceId: WORKSPACE_ID,
   });
@@ -185,6 +264,7 @@ test("referral live confirmation returns a review preview without contact or out
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
+  const contactDrafts = activeContactDrafts(store);
 
   assert.equal(confirmed.success, true);
   assert.equal(confirmed.data.confirmedContact.recommendationId, RECOMMENDATION_ID);
@@ -193,39 +273,42 @@ test("referral live confirmation returns a review preview without contact or out
   assert.equal(confirmed.data.createdEvidence.createdBy, "live-referral-recommendation-service");
   assert.equal(confirmed.data.contactWriteExecuted, false);
   assert.equal(confirmed.data.externalActionExecuted, false);
-  assert.equal(confirmed.data.databaseWriteExecuted, false);
+  assert.equal(confirmed.data.databaseWriteExecuted, true);
+  assert.equal(confirmed.data.contactDraftWriteExecuted, true);
+  assert.match(
+    confirmed.data.contactDraftId ?? "",
+    /^referral-draft:live:[a-f0-9]{32}$/,
+  );
+  assert.equal(
+    confirmed.data.confirmedContact.contactDraftId,
+    confirmed.data.contactDraftId,
+  );
+  assert.equal(confirmed.data.confirmedContact.databaseWriteExecuted, true);
   assert.equal(confirmed.data.provenance.privacy, "live-referral-recommendations");
   assert.equal(confirmed.data.provenance.generationMethod, "live-store-confirmation");
   assert.equal(confirmed.data.provenance.liveDatabaseReadExecuted, true);
+  assert.equal(confirmed.data.provenance.databaseWriteExecuted, true);
+
   assert.equal(contacts.length, 0);
+  assert.equal(contactDrafts.length, 1);
+  assert.equal(contactDrafts[0]?.userId, ACTOR_A);
+
+  const storedPayload = contactDrafts[0]?.payload as unknown as
+    | ContactAcquisitionDraft
+    | undefined;
+
+  assert.equal(storedPayload?.status, "confirmed");
+  assert.equal(storedPayload?.confirmation.state, "confirmed");
+  assert.equal(storedPayload?.confirmation.confirmedAt, NOW);
+  assert.equal(storedPayload?.confirmation.actorLabel, "Live reviewer");
 });
 
-test("referral recommendations are isolated by actor ownership metadata", async () => {
-  const store = createSeedStore();
-
-  for (const collectionName of [
-    "contacts",
-    "evidence",
-    "networkPeople",
-    "matchRecommendations",
-  ]) {
-    const records = store.listRecords({
-      workspaceId: WORKSPACE_ID,
-      collectionName,
-    });
-
-    for (const item of records) {
-      await store.upsertRecord({
-        ...item,
-        userId: "account:referral-a",
-      });
-    }
-  }
-
+test("referral recommendations and staged drafts are isolated by actor ownership", async () => {
+  const store = createSeedStore(ACTOR_A);
   const actorAService = createLiveReferralRecommendationService({
     now: () => NOW,
     provider: createStorageReferralRecommendationProvider({
-      actorId: "account:referral-a",
+      actorId: ACTOR_A,
       store,
       workspaceId: WORKSPACE_ID,
     }),
@@ -233,7 +316,7 @@ test("referral recommendations are isolated by actor ownership metadata", async 
   const actorBService = createLiveReferralRecommendationService({
     now: () => NOW,
     provider: createStorageReferralRecommendationProvider({
-      actorId: "account:referral-b",
+      actorId: ACTOR_B,
       store,
       workspaceId: WORKSPACE_ID,
     }),
@@ -256,6 +339,247 @@ test("referral recommendations are isolated by actor ownership metadata", async 
     actorBConfirmation.error.code,
     "REFERRAL_RECOMMENDATION_NOT_FOUND",
   );
+
+  const contactDrafts = activeContactDrafts(store);
+
+  assert.equal(contactDrafts.length, 1);
+  assert.equal(contactDrafts[0]?.userId, ACTOR_A);
+});
+
+test("the same recommendation id yields distinct actor-scoped draft ids per actor", async () => {
+  const storeA = createSeedStore(ACTOR_A);
+  const storeB = createSeedStore(ACTOR_B);
+  const actorAService = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_A,
+      store: storeA,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const actorBService = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_B,
+      store: storeB,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const actorAResult = await actorAService.createReferralContactDrafts();
+  const actorBResult = await actorBService.createReferralContactDrafts();
+
+  assert.equal(actorAResult.success, true);
+  assert.equal(actorBResult.success, true);
+
+  const draftA = actorAResult.data.contactDrafts[0]?.id;
+  const draftB = actorBResult.data.contactDrafts[0]?.id;
+
+  assert.ok(draftA);
+  assert.ok(draftB);
+  assert.notEqual(draftA, draftB);
+});
+
+test("referral drafts survive cold readback through the central queue and generic confirm", async () => {
+  const store = createSeedStore();
+  const referralService = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_A,
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const staged = await referralService.createReferralContactDrafts();
+
+  assert.equal(staged.success, true);
+  const draftId = staged.data.contactDrafts[0]?.id;
+  assert.ok(draftId);
+
+  const centralProvider = createStorageContactAcquisitionDraftProvider({
+    actorId: ACTOR_A,
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const centralService = createLiveContactAcquisitionDraftService({
+    now: () => "2026-07-02T12:20:00.000Z",
+    provider: centralProvider,
+  });
+  const coldQueue = await centralService.listContactDrafts();
+
+  assert.equal(coldQueue.success, true);
+  assert.equal(coldQueue.data.drafts.length, 1);
+  assert.equal(coldQueue.data.drafts[0]?.id, draftId);
+  assert.equal(coldQueue.data.drafts[0]?.status, "pending_confirmation");
+  assert.equal(coldQueue.data.drafts[0]?.source.type, "referral");
+
+  const confirmation = await centralService.confirmContactDraft({
+    actorLabel: "Actor A",
+    draftId,
+  });
+
+  assert.equal(confirmation.success, true);
+  assert.equal(confirmation.data.confirmedDraft.status, "confirmed");
+  assert.equal(confirmation.data.contactCandidate.contactWriteExecuted, false);
+
+  const confirmedRecordBeforeReplay = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: draftId,
+  });
+  const replay = await referralService.createReferralContactDrafts();
+  const confirmedRecordAfterReplay = store.getRecord({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    recordId: draftId,
+  });
+
+  assert.equal(replay.success, true);
+  assert.equal(replay.data.contactDrafts[0]?.id, draftId);
+  assert.equal(replay.data.contactDrafts[0]?.userConfirmed, true);
+  assert.equal(
+    replay.data.contactDrafts[0]?.confirmedAt,
+    "2026-07-02T12:20:00.000Z",
+  );
+  assert.deepEqual(confirmedRecordAfterReplay, confirmedRecordBeforeReplay);
+
+  const confirmedPayload = confirmedRecordAfterReplay?.payload as unknown as
+    | ContactAcquisitionDraft
+    | undefined;
+
+  assert.equal(confirmedPayload?.status, "confirmed");
+  assert.equal(
+    confirmedPayload?.confirmation.confirmedAt,
+    "2026-07-02T12:20:00.000Z",
+  );
+});
+
+test("recommended contact confirmation is idempotent under sequential and concurrent replays", async () => {
+  const store = createSeedStore();
+  let tick = 0;
+  const service = createLiveReferralRecommendationService({
+    now: () => {
+      tick += 1;
+
+      return tick === 1 ? NOW : `2026-07-02T10:2${Math.min(tick, 9)}:00.000Z`;
+    },
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_A,
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const [first, second] = await Promise.all([
+    service.confirmRecommendedContact({
+      actorLabel: "Live reviewer",
+      recommendationId: RECOMMENDATION_ID,
+    }),
+    service.confirmRecommendedContact({
+      actorLabel: "Live reviewer",
+      recommendationId: RECOMMENDATION_ID,
+    }),
+  ]);
+  const third = await service.confirmRecommendedContact({
+    actorLabel: "Live reviewer",
+    recommendationId: RECOMMENDATION_ID,
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.equal(third.success, true);
+  assert.deepEqual(second, first);
+  assert.deepEqual(third, first);
+
+  const contactDrafts = activeContactDrafts(store);
+
+  assert.equal(contactDrafts.length, 1);
+
+  const storedPayload = contactDrafts[0]?.payload as unknown as
+    | ContactAcquisitionDraft
+    | undefined;
+  const confirmationEvidence = storedPayload?.evidence.filter((entry) =>
+    entry.evidenceId.startsWith("evidence:referral-live-confirmed:"),
+  );
+
+  assert.equal(storedPayload?.status, "confirmed");
+  assert.equal(confirmationEvidence?.length, 1);
+});
+
+test("referral staging fails closed when the atomic draft writer rejects", async () => {
+  const store = createSeedStore();
+  const service = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_A,
+      atomicDraftWriter: async (records) => {
+        assert.equal(records.length, 1);
+        throw new Error("controlled referral draft write failure");
+      },
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const result = await service.createReferralContactDrafts();
+
+  assert.equal(result.success, false);
+  assert.equal(
+    result.error.code,
+    "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
+  );
+  assert.equal(result.error.appCode, "SERVICE_UNAVAILABLE");
+  assert.equal(result.error.provenance.liveDatabaseReadExecuted, true);
+  assert.equal(result.error.provenance.databaseWriteExecuted, false);
+  assert.equal(result.error.provenance.contactDraftWriteExecuted, false);
+  assert.equal(activeContactDrafts(store).length, 0);
+});
+
+test("a partial referral staging failure rolls back already-written drafts", async () => {
+  const store = createSeedStore(ACTOR_A, { withSecondRecommendation: true });
+  let draftUpserts = 0;
+  const failingStore: LiveRecordStoreLike<Record<string, unknown>> = {
+    listRecords: (input) => store.listRecords(input),
+    getRecord: (input) => store.getRecord(input),
+    deleteRecord: (input) => store.deleteRecord(input),
+    upsertRecord: (recordInput) => {
+      if (recordInput.collectionName === "contactDrafts") {
+        draftUpserts += 1;
+
+        if (draftUpserts === 2) {
+          throw new Error("controlled second draft write failure");
+        }
+      }
+
+      return store.upsertRecord(recordInput);
+    },
+  };
+  const service = createLiveReferralRecommendationService({
+    now: () => NOW,
+    provider: createStorageReferralRecommendationProvider({
+      actorId: ACTOR_A,
+      store: failingStore,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const result = await service.createReferralContactDrafts();
+
+  assert.equal(result.success, false);
+  assert.equal(
+    result.error.code,
+    "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
+  );
+  assert.equal(activeContactDrafts(store).length, 0);
+
+  const includingDeleted = store.listRecords({
+    workspaceId: WORKSPACE_ID,
+    collectionName: "contactDrafts",
+    includeDeleted: true,
+  });
+
+  assert.equal(includingDeleted.length, 1);
+  assert.equal(includingDeleted[0]?.lifecycleState, "deleted");
 });
 
 test("referral live service fails closed when storage is unconfigured", async () => {

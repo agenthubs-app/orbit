@@ -1,9 +1,15 @@
+import { createHash } from "node:crypto";
+
 import type {
   ContactDTO,
   MatchRecommendationDTO,
   NetworkPersonDTO,
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
+import type {
+  ContactAcquisitionDraft,
+  ContactDraftEvidence,
+} from "./contract";
 import {
   REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS,
   REFERRAL_SOURCE_KINDS,
@@ -203,6 +209,7 @@ function provenanceFor(input: {
   generationMethod: ReferralRecommendationProvenance["generationMethod"];
   provider: LiveReferralRecommendationProvider;
   readExecuted?: boolean;
+  writeExecuted?: boolean;
 }): ReferralRecommendationProvenance {
   return {
     source: input.provider.source,
@@ -215,15 +222,86 @@ function provenanceFor(input: {
     privacy: "live-referral-recommendations",
     generationMethod: input.generationMethod,
     liveDatabaseReadExecuted: input.readExecuted ?? true,
+    contactDraftWriteExecuted: input.writeExecuted ?? false,
     multiHopSocialGraphDiscoveryExecuted: false,
     automaticFriendOfFriendOutreachExecuted: false,
     externalNetworkRequested: false,
     deviceContactReadExecuted: false,
     calendarReadExecuted: false,
     emailReadExecuted: false,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: input.writeExecuted ?? false,
     aiProviderRequested: false,
     notificationDelivered: false,
+  };
+}
+
+function contactDraftIdFor(input: {
+  provider: LiveReferralRecommendationProvider;
+  recommendationId: string;
+}): string {
+  const scopedHash = createHash("sha256")
+    .update(
+      `orbit:referral-contact-draft:${input.provider.actorScopeId}:${input.recommendationId}`,
+    )
+    .digest("hex")
+    .slice(0, 32);
+
+  return `referral-draft:live:${scopedHash}`;
+}
+
+function toCanonicalContactDraft(
+  draft: ReferralContactDraft,
+): ContactAcquisitionDraft {
+  const evidence: readonly ContactDraftEvidence[] = draft.evidence.map(
+    (entry) => ({
+      evidenceId: entry.evidenceId,
+      source: {
+        type: "referral",
+        id: entry.source.id,
+        label: entry.source.label,
+      },
+      sourceLabel: entry.sourceLabel,
+      excerpt: entry.excerpt,
+      capturedFields: entry.capturedFields,
+      createdAt: entry.createdAt,
+      createdBy: "live-referral-recommendation-service",
+    }),
+  );
+
+  return {
+    id: draft.id,
+    status: "pending_confirmation",
+    source: {
+      type: "referral",
+      id: draft.source.id,
+      label: draft.source.label,
+    },
+    displayName: draft.displayName,
+    role: draft.role,
+    organization: draft.organization,
+    relationshipContext: draft.relationshipContext,
+    suggestedNextAction: draft.suggestedNextAction,
+    confidence: draft.confidence,
+    createdAt: draft.evidence[0]?.createdAt ?? draft.provenance.collectedAt,
+    confirmation: {
+      required: true,
+      state: "pending",
+      question: `Confirm ${draft.displayName} as a reviewed contact candidate?`,
+      writeTargets: ["contact"],
+    },
+    evidence,
+    provenance: {
+      source: draft.provenance.source,
+      sourceLabel: draft.provenance.sourceLabel,
+      evidenceIds: draft.provenance.evidenceIds,
+      collectedAt: draft.provenance.collectedAt,
+      privacy: "live-contact-acquisition-drafts",
+      generationMethod: "live-store-query",
+      liveDatabaseReadExecuted: true,
+      contactDraftWriteExecuted: true,
+      contactWriteExecuted: false,
+      externalNetworkRequested: false,
+    },
   };
 }
 
@@ -455,7 +533,10 @@ function recommendationRecordFor(input: {
     notificationDelivered: false,
   };
   const draft: ReferralContactDraft = {
-    id: `referral-draft:live:${input.recommendation.id}`,
+    id: contactDraftIdFor({
+      provider: input.provider,
+      recommendationId: input.recommendation.id,
+    }),
     recommendationId: input.recommendation.id,
     displayName,
     role,
@@ -538,14 +619,60 @@ function sourceSummariesFor(
   return Array.from(byKind.values());
 }
 
+function withStagedDraftState(input: {
+  records: readonly LiveRecommendedContactRecord[];
+  stagedById: ReadonlyMap<string, ContactAcquisitionDraft>;
+}): readonly LiveRecommendedContactRecord[] {
+  return input.records.map((record) => {
+    const staged = input.stagedById.get(record.draft.id);
+
+    if (!staged) {
+      return record;
+    }
+
+    const stagedConfirmed = staged.status === "confirmed";
+
+    return {
+      ...record,
+      recommendation: stagedConfirmed
+        ? {
+            ...record.recommendation,
+            confirmation: {
+              ...record.recommendation.confirmation,
+              state: "confirmed",
+              confirmedAt: staged.confirmation.confirmedAt,
+              actorLabel: staged.confirmation.actorLabel,
+            },
+          }
+        : record.recommendation,
+      draft: {
+        ...record.draft,
+        userConfirmed: staged.status === "confirmed",
+        confirmedAt:
+          staged.status === "confirmed"
+            ? staged.confirmation.confirmedAt
+            : undefined,
+        databaseWriteExecuted: true,
+        provenance: {
+          ...record.draft.provenance,
+          contactDraftWriteExecuted: true,
+          databaseWriteExecuted: true,
+        },
+      },
+    };
+  });
+}
+
 function listPayloadFor(input: {
   generatedAt: string;
   provider: LiveReferralRecommendationProvider;
   records: readonly LiveRecommendedContactRecord[];
   state?: "empty" | "pending" | "success";
+  writeExecuted?: boolean;
 }): ReferralRecommendationPayload {
   const state =
     input.state ?? (input.records.length > 0 ? "success" : "empty");
+  const writeExecuted = input.writeExecuted === true && input.records.length > 0;
   const evidenceIds = unique(
     input.records.flatMap((record) => record.recommendation.evidenceIds),
   );
@@ -557,13 +684,16 @@ function listPayloadFor(input: {
     contactDrafts: input.records.map((record) => record.draft),
     summary:
       state === "success"
-        ? `${input.records.length} live referral recommendation(s) are staged for review.`
+        ? writeExecuted
+          ? `Persisted ${input.records.length} actor-owned referral contact draft(s) to the central review queue without writing contacts.`
+          : `${input.records.length} live referral recommendation(s) are staged for review.`
         : "No live referral recommendations are available for review.",
     provenance: provenanceFor({
       evidenceIds,
       generatedAt: input.generatedAt,
-      generationMethod: "live-store-query",
+      generationMethod: writeExecuted ? "live-store-staging" : "live-store-query",
       provider: input.provider,
+      writeExecuted,
     }),
     nextAction:
       state === "success"
@@ -658,6 +788,7 @@ function scenarioConfirmationResult(input: {
 function confirmedContactFor(input: {
   actorLabel: string;
   confirmedAt: string;
+  contactDraftId: string;
   record: LiveRecommendedContactRecord;
   provenance: ReferralRecommendationProvenance;
 }): UserConfirmedRecommendedContact {
@@ -676,54 +807,69 @@ function confirmedContactFor(input: {
     evidence: input.record.recommendation.evidence,
     provenance: input.provenance,
     nextAction:
-      "Keep the confirmed referral in review until a future contact writer persists it.",
+      "Review the persisted contact draft in the central queue before any future contact write.",
+    contactDraftId: input.contactDraftId,
     contactWriteExecuted: false,
     externalOutreachExecuted: false,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: true,
     notificationDelivered: false,
   };
 }
 
 function confirmationPayloadFor(input: {
   actorLabel: string;
-  confirmedAt: string;
+  generatedAt: string;
   provider: LiveReferralRecommendationProvider;
   record: LiveRecommendedContactRecord;
+  savedDraft: ContactAcquisitionDraft;
 }): RecommendedContactConfirmationPayload {
+  const confirmedAt =
+    input.savedDraft.confirmation.confirmedAt ?? input.generatedAt;
+  const actorLabel =
+    input.savedDraft.confirmation.actorLabel ?? input.actorLabel;
   const evidenceId = `evidence:referral-live-confirmed:${input.record.recommendation.id}`;
   const provenance = provenanceFor({
     evidenceIds: [...input.record.recommendation.evidenceIds, evidenceId],
-    generatedAt: input.confirmedAt,
+    generatedAt: confirmedAt,
     generationMethod: "live-store-confirmation",
     provider: input.provider,
+    writeExecuted: true,
   });
+  const savedEvidence = input.savedDraft.evidence.find(
+    (entry) => entry.evidenceId === evidenceId,
+  );
   const createdEvidence: ReferralRecommendationEvidence = {
     evidenceId,
     source: input.record.recommendation.source,
     sourceLabel: "Live referral confirmation",
-    excerpt: `${input.actorLabel} confirmed ${input.record.recommendation.displayName} from live referral recommendation evidence.`,
+    excerpt:
+      savedEvidence?.excerpt ??
+      `${actorLabel} confirmed ${input.record.recommendation.displayName} from live referral recommendation evidence.`,
     capturedFields: ["recommendationId", "actorLabel", "confirmedAt"],
-    createdAt: input.confirmedAt,
+    createdAt: savedEvidence?.createdAt ?? confirmedAt,
     createdBy: "live-referral-recommendation-service",
   };
 
   return {
     state: "confirmed",
     confirmedContact: confirmedContactFor({
-      actorLabel: input.actorLabel,
-      confirmedAt: input.confirmedAt,
+      actorLabel,
+      confirmedAt,
+      contactDraftId: input.savedDraft.id,
       provenance,
       record: input.record,
     }),
     createdEvidence,
-    confirmedAt: input.confirmedAt,
-    confirmedBy: input.actorLabel,
+    confirmedAt,
+    confirmedBy: actorLabel,
     provenance,
     nextAction:
       "Review the confirmed referral contact before any future outreach or contact write.",
+    contactDraftId: input.savedDraft.id,
+    contactDraftWriteExecuted: true,
     contactWriteExecuted: false,
     externalActionExecuted: false,
-    databaseWriteExecuted: false,
+    databaseWriteExecuted: true,
     notificationDelivered: false,
   };
 }
@@ -817,11 +963,38 @@ export function createLiveReferralRecommendationService({
         return scenario;
       }
 
+      let stagedDrafts: readonly ContactAcquisitionDraft[];
+
+      try {
+        stagedDrafts = await readResult.provider.stageContactDrafts(
+          filteredRecords.map((record) => toCanonicalContactDraft(record.draft)),
+        );
+      } catch {
+        return failure(
+          "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
+          provenanceFor({
+            evidenceIds: ["evidence:referral-live-draft-write-failed"],
+            generatedAt: readResult.graph.generatedAt,
+            generationMethod: "live-store-query",
+            provider: readResult.provider,
+            readExecuted: true,
+          }),
+        );
+      }
+
+      const stagedById = new Map(
+        stagedDrafts.map((draft) => [draft.id, draft]),
+      );
+
       return success(
         listPayloadFor({
           generatedAt: readResult.graph.generatedAt,
           provider: readResult.provider,
-          records: filteredRecords,
+          records: withStagedDraftState({
+            records: filteredRecords,
+            stagedById,
+          }),
+          writeExecuted: stagedDrafts.length > 0,
         }),
       );
     },
@@ -865,12 +1038,98 @@ export function createLiveReferralRecommendationService({
         );
       }
 
+      const actorLabel = actorLabelFor(input.actorLabel);
+      const writeFailure = () =>
+        failure(
+          "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              `evidence:referral-live-draft-write-failed:${record.recommendation.id}`,
+            ],
+            generatedAt,
+            generationMethod: "live-store-confirmation",
+            provider: readResult.provider,
+            readExecuted: true,
+          }),
+        );
+
+      let stagedDraft: ContactAcquisitionDraft;
+
+      try {
+        const staged = await readResult.provider.stageContactDrafts([
+          toCanonicalContactDraft(record.draft),
+        ]);
+        const first = staged[0];
+
+        if (!first) {
+          return writeFailure();
+        }
+
+        stagedDraft = first;
+      } catch {
+        return writeFailure();
+      }
+
+      const evidenceId = `evidence:referral-live-confirmed:${record.recommendation.id}`;
+      const confirmationEvidence: ContactDraftEvidence = {
+        evidenceId,
+        source: {
+          type: "referral",
+          id: record.recommendation.source.id,
+          label: record.recommendation.source.label,
+        },
+        sourceLabel: "Live referral confirmation",
+        excerpt: `${actorLabel} confirmed ${record.recommendation.displayName} from live referral recommendation evidence.`,
+        capturedFields: ["recommendationId", "actorLabel", "confirmedAt"],
+        createdAt: generatedAt,
+        createdBy: "live-referral-recommendation-service",
+      };
+      const alreadyRecorded = stagedDraft.evidence.some(
+        (entry) => entry.evidenceId === evidenceId,
+      );
+      const confirmedDraft: ContactAcquisitionDraft = {
+        ...stagedDraft,
+        status: "confirmed",
+        confirmation: {
+          ...stagedDraft.confirmation,
+          state: "confirmed",
+          confirmedAt: generatedAt,
+          actorLabel,
+        },
+        evidence: alreadyRecorded
+          ? stagedDraft.evidence
+          : [...stagedDraft.evidence, confirmationEvidence],
+        provenance: {
+          ...stagedDraft.provenance,
+          collectedAt: generatedAt,
+          generationMethod: "live-store-confirmation",
+          evidenceIds: unique([
+            ...stagedDraft.provenance.evidenceIds,
+            evidenceId,
+          ]),
+        },
+      };
+
+      let savedDraft: ContactAcquisitionDraft;
+
+      try {
+        const write = await readResult.provider.confirmContactDraft(
+          confirmedDraft,
+          generatedAt,
+        );
+
+        savedDraft = write.draft;
+      } catch {
+        return writeFailure();
+      }
+
       return confirmationSuccess(
         confirmationPayloadFor({
-          actorLabel: actorLabelFor(input.actorLabel),
-          confirmedAt: generatedAt,
+          actorLabel,
+          generatedAt,
           provider: readResult.provider,
           record,
+          savedDraft,
         }),
       );
     },

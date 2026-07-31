@@ -17,6 +17,7 @@ export type ReferralSourceKind = (typeof REFERRAL_SOURCE_KINDS)[number];
 export const REFERRAL_RECOMMENDATION_ERROR_CODES = [
   "REFERRAL_RECOMMENDATION_LIVE_STORE_UNCONFIGURED",
   "REFERRAL_RECOMMENDATION_LIVE_STORE_FAILED",
+  "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
   "REFERRAL_SOURCE_NOT_SUPPORTED",
   "REFERRAL_RECOMMENDATION_NOT_FOUND",
   "REFERRAL_RECOMMENDATION_CONFIRMATION_REQUIRED",
@@ -76,6 +77,14 @@ export const REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS = {
     message: "The live referral recommendation boundary failed.",
     recovery:
       "Surface the live referral failure without writing contacts, sending outreach, discovering a social graph, or retrying external providers.",
+  },
+  REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED: {
+    code: "REFERRAL_RECOMMENDATION_LIVE_STORE_WRITE_FAILED",
+    appCode: "SERVICE_UNAVAILABLE",
+    message:
+      "The live referral contact draft queue write could not be completed.",
+    recovery:
+      "Keep the referral recommendations unconfirmed, surface the failed draft write, and retry after the live record store recovers. Never fabricate a persisted draft in the response.",
   },
   REFERRAL_SOURCE_NOT_SUPPORTED: {
     code: "REFERRAL_SOURCE_NOT_SUPPORTED",
@@ -141,15 +150,17 @@ export interface ReferralRecommendationProvenance {
     | "fixture"
     | "live-store-confirmation"
     | "live-store-query"
+    | "live-store-staging"
     | "rule-based-referral-recommendation";
   liveDatabaseReadExecuted?: boolean;
+  contactDraftWriteExecuted?: boolean;
   multiHopSocialGraphDiscoveryExecuted: false;
   automaticFriendOfFriendOutreachExecuted: false;
   externalNetworkRequested: false;
   deviceContactReadExecuted: false;
   calendarReadExecuted: false;
   emailReadExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   aiProviderRequested: false;
   notificationDelivered: false;
 }
@@ -242,11 +253,12 @@ export interface ReferralContactDraft {
   evidence: readonly ReferralRecommendationEvidence[];
   provenance: ReferralRecommendationProvenance;
   confirmationRequired: true;
-  userConfirmed: false;
+  userConfirmed: boolean;
+  confirmedAt?: string;
   readyForReview: true;
   contactWriteExecuted: false;
   externalActionExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   notificationDelivered: false;
 }
 
@@ -265,9 +277,10 @@ export interface UserConfirmedRecommendedContact {
   evidence: readonly ReferralRecommendationEvidence[];
   provenance: ReferralRecommendationProvenance;
   nextAction: string;
+  contactDraftId?: string;
   contactWriteExecuted: false;
   externalOutreachExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   notificationDelivered: false;
 }
 
@@ -289,9 +302,11 @@ export interface RecommendedContactConfirmationPayload {
   confirmedBy: string;
   provenance: ReferralRecommendationProvenance;
   nextAction: string;
+  contactDraftId?: string;
+  contactDraftWriteExecuted?: boolean;
   contactWriteExecuted: false;
   externalActionExecuted: false;
-  databaseWriteExecuted: false;
+  databaseWriteExecuted: boolean;
   notificationDelivered: false;
 }
 
