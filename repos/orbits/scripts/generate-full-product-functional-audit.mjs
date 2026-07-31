@@ -1100,7 +1100,46 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
 ]);
 const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:863",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:914",
+    {
+      actualResult:
+        "The authenticated native referral card staged actor-owned central contact drafts on generation, filtered rows by the selected source kind, confirmed the recommended contact and the remaining referral draft against persisted state, and kept dismissal session-local.",
+      testData:
+        "Disposable actor A with a live referral graph of one sponsor, two targets, and two match recommendations (warm_intro and context_share) seeded in the configured Postgres record store",
+      idempotency:
+        "Source selection changed only session-local presentation; staging replay kept byte-identical central rows; draft confirmation updated the same actor-owned central record without creating a contact; dismissal performed no server delete.",
+      verificationCase:
+        "native-referral-contact-draft-persistence-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1861",
+    {
+      actualResult:
+        "Confirming a recommended contact from the native referral item persisted the confirmed central contact draft for the owning actor and synchronized the recommendation and draft rows with the persisted terminal state.",
+      testData:
+        "The warm_intro live recommendation staged as an actor-scoped referral-draft:live central record for disposable actor A",
+      idempotency:
+        "Concurrent and lost-response confirmation replays converged on one confirmed draft with a single confirmation evidence entry, byte-identical responses, and zero contact writes.",
+      verificationCase:
+        "native-referral-contact-draft-persistence-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1972",
+    {
+      actualResult:
+        "The native 确认推荐 control sent the formal recommended-contact confirmation request, flipped to the persisted 已确认推荐 state, and the confirmed state survived native relaunch and re-staging readback.",
+      testData:
+        "The visible referral recommendation item for disposable actor A rendered from the live referral provider over the configured Postgres store",
+      idempotency:
+        "Repeated activation converged on the same confirmed central draft; cold relaunch re-read the persisted confirmation instead of resetting to an unconfirmed response-only state.",
+      verificationCase:
+        "native-referral-contact-draft-persistence-2026-07-31",
+    },
+  ],
+  [
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:897",
     {
       actualResult:
         "The authenticated native source selector chose the actor-backed external source and rendered the exact available candidate count before import.",
@@ -1113,7 +1152,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:872",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:906",
     {
       actualResult:
         "The native external result card displayed the two centrally persisted actor-owned drafts, confirmed one through the generic contact-draft endpoint, and hid the other only for the current session.",
@@ -1126,7 +1165,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:924",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:958",
     {
       actualResult:
         "After native relaunch and credential restoration, the central draft queue read both imported drafts from the formal API and preserved the earlier confirmed state.",
@@ -1139,7 +1178,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1588",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1622",
     {
       actualResult:
         "The native import control sent one formal live import request under rapid double activation and rendered two canonical central contactDrafts.",
@@ -1152,7 +1191,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1717",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1751",
     {
       actualResult:
         "Confirming the selected external result updated that exact central draft to confirmed and synchronized the result card with the persisted terminal state.",
@@ -1165,7 +1204,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2037",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2075",
     {
       actualResult:
         "Confirming the remaining draft from the cold-start central queue updated the same Postgres row and survived a subsequent queue readback as confirmed.",
@@ -3462,6 +3501,21 @@ const VERIFIED_AUDIT_CASES = [
       "native-event-write-execution-iteration2/execution-final2; native-event-write-execution-iteration2/execution-draft-remediation-final2; native-event-write-final-independent-evaluator/independent-evaluator.json SHA-256 9962114068b3e58e70fdb609fd828415350c9e631cb670607de82b1bbeebe965; commits a75c17b0, c5bf877b, b2892dcb, a1ad3684, adef25da",
     conclusion:
       "pass for the five frozen mobile event write implementation keys and their five exact route occurrences; no other Events, Contacts, Agent, navigation, or read behavior receives credit from this case",
+  },
+  {
+    id: "native-referral-contact-draft-persistence-2026-07-31",
+    target:
+      "Authenticated iOS referral recommendation staging → live referral provider write boundary → atomic actor-owned central contactDrafts → recommended-contact and generic confirmation → cold readback → isolation/replay/failure/cleanup",
+    testData:
+      "Disposable actors A and B; a live referral graph (sponsor, two targets, warm_intro and context_share recommendations) seeded for actor A; configured API, referral service/provider, and Postgres record store; native iPhone 17 Pro simulator",
+    expected:
+      "Staging must atomically persist stable actor-scoped referral-draft:live central drafts, recommended-contact confirmation must durably persist the confirmed state, source filtering must follow the selected source kind, generic queue confirmation must update the same record, cold relaunch must read the persisted confirmation back, actor ownership and replay must converge, controlled failures must leave no partial data, and cleanup must reach zero",
+    actual:
+      "Independent evaluation passed all three normalized implementations and their three exact route occurrences. The final native run exercised staging, source-kind filtering, recommended-contact confirmation, session-local dismissal, cold relaunch with persisted 已确认推荐 readback, and referral draft confirmation with matching accessibility trees, real screenshots, request ledgers, API responses, Postgres projections, and artifact hashes. The formal backend probe verified atomic actor-scoped staging, replay-stable rows, A/B isolation, foreign and missing recommendation denial, durable concurrent-idempotent confirmation, cold queue readback, generic queue confirmation of referral drafts, controlled failure fail-closed behavior, and activeAfter=0 cleanup.",
+    evidence:
+      "continuation-20260731-fable5-execution/batch-01-mobile-contacts-referral-response-only-drafts/backend-contract-result-iteration-2.json; native-iteration-2; independent-evaluator/result.json",
+    conclusion:
+      "pass for the frozen three /contacts/new referral implementation keys and exact interactions 9, 46, and 50; staging button, source chips as native controls, and all other Contacts behavior remain outside this case",
   },
   {
     id: "native-external-contact-draft-lifecycle-2026-07-31",
