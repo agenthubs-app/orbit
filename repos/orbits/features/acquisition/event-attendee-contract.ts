@@ -122,6 +122,7 @@ export interface EventAttendeeImportProvenance {
     | "live-store-draft-stage";
   organizerFeedRequested: false;
   bulkDatabaseImportExecuted: false;
+  contactDraftWriteExecuted?: boolean;
   liveDatabaseReadExecuted?: boolean;
   externalNetworkRequested: false;
 }
@@ -194,6 +195,7 @@ export interface EventAttendeeContactDraft {
   provenance: EventAttendeeImportProvenance;
   readyForReview: true;
   contactWriteExecuted: false;
+  contactDraftWriteExecuted?: boolean;
   bulkDatabaseImportExecuted: false;
   notificationDelivered: false;
 }

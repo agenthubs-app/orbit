@@ -59,6 +59,12 @@ export interface LiveEventAttendeeImportProvider {
   readEventAttendeeGraph: (
     eventId: string,
   ) => LiveEventAttendeeImportGraph | null | Promise<LiveEventAttendeeImportGraph | null>;
+  writeContactDraftsAtomically: (
+    drafts: readonly EventAttendeeContactDraft[],
+    updatedAt: string,
+  ) =>
+    | readonly EventAttendeeContactDraft[]
+    | Promise<readonly EventAttendeeContactDraft[]>;
 }
 
 export interface LiveEventAttendeeImportServiceOptions {
@@ -475,6 +481,27 @@ function importPayloadFor(input: {
   };
 }
 
+function persistedImportPayloadFor(input: {
+  contactDrafts: readonly EventAttendeeContactDraft[];
+  roster: EventAttendeeRosterPayload;
+}): EventAttendeeImportPayload {
+  return {
+    ...input.roster,
+    provenance: {
+      ...input.roster.provenance,
+      contactDraftWriteExecuted: true,
+    },
+    contactDrafts: input.contactDrafts.map((draft) => ({
+      ...draft,
+      provenance: {
+        ...draft.provenance,
+        contactDraftWriteExecuted: true,
+      },
+      contactDraftWriteExecuted: true,
+    })),
+  };
+}
+
 export function createLiveEventAttendeeImportService({
   now = () => new Date().toISOString(),
   provider,
@@ -537,14 +564,30 @@ export function createLiveEventAttendeeImportService({
         return roster;
       }
 
+      if (!provider) {
+        return failure("EVENT_ATTENDEE_IMPORT_LIVE_STORE_UNCONFIGURED", {
+          collectedAt: now(),
+          provider,
+        });
+      }
+
+      const draftPayload = importPayloadFor({
+        evidenceById: new Map(
+          (await provider.readEventAttendeeGraph(roster.data.event.id))
+            ?.evidence.map((evidence) => [evidence.id, evidence]) ?? [],
+        ),
+        roster: roster.data,
+      });
+      const persistedDrafts = await provider.writeContactDraftsAtomically(
+        draftPayload.contactDrafts,
+        now(),
+      );
+
       return {
         success: true,
         data: clonePayload(
-          importPayloadFor({
-            evidenceById: new Map(
-              (await provider?.readEventAttendeeGraph(roster.data.event.id))
-                ?.evidence.map((evidence) => [evidence.id, evidence]) ?? [],
-            ),
+          persistedImportPayloadFor({
+            contactDrafts: persistedDrafts,
             roster: roster.data,
           }),
         ),

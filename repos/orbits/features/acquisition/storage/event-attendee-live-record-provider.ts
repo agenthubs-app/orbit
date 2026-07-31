@@ -16,6 +16,11 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 import type {
+  ContactAcquisitionDraft,
+  ContactAcquisitionDraftProvenance,
+} from "../contract";
+import type { EventAttendeeContactDraft } from "../event-attendee-contract";
+import type {
   LiveEventAttendeeImportGraph,
   LiveEventAttendeeImportProvider,
   LiveEventAttendeeRecordDTO,
@@ -24,6 +29,7 @@ import type {
 export const EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS = {
   attendees: "attendees",
   contacts: "contacts",
+  contactDrafts: "contactDrafts",
   events: "events",
   evidence: "evidence",
   eventParticipantIntents: "eventParticipantIntents",
@@ -343,6 +349,100 @@ function recordsForActor(
   return records.filter((record) => recordBelongsToActor(record, actorId));
 }
 
+function canonicalContactDraftFor(
+  draft: EventAttendeeContactDraft,
+  input: {
+    provider: LiveEventAttendeeImportProvider;
+    updatedAt: string;
+  },
+): ContactAcquisitionDraft {
+  const evidenceIds = draft.evidence.map((evidence) => evidence.evidenceId);
+  const provenance: ContactAcquisitionDraftProvenance = {
+    source: input.provider.source,
+    sourceLabel: input.provider.sourceLabel,
+    evidenceIds,
+    collectedAt: input.updatedAt,
+    privacy: "live-contact-acquisition-drafts",
+    generationMethod: "live-store-derived-event-draft",
+    liveDatabaseReadExecuted: true,
+    contactDraftWriteExecuted: true,
+    contactWriteExecuted: false,
+    externalNetworkRequested: false,
+  };
+
+  return {
+    id: draft.id,
+    status: "pending_confirmation",
+    source: {
+      type: "event_import",
+      id: draft.source.id,
+      label: draft.source.label,
+    },
+    displayName: draft.displayName,
+    role: draft.role.trim() || "Event attendee",
+    organization: draft.organization.trim() || "Event attendee",
+    relationshipContext:
+      draft.relationshipContext.trim() ||
+      `${draft.displayName} attended ${draft.source.label}.`,
+    suggestedNextAction: draft.suggestedNextAction,
+    confidence:
+      draft.relationshipStatus.suggestedPriority === "high"
+        ? "high"
+        : draft.relationshipStatus.suggestedPriority === "warm"
+          ? "medium"
+          : "low",
+    createdAt: draft.evidence[0]?.createdAt ?? input.updatedAt,
+    confirmation: {
+      required: true,
+      state: "pending",
+      question: `Confirm adding ${draft.displayName} from live event attendee evidence?`,
+    },
+    evidence: draft.evidence.map((evidence) => ({
+      ...evidence,
+      source: {
+        type: "event_import",
+        id: evidence.source.id,
+        label: evidence.source.label,
+      },
+      createdBy: "live-contact-acquisition-draft-service",
+    })),
+    provenance,
+  };
+}
+
+function contactDraftRecordFor(input: {
+  actorId?: string;
+  draft: ContactAcquisitionDraft;
+  updatedAt: string;
+  workspaceId: string;
+}): LiveRecord<Record<string, unknown>> {
+  return {
+    workspaceId: input.workspaceId,
+    collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
+    recordId: input.draft.id,
+    userId: input.actorId?.trim() || null,
+    sourceType: input.draft.source.type,
+    sourceId: input.draft.source.id,
+    sourceLabel: input.draft.source.label,
+    provider: "orbit-event-attendee-contact-draft-import",
+    providerRecordId: input.draft.id,
+    evidenceIds: input.draft.provenance.evidenceIds,
+    targetType: "contact",
+    targetId: input.draft.id,
+    occurredAt: input.draft.createdAt,
+    createdAt: input.draft.createdAt,
+    updatedAt: input.updatedAt,
+    lifecycleState: "active",
+    searchText: [
+      input.draft.displayName,
+      input.draft.organization,
+      input.draft.role,
+      input.draft.relationshipContext,
+    ].join(" "),
+    payload: input.draft as unknown as Record<string, unknown>,
+  };
+}
+
 export function createStorageEventAttendeeImportProvider({
   actorId,
   source,
@@ -350,7 +450,7 @@ export function createStorageEventAttendeeImportProvider({
   store,
   workspaceId,
 }: StorageEventAttendeeImportProviderOptions): LiveEventAttendeeImportProvider {
-  return {
+  const provider: LiveEventAttendeeImportProvider = {
     source: source ?? `live-record-store:event-attendee-import:${workspaceId}`,
     sourceLabel,
     async readEventAttendeeGraph(eventId): Promise<LiveEventAttendeeImportGraph | null> {
@@ -497,7 +597,82 @@ export function createStorageEventAttendeeImportProvider({
         networkPeople,
       };
     },
+    async writeContactDraftsAtomically(
+      drafts,
+      updatedAt,
+    ): Promise<readonly EventAttendeeContactDraft[]> {
+      const records = drafts.map((draft) =>
+        contactDraftRecordFor({
+          actorId,
+          draft: canonicalContactDraftFor(draft, {
+            provider,
+            updatedAt,
+          }),
+          updatedAt,
+          workspaceId,
+        }),
+      );
+      const previousRecords = await Promise.all(
+        records.map((record) =>
+          store.getRecord({
+            workspaceId,
+            collectionName: record.collectionName,
+            recordId: record.recordId,
+            includeDeleted: true,
+          }),
+        ),
+      );
+      const writtenIndexes: number[] = [];
+
+      try {
+        for (const [index, record] of records.entries()) {
+          await store.upsertRecord(record);
+          writtenIndexes.push(index);
+        }
+      } catch (error) {
+        const rollbackErrors: unknown[] = [];
+
+        for (const index of writtenIndexes.reverse()) {
+          try {
+            const previous = previousRecords[index];
+
+            if (previous) {
+              await store.upsertRecord(previous);
+            } else {
+              await store.deleteRecord({
+                workspaceId,
+                collectionName: records[index].collectionName,
+                recordId: records[index].recordId,
+                deletedAt: updatedAt,
+              });
+            }
+          } catch (rollbackError) {
+            rollbackErrors.push(rollbackError);
+          }
+        }
+
+        if (rollbackErrors.length > 0) {
+          throw new AggregateError(
+            [error, ...rollbackErrors],
+            "Event attendee contact draft write and rollback both failed",
+          );
+        }
+
+        throw error;
+      }
+
+      return drafts.map((draft) => ({
+        ...draft,
+        provenance: {
+          ...draft.provenance,
+          contactDraftWriteExecuted: true,
+        },
+        contactDraftWriteExecuted: true,
+      }));
+    },
   };
+
+  return provider;
 }
 
 export function createConfiguredStorageEventAttendeeImportProvider({
