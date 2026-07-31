@@ -224,6 +224,16 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     replayRecords.map((record) => record.recordId),
     firstWriteRecords.map((record) => record.recordId),
   );
+  assert.deepEqual(
+    replayRecords.map((record) => ({
+      payload: record.payload,
+      updatedAt: record.updatedAt,
+    })),
+    firstWriteRecords.map((record) => ({
+      payload: record.payload,
+      updatedAt: record.updatedAt,
+    })),
+  );
   assert.ok(replayRecords.every((record) => record.userId === actorId));
   assert.equal(
     store.listRecords({
