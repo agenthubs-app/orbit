@@ -16,12 +16,6 @@ import {
 } from "../view-models/mobile-route-access";
 
 export function OrbitRouteAccessBoundary() {
-  const auth = useOrbitAuthSession();
-
-  if (!auth.ready) {
-    return <OrbitAuthLoading />;
-  }
-
   return <Stack screenOptions={{ headerShown: false }} />;
 }
 

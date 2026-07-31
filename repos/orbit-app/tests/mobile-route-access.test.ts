@@ -151,13 +151,34 @@ test("root navigator stays mounted while grouped and root-level private entries 
 
   assert.ok(provider >= 0);
   assert.ok(boundary > provider);
-  assert.match(boundarySource, /<Stack screenOptions=/u);
+  assert.match(
+    boundarySource,
+    /export function OrbitRouteAccessBoundary\(\) \{\s*return <Stack screenOptions=/u
+  );
   assert.match(boundarySource, /return <Redirect href=\{mobileLoginHref/u);
   assert.match(boundarySource, /withOrbitPrivateRoute/u);
-  assert.match(
-    appGroupSource,
-    /<OrbitPrivateRouteBoundary enabled=\{isPrivateMobileRoute\(pathname\)\}>/u
+  assert.match(appGroupSource, /return <Stack screenOptions=/u);
+  assert.doesNotMatch(appGroupSource, /OrbitPrivateRouteBoundary/u);
+
+  for (const privateGroupedEntry of [
+    "ai",
+    "contacts",
+    "inbox",
+    "profile",
+    "schedule"
+  ]) {
+    const entrySource = readFileSync(
+      new URL(`../app/(app)/${privateGroupedEntry}.tsx`, import.meta.url),
+      "utf8"
+    );
+    assert.match(entrySource, /withOrbitPrivateRoute/u, privateGroupedEntry);
+  }
+
+  const publicEventsSource = readFileSync(
+    new URL("../app/(app)/events.tsx", import.meta.url),
+    "utf8"
   );
+  assert.doesNotMatch(publicEventsSource, /withOrbitPrivateRoute/u);
 });
 
 test("every root-level private entry uses the shared render gate", () => {
