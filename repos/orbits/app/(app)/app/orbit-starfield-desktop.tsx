@@ -1,9 +1,10 @@
 "use client";
 
 // Faithful React migration of "iOrbit 星空旅程.html" (desktop homepage reference).
-// The DOM tree and inline styles below are a mechanical 1:1 conversion of the
-// reference template (docs/designs). Runtime behavior is transplanted verbatim
-// in ./orbit-starfield-desktop-logic. Regenerate rather than hand-tuning values.
+// The scene DOM and inline styles below are a mechanical conversion of the
+// reference template (docs/designs); product chrome is intentionally excluded
+// and comes from the shared OrbitTopNav mounted by orbit-starfield-home.tsx.
+// Runtime behavior is transplanted in ./orbit-starfield-desktop-logic.
 
 import { useEffect, useRef } from "react";
 import { runStarfieldDesktop } from "./orbit-starfield-desktop-logic";
@@ -48,87 +49,6 @@ export function OrbitStarfieldDesktop({
       <link rel="stylesheet" href="/iorbit-starfield/fonts/desktop.css" />
       <style>{desktopCss}</style>
       <div ref={hostRef} id="skRoot" style={{"fontFamily":"'Noto Sans SC',system-ui,-apple-system,sans-serif","color":"#eceaf6","background":"#06050d","position":"fixed","inset":"0","overflow":"hidden"}} data-screen-label="iOrbit 星空旅程">
-        {' '}
-        {/* NAV */}
-        {' '}
-        <nav id="skNav" style={{"position":"fixed","top":"0","left":"0","right":"0","zIndex":"60","display":"flex","alignItems":"center","justifyContent":"space-between","padding":"18px clamp(20px,5vw,56px)","background":"rgba(8,7,16,0.26)","backdropFilter":"blur(18px)","WebkitBackdropFilter":"blur(18px)","borderBottom":"1px solid rgba(150,145,200,0.07)"}}>
-          {' '}
-          <a href="/app/home" aria-label="Orbit" style={{"display":"flex","alignItems":"center","gap":"11px","textDecoration":"none","color":"inherit"}}>
-            {' '}
-            {/* Orbit system logo (orbit-reference-primitives Logo), starfield-tinted like mobile */}
-            <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" style={{"flex":"0 0 auto","filter":"drop-shadow(0 0 6px rgba(139,123,240,0.55))"}}>
-              <circle cx="14" cy="14" r="12.5" stroke="#8b7bf0" strokeWidth="1.6" opacity="0.4">
-              </circle>
-              <circle cx="14" cy="14" r="4.4" fill="#cfc6ff">
-              </circle>
-              <circle cx="24.2" cy="10" r="2.5" fill="#8b7bf0">
-              </circle>
-            </svg>
-            {' '}
-            <div style={{"display":"flex","flexDirection":"column","lineHeight":"1"}}>
-              {' '}
-              <span style={{"fontSize":"18px","fontWeight":"500","letterSpacing":".02em","color":"#f2f0fb"}}>
-                {"Orbit"}
-              </span>
-              {' '}
-              <span data-i18n="brandSub" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"9px","letterSpacing":".03em","color":"rgba(180,176,210,0.48)","marginTop":"4px"}}>
-                {"由 iOrbit 智能匹配引擎驱动"}
-              </span>
-              {' '}
-            </div>
-            {' '}
-          </a>
-          {' '}
-          <div style={{"display":"flex","alignItems":"center","gap":"4px"}}>
-            {' '}
-            <a href="/app/agent" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"iOrbit"}
-            </a>
-            {' '}
-            <a href="/app/events" data-i18n="navEvents" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"活动"}
-            </a>
-            {' '}
-            <a href="/app/today" data-i18n="navSchedule" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"日程"}
-            </a>
-            {' '}
-            <a href="/app/contacts" data-i18n="navNetwork" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"人脉"}
-            </a>
-            {' '}
-          </div>
-          {' '}
-          <div style={{"display":"flex","alignItems":"center","gap":"14px"}}>
-            {' '}
-            <span style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"12px","color":"rgba(230,228,244,0.5)","letterSpacing":".05em"}}>
-              <button type="button" data-lang-btn="zh" aria-label="切换到中文" aria-pressed="true" style={{"background":"none","border":"0","padding":"0","margin":"0","font":"inherit","letterSpacing":"inherit","cursor":"pointer","color":"#cfc9ef"}}>
-                {"中"}
-              </button>
-              {" / "}
-              <button type="button" data-lang-btn="en" aria-label="Switch to English" aria-pressed="false" style={{"background":"none","border":"0","padding":"0","margin":"0","font":"inherit","letterSpacing":"inherit","cursor":"pointer","color":"rgba(230,228,244,0.5)"}}>
-                {"EN"}
-              </button>
-            </span>
-            {' '}
-            {authenticated ? (
-              <a href="/app/profile" style={{"padding":"7px 16px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)"}} style-hover="background:rgba(255,255,255,0.11);" data-i18n="account">
-                {"我的"}
-              </a>
-            ) : (
-              <>
-                <a href="/app/account/login?next=%2Fapp%2Fhome" style={{"padding":"7px 12px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)"}} style-hover="color:#fff;" data-i18n="signIn">
-                  {"登录"}
-                </a>
-                <a href="/app/account/signup?next=%2Fapp%2Fhome" style={{"padding":"7px 16px","borderRadius":"999px","fontSize":"13px","textDecoration":"none","color":"rgba(236,234,248,0.92)","background":"rgba(139,123,240,0.16)","border":"1px solid rgba(139,123,240,0.45)"}} style-hover="background:rgba(139,123,240,0.26);" data-i18n="signUp">
-                  {"注册"}
-                </a>
-              </>
-            )}
-            {' '}
-          </div>
-          {' '}
-        </nav>
         {' '}
         {/* FIXED CANVAS SCENE */}
         {' '}

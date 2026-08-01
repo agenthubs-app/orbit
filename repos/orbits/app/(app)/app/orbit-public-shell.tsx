@@ -32,7 +32,12 @@ type OrbitNavSessionUser = { email: string; id: string; name: string };
  * signed-in user.
  */
 function useOrbitNavSession() {
-  return useContext(SessionContext) ?? { data: null, status: "unauthenticated" as const };
+  const session = useContext(SessionContext);
+
+  return {
+    ...(session ?? { data: null, status: "unauthenticated" as const }),
+    hasProvider: session !== undefined,
+  };
 }
 
 // 右上角账号位:未知会话时渲染与旧"我的"链接完全相同的 DOM(避免闪烁);
@@ -42,14 +47,20 @@ function useOrbitNavSession() {
 // `meHref` used to feed the session-unknown branch's "Me" link; that branch is
 // now a neutral placeholder (UI-audit P0-4) and the signed-in menu links to
 // /app/profile directly, so the control no longer needs a caller-supplied href.
-function OrbitNavAccountControl() {
+function OrbitNavAccountControl({
+  authenticatedFallback = false,
+}: {
+  authenticatedFallback?: boolean;
+}) {
   const { preserveHref, t } = useOrbitLanguage();
-  const { data: session, status } = useOrbitNavSession();
+  const { data: session, hasProvider, status } = useOrbitNavSession();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const sessionUser: OrbitNavSessionUser | null | undefined =
-    status === "loading"
+    !hasProvider && authenticatedFallback
+      ? { email: "", id: "starfield-session", name: "Orbit" }
+      : status === "loading"
       ? undefined
       : session?.user?.id
         ? {
@@ -237,7 +248,7 @@ function OrbitNavMobileAccountLinks({
   active,
   meHref,
 }: {
-  active: OrbitNavActive;
+  active: OrbitNavActive | null;
   meHref: string;
 }) {
   const { preserveHref, t } = useOrbitLanguage();
@@ -301,15 +312,19 @@ function OrbitNavMobileAccountLinks({
 export function OrbitTopNav({
   active = "events",
   agentActive,
+  authenticatedFallback,
   meHref,
   mobileRightExtra,
   rightExtra,
+  tone = "default",
 }: {
-  active?: OrbitNavActive;
+  active?: OrbitNavActive | null;
   agentActive?: boolean;
+  authenticatedFallback?: boolean;
   meHref: string;
   mobileRightExtra?: ReactNode;
   rightExtra?: ReactNode;
+  tone?: "default" | "starfield";
 }) {
   const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
   const isAgent = agentActive ?? active === "agent";
@@ -350,7 +365,10 @@ export function OrbitTopNav({
 
   return (
     <>
-      <header className="orbit-top-nav orbit-nav-menu">
+      <header
+        className={`orbit-top-nav orbit-nav-menu${tone === "starfield" ? " is-starfield" : ""}`}
+        data-orbit-nav-tone={tone}
+      >
         <div className="orbit-nav-lead">
           <a aria-label="Orbit" className={`orbit-brand-link hit-44${active === "home" ? " is-active" : ""}`} href={preserveHref("/")} style={{ textDecoration: "none" }}>
             <Logo size={24} withText={false} />
@@ -359,7 +377,7 @@ export function OrbitTopNav({
               <span className="orbit-brand-sub mono">{t({ en: "Powered by the iOrbit matching engine", zh: "由 iOrbit 智能匹配引擎驱动" })}</span>
             </span>
           </a>
-          <span className="orbit-nav-page-title">{t(pageLabels[active])}</span>
+          {active ? <span className="orbit-nav-page-title">{t(pageLabels[active])}</span> : null}
         </div>
 
         <nav aria-label={t({ en: "Primary", zh: "主导航" })} className="orbit-nav-links">
@@ -380,7 +398,7 @@ export function OrbitTopNav({
           <OrbitLangToggle />
           <span className="orbit-nav-mobile-extra">{mobileRightExtra}</span>
           <span className="orbit-nav-extra">{rightExtra}</span>
-          <span className="orbit-nav-account-slot"><OrbitNavAccountControl /></span>
+          <span className="orbit-nav-account-slot"><OrbitNavAccountControl authenticatedFallback={authenticatedFallback} /></span>
           <button
             aria-expanded={menuOpen}
             aria-label={menuOpen ? t({ en: "Close menu", zh: "关闭菜单" }) : t({ en: "Open menu", zh: "打开菜单" })}

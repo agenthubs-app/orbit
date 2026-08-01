@@ -12,7 +12,6 @@ import {
   initializeStarfieldLanguage,
   persistStarfieldLanguage,
 } from "./orbit-starfield-language";
-import { bindStarfieldMobileMenu } from "./orbit-starfield-mobile-menu";
 
 export function runStarfieldMobile(host: HTMLElement): () => void {
   const self: any = { props: {} };
@@ -462,7 +461,6 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     {let dsx=0,dsy=0;demoWrap.addEventListener('touchstart',e=>{dsx=e.touches[0].clientX;dsy=e.touches[0].clientY;},{passive:true});
      demoWrap.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-dsx,dy=e.changedTouches[0].clientY-dsy;if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>32){e.stopPropagation();advanceDemo(dx<0?1:-1);resetDemoTimer();}},{passive:true});
      demoEls.forEach((el,j)=>{el.addEventListener('click',()=>{if(self._demoI!==j&&stopIdx===1){self._demoI=j;updateCarousel();resetDemoTimer();}});});}
-    self._menuCleanup=bindStarfieldMobileMenu(host);
     cue.addEventListener('click',()=>{if(stopIdx===STOPS.length-1)goStop(0);else onIntent(1);});
     // ending mini popout-card carousel (toC visual)
     {const MS=[31,42,53];let mci=0;const setMini=()=>{const a=$('skMiniAva'),n=$('skMiniName'),h=$('skMiniHelp');if(!a)return;const d=card(MS[mci%MS.length]);if(a.dataset.s!==d.av){a.dataset.s=d.av;a.src=d.av;}n.textContent=d.name;h.textContent=d.help;};self._setMini=setMini;setMini();self._miniIv=setInterval(()=>{const w=$('skMiniCard');if(!w)return;w.style.opacity='0';setTimeout(()=>{mci++;setMini();w.style.opacity='1';},280);},2900);}
@@ -477,10 +475,8 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
     // Scoped to host (data-lang lives on #skRoot here, not <html>); !important beats
     // the reference's inline font-family on [data-serif] elements so EN actually
     // renders Newsreader as designed.
-    langStyle.textContent='#skRoot[data-lang="en"] [data-serif]{font-family:\'Newsreader\',Georgia,serif !important;}@media (min-width:1024px){#skRoot[data-lang="en"] #skNavLinks{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}}';
+    langStyle.textContent='#skRoot[data-lang="en"] [data-serif]{font-family:\'Newsreader\',Georgia,serif !important;}';
     document.head.appendChild(langStyle);self._langStyle=langStyle;
-    const langBtns=[].slice.call(host.querySelectorAll('[data-lang-btn]'));
-    const updateLangBtns=()=>{langBtns.forEach(b=>{const on=b.getAttribute('data-lang-btn')===LANG;b.style.color=on?'#0b0a15':'rgba(230,228,244,0.5)';b.style.background=on?'#cfc9ef':'transparent';b.style.fontWeight=on?'600':'400';b.setAttribute('aria-pressed',on?'true':'false');});};
     const applyDOM=()=>{
       host.querySelectorAll('[data-i18n]').forEach(el=>{const v=T()[el.getAttribute('data-i18n')];if(v!=null)el.textContent=v;});
       host.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=T()[el.getAttribute('data-i18n-html')];if(v!=null)el.innerHTML=v;});
@@ -503,17 +499,11 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         if(pinned)fillCard(pinned.data,pinned.data._gold);
         if(hoverStar&&hoverStar.data)showTip(hoverStar.px,hoverStar.py,hoverStar.data);
         updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:0,visible:false});
-        updateLangBtns();
       }catch(err){
         persistStarfieldLanguage((lng==='en')?'en':'zh');
         location.reload();
       }
     };
-    langBtns.forEach(b=>{
-      b.addEventListener('click',()=>{const l=b.getAttribute('data-lang-btn');if(l!==LANG)applyLang(l,true);});
-      b.addEventListener('mouseenter',()=>{if(b.getAttribute('data-lang-btn')!==LANG)b.style.color='rgba(255,255,255,0.85)';});
-      b.addEventListener('mouseleave',updateLangBtns);
-    });
     applyLang(LANG,false);
 
     const onR=()=>resize();window.addEventListener('resize',onR);
@@ -523,5 +513,5 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
 
   // React-only additions to the reference unmount: the reference page never
   // unmounts, so it leaks head styles and a document-level listener; we must not.
-  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._menuCleanup)self._menuCleanup();if(self._promptCleanup)self._promptCleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();};
+  return () => {if(self._raf)cancelAnimationFrame(self._raf);if(self._miniIv)clearInterval(self._miniIv);if(self._demoIv)clearInterval(self._demoIv);if(self._cleanup)self._cleanup();if(self._promptCleanup)self._promptCleanup();if(self._gst)self._gst.remove();if(self._grain)self._grain.remove();if(self._langStyle)self._langStyle.remove();};
 }

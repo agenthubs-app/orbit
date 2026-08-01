@@ -20,7 +20,7 @@ const accountShell = readFileSync(
 );
 
 test("the nav renders the unified three-segment skeleton", () => {
-  assert.ok(shell.includes('"orbit-top-nav orbit-nav-menu"'), "orbit-nav-menu class");
+  assert.match(shell, /orbit-top-nav orbit-nav-menu/, "orbit-nav-menu class");
   assert.ok(shell.includes("orbit-nav-lead"), "brand segment");
   assert.ok(shell.includes("orbit-brand-word"), "visible brand word");
   assert.ok(shell.includes("orbit-nav-page-title"), "mobile page title");

@@ -952,6 +952,47 @@ const reactReferenceIsolationStyles = `
   gap: 14px;
 }
 
+/* The starfield homepage now renders the same OrbitTopNav DOM as every
+   product route. Only its tone is specialized: geometry, typography,
+   responsive behavior, language controls, account controls, and menu logic
+   continue to come from the shared navigation rules above. The html[data-theme]
+   prefix intentionally outranks the product light-theme token remap so the
+   starfield remains a dark scene even when the rest of the product is light. */
+html[data-theme] [data-orbit-real-page="starfield-home"] {
+  color-scheme: dark;
+  --accent: #8B7BF0;
+  --accent-hover: #9C8EF5;
+  --accent-press: #7A69E6;
+  --accent-soft: rgba(139, 123, 240, 0.16);
+  --accent-softer: rgba(139, 123, 240, 0.09);
+  --accent-ring: rgba(139, 123, 240, 0.42);
+  --on-accent: #0B0A15;
+  --ink: #F2F0FB;
+  --text: #ECEAF6;
+  --text-2: #A6A3BD;
+  --text-3: #9793B8;
+  --text-4: #6E6A8F;
+  --bg: #06050D;
+  --surface: #12101F;
+  --surface-2: #171430;
+  --surface-3: #1D1936;
+  --border: rgba(150, 145, 200, 0.14);
+  --border-2: rgba(150, 145, 200, 0.22);
+  --border-strong: rgba(150, 145, 200, 0.34);
+  --hairline: rgba(150, 145, 200, 0.10);
+}
+
+html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starfield {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  background: rgba(8, 7, 16, 0.26);
+  border-bottom-color: rgba(150, 145, 200, 0.07);
+}
+
+html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starfield .orbit-brand-link svg {
+  filter: drop-shadow(0 0 6px rgba(139, 123, 240, 0.55));
+}
+
 [data-orbit-real-page] .chip {
   align-items: center;
   background: var(--surface-2);

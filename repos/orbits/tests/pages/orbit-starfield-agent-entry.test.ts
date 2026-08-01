@@ -17,7 +17,6 @@ test("desktop and mobile starfields expose a real Agent prompt form", () => {
 
     assert.match(component, /<input[\s\S]*id="skPromptInput"/);
     assert.match(component, /<button[\s\S]*id="skEnter"/);
-    assert.match(component, /href="\/app\/today"[\s\S]*navSchedule/);
     assert.doesNotMatch(component, /href="\/app\/home\/events"/);
     assert.match(runtime, /bindStarfieldAgentPrompt/);
     assert.doesNotMatch(
@@ -25,6 +24,18 @@ test("desktop and mobile starfields expose a real Agent prompt form", () => {
       /querySelectorAll\('\.sk-chip'\)[\s\S]*goStop\(1\)/,
     );
   }
+});
+
+test("the starfield uses the product's shared top navigation", () => {
+  const home = source("app/(app)/app/orbit-starfield-home.tsx");
+  const desktop = source("app/(app)/app/orbit-starfield-desktop.tsx");
+  const mobile = source("app/(app)/app/orbit-starfield-mobile.tsx");
+
+  assert.match(home, /<OrbitTopNav/);
+  assert.match(home, /active=\{null\}/);
+  assert.match(home, /tone="starfield"/);
+  assert.doesNotMatch(desktop, /id="skNav"/);
+  assert.doesNotMatch(mobile, /id="skNav"|id="skMenu"|id="skBurger"/);
 });
 
 test("both starfield runtimes reuse the shared Agent entry binding", () => {

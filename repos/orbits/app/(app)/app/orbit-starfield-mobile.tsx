@@ -1,9 +1,10 @@
 "use client";
 
 // Faithful React migration of "iOrbit Starfield (Mobile).html" (mobile homepage reference), de-shelled per approval: phone mockup frame, centering backdrop and dynamic island removed; all inner geometry values untouched.
-// The DOM tree and inline styles below are a mechanical 1:1 conversion of the
-// reference template (docs/designs). Runtime behavior is transplanted verbatim
-// in ./orbit-starfield-mobile-logic. Regenerate rather than hand-tuning values.
+// The scene DOM and inline styles below are a mechanical conversion of the
+// reference template (docs/designs); product chrome is intentionally excluded
+// and comes from the shared OrbitTopNav mounted by orbit-starfield-home.tsx.
+// Runtime behavior is transplanted in ./orbit-starfield-mobile-logic.
 
 import { useEffect, useRef } from "react";
 import { runStarfieldMobile } from "./orbit-starfield-mobile-logic";
@@ -49,137 +50,6 @@ export function OrbitStarfieldMobile({
       <style>{mobileCss}</style>
       <div ref={hostRef} id="skRoot" style={{"fontFamily":"'Noto Sans SC',system-ui,-apple-system,sans-serif","color":"#eceaf6","background":"#06050d","position":"fixed","inset":"0","overflow":"hidden"}} data-screen-label="iOrbit 移动端">
         {' '}
-        {' '}
-        {/* NAV */}
-        {' '}
-        <nav id="skNav" style={{"position":"absolute","top":"0","left":"0","right":"0","zIndex":"60","display":"flex","alignItems":"center","justifyContent":"space-between","padding":"13px 16px","background":"rgba(8,7,16,0.26)","backdropFilter":"blur(18px)","WebkitBackdropFilter":"blur(18px)","borderBottom":"1px solid rgba(150,145,200,0.07)"}}>
-          {' '}
-          <a href="/app/home" aria-label="Orbit" style={{"display":"flex","alignItems":"center","gap":"11px","textDecoration":"none","color":"inherit"}}>
-            {' '}
-            <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true" style={{"flex":"0 0 auto","filter":"drop-shadow(0 0 6px rgba(139,123,240,0.55))"}}>
-              <circle cx="14" cy="14" r="12.5" stroke="#8b7bf0" strokeWidth="1.6" opacity="0.4">
-              </circle>
-              <circle cx="14" cy="14" r="4.4" fill="#cfc6ff">
-              </circle>
-              <circle cx="24.2" cy="10" r="2.5" fill="#8b7bf0">
-              </circle>
-            </svg>
-            {' '}
-            <div style={{"display":"flex","flexDirection":"column","lineHeight":"1"}}>
-              {' '}
-              <span style={{"fontSize":"18px","fontWeight":"600","letterSpacing":"-.01em","color":"#f2f0fb"}}>
-                {"Orbit"}
-              </span>
-              {' '}
-              <span data-i18n="brandSub" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"9px","letterSpacing":".03em","color":"rgba(180,176,210,0.48)","marginTop":"4px","whiteSpace":"nowrap"}}>
-                {"由 iOrbit 智能匹配引擎驱动"}
-              </span>
-              {' '}
-            </div>
-            {' '}
-          </a>
-          {' '}
-          <div id="skNavLinks" style={{"display":"none","alignItems":"center","gap":"4px"}}>
-            {' '}
-            <a href="/app/agent" aria-label="iOrbit" style={{"display":"inline-flex","alignItems":"center","gap":"6px","padding":"7px 13px","marginRight":"8px","borderRadius":"999px","fontSize":"13.5px","textDecoration":"none","color":"#cdc6f5","border":"1px solid rgba(139,123,240,0.34)","background":"rgba(139,123,240,0.12)","transition":"background .2s,border-color .2s,color .2s"}} style-hover="background:rgba(139,123,240,0.22);border-color:rgba(160,150,255,0.62);color:#fff;">
-              <svg viewBox="0 0 24 24" aria-hidden="true" style={{"width":"14px","height":"14px","flex":"0 0 auto","color":"#a99fe8"}}>
-                <path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" fill="currentColor">
-                </path>
-              </svg>
-              <span>
-                {"iOrbit"}
-              </span>
-            </a>
-            {' '}
-            <a href="/app/events" data-i18n="navEvents" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"活动"}
-            </a>
-            {' '}
-            <a href="/app/today" data-i18n="navSchedule" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"日程"}
-            </a>
-            {' '}
-            <a href="/app/contacts" data-i18n="navNetwork" style={{"padding":"8px 15px","borderRadius":"9px","fontSize":"14px","textDecoration":"none","color":"rgba(230,228,244,0.72)"}} style-hover="color:#fff;">
-              {"人脉"}
-            </a>
-            {' '}
-          </div>
-          {' '}
-          <div style={{"display":"flex","alignItems":"center","gap":"10px"}}>
-            {' '}
-            <div id="skLang" role="group" aria-label="Language / 语言" style={{"display":"inline-flex","alignItems":"center","gap":"2px","fontFamily":"'JetBrains Mono',monospace","fontSize":"12px","letterSpacing":".05em","background":"rgba(255,255,255,0.04)","border":"1px solid rgba(150,145,200,0.16)","borderRadius":"999px","padding":"3px","pointerEvents":"auto"}}>
-              {' '}
-              <button type="button" data-lang-btn="zh" aria-label="切换到中文" style={{"font":"inherit","cursor":"pointer","border":"0","background":"transparent","color":"rgba(230,228,244,0.5)","padding":"4px 10px","borderRadius":"999px","transition":"color .2s,background .2s"}}>
-                {"中"}
-              </button>
-              {' '}
-              <button type="button" data-lang-btn="en" aria-label="Switch to English" style={{"font":"inherit","cursor":"pointer","border":"0","background":"transparent","color":"rgba(230,228,244,0.5)","padding":"4px 10px","borderRadius":"999px","transition":"color .2s,background .2s"}}>
-                {"EN"}
-              </button>
-              {' '}
-            </div>
-            {' '}
-            <button id="skBurger" type="button" aria-controls="skMenu" aria-expanded="false" aria-label="菜单 / Menu" style={{"flex":"0 0 auto","width":"44px","height":"44px","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center","gap":"4px","background":"rgba(255,255,255,0.05)","border":"1px solid rgba(150,145,200,0.18)","borderRadius":"12px","cursor":"pointer","pointerEvents":"auto"}}>
-              {' '}
-              <span style={{"width":"16px","height":"1.6px","background":"#e6e4f4","borderRadius":"2px"}}>
-              </span>
-              {' '}
-              <span style={{"width":"16px","height":"1.6px","background":"#e6e4f4","borderRadius":"2px"}}>
-              </span>
-              {' '}
-              <span style={{"width":"16px","height":"1.6px","background":"#e6e4f4","borderRadius":"2px"}}>
-              </span>
-              {' '}
-            </button>
-            {' '}
-          </div>
-          {' '}
-        </nav>
-        {' '}
-        {/* NAV MENU (mobile) */}
-        {' '}
-        <nav id="skMenu" aria-label="移动端导航 / Mobile navigation" hidden style={{"position":"absolute","top":"62px","right":"16px","zIndex":"70","display":"none","flexDirection":"column","minWidth":"150px","padding":"8px","borderRadius":"16px","background":"rgba(14,12,24,0.95)","border":"1px solid rgba(150,145,200,0.18)","backdropFilter":"blur(18px)","WebkitBackdropFilter":"blur(18px)","boxShadow":"0 22px 54px -22px rgba(0,0,0,0.85)","pointerEvents":"auto"}}>
-          {' '}
-          <a href="/app/agent" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-            {"iOrbit"}
-          </a>
-          {' '}
-          <a href="/app/events" data-i18n="navEvents" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-            {"活动"}
-          </a>
-          {' '}
-          <a href="/app/today" data-i18n="navSchedule" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-            {"日程"}
-          </a>
-          {' '}
-          <a href="/app/contacts" data-i18n="navNetwork" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-            {"人脉"}
-          </a>
-          {' '}
-          <div style={{"height":"1px","margin":"5px 8px","background":"rgba(150,145,200,0.16)"}}>
-          </div>
-          {' '}
-          {authenticated ? (
-            <>
-              <a href="/app/profile" data-i18n="account" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-                {"我的"}
-              </a>
-              <a href="/app/settings" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"#cdc6f5"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-                {"设置"}
-              </a>
-            </>
-          ) : (
-            <>
-              <a href="/app/account/login?next=%2Fapp%2Fhome" data-i18n="signIn" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"rgba(236,234,248,0.86)"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-                {"登录"}
-              </a>
-              <a href="/app/account/signup?next=%2Fapp%2Fhome" data-i18n="signUp" style={{"padding":"11px 14px","borderRadius":"10px","fontSize":"14.5px","textDecoration":"none","color":"#cdc6f5"}} style-hover="background:rgba(139,123,240,0.14);color:#fff;">
-                {"注册"}
-              </a>
-            </>
-          )}
-          {' '}
-        </nav>
         {' '}
         {/* FIXED CANVAS SCENE */}
         {' '}

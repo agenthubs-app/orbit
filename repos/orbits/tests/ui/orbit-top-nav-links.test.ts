@@ -27,6 +27,10 @@ const starfieldSources = [
     "utf8",
   ),
 ];
+const starfieldHomeSource = readFileSync(
+  join(projectRoot, "app/(app)/app/orbit-starfield-home.tsx"),
+  "utf8",
+);
 
 function navHrefs(): readonly string[] {
   const start = shellSource.indexOf("const links = [");
@@ -53,31 +57,15 @@ test("the nav order is always iOrbit, events, schedule, contacts", () => {
   assert.deepEqual(navHrefs(), ["/events", "/today", "/contacts"]);
 });
 
-test("starfield desktop and mobile navigation use the same product order", () => {
+test("starfield desktop and mobile trees delegate navigation to the shared product order", () => {
+  assert.match(starfieldHomeSource, /<OrbitTopNav/);
+  assert.match(starfieldHomeSource, /tone="starfield"/);
+
   for (const starfieldSource of starfieldSources) {
-    const agentIndexes = [
-      ...starfieldSource.matchAll(/href="\/app\/agent"/g),
-    ].map((match) => match.index);
-
-    assert.ok(agentIndexes.length > 0);
-    for (const agentIndex of agentIndexes) {
-      const eventIndex = starfieldSource.indexOf('href="/app/events"', agentIndex);
-      const scheduleIndex = starfieldSource.indexOf(
-        'href="/app/today"',
-        eventIndex,
-      );
-      const contactsIndex = starfieldSource.indexOf(
-        'href="/app/contacts"',
-        scheduleIndex,
-      );
-
-      assert.ok(
-        agentIndex < eventIndex &&
-          eventIndex < scheduleIndex &&
-          scheduleIndex < contactsIndex,
-        "expected iOrbit → 活动 → 日程 → 人脉",
-      );
-    }
+    assert.doesNotMatch(
+      starfieldSource,
+      /id="skNav"|href="\/app\/(?:agent|events|today|contacts)"/,
+    );
   }
 });
 

@@ -452,9 +452,6 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
     const langStyle=document.createElement('style');
     langStyle.textContent='#skRoot[data-lang="en"] [data-serif]{font-family:\'Newsreader\',Georgia,serif !important;}';
     document.head.appendChild(langStyle);self._langStyle=langStyle;
-    const langBtns=[].slice.call(host.querySelectorAll('[data-lang-btn]'));
-    // Desktop nav shows plain "中 / EN" text (no pill): active = bright, inactive = dim.
-    const updateLangBtns=()=>{langBtns.forEach(b=>{const on=b.getAttribute('data-lang-btn')===LANG;b.style.color=on?'#cfc9ef':'rgba(230,228,244,0.5)';b.setAttribute('aria-pressed',on?'true':'false');});};
     const applyDOM=()=>{
       host.querySelectorAll('[data-i18n]').forEach(el=>{const v=T()[el.getAttribute('data-i18n')];if(v!=null)el.textContent=v;});
       host.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=T()[el.getAttribute('data-i18n-html')];if(v!=null)el.innerHTML=v;});
@@ -477,17 +474,11 @@ export function runStarfieldDesktop(host: HTMLElement): () => void {
         if(pinned)fillCard(pinned.data,pinned.data._gold);
         if(hoverStar&&hoverStar.data)showTip(hoverStar.px,hoverStar.py,hoverStar.data);
         updateStarfieldPromptPreview(promptInput,{defaultPrompt:QUERY,fallbackPlaceholder:T().placeholder,progress:0,visible:false});
-        updateLangBtns();
       }catch(err){
         persistStarfieldLanguage((lng==='en')?'en':'zh');
         location.reload();
       }
     };
-    langBtns.forEach(b=>{
-      b.addEventListener('click',()=>{const l=b.getAttribute('data-lang-btn');if(l!==LANG)applyLang(l,true);});
-      b.addEventListener('mouseenter',()=>{if(b.getAttribute('data-lang-btn')!==LANG)b.style.color='rgba(255,255,255,0.85)';});
-      b.addEventListener('mouseleave',updateLangBtns);
-    });
     applyLang(LANG,false);
 
     tick(performance.now());

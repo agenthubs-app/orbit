@@ -25,7 +25,10 @@ test("web root owns the responsive starfield journey", () => {
   const pageSource = source("app/page.tsx");
 
   assert.match(pageSource, /OrbitStarfieldHome/);
-  assert.match(pageSource, /await auth\(\)/);
+  assert.match(pageSource, /auth\(\)/);
+  assert.match(pageSource, /SessionProvider/);
+  assert.match(pageSource, /OrbitLanguageProvider/);
+  assert.match(pageSource, /OrbitReferenceStyles/);
   assert.match(pageSource, /authenticated=\{Boolean\(session\?\.user\?\.id\)\}/);
   assert.doesNotMatch(pageSource, /OrbitRealLandingPage/);
   assert.doesNotMatch(pageSource, /OrbitRealHome/);
@@ -42,33 +45,28 @@ test("starfield journey mounts dedicated desktop and mobile trees", () => {
 });
 
 test("starfield navigation links to concrete product routes", () => {
-  for (const filePath of [
-    "app/(app)/app/orbit-starfield-desktop.tsx",
-    "app/(app)/app/orbit-starfield-mobile.tsx",
-  ]) {
-    const starfieldSource = source(filePath);
+  const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
+  const starfieldHome = source("app/(app)/app/orbit-starfield-home.tsx");
 
-    assert.match(starfieldSource, /href="\/app\/agent"/);
-    assert.match(starfieldSource, /href="\/app\/events"/);
-    assert.match(starfieldSource, /href="\/app\/today"/);
-    assert.match(starfieldSource, /href="\/app\/contacts"/);
-  }
+  assert.match(starfieldHome, /<OrbitTopNav/);
+  assert.match(starfieldHome, /tone="starfield"/);
+  assert.match(shellSource, /href=\{preserveHref\("\/app\/agent"\)\}/);
+  assert.match(shellSource, /\["\/events"/);
+  assert.match(shellSource, /\["\/today"/);
+  assert.match(shellSource, /\["\/contacts"/);
 });
 
 test("starfield account actions branch only on server-owned authentication", () => {
-  const desktopSource = source(
-    "app/(app)/app/orbit-starfield-desktop.tsx",
-  );
-  const mobileSource = source(
-    "app/(app)/app/orbit-starfield-mobile.tsx",
-  );
+  const rootSource = source("app/page.tsx");
+  const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
+  const starfieldHome = source("app/(app)/app/orbit-starfield-home.tsx");
 
-  for (const starfieldSource of [desktopSource, mobileSource]) {
-    assert.match(starfieldSource, /authenticated \? \(/);
-    assert.match(starfieldSource, /href="\/app\/profile"/);
-    assert.match(starfieldSource, /href="\/app\/account\/login\?next=%2Fapp%2Fhome"/);
-    assert.match(starfieldSource, /href="\/app\/account\/signup\?next=%2Fapp%2Fhome"/);
-  }
+  assert.match(rootSource, /SessionProvider[^]*session=\{session\}/);
+  assert.match(starfieldHome, /authenticatedFallback=\{authenticated\}/);
+  assert.match(shellSource, /useContext\(SessionContext\)/);
+  assert.match(shellSource, /href=\{preserveHref\("\/app\/profile"\)\}/);
+  assert.match(shellSource, /\/app\/account\/login\?next=/);
+  assert.match(shellSource, /\/app\/account\/signup\?next=/);
 });
 
 test("/app mirrors the authenticated starfield entry", () => {

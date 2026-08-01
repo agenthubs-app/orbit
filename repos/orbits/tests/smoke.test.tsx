@@ -63,7 +63,7 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.equal(packageJson.scripts["build:reference-css"], "node scripts/build-reference-css.mjs");
   assert.equal(
     packageJson.scripts.build,
-    "npm run build:reference-css && next build --webpack",
+    "npm run images:lqip && npm run build:reference-css && next build --webpack",
   );
   assert.match(
     packageJson.scripts.lint,
@@ -117,7 +117,9 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
     path.join(projectRoot, "app/page.tsx"),
     "utf8",
   );
-  assert.match(pageSource, /const session = await auth\(\)/);
+  assert.match(pageSource, /auth\(\)/);
+  assert.match(pageSource, /SessionProvider/);
+  assert.match(pageSource, /OrbitLanguageProvider/);
   assert.match(
     pageSource,
     /<OrbitStarfieldHome authenticated=\{Boolean\(session\?\.user\?\.id\)\} \/>/,

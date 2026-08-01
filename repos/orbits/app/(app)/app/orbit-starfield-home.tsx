@@ -11,6 +11,7 @@
 // (canvas rAF, scroll stop machine, gesture handlers).
 
 import { useEffect, useState } from "react";
+import { OrbitTopNav } from "./orbit-public-shell";
 import { OrbitStarfieldDesktop } from "./orbit-starfield-desktop";
 import { OrbitStarfieldMobile } from "./orbit-starfield-mobile";
 
@@ -35,6 +36,12 @@ export function OrbitStarfieldHome({
 
   return (
     <main data-orbit-real-page="starfield-home">
+      <OrbitTopNav
+        active={null}
+        authenticatedFallback={authenticated}
+        meHref="/app/profile"
+        tone="starfield"
+      />
       {variant !== "mobile" && (
         <OrbitStarfieldDesktop
           active={variant === "desktop"}
