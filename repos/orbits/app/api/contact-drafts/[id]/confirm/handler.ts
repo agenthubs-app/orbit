@@ -17,6 +17,7 @@ import {
   qrScanConnectFailureToAppError,
 } from "../../../../../features/acquisition/qr-contract";
 import {
+  BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX,
   BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
   businessCardReviewFailureContext,
   businessCardReviewFailureToAppError,
@@ -101,11 +102,12 @@ export function createConfirmContactDraftHandler(
 
     if (
       id === "demo-business-card-draft" ||
-      id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX)
+      id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX) ||
+      id.startsWith(BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX)
     ) {
-      const isLiveDraft = id.startsWith(
-        BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
-      );
+      const isLiveDraft =
+        id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX) ||
+        id.startsWith(BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX);
       const reviewService = createBusinessCardReviewService(
         isLiveDraft ? mode : "mock",
       );

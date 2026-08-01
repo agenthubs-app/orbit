@@ -3,6 +3,7 @@ import type {
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
 import {
+  BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX,
   BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS,
   BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
   type BusinessCardReviewConfirmInput,
@@ -453,6 +454,7 @@ function buildConfirmEvidence(input: {
 function buildDraft(input: {
   contact: ContactDTO;
   databaseWriteExecuted?: boolean;
+  draftIdOverride?: string;
   generatedAt: string;
   graph: LiveBusinessCardReviewGraph;
   mode: "confirmed" | "pending" | "reviewed";
@@ -513,7 +515,7 @@ function buildDraft(input: {
     databaseWriteExecuted: input.databaseWriteExecuted,
   });
   const draft: BusinessCardReviewDraft = {
-    id: draftIdFor(input.contact.id),
+    id: input.draftIdOverride ?? draftIdFor(input.contact.id),
     status:
       input.mode === "confirmed"
         ? "confirmed"
@@ -629,11 +631,46 @@ function findContact(input: {
   );
 }
 
+function isCloudDraftId(draftId: string): boolean {
+  return draftId.startsWith(BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX);
+}
+
+// Cloud-scanned drafts have no backing contacts row; once their reviewed
+// fields are persisted, the review record itself is the field source.
+function detachedContactFor(input: {
+  draftId: string;
+  reviewedAt: string;
+  reviewedFields: Partial<BusinessCardReviewedFields>;
+}): ContactDTO {
+  return {
+    id: input.draftId,
+    displayName:
+      nonEmpty(input.reviewedFields.displayName) ?? "Business card candidate",
+    organization: nonEmpty(input.reviewedFields.organization) ?? undefined,
+    role: nonEmpty(input.reviewedFields.role) ?? undefined,
+    primaryEmail: nonEmpty(input.reviewedFields.email) ?? undefined,
+    primaryPhone: nonEmpty(input.reviewedFields.phone) ?? undefined,
+    profileSnippet:
+      "Cloud-scanned business card candidate under human review.",
+    stage: "captured",
+    source: {
+      type: "business_card_ocr",
+      id: `source:business-card-cloud:${input.draftId}`,
+      label: "Cloud business card scan",
+    },
+    evidenceIds: [`evidence:business-card-cloud:${input.draftId}`],
+    createdAt: input.reviewedAt,
+    updatedAt: input.reviewedAt,
+  };
+}
+
 function buildReviewPayload(input: {
+  actorLabel?: string | null;
   contact: ContactDTO;
   databaseWriteExecuted?: boolean;
+  draftIdOverride?: string;
   graph: LiveBusinessCardReviewGraph;
-  mode: "pending" | "reviewed";
+  mode: "confirmed" | "pending" | "reviewed";
   now: string;
   provider: LiveBusinessCardReviewProvider;
   reviewedAt?: string;
@@ -641,8 +678,10 @@ function buildReviewPayload(input: {
   reviewerLabel?: string | null;
 }): BusinessCardReviewPayload {
   const { draft, provenance, reviewEvidence } = buildDraft({
+    actorLabel: input.actorLabel,
     contact: input.contact,
     databaseWriteExecuted: input.databaseWriteExecuted,
+    draftIdOverride: input.draftIdOverride,
     generatedAt: input.graph.generatedAt,
     graph: input.graph,
     mode: input.mode,
@@ -654,19 +693,23 @@ function buildReviewPayload(input: {
   });
 
   return {
-    state: input.mode === "pending" ? "success" : "success",
+    state: "success",
     reviewDraft: draft,
     reviewEvidence,
     summary:
-      input.mode === "reviewed"
-        ? "Live business card fields were reviewed without writing contacts."
-        : "Live business-card OCR contact fields are ready for human review.",
+      input.mode === "confirmed"
+        ? "The reviewed business card candidate is confirmed and persisted without writing contacts."
+        : input.mode === "reviewed"
+          ? "Live business card fields were reviewed without writing contacts."
+          : "Live business-card OCR contact fields are ready for human review.",
     provenance,
     nextAction:
-      input.mode === "reviewed"
-        ? "Confirm the reviewed business card candidate before contact write."
-        : "Review the source-backed fields before confirming the candidate.",
-    contactCandidateReady: input.mode === "reviewed",
+      input.mode === "confirmed"
+        ? "Send the confirmed candidate to the contact service when a contact write is intended."
+        : input.mode === "reviewed"
+          ? "Confirm the reviewed business card candidate before contact write."
+          : "Review the source-backed fields before confirming the candidate.",
+    contactCandidateReady: input.mode !== "pending",
   };
 }
 
@@ -709,25 +752,9 @@ export function createLiveBusinessCardReviewService({
 
       const contacts = businessCardContacts(readResult.graph);
 
-      if (scenario === "empty" || contacts.length === 0) {
+      if (scenario === "empty") {
         return success(
           emptyPayload({
-            generatedAt: readResult.graph.generatedAt,
-            provider: readResult.provider,
-          }),
-        );
-      }
-
-      const contact = findContact({
-        draftId: input.draftId,
-        graph: readResult.graph,
-      });
-
-      if (!contact) {
-        return failure(
-          "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
-          provenanceFor({
-            evidenceIds: ["evidence:business-card-review-live-draft-missing"],
             generatedAt: readResult.graph.generatedAt,
             provider: readResult.provider,
           }),
@@ -755,12 +782,60 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
+      const detachedReview =
+        persistedReview && isCloudDraftId(input.draftId)
+          ? persistedReview
+          : null;
+
+      if (contacts.length === 0 && !detachedReview) {
+        return success(
+          emptyPayload({
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      const contact =
+        findContact({
+          draftId: input.draftId,
+          graph: readResult.graph,
+        }) ??
+        (detachedReview
+          ? detachedContactFor({
+              draftId: input.draftId,
+              reviewedAt: detachedReview.reviewedAt,
+              reviewedFields: detachedReview.reviewedFields,
+            })
+          : null);
+
+      if (!contact) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
+          provenanceFor({
+            evidenceIds: ["evidence:business-card-review-live-draft-missing"],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      const confirmed = persistedReview?.status === "confirmed";
+
       return success(
         buildReviewPayload({
+          actorLabel: persistedReview?.confirmedBy,
           contact,
+          draftIdOverride: input.draftId,
           graph: readResult.graph,
-          mode: persistedReview ? "reviewed" : "pending",
-          now: now(),
+          mode: confirmed
+            ? "confirmed"
+            : persistedReview
+              ? "reviewed"
+              : "pending",
+          now: confirmed
+            ? persistedReview?.confirmedAt ?? now()
+            : now(),
           provider: readResult.provider,
           reviewedAt: persistedReview?.reviewedAt,
           reviewedFields: persistedReview?.reviewedFields,
@@ -802,8 +877,15 @@ export function createLiveBusinessCardReviewService({
       }
 
       const contacts = businessCardContacts(readResult.graph);
+      const detachedUpdateEligible =
+        isCloudDraftId(input.draftId) &&
+        Boolean(input.reviewedFields) &&
+        hasAnyReviewedField(input.reviewedFields ?? {});
 
-      if (scenario === "empty" || contacts.length === 0) {
+      if (
+        scenario === "empty" ||
+        (contacts.length === 0 && !detachedUpdateEligible)
+      ) {
         return success(
           emptyPayload({
             generatedAt: readResult.graph.generatedAt,
@@ -851,10 +933,21 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
-      const contact = findContact({
-        draftId: input.draftId,
-        graph: readResult.graph,
-      });
+      const reviewedAt = now();
+      const contact =
+        findContact({
+          draftId: input.draftId,
+          graph: readResult.graph,
+        }) ??
+        (isCloudDraftId(input.draftId) &&
+        input.reviewedFields &&
+        hasAnyReviewedField(input.reviewedFields)
+          ? detachedContactFor({
+              draftId: input.draftId,
+              reviewedAt,
+              reviewedFields: input.reviewedFields,
+            })
+          : null);
 
       if (!contact) {
         return failure(
@@ -867,9 +960,9 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
-      const reviewedAt = now();
       const reviewedPayload = buildReviewPayload({
         contact,
+        draftIdOverride: input.draftId,
         graph: readResult.graph,
         mode: "reviewed",
         now: reviewedAt,
@@ -925,14 +1018,19 @@ export function createLiveBusinessCardReviewService({
       }
 
       const persistedReview = writeResult.draft;
+      const stillConfirmed = persistedReview.status === "confirmed";
 
       return success(
         buildReviewPayload({
+          actorLabel: persistedReview.confirmedBy,
           contact,
           databaseWriteExecuted: writeResult.databaseWriteExecuted,
+          draftIdOverride: input.draftId,
           graph: readResult.graph,
-          mode: "reviewed",
-          now: persistedReview.reviewedAt,
+          mode: stillConfirmed ? "confirmed" : "reviewed",
+          now: stillConfirmed
+            ? persistedReview.confirmedAt ?? persistedReview.reviewedAt
+            : persistedReview.reviewedAt,
           provider: readResult.provider,
           reviewedAt: persistedReview.reviewedAt,
           reviewedFields: persistedReview.reviewedFields,
@@ -997,22 +1095,6 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
-      const contact = findContact({
-        draftId: input.draftId,
-        graph: readResult.graph,
-      });
-
-      if (!contact) {
-        return failure(
-          "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
-          provenanceFor({
-            evidenceIds: ["evidence:business-card-review-live-draft-missing"],
-            generatedAt: readResult.graph.generatedAt,
-            provider: readResult.provider,
-          }),
-        );
-      }
-
       let persistedReview: LiveBusinessCardReviewDraftState | null;
 
       try {
@@ -1034,6 +1116,30 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
+      const contact =
+        findContact({
+          draftId: input.draftId,
+          graph: readResult.graph,
+        }) ??
+        (persistedReview && isCloudDraftId(input.draftId)
+          ? detachedContactFor({
+              draftId: input.draftId,
+              reviewedAt: persistedReview.reviewedAt,
+              reviewedFields: persistedReview.reviewedFields,
+            })
+          : null);
+
+      if (!contact) {
+        return failure(
+          "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
+          provenanceFor({
+            evidenceIds: ["evidence:business-card-review-live-draft-missing"],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
       if (!persistedReview) {
         return failure(
           "BUSINESS_CARD_REVIEW_PENDING",
@@ -1045,21 +1151,52 @@ export function createLiveBusinessCardReviewService({
         );
       }
 
-      const confirmedAt = now();
+      let confirmWrite: {
+        draft: LiveBusinessCardReviewDraftState;
+        transitionApplied: boolean;
+      };
+
+      try {
+        confirmWrite =
+          await readResult.provider.confirmBusinessCardReviewDraft({
+            actorId,
+            draftId: input.draftId,
+            confirmedAt: now(),
+            confirmedBy: actorLabelFor(input.actorLabel),
+          });
+      } catch {
+        return failure(
+          "BUSINESS_CARD_REVIEW_LIVE_STORE_FAILED",
+          provenanceFor({
+            evidenceIds: [
+              "evidence:business-card-review-live-confirm-write-failed",
+            ],
+            generatedAt: readResult.graph.generatedAt,
+            provider: readResult.provider,
+          }),
+        );
+      }
+
+      const confirmedState = confirmWrite.draft;
+      const confirmedAt = confirmedState.confirmedAt ?? now();
+      const confirmedBy =
+        confirmedState.confirmedBy ?? actorLabelFor(input.actorLabel);
       const { confirmEvidence, draft, provenance } = buildDraft({
-        actorLabel: input.actorLabel,
+        actorLabel: confirmedBy,
         contact,
+        databaseWriteExecuted: true,
+        draftIdOverride: input.draftId,
         generatedAt: readResult.graph.generatedAt,
         graph: readResult.graph,
         mode: "confirmed",
         now: confirmedAt,
         provider: readResult.provider,
-        reviewedAt: persistedReview.reviewedAt,
-        reviewedFields: persistedReview.reviewedFields,
-        reviewerLabel: persistedReview.reviewerLabel,
+        reviewedAt: confirmedState.reviewedAt,
+        reviewedFields: confirmedState.reviewedFields,
+        reviewerLabel: confirmedState.reviewerLabel,
       });
       const createdEvidence = confirmEvidence ?? buildConfirmEvidence({
-        actorLabel: input.actorLabel,
+        actorLabel: confirmedBy,
         contact,
         now: confirmedAt,
       });

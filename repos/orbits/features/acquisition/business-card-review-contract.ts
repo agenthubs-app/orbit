@@ -119,6 +119,9 @@ export const BUSINESS_CARD_REVIEW_ERROR_DEFINITIONS = {
 export const BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX =
   "business-card-review:live:" as const;
 
+export const BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX =
+  "business-card-review:cloud:" as const;
+
 export interface BusinessCardReviewLookupInput {
   actorId?: string | null;
   draftId: string;

@@ -28,16 +28,34 @@ export interface LiveBusinessCardReviewDraftState {
   reviewedFields: BusinessCardReviewedFields;
   reviewedAt: string;
   reviewerLabel: string;
+  status: "confirmed" | "reviewed";
+  confirmedAt?: string;
+  confirmedBy?: string;
 }
 
-export interface LiveBusinessCardReviewDraftWriteInput
-  extends LiveBusinessCardReviewDraftState {
+export interface LiveBusinessCardReviewDraftWriteInput {
   actorId: string;
+  draftId: string;
+  reviewedFields: BusinessCardReviewedFields;
+  reviewedAt: string;
+  reviewerLabel: string;
 }
 
 export interface LiveBusinessCardReviewDraftWriteResult {
   databaseWriteExecuted: boolean;
   draft: LiveBusinessCardReviewDraftState;
+}
+
+export interface LiveBusinessCardReviewDraftConfirmInput {
+  actorId: string;
+  draftId: string;
+  confirmedAt: string;
+  confirmedBy: string;
+}
+
+export interface LiveBusinessCardReviewDraftConfirmResult {
+  draft: LiveBusinessCardReviewDraftState;
+  transitionApplied: boolean;
 }
 
 export interface LiveBusinessCardReviewProvider {
@@ -53,6 +71,9 @@ export interface LiveBusinessCardReviewProvider {
   upsertBusinessCardReviewDraft: (
     input: LiveBusinessCardReviewDraftWriteInput,
   ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewDraftWriteResult>;
+  confirmBusinessCardReviewDraft: (
+    input: LiveBusinessCardReviewDraftConfirmInput,
+  ) => LiveBusinessCardReviewProviderResult<LiveBusinessCardReviewDraftConfirmResult>;
 }
 
 export const BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS = {
@@ -218,11 +239,23 @@ function reviewDraftFromRecord(
     return null;
   }
 
+  const confirmed =
+    record.payload.status === "confirmed" &&
+    nonEmptyString(record.payload.confirmedAt) &&
+    nonEmptyString(record.payload.confirmedBy);
+
   return {
     draftId,
     reviewedFields,
     reviewedAt: record.payload.reviewedAt,
     reviewerLabel: record.payload.reviewerLabel,
+    status: confirmed ? "confirmed" : "reviewed",
+    ...(confirmed
+      ? {
+          confirmedAt: record.payload.confirmedAt as string,
+          confirmedBy: record.payload.confirmedBy as string,
+        }
+      : {}),
   };
 }
 
@@ -278,6 +311,11 @@ export function createStorageBusinessCardReviewProvider({
   store,
   workspaceId,
 }: StorageBusinessCardReviewProviderOptions): LiveBusinessCardReviewProvider {
+  const confirmationWrites = new Map<
+    string,
+    Promise<LiveBusinessCardReviewDraftConfirmResult>
+  >();
+
   return {
     source: source ?? `live-record-store:business-card-review:${workspaceId}`,
     sourceLabel,
@@ -412,6 +450,13 @@ export function createStorageBusinessCardReviewProvider({
           reviewedFields: input.reviewedFields,
           reviewedAt: input.reviewedAt,
           reviewerLabel: input.reviewerLabel,
+          status: existingDraft?.status ?? "reviewed",
+          ...(existingDraft?.status === "confirmed"
+            ? {
+                confirmedAt: existingDraft.confirmedAt,
+                confirmedBy: existingDraft.confirmedBy,
+              }
+            : {}),
         },
       });
       const savedDraft = reviewDraftFromRecord(saved, actorId, draftId);
@@ -424,6 +469,104 @@ export function createStorageBusinessCardReviewProvider({
         databaseWriteExecuted: true,
         draft: savedDraft,
       };
+    },
+    async confirmBusinessCardReviewDraft(
+      input,
+    ): Promise<LiveBusinessCardReviewDraftConfirmResult> {
+      const actorId = input.actorId.trim();
+      const draftId = input.draftId.trim();
+
+      if (!actorId || !draftId) {
+        throw new Error(
+          "Business card review confirmations require an actor and draft id.",
+        );
+      }
+
+      const recordId = reviewDraftRecordId(actorId, draftId);
+      const previous = confirmationWrites.get(recordId) ?? Promise.resolve(null);
+      const next = previous.then(
+        async (): Promise<LiveBusinessCardReviewDraftConfirmResult> => {
+          const existingRecord = await store.getRecord({
+            workspaceId,
+            collectionName:
+              BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+            recordId,
+          });
+          const existingDraft = reviewDraftFromRecord(
+            existingRecord,
+            actorId,
+            draftId,
+          );
+
+          if (!existingDraft) {
+            throw new Error(
+              `Business card review draft ${draftId} could not be confirmed for this actor.`,
+            );
+          }
+
+          if (existingDraft.status === "confirmed") {
+            return {
+              draft: existingDraft,
+              transitionApplied: false,
+            };
+          }
+
+          const saved = await store.upsertRecord({
+            workspaceId,
+            collectionName:
+              BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
+            recordId,
+            userId: actorId,
+            sourceType: "business_card_ocr",
+            sourceId: draftId,
+            sourceLabel: "Reviewed business card fields",
+            provider: "orbit-business-card-review-live-service",
+            providerRecordId: draftId,
+            evidenceIds: [],
+            targetType: "contact",
+            targetId: draftId,
+            occurredAt: input.confirmedAt,
+            createdAt: existingRecord?.createdAt ?? existingDraft.reviewedAt,
+            updatedAt: input.confirmedAt,
+            lifecycleState: "active",
+            searchText: null,
+            payload: {
+              draftId,
+              reviewedFields: existingDraft.reviewedFields,
+              reviewedAt: existingDraft.reviewedAt,
+              reviewerLabel: existingDraft.reviewerLabel,
+              status: "confirmed",
+              confirmedAt: input.confirmedAt,
+              confirmedBy: input.confirmedBy,
+            },
+          });
+          const savedDraft = reviewDraftFromRecord(saved, actorId, draftId);
+
+          if (!savedDraft || savedDraft.status !== "confirmed") {
+            throw new Error(
+              "Stored business card review confirmation is invalid.",
+            );
+          }
+
+          return {
+            draft: savedDraft,
+            transitionApplied: true,
+          };
+        },
+      );
+      const tracked = next.then(
+        (value) => value,
+        () => null as never,
+      );
+      confirmationWrites.set(recordId, tracked as Promise<LiveBusinessCardReviewDraftConfirmResult>);
+
+      try {
+        return await next;
+      } finally {
+        if (confirmationWrites.get(recordId) === tracked) {
+          confirmationWrites.delete(recordId);
+        }
+      }
     },
   };
 }

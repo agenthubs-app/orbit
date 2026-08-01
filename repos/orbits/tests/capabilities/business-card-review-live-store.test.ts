@@ -204,7 +204,7 @@ test("business card review live service persists actor-scoped review drafts with
     confirm.data.contactCandidate.email,
     "chihiro.yamada@example.test",
   );
-  assert.equal(confirm.data.provenance.databaseWriteExecuted, false);
+  assert.equal(confirm.data.provenance.databaseWriteExecuted, true);
   assert.equal(foreignLookup.success, true);
   assert.equal(foreignLookup.data.state, "empty");
   assert.equal(foreignLookup.data.reviewDraft, null);
@@ -400,6 +400,9 @@ test("business card review requires an actor and draft APIs reject unauthenticat
       upsertBusinessCardReviewDraft() {
         throw new Error("must not write without an actor");
       },
+      confirmBusinessCardReviewDraft() {
+        throw new Error("must not confirm without an actor");
+      },
     },
   });
   const serviceResult = await service.getReviewDraft({
@@ -435,4 +438,196 @@ test("business card review requires an actor and draft APIs reject unauthenticat
   assert.equal(getResponse.status, 401);
   assert.equal(patchResponse.status, 401);
   assert.equal(confirmResponse.status, 401);
+});
+
+test("business card review confirmation persists and survives cold readback idempotently", async () => {
+  const store = await createSeedStore();
+  const provider = createStorageBusinessCardReviewProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  let tick = 0;
+  const service = createLiveBusinessCardReviewService({
+    now: () => {
+      tick += 1;
+
+      return tick === 1 ? NOW : `2026-07-02T14:2${Math.min(tick, 9)}:00.000Z`;
+    },
+    provider,
+  });
+
+  await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: { email: "confirmed.readback@example.test" },
+    reviewerLabel: "Live reviewer",
+  });
+  const [first, second] = await Promise.all([
+    service.confirmReviewedDraft({
+      actorId: ACTOR_ID,
+      actorLabel: "Live operator",
+      draftId: LIVE_DRAFT_ID,
+    }),
+    service.confirmReviewedDraft({
+      actorId: ACTOR_ID,
+      actorLabel: "Live operator",
+      draftId: LIVE_DRAFT_ID,
+    }),
+  ]);
+  const third = await service.confirmReviewedDraft({
+    actorId: ACTOR_ID,
+    actorLabel: "Live operator",
+    draftId: LIVE_DRAFT_ID,
+  });
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  assert.equal(third.success, true);
+  assert.deepEqual(second, first);
+  assert.deepEqual(third, first);
+  assert.equal(first.data.confirmedDraft.status, "confirmed");
+  assert.equal(first.data.provenance.databaseWriteExecuted, true);
+
+  const persisted = await provider.readBusinessCardReviewDraft(
+    ACTOR_ID,
+    LIVE_DRAFT_ID,
+  );
+
+  assert.equal(persisted?.status, "confirmed");
+  assert.equal(persisted?.confirmedBy, "Live operator");
+
+  const coldService = createLiveBusinessCardReviewService({
+    now: () => "2026-07-02T15:00:00.000Z",
+    provider: createStorageBusinessCardReviewProvider({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+  const coldLookup = await coldService.getReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+  });
+
+  assert.equal(coldLookup.success, true);
+  assert.equal(coldLookup.data.reviewDraft?.status, "confirmed");
+  assert.equal(
+    coldLookup.data.reviewDraft?.confirmation.state,
+    "confirmed",
+  );
+  assert.equal(
+    coldLookup.data.reviewDraft?.confirmation.confirmedAt,
+    persisted?.confirmedAt,
+  );
+
+  const reSave = await coldService.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: { email: "post.confirm.edit@example.test" },
+    reviewerLabel: "Live reviewer",
+  });
+
+  assert.equal(reSave.success, true);
+  assert.equal(
+    reSave.data.reviewDraft?.status,
+    "confirmed",
+    "a review edit after confirmation must not downgrade the persisted confirmed state",
+  );
+});
+
+test("cloud business card drafts can be reviewed, confirmed, and read back without a contacts row", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStorageBusinessCardReviewProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider,
+  });
+  const cloudDraftId = "business-card-review:cloud:0123456789abcdef01234567";
+
+  const patch = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: cloudDraftId,
+    reviewedFields: {
+      displayName: "Cloud Card Person",
+      organization: "Cloud Org",
+      email: "cloud.card@example.test",
+    },
+    reviewerLabel: "Live reviewer",
+  });
+
+  assert.equal(patch.success, true);
+  assert.equal(patch.data.reviewDraft?.id, cloudDraftId);
+  assert.equal(patch.data.reviewDraft?.status, "reviewed");
+  assert.equal(patch.data.provenance.databaseWriteExecuted, true);
+
+  const confirm = await service.confirmReviewedDraft({
+    actorId: ACTOR_ID,
+    actorLabel: "Live operator",
+    draftId: cloudDraftId,
+  });
+
+  assert.equal(confirm.success, true);
+  assert.equal(confirm.data.confirmedDraft.id, cloudDraftId);
+  assert.equal(confirm.data.confirmedDraft.status, "confirmed");
+  assert.equal(
+    confirm.data.contactCandidate.displayName,
+    "Cloud Card Person",
+  );
+
+  const readback = await service.getReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: cloudDraftId,
+  });
+
+  assert.equal(readback.success, true);
+  assert.equal(readback.data.reviewDraft?.id, cloudDraftId);
+  assert.equal(readback.data.reviewDraft?.status, "confirmed");
+
+  const foreign = await service.confirmReviewedDraft({
+    actorId: "account:business-card-review-foreign",
+    actorLabel: "Foreign operator",
+    draftId: cloudDraftId,
+  });
+
+  assert.equal(foreign.success, false);
+  assert.equal(
+    foreign.error.code,
+    "BUSINESS_CARD_REVIEW_DRAFT_NOT_FOUND",
+  );
+  assert.equal(
+    store.listRecords({
+      workspaceId: WORKSPACE_ID,
+      collectionName: "contacts",
+    }).length,
+    0,
+  );
+});
+
+test("confirming an unreviewed business card draft still fails closed as pending", async () => {
+  const store = await createSeedStore();
+  const service = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider: createStorageBusinessCardReviewProvider({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const confirm = await service.confirmReviewedDraft({
+    actorId: ACTOR_ID,
+    actorLabel: "Live operator",
+    draftId: LIVE_DRAFT_ID,
+  });
+
+  assert.equal(confirm.success, false);
+  assert.equal(confirm.error.code, "BUSINESS_CARD_REVIEW_PENDING");
+
+  const persisted = await createStorageBusinessCardReviewProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  }).readBusinessCardReviewDraft(ACTOR_ID, LIVE_DRAFT_ID);
+
+  assert.equal(persisted, null);
 });

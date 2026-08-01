@@ -33,7 +33,10 @@ import {
   type BusinessCardImageMimeType,
   type BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
-import { BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX } from "./business-card-review-contract";
+import {
+  BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX,
+  BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
+} from "./business-card-review-contract";
 import type {
   LiveBusinessCardScanOcrGraph,
   LiveBusinessCardScanOcrProvider,
@@ -226,7 +229,7 @@ function uploadedPayload(input: {
     createdBy: "live-business-card-scan-service",
   };
   const draft: BusinessCardContactDraft = {
-    id: `business-card-review:cloud:${input.digest.slice("sha256:".length, 31)}`,
+    id: `${BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX}${input.digest.slice("sha256:".length, 31)}`,
     status: "pending_confirmation",
     source,
     displayName,
