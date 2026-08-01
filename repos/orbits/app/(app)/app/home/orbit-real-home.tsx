@@ -4,11 +4,12 @@ import { useState } from "react";
 import { signOut } from "next-auth/react";
 
 import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
+import { EventCover } from "../events/orbit-event-cover";
 import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { partyHrefForEvent } from "../orbit-product-href";
-import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import {
   localizeHomeHeadline,
@@ -204,7 +205,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const name = event.name;
   const content = (
     <>
-      <Cover g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
+      <EventCover g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
       <span className="orbit-home-event-row-copy" style={{ flex: 1, minWidth: 0 }}>
         <h3 className="h-section orbit-home-event-row-title" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</h3>
         <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
@@ -269,12 +270,12 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
     .slice(0, 3);
   const content = (
     <>
-      <Cover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
+      <EventCover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
         <span className="orbit-account-event-module-cover-top">
           <StatusBadge language={language} status={event.status} />
           <span className="orbit-card-date"><span style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>
         </span>
-      </Cover>
+      </EventCover>
       <span className="orbit-account-event-module-body">
         <span className="orbit-account-event-module-copy">
           <span>{event.theme || event.industry || event.host}</span>

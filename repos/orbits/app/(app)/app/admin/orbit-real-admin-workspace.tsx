@@ -3,8 +3,9 @@
 import type { OrbitAdminEventView, OrbitAdminMemberView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
+import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
-import { Cover, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { Icon, StatusBadge } from "../orbit-reference-primitives";
 import { HostShell } from "./orbit-real-admin-shell";
 
 function StatTile({ s }: { s: OrbitAdminViewModel["adminStats"][number] }) {
@@ -20,7 +21,7 @@ function EventSourceRow({
 }) {
   return (
     <div className="orbit-host-event-stat-row">
-      <Cover
+      <EventCover
         className="orbit-host-event-stat-cover"
         g={event.g}
         imageAlt={event.name}

@@ -4,6 +4,7 @@ import type { OrbitOrganizerPublicViewModel } from "../orbit-organizer-route-vie
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { productHref } from "../orbit-product-href";
 import { PublicTopNav } from "../orbit-public-shell";
+import { EventCover } from "../events/orbit-event-cover";
 import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
 
@@ -49,13 +50,13 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
   return (
     <a className="orbit-card-link" href={productHref(`/events/${event.code}`)}>
       <article className="card card-hover orbit-event-card">
-        <Cover className="orbit-card-cover" g={cover} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
+        <EventCover className="orbit-card-cover" g={cover} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={status} /></div>
           <div className="orbit-card-date">
             <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{date.month}</div>
             {date.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{date.day}</div> : null}
           </div>
-        </Cover>
+        </EventCover>
         <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 10, padding: "15px 16px 16px" }}>
           <div>
             <h3 className="h-section" style={{ color: "var(--ink)", fontSize: 17, margin: 0, overflowWrap: "anywhere" }}>{name}</h3>

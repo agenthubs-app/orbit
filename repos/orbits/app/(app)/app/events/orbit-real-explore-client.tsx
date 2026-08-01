@@ -6,9 +6,10 @@ import type { OrbitLandingEventView, OrbitLandingViewModel } from "../orbit-land
 import { useOrbitLanguage } from "../orbit-language-context";
 import { partyHrefForEvent } from "../orbit-product-href";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
-import { Cover, gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../orbit-z";
+import { EventCover } from "./orbit-event-cover";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "upcoming", "active", "ended"] as const;
@@ -80,14 +81,20 @@ function EventModuleGrid({
 }) {
   return (
     <div className="orbit-event-module-grid">
-      {events.map((event) => (
-        <EventModuleCard event={event} key={event.id} />
+      {events.map((event, index) => (
+        <EventModuleCard event={event} imagePriority={index < 2} key={event.id} />
       ))}
     </div>
   );
 }
 
-function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
+function EventModuleCard({
+  event,
+  imagePriority = false,
+}: {
+  event: OrbitLandingEventView;
+  imagePriority?: boolean;
+}) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const mapped = mapEvent(event, language === "ja" ? "en" : language);
   const actionLabel = event.status === "upcoming" || event.status === "active" ? t({ en: "Register", zh: "报名" }) : t({ en: "View", zh: "查看" });
@@ -96,7 +103,6 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
   const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
   const topics = eventTopics(event).slice(0, 3);
-
   return (
     <a className="orbit-card-link" href={preserveHref(productHref(`/events/${event.code}`))}>
       <article
@@ -105,7 +111,15 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
         data-demo-visual-source={sceneAsset?.sourceLabel}
         data-demo-visual-source-label={sceneAsset?.sourceLabel}
       >
-        <Cover className="orbit-event-module-cover" g={mapped.g} imageAlt={mapped.name} imageUrl={mapped.imageUrl} monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }} style={{ opacity: event.status === "ended" ? 0.74 : 1 }}>
+        <EventCover
+          className="orbit-event-module-cover"
+          g={mapped.g}
+          imageAlt={mapped.name}
+          imageLoading={imagePriority ? "eager" : "lazy"}
+          imageUrl={mapped.imageUrl}
+          monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }}
+          style={{ opacity: event.status === "ended" ? 0.74 : 1 }}
+        >
           <div className="orbit-event-module-cover-top">
             <StatusBadge language={language} status={event.status} />
             <div className="orbit-card-date">
@@ -113,7 +127,7 @@ function EventModuleCard({ event }: { event: OrbitLandingEventView }) {
               <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
             </div>
           </div>
-        </Cover>
+        </EventCover>
         <div className="orbit-event-module-body">
           <div className="orbit-event-module-copy">
             <span>{[event.theme, event.host].filter(Boolean).join(" · ")}</span>
@@ -183,9 +197,9 @@ function MapEventCard({ item }: { item: MappedEvent }) {
 
   return (
     <div className="card" style={{ alignItems: "center", boxShadow: "var(--sh-lg)", display: "flex", gap: 14, padding: 14 }}>
-      <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
+      <EventCover g={item.g} imageAlt={item.name} imageLoading="eager" imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
         <div style={{ left: 6, position: "absolute", top: 6 }}><StatusBadge language={language} status={item.status} /></div>
-      </Cover>
+      </EventCover>
       <div style={{ flex: 1, minWidth: 0 }}>
         <h3 className="h-section" style={{ color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h3>
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`} · ${item.time}` : item.time}</div>
@@ -206,13 +220,13 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
 
   return (
     <a className="card card-hover" href={preserveHref(productHref(`/events/${item.code}`))} style={{ display: "block", overflow: "hidden", textDecoration: "none" }}>
-      <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
+      <EventCover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
         <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
         <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
           <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
           {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
         </div>
-      </Cover>
+      </EventCover>
       <div style={{ padding: "14px 14px 13px" }}>
         <h3 className="h-section" style={{ color: "var(--ink)", margin: 0 }}>{item.name}</h3>
         {item.sub ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>{item.sub}</div> : null}
@@ -386,7 +400,7 @@ export function OrbitRealExploreClient({ viewModel }: { viewModel: OrbitLandingV
                     const on = selectedItem?.id === item.id;
                     return (
                       <button key={item.id} className="card-hover" onClick={() => setSelectedId(item.id)} style={{ background: on ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, borderRadius: 13, cursor: "pointer", display: "flex", gap: 12, padding: 11, textAlign: "left" }} type="button">
-                        <Cover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
+                        <EventCover g={item.g} imageAlt={item.name} imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span className="h-section" style={{ color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                           <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 2 }}>{[item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`}` : item.time, item.place].filter(Boolean).join(" · ")}</span>

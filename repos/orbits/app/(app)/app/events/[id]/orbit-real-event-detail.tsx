@@ -8,9 +8,10 @@ import { partyHrefForEvent } from "../../orbit-product-href";
 import { agentHrefForContext } from "../../orbit-agent-context-href";
 import { eventTemporalBounds } from "../../orbit-event-temporal";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
-import { Avatar, Cover, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
+import { Avatar, gradientFromString, Icon, StatusBadge } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../../orbit-z";
+import { EventCover } from "../orbit-event-cover";
 import { OrbitPostEventFollowupCapture } from "./orbit-post-event-followup-capture";
 import { OrbitEventMatchmaking } from "./orbit-event-matchmaking";
 
@@ -422,8 +423,7 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
           data-demo-visual-source-label={sceneAsset?.sourceLabel}
           style={{ position: "relative", height: 220, overflow: "hidden" }}
         >
-          <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} style={{ position: "absolute", inset: 0 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.18))" }} />
+          <EventCover g={cover} imageLoading="eager" imageUrl={event.detailLogoUrl} imageAlt={name} style={{ position: "absolute", inset: 0 }} />
           <BackButton t={t} style={{ position: "absolute", top: 18, left: 40, border: "none", background: "var(--glass-chip)", height: 36, padding: "0 14px", borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--ink)", textDecoration: "none", boxShadow: "var(--sh-sm)" }} />
         </div>
         <div
@@ -433,8 +433,7 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
           data-demo-visual-source-label={sceneAsset?.sourceLabel}
           style={{ position: "relative", height: 248, display: "block" }}
         >
-          <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 64 }} style={{ position: "absolute", inset: 0 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.25))" }} />
+          <EventCover g={cover} imageLoading="eager" imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 64 }} style={{ position: "absolute", inset: 0 }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 52, display: "flex", alignItems: "center", padding: "0 16px", gap: 10 }}>
             <BackButton mobile t={t} style={{ border: "none", background: "rgba(0,0,0,0.3)", width: 36, height: 36, borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--on-dark)", textDecoration: "none" }} />
           </div>
@@ -452,9 +451,9 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
         </div>
         <div className="orbit-detail-layout">
           <aside className="orbit-detail-rail orbit-desktop-only">
-            <Cover g={cover} imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 76 }} style={{ aspectRatio: "1", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-lg)", border: "4px solid var(--bg)" }}>
+            <EventCover g={cover} imageLoading="eager" imageUrl={event.detailLogoUrl} imageAlt={name} monogram={event.detailLogoUrl ? null : { text: monogram, size: 76 }} style={{ aspectRatio: "1", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-lg)", border: "4px solid var(--bg)" }}>
               <div style={{ position: "absolute", bottom: 14, left: 14 }}><StatusBadge language={language} status={event.status} /></div>
-            </Cover>
+            </EventCover>
             <OrganizerRailCard event={event} t={t} />
           </aside>
           <div className="orbit-detail-main">

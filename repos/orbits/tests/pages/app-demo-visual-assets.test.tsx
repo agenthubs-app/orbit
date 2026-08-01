@@ -163,6 +163,19 @@ test("event list and event detail render manifest scene images", async () => {
   assertImageMarkup(detailHtml, "event detail");
   assertNamedBrandLink(listHtml, "event list");
   assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-event-/);
+
+  const listImages = listHtml.match(/<img\b[^>]*>/g) ?? [];
+  assert.ok(listImages.length > 2, "event list should exercise priority and deferred covers");
+  assert.match(listImages[0], /loading="eager"/);
+  assert.match(listImages[1], /loading="eager"/);
+  assert.match(listImages[2], /loading="lazy"/);
+  assert.match(listHtml, /orbit-event-module-cover[^>]+background:var\(--surface-3\)/);
+
+  const detailImages = detailHtml.match(/<img\b[^>]*>/g) ?? [];
+  assert.ok(detailImages.length >= 3, "event detail should render its responsive artwork surfaces");
+  for (const image of detailImages) assert.match(image, /loading="eager"/);
+  assert.match(detailHtml, /background:var\(--surface-3\)/);
+  assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
 });
 
 test("contact list and contact detail render manifest avatar images", async () => {
@@ -174,4 +187,12 @@ test("contact list and contact detail render manifest avatar images", async () =
   assertNamedBrandLink(detailHtml, "contact detail");
   assert.match(listHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
   assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
+  assert.match(
+    listHtml,
+    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
+  );
+  assert.match(
+    detailHtml,
+    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
+  );
 });

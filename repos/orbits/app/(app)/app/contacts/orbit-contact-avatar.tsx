@@ -31,7 +31,7 @@ export function OrbitContactAvatar({
       data-demo-visual-asset-id={asset.assetId}
       data-demo-visual-source={asset.sourceLabel}
       data-demo-visual-source-label={asset.sourceLabel}
-      style={{ height: size, overflow: "hidden", width: size }}
+      style={{ background: "var(--surface-3)", height: size, overflow: "hidden", width: size }}
       title={contact.displayName}
     >
       <img

@@ -3,12 +3,13 @@
 import type { OrbitAdminEventView, OrbitAdminViewModel } from "../orbit-admin-platform-route-view-model";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
+import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage, type OrbitLanguage } from "../orbit-language-context";
-import { Cover, StatusBadge } from "../orbit-reference-primitives";
+import { StatusBadge } from "../orbit-reference-primitives";
 import { HostShell, type OrbitT } from "./orbit-real-admin-shell";
 
 function HostPortfolioCard({ event, language, t }: { event: OrbitAdminEventView; language: OrbitLanguage; t: OrbitT }) {
-  return <div className="card orbit-host-portfolio-card"><div className="orbit-host-portfolio-card-main"><Cover className="orbit-host-portfolio-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 24 }} /><div className="orbit-host-portfolio-info"><div className="orbit-host-title-row"><strong>{event.name}</strong><StatusBadge language={language} status={event.status} /></div><div className="orbit-host-portfolio-count"><span>{formatOrbitDateTime(event.startsAt, language)}</span><span>{event.venue}</span></div><p className="orbit-host-muted">{event.summary || t({ en: "No source summary", zh: "暂无来源摘要" })}</p></div></div></div>;
+  return <div className="card orbit-host-portfolio-card"><div className="orbit-host-portfolio-card-main"><EventCover className="orbit-host-portfolio-cover" g={event.g} imageAlt={event.name} imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 24 }} /><div className="orbit-host-portfolio-info"><div className="orbit-host-title-row"><strong>{event.name}</strong><StatusBadge language={language} status={event.status} /></div><div className="orbit-host-portfolio-count"><span>{formatOrbitDateTime(event.startsAt, language)}</span><span>{event.venue}</span></div><p className="orbit-host-muted">{event.summary || t({ en: "No source summary", zh: "暂无来源摘要" })}</p></div></div></div>;
 }
 
 export function OrbitRealAdminEvents({ viewModel }: { viewModel: OrbitAdminViewModel }) {

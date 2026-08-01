@@ -229,28 +229,41 @@ export function Cover({
   className = "",
   g = "g-indigo",
   imageAlt = "",
+  imageLoading = "lazy",
+  imageOverlayVisible = true,
+  imagePlaceholder = "gradient",
   imageUrl,
   monogram,
+  onImageLoad,
   style,
 }: {
   children?: ReactNode;
   className?: string;
   g?: string;
   imageAlt?: string;
+  imageLoading?: "eager" | "lazy";
+  imageOverlayVisible?: boolean;
+  imagePlaceholder?: "gradient" | "surface";
   imageUrl?: string;
   monogram?: { text: string; size: number } | null;
+  onImageLoad?: () => void;
   style?: CSSProperties;
 }) {
+  const background = imageUrl && imagePlaceholder === "surface"
+    ? "var(--surface-3)"
+    : coverBg[g] ?? coverBg["g-indigo"];
+
   return (
     <div
       className={`cover cover-grain ${className}`}
-      style={{ background: coverBg[g] ?? coverBg["g-indigo"], ...style }}
+      style={{ background, ...style }}
     >
       {imageUrl ? (
         <img
           alt={imageAlt}
           decoding="async"
-          loading="lazy"
+          loading={imageLoading}
+          onLoad={onImageLoad}
           src={imageUrl}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
@@ -261,7 +274,7 @@ export function Cover({
           inset: 0,
           // Darken the top and bottom edges (where status / date / code badges
           // sit) so they stay legible over bright photos; keep the middle clear.
-          background: imageUrl
+          background: imageUrl && imageOverlayVisible
             ? "linear-gradient(180deg, rgba(6,5,13,0.42) 0%, rgba(6,5,13,0.06) 26%, rgba(6,5,13,0.10) 60%, rgba(6,5,13,0.62) 100%)"
             : "transparent",
         }}
