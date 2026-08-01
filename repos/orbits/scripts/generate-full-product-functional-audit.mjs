@@ -1100,7 +1100,7 @@ const LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE = new Map([
 ]);
 const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:914",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:confirmDraft|onconfirmrecommendation:confirmReferralRecommendation|ondismiss:dismissDraft|onselectsource:setSelectedReferralSource#null",
     {
       actualResult:
         "The authenticated native referral card staged actor-owned central contact drafts on generation, filtered rows by the selected source kind, confirmed the recommended contact and the remaining referral draft against persisted state, and kept dismissal session-local.",
@@ -1113,7 +1113,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1861",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:onConfirmRecommendation#null",
     {
       actualResult:
         "Confirming a recommended contact from the native referral item persisted the confirmed central contact draft for the owning actor and synchronized the recommendation and draft rows with the persisted terminal state.",
@@ -1126,7 +1126,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1972",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => onConfirm(recommendation.id)#已确认推荐 / 确认中 / 确认推荐",
     {
       actualResult:
         "The native 确认推荐 control sent the formal recommended-contact confirmation request, flipped to the persisted 已确认推荐 state, and the confirmed state survived native relaunch and re-staging readback.",
@@ -1139,7 +1139,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:897",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onimport:importExternalContacts|onselectsource:setSelectedExternalSource#null",
     {
       actualResult:
         "The authenticated native source selector chose the actor-backed external source and rendered the exact available candidate count before import.",
@@ -1152,33 +1152,20 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:906",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onconfirm:confirmDraft|ondismiss:dismissDraft#null",
     {
       actualResult:
-        "The native external result card displayed the two centrally persisted actor-owned drafts, confirmed one through the generic contact-draft endpoint, and hid the other only for the current session.",
+        "The native external result card and the central draft queue displayed the two centrally persisted actor-owned drafts, confirmed one through the generic contact-draft endpoint, hid the other only for the current session, and after native relaunch the queue read both drafts back from the formal API preserving the earlier confirmed state.",
       testData:
-        "The two canonical external drafts returned by the same live import, including one confirmed result and one session-local dismissal",
+        "The two canonical external drafts returned by the same live import, including one confirmed result, one session-local dismissal, and a cold GET /api/contact-drafts readback after Expo relaunch",
       idempotency:
-        "Generic confirmation updated the same central draft without creating a contact; session-local dismissal performed no server delete or rejection.",
+        "Generic confirmation updated the same central draft without creating a contact; session-local dismissal performed no server delete; cold readback created no draft and retained the exact actor-owned record IDs.",
       verificationCase:
         "native-external-contact-draft-lifecycle-2026-07-31",
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:958",
-    {
-      actualResult:
-        "After native relaunch and credential restoration, the central draft queue read both imported drafts from the formal API and preserved the earlier confirmed state.",
-      testData:
-        "The same disposable actor after Expo relaunch, SecureStore session restoration, and a fresh GET /api/contact-drafts",
-      idempotency:
-        "Cold readback created no draft or contact and retained the exact actor-owned record IDs.",
-      verificationCase:
-        "native-external-contact-draft-lifecycle-2026-07-31",
-    },
-  ],
-  [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1622",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx#onpress:() => onImport(activeSource)#导入中 / 导入为候选",
     {
       actualResult:
         "The native import control sent one formal live import request under rapid double activation and rendered two canonical central contactDrafts.",
@@ -1191,7 +1178,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1751",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1770",
     {
       actualResult:
         "Confirming the selected external result updated that exact central draft to confirmed and synchronized the result card with the persisted terminal state.",
@@ -1204,7 +1191,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2075",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2094",
     {
       actualResult:
         "Confirming the remaining draft from the cold-start central queue updated the same Postgres row and survived a subsequent queue readback as confirmed.",
