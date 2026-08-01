@@ -87,6 +87,28 @@ workspace root for implementation work.
   components. UI components must not depend on raw provider payloads, raw feature
   DTO shapes, or feature-specific mock implementation details.
 
+## Product Image Loading Standard
+
+- User-visible product photography and artwork must use the shared progressive
+  image path: responsive `srcset`/`sizes`, an SSR-visible inline LQIP, and a
+  decode-gated 180–250 ms crossfade. Do not render known images with a plain
+  `<img>` over a colored or empty placeholder.
+- Reserve the final image dimensions or aspect ratio before loading. Image
+  arrival must not move surrounding content.
+- Set `sizes` to the real rendered slot. Fixed avatar/thumbnail slots use their
+  pixel width; cards and heroes use breakpoint-aware sizes. Do not use `100vw`
+  for a small rail or list thumbnail.
+- Preload/eager-load only above-the-fold primary media. Keep below-the-fold and
+  secondary rail media lazy.
+- Local assets under `public/orbit-covers` and `public/orbit-demo-assets` must be
+  followed by `npm run images:lqip`; the generated LQIP map is committed. The
+  production build regenerates it before compiling.
+- Live/remote media providers must expose trusted responsive variants (or an
+  approved image loader), intrinsic dimensions, and a `blurDataURL`. A neutral
+  surface is only the failure fallback, not the normal loading experience.
+- Respect `prefers-reduced-motion`; decoding still gates image reveal, but the
+  crossfade duration collapses through the global reduced-motion rule.
+
 ## App Documentation And Knowledge Manifest
 
 - App implementation changes must update the related 文档: `docs/**`, feature

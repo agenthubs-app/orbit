@@ -1,4 +1,6 @@
 import { getDemoPersonAvatarAsset } from "../../../../shared/demo-visual-assets";
+import { orbitImageLqip } from "../../../../shared/ui/orbit-image-lqip.generated";
+import { OrbitProgressiveImage } from "../../../../shared/ui/orbit-progressive-image";
 import type { OrbitContactView } from "../orbit-contacts-route-view-model";
 import { Avatar } from "../orbit-reference-primitives";
 
@@ -34,17 +36,12 @@ export function OrbitContactAvatar({
       style={{ background: "var(--surface-3)", height: size, overflow: "hidden", width: size }}
       title={contact.displayName}
     >
-      <img
+      <OrbitProgressiveImage
         alt={asset.alt}
-        decoding="async"
+        blurDataURL={orbitImageLqip(asset.src)}
         loading="lazy"
         src={asset.src}
-        style={{
-          display: "block",
-          height: "100%",
-          objectFit: "cover",
-          width: "100%",
-        }}
+        sizes={`${size}px`}
       />
     </span>
   );

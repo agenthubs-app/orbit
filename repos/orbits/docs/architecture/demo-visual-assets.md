@@ -15,6 +15,28 @@ Sprint 96 为演示活动、用户和联系人补齐本地视觉资产。所有�
 - 页面上渲染 manifest 图片时，带有 `data-demo-visual-asset-id` 的元素也必须带有
   `data-demo-visual-source-label`，用于测试和后续溯源验证；该属性不作为用户可见文案。
 
+## 产品图片加载规范
+
+活动封面、联系人照片等用户可见图片统一走
+`shared/ui/orbit-progressive-image.tsx`，不直接使用裸 `<img>`：
+
+- 使用 Next Image 根据真实槽位的 `sizes` 生成响应式 `srcset`；固定缩略图声明准确
+  像素宽度，大卡和 Hero 使用断点尺寸。
+- 首屏 HTML 内联低清 LQIP，图片下载和解码期间展示同源模糊预览，不回退到旧彩色
+  渐变或纯色空块。
+- 浏览器 `decode()` 完成后，原图与 LQIP 在 220ms 内交叉淡入淡出；边缘可读性遮罩
+  与原图同步出现，避免第二次色调跳变。
+- 容器必须提前保留宽高或宽高比，图片加载不得引起布局位移。
+- 只有首屏主图可以 eager/preload，其余图片保持 lazy；同时遵守系统的
+  `prefers-reduced-motion` 设置。
+
+`npm run images:lqip` 会扫描 `public/orbit-covers` 和
+`public/orbit-demo-assets`，生成并更新
+`shared/ui/orbit-image-lqip.generated.ts`。`npm run build` 会在编译前自动执行该步骤。
+新增或替换本地图片后必须运行生成器并提交生成文件。未来的 live/remote provider
+必须提供可信 CDN 响应式变体、固有尺寸和 `blurDataURL`；缺少这些字段时只能使用
+中性失败回退，不能把它视为正常加载状态。
+
 ## 生成提示词
 
 活动场景图使用的提示词模板：
@@ -50,9 +72,11 @@ background, professional expression, no text, no logo, and no watermark.
 2. 更新 `public/orbit-demo-assets/manifest.json`，保持原有 `recordId` 稳定；
    如确实新增展示记录，新增对应 manifest entry。
 3. 更新本文件的提示词、授权姿态或替换说明。
-4. 运行：
+4. 运行 `npm run images:lqip`，提交更新后的
+   `shared/ui/orbit-image-lqip.generated.ts`。
+5. 运行：
    `npm test -- tests/capabilities/demo-visual-asset-coverage.test.ts tests/pages/app-demo-visual-assets.test.tsx`
-5. 再运行 `npm run lint` 和 `npm run build`，确认没有 broken URL、空 alt text
+6. 再运行 `npm run lint` 和 `npm run build`，确认没有 broken URL、空 alt text
    或缺失映射。
 
 ## Mock-to-live 替换边界

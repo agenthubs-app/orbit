@@ -50,7 +50,7 @@ function EventCard({ event, language, t }: { event: OrbitLandingEventView; langu
   return (
     <a className="orbit-card-link" href={productHref(`/events/${event.code}`)}>
       <article className="card card-hover orbit-event-card">
-        <EventCover className="orbit-card-cover" g={cover} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
+        <EventCover className="orbit-card-cover" g={cover} imageAlt={name} imageSizes="(max-width: 720px) calc(100vw - 36px), (max-width: 1100px) 50vw, 360px" imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 46, text: name.slice(0, 1) }} style={{ height: undefined, opacity: status === "ended" ? 0.72 : 1 }}>
           <div style={{ left: 12, position: "absolute", top: 12 }}><StatusBadge language={language} status={status} /></div>
           <div className="orbit-card-date">
             <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{date.month}</div>

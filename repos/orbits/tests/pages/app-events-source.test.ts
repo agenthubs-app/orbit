@@ -30,7 +30,7 @@ test("/app/events defaults to event content modules with image media", () => {
   assert.doesNotMatch(exploreSource, />\{t\(\{ en: "Images", zh: "图片" \}\)\}<\/button>/u);
 });
 
-test("every active event image surface uses the neutral loading placeholder", () => {
+test("every active event image surface uses the progressive event cover", () => {
   const eventSurfaceSources = [
     "app/(app)/app/home/orbit-real-home.tsx",
     "app/(app)/app/agent/orbit-real-agent.tsx",
@@ -46,4 +46,20 @@ test("every active event image surface uses the neutral loading placeholder", ()
     );
     assert.doesNotMatch(eventSurfaceSource, /<Cover\b[^>]*\bimageUrl=/u);
   }
+});
+
+test("progressive product imagery is responsive, LQIP-backed, and decode-gated", () => {
+  const progressiveImageSource = source("shared/ui/orbit-progressive-image.tsx");
+  const eventCoverSource = source("app/(app)/app/events/orbit-event-cover.tsx");
+  const contactAvatarSource = source("app/(app)/app/contacts/orbit-contact-avatar.tsx");
+  const generatedLqipSource = source("shared/ui/orbit-image-lqip.generated.ts");
+
+  assert.match(progressiveImageSource, /import Image from "next\/image"/u);
+  assert.match(progressiveImageSource, /sizes=\{sizes\}/u);
+  assert.match(progressiveImageSource, /preload=\{loading === "eager"\}/u);
+  assert.match(progressiveImageSource, /await image\.decode\(\)/u);
+  assert.match(progressiveImageSource, /opacity 220ms/u);
+  assert.match(eventCoverSource, /orbitImageLqip\(imageUrl\)/u);
+  assert.match(contactAvatarSource, /<OrbitProgressiveImage/u);
+  assert.match(generatedLqipSource, /data:image\/webp;base64,/u);
 });

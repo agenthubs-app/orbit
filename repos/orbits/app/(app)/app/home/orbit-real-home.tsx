@@ -205,7 +205,7 @@ function HomeEventRow({ event, language, t }: { event: OrbitLandingEventView; la
   const name = event.name;
   const content = (
     <>
-      <EventCover g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
+      <EventCover g={gradientFromString(event.code || name)} imageAlt={name} imageSizes="52px" imageUrl={event.logoUrl} monogram={event.logoUrl ? null : { size: 22, text: name.slice(0, 1) }} style={{ borderRadius: 12, flexShrink: 0, height: 52, opacity: event.status === "ended" ? 0.72 : 1, width: 52 }} />
       <span className="orbit-home-event-row-copy" style={{ flex: 1, minWidth: 0 }}>
         <h3 className="h-section orbit-home-event-row-title" style={{ color: "var(--ink)", display: "block", margin: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{name}</h3>
         <span style={{ alignItems: "center", color: "var(--text-3)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 8, marginTop: 3 }}>
@@ -270,7 +270,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
     .slice(0, 3);
   const content = (
     <>
-      <EventCover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
+      <EventCover className="orbit-account-event-module-cover" g={gradientFromString(event.code || name)} imageAlt={name} imageSizes="(max-width: 720px) calc(100vw - 36px), (max-width: 1100px) 50vw, 360px" imageUrl={eventImageUrl(event)} monogram={null} style={{ opacity: event.status === "ended" ? 0.78 : 1 }}>
         <span className="orbit-account-event-module-cover-top">
           <StatusBadge language={language} status={event.status} />
           <span className="orbit-card-date"><span style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{date.month}</span>{date.day ? <b style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 20, lineHeight: 1 }}>{date.day}</b> : null}</span>

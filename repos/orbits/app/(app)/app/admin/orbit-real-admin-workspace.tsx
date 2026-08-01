@@ -25,6 +25,7 @@ function EventSourceRow({
         className="orbit-host-event-stat-cover"
         g={event.g}
         imageAlt={event.name}
+        imageSizes="52px"
         imageUrl={eventCoverPhoto(event.code)}
         monogram={
           eventCoverPhoto(event.code)
