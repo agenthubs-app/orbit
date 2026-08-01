@@ -140,6 +140,24 @@ test("referral confirmation synchronizes local recommendation and draft state", 
   assert.match(screenSource, /"已确认推荐"/u);
 });
 
+test("business-card confirmation keeps the pending contact-write candidate", () => {
+  assert.match(
+    screenSource,
+    /setResult\(\(current\) =>\s*keepBusinessCardWriteCandidate\(confirmedSummary, current\)\s*\)/u
+  );
+  assert.match(
+    screenSource,
+    /!next\.contactId && current\?\.contactId[\s\S]*contactId: current\.contactId/u
+  );
+});
+
+test("business-card contact write synchronizes the result card terminal state", () => {
+  assert.match(
+    screenSource,
+    /const writeView = businessCardContactWriteToView\(response\.data\);[\s\S]*setResult\(\(current\) => \{[\s\S]*writeView\.contactId[\s\S]*contactWrite: _writtenCandidate[\s\S]*contactId: writeView\.contactId/u
+  );
+});
+
 test("referral source filter matches drafts by sourceKind, not a fixed label", () => {
   assert.match(
     screenSource,

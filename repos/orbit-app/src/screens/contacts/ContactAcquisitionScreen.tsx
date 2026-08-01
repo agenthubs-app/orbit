@@ -115,12 +115,17 @@ function keepBusinessCardWriteCandidate(
   next: ContactAcquisitionSummary,
   current: ContactAcquisitionSummary | null
 ): ContactAcquisitionSummary {
-  if (next.contactWrite || !current?.contactWrite) {
-    return next;
+  const withContactId =
+    !next.contactId && current?.contactId
+      ? { ...next, contactId: current.contactId }
+      : next;
+
+  if (withContactId.contactWrite || !current?.contactWrite) {
+    return withContactId;
   }
 
   return {
-    ...next,
+    ...withContactId,
     contactWrite: current.contactWrite,
     ...(current.contactWriteLabel
       ? { contactWriteLabel: current.contactWriteLabel }
@@ -437,7 +442,9 @@ export function ContactAcquisitionScreen() {
 
       if (response.success) {
         const confirmedSummary = acquisitionResultToSummary(response.data);
-        setResult(confirmedSummary);
+        setResult((current) =>
+          keepBusinessCardWriteCandidate(confirmedSummary, current)
+        );
         setExternalImportResult((current) =>
           current
             ? {
@@ -498,9 +505,21 @@ export function ContactAcquisitionScreen() {
       });
 
       if (response.success) {
-        setBusinessCardWriteResult(
-          businessCardContactWriteToView(response.data)
-        );
+        const writeView = businessCardContactWriteToView(response.data);
+        setBusinessCardWriteResult(writeView);
+        setResult((current) => {
+          if (!current || !writeView.contactId) {
+            return current;
+          }
+
+          const {
+            contactWrite: _writtenCandidate,
+            contactWriteLabel: _writtenLabel,
+            ...rest
+          } = current;
+
+          return { ...rest, contactId: writeView.contactId };
+        });
         setContactsRefreshToken(Date.now().toString());
         refreshReviewSurfaces();
       } else {
