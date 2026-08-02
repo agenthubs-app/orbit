@@ -128,6 +128,24 @@ test("theme controls are absent from global navigation", () => {
   assert.ok(!shell.includes("toggleOrbitTheme"), "navigation no longer mutates theme");
 });
 
+test("light product chrome does not recolor the starfield navigation", () => {
+  const themeSource = readFileSync(
+    join(projectRoot, "app/(app)/app/orbit-theme.tsx"),
+    "utf8",
+  );
+
+  assert.match(
+    themeSource,
+    /\.orbit-top-nav:not\(\.is-starfield\) \.orbit-nav-link/,
+    "light-theme nav link overrides must exclude the dark starfield tone",
+  );
+  assert.doesNotMatch(
+    themeSource,
+    /\[data-orbit-real-page\] \.orbit-top-nav \.orbit-nav-link/,
+    "an unscoped light-theme nav rule would make /app starfield links dark again",
+  );
+});
+
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {
   for (const file of [
     "app/(app)/app/today/today-page-content.tsx",
