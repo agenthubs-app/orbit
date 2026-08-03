@@ -1,13 +1,24 @@
 export interface OrbitPartyPersonView {
   company: string;
   contactId: string | null;
+  contactRequestId: string | null;
+  contactRequestDirection: "incoming" | "outgoing" | null;
+  contactRequestStatus:
+    | "none"
+    | "awaiting_target_consent"
+    | "incoming"
+    | "accepted"
+    | "declined";
   g: string;
   groupNumber: number | null;
   icebreakers: string[];
   id: string;
   industry: string;
   initial: string;
+  isRecommended: boolean;
+  memberHint: string | null;
   name: string;
+  noMatchReason: string | null;
   offering: string;
   reason: string;
   score: number;
@@ -28,6 +39,7 @@ export interface OrbitPartyMeView {
   groupNumber: number | null;
   initial: string;
   name: string;
+  participantId: string;
   offering: string[];
   prompts: string[];
   role: string;
@@ -36,10 +48,53 @@ export interface OrbitPartyMeView {
   topics: string[];
 }
 
+export interface OrbitPartyTableMemberView extends OrbitPartyPersonView {
+  groupingRationale: string;
+}
+
+export interface OrbitPartyTableView {
+  icebreakers: string[];
+  memberPrompts: string[];
+  members: OrbitPartyTableMemberView[];
+  myRationale: string;
+  rationale: string;
+  seat: string;
+  tableNumber: number;
+  theme: string;
+}
+
+export interface OrbitPartyGraphView {
+  edges: readonly {
+    fromParticipantId: string;
+    id: string;
+    kind: "recommendation" | "round_one_table" | "round_two_topic";
+    label: string;
+    toParticipantId: string;
+  }[];
+  nodes: readonly {
+    company: string | null;
+    displayName: string;
+    participantId: string;
+  }[];
+}
+
+export interface OrbitPartyContactRequestView {
+  direction: "incoming" | "outgoing";
+  otherParticipantId: string;
+  requestId: string;
+  status:
+    | "awaiting_target_consent"
+    | "accepted"
+    | "declined";
+}
+
 export interface OrbitPartyViewModel {
   accessCode: string | null;
   agenda: OrbitPartyAgendaItemView[];
+  attendees: OrbitPartyPersonView[];
+  checkedInAt: string | null;
   checkInAvailable: boolean;
+  contactRequests: OrbitPartyContactRequestView[];
   eventId: string;
   eventName: string;
   /**
@@ -53,8 +108,27 @@ export interface OrbitPartyViewModel {
    */
   eventPhase: "active" | "upcoming" | "ended";
   eventVenue: string;
+  generationNotice: {
+    errorCode: string | null;
+    errorMessage: string | null;
+    status:
+      | "queued"
+      | "running"
+      | "failed"
+      | "completed"
+      | "published"
+      | "superseded";
+  } | null;
+  graph: OrbitPartyGraphView | null;
   icebreakers: string[];
   me: OrbitPartyMeView;
+  profileEditDeadlineAt: string;
+  profileEditable: boolean;
   recommendations: OrbitPartyPersonView[];
+  recommendationNoMatchReason: string | null;
+  resultsAvailableAt: string;
+  resultsState: "locked" | "not_generated" | "processing" | "failed" | "ready";
+  roundOne: OrbitPartyTableView | null;
+  roundTwo: OrbitPartyTableView | null;
   tableMates: OrbitPartyPersonView[];
 }

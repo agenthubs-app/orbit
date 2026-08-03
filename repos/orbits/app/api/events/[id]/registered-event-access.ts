@@ -7,6 +7,7 @@ import {
   type ResolveAuthenticatedApiActor,
 } from "../../_shared/authenticated-actor";
 import type { EventRecord } from "../../../../features/events/event-crud-and-import/contract";
+import { createConfiguredEventOperationsRepository } from "../../../../features/events/event-operations/repository";
 import { loadEventForRegistration } from "../../../../features/events/registration/event-loader";
 import { eventRegistrationRuntimeService } from "../../../../features/events/registration/runtime";
 import type { EventRegistrationService } from "../../../../features/events/registration/service";
@@ -42,6 +43,31 @@ type RegisteredEventHandler<TParams extends { id: string }> = (
   context: RegisteredEventRouteContext<TParams>,
   access: RegisteredEventAccess,
 ) => Promise<Response>;
+
+async function loadRegisteredEventMetadata(
+  eventId: string,
+  actorId: string,
+): Promise<EventRecord | null> {
+  const actorVisibleEvent = await loadEventForRegistration(eventId, actorId);
+  if (actorVisibleEvent) return actorVisibleEvent;
+
+  try {
+    const repository = createConfiguredEventOperationsRepository();
+    const configuration = await repository?.getConfiguration(eventId);
+    if (!configuration || configuration.eventId !== eventId) return null;
+
+    // The organizer id is used only inside this exact-event metadata read. The
+    // registered attendee remains the access actor passed to every handler and
+    // receives no owner-scoped mutation capability.
+    const event = await loadEventForRegistration(
+      eventId,
+      configuration.organizerActorId,
+    );
+    return event?.id === eventId ? event : null;
+  } catch {
+    return null;
+  }
+}
 
 function accessFailure(
   mode: FeatureMode,
@@ -93,27 +119,19 @@ export function withRegisteredEventAccess<TParams extends { id: string }>(
 
     const params = await context.params;
     const requestedEventId = params.id.trim();
-    const event = await (
-      dependencies.loadEvent ?? loadEventForRegistration
-    )(requestedEventId, actor.id);
-
-    if (!event) {
-      return accessFailure(
-        mode,
-        new AppError("NOT_FOUND", "The event could not be found."),
-        "event-not-found",
-      );
-    }
-
     const registration = await (
       dependencies.getRegistration ??
       eventRegistrationRuntimeService.get.bind(eventRegistrationRuntimeService)
     )({
-      eventId: event.id,
+      eventId: requestedEventId,
       userId: actor.id,
     });
 
-    if (registration?.status !== "rsvped") {
+    if (
+      registration?.status !== "rsvped" ||
+      registration.eventId !== requestedEventId ||
+      registration.userId !== actor.id
+    ) {
       return accessFailure(
         mode,
         new AppError(
@@ -124,10 +142,22 @@ export function withRegisteredEventAccess<TParams extends { id: string }>(
       );
     }
 
+    const event = await (
+      dependencies.loadEvent ?? loadRegisteredEventMetadata
+    )(registration.eventId, actor.id);
+
+    if (!event || event.id !== registration.eventId) {
+      return accessFailure(
+        mode,
+        new AppError("NOT_FOUND", "The event could not be found."),
+        "event-not-found",
+      );
+    }
+
     return handler(request, context, {
       actor,
       event,
-      eventId: event.id,
+      eventId: registration.eventId,
       mode,
     });
   };

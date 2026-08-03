@@ -293,8 +293,9 @@ const reactReferenceIsolationStyles = `
 
 [data-orbit-real-page].orbit-party-page .orbit-party-attendee-card {
   align-items: flex-start;
-  display: flex;
+  display: grid;
   gap: 14px;
+  grid-template-columns: 50px minmax(0, 1fr);
   padding: 16px;
   position: relative;
 }

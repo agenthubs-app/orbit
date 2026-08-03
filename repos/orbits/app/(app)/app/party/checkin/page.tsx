@@ -21,6 +21,10 @@ import {
   type AppPartyRouteStateViewModel,
   type AppPartySearchParams,
 } from "../compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model";
+import {
+  partyLoginHref,
+  type PartyLoginSearchParams,
+} from "../party-login-return";
 
 async function getPartyCheckinPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -67,12 +71,13 @@ function PartyCheckinRouteStateBoundary({
 export default async function AppPartyCheckinPage({
   searchParams,
 }: {
-  searchParams?: Promise<AppPartySearchParams>;
+  searchParams?: Promise<AppPartySearchParams & PartyLoginSearchParams>;
 } = {}) {
+  const resolvedSearchParams = await searchParams;
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fparty%2Fcheckin");
+    redirect(partyLoginHref("/app/party/checkin", resolvedSearchParams));
   }
 
   const language = await getPartyCheckinPageLanguage();
@@ -86,7 +91,7 @@ export default async function AppPartyCheckinPage({
       id: session.user.id,
     },
     language,
-    searchParams: await searchParams,
+    searchParams: resolvedSearchParams,
   });
 
   return (

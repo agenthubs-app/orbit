@@ -247,6 +247,14 @@ export default async function AppEventDetailPage({
   return (
     <>
       <OrbitReferenceStyles />
+      <div style={{ margin: "16px auto 0", maxWidth: 1120, padding: "0 20px" }}>
+        <a
+          className="btn btn-primary"
+          href={`/app/events/${encodeURIComponent(id)}/operations`}
+        >
+          Open organizer operations
+        </a>
+      </div>
       {detailSuccess ? (
         <OrbitRealEventDetail
           event={localizeOrbitTree(

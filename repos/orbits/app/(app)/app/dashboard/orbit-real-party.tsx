@@ -12,6 +12,11 @@ import {
 import { PublicTopNav } from "../orbit-public-shell";
 import { Icon, Logo } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
+import {
+  EventCheckInControl,
+  EventContactRequestControl,
+} from "../party/event-operations-controls";
+import { formatOrbitPartyDateTime } from "../party/party-date-time";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -204,9 +209,11 @@ function PartyDesktopChrome({
 }
 
 function NetworkPerson({
+  eventId,
   p,
   t,
 }: {
+  eventId: string;
   p: OrbitPartyPersonView;
   t: Translate;
 }) {
@@ -234,17 +241,8 @@ function NetworkPerson({
             </span>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          {p.contactId ? (
-            <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(p.contactId)}`}>
-              <Icon color="var(--on-dark)" name="users" size={15} />
-              {t({ en: "View contact", zh: "查看联系人" })}
-            </a>
-          ) : (
-            <span className="chip">
-              {t({ en: "Attendee is not a saved contact", zh: "该参会者尚未保存为联系人" })}
-            </span>
-          )}
+        <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+          <EventContactRequestControl eventId={eventId} person={p} t={t} />
         </div>
       </div>
     </div>
@@ -252,14 +250,120 @@ function NetworkPerson({
 }
 
 function partyParticipants(viewModel: OrbitPartyViewModel) {
-  const people = [...viewModel.recommendations, ...viewModel.tableMates];
-  const seen = new Set<string>();
+  return viewModel.attendees.filter(
+    (person) => person.id !== viewModel.me.participantId,
+  );
+}
 
-  return people.filter((person) => {
-    if (seen.has(person.id)) return false;
-    seen.add(person.id);
-    return true;
-  });
+function PartyResultsBoundary({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+  const content = {
+    failed: {
+      icon: "alert",
+      title: t({ en: "AI generation failed", zh: "AI 生成失败" }),
+      detail:
+        viewModel.generationNotice?.errorMessage ??
+        t({ en: "The organizer can retry failed shards. No substitute result was published.", zh: "组织者可重试失败分片；系统没有发布替代结果。" }),
+    },
+    locked: {
+      icon: "lock",
+      title: t({ en: "Results are not open yet", zh: "结果尚未开放" }),
+      detail: t({
+        en: `Results open at ${formatOrbitPartyDateTime(viewModel.resultsAvailableAt)}.`,
+        zh: `结果将在 ${formatOrbitPartyDateTime(viewModel.resultsAvailableAt)} 开放。`,
+      }),
+    },
+    not_generated: {
+      icon: "clock",
+      title: t({ en: "Results have not been generated", zh: "结果尚未生成" }),
+      detail: t({ en: "The organizer has not published an AI generation for this registration snapshot.", zh: "组织者尚未为当前报名快照发布 AI 生成结果。" }),
+    },
+    processing: {
+      icon: "clock",
+      title: t({ en: "AI generation is processing", zh: "AI 正在生成" }),
+      detail: t({ en: "The result will appear only after every shard succeeds and the organizer publishes it.", zh: "只有全部分片成功且组织者发布后，结果才会出现。" }),
+    },
+    ready: {
+      icon: "sparkle",
+      title: t({ en: "No recommended match", zh: "暂无推荐匹配" }),
+      detail:
+        viewModel.recommendationNoMatchReason ??
+        t({ en: "The published AI result did not return a match for this participant.", zh: "已发布的 AI 结果未为该参会者返回匹配。" }),
+    },
+  }[viewModel.resultsState];
+
+  return (
+    <div className="card" role="status" style={{ display: "grid", gap: 10, padding: 18 }}>
+      <Icon color="var(--accent)" name={content.icon} size={22} />
+      <strong>{content.title}</strong>
+      <span style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{content.detail}</span>
+      {viewModel.generationNotice?.errorCode ? (
+        <span className="mono" style={{ color: "var(--rose)", fontSize: 11 }}>{viewModel.generationNotice.errorCode}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function PartyEventWindows({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+  const eventProfileHref = `/app/events/${encodeURIComponent(viewModel.eventId)}/register`;
+  const profileStatusId = `party-event-profile-status-${viewModel.eventId.replace(/[^a-zA-Z0-9_-]/gu, "-")}`;
+
+  return (
+    <section aria-label={t({ en: "Event matching schedule", zh: "活动匹配时间" })} className="card" data-party-event-windows style={{ display: "grid", gap: 14, marginTop: 14, padding: 18 }}>
+      <div style={{ alignItems: "start", display: "flex", gap: 12, justifyContent: "space-between" }}>
+        <div>
+          <div className="eyebrow">MATCHING TIMELINE</div>
+          <h2 className="h-section" style={{ margin: "6px 0 0" }}>
+            {t({ en: "Your event persona and results", zh: "你的活动画像与匹配结果" })}
+          </h2>
+        </div>
+        <span className={`chip${viewModel.profileEditable ? " chip-accent" : ""}`}>
+          {viewModel.profileEditable
+            ? t({ en: "Persona editable", zh: "画像可编辑" })
+            : t({ en: "Persona locked", zh: "画像已锁定" })}
+        </span>
+      </div>
+      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
+        <div style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", display: "grid", gap: 5, padding: 12 }}>
+          <span className="mono" style={{ color: "var(--text-3)", fontSize: 11 }}>
+            {t({ en: "PERSONA EDIT DEADLINE", zh: "画像编辑截止" })}
+          </span>
+          <time dateTime={viewModel.profileEditDeadlineAt} style={{ fontWeight: 650 }}>
+            {formatOrbitPartyDateTime(viewModel.profileEditDeadlineAt)}
+          </time>
+        </div>
+        <div style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", display: "grid", gap: 5, padding: 12 }}>
+          <span className="mono" style={{ color: "var(--text-3)", fontSize: 11 }}>
+            {t({ en: "RESULTS OPEN", zh: "结果开放时间" })}
+          </span>
+          <time dateTime={viewModel.resultsAvailableAt} style={{ fontWeight: 650 }}>
+            {formatOrbitPartyDateTime(viewModel.resultsAvailableAt)}
+          </time>
+        </div>
+      </div>
+      {viewModel.profileEditable ? (
+        <a aria-describedby={profileStatusId} className="btn btn-primary" data-event-profile-action="edit" href={eventProfileHref}>
+          <Icon color="var(--on-dark)" name="edit" size={16} />
+          {t({ en: "Edit event persona", zh: "编辑本场活动画像" })}
+        </a>
+      ) : (
+        <button aria-describedby={profileStatusId} className="btn btn-ghost" data-event-profile-action="locked" disabled type="button">
+          <Icon name="lock" size={16} />
+          {t({ en: "Event persona is read only", zh: "本场活动画像仅可查看" })}
+        </button>
+      )}
+      <p id={profileStatusId} role="status" style={{ color: "var(--text-3)", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+        {viewModel.profileEditable
+          ? t({
+              en: "Changes saved before the deadline are included in the frozen matching snapshot.",
+              zh: "截止时间前保存的修改会进入冻结的匹配快照。",
+            })
+          : t({
+              en: "The persona deadline has been reached. This event persona is locked so the published matching snapshot cannot change.",
+              zh: "画像截止时间已到；本场活动画像已锁定，以确保已发布的匹配快照不再变化。",
+            })}
+      </p>
+    </section>
+  );
 }
 
 function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Translate; viewModel: OrbitPartyViewModel }) {
@@ -295,7 +399,9 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button className="btn btn-primary" disabled={!viewModel.checkInAvailable || viewModel.eventPhase === "ended"} onClick={() => navigateTo(partyHrefForEvent(viewModel.eventId, "/checkin"))} style={{ flex: "1 1 0%" }}>
             <Icon color="var(--on-dark)" name="ticket" size={16} />
-            {!viewModel.checkInAvailable
+            {viewModel.checkedInAt
+              ? t({ en: "Checked in", zh: "已签到" })
+              : !viewModel.checkInAvailable
               ? t({ en: "Check-in unavailable", zh: "暂不支持签到" })
               : viewModel.eventPhase === "ended"
               ? t({ en: "Check-in closed", zh: "签到已结束" })
@@ -309,6 +415,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
           </button>
         </div>
       </div>
+      <PartyEventWindows t={t} viewModel={viewModel} />
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", margin: "24px 0 12px" }}>
         <h2 className="h-section" style={{ margin: 0 }}>
           {t({ en: "People recommended for you", zh: "为你推荐的人脉" })}
@@ -322,7 +429,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
           <Icon name="chevR" size={14} />
         </button>
       </div>
-      <div className="card" style={{ padding: 18 }}>
+      {first ? <div className="card" style={{ padding: 18 }}>
         <div style={{ alignItems: "center", display: "flex", gap: 14 }}>
           <span className={`avatar ${first.g}`} style={{ fontSize: 24, height: 56, width: 56 }}>
             {first.initial}
@@ -359,7 +466,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
             </div>
           ))}
         </div>
-      </div>
+      </div> : <PartyResultsBoundary t={t} viewModel={viewModel} />}
       <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", margin: "24px 0 12px" }}>
         <h2 className="h-section" style={{ margin: 0 }}>
           {t({ en: "Tonight's agenda", zh: "今晚流程" })}
@@ -400,66 +507,42 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
   );
 }
 
-function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
-  const seatCount = 8;
-
+function PartyRoundTableCard({
+  label,
+  table,
+  t,
+}: {
+  label: string;
+  table: NonNullable<OrbitPartyViewModel["roundOne"]>;
+  t: Translate;
+}) {
   return (
-    <div className="orbit-party-table-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
-      <div className="orbit-party-table-header">
+    <section className="card" style={{ display: "grid", gap: 18, marginTop: 16, padding: 20 }}>
+      <div style={{ alignItems: "start", display: "flex", gap: 12, justifyContent: "space-between" }}>
         <div>
-          <div className="eyebrow">YOUR TABLE</div>
-          <h1 className="h-display orbit-party-table-title">
-            {t({ en: "Group ", zh: "第 " })}
-            <span>{viewModel.me.groupNumber ?? "—"}</span>
-            {t({ en: " · Round table", zh: " 组 · 圆桌" })}
-          </h1>
+          <div className="eyebrow">{label}</div>
+          <h2 className="h-title" style={{ margin: "8px 0 0" }}>
+            {t({ en: `Table ${table.tableNumber}`, zh: `第 ${table.tableNumber} 桌` })} · {table.theme}
+          </h2>
         </div>
-        <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          {viewModel.me.seat ? (
-            <span className="chip chip-accent">{t({ en: "Seat", zh: "座位" })} {viewModel.me.seat}</span>
-          ) : null}
-        </div>
+        <span className="chip chip-accent">{t({ en: "Your seat", zh: "你的座位" })} {table.seat}</span>
       </div>
-      <div className="orbit-party-table-seat-scene" style={{ height: 350, margin: "20px auto 30px", position: "relative", width: 350 }}>
-        <div className="orbit-party-table-center">
-          <div className="h-display orbit-party-table-code">{viewModel.me.groupNumber ?? "—"}</div>
-          <div className="orbit-party-table-meta">TABLE</div>
-          <span className="chip chip-accent orbit-party-table-pill" style={{ height: 24 }}>
-            {viewModel.tableMates.length + 1} {t({ en: "people", zh: "人" })}
-          </span>
-        </div>
-        {Array.from({ length: seatCount }).map((_, index) => {
-          const angle = (2 * Math.PI * index) / seatCount - Math.PI / 2;
-          const x = 175 + Math.cos(angle) * 150;
-          const y = 175 + Math.sin(angle) * 150;
-          const mate = index > 0 ? viewModel.tableMates[index - 1] : undefined;
-          return (
-            <div key={index} style={{ left: x, position: "absolute", top: y, transform: "translate(-50%,-50%)" }}>
-              {index === 0 ? (
-                <div style={{ position: "relative" }}>
-                  <span className="avatar g-indigo" style={{ fontSize: 18, height: 44, width: 44 }}>
-                    {viewModel.me.initial}
-                  </span>
-                  <span className="orbit-party-table-you">YOU</span>
-                </div>
-              ) : mate ? (
-                <span className={`avatar ${mate.g}`} style={{ fontSize: 16, height: 40, width: 40 }} title={mate.name}>
-                  {mate.initial}
-                </span>
-              ) : (
-                <div className="orbit-party-table-empty-seat" />
-              )}
-            </div>
-          );
-        })}
+      <p style={{ color: "var(--text-2)", lineHeight: 1.7, margin: 0 }}>{table.rationale}</p>
+      <div style={{ background: "var(--accent-softer)", borderRadius: 12, padding: 14 }}>
+        <strong style={{ color: "var(--accent)", fontSize: 13 }}>
+          {t({ en: "Why you are at this table", zh: "你为什么被分到这桌" })}
+        </strong>
+        <p data-party-member-rationale="self" style={{ color: "var(--text-2)", lineHeight: 1.6, margin: "8px 0 0" }}>
+          {table.myRationale}
+        </p>
       </div>
-      <div className="card orbit-party-table-icebreaker">
+      <div>
         <div className="orbit-party-table-block-head">
           <Icon name="sparkle" size={16} />
           {t({ en: "Table icebreakers", zh: "全桌破冰" })}
         </div>
         <div className="orbit-party-table-icebreaker-list">
-          {viewModel.icebreakers.map((question, index) => (
+          {table.icebreakers.map((question, index) => (
             <div className="orbit-party-table-icebreaker-item" key={question}>
               <span>0{index + 1}</span>
               <p>{question}</p>
@@ -467,33 +550,43 @@ function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewM
           ))}
         </div>
       </div>
-      <div className="orbit-party-table-member-head">
-        <h2 className="h-section" style={{ margin: 0 }}>
-          {t({ en: "People at your table", zh: "同桌的人" })}
-        </h2>
-      </div>
+      {table.memberPrompts.length ? (
+        <div style={{ background: "var(--accent-softer)", borderRadius: 12, padding: 14 }}>
+          <strong style={{ color: "var(--accent)", fontSize: 13 }}>{t({ en: "Your conversation prompts", zh: "你的对话提示" })}</strong>
+          {table.memberPrompts.map((prompt) => <p key={prompt} style={{ color: "var(--text-2)", lineHeight: 1.6, margin: "8px 0 0" }}>{prompt}</p>)}
+        </div>
+      ) : null}
       <div className="orbit-party-table-member-list">
-        {viewModel.tableMates.map((mate) => (
+        {table.members.map((mate) => (
           <div className="orbit-party-table-member" key={mate.id}>
-            <span className={`avatar ${mate.g}`} style={{ fontSize: 18, height: 44, width: 44 }}>
-              {mate.initial}
-            </span>
+            <span className={`avatar ${mate.g}`} style={{ fontSize: 18, height: 44, width: 44 }}>{mate.initial}</span>
             <div className="orbit-party-table-member-body">
-              <div className="orbit-party-table-member-name">
-                {mate.name} · {mate.title}
-              </div>
-              <div className="orbit-party-table-member-meta">
-                {mate.company}
-                {mate.seat ? ` · ${t({ en: "Seat", zh: "座位" })} ${mate.seat}` : ""}
-              </div>
-              <div className="orbit-party-table-member-prompt">
-                <span>{t({ en: "Icebreaker", zh: "破冰" })}</span>
-                {mate.icebreakers[0]}
+              <div className="orbit-party-table-member-name">{mate.name} · {mate.title}</div>
+              <div className="orbit-party-table-member-meta">{mate.company}{mate.seat ? ` · ${t({ en: "Seat", zh: "座位" })} ${mate.seat}` : ""}</div>
+              <div className="orbit-party-table-member-prompt" data-party-member-rationale={mate.id}>
+                <span>{t({ en: "Why this member", zh: "成员分组理由" })}</span>
+                {mate.groupingRationale}
               </div>
             </div>
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+  return (
+    <div className="orbit-party-table-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
+      <div className="orbit-party-table-header">
+        <div>
+          <div className="eyebrow">TWO AI ROUNDS</div>
+          <h1 className="h-display orbit-party-table-title">{t({ en: "Your table assignments", zh: "你的双轮桌次" })}</h1>
+        </div>
+      </div>
+      {viewModel.roundOne ? <PartyRoundTableCard label="ROUND 01 · COMPLEMENTARY" table={viewModel.roundOne} t={t} /> : null}
+      {viewModel.roundTwo ? <PartyRoundTableCard label="ROUND 02 · TOPIC" table={viewModel.roundTwo} t={t} /> : null}
+      {!viewModel.roundOne && !viewModel.roundTwo ? <PartyResultsBoundary t={t} viewModel={viewModel} /> : null}
     </div>
   );
 }
@@ -544,6 +637,9 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
           </div>
         </div>
       </div>
+      {viewModel.resultsState !== "ready" || viewModel.recommendations.length === 0 ? (
+        <PartyResultsBoundary t={t} viewModel={viewModel} />
+      ) : null}
       <div className="orbit-party-network-toolbar">
         <div className="orbit-party-network-search">
           <Icon color="var(--text-3)" name="search" size={17} />
@@ -566,7 +662,7 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
       </div>
       <div className="orbit-party-network-list">
         {list.map((person) => (
-          <NetworkPerson key={person.id} p={person} t={t} />
+          <NetworkPerson eventId={viewModel.eventId} key={person.id} p={person} t={t} />
         ))}
       </div>
     </div>
@@ -588,7 +684,7 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
         <div>
           <div className="eyebrow">ATTENDEES</div>
           <h1 className="h-display orbit-party-network-title">{t({ en: "All attendees", zh: "全部参会者" })}</h1>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{t({ en: `${attendees.length + 1} attendees in total`, zh: `共 ${attendees.length + 1} 位参会者` })}</div>
+          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{t({ en: `${viewModel.attendees.length} registered attendees`, zh: `共 ${viewModel.attendees.length} 位真实报名参会者` })}</div>
         </div>
         <div className="orbit-party-network-search orbit-party-attendees-search">
           <Icon color="var(--text-3)" name="search" size={17} />
@@ -639,6 +735,9 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
             {person.seat ? (
               <span className="chip chip-accent orbit-party-attendee-seat">{person.seat}</span>
             ) : null}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <EventContactRequestControl eventId={viewModel.eventId} person={person} t={t} />
+            </div>
           </div>
         ))}
       </div>
@@ -647,6 +746,19 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
 }
 
 function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+  const phaseLabel =
+    viewModel.eventPhase === "active"
+      ? t({ en: "Event live", zh: "活动进行中" })
+      : viewModel.eventPhase === "upcoming"
+        ? t({ en: "Upcoming", zh: "即将开始" })
+        : t({ en: "Ended", zh: "已结束" });
+  const phaseBadgeClass =
+    viewModel.eventPhase === "active"
+      ? "badge badge-live"
+      : viewModel.eventPhase === "upcoming"
+        ? "badge badge-soon"
+        : "badge badge-ended";
+
   return (
     <div className="orbit-party-agenda-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
       <div className="orbit-party-network-header">
@@ -655,7 +767,7 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
           <h1 className="h-display orbit-party-network-title">{t({ en: "Agenda", zh: "流程议程" })}</h1>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4 }}>{`${viewModel.eventName} · ${t({ en: "Tonight's agenda", zh: "今晚流程" })}`}</div>
         </div>
-        <span className="badge badge-ended">{t({ en: "Ended", zh: "已结束" })}</span>
+        <span className={phaseBadgeClass}>{phaseLabel}</span>
       </div>
       <div className="orbit-party-agenda-list">
         {viewModel.agenda.map((item, index) => (
@@ -669,7 +781,7 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
               <strong>{item.label}</strong>
               <p>{item.description}</p>
             </div>
-            <span className="orbit-party-agenda-status">{t({ en: "Ended", zh: "已结束" })}</span>
+            <span className="orbit-party-agenda-status">{phaseLabel}</span>
           </div>
         ))}
       </div>
@@ -689,6 +801,7 @@ function graphColor(industry: string) {
 }
 
 function SocialGraphLite({
+  graph,
   height = 560,
   me,
   onSelect,
@@ -696,6 +809,7 @@ function SocialGraphLite({
   scale,
   width = 720,
 }: {
+  graph: NonNullable<OrbitPartyViewModel["graph"]>;
   height?: number;
   me: OrbitPartyViewModel["me"];
   onSelect: (person: OrbitPartyPersonView) => void;
@@ -710,11 +824,15 @@ function SocialGraphLite({
     const angle = (index / people.length) * Math.PI * 2 - Math.PI / 2;
     return {
       ...person,
-      r: 18 + Math.min(14, (person.score - 80) * 1),
+      r: person.isRecommended ? 22 + Math.min(8, person.score / 15) : 18,
       x: cx + Math.cos(angle) * radius * (0.78 + (index % 3) * 0.13),
       y: cy + Math.sin(angle) * radius * (0.78 + (index % 3) * 0.13),
     };
   });
+  const positionByParticipantId = new Map<string, { x: number; y: number }>([
+    [me.participantId, { x: cx, y: cy }],
+    ...nodes.map((node) => [node.id, { x: node.x, y: node.y }] as const),
+  ]);
 
   return (
     <svg style={{ aspectRatio: `${width} / ${height}`, display: "block", maxHeight: "76vh", width: "100%" }} viewBox={`0 0 ${width} ${height}`} width="100%">
@@ -725,13 +843,49 @@ function SocialGraphLite({
       </defs>
       <rect fill="url(#pg-dot)" height={height} rx="22" width={width} />
       <g transform={`translate(${cx} ${cy}) scale(${scale}) translate(${-cx} ${-cy})`}>
-        {nodes.map((node) => (
-          <line key={`l${node.id}`} stroke="rgba(99,89,233,0.35)" strokeWidth="1.2" x1={cx} x2={node.x} y1={cy} y2={node.y} />
-        ))}
+        {graph.edges.flatMap((edge) => {
+          const from = positionByParticipantId.get(edge.fromParticipantId);
+          const to = positionByParticipantId.get(edge.toParticipantId);
+          if (!from || !to) return [];
+          const stroke = edge.kind === "recommendation"
+            ? "rgba(99,89,233,0.72)"
+            : edge.kind === "round_one_table"
+              ? "rgba(71,137,143,0.62)"
+              : "rgba(217,123,94,0.62)";
+          return [
+            <line
+              key={edge.id}
+              stroke={stroke}
+              strokeDasharray={edge.kind === "round_two_topic" ? "5 4" : undefined}
+              strokeWidth={edge.kind === "recommendation" ? 2 : 1.2}
+              x1={from.x}
+              x2={to.x}
+              y1={from.y}
+              y2={to.y}
+            >
+              <title>{edge.label}</title>
+            </line>,
+          ];
+        })}
         {nodes.map((node) => {
           const color = graphColor(node.industry);
           return (
-            <g key={node.id} onClick={() => onSelect(node)} style={{ cursor: "pointer" }} transform={`translate(${node.x} ${node.y})`}>
+            <g
+              aria-label={node.name}
+              data-graph-participant={node.id}
+              key={node.id}
+              onClick={() => onSelect(node)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(node);
+                }
+              }}
+              role="button"
+              style={{ cursor: "pointer" }}
+              tabIndex={0}
+              transform={`translate(${node.x} ${node.y})`}
+            >
               <circle fill={color} fillOpacity={0.1} r={node.r + 5} />
               <circle fill="#fff" r={node.r} stroke={color} strokeWidth="1.6" />
               <text dominantBaseline="central" fill="#1D1D22" fontFamily="var(--ff-display)" fontSize={Math.max(11, node.r * 0.7)} fontWeight="600" textAnchor="middle">
@@ -757,7 +911,7 @@ function SocialGraphLite({
   );
 }
 
-function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
+function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string; onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
   return (
     <ModalShell bare label={person.name} onClose={onClose} variant="bottom-sheet">
       <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
@@ -791,6 +945,9 @@ function PersonDetailOverlay({ onClose, person, t }: { onClose: () => void; pers
             </span>
           ))}
         </div>
+        <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
+          <EventContactRequestControl eventId={eventId} person={person} t={t} />
+        </div>
       </div>
     </ModalShell>
   );
@@ -820,16 +977,28 @@ export function OrbitRealPartyCheckin({ viewModel }: { viewModel: OrbitPartyView
       <main className="orbit-party-checkin-shell">
         <section className="orbit-party-action-card card">
           <div className="orbit-party-checkin-icon">
-            <Icon name="lock" size={30} />
+            <Icon name={viewModel.checkedInAt ? "checkCircle" : "scan"} size={30} />
           </div>
-          <div className="eyebrow">SOURCE-BACKED STATUS</div>
-          <h1 className="h-title">{t({ en: "Check-in is not available", zh: "暂不支持签到" })}</h1>
+          <div className="eyebrow">PERSISTED EVENT CHECK-IN</div>
+          <h1 className="h-title">
+            {viewModel.checkedInAt
+              ? t({ en: "You are checked in", zh: "你已完成签到" })
+              : t({ en: "Confirm your arrival", zh: "确认到场" })}
+          </h1>
           <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "12px 0 0" }}>
             {t({
-              en: "This event context has no source-backed check-in write service. No attendance or check-in time has been recorded.",
-              zh: "当前活动尚未接入可核验的签到写入服务；没有记录出席状态或签到时间。",
+              en: "This writes an actor-scoped arrival record for your real event registration during the organizer-defined check-in window.",
+              zh: "该操作会在组织者设定的签到时间窗内，为你的真实活动报名写入仅限本人范围的到场记录。",
             })}
           </p>
+          <div style={{ marginTop: 20 }}>
+            <EventCheckInControl
+              checkedInAt={viewModel.checkedInAt}
+              enabled={viewModel.checkInAvailable}
+              eventId={viewModel.eventId}
+              t={t}
+            />
+          </div>
           <a className="btn btn-primary btn-lg btn-block" href={partyHrefForEvent(viewModel.eventId)} style={{ marginTop: 20 }}>
             <Icon color="var(--on-accent)" name="arrow" size={18} />
             {t({ en: "Return to event home", zh: "返回活动主页" })}
@@ -844,6 +1013,14 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
   const { t } = useOrbitLanguage();
   const [scale, setScale] = useState(0.95);
   const [selected, setSelected] = useState<OrbitPartyPersonView | null>(null);
+  const graphParticipantIds = new Set(
+    viewModel.graph?.nodes.map((node) => node.participantId) ?? [],
+  );
+  const graphPeople = viewModel.attendees.filter(
+    (person) =>
+      person.id !== viewModel.me.participantId &&
+      graphParticipantIds.has(person.id),
+  );
 
   return (
     <div className="orbit-party-graph-screen" data-orbit-real-page style={{ minHeight: "100dvh" }}>
@@ -865,9 +1042,11 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
         <div style={{ background: "linear-gradient(180deg, var(--surface) 0%, var(--bg-sunken) 100%)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-lg)", marginTop: 16, padding: 22 }}>
           <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontFamily: "var(--ff-mono)", fontSize: 11, justifyContent: "space-between", letterSpacing: "0.22em", textTransform: "uppercase" }}>
             <span>SOCIAL GRAPH</span>
-            <span className="badge badge-live">
-              <span className="dot dot-live" />
-              {t({ en: "Open", zh: "已开放" })}
+            <span className={viewModel.graph ? "badge badge-live" : "badge"}>
+              {viewModel.graph ? <span className="dot dot-live" /> : null}
+              {viewModel.graph
+                ? t({ en: "Published", zh: "已发布" })
+                : t({ en: "Unavailable", zh: "不可用" })}
             </span>
           </div>
           <h1 className="h-display" style={{ lineHeight: 0.94, marginTop: 18 }}>
@@ -877,9 +1056,9 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
           </h1>
           <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.8, marginTop: 16 }}>{t({ en: "Zoom in to see the whole night's connections. You can zoom and tap any node to view their details.", zh: "放大看一眼整场连接关系。你可以缩放，并点击任意节点查看对方详情。" })}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
-            <span className="chip badge-live">{t({ en: "Results open", zh: "结果已开放" })}</span>
-            <span className="chip chip-accent">{t({ en: `${viewModel.recommendations.length} nodes`, zh: `${viewModel.recommendations.length} 个节点` })}</span>
-            <span className="chip chip-accent">{t({ en: `${viewModel.recommendations.length} connections`, zh: `${viewModel.recommendations.length} 条连接` })}</span>
+            <span className="chip badge-live">{t({ en: "Published generation only", zh: "仅展示已发布生成结果" })}</span>
+            <span className="chip chip-accent">{t({ en: `${viewModel.graph?.nodes.length ?? 0} nodes`, zh: `${viewModel.graph?.nodes.length ?? 0} 个节点` })}</span>
+            <span className="chip chip-accent">{t({ en: `${viewModel.graph?.edges.length ?? 0} connections`, zh: `${viewModel.graph?.edges.length ?? 0} 条真实连接` })}</span>
           </div>
         </div>
         <div className="card" style={{ marginTop: 14, padding: 18 }}>
@@ -913,10 +1092,14 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
               +
             </button>
           </div>
-          <SocialGraphLite height={700} me={viewModel.me} onSelect={setSelected} people={viewModel.recommendations} scale={scale} width={880} />
+          {viewModel.graph ? (
+            <SocialGraphLite graph={viewModel.graph} height={700} me={viewModel.me} onSelect={setSelected} people={graphPeople} scale={scale} width={880} />
+          ) : (
+            <PartyResultsBoundary t={t} viewModel={viewModel} />
+          )}
         </div>
       </div>
-      {selected ? <PersonDetailOverlay onClose={() => setSelected(null)} person={selected} t={t} /> : null}
+      {selected ? <PersonDetailOverlay eventId={viewModel.eventId} onClose={() => setSelected(null)} person={selected} t={t} /> : null}
     </div>
   );
 }
@@ -924,6 +1107,14 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
 function PartyGraphInline({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
   const [scale, setScale] = useState(1);
   const [selected, setSelected] = useState<OrbitPartyPersonView | null>(null);
+  const graphParticipantIds = new Set(
+    viewModel.graph?.nodes.map((node) => node.participantId) ?? [],
+  );
+  const graphPeople = viewModel.attendees.filter(
+    (person) =>
+      person.id !== viewModel.me.participantId &&
+      graphParticipantIds.has(person.id),
+  );
 
   return (
     <div className="orbit-party-graph-scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "14px 18px 32px" }}>
@@ -943,22 +1134,26 @@ function PartyGraphInline({ t, viewModel }: { t: Translate; viewModel: OrbitPart
       </div>
       <div className="orbit-party-graph-stats">
         <div className="card orbit-party-graph-stat">
-          <div className="h-title">{viewModel.recommendations.length}</div>
+          <div className="h-title">{viewModel.graph?.nodes.length ?? 0}</div>
           <div className="mono">{t({ en: "Nodes", zh: "节点" })}</div>
         </div>
         <div className="card orbit-party-graph-stat">
-          <div className="h-title">{viewModel.recommendations.length}</div>
+          <div className="h-title">{viewModel.graph?.edges.length ?? 0}</div>
           <div className="mono">{t({ en: "Connections", zh: "连接" })}</div>
         </div>
         <div className="card orbit-party-graph-stat">
-          <div className="h-title">{t({ en: "Open", zh: "已开放" })}</div>
+          <div className="h-title">{viewModel.graph ? t({ en: "Published", zh: "已发布" }) : t({ en: "Unavailable", zh: "不可用" })}</div>
           <div className="mono">{t({ en: "Results", zh: "结果" })}</div>
         </div>
       </div>
       <div className="card" style={{ marginTop: 14, padding: 14 }}>
-        <SocialGraphLite me={viewModel.me} onSelect={setSelected} people={viewModel.recommendations} scale={scale} />
+        {viewModel.graph ? (
+          <SocialGraphLite graph={viewModel.graph} me={viewModel.me} onSelect={setSelected} people={graphPeople} scale={scale} />
+        ) : (
+          <PartyResultsBoundary t={t} viewModel={viewModel} />
+        )}
       </div>
-      {selected ? <PersonDetailOverlay onClose={() => setSelected(null)} person={selected} t={t} /> : null}
+      {selected ? <PersonDetailOverlay eventId={viewModel.eventId} onClose={() => setSelected(null)} person={selected} t={t} /> : null}
     </div>
   );
 }

@@ -1,0 +1,4 @@
+import { createEventOperationsContactRequestResponsePostHandler } from "../../../handlers";
+
+export const dynamic = "force-dynamic";
+export const POST = createEventOperationsContactRequestResponsePostHandler();

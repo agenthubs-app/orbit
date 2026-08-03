@@ -1,3 +1,5 @@
+import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+
 export const ORBIT_RECORDS_SCHEMA_SQL = `
 create table if not exists orbit_records (
   workspace_id text not null,
@@ -50,4 +52,5 @@ export async function runOrbitRecordsMigration(
   client: OrbitRecordsMigrationClient,
 ): Promise<void> {
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+  await runEventOperationsMigrations(client);
 }

@@ -5,13 +5,22 @@ import {
   createEventRegistrationRouteHandlers,
 } from "../../app/api/events/[id]/registration/route-handlers";
 import { createEventRegistrationCancelRouteHandler } from "../../app/api/events/[id]/registration/cancel/route-handler";
+import {
+  createEventRegistrationService,
+  createMemoryEventRegistrationProvider,
+} from "../../features/events/registration/service";
 
 const actor = { id: "user:registration-route-test", name: "Route Tester" };
+const registrationService = createEventRegistrationService({
+  provider: createMemoryEventRegistrationProvider(),
+});
 const { GET: getRegistration, POST: register } =
   createEventRegistrationRouteHandlers({
+    registrationService,
     resolveActor: async () => actor,
   });
 const cancelRegistration = createEventRegistrationCancelRouteHandler({
+  registrationService,
   resolveActor: async () => actor,
 });
 
@@ -84,6 +93,7 @@ test("event registration routes create cancel and reactivate the same record", a
 
 test("cancelling without a registration returns a stable not-found envelope", async () => {
   const cancelWithoutRegistration = createEventRegistrationCancelRouteHandler({
+    registrationService,
     resolveActor: async () => ({ id: "user:no-registration" }),
   });
   const response = await cancelWithoutRegistration(

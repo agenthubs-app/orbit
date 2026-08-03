@@ -8,14 +8,18 @@ import {
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../../shared/errors/app-error";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import type { EventRegistrationService } from "../../../../../../features/events/registration/service";
 
 interface EventRegistrationCancelRouteContext {
   params: Promise<{ id: string }>;
 }
 
 export function createEventRegistrationCancelRouteHandler(input: {
+  registrationService?: EventRegistrationService;
   resolveActor: () => Promise<{ id: string } | null>;
 }) {
+  const registrationService =
+    input.registrationService ?? eventRegistrationRuntimeService;
   return async function POST(
     _request: Request,
     context: EventRegistrationCancelRouteContext,
@@ -30,7 +34,7 @@ export function createEventRegistrationCancelRouteHandler(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const registration = await eventRegistrationRuntimeService.cancel({
+    const registration = await registrationService.cancel({
       eventId: id,
       userId: actor.id,
     });

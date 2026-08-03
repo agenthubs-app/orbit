@@ -1,16 +1,8 @@
-import {
-  loadAppEventDetailRoute,
-  type AppEventDetailBoundaryModel,
-  type AppEventDetailSuccessModel,
-} from "../../events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
-import {
-  loadAppProfileRouteViewModel,
-  type AppProfileActor,
-} from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
-import { profileRouteToOrbitProfileViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
+import type { AppProfileActor } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import type {
   OrbitPartyAgendaItemView,
   OrbitPartyPersonView,
+  OrbitPartyTableView,
   OrbitPartyViewModel,
 } from "../../orbit-party-route-view-model";
 import type { OrbitLanguage } from "../../orbit-language-core";
@@ -18,12 +10,17 @@ import {
   resolveModuleMode,
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
-import { eventStatusFor } from "../../orbit-event-view-helpers";
+import type { EventRecord } from "../../../../../features/events/event-crud-and-import/contract";
+import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import {
-  getOrbitLandingViewModel,
-  type OrbitLandingEventView,
-} from "../../orbit-landing-route-view-model";
-import { getOrbitRegisteredEventViewModel } from "../../orbit-registered-event-route-view-model";
+  EventOperationsError,
+  type EventContactRequest,
+  type EventOperationsParticipant,
+  type EventOperationsParticipantRecommendations,
+  type EventOperationsTable,
+} from "../../../../../features/events/event-operations/contract";
+import { createConfiguredEventOperationsService } from "../../../../../features/events/event-operations/runtime";
+import type { EventOperationsAttendeeWorkspace } from "../../../../../features/events/event-operations/service";
 
 export interface AppPartySearchParams {
   code?: string | string[];
@@ -43,11 +40,14 @@ export interface AppPartyRouteInput {
 }
 
 export interface AppPartyRouteDependencies {
-  getCatalogueEvents?: () => readonly OrbitLandingEventView[];
-  getRegistrationStatus?: (
+  loadEventMetadata?: (
+    eventId: string,
+    organizerActorId: string,
+  ) => Promise<EventRecord | null>;
+  getEventOperationsWorkspace?: (
     eventId: string,
     actorId: string,
-  ) => Promise<"cancelled" | "rsvped" | null>;
+  ) => Promise<EventOperationsAttendeeWorkspace>;
 }
 
 export interface AppPartyRouteStateViewModel {
@@ -280,293 +280,270 @@ function routeState(input: {
   };
 }
 
-function routeStateFromEventBoundary(
-  boundary: AppEventDetailBoundaryModel,
-  eventId: string,
-  language: OrbitLanguage,
-): AppPartyRouteViewModel {
-  return routeState({
-    errorCode: boundary.evidence[0] ?? null,
-    evidenceIds: boundary.evidence,
-    eventId,
-    language,
-    scenario: boundary.routeState,
-  });
+interface PartyEventMetadata {
+  endsAt: string;
+  id: string;
+  name: string;
+  startsAt: string;
+  venue: string;
 }
 
-function agendaFor(model: AppEventDetailSuccessModel): OrbitPartyAgendaItemView[] {
-  const start = new Date(model.canonicalEvent.startsAt);
-  const end = new Date(model.canonicalEvent.endsAt);
-  const startTime = Number.isFinite(start.getTime())
-    ? start.toISOString().slice(11, 16)
-    : "18:00";
-  const endTime = Number.isFinite(end.getTime())
-    ? end.toISOString().slice(11, 16)
-    : "20:00";
+function timeLabel(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? date.toISOString().slice(11, 16)
+    : "—";
+}
 
+function agendaForOperations(
+  workspace: EventOperationsAttendeeWorkspace,
+): OrbitPartyAgendaItemView[] {
   return [
     {
-      description: model.readiness.summary,
-      label: "Check in and context review",
-      time: startTime,
+      description: "A persisted, actor-scoped arrival record opens during this window.",
+      label: "Check-in opens",
+      time: timeLabel(workspace.configuration.checkInOpensAt),
     },
     {
-      description: model.recommendations.summary,
-      label: "Structured introductions",
-      time: endTime,
+      description: "AI complementary tables with a real table number and seat.",
+      label: "Round one tables",
+      time: timeLabel(workspace.configuration.roundOneStartsAt),
     },
     {
-      description: model.postEventReview.summary,
-      label: "Follow-up capture",
-      time: "After",
+      description: "AI topic-led tables remix the complete participant snapshot.",
+      label: "Round two topic tables",
+      time: timeLabel(workspace.configuration.roundTwoStartsAt),
     },
   ];
 }
 
-function personFromRecommendation(
-  model: AppEventDetailSuccessModel,
-  index: number,
-): OrbitPartyPersonView {
-  const recommendation = model.recommendations.recommendations[index];
-
-  if (!recommendation) {
-    throw new Error("party recommendation requires a recommendation payload");
-  }
-
-  const attendee = recommendation.attendee;
-  const topics = recommendation.matchSignals.length
-    ? recommendation.matchSignals.map((signal) => signal.label).slice(0, 4)
-    : [attendee.eventIntent, attendee.relationshipContext].filter(Boolean).slice(0, 4);
-  const company = attendee.organization || "Event attendee";
-  const knownContact = model.attendeeRoster.attendees.find(
-    (item) => item.attendeeId === attendee.attendeeId,
-  )?.knownContactMarker;
-
-  return {
-    company,
-    contactId:
-      knownContact?.isKnownContact === true
-        ? knownContact.contactId
-        : null,
-    g: gradientClasses[index % gradientClasses.length],
-    groupNumber: null,
-    icebreakers: [
-      recommendation.openingLine.text,
-      recommendation.recommendedAction,
-    ],
-    id: attendee.attendeeId,
-    industry: topics[0] ?? "Relationship",
-    initial: initialFor(attendee.displayName),
-    name: attendee.displayName,
-    offering: attendee.relationshipContext,
-    reason:
-      recommendation.reasons.join(" ") ||
-      recommendation.openingLine.rationale,
-    score: recommendation.score,
-    seat: null,
-    seeking: recommendation.recommendedAction,
-    summary: `${attendee.role} @ ${company}. ${attendee.eventIntent}`,
-    title: attendee.role,
-    topics,
-  };
+function eventPhaseFor(metadata: PartyEventMetadata): OrbitPartyViewModel["eventPhase"] {
+  const now = Date.now();
+  if (now < Date.parse(metadata.startsAt)) return "upcoming";
+  if (now > Date.parse(metadata.endsAt)) return "ended";
+  return "active";
 }
 
-function personFromAttendee(
-  model: AppEventDetailSuccessModel,
-  index: number,
-): OrbitPartyPersonView {
-  const attendee = model.attendeeRoster.attendees[index];
-
-  if (!attendee) {
-    throw new Error("party attendee requires an attendee payload");
-  }
-
-  const topics = attendee.attendeeTags.map((tag) => tag.label).slice(0, 4);
-  const company = attendee.organization || "Event attendee";
-
-  return {
-    company,
-    contactId: attendee.knownContactMarker.isKnownContact
-      ? attendee.knownContactMarker.contactId
-      : null,
-    g: gradientClasses[(index + 1) % gradientClasses.length],
-    groupNumber: null,
-    icebreakers: [
-      attendee.suggestedNextAction,
-      attendee.relationshipContext,
-    ],
-    id: attendee.attendeeId,
-    industry: topics[0] ?? "Relationship",
-    initial: initialFor(attendee.displayName),
-    name: attendee.displayName,
-    offering: attendee.relationshipContext,
-    reason: attendee.relationshipContext,
-    score: attendee.eligibleRecommendation.isEligible ? 82 : 70,
-    seat: null,
-    seeking: attendee.suggestedNextAction,
-    summary: `${attendee.role} @ ${company}. ${attendee.relationshipContext}`,
-    title: attendee.role,
-    topics,
-  };
-}
-
-function partyPeople(model: AppEventDetailSuccessModel): OrbitPartyPersonView[] {
-  if (model.recommendations.recommendations.length > 0) {
-    return model.recommendations.recommendations.map((_, index) =>
-      personFromRecommendation(model, index),
-    );
-  }
-
-  return model.attendeeRoster.attendees.map((_, index) =>
-    personFromAttendee(model, index),
+function contactRequestFor(
+  workspace: EventOperationsAttendeeWorkspace,
+  participant: EventOperationsParticipant,
+): EventContactRequest | null {
+  return (
+    workspace.contactRequests.find(
+      (request) =>
+        request.requesterParticipantId === participant.participantId ||
+        request.targetParticipantId === participant.participantId,
+    ) ?? null
   );
 }
 
-function meView(input: {
-  profile: ReturnType<typeof profileRouteToOrbitProfileViewModel>;
-  firstAttendee: OrbitPartyPersonView | null;
-}): OrbitPartyViewModel["me"] {
-  const profile = input.profile.profile;
+function recommendationFor(
+  recommendations: EventOperationsParticipantRecommendations | null,
+  participantId: string,
+) {
+  return (
+    recommendations?.recommendations.find(
+      (recommendation) =>
+        recommendation.targetParticipantId === participantId,
+    ) ?? null
+  );
+}
+
+function assignmentFor(
+  table: EventOperationsTable | null,
+  participantId: string,
+) {
+  return table?.members.find((member) => member.participantId === participantId) ?? null;
+}
+
+function personFromOperations(input: {
+  index: number;
+  participant: EventOperationsParticipant;
+  workspace: EventOperationsAttendeeWorkspace;
+}): OrbitPartyPersonView {
+  const recommendation = recommendationFor(
+    input.workspace.recommendations,
+    input.participant.participantId,
+  );
+  const request = contactRequestFor(input.workspace, input.participant);
+  const assignment = assignmentFor(
+    input.workspace.roundOneTable,
+    input.participant.participantId,
+  );
+  const incoming =
+    request?.targetParticipantId === input.workspace.me.participantId &&
+    request.status === "awaiting_target_consent";
+  const topics = input.participant.topics.slice(0, 4);
 
   return {
-    groupNumber: null,
-    initial: initialFor(profile.fullName),
-    name: profile.fullName,
-    offering: profile.offering.length ? profile.offering : ["relationship context"],
-    prompts: [
-      "Ask what outcome this person wants from the event.",
-      "Capture one concrete next step before leaving the conversation.",
-      "Confirm whether a warm introduction is appropriate.",
-    ],
-    role: [profile.title, profile.company].filter(Boolean).join(" · "),
-    seat: null,
-    seeking: profile.seeking.length ? profile.seeking : ["relevant introductions"],
-    topics: profile.topics.length ? profile.topics : ["relationship context"],
+    company: input.participant.company ?? "Independent",
+    contactId: request?.contactId ?? null,
+    contactRequestDirection: request
+      ? request.requesterParticipantId === input.workspace.me.participantId
+        ? "outgoing"
+        : "incoming"
+      : null,
+    contactRequestId: request?.requestId ?? null,
+    contactRequestStatus: incoming
+      ? "incoming"
+      : request?.status ?? "none",
+    g: gradientClasses[input.index % gradientClasses.length],
+    groupNumber: assignment
+      ? input.workspace.roundOneTable?.tableNumber ?? null
+      : null,
+    icebreakers: recommendation ? [...recommendation.icebreakers] : [],
+    id: input.participant.participantId,
+    industry: input.participant.industry ?? "Not provided",
+    initial: initialFor(input.participant.displayName),
+    isRecommended: recommendation !== null,
+    memberHint: recommendation?.memberHint ?? null,
+    name: input.participant.displayName,
+    noMatchReason: null,
+    offering: input.participant.offers.join(" · ") || "Not provided",
+    reason: recommendation
+      ? recommendation.reasons.join(" ")
+      : "Registered participant directory profile; this is not an AI recommendation.",
+    score: recommendation?.score ?? 0,
+    seat: assignment?.seat ?? null,
+    seeking: input.participant.needs.join(" · ") || "Not provided",
+    summary: [
+      input.participant.role,
+      input.participant.company,
+      input.participant.experienceHighlight,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    title: input.participant.role ?? "Event participant",
+    topics,
   };
 }
 
-function partyViewModel(input: {
-  event: AppEventDetailSuccessModel;
-  profile: ReturnType<typeof profileRouteToOrbitProfileViewModel>;
-}): OrbitPartyViewModel {
-  const people = partyPeople(input.event);
-  const event = input.event.eventDetail.event;
-
-  return {
-    accessCode: null,
-    agenda: agendaFor(input.event),
-    checkInAvailable: false,
-    eventId: event.id,
-    eventPhase: eventStatusFor(
-      event,
-      input.event.eventDetail.provenance.collectedAt,
-    ),
-    eventName: input.event.canonicalEvent.title,
-    eventVenue: input.event.canonicalEvent.venue,
-    icebreakers: [
-      "What outcome would make this event useful?",
-      "Which introduction should happen next?",
-      "What evidence should Orbit remember for follow-up?",
-    ],
-    me: meView({
-      firstAttendee: people[0] ?? null,
-      profile: input.profile,
-    }),
-    recommendations: people,
-    tableMates: people.slice(0, 4),
-  };
-}
-
-function cataloguePartyPeople(
-  event: OrbitLandingEventView,
-): OrbitPartyPersonView[] {
-  return event.stats.attendees.map((attendee, index) => {
-    const [title = "Event attendee", ...organizationParts] =
-      attendee.role.split(" · ");
-    const company = organizationParts.join(" · ") || "Event attendee";
-    const topics = [event.industry, ...event.tags].filter(Boolean).slice(0, 4);
-
-    return {
-      company,
-      contactId: null,
-      g: gradientClasses[index % gradientClasses.length],
-      groupNumber: null,
-      icebreakers: [
-        "What outcome did you take from this event?",
-        "Which follow-up would be useful now?",
-      ],
-      id: `${event.id}:catalogue-attendee:${index}`,
-      industry: topics[0] ?? "Relationship",
-      initial: attendee.initial || initialFor(attendee.name),
-      name: attendee.name,
-      offering: `Source-backed attendee context from ${event.name}.`,
-      reason:
-        "This person appears in the reviewed attendee roster for the current event.",
-      score: 70,
-      seat: null,
-      seeking: "A relevant, consent-based event follow-up.",
-      summary: `${title} @ ${company}.`,
-      title,
-      topics,
-    };
-  });
-}
-
-function cataloguePartyViewModel(input: {
-  event: OrbitLandingEventView;
-  profile: ReturnType<typeof profileRouteToOrbitProfileViewModel>;
-}): OrbitPartyViewModel {
-  const people = cataloguePartyPeople(input.event);
-
-  return {
-    accessCode: null,
-    agenda: input.event.agenda,
-    checkInAvailable: false,
-    eventId: input.event.id,
-    eventPhase: input.event.status,
-    eventName: input.event.name,
-    eventVenue: input.event.venue,
-    icebreakers: [
-      "What outcome did you take from this event?",
-      "Which introduction should happen next?",
-      "What evidence should Orbit remember for follow-up?",
-    ],
-    me: meView({
-      firstAttendee: people[0] ?? null,
-      profile: input.profile,
-    }),
-    recommendations: people,
-    tableMates: people.slice(0, 4),
-  };
-}
-
-async function registeredCatalogueEvent(
-  input: AppPartyRouteInput,
-  eventId: string,
-  dependencies: AppPartyRouteDependencies,
-): Promise<OrbitLandingEventView | null> {
-  const actorId = input.actor?.id.trim();
-  if (!actorId) return null;
-
-  if (!dependencies.getCatalogueEvents) {
-    return getOrbitRegisteredEventViewModel({
-      actorId,
-      eventId,
-    });
+function tableView(input: {
+  peopleById: ReadonlyMap<string, OrbitPartyPersonView>;
+  table: EventOperationsTable | null;
+  meParticipantId: string;
+}): OrbitPartyTableView | null {
+  if (!input.table) return null;
+  const meAssignment = input.table.members.find(
+    (member) => member.participantId === input.meParticipantId,
+  );
+  if (!meAssignment) return null;
+  const memberRationales = input.table.memberRationales;
+  if (
+    !memberRationales ||
+    Object.keys(memberRationales).length !== input.table.members.length ||
+    input.table.members.some(
+      (member) => !memberRationales[member.participantId]?.trim(),
+    )
+  ) {
+    return null;
   }
+  return {
+    icebreakers: [...input.table.icebreakers],
+    memberPrompts: [
+      ...(input.table.memberPrompts[input.meParticipantId] ?? []),
+    ],
+    members: input.table.members.flatMap((member) => {
+      if (member.participantId === input.meParticipantId) return [];
+      const person = input.peopleById.get(member.participantId);
+      return person
+        ? [{
+            ...person,
+            groupNumber: input.table?.tableNumber ?? null,
+            groupingRationale: memberRationales[member.participantId],
+            seat: member.seat,
+          }]
+        : [];
+    }),
+    myRationale: memberRationales[input.meParticipantId],
+    rationale: input.table.rationale,
+    seat: meAssignment.seat,
+    tableNumber: input.table.tableNumber,
+    theme: input.table.theme,
+  };
+}
 
-  const catalogueEvents = dependencies.getCatalogueEvents();
-  const event =
-    catalogueEvents.find(
-      (item) => item.id === eventId || item.code === eventId,
-    ) ?? null;
-  if (!event) return null;
+function contactRequestViews(
+  workspace: EventOperationsAttendeeWorkspace,
+): OrbitPartyViewModel["contactRequests"] {
+  return workspace.contactRequests.map((request) => ({
+    direction:
+      request.requesterParticipantId === workspace.me.participantId
+        ? "outgoing"
+        : "incoming",
+    otherParticipantId:
+      request.requesterParticipantId === workspace.me.participantId
+        ? request.targetParticipantId
+        : request.requesterParticipantId,
+    requestId: request.requestId,
+    status: request.status,
+  }));
+}
 
-  const registrationStatus = dependencies.getRegistrationStatus
-    ? await dependencies.getRegistrationStatus(event.id, actorId)
-    : null;
+function partyViewModelFromOperations(input: {
+  event: PartyEventMetadata;
+  workspace: EventOperationsAttendeeWorkspace;
+}): OrbitPartyViewModel {
+  const attendees = input.workspace.directory.map((participant, index) =>
+    personFromOperations({ index, participant, workspace: input.workspace }),
+  );
+  const peopleById = new Map(attendees.map((person) => [person.id, person]));
+  const recommendations = input.workspace.recommendations
+    ? input.workspace.recommendations.recommendations.flatMap((recommendation) => {
+        const person = peopleById.get(recommendation.targetParticipantId);
+        return person ? [person] : [];
+      })
+    : [];
+  const roundOne = tableView({
+    meParticipantId: input.workspace.me.participantId,
+    peopleById,
+    table: input.workspace.roundOneTable,
+  });
+  const roundTwo = tableView({
+    meParticipantId: input.workspace.me.participantId,
+    peopleById,
+    table: input.workspace.roundTwoTable,
+  });
 
-  return registrationStatus === "rsvped" ? event : null;
+  return {
+    accessCode: null,
+    agenda: agendaForOperations(input.workspace),
+    attendees,
+    checkedInAt: input.workspace.checkIn?.checkedInAt ?? null,
+    checkInAvailable: input.workspace.checkInAvailable,
+    contactRequests: contactRequestViews(input.workspace),
+    eventId: input.workspace.eventId,
+    eventName: input.event.name,
+    eventPhase: eventPhaseFor(input.event),
+    eventVenue: input.event.venue,
+    generationNotice: input.workspace.generationNotice,
+    graph: input.workspace.graph,
+    icebreakers: roundOne?.icebreakers ?? roundTwo?.icebreakers ?? [],
+    me: {
+      groupNumber: roundOne?.tableNumber ?? null,
+      initial: initialFor(input.workspace.me.displayName),
+      name: input.workspace.me.displayName,
+      participantId: input.workspace.me.participantId,
+      offering: [...input.workspace.me.offers],
+      prompts: roundOne?.memberPrompts ?? [],
+      role: [input.workspace.me.role, input.workspace.me.company]
+        .filter(Boolean)
+        .join(" · "),
+      seat: roundOne?.seat ?? null,
+      seeking: [...input.workspace.me.needs],
+      topics: [...input.workspace.me.topics],
+    },
+    profileEditDeadlineAt: input.workspace.configuration.profileEditDeadlineAt,
+    profileEditable: input.workspace.profileEditable,
+    recommendations,
+    recommendationNoMatchReason:
+      input.workspace.recommendations?.noMatchReason ?? null,
+    resultsAvailableAt: input.workspace.configuration.resultsAvailableAt,
+    resultsState: input.workspace.resultsState,
+    roundOne,
+    roundTwo,
+    tableMates: roundOne?.members ?? [],
+  };
 }
 
 export async function loadAppPartyRouteViewModel(
@@ -575,7 +552,6 @@ export async function loadAppPartyRouteViewModel(
   controls: AppPartyRouteControls = {},
 ): Promise<AppPartyRouteViewModel> {
   const language = input.language ?? "en";
-  const mode = input.mode ?? undefined;
   const scenario = normalizeScenario(controls.scenario);
   const eventId = routeEventId(input);
 
@@ -588,65 +564,85 @@ export async function loadAppPartyRouteViewModel(
     });
   }
 
-  const eventRoute = await loadAppEventDetailRoute({
-    actorId: input.actor?.id,
-    eventId,
-    mode,
-    scenario,
-  });
-
-  const catalogueEvent =
-    eventRoute.routeState === "success"
-      ? null
-      : await registeredCatalogueEvent(input, eventId, dependencies);
-
-  if (eventRoute.routeState !== "success" && !catalogueEvent) {
-    return routeStateFromEventBoundary(eventRoute, eventId, language);
-  }
-
-  const profileRoute = await loadAppProfileRouteViewModel(input.actor);
-
-  if (profileRoute.state === "route-state") {
+  if (scenario) {
     return routeState({
-      errorCode: profileRoute.routeState.errorCode,
-      evidenceIds: profileRoute.routeState.evidenceIds,
+      evidenceIds: [],
       eventId,
       language,
-      scenario: profileRoute.routeState.scenario,
+      scenario,
     });
   }
 
-  if (profileRoute.state === "failure") {
+  const actorId = input.actor?.id.trim();
+  if (!actorId) {
     return routeState({
-      errorCode: "PROFILE_ROUTE_FAILURE",
-      evidenceIds: profileRoute.failure.evidenceIds,
+      errorCode: "EVENT_OPERATIONS_FORBIDDEN",
+      evidenceIds: ["EVENT_OPERATIONS_FORBIDDEN"],
       eventId,
       language,
       scenario: "failure",
     });
   }
 
-  const profile = profileRouteToOrbitProfileViewModel(profileRoute);
-
-  if (catalogueEvent) {
-    return {
-      party: cataloguePartyViewModel({
-        event: catalogueEvent,
-        profile,
-      }),
-      state: "success",
-    };
+  let workspace: EventOperationsAttendeeWorkspace;
+  try {
+    if (dependencies.getEventOperationsWorkspace) {
+      workspace = await dependencies.getEventOperationsWorkspace(eventId, actorId);
+    } else {
+      const service = createConfiguredEventOperationsService();
+      if (!service) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_NOT_CONFIGURED",
+          "Event operations storage is not configured.",
+        );
+      }
+      workspace = await service.attendeeWorkspace({ actorId, eventId });
+    }
+  } catch (error) {
+    const errorCode =
+      error instanceof EventOperationsError
+        ? error.code
+        : "EVENT_OPERATIONS_WORKSPACE_FAILED";
+    return routeState({
+      errorCode,
+      evidenceIds: [errorCode],
+      eventId,
+      language,
+      scenario:
+        errorCode === "EVENT_OPERATIONS_NOT_CONFIGURED" ? "pending" : "failure",
+    });
   }
 
-  if (eventRoute.routeState !== "success") {
-    return routeStateFromEventBoundary(eventRoute, eventId, language);
+  let eventRecord: EventRecord | null;
+  try {
+    eventRecord = await (
+      dependencies.loadEventMetadata ?? loadEventForRegistration
+    )(workspace.eventId, workspace.configuration.organizerActorId);
+  } catch {
+    eventRecord = null;
   }
+
+  if (!eventRecord || eventRecord.id !== workspace.eventId) {
+    const errorCode = "EVENT_OPERATIONS_EVENT_METADATA_NOT_FOUND";
+    return routeState({
+      errorCode,
+      evidenceIds: [errorCode],
+      eventId,
+      language,
+      scenario: "failure",
+    });
+  }
+
+  const metadata: PartyEventMetadata = {
+    endsAt: eventRecord.endsAt,
+    id: eventRecord.id,
+    name: eventRecord.title,
+    startsAt: eventRecord.startsAt,
+    venue: eventRecord.venue,
+  };
 
   return {
-    party: partyViewModel({
-      event: eventRoute,
-      profile,
-    }),
+    party: partyViewModelFromOperations({ event: metadata, workspace }),
     state: "success",
   };
 }

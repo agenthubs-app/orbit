@@ -173,6 +173,7 @@ export interface GeminiOrbitAgentProviderConfig {
   apiKey?: string | null;
   endpoint?: string;
   fetchImplementation?: typeof fetch;
+  jsonOutput?: boolean;
   model?: string | null;
   provider?: OrbitAgentModelProvider | "gpt" | string | null;
   requestTimeoutMs?: number | null;
@@ -933,6 +934,7 @@ function readProviderErrorMessage(value: unknown): string | null {
 // DeepSeek 使用 Chat Completions，OpenAI 使用 Responses，Gemini 使用 interactions。
 function providerRequestBody(input: {
   inputText: string;
+  jsonOutput?: boolean;
   model: string;
   provider: OrbitAgentModelProvider;
   systemInstructionText: string;
@@ -950,6 +952,9 @@ function providerRequestBody(input: {
         },
       ],
       model: input.model,
+      ...(input.jsonOutput
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
       stream: false,
     };
   }
@@ -996,23 +1001,31 @@ async function fetchProviderResponse(
     timeoutMs: number;
     url: string;
   },
-): Promise<Response> {
+): Promise<{ response: Response; responseBody: unknown }> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => {
-    controller.abort(
-      new Error(
-        `${input.provider} request timed out after ${input.timeoutMs}ms.`,
-      ),
-    );
-  }, input.timeoutMs);
-
-  try {
-    return await input.fetchImplementation(input.url, {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutError = new Error(
+    `${input.provider} request timed out after ${input.timeoutMs}ms.`,
+  );
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort(timeoutError);
+      reject(timeoutError);
+    }, input.timeoutMs);
+  });
+  const requestAndBody = (async () => {
+    const response = await input.fetchImplementation(input.url, {
       ...input.init,
       signal: controller.signal,
     });
+    const responseBody = (await response.json()) as unknown;
+    return { response, responseBody };
+  })();
+
+  try {
+    return await Promise.race([requestAndBody, deadline]);
   } finally {
-    clearTimeout(timeout);
+    if (timeout !== undefined) clearTimeout(timeout);
   }
 }
 
@@ -1060,14 +1073,16 @@ export async function runOrbitAgentModelText(input: {
   }
 
   let response: Response;
+  let responseBody: unknown;
 
   try {
-    response = await fetchProviderResponse({
+    ({ response, responseBody } = await fetchProviderResponse({
       fetchImplementation,
       init: {
         body: JSON.stringify(
           providerRequestBody({
             inputText: input.userText,
+            jsonOutput: config.jsonOutput,
             model: provider.model,
             provider: provider.provider,
             systemInstructionText: input.systemInstruction,
@@ -1079,23 +1094,7 @@ export async function runOrbitAgentModelText(input: {
       provider: provider.provider,
       timeoutMs,
       url: provider.endpoint,
-    });
-  } catch (error) {
-    return {
-      error: {
-        code: "MODEL_REQUEST_FAILED",
-        message: requestErrorMessage(error, provider.provider),
-        provider: provider.provider,
-        source: provider.source,
-      },
-      success: false,
-    };
-  }
-
-  let responseBody: unknown;
-
-  try {
-    responseBody = (await response.json()) as unknown;
+    }));
   } catch (error) {
     return {
       error: {
@@ -1173,9 +1172,10 @@ export function createGeminiOrbitAgentPlanner(
       }
 
       let response: Response;
+      let responseBody: unknown;
 
       try {
-        response = await fetchProviderResponse({
+        ({ response, responseBody } = await fetchProviderResponse({
           fetchImplementation,
           init: {
             body: JSON.stringify(
@@ -1192,23 +1192,7 @@ export function createGeminiOrbitAgentPlanner(
           provider: provider.provider,
           timeoutMs,
           url: provider.endpoint,
-        });
-      } catch (error) {
-        return {
-          error: {
-            code: "MODEL_REQUEST_FAILED",
-            message: requestErrorMessage(error, provider.provider),
-            provider: provider.provider,
-            source: provider.source,
-          },
-          success: false,
-        };
-      }
-
-      let responseBody: unknown;
-
-      try {
-        responseBody = (await response.json()) as unknown;
+        }));
       } catch (error) {
         return {
           error: {
@@ -1299,9 +1283,10 @@ export function createGeminiOrbitAgentPlanner(
       }
 
       let response: Response;
+      let responseBody: unknown;
 
       try {
-        response = await fetchProviderResponse({
+        ({ response, responseBody } = await fetchProviderResponse({
           fetchImplementation,
           init: {
             body: JSON.stringify(
@@ -1318,23 +1303,7 @@ export function createGeminiOrbitAgentPlanner(
           provider: provider.provider,
           timeoutMs,
           url: provider.endpoint,
-        });
-      } catch (error) {
-        return {
-          error: {
-            code: "MODEL_REQUEST_FAILED",
-            message: requestErrorMessage(error, provider.provider),
-            provider: provider.provider,
-            source: provider.source,
-          },
-          success: false,
-        };
-      }
-
-      let responseBody: unknown;
-
-      try {
-        responseBody = (await response.json()) as unknown;
+        }));
       } catch (error) {
         return {
           error: {

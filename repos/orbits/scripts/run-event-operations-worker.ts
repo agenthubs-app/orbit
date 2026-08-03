@@ -1,0 +1,186 @@
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
+
+import { createStorageBusinessCardContactWriteProvider } from "../features/contacts/storage/contact-write-live-record-provider";
+import { createEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
+import { createEventOperationsEngine } from "../features/events/event-operations/engine";
+import { createEventOperationsOutboxProjector } from "../features/events/event-operations/outbox-projector";
+import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
+import { createPostgresEventOperationsOutboxRepository } from "../features/events/event-operations/storage/postgres-outbox-repository";
+import { createConfiguredEventOperationsPostgresRuntime } from "../features/events/event-operations/storage/postgres-client";
+import { runEventOperationsMigrations } from "../features/events/event-operations/storage/migrations";
+import { createEventOperationsWorker } from "../features/events/event-operations/worker";
+import { createEventRegistrationLiveRecordProvider } from "../features/events/registration/storage/live-record-provider";
+import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
+
+function positiveInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || !raw.trim()) return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return value;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function main(): Promise<void> {
+  const runtime = createConfiguredEventOperationsPostgresRuntime({
+    max: positiveInteger("ORBIT_EVENT_OPERATIONS_DB_POOL_MAX", 12),
+  });
+  const liveRecords = createConfiguredPostgresLiveRecordStore({
+    max: positiveInteger("ORBIT_EVENT_OPERATIONS_PROJECTION_DB_POOL_MAX", 8),
+  });
+  if (!runtime || !liveRecords) {
+    throw new Error(
+      "Event operations worker requires ORBIT_EVENT_DATABASE_URL and a workspace id.",
+    );
+  }
+  if (runtime.workspaceId !== liveRecords.workspaceId) {
+    throw new Error(
+      "Event operations and legacy projection stores resolved different workspaces.",
+    );
+  }
+
+  await runEventOperationsMigrations(runtime.client);
+
+  const workerId =
+    process.env.ORBIT_EVENT_OPERATIONS_WORKER_ID?.trim() ||
+    `event-operations:${hostname()}:${process.pid}:${randomUUID()}`;
+  const taskLeaseMs = positiveInteger(
+    "ORBIT_EVENT_OPERATIONS_TASK_LEASE_MS",
+    5 * 60_000,
+  );
+  const taskConcurrency = positiveInteger(
+    "ORBIT_EVENT_OPERATIONS_TASK_CONCURRENCY",
+    8,
+  );
+  const repository = createPostgresEventOperationsRepository(runtime);
+  const aiProvider = createEventOperationsAiProvider({
+    config: {
+      jsonOutput: true,
+      requestTimeoutMs: positiveInteger(
+        "ORBIT_EVENT_OPERATIONS_MODEL_TIMEOUT_MS",
+        90_000,
+      ),
+    },
+  });
+  const aiRequestFingerprint = aiProvider.requestFingerprint?.trim();
+  if (!aiRequestFingerprint) {
+    throw new Error("The Event Operations AI provider has no request fingerprint.");
+  }
+  const engine = createEventOperationsEngine({
+    aiProvider,
+    heartbeatMs: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_TASK_HEARTBEAT_MS",
+      Math.floor(taskLeaseMs / 3),
+    ),
+    leaseMs: taskLeaseMs,
+    maxConcurrency: taskConcurrency,
+    repository,
+  });
+  const relationshipProvider = createStorageBusinessCardContactWriteProvider({
+    recordProvider: "event-operations-outbox-projector",
+    store: liveRecords.store,
+    workspaceId: liveRecords.workspaceId,
+  });
+  const registrationProvider = createEventRegistrationLiveRecordProvider({
+    source: "event-operations-outbox-projector:registration",
+    store: liveRecords.store,
+    workspaceId: liveRecords.workspaceId,
+  });
+  const worker = createEventOperationsWorker({
+    aiRequestFingerprint,
+    engine,
+    generationConcurrency: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_GENERATION_CONCURRENCY",
+      2,
+    ),
+    outboxConcurrency: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_OUTBOX_CONCURRENCY",
+      8,
+    ),
+    outboxHeartbeatMs: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_OUTBOX_HEARTBEAT_MS",
+      20_000,
+    ),
+    outboxLeaseMs: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_OUTBOX_LEASE_MS",
+      60_000,
+    ),
+    outboxProjector: createEventOperationsOutboxProjector({
+      registrationProvider,
+      relationshipProvider,
+    }),
+    outboxRepository: createPostgresEventOperationsOutboxRepository(runtime),
+    runtime,
+    taskConcurrency,
+    workerId,
+  });
+
+  let stopping = false;
+  const stop = () => {
+    stopping = true;
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+  const pollMs = positiveInteger("ORBIT_EVENT_OPERATIONS_POLL_MS", 1_000);
+  let consecutiveDrainFailures = 0;
+
+  process.stdout.write(
+    `${JSON.stringify({ event: "event_operations_worker_started", workerId })}\n`,
+  );
+  try {
+    while (!stopping) {
+      try {
+        const result = await worker.drainOnce();
+        consecutiveDrainFailures = 0;
+        if (result.workClaimed > 0 || result.errors.length > 0) {
+          process.stdout.write(
+            `${JSON.stringify({ event: "event_operations_worker_drain", workerId, ...result })}\n`,
+          );
+        }
+        if (result.workClaimed > 0) {
+          // A different worker can win between runnable discovery and claim.
+          // Yield briefly even after work so that race cannot busy-spin.
+          await sleep(Math.min(25, pollMs));
+          continue;
+        }
+        await sleep(pollMs);
+      } catch (error) {
+        consecutiveDrainFailures += 1;
+        const backoffMs = Math.min(
+          30_000,
+          pollMs * 2 ** Math.min(5, consecutiveDrainFailures - 1),
+        );
+        process.stdout.write(
+          `${JSON.stringify({
+            backoffMs,
+            error: error instanceof Error ? error.message : "Worker drain failed.",
+            event: "event_operations_worker_drain_failed",
+            workerId,
+          })}\n`,
+        );
+        await sleep(backoffMs);
+      }
+    }
+  } finally {
+    process.stdout.write(
+      `${JSON.stringify({ event: "event_operations_worker_stopped", workerId })}\n`,
+    );
+    await Promise.allSettled([runtime.client.close(), liveRecords.client.close()]);
+  }
+}
+
+main().catch((error: unknown) => {
+  process.stderr.write(
+    `${JSON.stringify({
+      error: error instanceof Error ? error.message : "Worker startup failed.",
+      event: "event_operations_worker_start_failed",
+    })}\n`,
+  );
+  process.exitCode = 1;
+});

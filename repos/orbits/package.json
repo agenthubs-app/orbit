@@ -11,6 +11,7 @@
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
     "db:smoke:live-runtime": "tsx scripts/smoke-live-runtime.ts",
     "agent:worker": "tsx scripts/run-agent-worker.ts",
+    "event-operations:worker": "tsx scripts/run-event-operations-worker.ts",
     "eval:business-card-ocr": "tsx scripts/evaluate-business-card-ocr.ts",
     "audit:surfaces": "node scripts/generate-product-surface-manifest.mjs",
     "audit:full-product": "node scripts/generate-full-product-functional-audit.mjs",
@@ -43,7 +44,9 @@
     "@types/pg": "^8.20.0",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
+    "@types/react-test-renderer": "^18.3.1",
     "eslint": "8.57.1",
+    "react-test-renderer": "^18.3.1",
     "sharp": "^0.34.5",
     "tsx": "4.19.2",
     "typescript": "5.7.2"

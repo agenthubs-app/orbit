@@ -8,9 +8,11 @@ import {
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../shared/errors/app-error";
 import type { EventParticipantProfileAnswers } from "../../../../../features/events/registration/contract";
+import { EventRegistrationWindowError } from "../../../../../features/events/registration/deadline-gated-service";
 import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
+import type { EventRegistrationService } from "../../../../../features/events/registration/service";
 
 interface EventRegistrationRouteContext {
   params: Promise<{ id: string }>;
@@ -48,8 +50,11 @@ function errorResponse(error: AppError, status: number): Response {
 }
 
 export function createEventRegistrationRouteHandlers(input: {
+  registrationService?: EventRegistrationService;
   resolveActor: () => Promise<RegistrationActor | null>;
 }) {
+  const registrationService =
+    input.registrationService ?? eventRegistrationRuntimeService;
   async function GET(
     request: Request,
     context: EventRegistrationRouteContext,
@@ -74,7 +79,7 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const searchParams = new URL(request.url).searchParams;
     const shouldGenerateQuestions = searchParams.get("questions") !== "false";
-    const registration = await eventRegistrationRuntimeService.get({
+    const registration = await registrationService.get({
       eventId: event.id,
       userId: actor.id,
     });
@@ -129,12 +134,30 @@ export function createEventRegistrationRouteHandlers(input: {
       );
     }
 
-    const registration = await eventRegistrationRuntimeService.register({
-      answers: await readAnswers(request),
-      displayName: actor.name,
-      eventId: event.id,
-      userId: actor.id,
-    });
+    let registration;
+    try {
+      registration = await registrationService.register({
+        answers: await readAnswers(request),
+        displayName: actor.name,
+        eventId: event.id,
+        userId: actor.id,
+      });
+    } catch (error) {
+      if (error instanceof EventRegistrationWindowError) {
+        const unavailable = [
+          "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+          "EVENT_REGISTRATION_WINDOW_INVALID",
+        ].includes(error.code);
+        return errorResponse(
+          new AppError(
+            unavailable ? "SERVICE_UNAVAILABLE" : "CONFLICT",
+            error.message,
+          ),
+          unavailable ? 503 : 409,
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(success(registration), {
       headers: runtimeBoundaryHeaders(mode),

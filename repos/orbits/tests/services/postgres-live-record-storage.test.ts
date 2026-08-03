@@ -86,12 +86,17 @@ test("orbit records migration can run through an async SQL client", async () => 
 
   await runOrbitRecordsMigration(client);
 
-  assert.equal(client.calls.length, 1);
+  assert.equal(client.calls.length, 3);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
   );
   assert.match(client.calls[0]?.text ?? "", /payload jsonb not null/i);
+  assert.match(
+    client.calls[1]?.text ?? "",
+    /create table if not exists event_ops_schema_migrations/i,
+  );
+  assert.match(client.calls[2]?.text ?? "", /create table event_ops_events/i);
 });
 
 test("postgres live record store upserts records with parameterized SQL", async () => {
