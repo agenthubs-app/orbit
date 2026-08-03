@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import type { OrbitPartyPersonView, OrbitPartyViewModel } from "../orbit-party-route-view-model";
+import type { EventParticipantDetailView } from "../../../../features/events/event-operations/participant-detail";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { ModalShell } from "../orbit-account-shell";
 import {
@@ -210,17 +211,26 @@ function PartyDesktopChrome({
 
 function NetworkPerson({
   eventId,
+  onSelect,
   p,
   t,
 }: {
   eventId: string;
+  onSelect: (person: OrbitPartyPersonView) => void;
   p: OrbitPartyPersonView;
   t: Translate;
 }) {
   return (
-    <div className="orbit-party-network-person card">
-      <span className={`avatar ${p.g} orbit-party-network-avatar`}>{p.initial}</span>
-      <div className="orbit-party-network-person-body">
+    <article className="orbit-party-network-person card" style={{ position: "relative" }}>
+      <button
+        aria-label={t({ en: `View ${p.name}'s details`, zh: `查看 ${p.name} 的详情` })}
+        data-party-person-open={p.id}
+        onClick={() => onSelect(p)}
+        style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute", zIndex: 0 }}
+        type="button"
+      />
+      <span className={`avatar ${p.g} orbit-party-network-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{p.initial}</span>
+      <div className="orbit-party-network-person-body" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>
         <div className="orbit-party-network-person-top">
           <span className="h-section orbit-party-network-person-name">{p.name}</span>
           {p.groupNumber !== null && p.seat ? (
@@ -241,11 +251,11 @@ function NetworkPerson({
             </span>
           ))}
         </div>
-        <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+        <div style={{ display: "grid", gap: 8, marginTop: 12, pointerEvents: "auto", position: "relative", zIndex: 2 }}>
           <EventContactRequestControl eventId={eventId} person={p} t={t} />
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -591,7 +601,7 @@ function PartyTable({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewM
   );
 }
 
-function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+function PartyRecommendations({ onSelect, t, viewModel }: { onSelect: (person: OrbitPartyPersonView) => void; t: Translate; viewModel: OrbitPartyViewModel }) {
   const [industry, setIndustry] = useState("");
   const [query, setQuery] = useState("");
   const industries = useMemo(
@@ -662,14 +672,14 @@ function PartyRecommendations({ t, viewModel }: { t: Translate; viewModel: Orbit
       </div>
       <div className="orbit-party-network-list">
         {list.map((person) => (
-          <NetworkPerson eventId={viewModel.eventId} key={person.id} p={person} t={t} />
+          <NetworkPerson eventId={viewModel.eventId} key={person.id} onSelect={onSelect} p={person} t={t} />
         ))}
       </div>
     </div>
   );
 }
 
-function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+function PartyAttendees({ onSelect, t, viewModel }: { onSelect: (person: OrbitPartyPersonView) => void; t: Translate; viewModel: OrbitPartyViewModel }) {
   const [query, setQuery] = useState("");
   const attendees = useMemo(() => partyParticipants(viewModel), [viewModel]);
   const list = useMemo(() => {
@@ -715,9 +725,16 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
           ) : null}
         </div>
         {list.map((person) => (
-          <div className="card orbit-party-attendee-card" key={person.id}>
-            <span className={`avatar ${person.g} orbit-party-attendee-avatar`}>{person.initial}</span>
-            <div className="orbit-party-attendee-body">
+          <article className="card orbit-party-attendee-card" key={person.id} style={{ position: "relative" }}>
+            <button
+              aria-label={t({ en: `View ${person.name}'s details`, zh: `查看 ${person.name} 的详情` })}
+              data-party-person-open={person.id}
+              onClick={() => onSelect(person)}
+              style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute", zIndex: 0 }}
+              type="button"
+            />
+            <span className={`avatar ${person.g} orbit-party-attendee-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{person.initial}</span>
+            <div className="orbit-party-attendee-body" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>
               <div className="orbit-party-attendee-name">{person.name}</div>
               <div className="orbit-party-attendee-meta">
                 {person.company} · {person.title}
@@ -733,12 +750,12 @@ function PartyAttendees({ t, viewModel }: { t: Translate; viewModel: OrbitPartyV
               </div>
             </div>
             {person.seat ? (
-              <span className="chip chip-accent orbit-party-attendee-seat">{person.seat}</span>
+              <span className="chip chip-accent orbit-party-attendee-seat" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{person.seat}</span>
             ) : null}
-            <div style={{ gridColumn: "1 / -1" }}>
+            <div style={{ gridColumn: "1 / -1", position: "relative", zIndex: 2 }}>
               <EventContactRequestControl eventId={viewModel.eventId} person={person} t={t} />
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </div>
@@ -912,15 +929,106 @@ function SocialGraphLite({
 }
 
 function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string; onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
+  const [detail, setDetail] = useState<EventParticipantDetailView | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setDetail(null);
+    setDetailError(null);
+    setLoading(true);
+    void fetch(
+      `/api/events/${encodeURIComponent(eventId)}/operations/participants/${encodeURIComponent(person.id)}`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as {
+          data?: EventParticipantDetailView;
+          error?: { message?: string };
+          success?: boolean;
+        } | null;
+        if (!response.ok || body?.success !== true || !body.data) {
+          throw new Error(
+            body?.error?.message ??
+              t({
+                en: "Participant details could not be loaded.",
+                zh: "暂时无法加载参会者详情。",
+              }),
+          );
+        }
+        setDetail(body.data);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setDetailError(
+          error instanceof Error
+            ? error.message
+            : t({
+                en: "Participant details could not be loaded.",
+                zh: "暂时无法加载参会者详情。",
+              }),
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+    // `t` is request-language scoped; including its function identity would
+    // refetch the same immutable profile version on every provider render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, person.id]);
+
+  const contactPerson = detail
+    ? {
+        ...person,
+        contactId: detail.contactRequest.contactId,
+        contactRequestDirection: detail.contactRequest.direction,
+        contactRequestId: detail.contactRequest.requestId,
+        contactRequestStatus: detail.contactRequest.status,
+      }
+    : person;
+
   return (
     <ModalShell bare label={person.name} onClose={onClose} variant="bottom-sheet">
       <div style={{ background: "var(--surface)", padding: "16px 18px 0", position: "sticky", top: 0 }}>
-        <button aria-label={t({ en: "Back to graph", zh: "返回图谱" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
+        <button aria-label={t({ en: "Close participant details", zh: "关闭参会者详情" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
           <Icon name="chevL" size={16} />
-          {t({ en: "Back to graph", zh: "返回图谱" })}
+          {t({ en: "Back", zh: "返回" })}
         </button>
       </div>
-      <div style={{ padding: 20 }}>
+      <div data-party-person-detail={person.id} style={{ padding: 20 }}>
+        {detail?.placements.length ? (
+          <section
+            style={{
+              background: "linear-gradient(135deg, var(--ink), color-mix(in srgb, var(--ink) 82%, var(--accent)))",
+              borderRadius: 18,
+              color: "var(--on-dark)",
+              display: "grid",
+              gap: 12,
+              marginBottom: 20,
+              padding: 18,
+            }}
+          >
+            <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".2em", opacity: 0.72 }}>
+              {t({ en: "SEAT ASSIGNMENTS", zh: "座位安排" })}
+            </div>
+            {detail.placements.map((placement) => (
+              <div data-party-placement={`${placement.roundNumber}:${placement.tableNumber}:${placement.seat}`} key={`${placement.roundNumber}:${placement.tableNumber}`} style={{ alignItems: "center", display: "grid", gap: 12, gridTemplateColumns: "auto 1fr auto" }}>
+                <span style={{ alignItems: "center", background: "rgba(255,255,255,.12)", borderRadius: 12, display: "inline-flex", fontFamily: "var(--ff-mono)", fontSize: 12, height: 42, justifyContent: "center", width: 42 }}>
+                  R{placement.roundNumber}
+                </span>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>
+                    {t({ en: `Table ${placement.tableNumber}`, zh: `第 ${placement.tableNumber} 桌` })}
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 3, opacity: 0.72 }}>{placement.theme}</div>
+                </div>
+                <strong style={{ fontFamily: "var(--ff-display)", fontSize: 25 }}>{placement.seat}</strong>
+              </div>
+            ))}
+          </section>
+        ) : null}
         <div className="eyebrow">{person.company}</div>
         <h2 className="h-display" style={{ marginTop: 10 }}>
           {person.name}
@@ -937,7 +1045,6 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
           ) : null}
         </div>
         <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
-        <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 12 }}>{person.reason}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
           {person.topics.map((topic) => (
             <span className="chip" key={topic}>
@@ -945,8 +1052,60 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
             </span>
           ))}
         </div>
+        {loading ? (
+          <div aria-busy="true" className="card" style={{ color: "var(--text-3)", marginTop: 18, padding: 18 }}>
+            {t({ en: "Loading verified profile responses…", zh: "正在加载可核验的活动资料…" })}
+          </div>
+        ) : null}
+        {detailError ? (
+          <div className="orbit-alert error" role="alert" style={{ marginTop: 18 }}>
+            {detailError}
+          </div>
+        ) : null}
+        {detail?.responses.length ? (
+          <section style={{ display: "grid", gap: 12, marginTop: 24 }}>
+            <div>
+              <div className="eyebrow">PROFILE RESPONSES</div>
+              <h3 className="h-section" style={{ margin: "7px 0 0" }}>
+                {t({ en: "What they shared for this event", zh: "TA 为本场活动填写的内容" })}
+              </h3>
+            </div>
+            {detail.responses.map((response) => (
+              <article className="card" data-party-profile-response={response.fieldKey} key={response.fieldKey} style={{ padding: 16 }}>
+                <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "space-between" }}>
+                  <strong style={{ fontSize: 13.5 }}>{t(response.label)}</strong>
+                  <span className="chip" style={{ fontSize: 10.5 }}>
+                    {t({ en: "Participant-provided", zh: "参会者填写" })}
+                  </span>
+                </div>
+                <p style={{ color: "var(--ink)", fontSize: 15, lineHeight: 1.7, margin: "12px 0 0" }}>{response.answer}</p>
+                {response.prompt ? (
+                  <div style={{ borderTop: "1px solid var(--hairline)", color: "var(--text-3)", fontSize: 12, lineHeight: 1.65, marginTop: 13, paddingTop: 11 }}>
+                    <span style={{ fontWeight: 700 }}>{t({ en: "Question asked: ", zh: "本场提问：" })}</span>
+                    {response.prompt}
+                  </div>
+                ) : (
+                  <div style={{ color: "var(--text-4)", fontSize: 11.5, marginTop: 10 }}>
+                    {t({ en: "Historical answer; the original question was not stored.", zh: "历史回答，原始问题未被保存。" })}
+                  </div>
+                )}
+              </article>
+            ))}
+          </section>
+        ) : null}
+        {detail?.recommendation ? (
+          <section className="card" style={{ marginTop: 22, padding: 17 }}>
+            <div className="eyebrow">WHY THIS PERSON</div>
+            <h3 className="h-section" style={{ margin: "8px 0 0" }}>{t({ en: "Why Orbit recommended this connection", zh: "为什么 Orbit 推荐你们认识" })}</h3>
+            <div style={{ color: "var(--text-2)", display: "grid", gap: 8, lineHeight: 1.7, marginTop: 12 }}>
+              {detail.recommendation.reasons.map((reason) => <div key={reason}>{reason}</div>)}
+            </div>
+          </section>
+        ) : (
+          <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 18 }}>{person.reason}</p>
+        )}
         <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
-          <EventContactRequestControl eventId={eventId} person={person} t={t} />
+          <EventContactRequestControl eventId={eventId} person={contactPerson} t={t} />
         </div>
       </div>
     </ModalShell>
@@ -1104,9 +1263,8 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
   );
 }
 
-function PartyGraphInline({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+function PartyGraphInline({ onSelect, t, viewModel }: { onSelect: (person: OrbitPartyPersonView) => void; t: Translate; viewModel: OrbitPartyViewModel }) {
   const [scale, setScale] = useState(1);
-  const [selected, setSelected] = useState<OrbitPartyPersonView | null>(null);
   const graphParticipantIds = new Set(
     viewModel.graph?.nodes.map((node) => node.participantId) ?? [],
   );
@@ -1148,12 +1306,11 @@ function PartyGraphInline({ t, viewModel }: { t: Translate; viewModel: OrbitPart
       </div>
       <div className="card" style={{ marginTop: 14, padding: 14 }}>
         {viewModel.graph ? (
-          <SocialGraphLite graph={viewModel.graph} me={viewModel.me} onSelect={setSelected} people={graphPeople} scale={scale} />
+          <SocialGraphLite graph={viewModel.graph} me={viewModel.me} onSelect={onSelect} people={graphPeople} scale={scale} />
         ) : (
           <PartyResultsBoundary t={t} viewModel={viewModel} />
         )}
       </div>
-      {selected ? <PersonDetailOverlay eventId={viewModel.eventId} onClose={() => setSelected(null)} person={selected} t={t} /> : null}
     </div>
   );
 }
@@ -1281,6 +1438,7 @@ function PartyMe({ onExit, t, viewModel }: { onExit: () => void; t: Translate; v
 export function OrbitRealParty({ viewModel }: { viewModel: OrbitPartyViewModel }) {
   const { t } = useOrbitLanguage();
   const [tab, setTab] = useState<PartyTab>("home");
+  const [selectedPerson, setSelectedPerson] = useState<OrbitPartyPersonView | null>(null);
 
   return (
     <div className="orbit-party-page" data-orbit-real-page style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden", position: "relative" }}>
@@ -1289,10 +1447,18 @@ export function OrbitRealParty({ viewModel }: { viewModel: OrbitPartyViewModel }
       <PartyMobileTopTabs onExit={returnToBeforeParty} setTab={setTab} t={t} tab={tab} viewModel={viewModel} />
       {tab === "home" ? <PartyHome go={setTab} t={t} viewModel={viewModel} /> : null}
       {tab === "table" ? <PartyTable t={t} viewModel={viewModel} /> : null}
-      {tab === "recommendations" ? <PartyRecommendations t={t} viewModel={viewModel} /> : null}
-      {tab === "attendees" ? <PartyAttendees t={t} viewModel={viewModel} /> : null}
-      {tab === "graph" ? <PartyGraphInline t={t} viewModel={viewModel} /> : null}
+      {tab === "recommendations" ? <PartyRecommendations onSelect={setSelectedPerson} t={t} viewModel={viewModel} /> : null}
+      {tab === "attendees" ? <PartyAttendees onSelect={setSelectedPerson} t={t} viewModel={viewModel} /> : null}
+      {tab === "graph" ? <PartyGraphInline onSelect={setSelectedPerson} t={t} viewModel={viewModel} /> : null}
       {tab === "agenda" ? <PartyAgenda t={t} viewModel={viewModel} /> : null}
+      {selectedPerson ? (
+        <PersonDetailOverlay
+          eventId={viewModel.eventId}
+          onClose={() => setSelectedPerson(null)}
+          person={selectedPerson}
+          t={t}
+        />
+      ) : null}
     </div>
   );
 }

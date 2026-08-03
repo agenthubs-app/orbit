@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { createHash, randomUUID } from "node:crypto";
 
 import {
@@ -22,7 +23,10 @@ import {
   type EventOperationsTaskOutput,
 } from "./contract";
 import { buildDeterministicCandidates } from "./candidate-retrieval";
-import type { EventOperationsRepository } from "./repository";
+import type {
+  EventOperationsRepository,
+  EventOperationsTaskAttemptMeasurement,
+} from "./repository";
 
 export interface EventOperationsEngine {
   createGeneration(input: {
@@ -43,6 +47,7 @@ export interface EventOperationsEngine {
     actorId: string;
     generationId: string;
     maxConcurrency?: number;
+    signal?: AbortSignal;
     workerId: string;
   }): Promise<EventOperationsProgress>;
 }
@@ -52,6 +57,7 @@ export interface EventOperationsEngineOptions {
   heartbeatMs?: number;
   leaseMs?: number;
   maxConcurrency?: number;
+  monotonicNow?: () => number;
   now?: () => string;
   repository: EventOperationsRepository;
   token?: () => string;
@@ -74,6 +80,15 @@ function hash(value: unknown): string {
   return createHash("sha256")
     .update(JSON.stringify(stableValue(value)))
     .digest("hex");
+}
+
+function safeSerializedBytes(value: unknown): number {
+  try {
+    const serialized = JSON.stringify(stableValue(value));
+    return serialized === undefined ? 0 : Buffer.byteLength(serialized, "utf8");
+  } catch {
+    return 0;
+  }
 }
 
 function normalizedParticipants(
@@ -760,6 +775,7 @@ export function createEventOperationsEngine({
   heartbeatMs: requestedHeartbeatMs,
   leaseMs = DEFAULT_LEASE_MS,
   maxConcurrency = DEFAULT_MAX_CONCURRENCY,
+  monotonicNow = () => globalThis.performance.now(),
   now = () => new Date().toISOString(),
   repository,
   token = randomUUID,
@@ -816,6 +832,45 @@ export function createEventOperationsEngine({
       );
     }
 
+    const measurement: EventOperationsTaskAttemptMeasurement = {
+      domainValidationDurationMs: 0,
+      model: null,
+      provider: null,
+      providerAdapterDurationMs: 0,
+      requestBytes: 0,
+      responseBytes: 0,
+    };
+    const elapsed = (startedAt: number) =>
+      Math.max(0, monotonicNow() - startedAt);
+
+    async function measureProvider<T>(
+      request: unknown,
+      operation: () => Promise<EventOperationsAiResult<T>>,
+    ): Promise<EventOperationsAiResult<T>> {
+      measurement.requestBytes += safeSerializedBytes(request);
+      const startedAt = monotonicNow();
+      try {
+        const result = await operation();
+        measurement.responseBytes += safeSerializedBytes(result);
+        if (result.success) {
+          measurement.provider = result.provider;
+          measurement.model = result.model;
+        }
+        return result;
+      } finally {
+        measurement.providerAdapterDurationMs += elapsed(startedAt);
+      }
+    }
+
+    function measureValidation<T>(operation: () => T): T {
+      const startedAt = monotonicNow();
+      try {
+        return operation();
+      } finally {
+        measurement.domainValidationDurationMs += elapsed(startedAt);
+      }
+    }
+
     async function fail(
       code: EventOperationsFailureCode,
       message: string,
@@ -831,13 +886,30 @@ export function createEventOperationsEngine({
           code !== "EVENT_OPERATIONS_GENERATION_NOT_READY" &&
           code !== "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND",
         taskId: claimed.taskId,
+        telemetry: { ...measurement },
       });
     }
 
     async function complete(
-      input: Parameters<EventOperationsRepository["completeTask"]>[0],
+      completion: Omit<
+        Parameters<EventOperationsRepository["completeTask"]>[0],
+        "telemetry"
+      >,
     ): Promise<void> {
-      if (!(await repository.completeTask(input))) {
+      if (
+        !(
+          await repository.completeTask({
+            ...completion,
+            telemetry: {
+              ...measurement,
+              model: measurement.model ?? completion.artifact.model,
+              provider: measurement.provider ?? completion.artifact.provider,
+              responseBytes:
+                measurement.responseBytes || safeSerializedBytes(completion.output),
+            },
+          })
+        )
+      ) {
         throw new EventOperationsError(
           "EVENT_OPERATIONS_LEASE_LOST",
           "The task lease was lost before the AI artifact could be persisted.",
@@ -901,18 +973,22 @@ export function createEventOperationsEngine({
             sourceParticipant: participantById.get(participantId)!,
           })),
         };
-        const result = await aiProvider.generateRecommendations(request);
+        const result = await measureProvider(request, () =>
+          aiProvider.generateRecommendations(request),
+        );
         if (result.success === false) {
           await fail(failureCodeFor(result), result.error.message);
           return;
         }
-        const recommendations = validateRecommendations({
-          allowedTargetIdsBySource,
-          participantIds: claimed.participantIds,
-          recommendationCount: input.configuration.recommendationCount,
-          snapshotParticipants: input.generation.snapshot.participants,
-          value: result.data,
-        });
+        const recommendations = measureValidation(() =>
+          validateRecommendations({
+            allowedTargetIdsBySource,
+            participantIds: claimed.participantIds,
+            recommendationCount: input.configuration.recommendationCount,
+            snapshotParticipants: input.generation.snapshot.participants,
+            value: result.data,
+          }),
+        );
         const output: EventOperationsTaskOutput = {
           kind: "recommendation_shard",
           recommendations,
@@ -980,17 +1056,21 @@ export function createEventOperationsEngine({
             };
           }),
         };
-        const result = await aiProvider.generateGroupingFeatures(request);
+        const result = await measureProvider(request, () =>
+          aiProvider.generateGroupingFeatures(request),
+        );
         if (result.success === false) {
           await fail(failureCodeFor(result), result.error.message);
           return;
         }
-        const features = validateGroupingFeatures({
-          allowedTargetIdsBySource,
-          maxAffinityCount,
-          participantIds: claimed.participantIds,
-          value: result.data,
-        });
+        const features = measureValidation(() =>
+          validateGroupingFeatures({
+            allowedTargetIdsBySource,
+            maxAffinityCount,
+            participantIds: claimed.participantIds,
+            value: result.data,
+          }),
+        );
         const output: EventOperationsTaskOutput = {
           features,
           kind: "grouping_feature_shard",
@@ -1025,11 +1105,18 @@ export function createEventOperationsEngine({
             "The grouping reducer requires one validated feature per participant.",
           );
         }
-        const assignments = deterministicAssignments({
+        const reducerRequest = {
           features: groupingFeatures,
-          participants: input.generation.snapshot.participants,
           tableSize: input.configuration.tableSize,
-        });
+        };
+        measurement.requestBytes += safeSerializedBytes(reducerRequest);
+        const assignments = measureValidation(() =>
+          deterministicAssignments({
+            features: groupingFeatures,
+            participants: input.generation.snapshot.participants,
+            tableSize: input.configuration.tableSize,
+          }),
+        );
         const output: EventOperationsTaskOutput = {
           assignments,
           kind: "grouping_reduce",
@@ -1044,10 +1131,7 @@ export function createEventOperationsEngine({
             kind: "grouping_reduce",
             model: "grouping-assignment-v1",
             provider: "orbit-hard-constraint-reducer",
-            requestHash: aiRequestHash({
-              features: groupingFeatures,
-              tableSize: input.configuration.tableSize,
-            }),
+            requestHash: aiRequestHash(reducerRequest),
             responseHash: hash(output),
             schemaVersion: 1,
           },
@@ -1102,21 +1186,25 @@ export function createEventOperationsEngine({
         roundNumber,
         tableNumber,
       };
-      const result = await aiProvider.generateTableContent(request);
+      const result = await measureProvider(request, () =>
+        aiProvider.generateTableContent(request),
+      );
       if (result.success === false) {
         await fail(failureCodeFor(result), result.error.message);
         return;
       }
-      if (result.data.tableNumber !== tableNumber) {
-        throw new EventOperationsError(
-          "EVENT_OPERATIONS_AI_SCHEMA_INVALID",
-          "The table content response changed its assigned table number.",
-        );
-      }
-      validateRound({
-        participants: members,
-        round: [result.data],
-        tableSize: input.configuration.tableSize,
+      measureValidation(() => {
+        if (result.data.tableNumber !== tableNumber) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_AI_SCHEMA_INVALID",
+            "The table content response changed its assigned table number.",
+          );
+        }
+        validateRound({
+          participants: members,
+          round: [result.data],
+          tableSize: input.configuration.tableSize,
+        });
       });
       const output: EventOperationsTaskOutput = {
         kind: "table_content_shard",
@@ -1516,6 +1604,7 @@ export function createEventOperationsEngine({
       actorId,
       generationId,
       maxConcurrency: requestedConcurrency,
+      signal,
       workerId,
     }) {
       let generation = await requireGeneration(generationId);
@@ -1548,26 +1637,54 @@ export function createEventOperationsEngine({
         Math.min(32, Math.floor(requestedConcurrency ?? maxConcurrency)),
       );
 
-      const claimedAt = now();
-      const claimed = await repository.claimTasks({
-        aiRequestFingerprint,
-        generationId: generation.generationId,
-        leaseMs,
-        leaseTokenPrefix: token(),
-        limit: concurrency,
-        now: claimedAt,
-        workerId,
-      });
-      await Promise.all(
-        claimed.map((task) =>
-          executeTaskWithHeartbeat({ configuration, generation, task }),
-        ),
-      );
+      const inFlight = new Set<Promise<void>>();
+      let claimedTasks = 0;
+      let executionError: unknown = null;
+
+      async function fillAvailableSlots(): Promise<void> {
+        if (signal?.aborted || executionError !== null) return;
+        const availableSlots = concurrency - inFlight.size;
+        if (availableSlots <= 0) return;
+        let claimed: readonly EventOperationsGenerationTask[];
+        try {
+          claimed = await repository.claimTasks({
+            aiRequestFingerprint,
+            generationId: generation.generationId,
+            leaseMs,
+            leaseTokenPrefix: token(),
+            limit: availableSlots,
+            now: now(),
+            workerId,
+          });
+        } catch (error) {
+          executionError ??= error;
+          return;
+        }
+        claimedTasks += claimed.length;
+        for (const task of claimed) {
+          let execution!: Promise<void>;
+          execution = executeTaskWithHeartbeat({ configuration, generation, task })
+            .catch((error: unknown) => {
+              executionError ??= error;
+            })
+            .finally(() => {
+              inFlight.delete(execution);
+            });
+          inFlight.add(execution);
+        }
+      }
+
+      for (;;) {
+        await fillAvailableSlots();
+        if (inFlight.size === 0) break;
+        await Promise.race(inFlight);
+      }
+      if (executionError !== null) throw executionError;
       generation = await repository.finalizeGeneration(generationId, now());
       return progressFor(
         generation,
         await repository.listTasks(generation.generationId),
-        claimed.length,
+        claimedTasks,
       );
     },
   };

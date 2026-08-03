@@ -14,6 +14,7 @@ import {
   createMemoryEventRegistrationProvider,
 } from "../../features/events/registration/service";
 import { createEventOperationsRegistrationWindowProvider } from "../../features/events/registration/storage/event-operations-window-provider";
+import { legacyResponsesFromAnswers } from "../../features/events/registration/interview-response-contract";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 
@@ -71,24 +72,29 @@ test(
         [],
       );
 
+      const firstAnswers = { industry: "Climate", valueOffered: "Grid operations" };
       const first = await repository.registerCanonicalParticipant({
-        answers: { industry: "Climate", valueOffered: "Grid operations" },
+        answers: firstAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
+        interviewResponses: legacyResponsesFromAnswers(firstAnswers, at(base, -1)),
         userId: "actor-ari",
       });
       const duplicate = await repository.registerCanonicalParticipant({
-        answers: { industry: "Climate", valueOffered: "Grid operations" },
+        answers: firstAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
+        interviewResponses: legacyResponsesFromAnswers(firstAnswers, at(base, -1)),
         userId: "actor-ari",
       });
       assert.deepEqual(duplicate, first);
 
+      const editedAnswers = { industry: "Climate", valueOffered: "Market design" };
       const edited = await repository.registerCanonicalParticipant({
-        answers: { industry: "Climate", valueOffered: "Market design" },
+        answers: editedAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
+        interviewResponses: legacyResponsesFromAnswers(editedAnswers, at(base, 1)),
         userId: "actor-ari",
       });
       assert.equal(edited.participantProfile.answers.valueOffered, "Market design");
@@ -103,9 +109,11 @@ test(
         membership_count: string;
         outbox_count: string;
         profile_count: string;
+        response_count: string;
       }>(`
         select
           (select count(*) from event_ops_profile_versions)::text as profile_count,
+          (select count(*) from event_ops_profile_response_versions)::text as response_count,
           (select count(*) from event_ops_membership_versions)::text as membership_count,
           (select count(*) from event_ops_outbox)::text as outbox_count,
           (select count(*) from event_ops_audit_log)::text as audit_count
@@ -115,6 +123,7 @@ test(
         membership_count: "3",
         outbox_count: "3",
         profile_count: "2",
+        response_count: "4",
       });
 
       await scopedPool.query(`

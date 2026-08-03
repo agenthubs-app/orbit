@@ -8,6 +8,16 @@ import {
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../shared/errors/app-error";
 import type { EventParticipantProfileAnswers } from "../../../../../features/events/registration/contract";
+import {
+  answersFromProfileResponses,
+  missingCoreProfileFields,
+  type EventInterviewResponseSubmission,
+  type EventProfileResponseSnapshot,
+} from "../../../../../features/events/registration/interview-response-contract";
+import {
+  InterviewQuestionTokenError,
+  verifyInterviewResponseSubmissions,
+} from "../../../../../features/events/registration/interview-question-token.server";
 import { EventRegistrationWindowError } from "../../../../../features/events/registration/deadline-gated-service";
 import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
@@ -24,20 +34,73 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function readAnswers(
+async function readRegistrationPayload(
   request: Request,
-): Promise<EventParticipantProfileAnswers> {
+  input: { actorId: string; eventId: string },
+): Promise<{
+  answers: EventParticipantProfileAnswers;
+  interviewResponses: readonly EventProfileResponseSnapshot[];
+}> {
   if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
-    return {};
+    return { answers: {}, interviewResponses: [] };
   }
 
   try {
     const body = (await request.json()) as unknown;
-    return isRecord(body) && isRecord(body.answers)
-      ? (body.answers as EventParticipantProfileAnswers)
-      : {};
-  } catch {
-    return {};
+    if (!isRecord(body)) return { answers: {}, interviewResponses: [] };
+    if (Array.isArray(body.responses)) {
+      const submissions = body.responses.flatMap((value) => {
+        if (
+          !isRecord(value) ||
+          typeof value.answer !== "string" ||
+          typeof value.questionToken !== "string"
+        ) {
+          return [];
+        }
+        return [
+          {
+            answer: value.answer,
+            questionToken: value.questionToken,
+            visibility:
+              value.visibility === "matching_only" ||
+              value.visibility === "private"
+                ? value.visibility
+                : "event_attendees",
+          } satisfies EventInterviewResponseSubmission,
+        ];
+      });
+      if (submissions.length !== body.responses.length) {
+        throw new InterviewQuestionTokenError(
+          "INTERVIEW_QUESTION_TOKEN_INVALID",
+          "Every interview response must include a question token and answer.",
+        );
+      }
+      const interviewResponses = verifyInterviewResponseSubmissions({
+        actorId: input.actorId,
+        eventId: input.eventId,
+        responses: submissions,
+      });
+      const missingCore = missingCoreProfileFields(interviewResponses);
+      if (missingCore.length > 0) {
+        throw new InterviewQuestionTokenError(
+          "INTERVIEW_CORE_FIELDS_REQUIRED",
+          `Core event profile fields are still unanswered: ${missingCore.join(", ")}.`,
+        );
+      }
+      return {
+        answers: answersFromProfileResponses(interviewResponses),
+        interviewResponses,
+      };
+    }
+    return {
+      answers: isRecord(body.answers)
+        ? (body.answers as EventParticipantProfileAnswers)
+        : {},
+      interviewResponses: [],
+    };
+  } catch (error) {
+    if (error instanceof InterviewQuestionTokenError) throw error;
+    return { answers: {}, interviewResponses: [] };
   }
 }
 
@@ -136,13 +199,24 @@ export function createEventRegistrationRouteHandlers(input: {
 
     let registration;
     try {
+      const payload = await readRegistrationPayload(request, {
+        actorId: actor.id,
+        eventId: event.id,
+      });
       registration = await registrationService.register({
-        answers: await readAnswers(request),
+        answers: payload.answers,
         displayName: actor.name,
         eventId: event.id,
+        interviewResponses: [...payload.interviewResponses],
         userId: actor.id,
       });
     } catch (error) {
+      if (error instanceof InterviewQuestionTokenError) {
+        return errorResponse(
+          new AppError("VALIDATION_ERROR", error.message),
+          422,
+        );
+      }
       if (error instanceof EventRegistrationWindowError) {
         const unavailable = [
           "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",

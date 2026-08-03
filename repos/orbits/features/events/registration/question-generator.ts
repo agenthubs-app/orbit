@@ -208,15 +208,6 @@ function parseModelQuestions(
   return questions as readonly EventRegistrationQuestion[];
 }
 
-function deterministicQuestions(
-  candidates: readonly CandidateQuestion[],
-): readonly EventRegistrationQuestion[] {
-  return candidates.slice(0, 4).map((question) => ({
-    ...question,
-    optional: true,
-  }));
-}
-
 export async function generateEventRegistrationQuestions(input: {
   event: EventRecord;
   language?: "en" | "zh";
@@ -296,11 +287,11 @@ export async function generateEventRegistrationQuestions(input: {
         aiProviderRequested: true,
         externalNetworkRequested: true,
         fallbackReason: "MODEL_SCHEMA_INVALID",
-        generationMethod: "deterministic-fallback",
+        generationMethod: "orbit-agent-model-failed",
         model: modelResult.model,
         provider: modelResult.provider,
       },
-      questions: deterministicQuestions(candidates),
+      questions: [],
     };
   }
 
@@ -309,10 +300,10 @@ export async function generateEventRegistrationQuestions(input: {
       aiProviderRequested: true,
       externalNetworkRequested: true,
       fallbackReason: modelResult.error.code,
-      generationMethod: "deterministic-fallback",
+      generationMethod: "orbit-agent-model-failed",
       model: null,
       provider: modelResult.error.provider,
     },
-    questions: deterministicQuestions(candidates),
+    questions: [],
   };
 }

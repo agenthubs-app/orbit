@@ -9,6 +9,8 @@ import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
 } from "../../features/events/registration/service";
+import { signAdaptiveInterviewQuestion } from "../../features/events/registration/interview-question-token.server";
+import type { EventParticipantProfileField } from "../../features/events/registration/contract";
 
 const actor = { id: "user:registration-route-test", name: "Route Tester" };
 const registrationService = createEventRegistrationService({
@@ -121,4 +123,99 @@ test("event registration route rejects requests without an authenticated actor",
     context,
   );
   assert.equal(response.status, 401);
+});
+
+test("registration accepts only a complete set of actor-bound AI interview responses", async () => {
+  const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+  process.env.ORBIT_INTERVIEW_SIGNING_SECRET =
+    "route-test-interview-secret-with-enough-entropy";
+  const tokenActor = { id: "user:signed-registration", name: "Signed Tester" };
+  const tokenService = createEventRegistrationService({
+    provider: createMemoryEventRegistrationProvider(),
+  });
+  const { POST } = createEventRegistrationRouteHandlers({
+    registrationService: tokenService,
+    resolveActor: async () => tokenActor,
+  });
+  const fields = [
+    "positioning",
+    "targetAttendees",
+    "valueOffered",
+    "desiredOutcome",
+  ] as const satisfies readonly EventParticipantProfileField[];
+  const responses = fields.map((field) => ({
+    answer: `${field} option A`,
+    questionToken: signAdaptiveInterviewQuestion({
+      actorId: tokenActor.id,
+      eventId: "demo-event-1",
+      language: "en",
+      question: {
+        acknowledgment: "",
+        field,
+        options: [`${field} option A`, `${field} option B`],
+        prompt: `What is your ${field} for this event?`,
+        provenance: {
+          fallbackReason: null,
+          generationMethod: "orbit-agent-model-adaptive",
+          model: "route-test-model",
+          provider: "route-test-provider",
+        },
+      },
+    }),
+  }));
+
+  try {
+    const incomplete = await POST(
+      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+        body: JSON.stringify({ responses: responses.slice(0, 1) }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      context,
+    );
+    assert.equal(incomplete.status, 422);
+
+    const accepted = await POST(
+      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+        body: JSON.stringify({ responses }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      context,
+    );
+    const acceptedBody = await accepted.json();
+    assert.equal(accepted.status, 200);
+    assert.equal(
+      acceptedBody.data.participantProfile.answers.desiredOutcome,
+      "desiredOutcome option A",
+    );
+    assert.equal(
+      acceptedBody.data.participantProfile.interviewResponses.length,
+      4,
+    );
+    assert.match(
+      acceptedBody.data.participantProfile.interviewResponses[0].question.prompt,
+      /positioning/,
+    );
+
+    const replayedByAnotherActor = createEventRegistrationRouteHandlers({
+      registrationService: tokenService,
+      resolveActor: async () => ({ id: "user:token-replay" }),
+    }).POST;
+    const replay = await replayedByAnotherActor(
+      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+        body: JSON.stringify({ responses }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      context,
+    );
+    assert.equal(replay.status, 422);
+  } finally {
+    if (previousSecret === undefined) {
+      delete process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+    } else {
+      process.env.ORBIT_INTERVIEW_SIGNING_SECRET = previousSecret;
+    }
+  }
 });

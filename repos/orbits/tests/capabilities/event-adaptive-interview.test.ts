@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ADAPTIVE_INTERVIEW_MAX_TURNS,
+  AdaptiveInterviewGenerationError,
   generateEventPersona,
   nextAdaptiveInterviewQuestion,
   readInterviewTranscript,
@@ -53,43 +54,42 @@ test("first question comes from the model with event context", async () => {
   assert.equal(step.question?.provenance.generationMethod, "orbit-agent-model-adaptive");
 });
 
-test("next question must target an unanswered field or the service falls back", async () => {
+test("next question rejects a model response that repeats an answered field", async () => {
   const transcript: AdaptiveInterviewTurn[] = [
     { answer: "做 AI 获客工具", field: "positioning", prompt: "你在做什么?" },
   ];
-  // 模型答了已回答过的字段 -> 判违规,回退到确定性题库的下一个字段
-  const step = await nextAdaptiveInterviewQuestion({
-    event,
-    language: "zh",
-    modelRunner: modelRunnerReturning(
-      JSON.stringify({
-        acknowledgment: "明白了",
-        field: "positioning",
-        prompt: "再说一次你在做什么?",
-        options: ["A", "B"],
-      }),
-    ),
-    transcript,
-  });
-
-  assert.equal(step.done, false);
-  assert.equal(step.question?.provenance.generationMethod, "deterministic-fallback");
-  assert.equal(step.question?.provenance.fallbackReason, "MODEL_SCHEMA_INVALID");
-  assert.notEqual(step.question?.field, "positioning");
+  await assert.rejects(
+    nextAdaptiveInterviewQuestion({
+      event,
+      language: "zh",
+      modelRunner: modelRunnerReturning(
+        JSON.stringify({
+          acknowledgment: "明白了",
+          field: "positioning",
+          prompt: "再说一次你在做什么?",
+          options: ["A", "B"],
+        }),
+      ),
+      transcript,
+    }),
+    (error) =>
+      error instanceof AdaptiveInterviewGenerationError &&
+      error.code === "MODEL_SCHEMA_INVALID",
+  );
 });
 
-test("model failure falls back deterministically and never blocks the flow", async () => {
-  const step = await nextAdaptiveInterviewQuestion({
-    event,
-    language: "zh",
-    modelRunner: failingRunner,
-    transcript: [],
-  });
-
-  assert.equal(step.done, false);
-  assert.equal(step.question?.provenance.generationMethod, "deterministic-fallback");
-  assert.equal(step.question?.provenance.fallbackReason, "MODEL_API_KEY_MISSING");
-  assert.ok((step.question?.options.length ?? 0) >= 2);
+test("model failure is explicit and never publishes deterministic substitute content", async () => {
+  await assert.rejects(
+    nextAdaptiveInterviewQuestion({
+      event,
+      language: "zh",
+      modelRunner: failingRunner,
+      transcript: [],
+    }),
+    (error) =>
+      error instanceof AdaptiveInterviewGenerationError &&
+      error.code === "MODEL_REQUEST_FAILED",
+  );
 });
 
 test("interview finishes after all fields are answered", async () => {
@@ -153,42 +153,43 @@ test("persona uses model output when it satisfies the contract", async () => {
   assert.equal(persona.tags.length, 3);
 });
 
-test("persona falls back to a deterministic recomposition of answers", async () => {
-  const persona = await generateEventPersona({
-    event,
-    language: "zh",
-    modelRunner: failingRunner,
-    transcript: [
-      { answer: "做 AI 获客工具", field: "positioning", prompt: "q1" },
-      { answer: "企业服务渠道商", field: "targetAttendees", prompt: "q2" },
-    ],
-  });
-
-  assert.equal(persona.provenance.generationMethod, "deterministic-fallback");
-  assert.equal(persona.tagline, "做 AI 获客工具");
-  assert.ok(persona.seeking.includes("企业服务渠道商"));
-  assert.ok(persona.tags.length >= 3);
-  assert.ok(persona.openers.length >= 2);
+test("persona model failure is explicit and has no fallback artifact", async () => {
+  await assert.rejects(
+    generateEventPersona({
+      event,
+      language: "zh",
+      modelRunner: failingRunner,
+      transcript: [
+        { answer: "做 AI 获客工具", field: "positioning", prompt: "q1" },
+        { answer: "企业服务渠道商", field: "targetAttendees", prompt: "q2" },
+      ],
+    }),
+    (error) =>
+      error instanceof AdaptiveInterviewGenerationError &&
+      error.code === "MODEL_REQUEST_FAILED",
+  );
 });
 
-test("persona rejects oversized model output", async () => {
-  const persona = await generateEventPersona({
-    event,
-    language: "zh",
-    modelRunner: modelRunnerReturning(
-      JSON.stringify({
-        tagline: "x".repeat(100),
-        tags: ["a", "b", "c"],
-        industryTags: ["ai"],
-        energyStyle: "listens first",
-        seeking: "ok seeking",
-        offering: "ok offering",
-        openers: ["o1", "o2"],
-      }),
-    ),
-    transcript: [{ answer: "a", field: "positioning", prompt: "q" }],
-  });
-
-  assert.equal(persona.provenance.generationMethod, "deterministic-fallback");
-  assert.equal(persona.provenance.fallbackReason, "MODEL_SCHEMA_INVALID");
+test("persona rejects oversized model output without a substitute artifact", async () => {
+  await assert.rejects(
+    generateEventPersona({
+      event,
+      language: "zh",
+      modelRunner: modelRunnerReturning(
+        JSON.stringify({
+          tagline: "x".repeat(100),
+          tags: ["a", "b", "c"],
+          industryTags: ["ai"],
+          energyStyle: "listens first",
+          seeking: "ok seeking",
+          offering: "ok offering",
+          openers: ["o1", "o2"],
+        }),
+      ),
+      transcript: [{ answer: "a", field: "positioning", prompt: "q" }],
+    }),
+    (error) =>
+      error instanceof AdaptiveInterviewGenerationError &&
+      error.code === "MODEL_SCHEMA_INVALID",
+  );
 });

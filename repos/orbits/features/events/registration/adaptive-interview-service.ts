@@ -3,8 +3,8 @@
 //
 // 与 question-generator 同一套纪律:模型只负责措辞与追问方向(understanding
 // in model),字段枚举、题数上限、敏感词、长度全部在代码里校验(deterministic
-// validation in code);模型不可用或输出不合规时,回退到确定性题库/模板,
-// 流程永不中断。provenance 如实标注是模型生成还是回退。
+// validation in code)。模型不可用或输出不合规时显式失败，由客户端保留
+// 已完成回答并重试；禁止用确定性内容冒充 AI 结果。
 import {
   runOrbitAgentModelText,
   type GeminiOrbitAgentProviderConfig,
@@ -14,7 +14,6 @@ import {
   EVENT_PARTICIPANT_PROFILE_FIELDS,
   type EventParticipantProfileField,
 } from "./contract";
-import { candidatesFor, type CandidateQuestion } from "./question-generator";
 
 export type AdaptiveInterviewModelRunner = typeof runOrbitAgentModelText;
 
@@ -60,6 +59,17 @@ export interface EventPersona {
 }
 
 export const ADAPTIVE_INTERVIEW_MAX_TURNS = 8;
+
+export class AdaptiveInterviewGenerationError extends Error {
+  constructor(
+    readonly code: "MODEL_REQUEST_FAILED" | "MODEL_SCHEMA_INVALID",
+    message: string,
+    readonly provider: string | null,
+  ) {
+    super(message);
+    this.name = "AdaptiveInterviewGenerationError";
+  }
+}
 
 // transcript 完全来自客户端,按白名单校验:字段必须在枚举内、字符串截断、
 // 轮数封顶,不合规的轮直接丢弃。供 interview/persona 两个 route 共用。
@@ -121,92 +131,6 @@ function remainingFieldsFor(
   return EVENT_PARTICIPANT_PROFILE_FIELDS.filter(
     (field) => !answered.has(field),
   );
-}
-
-// 共享题库(candidatesFor)只覆盖固定流程的 4 个字段;自适应流程要覆盖
-// 全部 8 个画像维度,匹配所需的新维度(行业/能量/经验/后续方式)在这里补齐。
-function extraFallbackCandidates(
-  event: EventRecord,
-  language: "en" | "zh",
-): readonly Pick<
-  CandidateQuestion,
-  "options" | "participantProfileField" | "prompt"
->[] {
-  if (language === "en") {
-    return [
-      {
-        options: ["AI / software", "Consumer & retail", "Finance & investment", "Other industry"],
-        participantProfileField: "industry",
-        prompt: `Which industry best describes what you do, for people you meet at ${event.title}?`,
-      },
-      {
-        options: ["I open conversations", "I go deep in small groups", "I mostly listen first"],
-        participantProfileField: "energyStyle",
-        prompt: `How do you usually show up in a room like ${event.title}?`,
-      },
-      {
-        options: ["Built something from zero", "Scaled a team or market", "Deep domain expertise"],
-        participantProfileField: "experienceHighlight",
-        prompt: `What experience would you most want people at ${event.title} to know about you?`,
-      },
-      {
-        options: ["Message first", "Coffee chat", "Straight to a working session"],
-        participantProfileField: "followUpPreference",
-        prompt: `After ${event.title}, how do you prefer promising conversations to continue?`,
-      },
-    ];
-  }
-
-  return [
-    {
-      options: ["AI / 软件", "消费与零售", "金融与投资", "其他行业"],
-      participantProfileField: "industry",
-      prompt: `在「${event.title}」向别人介绍自己时,你的行业更接近哪一类?`,
-    },
-    {
-      options: ["主动破冰型", "小圈子深聊型", "先听再聊型"],
-      participantProfileField: "energyStyle",
-      prompt: `在「${event.title}」这样的场合,你通常是什么样的社交风格?`,
-    },
-    {
-      options: ["从零做成过一件事", "带过团队或打开过市场", "有很深的领域专长"],
-      participantProfileField: "experienceHighlight",
-      prompt: `你最希望「${event.title}」的参与者了解你的哪段经验?`,
-    },
-    {
-      options: ["先线上聊聊", "约杯咖啡", "直接进入正题合作"],
-      participantProfileField: "followUpPreference",
-      prompt: `「${event.title}」结束后,你希望有价值的交流以什么方式继续?`,
-    },
-  ];
-}
-
-function fallbackQuestionFor(
-  event: EventRecord,
-  language: "en" | "zh",
-  field: EventParticipantProfileField,
-  fallbackReason: string,
-): AdaptiveNextQuestion {
-  const bank = [
-    ...candidatesFor(event, language),
-    ...extraFallbackCandidates(event, language),
-  ];
-  const candidate =
-    bank.find((question) => question.participantProfileField === field) ??
-    bank[0];
-
-  return {
-    acknowledgment: "",
-    field: candidate.participantProfileField,
-    options: candidate.options,
-    prompt: candidate.prompt,
-    provenance: {
-      fallbackReason,
-      generationMethod: "deterministic-fallback",
-      model: null,
-      provider: null,
-    },
-  };
 }
 
 function readModelQuestion(
@@ -306,29 +230,21 @@ export async function nextAdaptiveInterviewQuestion(
   });
 
   if (modelResult.success !== true) {
-    return {
-      done: false,
-      question: fallbackQuestionFor(
-        input.event,
-        language,
-        remainingFields[0],
-        modelResult.error.code,
-      ),
-    };
+    throw new AdaptiveInterviewGenerationError(
+      "MODEL_REQUEST_FAILED",
+      `The adaptive interview model request failed: ${modelResult.error.code}.`,
+      modelResult.error.provider,
+    );
   }
 
   const question = readModelQuestion(modelResult.text, remainingFields);
 
   if (!question) {
-    return {
-      done: false,
-      question: fallbackQuestionFor(
-        input.event,
-        language,
-        remainingFields[0],
-        "MODEL_SCHEMA_INVALID",
-      ),
-    };
+    throw new AdaptiveInterviewGenerationError(
+      "MODEL_SCHEMA_INVALID",
+      "The adaptive interview model returned an invalid question.",
+      modelResult.provider,
+    );
   }
 
   return {
@@ -420,73 +336,9 @@ function readModelPersona(text: string): Omit<EventPersona, "provenance"> | null
   return { energyStyle, industryTags, offering, openers, seeking, tagline, tags };
 }
 
-function fallbackPersona(
-  event: EventRecord,
-  language: "en" | "zh",
-  transcript: readonly AdaptiveInterviewTurn[],
-  fallbackReason: string,
-): EventPersona {
-  const answerFor = (field: EventParticipantProfileField) =>
-    transcript.find((turn) => turn.field === field)?.answer.trim() ?? "";
-  const positioning = answerFor("positioning");
-  const target = answerFor("targetAttendees");
-  const value = answerFor("valueOffered");
-  const outcome = answerFor("desiredOutcome");
-  const industry = answerFor("industry");
-  const energy = answerFor("energyStyle");
-  const experience = answerFor("experienceHighlight");
-  const zh = language === "zh";
-  const clip = (text: string) =>
-    text.length > 16 ? `${text.slice(0, 15)}…` : text;
-
-  const tags = [positioning, target, value, experience]
-    .filter(Boolean)
-    .map(clip);
-
-  while (tags.length < 3) {
-    tags.push(zh ? "现场交流" : "Open to talk");
-  }
-
-  return {
-    energyStyle:
-      energy || (zh ? "随场合灵活交流" : "Flexible, reads the room"),
-    industryTags: industry
-      ? [clip(industry)]
-      : [zh ? "跨行业" : "Cross-industry"],
-    offering:
-      value ||
-      (zh ? "愿意分享自己的经验与资源。" : "Happy to share experience and resources."),
-    openers: [
-      zh
-        ? `聊聊你为什么来「${event.title}」?`
-        : `What brought you to ${event.title}?`,
-      zh
-        ? `最近在${positioning || "做的事"}上有什么进展?`
-        : `How is ${positioning || "your current work"} going lately?`,
-    ],
-    provenance: {
-      fallbackReason,
-      generationMethod: "deterministic-fallback",
-      model: null,
-      provider: null,
-    },
-    seeking: target
-      ? zh
-        ? `想认识:${target}${outcome ? `,目标是${outcome}` : ""}`
-        : `Wants to meet: ${target}${outcome ? `, aiming for ${outcome}` : ""}`
-      : zh
-        ? "希望认识与自己方向相关的参与者。"
-        : "Hoping to meet aligned attendees.",
-    tagline:
-      positioning ||
-      (zh ? `「${event.title}」参与者` : `${event.title} attendee`),
-    tags: tags.slice(0, 5),
-  };
-}
-
 /**
  * 基于完整问答生成「面向本次活动」的个人画像。只允许使用 transcript 与
- * 活动信息里的事实,模型不合规时回退为答案的确定性重组。
+ * 活动信息里的事实；模型失败或不合规时显式失败，不发布替代画像。
  */
 export async function generateEventPersona(
   input: AdaptiveInterviewInput,
@@ -522,22 +374,20 @@ export async function generateEventPersona(
   });
 
   if (modelResult.success !== true) {
-    return fallbackPersona(
-      input.event,
-      language,
-      transcript,
-      modelResult.error.code,
+    throw new AdaptiveInterviewGenerationError(
+      "MODEL_REQUEST_FAILED",
+      `The event persona model request failed: ${modelResult.error.code}.`,
+      modelResult.error.provider,
     );
   }
 
   const persona = readModelPersona(modelResult.text);
 
   if (!persona) {
-    return fallbackPersona(
-      input.event,
-      language,
-      transcript,
+    throw new AdaptiveInterviewGenerationError(
       "MODEL_SCHEMA_INVALID",
+      "The event persona model returned an invalid result.",
+      modelResult.provider,
     );
   }
 

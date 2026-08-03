@@ -29,7 +29,13 @@ export interface EventOperationsWorkerDrainResult {
 }
 
 export interface EventOperationsWorker {
-  drainOnce(): Promise<EventOperationsWorkerDrainResult>;
+  drainGenerationsOnce(input?: {
+    signal?: AbortSignal;
+  }): Promise<EventOperationsWorkerDrainResult>;
+  drainOnce(input?: {
+    signal?: AbortSignal;
+  }): Promise<EventOperationsWorkerDrainResult>;
+  drainOutboxOnce(): Promise<EventOperationsWorkerDrainResult>;
 }
 
 export interface CreateEventOperationsWorkerOptions {
@@ -218,67 +224,107 @@ export function createEventOperationsWorker({
     }
   }
 
+  async function drainGenerationsOnce({
+    signal,
+  }: {
+    signal?: AbortSignal;
+  } = {}): Promise<EventOperationsWorkerDrainResult> {
+    const generations = signal?.aborted ? [] : await runnableGenerations();
+    let generationTasksClaimed = 0;
+    const errors: {
+      id: string;
+      message: string;
+      scope: "generation" | "outbox";
+    }[] = [];
+    await mapBounded(generations, generationLimit, async (generation) => {
+      try {
+        const progress = await engine.runGeneration({
+          actorId: generation.organizer_actor_id,
+          generationId: generation.generation_id,
+          maxConcurrency: taskLimit,
+          signal,
+          workerId,
+        });
+        generationTasksClaimed += progress.claimedTasks;
+      } catch (error) {
+        errors.push({
+          id: generation.generation_id,
+          message:
+            error instanceof Error ? error.message : "Generation worker failed.",
+          scope: "generation",
+        });
+      }
+    });
+
+    return {
+      errors,
+      generationBatches: generations.length,
+      generationIds: generations.map((value) => value.generation_id),
+      outboxCompleted: 0,
+      outboxFailed: 0,
+      outboxRetried: 0,
+      workClaimed: generationTasksClaimed,
+    };
+  }
+
+  async function drainOutboxOnce(): Promise<EventOperationsWorkerDrainResult> {
+    const errors: {
+      id: string;
+      message: string;
+      scope: "generation" | "outbox";
+    }[] = [];
+    const outbox = await outboxRepository.claim({
+      leaseMs,
+      limit: outboxLimit,
+      workerId,
+    });
+    let outboxCompleted = 0;
+    let outboxFailed = 0;
+    let outboxRetried = 0;
+    await mapBounded(outbox, outboxLimit, async (message) => {
+      try {
+        const result = await projectWithHeartbeat(message);
+        if (result === "completed") outboxCompleted += 1;
+        else if (result === "failed") outboxFailed += 1;
+        else outboxRetried += 1;
+      } catch (error) {
+        errors.push({
+          id: message.outboxId,
+          message:
+            error instanceof Error ? error.message : "Outbox worker failed.",
+          scope: "outbox",
+        });
+      }
+    });
+
+    return {
+      errors,
+      generationBatches: 0,
+      generationIds: [],
+      outboxCompleted,
+      outboxFailed,
+      outboxRetried,
+      workClaimed: outbox.length,
+    };
+  }
+
   return {
-    async drainOnce() {
-      const generations = await runnableGenerations();
-      let generationTasksClaimed = 0;
-      const errors: {
-        id: string;
-        message: string;
-        scope: "generation" | "outbox";
-      }[] = [];
-      await mapBounded(generations, generationLimit, async (generation) => {
-        try {
-          const progress = await engine.runGeneration({
-            actorId: generation.organizer_actor_id,
-            generationId: generation.generation_id,
-            maxConcurrency: taskLimit,
-            workerId,
-          });
-          generationTasksClaimed += progress.claimedTasks;
-        } catch (error) {
-          errors.push({
-            id: generation.generation_id,
-            message:
-              error instanceof Error ? error.message : "Generation worker failed.",
-            scope: "generation",
-          });
-        }
-      });
-
-      const outbox = await outboxRepository.claim({
-        leaseMs,
-        limit: outboxLimit,
-        workerId,
-      });
-      let outboxCompleted = 0;
-      let outboxFailed = 0;
-      let outboxRetried = 0;
-      await mapBounded(outbox, outboxLimit, async (message) => {
-        try {
-          const result = await projectWithHeartbeat(message);
-          if (result === "completed") outboxCompleted += 1;
-          else if (result === "failed") outboxFailed += 1;
-          else outboxRetried += 1;
-        } catch (error) {
-          errors.push({
-            id: message.outboxId,
-            message:
-              error instanceof Error ? error.message : "Outbox worker failed.",
-            scope: "outbox",
-          });
-        }
-      });
-
+    drainGenerationsOnce,
+    async drainOnce(input = {}) {
+      const [generations, outbox] = await Promise.all([
+        drainGenerationsOnce(input),
+        drainOutboxOnce(),
+      ]);
       return {
-        errors,
-        generationBatches: generations.length,
-        generationIds: generations.map((value) => value.generation_id),
-        outboxCompleted,
-        outboxFailed,
-        outboxRetried,
-        workClaimed: generationTasksClaimed + outbox.length,
+        errors: [...generations.errors, ...outbox.errors],
+        generationBatches: generations.generationBatches,
+        generationIds: generations.generationIds,
+        outboxCompleted: outbox.outboxCompleted,
+        outboxFailed: outbox.outboxFailed,
+        outboxRetried: outbox.outboxRetried,
+        workClaimed: generations.workClaimed + outbox.workClaimed,
       };
     },
+    drainOutboxOnce,
   };
 }

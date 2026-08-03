@@ -15,6 +15,7 @@ import {
 import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import { signAdaptiveInterviewQuestion } from "../../../../../../features/events/registration/interview-question-token.server";
 import { createProfileService } from "../../../../../../features/profile/service-factory";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
 import { eventRegistrationReturnPath } from "./registration-return-path";
@@ -151,6 +152,39 @@ export default async function AppEventRegistrationGuidePage({
       actor?.name?.trim() ||
       actor?.email?.trim() ||
       (language === "en" ? "Orbit member" : "Orbit 成员");
+    const firstQuestion = questionSet.questions[0];
+    const initialSignedQuestion =
+      actor?.id &&
+      firstQuestion &&
+      questionSet.provenance.generationMethod ===
+        "orbit-agent-model-customized" &&
+      questionSet.provenance.fallbackReason === null &&
+      questionSet.provenance.model &&
+      questionSet.provenance.provider
+        ? (() => {
+            const question = {
+              acknowledgment: "",
+              field: firstQuestion.participantProfileField,
+              options: firstQuestion.options,
+              prompt: firstQuestion.prompt,
+              provenance: {
+                fallbackReason: null,
+                generationMethod: "orbit-agent-model-adaptive" as const,
+                model: questionSet.provenance.model,
+                provider: questionSet.provenance.provider,
+              },
+            };
+            return {
+              question,
+              questionToken: signAdaptiveInterviewQuestion({
+                actorId: actor.id,
+                eventId: event.id,
+                language,
+                question,
+              }),
+            };
+          })()
+        : null;
 
     return (
       <>
@@ -162,9 +196,9 @@ export default async function AppEventRegistrationGuidePage({
             venue: localizedEvent.venue,
           }}
           initialRegistration={registration}
+          initialSignedQuestion={initialSignedQuestion}
           language={language}
           profile={{ displayName }}
-          questionSet={questionSet}
         />
         <OrbitVisualFreezeRuntime />
       </>

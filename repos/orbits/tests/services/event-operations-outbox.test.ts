@@ -402,9 +402,18 @@ test("durable worker filters mixed-version generations before the discovery limi
   assert.equal(discoveredButLostRace.workClaimed, 0);
 });
 
-test("one generation failure is reported without preventing independent outbox work", async () => {
+test("outbox drain completes while an independent generation drain is still running", async () => {
   const message = relationshipMessage();
   let completed = false;
+  let generationFinished = false;
+  let releaseGeneration!: () => void;
+  let signalGenerationStarted!: () => void;
+  const generationGate = new Promise<void>((resolve) => {
+    releaseGeneration = resolve;
+  });
+  const generationStarted = new Promise<void>((resolve) => {
+    signalGenerationStarted = resolve;
+  });
   const outboxRepository: EventOperationsOutboxRepository = {
     async claim() {
       return completed ? [] : [message];
@@ -444,6 +453,9 @@ test("one generation failure is reported without preventing independent outbox w
     aiRequestFingerprint: "ai-stack:test-v1",
     engine: {
       async runGeneration() {
+        signalGenerationStarted();
+        await generationGate;
+        generationFinished = true;
         throw new Error("Injected generation-specific failure.");
       },
     } as unknown as EventOperationsEngine,
@@ -461,10 +473,16 @@ test("one generation failure is reported without preventing independent outbox w
     workerId: "worker:isolation",
   });
 
-  const result = await worker.drainOnce();
-  assert.equal(result.outboxCompleted, 1);
-  assert.equal(result.errors.length, 1);
-  assert.deepEqual(result.errors[0], {
+  const generationDrain = worker.drainGenerationsOnce();
+  await generationStarted;
+  const outboxResult = await worker.drainOutboxOnce();
+  assert.equal(outboxResult.outboxCompleted, 1);
+  assert.equal(generationFinished, false);
+
+  releaseGeneration();
+  const generationResult = await generationDrain;
+  assert.equal(generationResult.errors.length, 1);
+  assert.deepEqual(generationResult.errors[0], {
     id: "generation:isolated-failure",
     message: "Injected generation-specific failure.",
     scope: "generation",

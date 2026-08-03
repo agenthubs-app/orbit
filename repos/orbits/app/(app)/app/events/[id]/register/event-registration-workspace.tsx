@@ -25,8 +25,13 @@ import {
 import type {
   EventParticipantProfileAnswers,
   EventRegistration,
-  EventRegistrationQuestionSet,
 } from "../../../../../../features/events/registration/contract";
+import {
+  EVENT_PROFILE_CORE_FIELDS,
+  type EventInterviewResponseSubmission,
+  type SignedAdaptiveInterviewQuestion,
+  type SignedAdaptiveInterviewStep,
+} from "../../../../../../features/events/registration/interview-response-contract";
 import { Icon } from "../../../orbit-reference-primitives";
 
 type Language = "en" | "zh";
@@ -38,11 +43,11 @@ interface RegistrationWorkspaceProps {
     venue: string;
   };
   initialRegistration: EventRegistration | null;
+  initialSignedQuestion: SignedAdaptiveInterviewQuestion | null;
   language: Language;
   profile: {
     displayName: string;
   };
-  questionSet: EventRegistrationQuestionSet;
 }
 
 type RegistrationEnvelope = {
@@ -85,32 +90,6 @@ function fieldLabel(
   return copy(language, labels[field]);
 }
 
-function firstQuestionFrom(
-  questionSet: EventRegistrationQuestionSet,
-): AdaptiveNextQuestion | null {
-  const question = questionSet.questions[0];
-
-  if (!question) {
-    return null;
-  }
-
-  return {
-    acknowledgment: "",
-    field: question.participantProfileField,
-    options: question.options,
-    prompt: question.prompt,
-    provenance: {
-      fallbackReason: questionSet.provenance.fallbackReason,
-      generationMethod:
-        questionSet.provenance.generationMethod === "orbit-agent-model-customized"
-          ? "orbit-agent-model-adaptive"
-          : "deterministic-fallback",
-      model: questionSet.provenance.model,
-      provider: questionSet.provenance.provider,
-    },
-  };
-}
-
 function answersFrom(
   transcript: readonly AdaptiveInterviewTurn[],
 ): EventParticipantProfileAnswers {
@@ -133,9 +112,9 @@ function transcriptFromAnswers(
 export function EventRegistrationWorkspace({
   event,
   initialRegistration,
+  initialSignedQuestion,
   language,
   profile,
-  questionSet,
 }: RegistrationWorkspaceProps) {
   const storedTranscript = transcriptFromAnswers(
     initialRegistration?.participantProfile.answers ?? {},
@@ -150,29 +129,45 @@ export function EventRegistrationWorkspace({
   const [registration, setRegistration] = useState(initialRegistration);
   const [transcript, setTranscript] = useState<AdaptiveInterviewTurn[]>(storedTranscript);
   const [question, setQuestion] = useState<AdaptiveNextQuestion | null>(
-    () => firstQuestionFrom(questionSet),
+    () => initialSignedQuestion?.question ?? null,
+  );
+  const [questionToken, setQuestionToken] = useState<string | null>(
+    () => initialSignedQuestion?.questionToken ?? null,
   );
   const [questionHistory, setQuestionHistory] = useState<AdaptiveNextQuestion[]>([]);
+  const [questionTokenHistory, setQuestionTokenHistory] = useState<string[]>([]);
+  const [responses, setResponses] = useState<EventInterviewResponseSubmission[]>([]);
   const [thinking, setThinking] = useState(false);
   const [freeTextOpen, setFreeTextOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [generatingStep, setGeneratingStep] = useState(0);
   const [persona, setPersona] = useState<EventPersona | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    initialRegistration || initialSignedQuestion
+      ? null
+      : copy(language, {
+          en: "The AI interview could not start. Retry when the model is available.",
+          zh: "AI 访谈暂时无法开始，请在模型恢复后重试。",
+        }),
+  );
   const [pendingCancel, setPendingCancel] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const generationRunId = useRef(0);
   // 选项预取:题目一出现就为每个选项并行预生成下一题,用户点击时通常已就绪,
   // 把 ~10s 的模型延迟藏进读题决策时间里。key=选项文本。
   const prefetchRef = useRef<
-    Map<string, Promise<{ done: boolean; question: AdaptiveNextQuestion | null }>>
+    Map<string, Promise<SignedAdaptiveInterviewStep>>
   >(new Map());
   const prefetchAbortRef = useRef<AbortController | null>(null);
 
   const status = registration?.status ?? "unregistered";
   const eventHref = `/app/events/${encodeURIComponent(event.id)}?language=${language}`;
   const stepIndex = Math.min(transcript.length, TOTAL_STEPS - 1);
+  const missingCoreFields = EVENT_PROFILE_CORE_FIELDS.filter(
+    (field) => !transcript.some((turn) => turn.field === field),
+  );
+  const canSkipAdaptiveQuestions = missingCoreFields.length === 0;
 
   const fetchNextQuestion = useCallback(
     async (
@@ -189,16 +184,18 @@ export function EventRegistrationWorkspace({
         },
       );
       const body = (await response.json().catch(() => null)) as {
-        data?: { done: boolean; question: AdaptiveNextQuestion | null };
+        data?: SignedAdaptiveInterviewStep;
+        error?: { message?: string };
         success?: boolean;
       } | null;
 
       if (!response.ok || body?.success !== true || !body.data) {
         throw new Error(
-          copy(language, {
-            en: "Could not load the next question.",
-            zh: "下一题加载失败。",
-          }),
+          body?.error?.message ??
+            copy(language, {
+              en: "Could not load the next AI question. Your answers were kept; retry this step.",
+              zh: "下一道 AI 问题生成失败，已保留当前回答，请重试。",
+            }),
         );
       }
 
@@ -207,10 +204,44 @@ export function EventRegistrationWorkspace({
     [event.id, language],
   );
 
+  async function retryInterviewStart() {
+    if (thinking) return;
+
+    setThinking(true);
+    setError(null);
+    try {
+      const step = await fetchNextQuestion([]);
+      if (step.done || !step.signedQuestion) {
+        throw new Error(
+          copy(language, {
+            en: "The AI interview returned no verified question. Please retry.",
+            zh: "AI 访谈未返回可核验的问题，请重试。",
+          }),
+        );
+      }
+      setQuestion(step.signedQuestion.question);
+      setQuestionToken(step.signedQuestion.questionToken);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : copy(language, {
+              en: "The AI interview could not start. Please retry.",
+              zh: "AI 访谈暂时无法开始，请重试。",
+            }),
+      );
+    } finally {
+      setThinking(false);
+    }
+  }
+
   // 生成阶段先持久化报名,确认写入成功后再请求派生画像。画像失败时保留
   // 已报名状态和可回读的原始回答,绝不把仅生成画像当作报名成功。
   const runGeneration = useCallback(
-    async (finalTranscript: readonly AdaptiveInterviewTurn[]) => {
+    async (
+      finalTranscript: readonly AdaptiveInterviewTurn[],
+      finalResponses: readonly EventInterviewResponseSubmission[],
+    ) => {
       const runId = ++generationRunId.current;
       let savedRegistration: EventRegistration | null = null;
 
@@ -227,7 +258,11 @@ export function EventRegistrationWorkspace({
         const registrationResponse = await fetch(
           `/api/events/${encodeURIComponent(event.id)}/registration`,
           {
-            body: JSON.stringify({ answers: answersFrom(finalTranscript) }),
+            body: JSON.stringify(
+              finalResponses.length > 0
+                ? { responses: finalResponses }
+                : { answers: answersFrom(finalTranscript) },
+            ),
             headers: { "content-type": "application/json" },
             method: "POST",
           },
@@ -312,7 +347,7 @@ export function EventRegistrationWorkspace({
   );
 
   async function submitAnswer(answer: string) {
-    if (!question || thinking) {
+    if (!question || !questionToken || thinking) {
       return;
     }
 
@@ -328,6 +363,14 @@ export function EventRegistrationWorkspace({
       prompt: question.prompt,
     };
     const nextTranscript = [...transcript, turn];
+    const nextResponses = [
+      ...responses,
+      {
+        answer: turn.answer,
+        questionToken,
+        visibility: "event_attendees" as const,
+      },
+    ];
 
     setSelectedOption(answer);
     setError(null);
@@ -335,10 +378,10 @@ export function EventRegistrationWorkspace({
 
     try {
       // 命中预取则近乎即时;预取失败/被中止/自由输入时退回实时请求。
-      let step: { done: boolean; question: AdaptiveNextQuestion | null };
+      let step: SignedAdaptiveInterviewStep;
 
       if (nextTranscript.length >= TOTAL_STEPS) {
-        step = { done: true, question: null };
+        step = { done: true, signedQuestion: null };
       } else {
         const prefetched = prefetchRef.current.get(trimmed);
 
@@ -354,17 +397,20 @@ export function EventRegistrationWorkspace({
       }
 
       setTranscript(nextTranscript);
+      setResponses(nextResponses);
       setQuestionHistory((history) => [...history, question]);
+      setQuestionTokenHistory((history) => [...history, questionToken]);
       setFreeText("");
       setFreeTextOpen(false);
       setSelectedOption(null);
 
-      if (step.done || !step.question) {
-        await runGeneration(nextTranscript);
+      if (step.done || !step.signedQuestion) {
+        await runGeneration(nextTranscript, nextResponses);
         return;
       }
 
-      setQuestion(step.question);
+      setQuestion(step.signedQuestion.question);
+      setQuestionToken(step.signedQuestion.questionToken);
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -451,14 +497,19 @@ export function EventRegistrationWorkspace({
     }
 
     const previousQuestion = questionHistory[questionHistory.length - 1];
+    const previousQuestionToken =
+      questionTokenHistory[questionTokenHistory.length - 1];
 
-    if (!previousQuestion) {
+    if (!previousQuestion || !previousQuestionToken) {
       return;
     }
 
     setTranscript((current) => current.slice(0, -1));
+    setResponses((current) => current.slice(0, -1));
     setQuestionHistory((history) => history.slice(0, -1));
+    setQuestionTokenHistory((history) => history.slice(0, -1));
     setQuestion(previousQuestion);
+    setQuestionToken(previousQuestionToken);
     setFreeText("");
     setFreeTextOpen(false);
     setError(null);
@@ -468,12 +519,22 @@ export function EventRegistrationWorkspace({
     generationRunId.current += 1;
     setStage("interview");
     setTranscript([]);
+    setResponses([]);
     setQuestionHistory([]);
+    setQuestionTokenHistory([]);
     setPersona(null);
-    setQuestion(firstQuestionFrom(questionSet));
+    setQuestion(initialSignedQuestion?.question ?? null);
+    setQuestionToken(initialSignedQuestion?.questionToken ?? null);
     setFreeText("");
     setFreeTextOpen(false);
-    setError(null);
+    setError(
+      initialSignedQuestion
+        ? null
+        : copy(language, {
+            en: "The AI interview could not start. Retry when the model is available.",
+            zh: "AI 访谈暂时无法开始，请在模型恢复后重试。",
+          }),
+    );
     setConfirmingCancel(false);
   }
 
@@ -804,11 +865,11 @@ export function EventRegistrationWorkspace({
                 <Icon name="chevR" size={13} style={{ transform: "rotate(180deg)" }} />
                 {copy(language, { en: "Previous", zh: "上一题" })}
               </button>
-              {transcript.length > 0 ? (
+              {canSkipAdaptiveQuestions ? (
                 <button
                   className="reg-ghost-btn"
                   disabled={thinking}
-                  onClick={() => void runGeneration(transcript)}
+                  onClick={() => void runGeneration(transcript, responses)}
                   type="button"
                   style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 6 }}
                 >
@@ -817,7 +878,12 @@ export function EventRegistrationWorkspace({
                 </button>
               ) : (
                 <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
-                  {copy(language, { en: "Answers stay scoped to this event.", zh: "回答只用于本次活动,不会改动全局档案。" })}
+                  {transcript.length === 0
+                    ? copy(language, { en: "Answers stay scoped to this event.", zh: "回答只用于本次活动,不会改动全局档案。" })
+                    : copy(language, {
+                        en: `${missingCoreFields.length} core answer(s) remain before you can skip.`,
+                        zh: `还需完成 ${missingCoreFields.length} 项核心回答，之后才可跳过选答题。`,
+                      })}
                 </span>
               )}
             </footer>
@@ -885,7 +951,7 @@ export function EventRegistrationWorkspace({
                 <button
                   className="btn btn-primary"
                   disabled={transcript.length === 0}
-                  onClick={() => void runGeneration(transcript)}
+                  onClick={() => void runGeneration(transcript, responses)}
                   type="button"
                 >
                   {copy(language, { en: "Generate event persona", zh: "生成活动画像" })}
@@ -1309,12 +1375,55 @@ export function EventRegistrationWorkspace({
         ) : null}
 
         {stage === "interview" && !question ? (
-          <div className="orbit-alert notice" style={{ marginTop: 8 }}>
-            {copy(language, {
-              en: "This event is not open for the persona interview yet.",
-              zh: "该活动暂未开放画像问答。",
-            })}
-          </div>
+          <section
+            aria-busy={thinking}
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 24,
+              boxShadow: "var(--sh-lg)",
+              display: "grid",
+              gap: 16,
+              padding: "30px 34px",
+            }}
+          >
+            <span style={{ color: "var(--accent)", display: "inline-flex" }}>
+              <Icon name="sparkle" size={20} />
+            </span>
+            <div>
+              <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, margin: 0 }}>
+                {copy(language, {
+                  en: "The AI interview is temporarily unavailable",
+                  zh: "AI 访谈暂时未生成",
+                })}
+              </h2>
+              <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
+                {copy(language, {
+                  en: "No substitute question was used and no answer was saved. Retry the real AI generation here.",
+                  zh: "系统没有使用替代问题，也没有保存任何回答。你可以在这里重新请求真实 AI 生成。",
+                })}
+              </p>
+            </div>
+            {error ? (
+              <div className="orbit-alert error" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <div>
+              <button
+                className="btn btn-primary"
+                data-registration-interview-retry
+                disabled={thinking}
+                onClick={() => void retryInterviewStart()}
+                type="button"
+              >
+                <Icon name="sparkle" size={15} />
+                {thinking
+                  ? copy(language, { en: "Generating…", zh: "正在生成…" })
+                  : copy(language, { en: "Retry AI interview", zh: "重试 AI 访谈" })}
+              </button>
+            </div>
+          </section>
         ) : null}
       </section>
     </main>

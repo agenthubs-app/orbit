@@ -1,6 +1,6 @@
 import { createEventCrudAndImportService } from "../service-factory";
 import { eventRegistrationRuntimeService } from "../registration/runtime";
-import { createEventOperationsAiProvider } from "./ai-provider";
+import { createConfiguredEventOperationsAiProvider } from "./ai-provider";
 import { createEventOperationsEngine } from "./engine";
 import { createConfiguredEventOperationsRepository } from "./repository";
 import {
@@ -14,7 +14,7 @@ export function createConfiguredEventOperationsService(): EventOperationsService
 
   const eventService = createEventCrudAndImportService("live");
   const engine = createEventOperationsEngine({
-    aiProvider: createEventOperationsAiProvider(),
+    aiProvider: createConfiguredEventOperationsAiProvider(),
     repository,
   });
 

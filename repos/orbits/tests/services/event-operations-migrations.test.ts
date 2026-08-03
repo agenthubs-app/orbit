@@ -34,6 +34,19 @@ test("event operations migrations use one implicit transaction per statement", a
   assert.match(calls[3] ?? "", /completion_payload jsonb/i);
   assert.match(calls[4] ?? "", /ai_request_fingerprint/i);
   assert.match(calls[4] ?? "", /legacy:unversioned/i);
+  assert.match(calls[5] ?? "", /create table event_ops_task_attempts/i);
+  assert.match(calls[5] ?? "", /retryable_failed|terminal_failed|lease_lost/i);
+  assert.match(
+    calls[5] ?? "",
+    /event_ops_task_attempts_generation_kind_outcome_idx/i,
+  );
+  assert.doesNotMatch(calls[5] ?? "", /prompt|raw_response|profile_payload/i);
+  assert.match(
+    calls[6] ?? "",
+    /create table event_ops_profile_response_versions/i,
+  );
+  assert.match(calls[6] ?? "", /event_attendees|matching_only|private/i);
+  assert.match(calls[6] ?? "", /references event_ops_profile_versions/i);
 });
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -66,11 +79,19 @@ test(
       assert.ok(
         tables.rows.some((row) => row.table_name === "event_ops_publications"),
       );
+      assert.ok(
+        tables.rows.some((row) => row.table_name === "event_ops_task_attempts"),
+      );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_profile_response_versions",
+        ),
+      );
 
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "4");
+      assert.equal(applied.rows[0]?.count, "6");
 
       await migrationPool.query(`
         delete from event_ops_schema_migrations where version = 2;

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import {
+  AdaptiveInterviewGenerationError,
   generateEventPersona,
   nextAdaptiveInterviewQuestion,
   readInterviewTranscript,
 } from "../../../../../features/events/registration/adaptive-interview-service";
+import { signAdaptiveInterviewQuestion } from "../../../../../features/events/registration/interview-question-token.server";
 import {
   loadEventForRegistration,
   localizedEventTitle,
@@ -62,20 +64,51 @@ export function createRegistrationInterviewPostHandler(
       transcript?: unknown;
     };
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
-    const step = await nextAdaptiveInterviewQuestion({
-      event: {
-        ...event,
-        title: localizedEventTitle(event, language),
-        venue: bilingualSegment(event.venue, language),
-      },
-      language,
-      transcript: readInterviewTranscript(body.transcript),
-    });
+    let step;
+    try {
+      step = await nextAdaptiveInterviewQuestion({
+        event: {
+          ...event,
+          title: localizedEventTitle(event, language),
+          venue: bilingualSegment(event.venue, language),
+        },
+        language,
+        transcript: readInterviewTranscript(body.transcript),
+      });
+    } catch (error) {
+      if (error instanceof AdaptiveInterviewGenerationError) {
+        return NextResponse.json(
+          failure(
+            new AppError(
+              "SERVICE_UNAVAILABLE",
+              "The AI interview question could not be generated. Your answers were kept; retry this step.",
+            ),
+          ),
+          { headers: runtimeBoundaryHeaders(mode), status: 503 },
+        );
+      }
+      throw error;
+    }
 
-    return NextResponse.json(success(step), {
+    const signedQuestion = step.question
+      ? {
+          question: step.question,
+          questionToken: signAdaptiveInterviewQuestion({
+            actorId: actor.id,
+            eventId: event.id,
+            language,
+            question: step.question,
+          }),
+        }
+      : null;
+
+    return NextResponse.json(
+      success({ done: step.done, signedQuestion }),
+      {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
-    });
+      },
+    );
   };
 }
 
@@ -119,15 +152,31 @@ export function createRegistrationPersonaPostHandler(
     }
 
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
-    const persona = await generateEventPersona({
-      event: {
-        ...event,
-        title: localizedEventTitle(event, language),
-        venue: bilingualSegment(event.venue, language),
-      },
-      language,
-      transcript,
-    });
+    let persona;
+    try {
+      persona = await generateEventPersona({
+        event: {
+          ...event,
+          title: localizedEventTitle(event, language),
+          venue: bilingualSegment(event.venue, language),
+        },
+        language,
+        transcript,
+      });
+    } catch (error) {
+      if (error instanceof AdaptiveInterviewGenerationError) {
+        return NextResponse.json(
+          failure(
+            new AppError(
+              "SERVICE_UNAVAILABLE",
+              "The AI event persona could not be generated. The registration remains saved and can be retried.",
+            ),
+          ),
+          { headers: runtimeBoundaryHeaders(mode), status: 503 },
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(success({ persona }), {
       headers: runtimeBoundaryHeaders(mode),

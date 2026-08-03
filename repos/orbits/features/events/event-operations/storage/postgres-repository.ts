@@ -16,6 +16,7 @@ import {
 import type {
   ClaimEventOperationsTasksInput,
   CompleteEventOperationsTaskInput,
+  EventOperationsTaskAttemptTelemetry,
   EventOperationsRepository,
   FailEventOperationsTaskInput,
   InitializeEventOperationsGenerationInput,
@@ -70,6 +71,16 @@ function integer(row: SqlRow, key: string): number {
   const value = row[key];
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`Event operations SQL row has an invalid ${key}.`);
+  }
+  return parsed;
+}
+
+function optionalNumber(row: SqlRow, key: string): number | null {
+  const value = row[key];
+  if (value === null || value === undefined) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`Event operations SQL row has an invalid ${key}.`);
   }
   return parsed;
@@ -189,6 +200,40 @@ function taskFromRow(row: SqlRow): EventOperationsGenerationTask {
     taskId: text(row, "task_id"),
     updatedAt: timestamp(row, "updated_at"),
     workerId: optionalText(row, "worker_id"),
+  };
+}
+
+function taskAttemptFromRow(row: SqlRow): EventOperationsTaskAttemptTelemetry {
+  return {
+    attempt: integer(row, "attempt"),
+    claimedAt: timestamp(row, "claimed_at"),
+    dependencyCount: integer(row, "dependency_count"),
+    domainValidationDurationMs: optionalNumber(
+      row,
+      "domain_validation_duration_ms",
+    ),
+    eligibleAt: timestamp(row, "eligible_at"),
+    failureCode: optionalText(
+      row,
+      "failure_code",
+    ) as EventOperationsFailureCode | null,
+    finishedAt: optionalTimestamp(row, "finished_at"),
+    generationId: text(row, "generation_id"),
+    kind: taskKindFromRow(row),
+    leaseEpoch: integer(row, "lease_epoch"),
+    model: optionalText(row, "model"),
+    outcome: optionalText(row, "outcome") as EventOperationsTaskAttemptTelemetry["outcome"],
+    participantCount: integer(row, "participant_count"),
+    provider: optionalText(row, "provider"),
+    providerAdapterDurationMs: optionalNumber(
+      row,
+      "provider_adapter_duration_ms",
+    ),
+    requestBytes: optionalNumber(row, "request_bytes"),
+    responseBytes: optionalNumber(row, "response_bytes"),
+    retryRound: integer(row, "retry_round"),
+    taskId: text(row, "task_id"),
+    workerId: text(row, "worker_id"),
   };
 }
 
@@ -679,10 +724,8 @@ export function createPostgresEventOperationsRepository({
             task.attempts,
             task.retryRound,
             task.leaseEpoch,
-            task.createdAt,
-            task.updatedAt,
           );
-          return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}::text[], $${offset + 7}::text[], $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13})`;
+          return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}::text[], $${offset + 7}::text[], $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, statement_timestamp(), statement_timestamp())`;
         });
         await transaction.query(
           `
@@ -771,43 +814,80 @@ export function createPostgresEventOperationsRepository({
         async (transaction) => {
           await transaction.query(
             `
-              update event_ops_tasks
-              set
-                status = case
-                  when attempts >= attempt_limit then 'failed'
+              with expired as (
+                select task.*
+                from event_ops_tasks task
+                where task.workspace_id = $1 and task.generation_id = $2
+                  and task.status = 'running'
+                  and (
+                    task.lease_expires_at is null
+                    or task.lease_expires_at <= statement_timestamp()
+                  )
+                  and exists (
+                    select 1
+                    from event_ops_generations generation
+                    where generation.workspace_id = task.workspace_id
+                      and generation.generation_id = task.generation_id
+                      and generation.ai_request_fingerprint = $3
+                  )
+                for update
+              ),
+              closed_attempts as (
+                update event_ops_task_attempts attempt
+                set finished_at = statement_timestamp(),
+                  outcome = 'lease_lost',
+                  failure_code = 'EVENT_OPERATIONS_LEASE_LOST'
+                from expired
+                where attempt.workspace_id = expired.workspace_id
+                  and attempt.task_id = expired.task_id
+                  and attempt.attempt = expired.attempts
+                  and attempt.lease_epoch = expired.lease_epoch
+                  and attempt.outcome is null
+                returning attempt.task_id
+              )
+              update event_ops_tasks task
+              set status = case
+                  when task.attempts >= task.attempt_limit then 'failed'
                   else 'queued'
                 end,
                 error_code = case
-                  when attempts >= attempt_limit then 'EVENT_OPERATIONS_LEASE_LOST'
+                  when task.attempts >= task.attempt_limit then 'EVENT_OPERATIONS_LEASE_LOST'
                   else null
                 end,
                 error_message = case
-                  when attempts >= attempt_limit
+                  when task.attempts >= task.attempt_limit
                     then 'The worker lease expired after its retry budget was exhausted.'
                   else null
                 end,
                 lease_token = null,
                 lease_expires_at = null,
                 worker_id = null,
-                revision = revision + 1,
+                revision = task.revision + 1,
                 updated_at = statement_timestamp()
-              where workspace_id = $1 and generation_id = $2
-                and status = 'running'
-                and (lease_expires_at is null or lease_expires_at <= statement_timestamp())
-                and exists (
-                  select 1
-                  from event_ops_generations generation
-                  where generation.workspace_id = event_ops_tasks.workspace_id
-                    and generation.generation_id = event_ops_tasks.generation_id
-                    and generation.ai_request_fingerprint = $3
-                )
+              from expired
+              where task.workspace_id = expired.workspace_id
+                and task.task_id = expired.task_id
             `,
             [workspaceId, input.generationId, input.aiRequestFingerprint],
           );
           const claimed = await transaction.query<SqlRow>(
             `
               with eligible as (
-                select candidate.task_id
+                select candidate.task_id,
+                  case
+                    when candidate.retry_round > 0 or candidate.attempts > 0
+                      then candidate.updated_at
+                    when cardinality(candidate.depends_on_task_ids) = 0
+                      then candidate.created_at
+                    else (
+                      select max(dependency.completed_at)
+                      from unnest(candidate.depends_on_task_ids) dependency_id
+                      join event_ops_tasks dependency
+                        on dependency.workspace_id = candidate.workspace_id
+                        and dependency.generation_id = candidate.generation_id
+                        and dependency.task_id = dependency_id
+                    )
+                  end as eligible_at
                 from event_ops_tasks candidate
                 where candidate.workspace_id = $1
                   and candidate.generation_id = $2
@@ -847,26 +927,42 @@ export function createPostgresEventOperationsRepository({
                   candidate.task_id
                 for update of candidate skip locked
                 limit $4
+              ),
+              claimed as (
+                update event_ops_tasks task
+                set status = 'running',
+                  attempts = task.attempts + 1,
+                  lease_epoch = task.lease_epoch + 1,
+                  lease_token = concat($5::text, ':', task.task_id, ':', task.lease_epoch + 1),
+                  lease_expires_at = statement_timestamp()
+                    + ($6::double precision * interval '1 millisecond'),
+                  worker_id = $7,
+                  error_code = null,
+                  error_message = null,
+                  revision = task.revision + 1,
+                  updated_at = statement_timestamp()
+                from eligible
+                where task.workspace_id = $1 and task.task_id = eligible.task_id
+                returning task.*, eligible.eligible_at
+              ),
+              inserted_attempts as (
+                insert into event_ops_task_attempts (
+                  workspace_id, generation_id, task_id, task_kind, attempt,
+                  retry_round, lease_epoch, worker_id, participant_count,
+                  dependency_count, eligible_at, claimed_at
+                )
+                select workspace_id, generation_id, task_id, task_kind, attempts,
+                  retry_round, lease_epoch, worker_id,
+                  cardinality(participant_ids), cardinality(depends_on_task_ids),
+                  eligible_at, statement_timestamp()
+                from claimed
+                returning task_id
               )
-              update event_ops_tasks task
-              set
-                status = 'running',
-                attempts = task.attempts + 1,
-                lease_epoch = task.lease_epoch + 1,
-                lease_token = concat($5::text, ':', task.task_id, ':', task.lease_epoch + 1),
-                lease_expires_at = statement_timestamp()
-                  + ($6::double precision * interval '1 millisecond'),
-                worker_id = $7,
-                error_code = null,
-                error_message = null,
-                revision = task.revision + 1,
-                updated_at = statement_timestamp()
-              from eligible
-              where task.workspace_id = $1 and task.task_id = eligible.task_id
-              returning task.*,
+              select claimed.*,
                 (select event_id from event_ops_generations generation
-                 where generation.workspace_id = task.workspace_id
-                   and generation.generation_id = task.generation_id) as event_id
+                 where generation.workspace_id = claimed.workspace_id
+                   and generation.generation_id = claimed.generation_id) as event_id
+              from claimed
             `,
             [
               workspaceId,
@@ -901,10 +997,11 @@ export function createPostgresEventOperationsRepository({
         const updated = await transaction.query<SqlRow>(
           `
             update event_ops_tasks
-            set status = 'completed', output_payload = $6::jsonb,
-              output_hash = $7, error_code = null, error_message = null,
+            set status = 'completed', output_payload = $5::jsonb,
+              output_hash = $6, error_code = null, error_message = null,
               lease_token = null, lease_expires_at = null, worker_id = null,
-              completed_at = $5, revision = revision + 1, updated_at = $5
+              completed_at = statement_timestamp(), revision = revision + 1,
+              updated_at = statement_timestamp()
             where workspace_id = $1 and task_id = $2 and status = 'running'
               and lease_token = $3 and lease_epoch = $4
               and lease_expires_at > statement_timestamp()
@@ -915,13 +1012,47 @@ export function createPostgresEventOperationsRepository({
             input.taskId,
             input.leaseToken,
             input.leaseEpoch,
-            input.completedAt,
             JSON.stringify(input.output),
             input.artifact.responseHash,
           ],
         );
         const task = updated.rows[0];
         if (!task) return false;
+        const telemetry = input.telemetry;
+        const closedAttempt = await transaction.query(
+          `
+            update event_ops_task_attempts
+            set finished_at = statement_timestamp(),
+              provider_adapter_duration_ms = $5,
+              domain_validation_duration_ms = $6,
+              request_bytes = $7,
+              response_bytes = $8,
+              provider = $9,
+              model = $10,
+              outcome = 'completed',
+              failure_code = null
+            where workspace_id = $1 and task_id = $2 and attempt = $3
+              and lease_epoch = $4 and outcome is null
+          `,
+          [
+            workspaceId,
+            input.taskId,
+            integer(task, "attempts"),
+            input.leaseEpoch,
+            telemetry?.providerAdapterDurationMs ?? null,
+            telemetry?.domainValidationDurationMs ?? null,
+            telemetry?.requestBytes ?? null,
+            telemetry?.responseBytes ?? null,
+            telemetry?.provider ?? null,
+            telemetry?.model ?? null,
+          ],
+        );
+        if (closedAttempt.rowCount !== 1) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_LEASE_LOST",
+            "The task attempt telemetry row was not owned by this completed lease.",
+          );
+        }
         await transaction.query(
           `
             insert into event_ops_ai_artifacts (
@@ -930,7 +1061,7 @@ export function createPostgresEventOperationsRepository({
               schema_version, evidence_metadata, validated_payload, created_at
             ) values (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              $12::jsonb, $13::jsonb, $14
+              $12::jsonb, $13::jsonb, statement_timestamp()
             )
           `,
           [
@@ -947,7 +1078,6 @@ export function createPostgresEventOperationsRepository({
             input.artifact.schemaVersion,
             JSON.stringify(input.artifact.evidenceMetadata),
             JSON.stringify(input.output),
-            input.completedAt,
           ],
         );
         return true;
@@ -955,31 +1085,84 @@ export function createPostgresEventOperationsRepository({
     },
 
     async failTask(input: FailEventOperationsTaskInput) {
-      const result = await client.query(
-        `
-          update event_ops_tasks
-          set status = 'failed',
-            attempts = case when $8::boolean then attempts else attempt_limit end,
-            output_payload = null, output_hash = null,
-            error_code = $6, error_message = $7, lease_token = null,
-            lease_expires_at = null, worker_id = null, completed_at = null,
-            revision = revision + 1, updated_at = $5
-          where workspace_id = $1 and task_id = $2 and status = 'running'
-            and lease_token = $3 and lease_epoch = $4
-            and lease_expires_at > statement_timestamp()
-        `,
-        [
-          workspaceId,
-          input.taskId,
-          input.leaseToken,
-          input.leaseEpoch,
-          input.failedAt,
-          input.code,
-          input.message,
-          input.retryable,
-        ],
-      );
-      return result.rowCount === 1;
+      return client.transaction(async (transaction) => {
+        const current = await transaction.query<SqlRow>(
+          `
+            select attempts, attempt_limit
+            from event_ops_tasks
+            where workspace_id = $1 and task_id = $2 and status = 'running'
+              and lease_token = $3 and lease_epoch = $4
+              and lease_expires_at > statement_timestamp()
+            for update
+          `,
+          [workspaceId, input.taskId, input.leaseToken, input.leaseEpoch],
+        );
+        const task = current.rows[0];
+        if (!task) return false;
+        const attempt = integer(task, "attempts");
+        const retryable = input.retryable && attempt < integer(task, "attempt_limit");
+        const updated = await transaction.query(
+          `
+            update event_ops_tasks
+            set status = 'failed',
+              attempts = case when $7::boolean then attempts else attempt_limit end,
+              output_payload = null, output_hash = null,
+              error_code = $5, error_message = $6, lease_token = null,
+              lease_expires_at = null, worker_id = null, completed_at = null,
+              revision = revision + 1, updated_at = statement_timestamp()
+            where workspace_id = $1 and task_id = $2 and status = 'running'
+              and lease_token = $3 and lease_epoch = $4
+          `,
+          [
+            workspaceId,
+            input.taskId,
+            input.leaseToken,
+            input.leaseEpoch,
+            input.code,
+            input.message,
+            input.retryable,
+          ],
+        );
+        if (updated.rowCount !== 1) return false;
+        const telemetry = input.telemetry;
+        const closedAttempt = await transaction.query(
+          `
+            update event_ops_task_attempts
+            set finished_at = statement_timestamp(),
+              provider_adapter_duration_ms = $5,
+              domain_validation_duration_ms = $6,
+              request_bytes = $7,
+              response_bytes = $8,
+              provider = $9,
+              model = $10,
+              outcome = $11,
+              failure_code = $12
+            where workspace_id = $1 and task_id = $2 and attempt = $3
+              and lease_epoch = $4 and outcome is null
+          `,
+          [
+            workspaceId,
+            input.taskId,
+            attempt,
+            input.leaseEpoch,
+            telemetry?.providerAdapterDurationMs ?? null,
+            telemetry?.domainValidationDurationMs ?? null,
+            telemetry?.requestBytes ?? null,
+            telemetry?.responseBytes ?? null,
+            telemetry?.provider ?? null,
+            telemetry?.model ?? null,
+            retryable ? "retryable_failed" : "terminal_failed",
+            input.code,
+          ],
+        );
+        if (closedAttempt.rowCount !== 1) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_LEASE_LOST",
+            "The task attempt telemetry row was not owned by this failed lease.",
+          );
+        }
+        return true;
+      });
     },
 
     async heartbeatTask(input) {
@@ -1275,6 +1458,19 @@ export function createPostgresEventOperationsRepository({
       return result.rows.map(taskFromRow);
     },
 
+    async listTaskAttempts(generationId) {
+      const result = await client.query<SqlRow>(
+        `
+          select *
+          from event_ops_task_attempts
+          where workspace_id = $1 and generation_id = $2
+          order by claimed_at, task_id, attempt, lease_epoch
+        `,
+        [workspaceId, generationId],
+      );
+      return result.rows.map(taskAttemptFromRow);
+    },
+
     async publishGenerationAtomically(value, organizerActorId) {
       const dtoHash = payloadHash(value);
       const publicationId = `event-operations-publication:${payloadHash(
@@ -1568,20 +1764,21 @@ export function createPostgresEventOperationsRepository({
               lease_token = null, lease_expires_at = null, worker_id = null,
               output_payload = null, output_hash = null, error_code = null,
               error_message = null, completed_at = null,
-              revision = revision + 1, updated_at = $3
+              revision = revision + 1, updated_at = statement_timestamp()
             where workspace_id = $1 and generation_id = $2 and status = 'failed'
           `,
-          [workspaceId, generationId, retriedAt],
+          [workspaceId, generationId],
         );
         const updated = await transaction.query<SqlRow>(
           `
             update event_ops_generations
             set status = 'queued', completed_at = null, error_code = null,
-              error_message = null, revision = revision + 1, updated_at = $3
+              error_message = null, revision = revision + 1,
+              updated_at = statement_timestamp()
             where workspace_id = $1 and generation_id = $2 and status = 'failed'
             returning *
           `,
-          [workspaceId, generationId, retriedAt],
+          [workspaceId, generationId],
         );
         return generationFromRow(transaction, workspaceId, updated.rows[0]!);
       });

@@ -20,6 +20,7 @@ import { eventOperationsParticipantFromRegistration } from "../participant";
 import type {
   CreateEventContactRequestInput,
   CreateEventOperationsCheckInInput,
+  EventOperationsTaskAttemptTelemetry,
   EventOperationsRepository,
   InitializeEventOperationsGenerationInput,
   RespondToEventContactRequestInput,
@@ -38,6 +39,14 @@ function clone<TValue>(value: TValue): TValue {
 
 function checkInKey(eventId: string, actorId: string): string {
   return `${eventId}\u0000${actorId}`;
+}
+
+function taskAttemptKey(
+  taskId: string,
+  attempt: number,
+  leaseEpoch: number,
+): string {
+  return `${taskId}\u0000${attempt}\u0000${leaseEpoch}`;
 }
 
 function digest(...values: readonly string[]): string {
@@ -200,6 +209,8 @@ export function createMemoryEventOperationsRepository(
   >();
   const publishedResults = new Map<string, EventOperationsPublishedResult>();
   const tasks = new Map<string, EventOperationsGenerationTask>();
+  const taskAttempts = new Map<string, EventOperationsTaskAttemptTelemetry>();
+  const repositoryNow = () => options.now?.() ?? new Date().toISOString();
   for (const configuration of options.configurations ?? []) {
     configurations.set(configuration.eventId, clone(configuration));
     configurationVersions.set(configuration.eventId, 1);
@@ -374,7 +385,8 @@ export function createMemoryEventOperationsRepository(
       if (!(["queued", "running"] as const).includes(generation.status as never)) {
         return [];
       }
-      const nowMs = Date.parse(input.now);
+      const claimedAt = repositoryNow();
+      const nowMs = Date.parse(claimedAt);
       for (const [taskId, task] of tasks) {
         if (
           task.generationId !== input.generationId ||
@@ -385,6 +397,20 @@ export function createMemoryEventOperationsRepository(
         const expiresAt = Date.parse(task.leaseExpiresAt ?? "");
         if (Number.isFinite(expiresAt) && expiresAt > nowMs) continue;
         const exhausted = task.attempts >= task.attemptLimit;
+        const attemptKey = taskAttemptKey(
+          task.taskId,
+          task.attempts,
+          task.leaseEpoch,
+        );
+        const attempt = taskAttempts.get(attemptKey);
+        if (attempt && attempt.outcome === null) {
+          taskAttempts.set(attemptKey, {
+            ...attempt,
+            failureCode: "EVENT_OPERATIONS_LEASE_LOST",
+            finishedAt: claimedAt,
+            outcome: "lease_lost",
+          });
+        }
         tasks.set(taskId, {
           ...task,
           errorCode: exhausted ? "EVENT_OPERATIONS_LEASE_LOST" : null,
@@ -394,7 +420,7 @@ export function createMemoryEventOperationsRepository(
           leaseExpiresAt: null,
           leaseToken: null,
           status: exhausted ? "failed" : "queued",
-          updatedAt: input.now,
+          updatedAt: claimedAt,
           workerId: null,
         });
       }
@@ -427,52 +453,106 @@ export function createMemoryEventOperationsRepository(
         .slice(0, Math.max(1, Math.min(32, Math.floor(input.limit))));
       const claimed = eligible.map((task) => {
         const leaseEpoch = task.leaseEpoch + 1;
+        const attempt = task.attempts + 1;
+        const dependencyCompletedAt = task.dependsOnTaskIds.map(
+          (dependencyId) => tasks.get(dependencyId)?.completedAt,
+        );
+        const eligibleAt = task.retryRound > 0 || task.attempts > 0
+          ? task.updatedAt
+          : dependencyCompletedAt.length === 0
+          ? task.createdAt
+          : dependencyCompletedAt.reduce<string>((latest, completedAt) => {
+              if (!completedAt) {
+                throw new EventOperationsError(
+                  "EVENT_OPERATIONS_GENERATION_NOT_READY",
+                  "A claimed task dependency has no completion timestamp.",
+                );
+              }
+              return completedAt > latest ? completedAt : latest;
+            }, dependencyCompletedAt[0] ?? task.createdAt);
         const value: EventOperationsGenerationTask = {
           ...task,
-          attempts: task.attempts + 1,
+          attempts: attempt,
           errorCode: null,
           errorMessage: null,
           leaseEpoch,
           leaseExpiresAt: new Date(nowMs + input.leaseMs).toISOString(),
           leaseToken: `${input.leaseTokenPrefix}:${task.taskId}:${leaseEpoch}`,
           status: "running",
-          updatedAt: input.now,
+          updatedAt: claimedAt,
           workerId: input.workerId,
         };
         tasks.set(task.taskId, value);
+        taskAttempts.set(taskAttemptKey(task.taskId, attempt, leaseEpoch), {
+          attempt,
+          claimedAt,
+          dependencyCount: task.dependsOnTaskIds.length,
+          domainValidationDurationMs: null,
+          eligibleAt,
+          failureCode: null,
+          finishedAt: null,
+          generationId: task.generationId,
+          kind: task.kind,
+          leaseEpoch,
+          model: null,
+          outcome: null,
+          participantCount: task.participantIds.length,
+          provider: null,
+          providerAdapterDurationMs: null,
+          requestBytes: null,
+          responseBytes: null,
+          retryRound: task.retryRound,
+          taskId: task.taskId,
+          workerId: input.workerId,
+        });
         return clone(value);
       });
       if (claimed.length > 0 && generation.status === "queued") {
         generations.set(generation.generationId, {
           ...generation,
           status: "running",
-          updatedAt: input.now,
+          updatedAt: claimedAt,
         });
       }
       return claimed;
     },
 
     async completeTask(input) {
+      const completedAt = repositoryNow();
       const task = tasks.get(input.taskId);
       if (
         !task ||
         task.status !== "running" ||
         task.leaseToken !== input.leaseToken ||
         task.leaseEpoch !== input.leaseEpoch ||
-        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(input.completedAt)
+        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(completedAt)
       ) {
         return false;
       }
+      const attemptKey = taskAttemptKey(
+        task.taskId,
+        task.attempts,
+        task.leaseEpoch,
+      );
+      const attempt = taskAttempts.get(attemptKey);
+      if (!attempt || attempt.outcome !== null) return false;
+      taskAttempts.set(attemptKey, {
+        ...attempt,
+        ...(input.telemetry ?? {}),
+        failureCode: null,
+        finishedAt: completedAt,
+        outcome: "completed",
+      });
       tasks.set(input.taskId, {
         ...task,
-        completedAt: input.completedAt,
+        completedAt,
         errorCode: null,
         errorMessage: null,
         leaseExpiresAt: null,
         leaseToken: null,
         output: clone(input.output),
         status: "completed",
-        updatedAt: input.completedAt,
+        updatedAt: completedAt,
         workerId: null,
       });
       const artifactFingerprint = input.artifact.evidenceMetadata.aiRequestFingerprint;
@@ -553,16 +633,32 @@ export function createMemoryEventOperationsRepository(
     },
 
     async failTask(input) {
+      const failedAt = repositoryNow();
       const task = tasks.get(input.taskId);
       if (
         !task ||
         task.status !== "running" ||
         task.leaseToken !== input.leaseToken ||
         task.leaseEpoch !== input.leaseEpoch ||
-        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(input.failedAt)
+        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(failedAt)
       ) {
         return false;
       }
+      const attemptKey = taskAttemptKey(
+        task.taskId,
+        task.attempts,
+        task.leaseEpoch,
+      );
+      const attempt = taskAttempts.get(attemptKey);
+      if (!attempt || attempt.outcome !== null) return false;
+      const retryable = input.retryable && task.attempts < task.attemptLimit;
+      taskAttempts.set(attemptKey, {
+        ...attempt,
+        ...(input.telemetry ?? {}),
+        failureCode: input.code,
+        finishedAt: failedAt,
+        outcome: retryable ? "retryable_failed" : "terminal_failed",
+      });
       tasks.set(input.taskId, {
         ...task,
         attempts: input.retryable ? task.attempts : task.attemptLimit,
@@ -573,13 +669,14 @@ export function createMemoryEventOperationsRepository(
         leaseToken: null,
         output: null,
         status: "failed",
-        updatedAt: input.failedAt,
+        updatedAt: failedAt,
         workerId: null,
       });
       return true;
     },
 
     async heartbeatTask(input) {
+      const heartbeatAt = repositoryNow();
       const task = tasks.get(input.taskId);
       if (
         !task ||
@@ -587,16 +684,16 @@ export function createMemoryEventOperationsRepository(
         task.leaseToken !== input.leaseToken ||
         task.leaseEpoch !== input.leaseEpoch ||
         task.workerId !== input.workerId ||
-        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(input.heartbeatAt)
+        Date.parse(task.leaseExpiresAt ?? "") <= Date.parse(heartbeatAt)
       ) {
         return false;
       }
       tasks.set(input.taskId, {
         ...task,
         leaseExpiresAt: new Date(
-          Date.parse(input.heartbeatAt) + input.leaseMs,
+          Date.parse(heartbeatAt) + input.leaseMs,
         ).toISOString(),
-        updatedAt: input.heartbeatAt,
+        updatedAt: heartbeatAt,
       });
       return true;
     },
@@ -750,7 +847,14 @@ export function createMemoryEventOperationsRepository(
           clone(candidate),
         );
       }
-      for (const task of input.tasks) tasks.set(task.taskId, clone(task));
+      const persistedAt = repositoryNow();
+      for (const task of input.tasks) {
+        tasks.set(task.taskId, {
+          ...clone(task),
+          createdAt: persistedAt,
+          updatedAt: persistedAt,
+        });
+      }
       return clone(input.generation);
     },
 
@@ -818,6 +922,19 @@ export function createMemoryEventOperationsRepository(
       return [...tasks.values()]
         .filter((value) => value.generationId === generationId)
         .sort((left, right) => left.taskId.localeCompare(right.taskId))
+        .map(clone);
+    },
+
+    async listTaskAttempts(generationId) {
+      return [...taskAttempts.values()]
+        .filter((value) => value.generationId === generationId)
+        .sort(
+          (left, right) =>
+            left.claimedAt.localeCompare(right.claimedAt) ||
+            left.taskId.localeCompare(right.taskId) ||
+            left.attempt - right.attempt ||
+            left.leaseEpoch - right.leaseEpoch,
+        )
         .map(clone);
     },
 
@@ -917,6 +1034,9 @@ export function createMemoryEventOperationsRepository(
           artifactFingerprints.delete(key);
         }
       }
+      for (const [key, value] of taskAttempts) {
+        if (generationIds.has(value.generationId)) taskAttempts.delete(key);
+      }
       for (const [key, value] of candidates) {
         if (generationIds.has(value.generationId)) candidates.delete(key);
       }
@@ -998,6 +1118,7 @@ export function createMemoryEventOperationsRepository(
     },
 
     async retryFailedGeneration(generationId, retriedAt) {
+      const requeuedAt = repositoryNow();
       const generation = requireGeneration(generationId);
       if (generation.status !== "failed") return clone(generation);
       for (const [taskId, task] of tasks) {
@@ -1015,7 +1136,7 @@ export function createMemoryEventOperationsRepository(
           output: null,
           retryRound: task.retryRound + 1,
           status: "queued",
-          updatedAt: retriedAt,
+          updatedAt: requeuedAt,
           workerId: null,
         });
       }
@@ -1025,7 +1146,7 @@ export function createMemoryEventOperationsRepository(
         errorCode: null,
         errorMessage: null,
         status: "queued",
-        updatedAt: retriedAt,
+        updatedAt: requeuedAt,
       };
       generations.set(generationId, updated);
       return clone(updated);

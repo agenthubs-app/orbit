@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEventOperationsAiProvider } from "../../features/events/event-operations/ai-provider";
+import {
+  createConfiguredEventOperationsAiProvider,
+  createEventOperationsAiProvider,
+} from "../../features/events/event-operations/ai-provider";
 import type { EventOperationsParticipant } from "../../features/events/event-operations/contract";
 
 const participants: EventOperationsParticipant[] = [
@@ -58,6 +61,10 @@ test("event operations request fingerprint versions prompt, provider, model, and
   assert.match(json.requestFingerprint ?? "", /event-operations-compact-closed-json-v2/u);
   assert.match(json.requestFingerprint ?? "", /deepseek-test/u);
   assert.match(json.requestFingerprint ?? "", /"jsonOutput":true/u);
+  assert.match(
+    createConfiguredEventOperationsAiProvider().requestFingerprint ?? "",
+    /"jsonOutput":true/u,
+  );
 });
 
 function successfulText(text: string) {

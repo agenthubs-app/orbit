@@ -41,6 +41,12 @@ test("PostgreSQL lease SQL uses database time instead of worker absolute clocks"
     /published_dto\s*->>\s*'resultsAvailableAt'[\s\S]*statement_timestamp\(\)/u,
   );
   assert.match(tasks, /ai_request_fingerprint/u);
+  assert.match(tasks, /insert into event_ops_task_attempts/u);
+  assert.match(tasks, /outcome = 'lease_lost'/u);
+  assert.match(tasks, /claimed_at[\s\S]*statement_timestamp\(\)/u);
+  assert.match(tasks, /set finished_at = statement_timestamp\(\)/u);
+  assert.doesNotMatch(tasks, /provider_adapter_duration_ms\s*=\s*0/u);
+  assert.doesNotMatch(tasks, /domain_validation_duration_ms\s*=\s*0/u);
   assert.match(
     tasks,
     /evidence_metadata\s*->>\s*'aiRequestFingerprint'\s*=\s*\$3/u,
@@ -239,6 +245,12 @@ test(
         workerId: "worker:A",
       });
       assert.equal(first.length, 1);
+      const firstAttempts = await repository.listTaskAttempts(
+        "generation:task-lease",
+      );
+      assert.deepEqual(firstAttempts.map((attempt) => attempt.outcome), [null]);
+      assert.ok(firstAttempts[0]!.eligibleAt <= firstAttempts[0]!.claimedAt);
+      assert.doesNotMatch(firstAttempts[0]!.claimedAt, /^2099-/u);
       assert.equal(
         (
           await repository.claimTasks({
@@ -292,6 +304,21 @@ test(
       });
       assert.equal(reclaimed.length, 1);
       assert.equal(reclaimed[0]?.leaseEpoch, first[0]!.leaseEpoch + 1);
+      const reclaimedAttempts = await repository.listTaskAttempts(
+        "generation:task-lease",
+      );
+      assert.deepEqual(
+        reclaimedAttempts.map((attempt) => attempt.outcome),
+        ["lease_lost", null],
+      );
+      assert.equal(
+        reclaimedAttempts[1]?.eligibleAt,
+        reclaimedAttempts[0]?.finishedAt,
+      );
+      assert.equal(reclaimedAttempts[0]?.providerAdapterDurationMs, null);
+      assert.equal(reclaimedAttempts[0]?.domainValidationDurationMs, null);
+      assert.equal(reclaimedAttempts[0]?.requestBytes, null);
+      assert.equal(reclaimedAttempts[0]?.responseBytes, null);
       assert.equal(
         await repository.heartbeatTask({
           heartbeatAt: "2099-01-01T00:00:00.000Z",
@@ -303,6 +330,204 @@ test(
         }),
         false,
       );
+      assert.equal(
+        await repository.completeTask({
+          artifact: {
+            evidenceMetadata: {
+              aiRequestFingerprint: "ai-stack:test-v1",
+            },
+            kind: "recommendation_shard",
+            model: "stale-model",
+            provider: "stale-provider",
+            requestHash: "request:stale",
+            responseHash: "response:stale",
+            schemaVersion: 1,
+          },
+          completedAt: new Date().toISOString(),
+          leaseEpoch: first[0]!.leaseEpoch,
+          leaseToken: first[0]!.leaseToken!,
+          output: { kind: "recommendation_shard", recommendations: [] },
+          taskId: first[0]!.taskId,
+          telemetry: null,
+        }),
+        false,
+      );
+      assert.equal(
+        await repository.failTask({
+          code: "EVENT_OPERATIONS_AI_TIMEOUT",
+          failedAt: new Date().toISOString(),
+          leaseEpoch: first[0]!.leaseEpoch,
+          leaseToken: first[0]!.leaseToken!,
+          message: "A stale lease cannot close a recovered attempt.",
+          retryable: true,
+          taskId: first[0]!.taskId,
+          telemetry: null,
+        }),
+        false,
+      );
+      assert.equal(
+        await repository.completeTask({
+          artifact: {
+            evidenceMetadata: {
+              aiRequestFingerprint: "ai-stack:test-v1",
+            },
+            kind: "recommendation_shard",
+            model: "test-model",
+            provider: "test-provider",
+            requestHash: "request:test",
+            responseHash: "response:test",
+            schemaVersion: 1,
+          },
+          completedAt: new Date().toISOString(),
+          leaseEpoch: reclaimed[0]!.leaseEpoch,
+          leaseToken: reclaimed[0]!.leaseToken!,
+          output: { kind: "recommendation_shard", recommendations: [] },
+          taskId: reclaimed[0]!.taskId,
+          telemetry: {
+            domainValidationDurationMs: 2,
+            model: "test-model",
+            provider: "test-provider",
+            providerAdapterDurationMs: 8,
+            requestBytes: 128,
+            responseBytes: 256,
+          },
+        }),
+        true,
+      );
+      const completedAttempts = await repository.listTaskAttempts(
+        "generation:task-lease",
+      );
+      assert.deepEqual(
+        completedAttempts.map((attempt) => attempt.outcome),
+        ["lease_lost", "completed"],
+      );
+      assert.equal(completedAttempts[1]?.providerAdapterDurationMs, 8);
+
+      await client.query(
+        `
+          insert into event_ops_tasks (
+            workspace_id, task_id, generation_id, task_kind, status,
+            participant_ids, depends_on_task_ids, attempt_limit, attempts,
+            retry_round, lease_epoch, revision, created_at, updated_at
+          ) values (
+            $1, 'task:task-lease-fail', 'generation:task-lease',
+            'recommendation_shard', 'queued', '{}', '{}', 3, 0, 0, 0, 1,
+            now(), now()
+          )
+        `,
+        [runtime.workspaceId],
+      );
+      const failedClaim = await repository.claimTasks({
+        aiRequestFingerprint: "ai-stack:test-v1",
+        generationId: "generation:task-lease",
+        leaseMs: 500,
+        leaseTokenPrefix: "worker:failure",
+        limit: 1,
+        now: new Date().toISOString(),
+        workerId: "worker:failure",
+      });
+      assert.equal(failedClaim.length, 1);
+      assert.equal(
+        await repository.failTask({
+          code: "EVENT_OPERATIONS_AI_TIMEOUT",
+          failedAt: new Date().toISOString(),
+          leaseEpoch: failedClaim[0]!.leaseEpoch,
+          leaseToken: failedClaim[0]!.leaseToken!,
+          message: "Injected timeout without retaining response content.",
+          retryable: true,
+          taskId: failedClaim[0]!.taskId,
+          telemetry: {
+            domainValidationDurationMs: 0,
+            model: null,
+            provider: null,
+            providerAdapterDurationMs: 11,
+            requestBytes: 64,
+            responseBytes: 32,
+          },
+        }),
+        true,
+      );
+      const failedAttempt = (
+        await repository.listTaskAttempts("generation:task-lease")
+      ).find((attempt) => attempt.taskId === "task:task-lease-fail");
+      assert.equal(failedAttempt?.outcome, "retryable_failed");
+      assert.equal(failedAttempt?.failureCode, "EVENT_OPERATIONS_AI_TIMEOUT");
+      const retryEligibleAt = (
+        await repository.getTask("task:task-lease-fail")
+      )?.updatedAt;
+      const automaticRetry = await repository.claimTasks({
+        aiRequestFingerprint: "ai-stack:test-v1",
+        generationId: "generation:task-lease",
+        leaseMs: 500,
+        leaseTokenPrefix: "worker:automatic-retry",
+        limit: 1,
+        now: "2199-01-01T00:00:00.000Z",
+        workerId: "worker:automatic-retry",
+      });
+      assert.equal(automaticRetry.length, 1);
+      const automaticAttempt = (
+        await repository.listTaskAttempts("generation:task-lease")
+      ).find(
+        (attempt) =>
+          attempt.taskId === "task:task-lease-fail" && attempt.attempt === 2,
+      );
+      assert.equal(automaticAttempt?.eligibleAt, retryEligibleAt);
+      assert.doesNotMatch(automaticAttempt?.claimedAt ?? "", /^2199-/u);
+      assert.equal(
+        await repository.failTask({
+          code: "EVENT_OPERATIONS_AI_TIMEOUT",
+          failedAt: "1900-01-01T00:00:00.000Z",
+          leaseEpoch: automaticRetry[0]!.leaseEpoch,
+          leaseToken: automaticRetry[0]!.leaseToken!,
+          message: "Terminate the retry to exercise manual requeue.",
+          retryable: false,
+          taskId: automaticRetry[0]!.taskId,
+          telemetry: null,
+        }),
+        true,
+      );
+      const finalized = await repository.finalizeGeneration(
+        "generation:task-lease",
+        "2099-01-01T00:00:00.000Z",
+      );
+      assert.equal(finalized.status, "failed");
+      const retriedGeneration = await repository.retryFailedGeneration(
+        "generation:task-lease",
+        "1900-01-01T00:00:00.000Z",
+      );
+      assert.equal(retriedGeneration.status, "queued");
+      const manualEligibleAt = (
+        await repository.getTask("task:task-lease-fail")
+      )?.updatedAt;
+      const manualRetry = await repository.claimTasks({
+        aiRequestFingerprint: "ai-stack:test-v1",
+        generationId: "generation:task-lease",
+        leaseMs: 500,
+        leaseTokenPrefix: "worker:manual-retry",
+        limit: 1,
+        now: "2199-01-01T00:00:00.000Z",
+        workerId: "worker:manual-retry",
+      });
+      assert.equal(manualRetry.length, 1);
+      const manualAttempt = (
+        await repository.listTaskAttempts("generation:task-lease")
+      ).find(
+        (attempt) =>
+          attempt.taskId === "task:task-lease-fail" &&
+          attempt.retryRound === 1,
+      );
+      assert.equal(manualAttempt?.attempt, 1);
+      assert.equal(manualAttempt?.eligibleAt, manualEligibleAt);
+      assert.doesNotMatch(manualAttempt?.claimedAt ?? "", /^2199-/u);
+      const failedArtifacts = await client.query<{ count: string }>(
+        `
+          select count(*)::text as count
+          from event_ops_ai_artifacts
+          where workspace_id = $1 and task_id = 'task:task-lease-fail'
+        `,
+        [runtime.workspaceId],
+      );
+      assert.equal(failedArtifacts.rows[0]?.count, "0");
     } finally {
       await client.close();
       await admin.query(`drop schema if exists ${schema} cascade`);

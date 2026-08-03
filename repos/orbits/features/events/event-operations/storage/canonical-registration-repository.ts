@@ -6,6 +6,10 @@ import type {
   RegisterForEventInput,
 } from "../../registration/contract";
 import {
+  answersFromProfileResponses,
+  type EventProfileResponseSnapshot,
+} from "../../registration/interview-response-contract";
+import {
   EventRegistrationWindowError,
 } from "../../registration/deadline-gated-service";
 import type { EventOperationsParticipant } from "../contract";
@@ -363,10 +367,12 @@ async function currentVersions(
 }
 
 async function appendRegistrationVersion(input: {
+  copyResponsesFromProfileVersion?: number;
   effectiveAt?: string;
   eventId: string;
   membershipVersion: number;
   profileChanged: boolean;
+  interviewResponses?: readonly EventProfileResponseSnapshot[];
   profileEffectiveAt?: string;
   profileVersion: number;
   registration: EventRegistration;
@@ -433,6 +439,63 @@ async function appendRegistrationVersion(input: {
         input.registration.participantProfile.updatedAt,
       ],
     );
+    if (input.interviewResponses?.length) {
+      const values: unknown[] = [];
+      const rows = input.interviewResponses.map((response, index) => {
+        const offset = index * 11;
+        values.push(
+          input.workspaceId,
+          input.eventId,
+          input.registration.participantProfileId,
+          input.profileVersion,
+          response.responseId,
+          response.field,
+          response.visibility,
+          response.questionSource,
+          JSON.stringify(response),
+          response.answeredAt,
+          observedAt,
+        );
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}::jsonb, $${offset + 10}, $${offset + 11})`;
+      });
+      await input.transaction.query(
+        `
+          insert into event_ops_profile_response_versions (
+            workspace_id, event_id, participant_id, profile_version,
+            response_id, field_key, visibility, question_source,
+            response_payload, answered_at, created_at
+          ) values ${rows.join(", ")}
+        `,
+        values,
+      );
+    } else if (input.copyResponsesFromProfileVersion) {
+      await input.transaction.query(
+        `
+          insert into event_ops_profile_response_versions (
+            workspace_id, event_id, participant_id, profile_version,
+            response_id, field_key, visibility, question_source,
+            response_payload, answered_at, created_at
+          )
+          select
+            workspace_id, event_id, participant_id, $4,
+            response_id, field_key, visibility, question_source,
+            response_payload, answered_at, $5
+          from event_ops_profile_response_versions
+          where workspace_id = $1
+            and event_id = $2
+            and participant_id = $3
+            and profile_version = $6
+        `,
+        [
+          input.workspaceId,
+          input.eventId,
+          input.registration.participantProfileId,
+          input.profileVersion,
+          observedAt,
+          input.copyResponsesFromProfileVersion,
+        ],
+      );
+    }
   }
 
   await input.transaction.query(
@@ -657,6 +720,10 @@ export function createPostgresCanonicalRegistrationMethods({
             await appendRegistrationVersion({
               effectiveAt: stage.effectiveAt,
               eventId,
+              interviewResponses:
+                index === 0
+                  ? registration.participantProfile.interviewResponses
+                  : undefined,
               membershipVersion: index + 1,
               observedAt: migratedAt,
               profileChanged: index === 0,
@@ -807,6 +874,7 @@ export function createPostgresCanonicalRegistrationMethods({
       answers,
       displayName,
       eventId,
+      interviewResponses,
       userId,
     }: RegisterForEventInput) {
       return client.transaction(async (transaction) => {
@@ -823,7 +891,28 @@ export function createPostgresCanonicalRegistrationMethods({
           userId,
         );
         const normalizedAnswers = normalizeEventParticipantAnswers(answers);
+        const normalizedResponseAnswers = interviewResponses?.length
+          ? normalizeEventParticipantAnswers(
+              answersFromProfileResponses(interviewResponses),
+            )
+          : null;
+        if (
+          normalizedResponseAnswers &&
+          !eventParticipantAnswersEqual(
+            normalizedAnswers,
+            normalizedResponseAnswers,
+          )
+        ) {
+          throw new EventRegistrationWindowError(
+            "EVENT_REGISTRATION_WINDOW_INVALID",
+            "Verified interview responses do not match the submitted participant answers.",
+          );
+        }
         const normalizedDisplayName = displayName?.trim() || undefined;
+        const responseSnapshotUpgrade = Boolean(
+          interviewResponses?.length &&
+            !existing?.participantProfile.interviewResponses?.length,
+        );
         const profileChanged = existing
           ? !eventParticipantAnswersEqual(
               existing.participantProfile.answers,
@@ -832,7 +921,8 @@ export function createPostgresCanonicalRegistrationMethods({
             Boolean(
               normalizedDisplayName &&
                 normalizedDisplayName !== existing.participantProfile.displayName,
-            )
+            ) ||
+            responseSnapshotUpgrade
           : Object.keys(normalizedAnswers).length > 0 ||
             Boolean(normalizedDisplayName);
         if (
@@ -884,6 +974,15 @@ export function createPostgresCanonicalRegistrationMethods({
                     displayName:
                       normalizedDisplayName ??
                       existing.participantProfile.displayName,
+                    interviewResponses:
+                      interviewResponses?.length
+                        ? clone(interviewResponses)
+                        : eventParticipantAnswersEqual(
+                              existing.participantProfile.answers,
+                              normalizedAnswers,
+                            )
+                          ? existing.participantProfile.interviewResponses
+                          : undefined,
                     updatedAt: dbNow,
                   }
                 : existing.participantProfile,
@@ -905,6 +1004,9 @@ export function createPostgresCanonicalRegistrationMethods({
                 displayName: normalizedDisplayName,
                 eventId,
                 id: participantProfileId,
+                interviewResponses: interviewResponses?.length
+                  ? clone(interviewResponses)
+                  : undefined,
                 updatedAt: dbNow,
                 userId,
               },
@@ -917,8 +1019,21 @@ export function createPostgresCanonicalRegistrationMethods({
               userId,
             };
         const shouldAppendProfile = !existing || profileChanged;
+        const answersUnchanged = existing
+          ? eventParticipantAnswersEqual(
+              existing.participantProfile.answers,
+              normalizedAnswers,
+            )
+          : false;
         return appendRegistrationVersion({
+          copyResponsesFromProfileVersion:
+            shouldAppendProfile &&
+            answersUnchanged &&
+            !interviewResponses?.length
+              ? versions.profileVersion
+              : undefined,
           eventId,
+          interviewResponses: interviewResponses ?? undefined,
           membershipVersion: versions.membershipVersion + 1,
           profileChanged: shouldAppendProfile,
           profileVersion: shouldAppendProfile
@@ -949,6 +1064,7 @@ export function createPostgresCanonicalRegistrationMethods({
         if (existing) return existing;
         return appendRegistrationVersion({
           eventId: value.eventId,
+          interviewResponses: value.participantProfile.interviewResponses,
           membershipVersion: 1,
           profileChanged: true,
           profileVersion: 1,

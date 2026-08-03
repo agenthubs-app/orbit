@@ -461,6 +461,19 @@ ${JSON.stringify(input.features)}`,
   };
 }
 
+export function createConfiguredEventOperationsAiProvider({
+  requestTimeoutMs,
+}: {
+  requestTimeoutMs?: number;
+} = {}): EventOperationsAiProvider {
+  return createEventOperationsAiProvider({
+    config: {
+      jsonOutput: true,
+      ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
+    },
+  });
+}
+
 export const __eventOperationsAiProviderTestExports = {
   parseGroupingFeatures,
   parseRecommendationRows,

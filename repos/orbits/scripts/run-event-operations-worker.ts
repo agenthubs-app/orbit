@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 
 import { createStorageBusinessCardContactWriteProvider } from "../features/contacts/storage/contact-write-live-record-provider";
-import { createEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
+import { createConfiguredEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
 import { createEventOperationsEngine } from "../features/events/event-operations/engine";
 import { createEventOperationsOutboxProjector } from "../features/events/event-operations/outbox-projector";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
@@ -59,14 +59,11 @@ async function main(): Promise<void> {
     8,
   );
   const repository = createPostgresEventOperationsRepository(runtime);
-  const aiProvider = createEventOperationsAiProvider({
-    config: {
-      jsonOutput: true,
-      requestTimeoutMs: positiveInteger(
-        "ORBIT_EVENT_OPERATIONS_MODEL_TIMEOUT_MS",
-        90_000,
-      ),
-    },
+  const aiProvider = createConfiguredEventOperationsAiProvider({
+    requestTimeoutMs: positiveInteger(
+      "ORBIT_EVENT_OPERATIONS_MODEL_TIMEOUT_MS",
+      90_000,
+    ),
   });
   const aiRequestFingerprint = aiProvider.requestFingerprint?.trim();
   if (!aiRequestFingerprint) {
@@ -122,51 +119,67 @@ async function main(): Promise<void> {
   });
 
   let stopping = false;
+  const stopController = new AbortController();
   const stop = () => {
     stopping = true;
+    stopController.abort();
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
   const pollMs = positiveInteger("ORBIT_EVENT_OPERATIONS_POLL_MS", 1_000);
-  let consecutiveDrainFailures = 0;
 
   process.stdout.write(
     `${JSON.stringify({ event: "event_operations_worker_started", workerId })}\n`,
   );
   try {
-    while (!stopping) {
-      try {
-        const result = await worker.drainOnce();
-        consecutiveDrainFailures = 0;
-        if (result.workClaimed > 0 || result.errors.length > 0) {
-          process.stdout.write(
-            `${JSON.stringify({ event: "event_operations_worker_drain", workerId, ...result })}\n`,
+    async function runDrainLoop(
+      scope: "generation" | "outbox",
+      drain: () => ReturnType<typeof worker.drainOnce>,
+    ): Promise<void> {
+      let consecutiveDrainFailures = 0;
+      while (!stopping) {
+        try {
+          const result = await drain();
+          consecutiveDrainFailures = 0;
+          if (result.workClaimed > 0 || result.errors.length > 0) {
+            process.stdout.write(
+              `${JSON.stringify({ event: "event_operations_worker_drain", scope, workerId, ...result })}\n`,
+            );
+          }
+          if (result.workClaimed > 0) {
+            // A different worker can win between runnable discovery and claim.
+            // Yield briefly even after work so that race cannot busy-spin.
+            await sleep(Math.min(25, pollMs));
+            continue;
+          }
+          await sleep(pollMs);
+        } catch (error) {
+          consecutiveDrainFailures += 1;
+          const backoffMs = Math.min(
+            30_000,
+            pollMs * 2 ** Math.min(5, consecutiveDrainFailures - 1),
           );
+          process.stdout.write(
+            `${JSON.stringify({
+              backoffMs,
+              error:
+                error instanceof Error ? error.message : "Worker drain failed.",
+              event: "event_operations_worker_drain_failed",
+              scope,
+              workerId,
+            })}\n`,
+          );
+          await sleep(backoffMs);
         }
-        if (result.workClaimed > 0) {
-          // A different worker can win between runnable discovery and claim.
-          // Yield briefly even after work so that race cannot busy-spin.
-          await sleep(Math.min(25, pollMs));
-          continue;
-        }
-        await sleep(pollMs);
-      } catch (error) {
-        consecutiveDrainFailures += 1;
-        const backoffMs = Math.min(
-          30_000,
-          pollMs * 2 ** Math.min(5, consecutiveDrainFailures - 1),
-        );
-        process.stdout.write(
-          `${JSON.stringify({
-            backoffMs,
-            error: error instanceof Error ? error.message : "Worker drain failed.",
-            event: "event_operations_worker_drain_failed",
-            workerId,
-          })}\n`,
-        );
-        await sleep(backoffMs);
       }
     }
+
+    await Promise.all([
+      runDrainLoop("generation", () =>
+        worker.drainGenerationsOnce({ signal: stopController.signal }),
+      ),
+      runDrainLoop("outbox", () => worker.drainOutboxOnce()),
+    ]);
   } finally {
     process.stdout.write(
       `${JSON.stringify({ event: "event_operations_worker_stopped", workerId })}\n`,

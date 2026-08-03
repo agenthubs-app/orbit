@@ -8,6 +8,24 @@ import { Icon } from "../orbit-reference-primitives";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
+interface ContactRequestStateDetail {
+  contactId: string | null;
+  eventId: string;
+  participantId: string;
+  requestId: string | null;
+  status: OrbitPartyPersonView["contactRequestStatus"];
+}
+
+const contactRequestStateListeners = new Set<
+  (detail: ContactRequestStateDetail) => void
+>();
+
+function publishContactRequestState(detail: ContactRequestStateDetail) {
+  for (const listener of contactRequestStateListeners) {
+    listener(detail);
+  }
+}
+
 interface ApiEnvelope<T> {
   data?: T;
   error?: { message?: string };
@@ -62,6 +80,24 @@ export function EventContactRequestControl({
     setError(null);
   }, [person.contactId, person.contactRequestId, person.contactRequestStatus, person.id]);
 
+  useEffect(() => {
+    const synchronize = (detail: ContactRequestStateDetail) => {
+      if (
+        detail.eventId !== eventId ||
+        detail.participantId !== person.id
+      ) {
+        return;
+      }
+      setLocalRequestId(detail.requestId);
+      setLocalContactId(detail.contactId);
+      setLocalStatus(detail.status);
+    };
+    contactRequestStateListeners.add(synchronize);
+    return () => {
+      contactRequestStateListeners.delete(synchronize);
+    };
+  }, [eventId, person.id]);
+
   async function createRequest() {
     setBusy(true);
     setError(null);
@@ -72,6 +108,13 @@ export function EventContactRequestControl({
       );
       setLocalRequestId(request.requestId);
       setLocalStatus("awaiting_target_consent");
+      publishContactRequestState({
+        contactId: null,
+        eventId,
+        participantId: person.id,
+        requestId: request.requestId,
+        status: "awaiting_target_consent",
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Request failed.");
     } finally {
@@ -103,6 +146,13 @@ export function EventContactRequestControl({
       );
       setLocalStatus(request.status);
       setLocalContactId(request.contactId);
+      publishContactRequestState({
+        contactId: request.contactId,
+        eventId,
+        participantId: person.id,
+        requestId: responseRequestId,
+        status: request.status,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Response failed.");
     } finally {

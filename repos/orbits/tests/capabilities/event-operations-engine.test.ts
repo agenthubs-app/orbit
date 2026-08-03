@@ -12,6 +12,7 @@ import {
   type EventOperationsConfiguration,
   type EventOperationsParticipant,
 } from "../../features/events/event-operations/contract";
+import type { EventOperationsRepository } from "../../features/events/event-operations/repository";
 import { createMemoryEventOperationsRepository } from "../../features/events/event-operations/storage/memory-repository";
 
 const EVENT_ID = "event:event-operations-test";
@@ -232,17 +233,22 @@ function createAiProvider(input: {
 
 function harness(input: {
   aiProvider?: EventOperationsAiProvider;
+  monotonicNow?: () => number;
   now?: () => string;
+  repositoryNow?: () => string;
 } = {}) {
   const repository = createMemoryEventOperationsRepository({
     configurations: [configuration()],
+    now: input.repositoryNow,
   });
   let tick = 0;
   const now =
     input.now ??
     (() => `2026-08-02T09:${String(tick++).padStart(2, "0")}:00.000Z`);
+  let monotonicTick = 0;
   const engine = createEventOperationsEngine({
     aiProvider: input.aiProvider ?? createAiProvider(),
+    monotonicNow: input.monotonicNow ?? (() => ++monotonicTick),
     now,
     repository,
     token: () => `lease:${tick}`,
@@ -284,13 +290,70 @@ async function runUntilTerminal(
 
 test("event operations runs recommendation shards with bounded concurrency and atomically publishes complete AI results", async () => {
   const tracker = { active: 0, maxActive: 0, calls: new Map<string, number>() };
-  const { engine } = harness({ aiProvider: createAiProvider({ tracker }) });
+  const { engine, repository } = harness({ aiProvider: createAiProvider({ tracker }) });
   const { generation, progress } = await createAndRun(engine);
 
   assert.equal(progress.status, "completed");
   assert.equal(progress.percent, 100);
   assert.equal(progress.totalTasks, 13);
   assert.equal(tracker.maxActive, 2);
+  const attempts = await repository.listTaskAttempts(generation.generationId);
+  assert.equal(attempts.length, progress.totalTasks);
+  assert.ok(attempts.every((attempt) => attempt.outcome === "completed"));
+  assert.ok(
+    attempts.every(
+      (attempt) =>
+        attempt.finishedAt !== null &&
+        attempt.domainValidationDurationMs !== null &&
+        attempt.requestBytes !== null &&
+        attempt.requestBytes > 0 &&
+        attempt.responseBytes !== null &&
+        attempt.responseBytes > 0,
+    ),
+  );
+  const initialAttempt = attempts.find(
+    (attempt) => attempt.kind === "recommendation_shard",
+  );
+  const initialTask = initialAttempt
+    ? await repository.getTask(initialAttempt.taskId)
+    : null;
+  assert.equal(initialAttempt?.eligibleAt, initialTask?.createdAt);
+  const dependentAttempt = attempts.find(
+    (attempt) => attempt.kind === "grouping_feature_shard",
+  );
+  if (dependentAttempt) {
+    const dependentTask = await repository.getTask(dependentAttempt.taskId);
+    const dependencyFinished = attempts
+      .filter((attempt) =>
+        dependentTask?.dependsOnTaskIds.includes(attempt.taskId),
+      )
+      .map((attempt) => attempt.finishedAt)
+      .filter((value): value is string => value !== null)
+      .sort()
+      .at(-1);
+    assert.equal(dependentAttempt.eligibleAt, dependencyFinished);
+  }
+  assert.ok(
+    attempts
+      .filter((attempt) => attempt.kind !== "grouping_reduce")
+      .every(
+        (attempt) =>
+          attempt.provider === "test-provider" &&
+          attempt.model === "test-model" &&
+          (attempt.providerAdapterDurationMs ?? 0) > 0,
+      ),
+  );
+  assert.ok(
+    attempts
+      .filter((attempt) => attempt.kind === "grouping_reduce")
+      .every(
+        (attempt) =>
+          attempt.provider === "orbit-hard-constraint-reducer" &&
+          attempt.model === "grouping-assignment-v1" &&
+          attempt.providerAdapterDurationMs === 0 &&
+          (attempt.domainValidationDurationMs ?? 0) > 0,
+      ),
+  );
 
   const published = await engine.publishGeneration({
     actorId: ORGANIZER_ID,
@@ -315,6 +378,189 @@ test("event operations runs recommendation shards with bounded concurrency and a
   );
   assert.ok(published.graph.edges.some((edge) => edge.kind === "round_one_table"));
   assert.ok(published.graph.edges.some((edge) => edge.kind === "round_two_topic"));
+});
+
+test("rolling task concurrency refills a free slot before the slowest peer finishes", async () => {
+  const baseProvider = createAiProvider();
+  let recommendationCalls = 0;
+  let releaseFirst!: () => void;
+  let signalThird!: () => void;
+  let firstStillBlocked = true;
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = () => {
+      firstStillBlocked = false;
+      resolve();
+    };
+  });
+  const thirdStarted = new Promise<void>((resolve) => {
+    signalThird = resolve;
+  });
+  const aiProvider: EventOperationsAiProvider = {
+    ...baseProvider,
+    async generateRecommendations(input) {
+      recommendationCalls += 1;
+      const callNumber = recommendationCalls;
+      if (callNumber === 1) await firstGate;
+      if (callNumber === 3) signalThird();
+      return baseProvider.generateRecommendations(input);
+    },
+  };
+  const repository = createMemoryEventOperationsRepository({
+    configurations: [configuration({ shardSize: 1 })],
+  });
+  const engine = createEventOperationsEngine({ aiProvider, repository });
+  const generation = await engine.createGeneration({
+    actorId: ORGANIZER_ID,
+    capturedSnapshot: capturedSnapshot(
+      participants(4),
+      configuration({ shardSize: 1 }),
+    ),
+    idempotencyKey: "rolling-slot-refill",
+  });
+  const run = engine.runGeneration({
+    actorId: ORGANIZER_ID,
+    generationId: generation.generationId,
+    maxConcurrency: 2,
+    workerId: "worker:rolling-refill",
+  });
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      thirdStarted,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("A free task slot was not refilled.")),
+          1_000,
+        );
+      }),
+    ]);
+    assert.equal(recommendationCalls >= 3, true);
+    assert.equal(firstStillBlocked, true);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+    releaseFirst();
+  }
+  const progress = await run;
+  assert.equal(progress.status, "completed");
+  assert.equal(progress.claimedTasks, progress.totalTasks);
+});
+
+test("a rolling claim failure waits for in-flight tasks before rejecting", async () => {
+  const baseProvider = createAiProvider();
+  let recommendationCalls = 0;
+  let releaseFirst!: () => void;
+  let signalSecondClaimFailed!: () => void;
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve;
+  });
+  const secondClaimFailed = new Promise<void>((resolve) => {
+    signalSecondClaimFailed = resolve;
+  });
+  const aiProvider: EventOperationsAiProvider = {
+    ...baseProvider,
+    async generateRecommendations(input) {
+      recommendationCalls += 1;
+      if (recommendationCalls === 1) await firstGate;
+      return baseProvider.generateRecommendations(input);
+    },
+  };
+  const baseRepository = createMemoryEventOperationsRepository({
+    configurations: [configuration({ shardSize: 1 })],
+  });
+  const claimFailure = new Error("claim storage unavailable");
+  let claimCalls = 0;
+  const repository: EventOperationsRepository = {
+    ...baseRepository,
+    async claimTasks(input) {
+      claimCalls += 1;
+      if (claimCalls === 2) {
+        signalSecondClaimFailed();
+        throw claimFailure;
+      }
+      return baseRepository.claimTasks(input);
+    },
+  };
+  const engine = createEventOperationsEngine({ aiProvider, repository });
+  const generation = await engine.createGeneration({
+    actorId: ORGANIZER_ID,
+    capturedSnapshot: capturedSnapshot(
+      participants(4),
+      configuration({ shardSize: 1 }),
+    ),
+    idempotencyKey: "rolling-claim-failure",
+  });
+  let settled = false;
+  const run = engine
+    .runGeneration({
+      actorId: ORGANIZER_ID,
+      generationId: generation.generationId,
+      maxConcurrency: 2,
+      workerId: "worker:rolling-claim-failure",
+    })
+    .finally(() => {
+      settled = true;
+    });
+
+  await secondClaimFailed;
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  releaseFirst();
+  await assert.rejects(run, claimFailure);
+  assert.equal(recommendationCalls, 2);
+});
+
+test("aborting a rolling generation stops new claims after active tasks settle", async () => {
+  const baseProvider = createAiProvider();
+  let recommendationCalls = 0;
+  let releaseActive!: () => void;
+  let signalTwoStarted!: () => void;
+  const activeGate = new Promise<void>((resolve) => {
+    releaseActive = resolve;
+  });
+  const twoStarted = new Promise<void>((resolve) => {
+    signalTwoStarted = resolve;
+  });
+  const aiProvider: EventOperationsAiProvider = {
+    ...baseProvider,
+    async generateRecommendations(input) {
+      recommendationCalls += 1;
+      if (recommendationCalls === 2) signalTwoStarted();
+      await activeGate;
+      return baseProvider.generateRecommendations(input);
+    },
+  };
+  const repository = createMemoryEventOperationsRepository({
+    configurations: [configuration({ shardSize: 1 })],
+  });
+  const engine = createEventOperationsEngine({ aiProvider, repository });
+  const generation = await engine.createGeneration({
+    actorId: ORGANIZER_ID,
+    capturedSnapshot: capturedSnapshot(
+      participants(4),
+      configuration({ shardSize: 1 }),
+    ),
+    idempotencyKey: "rolling-abort",
+  });
+  const controller = new AbortController();
+  const interruptedRun = engine.runGeneration({
+    actorId: ORGANIZER_ID,
+    generationId: generation.generationId,
+    maxConcurrency: 2,
+    signal: controller.signal,
+    workerId: "worker:rolling-abort",
+  });
+  await twoStarted;
+  controller.abort();
+  releaseActive();
+
+  const interrupted = await interruptedRun;
+  assert.equal(interrupted.claimedTasks, 2);
+  assert.equal(interrupted.status, "running");
+  assert.equal(interrupted.runningTasks, 0);
+  assert.equal(recommendationCalls, 2);
+
+  const completed = await runUntilTerminal(engine, generation.generationId, 2);
+  assert.equal(completed.status, "completed");
 });
 
 test("rolling workers skip other AI fingerprints without poisoning or blocking publication", async () => {
@@ -491,6 +737,23 @@ test("a failed shard fails the whole new generation and keeps the old published 
     (task) => task.errorCode === "EVENT_OPERATIONS_AI_UNAVAILABLE",
   );
   assert.equal(exhausted?.attempts, exhausted?.attemptLimit);
+  const failedAttempts = (
+    await repository.listTaskAttempts(failing.generationId)
+  ).filter((attempt) => attempt.taskId === exhausted?.taskId);
+  assert.deepEqual(
+    failedAttempts.map((attempt) => attempt.outcome),
+    ["retryable_failed", "terminal_failed"],
+  );
+  assert.equal(failedAttempts[1]?.eligibleAt, failedAttempts[0]?.finishedAt);
+  assert.ok(
+    failedAttempts.every(
+      (attempt) =>
+        attempt.failureCode === "EVENT_OPERATIONS_AI_UNAVAILABLE" &&
+        (attempt.providerAdapterDurationMs ?? -1) >= 0 &&
+        (attempt.requestBytes ?? 0) > 0 &&
+        (attempt.responseBytes ?? 0) > 0,
+    ),
+  );
 });
 
 test("hard topology/configuration failures are terminal on the first provider attempt", async () => {
@@ -536,13 +799,16 @@ test("hard topology/configuration failures are terminal on the first provider at
 
 test("manual retry resumes only failed shards and never reruns completed shards", async () => {
   let shouldFail = true;
+  let repositoryTime = "2026-08-02T09:00:00.000Z";
   const tracker = { active: 0, maxActive: 0, calls: new Map<string, number>() };
-  const { engine } = harness({
+  const { engine, repository } = harness({
     aiProvider: createAiProvider({
       failParticipantId: "participant:1",
       shouldFail: () => shouldFail,
       tracker,
     }),
+    now: () => repositoryTime,
+    repositoryNow: () => repositoryTime,
   });
   const generation = await engine.createGeneration({
     actorId: ORGANIZER_ID,
@@ -562,6 +828,7 @@ test("manual retry resumes only failed shards and never reruns completed shards"
   const completedShardCalls = new Map(tracker.calls);
 
   shouldFail = false;
+  repositoryTime = "2026-08-02T10:00:00.000Z";
   await engine.retryGeneration({
     actorId: ORGANIZER_ID,
     generationId: generation.generationId,
@@ -574,6 +841,29 @@ test("manual retry resumes only failed shards and never reruns completed shards"
     }
   }
   assert.equal(tracker.calls.get("participant:1,participant:2"), 2);
+  const retriedShard = (
+    await repository.listTasks(generation.generationId)
+  ).find(
+    (task) =>
+      task.kind === "recommendation_shard" &&
+      task.participantIds.includes("participant:1"),
+  );
+  const shardAttempts = (
+    await repository.listTaskAttempts(generation.generationId)
+  ).filter((attempt) => attempt.taskId === retriedShard?.taskId);
+  assert.deepEqual(
+    shardAttempts.map((attempt) => ({
+      attempt: attempt.attempt,
+      outcome: attempt.outcome,
+      retryRound: attempt.retryRound,
+    })),
+    [
+      { attempt: 1, outcome: "terminal_failed", retryRound: 0 },
+      { attempt: 1, outcome: "completed", retryRound: 1 },
+    ],
+  );
+  assert.equal(shardAttempts[1]?.eligibleAt, repositoryTime);
+  assert.equal(shardAttempts[1]?.claimedAt, repositoryTime);
 });
 
 test("an expired running lease is requeued and resumes within the original retry budget", async () => {
@@ -620,10 +910,11 @@ test("an expired running lease is requeued and resumes within the original retry
 
 test("a live lease is not stolen and an expired exhausted lease fails explicitly", async () => {
   const tracker = { active: 0, maxActive: 0, calls: new Map<string, number>() };
+  let currentTime = "2026-08-02T10:00:00.000Z";
   const repository = createMemoryEventOperationsRepository({
     configurations: [configuration({ maxAttemptsPerTask: 1, shardSize: 2 })],
+    now: () => currentTime,
   });
-  let currentTime = "2026-08-02T10:00:00.000Z";
   const engine = createEventOperationsEngine({
     aiProvider: createAiProvider({ tracker }),
     now: () => currentTime,
@@ -717,10 +1008,11 @@ test("a recovered lease fences the stale worker result", async () => {
       return marked;
     },
   };
+  let currentTime = "2026-08-02T10:00:00.000Z";
   const repository = createMemoryEventOperationsRepository({
     configurations: [configuration({ maxAttemptsPerTask: 2, shardSize: 2 })],
+    now: () => currentTime,
   });
-  let currentTime = "2026-08-02T10:00:00.000Z";
   let lease = 0;
   const engine = createEventOperationsEngine({
     aiProvider,
@@ -749,13 +1041,7 @@ test("a recovered lease fences the stale worker result", async () => {
     maxConcurrency: 1,
     workerId: "worker:recovered",
   });
-  assert.equal(recoveredProgress.status, "running");
-  const recoveredTerminal = await runUntilTerminal(
-    engine,
-    generation.generationId,
-    1,
-  );
-  assert.equal(recoveredTerminal.status, "completed");
+  assert.equal(recoveredProgress.status, "completed");
 
   releaseFirst();
   assert.equal((await staleRun).status, "completed");
@@ -770,6 +1056,21 @@ test("a recovered lease fences the stale worker result", async () => {
       /recovered-worker/u,
     );
   }
+  const attempts = (
+    await repository.listTaskAttempts(generation.generationId)
+  ).filter((attempt) => attempt.taskId === shard?.taskId);
+  assert.deepEqual(
+    attempts.map((attempt) => attempt.outcome),
+    ["lease_lost", "completed"],
+  );
+  assert.equal(attempts[0]?.workerId, "worker:stale");
+  assert.equal(attempts[1]?.workerId, "worker:recovered");
+  assert.equal(attempts[0]?.finishedAt, "2026-08-02T10:00:02.000Z");
+  assert.equal(attempts[1]?.eligibleAt, "2026-08-02T10:00:02.000Z");
+  assert.equal(attempts[0]?.providerAdapterDurationMs, null);
+  assert.equal(attempts[0]?.domainValidationDurationMs, null);
+  assert.equal(attempts[0]?.requestBytes, null);
+  assert.equal(attempts[0]?.responseBytes, null);
 });
 
 test("event operations rejects organizer mutations from a different actor", async () => {

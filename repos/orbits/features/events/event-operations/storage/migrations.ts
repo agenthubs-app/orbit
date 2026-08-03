@@ -777,6 +777,123 @@ alter table event_ops_generations
   alter column ai_request_fingerprint set not null;
 `,
   },
+  {
+    name: "event-operations-v5-task-attempt-telemetry",
+    version: 5,
+    sql: `
+create table event_ops_task_attempts (
+  workspace_id text not null,
+  generation_id text not null,
+  task_id text not null,
+  task_kind text not null check (task_kind in (
+    'recommendation_shard',
+    'grouping_feature_shard',
+    'grouping_reduce',
+    'table_content_shard'
+  )),
+  attempt integer not null check (attempt > 0),
+  retry_round integer not null check (retry_round >= 0),
+  lease_epoch bigint not null check (lease_epoch > 0),
+  worker_id text not null,
+  participant_count integer not null check (participant_count >= 0),
+  dependency_count integer not null check (dependency_count >= 0),
+  eligible_at timestamptz not null,
+  claimed_at timestamptz not null,
+  finished_at timestamptz,
+  provider_adapter_duration_ms double precision
+    check (provider_adapter_duration_ms is null or provider_adapter_duration_ms >= 0),
+  domain_validation_duration_ms double precision
+    check (domain_validation_duration_ms is null or domain_validation_duration_ms >= 0),
+  request_bytes bigint check (request_bytes is null or request_bytes >= 0),
+  response_bytes bigint check (response_bytes is null or response_bytes >= 0),
+  provider text,
+  model text,
+  outcome text check (outcome is null or outcome in (
+    'completed',
+    'retryable_failed',
+    'terminal_failed',
+    'lease_lost'
+  )),
+  failure_code text,
+  primary key (workspace_id, task_id, attempt, lease_epoch),
+  foreign key (workspace_id, task_id)
+    references event_ops_tasks (workspace_id, task_id) on delete cascade,
+  foreign key (workspace_id, generation_id)
+    references event_ops_generations (workspace_id, generation_id) on delete cascade,
+  check (eligible_at <= claimed_at),
+  check (finished_at is null or claimed_at <= finished_at),
+  check (
+    (finished_at is null and outcome is null and failure_code is null
+      and provider_adapter_duration_ms is null
+      and domain_validation_duration_ms is null
+      and request_bytes is null and response_bytes is null)
+    or
+    (finished_at is not null and outcome is not null)
+  ),
+  check (
+    (outcome is null and failure_code is null)
+    or (outcome = 'completed' and failure_code is null)
+    or (outcome in ('retryable_failed', 'terminal_failed', 'lease_lost')
+      and failure_code is not null)
+  )
+);
+
+create index event_ops_task_attempts_generation_kind_outcome_idx
+  on event_ops_task_attempts (
+    workspace_id, generation_id, task_kind, outcome, claimed_at
+  );
+`,
+  },
+  {
+    name: "event-operations-v6-versioned-profile-responses",
+    version: 6,
+    sql: `
+create table event_ops_profile_response_versions (
+  workspace_id text not null,
+  event_id text not null,
+  participant_id text not null,
+  profile_version bigint not null check (profile_version > 0),
+  response_id text not null,
+  field_key text not null,
+  visibility text not null check (visibility in (
+    'event_attendees',
+    'matching_only',
+    'private'
+  )),
+  question_source text not null check (question_source in (
+    'ai_adaptive',
+    'legacy_unknown'
+  )),
+  response_payload jsonb not null
+    check (jsonb_typeof(response_payload) = 'object'),
+  answered_at timestamptz not null,
+  created_at timestamptz not null,
+  primary key (
+    workspace_id, event_id, participant_id, profile_version, response_id
+  ),
+  unique (
+    workspace_id, event_id, participant_id, profile_version, field_key
+  ),
+  foreign key (workspace_id, event_id, participant_id, profile_version)
+    references event_ops_profile_versions (
+      workspace_id,
+      event_id,
+      participant_id,
+      profile_version
+    ) on delete restrict
+);
+
+create index event_ops_profile_responses_public_lookup_idx
+  on event_ops_profile_response_versions (
+    workspace_id,
+    event_id,
+    participant_id,
+    profile_version,
+    visibility,
+    answered_at
+  );
+`,
+  },
 ];
 
 function checksum(sql: string): string {

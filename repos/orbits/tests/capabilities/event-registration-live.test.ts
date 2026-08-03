@@ -77,7 +77,7 @@ test("registration question generation uses the Orbit Agent model boundary and v
   assert.equal(result.provenance.model, "orbit-shared-model");
 });
 
-test("invalid or unavailable model output falls back to deterministic event-specific optional questions", async () => {
+test("invalid or unavailable model output returns no substitute questions", async () => {
   const result = await generateEventRegistrationQuestions({
     event: registerableEvent(),
     language: "en",
@@ -92,14 +92,8 @@ test("invalid or unavailable model output falls back to deterministic event-spec
     }),
   });
 
-  assert.equal(result.questions.length, 4);
-  assert.ok(result.questions.every((question) => question.optional));
-  assert.ok(
-    result.questions.every((question) =>
-      question.prompt.includes(registerableEvent().title),
-    ),
-  );
-  assert.equal(result.provenance.generationMethod, "deterministic-fallback");
+  assert.equal(result.questions.length, 0);
+  assert.equal(result.provenance.generationMethod, "orbit-agent-model-failed");
   assert.equal(result.provenance.fallbackReason, "MODEL_REQUEST_FAILED");
   assert.equal(result.provenance.externalNetworkRequested, true);
 });
@@ -215,10 +209,41 @@ test("registration provider persists one live record per event and user", async 
     now: () => "2026-07-24T06:00:00.000Z",
     provider,
   });
+  const interviewResponse = {
+    answer: {
+      customText: null,
+      displayText: "Find a pilot partner",
+      selectedOptionIds: ["option-1"],
+    },
+    answerSource: "participant" as const,
+    answeredAt: "2026-07-24T05:59:00.000Z",
+    field: "desiredOutcome" as const,
+    generation: {
+      method: "orbit-agent-model-adaptive" as const,
+      model: "test-model",
+      promptVersion: 1,
+      provider: "test-provider",
+    },
+    question: {
+      fieldLabel: { en: "Desired outcome", zh: "期待结果" },
+      inputKind: "single_choice_with_custom" as const,
+      language: "en" as const,
+      options: [
+        { id: "option-1", label: "Find a pilot partner" },
+        { id: "option-2", label: "Meet investors" },
+      ],
+      prompt: "What result would make this event worthwhile?",
+    },
+    questionId: "question:desired-outcome",
+    questionSource: "ai_adaptive" as const,
+    responseId: "response:desired-outcome",
+    visibility: "event_attendees" as const,
+  };
 
   const registration = await service.register({
     answers: { desiredOutcome: "Find a pilot partner" },
     eventId: "demo-event-2",
+    interviewResponses: [interviewResponse],
     userId: "profile_ari_lane",
   });
   const stored = await provider.getRegistration(
@@ -235,6 +260,10 @@ test("registration provider persists one live record per event and user", async 
   assert.equal(records[0]?.userId, "profile_ari_lane");
   assert.equal(records[0]?.targetId, "demo-event-2");
   assert.equal(records[0]?.payload.registrationId, registration.id);
+  assert.equal(
+    stored?.participantProfile.interviewResponses?.[0]?.question?.prompt,
+    "What result would make this event worthwhile?",
+  );
 });
 
 test("registration replay ignores JSON object key order", async () => {

@@ -36,6 +36,44 @@ export interface ClaimEventOperationsTasksInput {
   workerId: string;
 }
 
+export type EventOperationsTaskAttemptOutcome =
+  | "completed"
+  | "retryable_failed"
+  | "terminal_failed"
+  | "lease_lost";
+
+export interface EventOperationsTaskAttemptMeasurement {
+  domainValidationDurationMs: number;
+  model: string | null;
+  provider: string | null;
+  providerAdapterDurationMs: number;
+  requestBytes: number;
+  responseBytes: number;
+}
+
+export interface EventOperationsTaskAttemptTelemetry {
+  attempt: number;
+  claimedAt: string;
+  dependencyCount: number;
+  domainValidationDurationMs: number | null;
+  eligibleAt: string;
+  failureCode: EventOperationsFailureCode | null;
+  finishedAt: string | null;
+  generationId: string;
+  kind: EventOperationsGenerationTask["kind"];
+  leaseEpoch: number;
+  model: string | null;
+  outcome: EventOperationsTaskAttemptOutcome | null;
+  participantCount: number;
+  provider: string | null;
+  providerAdapterDurationMs: number | null;
+  requestBytes: number | null;
+  responseBytes: number | null;
+  retryRound: number;
+  taskId: string;
+  workerId: string;
+}
+
 export interface CompleteEventOperationsTaskInput {
   artifact: {
     evidenceMetadata: Readonly<Record<string, unknown>>;
@@ -51,6 +89,7 @@ export interface CompleteEventOperationsTaskInput {
   leaseToken: string;
   output: EventOperationsTaskOutput;
   taskId: string;
+  telemetry: EventOperationsTaskAttemptMeasurement | null;
 }
 
 export interface FailEventOperationsTaskInput {
@@ -61,6 +100,7 @@ export interface FailEventOperationsTaskInput {
   message: string;
   retryable: boolean;
   taskId: string;
+  telemetry: EventOperationsTaskAttemptMeasurement | null;
 }
 
 export interface HeartbeatEventOperationsTaskInput {
@@ -161,6 +201,9 @@ export interface EventOperationsRepository {
   ): Promise<readonly EventContactRequest[]>;
   listGenerations(eventId: string): Promise<readonly EventOperationsGeneration[]>;
   listTasks(generationId: string): Promise<readonly EventOperationsGenerationTask[]>;
+  listTaskAttempts(
+    generationId: string,
+  ): Promise<readonly EventOperationsTaskAttemptTelemetry[]>;
   publishGenerationAtomically(
     value: EventOperationsPublishedResult,
     organizerActorId: string,

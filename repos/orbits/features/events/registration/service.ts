@@ -146,13 +146,24 @@ export function createEventRegistrationService(input: {
     list({ eventId }) {
       return input.provider.listRegistrations(eventId);
     },
-    async register({ answers, displayName, eventId, userId }) {
+    async register({ answers, displayName, eventId, interviewResponses, userId }) {
       const normalizedAnswers = normalizeAnswers(answers);
+      const normalizedResponses = interviewResponses?.length
+        ? clone(interviewResponses)
+        : [];
       const existing = await input.provider.getRegistration(eventId, userId);
+      const answersChanged = existing
+        ? !sameAnswers(existing.participantProfile.answers, normalizedAnswers)
+        : Object.keys(normalizedAnswers).length > 0;
+      const responseSnapshotUpgrade = Boolean(
+        normalizedResponses.length > 0 &&
+          !existing?.participantProfile.interviewResponses?.length,
+      );
 
       if (
         existing?.status === "rsvped" &&
-        sameAnswers(existing.participantProfile.answers, normalizedAnswers)
+        !answersChanged &&
+        !responseSnapshotUpgrade
       ) {
         return existing;
       }
@@ -167,6 +178,12 @@ export function createEventRegistrationService(input: {
             answers: normalizedAnswers,
             displayName:
               displayName?.trim() || existing.participantProfile.displayName,
+            interviewResponses:
+              normalizedResponses.length > 0
+                ? normalizedResponses
+                : answersChanged
+                  ? undefined
+                  : existing.participantProfile.interviewResponses,
             updatedAt: timestamp,
           },
           reactivatedAt:
@@ -191,6 +208,8 @@ export function createEventRegistrationService(input: {
           displayName: displayName?.trim() || undefined,
           eventId,
           id: participantProfileId,
+          interviewResponses:
+            normalizedResponses.length > 0 ? normalizedResponses : undefined,
           updatedAt: timestamp,
           userId,
         },

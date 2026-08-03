@@ -48,6 +48,7 @@ export interface EventRegistrationQuestionSet {
       | "deterministic-fallback"
       | "deterministic-not-registerable"
       | "deterministic-not-requested"
+      | "orbit-agent-model-failed"
       | "orbit-agent-model-customized";
     model: string | null;
     provider: string | null;
@@ -61,6 +62,8 @@ export interface EventParticipantProfile {
   displayName?: string;
   eventId: string;
   id: string;
+  /** Verified immutable AI question/answer snapshots scoped to this event. */
+  interviewResponses?: readonly import("./interview-response-contract").EventProfileResponseSnapshot[];
   updatedAt: string;
   userId: string;
 }
@@ -90,6 +93,8 @@ export interface RegisterForEventInput {
   answers?: EventParticipantProfileAnswers | null;
   displayName?: string | null;
   eventId: string;
+  /** Server-verified immutable question/answer snapshots. Never accept these directly from an untrusted client. */
+  interviewResponses?: import("./interview-response-contract").EventProfileResponseSnapshot[] | null;
   userId: string;
 }
 

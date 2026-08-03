@@ -11,6 +11,7 @@ import {
   OrbitRealParty,
   OrbitRealPartyGraph,
 } from "../../app/(app)/app/dashboard/orbit-real-party";
+import type { EventParticipantDetailView } from "../../features/events/event-operations/participant-detail";
 
 const EVENT_ID = "event:tokyo/founder-night";
 const PROFILE_DEADLINE = "2026-08-03T09:00:00.000Z";
@@ -110,6 +111,71 @@ function partyViewModel(
   };
 }
 
+function participantDetail(person = attendee()): EventParticipantDetailView {
+  return {
+    company: person.company,
+    contactRequest: {
+      contactId: person.contactId,
+      direction: person.contactRequestDirection,
+      requestId: person.contactRequestId,
+      status:
+        person.contactRequestStatus === "incoming"
+          ? "awaiting_target_consent"
+          : person.contactRequestStatus,
+    },
+    displayName: person.name,
+    industry: person.industry,
+    participantId: person.id,
+    placements: [
+      {
+        groupingRationale: "Aiko brings procurement evidence to this table.",
+        icebreakers: ["Compare buyer signals"],
+        roundNumber: 1,
+        seat: person.seat ?? "T2-S3",
+        tableNumber: person.groupNumber ?? 2,
+        theme: "Complementary strengths",
+      },
+      {
+        groupingRationale: "The second round aligns on AI partnerships.",
+        icebreakers: [],
+        roundNumber: 2,
+        seat: "T4-S1",
+        tableNumber: 4,
+        theme: "AI partnerships",
+      },
+    ],
+    profileCompleteness: "complete",
+    profileVersion: 7,
+    recommendation: {
+      icebreakers: ["Compare buyer signals"],
+      memberHint: "Complementary market access",
+      reasons: [person.reason],
+      score: person.score,
+    },
+    responses: [
+      {
+        answer: "I prefer a few deep conversations.",
+        answeredAt: "2026-08-03T08:00:00.000Z",
+        fieldKey: "energyStyle",
+        label: { en: "Conversation style", zh: "交流风格" },
+        prompt: "How do you prefer to meet people at this event?",
+        questionSource: "ai_adaptive",
+      },
+      {
+        answer: "Built an enterprise reuse pilot across three cities.",
+        answeredAt: null,
+        fieldKey: "experienceHighlight",
+        label: { en: "Experience highlight", zh: "经历亮点" },
+        prompt: null,
+        questionSource: "legacy_unknown",
+      },
+    ],
+    role: person.title,
+    sourceContext: "published_generation",
+    topics: person.topics,
+  };
+}
+
 function installModalDocumentStub() {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
   const documentStub = {
@@ -193,6 +259,9 @@ test("a graph node opens the same one-person consent control and sends only that
   let requestBody = "";
   let requestUrl = "";
   globalThis.fetch = (async (url, init) => {
+    if (!init?.method || init.method === "GET") {
+      return Response.json({ data: participantDetail(), success: true });
+    }
     requestUrl = String(url);
     requestBody = String(init?.body ?? "");
     return Response.json({
@@ -242,6 +311,7 @@ test("a graph node opens the same one-person consent control and sends only that
 
 test("recommendations, attendee directory, and graph use the same owner contact id", async () => {
   const restoreDocument = installModalDocumentStub();
+  const originalFetch = globalThis.fetch;
   const contactId = "contact:owner:li/participant:aiko";
   const person = attendee({
     contactId,
@@ -263,6 +333,8 @@ test("recommendations, attendee directory, and graph use the same owner contact 
   });
   const href = `/app/contacts/${encodeURIComponent(contactId)}`;
   let renderer!: ReactTestRenderer;
+  globalThis.fetch = (async () =>
+    Response.json({ data: participantDetail(person), success: true })) as typeof fetch;
 
   try {
     await act(async () => {
@@ -294,6 +366,91 @@ test("recommendations, attendee directory, and graph use the same owner contact 
       );
     }
   } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) {
+      await act(async () => {
+        renderer.unmount();
+      });
+    }
+    restoreDocument();
+  }
+});
+
+test("recommendation and directory cards open the generic detail sheet while card contact state stays synchronized", async () => {
+  const restoreDocument = installModalDocumentStub();
+  const originalFetch = globalThis.fetch;
+  const person = attendee();
+  const requested: string[] = [];
+  globalThis.fetch = (async (url, init) => {
+    requested.push(`${init?.method ?? "GET"} ${String(url)}`);
+    if (!init?.method || init.method === "GET") {
+      return Response.json({ data: participantDetail(person), success: true });
+    }
+    return Response.json({
+      data: { requestId: "event-contact-request:aiko" },
+      success: true,
+    });
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+
+  try {
+    await act(async () => {
+      renderer = create(<OrbitRealParty viewModel={partyViewModel()} />);
+    });
+    const recommendationTab = renderer.root.findAll(
+      (node) => node.type === "button" && node.props["data-party-tab"] === "recommendations",
+    )[0];
+    await act(async () => recommendationTab.props.onClick());
+    const open = renderer.root.find(
+      (node) => node.type === "button" && node.props["data-party-person-open"] === person.id,
+    );
+    await act(async () => {
+      open.props.onClick();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.equal(
+      renderer.root.findAll(
+        (node) => node.props["data-party-person-detail"] === person.id,
+      ).length,
+      1,
+    );
+    assert.equal(
+      renderer.root.findAll(
+        (node) => node.props["data-party-profile-response"] === "energyStyle",
+      ).length,
+      1,
+    );
+    assert.equal(
+      renderer.root.findAll(
+        (node) => String(node.props["data-party-placement"] ?? "").startsWith("1:"),
+      ).length,
+      1,
+    );
+    const requestButtons = renderer.root.findAll(
+      (node) => node.type === "button" && node.props["data-event-contact-action"] === "request",
+    );
+    assert.equal(requestButtons.length, 2);
+    await act(async () => {
+      await requestButtons[0].props.onClick();
+    });
+    assert.equal(
+      renderer.root.findAll(
+        (node) => node.type === "button" && node.props["data-event-contact-action"] === "request",
+      ).length,
+      0,
+    );
+    assert.equal(
+      renderer.root.findAll(
+        (node) => node.props["data-event-contact-participant"] === person.id,
+      ).length,
+      2,
+    );
+    assert.ok(
+      requested.some((value) => value.includes(`/participants/${encodeURIComponent(person.id)}`)),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
     if (renderer) {
       await act(async () => {
         renderer.unmount();
