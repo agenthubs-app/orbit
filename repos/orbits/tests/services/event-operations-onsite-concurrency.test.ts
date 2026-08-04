@@ -119,6 +119,38 @@ test(
         "select statement_timestamp() as now",
       );
       const base = clock.rows[0]!.now.getTime();
+      const bootstrapEventId = "event-onsite-owner-bootstrap";
+      await scopedPool.query(
+        `insert into event_ops_events (
+           workspace_id,event_id,organizer_actor_id,lifecycle_state,
+           registration_migration_state,revision,created_at,updated_at
+         ) values ($1,$2,$3,'active','importing',1,statement_timestamp(),statement_timestamp())`,
+        [workspaceId, bootstrapEventId, "actor:onsite-organizer"],
+      );
+      const bootstrappedConfiguration =
+        await repository.saveConfigurationAsOperator({
+          actorId: "actor:onsite-organizer",
+          capability: "operations.configure",
+          configuration: configuration(bootstrapEventId, base),
+        });
+      assert.equal(
+        bootstrappedConfiguration.organizerActorId,
+        "actor:onsite-organizer",
+      );
+      const bootstrapAudit = await scopedPool.query<{
+        action: string;
+        actor_id: string;
+      }>(
+        `select actor_id,action from event_ops_audit_log
+          where event_id=$1 and action='event_configuration_created'`,
+        [bootstrapEventId],
+      );
+      assert.deepEqual(bootstrapAudit.rows, [
+        {
+          action: "event_configuration_created",
+          actor_id: "actor:onsite-organizer",
+        },
+      ]);
       const eventId = "event-onsite-concurrency";
       const people = [
         ["actor:a", "李 明"],
@@ -272,6 +304,56 @@ test(
           subjectActorId,
         });
       }
+
+      await grantRole("actor:configuration-operator", "operations");
+      const currentConfiguration = await repository.getConfiguration(eventId);
+      assert.ok(currentConfiguration);
+      const delegatedConfiguration = await repository.saveConfigurationAsOperator({
+        actorId: "actor:configuration-operator",
+        capability: "operations.configure",
+        configuration: {
+          ...currentConfiguration,
+          recommendationCount: currentConfiguration.recommendationCount + 1,
+          updatedAt: at(base, 1),
+        },
+      });
+      assert.equal(
+        delegatedConfiguration.organizerActorId,
+        "actor:onsite-organizer",
+      );
+      const configurationAudit = await scopedPool.query<{
+        action: string;
+        actor_id: string;
+      }>(
+        `select actor_id, action
+           from event_ops_audit_log
+          where event_id = $1 and action = 'event_configuration_updated'`,
+        [eventId],
+      );
+      assert.deepEqual(configurationAudit.rows, [
+        {
+          action: "event_configuration_updated",
+          actor_id: "actor:configuration-operator",
+        },
+      ]);
+      await eventAccess.revoke({
+        actingActorId: "actor:onsite-organizer",
+        eventId,
+        expectedRevision: 1,
+        reason: "Verify configuration writes fail closed after revocation",
+        subjectActorId: "actor:configuration-operator",
+      });
+      await assert.rejects(
+        repository.saveConfigurationAsOperator({
+          actorId: "actor:configuration-operator",
+          capability: "operations.configure",
+          configuration: {
+            ...delegatedConfiguration,
+            updatedAt: at(base, 2),
+          },
+        }),
+        /configuration access is denied/u,
+      );
 
       await grantRole("actor:reviewer", "reviewer");
       await grantRole("actor:analyst", "read_only_analyst");

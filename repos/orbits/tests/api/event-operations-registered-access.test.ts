@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createEventOperationsCheckInPostHandler,
+  createEventOperationsConfigurePutHandler,
   createEventOperationsGenerationRunPostHandler,
   createEventOperationsLimitedCheckInRosterGetHandler,
   createEventOperationsManualCheckInPostHandler,
@@ -482,6 +483,73 @@ test("limited check-in roster admits only roster readers and returns an exact mi
         ]);
         assert.doesNotMatch(JSON.stringify(body), /SECRET|company|answers|email/iu);
       }
+    });
+  }
+});
+
+test("event configuration admits only owner or an active operations assignment", async (t) => {
+  const cases: readonly [
+    string,
+    boolean,
+    EventAccessRole | null,
+    EventAccessAssignmentState | null,
+    number,
+  ][] = [
+    ["owner", true, null, null, 200],
+    ["active operations", false, "operations", "active", 200],
+    ["check-in", false, "check_in", "active", 403],
+    ["reviewer", false, "reviewer", "active", 403],
+    ["analyst", false, "read_only_analyst", "active", 403],
+    ["revoked operations", false, "operations", "revoked", 403],
+    ["unassigned", false, null, null, 403],
+  ];
+  const configuration = {
+    checkInOpensAt: "2026-08-02T08:30:00.000Z",
+    eventEndsAt: "2026-08-02T13:00:00.000Z",
+    eventStartsAt: "2026-08-02T09:30:00.000Z",
+    maxAttemptsPerTask: 3,
+    profileEditDeadlineAt: "2026-08-01T08:00:00.000Z",
+    recommendationCount: 3,
+    registrationCutoffAt: "2026-08-01T09:00:00.000Z",
+    resultsAvailableAt: "2026-08-02T09:00:00.000Z",
+    roundOneStartsAt: "2026-08-02T10:00:00.000Z",
+    roundTwoStartsAt: "2026-08-02T11:00:00.000Z",
+    shardSize: 8,
+    tableSize: 6,
+  };
+
+  for (const [name, owner, role, state, expectedStatus] of cases) {
+    await t.test(name, async () => {
+      let configureCalls = 0;
+      const handler = createEventOperationsConfigurePutHandler({
+        createAccessService: () =>
+          manualAccessService({ owner, role, state }),
+        createService: () =>
+          ({
+            async configure(input: {
+              actorId: string;
+              configuration: typeof configuration & { eventId: string };
+            }) {
+              configureCalls += 1;
+              return {
+                ...input.configuration,
+                organizerActorId: "actor:owner",
+                updatedAt: "2026-08-01T00:00:00.000Z",
+              };
+            },
+          }) as unknown as EventOperationsService,
+        resolveActor: async () => ({ id: "actor:operator" }),
+      });
+      const response = await handler(
+        new Request(`http://test/api/events/${EVENT_ID}/operations/admin`, {
+          body: JSON.stringify(configuration),
+          headers: { "content-type": "application/json" },
+          method: "PUT",
+        }),
+        { params: Promise.resolve({ id: EVENT_ID }) },
+      );
+      assert.equal(response.status, expectedStatus);
+      assert.equal(configureCalls, expectedStatus === 200 ? 1 : 0);
     });
   }
 });

@@ -21,7 +21,14 @@ import type {
   EventOperationsRepository,
   FailEventOperationsTaskInput,
   InitializeEventOperationsGenerationInput,
+  SaveEventOperationsConfigurationAsOperatorInput,
 } from "../repository";
+import { canAccessEventCapability } from "../../event-access/capability-policy";
+import type {
+  EventAccessAssignmentState,
+  EventAccessRole,
+} from "../../event-access/contract";
+import { requireEventAccessRepositoryReadiness } from "../../event-access/storage/postgres-repository";
 import type {
   EventOperationsPostgresRuntime,
   EventOperationsSqlExecutor,
@@ -803,6 +810,188 @@ export function createPostgresEventOperationsRepository({
       }
       throw error;
     }
+  }
+
+  async function persistConfiguration(
+    value: EventOperationsConfiguration,
+    authorization?: Omit<
+      SaveEventOperationsConfigurationAsOperatorInput,
+      "configuration"
+    >,
+  ): Promise<EventOperationsConfiguration> {
+    return client.transaction(async (transaction) => {
+      if (authorization) {
+        await requireEventAccessRepositoryReadiness(transaction);
+        const event = await transaction.query<{
+          organizer_actor_id: string;
+        }>(
+          `select organizer_actor_id
+             from event_ops_events
+            where workspace_id = $1 and event_id = $2
+            for update`,
+          [workspaceId, value.eventId],
+        );
+        const organizerActorId = event.rows[0]?.organizer_actor_id ?? null;
+        const assignment = await transaction.query<{
+          revision: number | string;
+          role: EventAccessRole;
+          state: EventAccessAssignmentState;
+        }>(
+          `select revision, role, state
+             from event_ops_event_role_assignment_heads
+            where workspace_id = $1
+              and event_id = $2
+              and subject_actor_id = $3
+            for share`,
+          [workspaceId, value.eventId, authorization.actorId.trim()],
+        );
+        const assignmentRow = assignment.rows[0] ?? null;
+        const owner = organizerActorId === authorization.actorId.trim();
+        const configurationHead = await transaction.query<{
+          configuration_version: number | string;
+        }>(
+          `select configuration_version
+             from event_ops_configuration_heads
+            where workspace_id = $1 and event_id = $2
+            for update`,
+          [workspaceId, value.eventId],
+        );
+        if (
+          !organizerActorId ||
+          event.rows.length !== 1 ||
+          assignment.rows.length > 1 ||
+          value.organizerActorId !== organizerActorId ||
+          (configurationHead.rows.length === 0 && !owner) ||
+          configurationHead.rows.length > 1 ||
+          (owner && assignmentRow !== null) ||
+          (assignmentRow !== null &&
+            !Number.isSafeInteger(Number(assignmentRow.revision))) ||
+          !canAccessEventCapability({
+            capability: authorization.capability,
+            owner,
+            role: assignmentRow?.role ?? null,
+            state: assignmentRow?.state ?? null,
+          })
+        ) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "Event configuration access is denied.",
+          );
+        }
+      }
+
+      const event = await transaction.query(
+        `
+          insert into event_ops_events (
+            workspace_id, event_id, organizer_actor_id, lifecycle_state,
+            registration_migration_state, revision, created_at, updated_at
+          ) values ($1, $2, $3, 'active', 'importing', 1, $4, $4)
+          on conflict (workspace_id, event_id) do update
+          set revision = event_ops_events.revision + 1,
+            updated_at = excluded.updated_at
+          where event_ops_events.organizer_actor_id = excluded.organizer_actor_id
+        `,
+        [workspaceId, value.eventId, value.organizerActorId, value.updatedAt],
+      );
+      if (event.rowCount !== 1) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "The configured organizer cannot replace another event owner.",
+        );
+      }
+      const head = await transaction.query<{ configuration_version: string }>(
+        `
+          select configuration_version::text
+          from event_ops_configuration_heads
+          where workspace_id = $1 and event_id = $2
+          for update
+        `,
+        [workspaceId, value.eventId],
+      );
+      const version = Number(head.rows[0]?.configuration_version ?? 0) + 1;
+      await transaction.query(
+        `
+          insert into event_ops_configurations (
+            workspace_id, event_id, configuration_version,
+            check_in_opens_at, event_starts_at, event_ends_at,
+            profile_edit_deadline_at, registration_cutoff_at,
+            results_available_at, round_one_starts_at, round_two_starts_at,
+            recommendation_count, table_size, shard_size,
+            max_attempts_per_task, created_at, updated_at
+          ) values (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+            $12, $13, $14, $15, $16, $16
+          )
+        `,
+        [
+          workspaceId,
+          value.eventId,
+          version,
+          value.checkInOpensAt,
+          value.eventStartsAt,
+          value.eventEndsAt,
+          value.profileEditDeadlineAt,
+          value.registrationCutoffAt,
+          value.resultsAvailableAt,
+          value.roundOneStartsAt,
+          value.roundTwoStartsAt,
+          value.recommendationCount,
+          value.tableSize,
+          value.shardSize,
+          value.maxAttemptsPerTask,
+          value.updatedAt,
+        ],
+      );
+      await transaction.query(
+        `
+          insert into event_ops_configuration_heads (
+            workspace_id, event_id, configuration_version, revision,
+            updated_at
+          ) values ($1, $2, $3, 1, $4)
+          on conflict (workspace_id,event_id) do update
+          set configuration_version = excluded.configuration_version,
+            revision = event_ops_configuration_heads.revision + 1,
+            updated_at = excluded.updated_at
+        `,
+        [workspaceId, value.eventId, version, value.updatedAt],
+      );
+      if (authorization) {
+        await transaction.query(
+          `insert into event_ops_audit_log (
+             workspace_id, audit_id, event_id, actor_id, action,
+             aggregate_type, aggregate_id, before_payload, after_payload,
+             evidence_ids, occurred_at
+           ) values (
+             $1,$2,$3,$4,$7,
+             'event_configuration',$3,$5::jsonb,$6::jsonb,'{}',
+             statement_timestamp()
+           )`,
+          [
+            workspaceId,
+            `audit:event-configuration:${payloadHash({
+              actorId: authorization.actorId,
+              eventId: value.eventId,
+              version,
+              workspaceId,
+            })}`,
+            value.eventId,
+            authorization.actorId,
+            JSON.stringify({ configurationVersion: version - 1 }),
+            JSON.stringify({
+              configurationVersion: version,
+              maxAttemptsPerTask: value.maxAttemptsPerTask,
+              recommendationCount: value.recommendationCount,
+              shardSize: value.shardSize,
+              tableSize: value.tableSize,
+            }),
+            version === 1
+              ? "event_configuration_created"
+              : "event_configuration_updated",
+          ],
+        );
+      }
+      return clone(value);
+    });
   }
 
   const repository: EventOperationsRepository = {
@@ -1855,83 +2044,13 @@ export function createPostgresEventOperationsRepository({
     },
 
     async saveConfiguration(value) {
-      return client.transaction(async (transaction) => {
-        const event = await transaction.query(
-          `
-            insert into event_ops_events (
-              workspace_id, event_id, organizer_actor_id, lifecycle_state,
-              registration_migration_state, revision, created_at, updated_at
-            ) values ($1, $2, $3, 'active', 'importing', 1, $4, $4)
-            on conflict (workspace_id, event_id) do update
-            set revision = event_ops_events.revision + 1,
-              updated_at = excluded.updated_at
-            where event_ops_events.organizer_actor_id = excluded.organizer_actor_id
-          `,
-          [workspaceId, value.eventId, value.organizerActorId, value.updatedAt],
-        );
-        if (event.rowCount !== 1) {
-          throw new EventOperationsError(
-            "EVENT_OPERATIONS_FORBIDDEN",
-            "The configured organizer cannot replace another event owner.",
-          );
-        }
-        const head = await transaction.query<{ configuration_version: string }>(
-          `
-            select configuration_version::text
-            from event_ops_configuration_heads
-            where workspace_id = $1 and event_id = $2
-            for update
-          `,
-          [workspaceId, value.eventId],
-        );
-        const version = Number(head.rows[0]?.configuration_version ?? 0) + 1;
-        await transaction.query(
-          `
-            insert into event_ops_configurations (
-              workspace_id, event_id, configuration_version,
-              check_in_opens_at, event_starts_at, event_ends_at,
-              profile_edit_deadline_at, registration_cutoff_at,
-              results_available_at, round_one_starts_at, round_two_starts_at,
-              recommendation_count, table_size, shard_size,
-              max_attempts_per_task, created_at, updated_at
-            ) values (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              $12, $13, $14, $15, $16, $16
-            )
-          `,
-          [
-            workspaceId,
-            value.eventId,
-            version,
-            value.checkInOpensAt,
-            value.eventStartsAt,
-            value.eventEndsAt,
-            value.profileEditDeadlineAt,
-            value.registrationCutoffAt,
-            value.resultsAvailableAt,
-            value.roundOneStartsAt,
-            value.roundTwoStartsAt,
-            value.recommendationCount,
-            value.tableSize,
-            value.shardSize,
-            value.maxAttemptsPerTask,
-            value.updatedAt,
-          ],
-        );
-        await transaction.query(
-          `
-            insert into event_ops_configuration_heads (
-              workspace_id, event_id, configuration_version, revision,
-              updated_at
-            ) values ($1, $2, $3, 1, $4)
-            on conflict (workspace_id, event_id) do update
-            set configuration_version = excluded.configuration_version,
-              revision = event_ops_configuration_heads.revision + 1,
-              updated_at = excluded.updated_at
-          `,
-          [workspaceId, value.eventId, version, value.updatedAt],
-        );
-        return clone(value);
+      return persistConfiguration(value);
+    },
+
+    async saveConfigurationAsOperator(input) {
+      return persistConfiguration(input.configuration, {
+        actorId: input.actorId,
+        capability: input.capability,
       });
     },
 

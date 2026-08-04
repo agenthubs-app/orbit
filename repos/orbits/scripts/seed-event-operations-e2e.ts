@@ -20,6 +20,7 @@ import { createEventOperationsPostgresClient } from "../features/events/event-op
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { readPublicEventCatalogue } from "../features/events/public-catalogue";
 
+// The seed never embeds or prints a password; credentials come only from the external environment.
 async function main(): Promise<void> {
   loadLocalEnv();
   const database = resolveLiveDatabaseConnectionConfig();

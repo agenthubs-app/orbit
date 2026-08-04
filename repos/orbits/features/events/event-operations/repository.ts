@@ -144,6 +144,12 @@ export interface ListEventOperationsLimitedCheckInRosterInput {
   eventId: string;
 }
 
+export interface SaveEventOperationsConfigurationAsOperatorInput {
+  actorId: string;
+  capability: "operations.configure";
+  configuration: EventOperationsConfiguration;
+}
+
 export interface CreateEventContactRequestInput {
   eventId: string;
   requesterActorId: string;
@@ -264,6 +270,9 @@ export interface EventOperationsRepository {
   ): Promise<EventOperationsGeneration>;
   saveConfiguration(
     value: EventOperationsConfiguration,
+  ): Promise<EventOperationsConfiguration>;
+  saveConfigurationAsOperator(
+    input: SaveEventOperationsConfigurationAsOperatorInput,
   ): Promise<EventOperationsConfiguration>;
   seedCanonicalRegistration(value: EventRegistration): Promise<EventRegistration>;
 }

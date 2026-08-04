@@ -27,6 +27,7 @@ import type {
   InitializeEventOperationsGenerationInput,
   ListEventOperationsLimitedCheckInRosterInput,
   RespondToEventContactRequestInput,
+  SaveEventOperationsConfigurationAsOperatorInput,
 } from "../repository";
 
 interface MemoryContactRequestRecord
@@ -180,6 +181,9 @@ export interface MemoryEventOperationsRepository
 }
 
 export interface CreateMemoryEventOperationsRepositoryOptions {
+  canConfigureEvent?: (
+    input: SaveEventOperationsConfigurationAsOperatorInput,
+  ) => boolean | Promise<boolean>;
   canReadLimitedCheckInRoster?: (
     input: ListEventOperationsLimitedCheckInRosterInput,
   ) => boolean | Promise<boolean>;
@@ -251,6 +255,30 @@ export function createMemoryEventOperationsRepository(
   const tasks = new Map<string, EventOperationsGenerationTask>();
   const taskAttempts = new Map<string, EventOperationsTaskAttemptTelemetry>();
   const repositoryNow = () => options.now?.() ?? new Date().toISOString();
+
+  async function storeConfiguration(value: EventOperationsConfiguration) {
+    const existing = configurations.get(value.eventId);
+    if (existing && existing.organizerActorId !== value.organizerActorId) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_FORBIDDEN",
+        "The configured organizer cannot replace another event owner.",
+      );
+    }
+    configurations.set(value.eventId, clone(value));
+    legacyActiveConfigurationEventIds.add(value.eventId);
+    configurationVersions.set(
+      value.eventId,
+      (configurationVersions.get(value.eventId) ?? 0) + 1,
+    );
+    if (!registrationMigrationStates.has(value.eventId)) {
+      registrationMigrationStates.set(value.eventId, {
+        count: 0,
+        hash: "",
+        state: "importing",
+      });
+    }
+    return clone(value);
+  }
   for (const configuration of options.configurations ?? []) {
     const seededRegistrations =
       options.canonicalRegistrations?.filter(
@@ -1286,30 +1314,21 @@ export function createMemoryEventOperationsRepository(
     },
 
     async saveConfiguration(value) {
-      const existing = configurations.get(value.eventId);
-      if (
-        existing &&
-        existing.organizerActorId !== value.organizerActorId
-      ) {
+      return storeConfiguration(value);
+    },
+
+    async saveConfigurationAsOperator(input) {
+      const authorized = options.canConfigureEvent
+        ? await options.canConfigureEvent(input)
+        : configurations.get(input.configuration.eventId)?.organizerActorId ===
+          input.actorId;
+      if (!authorized) {
         throw new EventOperationsError(
           "EVENT_OPERATIONS_FORBIDDEN",
-          "The configured organizer cannot replace another event owner.",
+          "Event configuration access is denied.",
         );
       }
-      configurations.set(value.eventId, clone(value));
-      legacyActiveConfigurationEventIds.add(value.eventId);
-      configurationVersions.set(
-        value.eventId,
-        (configurationVersions.get(value.eventId) ?? 0) + 1,
-      );
-      if (!registrationMigrationStates.has(value.eventId)) {
-        registrationMigrationStates.set(value.eventId, {
-          count: 0,
-          hash: "",
-          state: "importing",
-        });
-      }
-      return clone(value);
+      return storeConfiguration(input.configuration);
     },
 
     async seedCanonicalRegistration(value) {

@@ -357,42 +357,56 @@ export function createEventOperationsLimitedCheckInRosterGetHandler(
 export function createEventOperationsConfigurePutHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function configureEventOperations(
-    request: Request,
-    _context: EventOperationsRouteContext,
-    access,
-  ) {
-    try {
-      const body = await jsonBody(request);
-      const configuration: Omit<
-        EventOperationsConfiguration,
-        "organizerActorId" | "updatedAt"
-      > = {
-        checkInOpensAt: requiredText(body, "checkInOpensAt"),
-        eventEndsAt: requiredText(body, "eventEndsAt"),
-        eventId: access.eventId,
-        eventStartsAt: requiredText(body, "eventStartsAt"),
-        maxAttemptsPerTask: requiredPositiveInteger(body, "maxAttemptsPerTask"),
-        profileEditDeadlineAt: requiredText(body, "profileEditDeadlineAt"),
-        recommendationCount: requiredPositiveInteger(body, "recommendationCount"),
-        registrationCutoffAt: requiredText(body, "registrationCutoffAt"),
-        resultsAvailableAt: requiredText(body, "resultsAvailableAt"),
-        roundOneStartsAt: requiredText(body, "roundOneStartsAt"),
-        roundTwoStartsAt: requiredText(body, "roundTwoStartsAt"),
-        shardSize: requiredPositiveInteger(body, "shardSize"),
-        tableSize: requiredPositiveInteger(body, "tableSize"),
-      };
-      const result = await serviceFor(dependencies).configure({
-        actorId: access.actor.id,
-        configuration,
-      });
-      return NextResponse.json(success(result), {
-        headers: runtimeBoundaryHeaders(access.mode),
-      });
-    } catch (error) {
-      return errorResponse(error, access.mode);
-    }
-  }, dependencies.ownedAccess);
+  return withEventCapabilityAccess(
+    "operations.configure",
+    async function configureEventOperations(
+      request: Request,
+      _context: EventOperationsRouteContext,
+      access,
+    ) {
+      try {
+        const body = await jsonBody(request);
+        const configuration: Omit<
+          EventOperationsConfiguration,
+          "organizerActorId" | "updatedAt"
+        > = {
+          checkInOpensAt: requiredText(body, "checkInOpensAt"),
+          eventEndsAt: requiredText(body, "eventEndsAt"),
+          eventId: access.eventId,
+          eventStartsAt: requiredText(body, "eventStartsAt"),
+          maxAttemptsPerTask: requiredPositiveInteger(
+            body,
+            "maxAttemptsPerTask",
+          ),
+          profileEditDeadlineAt: requiredText(body, "profileEditDeadlineAt"),
+          recommendationCount: requiredPositiveInteger(
+            body,
+            "recommendationCount",
+          ),
+          registrationCutoffAt: requiredText(body, "registrationCutoffAt"),
+          resultsAvailableAt: requiredText(body, "resultsAvailableAt"),
+          roundOneStartsAt: requiredText(body, "roundOneStartsAt"),
+          roundTwoStartsAt: requiredText(body, "roundTwoStartsAt"),
+          shardSize: requiredPositiveInteger(body, "shardSize"),
+          tableSize: requiredPositiveInteger(body, "tableSize"),
+        };
+        const result = await serviceFor(dependencies).configure({
+          actorId: access.actor.id,
+          configuration,
+        });
+        return NextResponse.json(success(result), {
+          headers: runtimeBoundaryHeaders(access.mode),
+        });
+      } catch (error) {
+        if (isEventCapabilityAccessError(error)) throw error;
+        return errorResponse(error, access.mode);
+      }
+    },
+    {
+      createAccessService: dependencies.createAccessService,
+      resolveActor: dependencies.resolveActor,
+    },
+  );
 }
 
 export function createEventOperationsGenerationStartPostHandler(

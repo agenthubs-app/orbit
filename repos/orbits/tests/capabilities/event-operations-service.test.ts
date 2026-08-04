@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { EventOperationsAiProvider } from "../../features/events/event-operations/contract";
+import type { EventAccessCapability } from "../../features/events/event-access/contract";
 import { createEventOperationsEngine } from "../../features/events/event-operations/engine";
 import { createMemoryEventOperationsRepository } from "../../features/events/event-operations/storage/memory-repository";
 import { createEventOperationsService } from "../../features/events/event-operations/service";
@@ -12,10 +13,7 @@ import {
 
 const eventId = "event:operations-service";
 const organizerActorId = "actor:organizer";
-type OperationsCapability =
-  | "check_in.roster.read_limited"
-  | "operations.read_sensitive"
-  | "check_in.roster.write";
+type OperationsCapability = EventAccessCapability;
 
 const unusedAiProvider: EventOperationsAiProvider = {
   async generateGroupingFeatures() {
@@ -46,12 +44,18 @@ async function createHarness() {
       new Set([
         "check_in.roster.read_limited",
         "check_in.roster.write",
+        "operations.configure",
         "operations.read_sensitive",
       ]),
     ],
   ]);
+  const revokeConfigureAfterServiceCheck = new Set<string>();
   const revokeLimitedRosterAfterServiceCheck = new Set<string>();
   const repository = createMemoryEventOperationsRepository({
+    canConfigureEvent: (input) =>
+      capabilitiesByActor
+        .get(input.actorId)
+        ?.has("operations.configure") ?? false,
     canReadLimitedCheckInRoster: (input) =>
       capabilitiesByActor
         .get(input.actorId)
@@ -144,6 +148,14 @@ async function createHarness() {
             .get(input.actorId)
             ?.delete("check_in.roster.read_limited");
         }
+        if (
+          input.capability === "operations.configure" &&
+          revokeConfigureAfterServiceCheck.delete(input.actorId)
+        ) {
+          capabilitiesByActor
+            .get(input.actorId)
+            ?.delete("operations.configure");
+        }
       },
       async isOrganizer(input) {
         return input.eventId === eventId && input.actorId === organizerActorId;
@@ -181,6 +193,11 @@ async function createHarness() {
       capabilities.add("operations.read_sensitive");
       capabilitiesByActor.set(actorId, capabilities);
     },
+    grantConfigureCapability(actorId: string) {
+      const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
+      capabilities.add("operations.configure");
+      capabilitiesByActor.set(actorId, capabilities);
+    },
     grantCheckInCapability(actorId: string) {
       const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
       capabilities.add("check_in.roster.read_limited");
@@ -193,6 +210,9 @@ async function createHarness() {
     },
     revokeLimitedRosterOnNextRepositoryRead(actorId: string) {
       revokeLimitedRosterAfterServiceCheck.add(actorId);
+    },
+    revokeConfigureOnNextRepositoryWrite(actorId: string) {
+      revokeConfigureAfterServiceCheck.add(actorId);
     },
     service,
     setTimestamp(value: string) {
@@ -222,6 +242,41 @@ test("admin workspace enforces capability before repository reads and admits an 
   });
   assert.equal(workspace.metrics.participantCount, 3);
   assert.ok(harness.repositoryCallCount() > beforeDeniedRequest);
+});
+
+test("event configuration preserves the owner and fails closed when delegated capability is revoked between layers", async () => {
+  const harness = await createHarness();
+  const current = await harness.repository.getConfiguration(eventId);
+  assert.ok(current);
+  const { organizerActorId: _owner, updatedAt: _updatedAt, ...configuration } =
+    current;
+
+  const delegate = "actor:operations-configure";
+  harness.grantConfigureCapability(delegate);
+  const saved = await harness.service.configure({
+    actorId: delegate,
+    configuration: {
+      ...configuration,
+      recommendationCount: configuration.recommendationCount + 1,
+    },
+  });
+  assert.equal(saved.organizerActorId, organizerActorId);
+  assert.equal(
+    saved.recommendationCount,
+    configuration.recommendationCount + 1,
+  );
+
+  const revokedDelegate = "actor:revoked-configure";
+  harness.grantConfigureCapability(revokedDelegate);
+  harness.revokeConfigureOnNextRepositoryWrite(revokedDelegate);
+  await assert.rejects(
+    () =>
+      harness.service.configure({
+        actorId: revokedDelegate,
+        configuration,
+      }),
+    /configuration access is denied/u,
+  );
 });
 
 test("attendee workspace exposes the real registration directory and a real idempotent check-in", async () => {

@@ -7,15 +7,18 @@ import { fileURLToPath } from "node:url";
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const source = (path: string) => readFileSync(join(projectRoot, path), "utf8");
 
-test("event operations organizer page requires login and an actor-owned event", () => {
+test("event operations workspace requires login and per-event operations capability", () => {
   const page = source("app/(app)/app/events/[id]/operations/page.tsx");
   const eventDetail = source("app/(app)/app/events/[id]/page.tsx");
 
   assert.match(page, /const \[\{ id: routeId \}, session\] = await Promise\.all\(\[params, auth\(\)\]\)/);
   assert.match(page, /if \(!session\?\.user\?\.id\)/);
-  assert.match(page, /createEventCrudAndImportService\(\)\.getEvent/);
+  assert.match(page, /createConfiguredEventAccessService\(\)/);
+  assert.match(page, /requireEventCapability/);
+  assert.match(page, /capability: "operations\.read_sensitive"/);
   assert.match(page, /actorId: session\.user\.id/);
-  assert.match(page, /Organizer access required/);
+  assert.match(page, /Event operations access required/);
+  assert.doesNotMatch(page, /readPublicEventCatalogue/);
   assert.match(eventDetail, /\/operations/);
   assert.match(eventDetail, /Open organizer operations/);
 });

@@ -15,14 +15,12 @@ import type { EventOperationsEngine } from "./engine";
 import { eventOperationsParticipantFromRegistration } from "./participant";
 import type { EventOperationsRepository } from "./repository";
 import type { EventOperationsLimitedCheckInRoster } from "./check-in-roster";
+import type { EventAccessCapability } from "../event-access/contract";
 
 export interface EventOperationsAccessPolicy {
   requireCapability(input: {
     actorId: string;
-    capability:
-      | "operations.read_sensitive"
-      | "check_in.roster.read_limited"
-      | "check_in.roster.write";
+    capability: EventAccessCapability;
     eventId: string;
   }): Promise<void>;
   isOrganizer(input: { actorId: string; eventId: string }): Promise<boolean>;
@@ -224,6 +222,20 @@ export function createEventOperationsService({
     return configuration;
   }
 
+  async function requireConfigurationOwner(eventId: string, actorId: string) {
+    const configuration = await repository.getConfiguration(eventId);
+    if (configuration) {
+      return configuration;
+    }
+    if (!(await access.isOrganizer({ actorId, eventId }))) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_FORBIDDEN",
+        "Only the event owner can configure an unconfigured event.",
+      );
+    }
+    return null;
+  }
+
   async function requireRegistered(eventId: string, actorId: string) {
     if (!(await access.isRegistered({ actorId, eventId }))) {
       throw new EventOperationsError(
@@ -420,13 +432,27 @@ export function createEventOperationsService({
     },
 
     async configure({ actorId, configuration }) {
-      await requireOrganizer(configuration.eventId, actorId);
+      await access.requireCapability({
+        actorId,
+        capability: "operations.configure",
+        eventId: configuration.eventId,
+      });
+      const existingConfiguration = await requireConfigurationOwner(
+        configuration.eventId,
+        actorId,
+      );
       validateConfiguration(configuration);
       const timestamp = now();
-      const saved = await repository.saveConfiguration({
+      const value = {
         ...configuration,
-        organizerActorId: actorId.trim(),
+        organizerActorId:
+          existingConfiguration?.organizerActorId ?? actorId.trim(),
         updatedAt: timestamp,
+      };
+      const saved = await repository.saveConfigurationAsOperator({
+        actorId,
+        capability: "operations.configure",
+        configuration: value,
       });
       const shadowRegistrations = await registrationService.list({
         eventId: configuration.eventId,
