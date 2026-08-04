@@ -18,6 +18,7 @@ import type {
 } from "./contract";
 import { createPostgresEventOperationsRepository } from "./storage/postgres-repository";
 import { createConfiguredEventOperationsPostgresRuntime } from "./storage/postgres-client";
+import type { EventOperationsLimitedCheckInRosterItem } from "./check-in-roster";
 
 export interface InitializeEventOperationsGenerationInput {
   candidates: readonly EventOperationsCandidate[];
@@ -137,6 +138,12 @@ export type CreateEventOperationsCheckInInput =
   | CreateEventOperationsSelfCheckInInput
   | CreateEventOperationsStaffCheckInInput;
 
+export interface ListEventOperationsLimitedCheckInRosterInput {
+  actorId: string;
+  capability: "check_in.roster.read_limited";
+  eventId: string;
+}
+
 export interface CreateEventContactRequestInput {
   eventId: string;
   requesterActorId: string;
@@ -214,6 +221,9 @@ export interface EventOperationsRepository {
     input: InitializeEventOperationsGenerationInput,
   ): Promise<EventOperationsGeneration>;
   listCheckIns(eventId: string): Promise<readonly EventOperationsCheckIn[]>;
+  listLimitedCheckInRoster(
+    input: ListEventOperationsLimitedCheckInRosterInput,
+  ): Promise<readonly EventOperationsLimitedCheckInRosterItem[]>;
   listCandidates(
     generationId: string,
     sourceParticipantIds: readonly string[],

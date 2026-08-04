@@ -121,13 +121,26 @@ test(
       const base = clock.rows[0]!.now.getTime();
       const eventId = "event-onsite-concurrency";
       const people = [
-        "actor:a",
-        "actor:b",
-        "actor:c",
-        "actor:d",
-        "actor:e",
-        "actor:f",
-      ].map((actorId) => registration(eventId, actorId, at(base, -60)));
+        ["actor:a", "李 明"],
+        ["actor:b", "佐藤 葵"],
+        ["actor:c", "Élodie Martin"],
+        ["actor:d", "Daria Popov"],
+        ["actor:e", "Kofi Mensah"],
+        ["actor:f", "María García"],
+      ].map(([actorId, displayName]) => {
+        const value = registration(eventId, actorId!, at(base, -60));
+        return {
+          ...value,
+          participantProfile: {
+            ...value.participantProfile,
+            answers: {
+              ...value.participantProfile.answers,
+              sensitiveMarker: `NEVER_EXPOSE_${actorId}`,
+            },
+            displayName,
+          },
+        };
+      });
       await repository.saveConfiguration(configuration(eventId, base));
       await repository.activateCanonicalRegistrations(eventId, people);
 
@@ -414,6 +427,51 @@ test(
         { audit_count: "1", checkin_count: "1", outbox_count: "1" },
       );
 
+      await grantRole("actor:limited-roster-reader", "check_in");
+      const limitedRoster = await repository.listLimitedCheckInRoster({
+        actorId: "actor:limited-roster-reader",
+        capability: "check_in.roster.read_limited",
+        eventId,
+      });
+      assert.equal(limitedRoster.length, people.length);
+      assert.ok(
+        limitedRoster.some((participant) => participant.displayName === "李 明"),
+      );
+      assert.ok(
+        limitedRoster.some(
+          (participant) => participant.displayName === "佐藤 葵",
+        ),
+      );
+      assert.ok(
+        limitedRoster.some(
+          (participant) => participant.displayName === "Élodie Martin",
+        ),
+      );
+      for (const participant of limitedRoster) {
+        assert.deepEqual(Object.keys(participant).sort(), [
+          "checkedIn",
+          "checkedInAt",
+          "displayName",
+          "participantId",
+        ]);
+      }
+      assert.doesNotMatch(JSON.stringify(limitedRoster), /NEVER_EXPOSE_/u);
+      await eventAccess.revoke({
+        actingActorId: "actor:onsite-organizer",
+        eventId,
+        expectedRevision: 1,
+        reason: "Verify roster reads fail closed after revocation",
+        subjectActorId: "actor:limited-roster-reader",
+      });
+      await assert.rejects(
+        repository.listLimitedCheckInRoster({
+          actorId: "actor:limited-roster-reader",
+          capability: "check_in.roster.read_limited",
+          eventId,
+        }),
+        /roster access is denied/u,
+      );
+
       const concurrentRequests = await Promise.all(
         Array.from({ length: 100 }, () =>
           repository.createContactRequestAtomically({
@@ -671,6 +729,18 @@ test(
         eventId,
         userId: "actor:a",
       });
+      assert.equal(
+        (
+          await repository.listLimitedCheckInRoster({
+            actorId: "actor:onsite-organizer",
+            capability: "check_in.roster.read_limited",
+            eventId,
+          })
+        ).some(
+          (participant) => participant.participantId === people[0]!.participantProfileId,
+        ),
+        false,
+      );
       await assert.rejects(
         repository.checkInAtomically({
           actorId: "actor:a",
@@ -721,6 +791,14 @@ test(
           participantId: people[3]!.participantProfileId,
         }),
         /not configured/u,
+      );
+      await assert.rejects(
+        foreignWorkspaceRepository.listLimitedCheckInRoster({
+          actorId: "actor:onsite-organizer",
+          capability: "check_in.roster.read_limited",
+          eventId,
+        }),
+        /roster access is denied/u,
       );
 
       const notReadyEventId = "event-onsite-access-not-ready";

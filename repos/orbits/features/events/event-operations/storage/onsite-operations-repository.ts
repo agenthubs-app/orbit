@@ -12,10 +12,12 @@ import {
   type EventOperationsParticipant,
   type EventOperationsPublishedResult,
 } from "../contract";
+import type { EventOperationsLimitedCheckInRosterItem } from "../check-in-roster";
 import type {
   CreateEventContactRequestInput,
   CreateEventOperationsCheckInInput,
   EventOperationsRepository,
+  ListEventOperationsLimitedCheckInRosterInput,
   RespondToEventContactRequestInput,
 } from "../repository";
 import { canAccessEventCapability } from "../../event-access/capability-policy";
@@ -36,6 +38,7 @@ type OnsiteOperationsMethods = Pick<
   | "checkInAtomically"
   | "createContactRequestAtomically"
   | "listContactRequests"
+  | "listLimitedCheckInRoster"
   | "respondToContactRequestAtomically"
 >;
 
@@ -764,6 +767,124 @@ export function createPostgresOnsiteOperationsMethods({
         },
         { isolation: "read committed" },
       );
+    },
+
+    async listLimitedCheckInRoster(
+      input: ListEventOperationsLimitedCheckInRosterInput,
+    ) {
+      const actorId = input.actorId.trim();
+      const eventId = input.eventId.trim();
+      if (!actorId || !eventId) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "Event check-in roster access is denied.",
+        );
+      }
+      return client.transaction(async (transaction) => {
+        await requireEventAccessRepositoryReadiness(transaction);
+        const event = await transaction.query<{
+          organizer_actor_id: string;
+        }>(
+          `select organizer_actor_id
+             from event_ops_events
+            where workspace_id = $1 and event_id = $2
+            for share`,
+          [workspaceId, eventId],
+        );
+        const organizerActorId = event.rows[0]?.organizer_actor_id ?? null;
+        if (!organizerActorId || event.rows.length !== 1) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "Event check-in roster access is denied.",
+          );
+        }
+        const assignment = await transaction.query<{
+          revision: number | string;
+          role: EventAccessRole;
+          state: EventAccessAssignmentState;
+        }>(
+          `select revision, role, state
+             from event_ops_event_role_assignment_heads
+            where workspace_id = $1
+              and event_id = $2
+              and subject_actor_id = $3
+            for share`,
+          [workspaceId, eventId, actorId],
+        );
+        if (assignment.rows.length > 1) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "Event check-in roster access is denied.",
+          );
+        }
+        const assignmentRow = assignment.rows[0] ?? null;
+        const owner = organizerActorId === actorId;
+        const revision = assignmentRow ? Number(assignmentRow.revision) : 0;
+        const role = assignmentRow?.role ?? null;
+        const state = assignmentRow?.state ?? null;
+        if (
+          !Number.isSafeInteger(revision) ||
+          (owner && assignmentRow !== null) ||
+          !canAccessEventCapability({
+            capability: input.capability,
+            owner,
+            role,
+            state,
+          })
+        ) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "Event check-in roster access is denied.",
+          );
+        }
+
+        const result = await transaction.query<{
+          checked_in_at: Date | string | null;
+          display_name: string;
+          participant_id: string;
+        }>(
+          `
+            select
+              membership.participant_id,
+              coalesce(
+                nullif(btrim(profile.profile_payload -> 'participant' ->> 'displayName'), ''),
+                membership.participant_id
+              ) as display_name,
+              checkin.checked_in_at
+            from event_ops_membership_heads membership
+            join event_ops_profile_versions profile
+              on profile.workspace_id = membership.workspace_id
+              and profile.event_id = membership.event_id
+              and profile.participant_id = membership.participant_id
+              and profile.profile_version = membership.profile_version
+            left join event_ops_checkins checkin
+              on checkin.workspace_id = membership.workspace_id
+              and checkin.event_id = membership.event_id
+              and checkin.participant_id = membership.participant_id
+            where membership.workspace_id = $1
+              and membership.event_id = $2
+              and membership.status = 'rsvped'
+            order by
+              lower(coalesce(
+                nullif(btrim(profile.profile_payload -> 'participant' ->> 'displayName'), ''),
+                membership.participant_id
+              )),
+              membership.participant_id
+          `,
+          [workspaceId, eventId],
+        );
+        return result.rows.map(
+          (row): EventOperationsLimitedCheckInRosterItem => ({
+            checkedIn: row.checked_in_at !== null,
+            checkedInAt:
+              row.checked_in_at === null
+                ? null
+                : new Date(row.checked_in_at).toISOString(),
+            displayName: row.display_name,
+            participantId: row.participant_id,
+          }),
+        );
+      });
     },
 
     async createContactRequestAtomically(

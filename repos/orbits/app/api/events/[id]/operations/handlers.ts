@@ -326,6 +326,34 @@ export function createEventOperationsManualCheckInPostHandler(
   );
 }
 
+export function createEventOperationsLimitedCheckInRosterGetHandler(
+  dependencies: EventOperationsHandlerDependencies = {},
+) {
+  return withEventCapabilityAccess(
+    "check_in.roster.read_limited",
+    async function getLimitedCheckInRoster(_request, _context, access) {
+      try {
+        const roster = await serviceFor(
+          dependencies,
+        ).getLimitedCheckInRoster({
+          actorId: access.actor.id,
+          eventId: access.eventId,
+        });
+        return NextResponse.json(success(roster), {
+          headers: runtimeBoundaryHeaders(access.mode),
+        });
+      } catch (error) {
+        if (isEventCapabilityAccessError(error)) throw error;
+        return errorResponse(error, access.mode);
+      }
+    },
+    {
+      createAccessService: dependencies.createAccessService,
+      resolveActor: dependencies.resolveActor,
+    },
+  );
+}
+
 export function createEventOperationsConfigurePutHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {

@@ -12,6 +12,10 @@ import {
 
 const eventId = "event:operations-service";
 const organizerActorId = "actor:organizer";
+type OperationsCapability =
+  | "check_in.roster.read_limited"
+  | "operations.read_sensitive"
+  | "check_in.roster.write";
 
 const unusedAiProvider: EventOperationsAiProvider = {
   async generateGroupingFeatures() {
@@ -36,7 +40,22 @@ const unusedAiProvider: EventOperationsAiProvider = {
 
 async function createHarness() {
   let timestamp = "2026-08-02T09:15:00.000Z";
+  const capabilitiesByActor = new Map<string, Set<OperationsCapability>>([
+    [
+      organizerActorId,
+      new Set([
+        "check_in.roster.read_limited",
+        "check_in.roster.write",
+        "operations.read_sensitive",
+      ]),
+    ],
+  ]);
+  const revokeLimitedRosterAfterServiceCheck = new Set<string>();
   const repository = createMemoryEventOperationsRepository({
+    canReadLimitedCheckInRoster: (input) =>
+      capabilitiesByActor
+        .get(input.actorId)
+        ?.has("check_in.roster.read_limited") ?? false,
     now: () => timestamp,
   });
   const repositoryCalls: string[] = [];
@@ -108,15 +127,6 @@ async function createHarness() {
     token: () => "lease:test",
   });
   const registeredActors = new Set(people.map((person) => person.actorId));
-  type OperationsCapability =
-    | "operations.read_sensitive"
-    | "check_in.roster.write";
-  const capabilitiesByActor = new Map<string, Set<OperationsCapability>>([
-    [
-      organizerActorId,
-      new Set(["operations.read_sensitive", "check_in.roster.write"]),
-    ],
-  ]);
   const service = createEventOperationsService({
     access: {
       async requireCapability(input) {
@@ -125,6 +135,14 @@ async function createHarness() {
           !capabilitiesByActor.get(input.actorId)?.has(input.capability)
         ) {
           throw new Error("denied");
+        }
+        if (
+          input.capability === "check_in.roster.read_limited" &&
+          revokeLimitedRosterAfterServiceCheck.delete(input.actorId)
+        ) {
+          capabilitiesByActor
+            .get(input.actorId)
+            ?.delete("check_in.roster.read_limited");
         }
       },
       async isOrganizer(input) {
@@ -165,12 +183,16 @@ async function createHarness() {
     },
     grantCheckInCapability(actorId: string) {
       const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
+      capabilities.add("check_in.roster.read_limited");
       capabilities.add("check_in.roster.write");
       capabilitiesByActor.set(actorId, capabilities);
     },
     repository,
     repositoryCallCount() {
       return repositoryCalls.length;
+    },
+    revokeLimitedRosterOnNextRepositoryRead(actorId: string) {
+      revokeLimitedRosterAfterServiceCheck.add(actorId);
     },
     service,
     setTimestamp(value: string) {
@@ -294,6 +316,48 @@ test("authorized event staff can mark one participant arrived idempotently while
   });
   assert.equal(delegated.actorId, "actor:sora");
   assert.equal(delegated.participantId, sora.participantId);
+});
+
+test("limited check-in roster rejects before repository reads and exposes only its four-field projection", async () => {
+  const harness = await createHarness();
+  const beforeDeniedRequest = harness.repositoryCallCount();
+  await assert.rejects(
+    () =>
+      harness.service.getLimitedCheckInRoster({
+        actorId: "actor:unauthorized",
+        eventId,
+      }),
+    /denied/u,
+  );
+  assert.equal(harness.repositoryCallCount(), beforeDeniedRequest);
+
+  harness.grantCheckInCapability("actor:check-in-staff");
+  const roster = await harness.service.getLimitedCheckInRoster({
+    actorId: "actor:check-in-staff",
+    eventId,
+  });
+  assert.equal(roster.participants.length, 3);
+  assert.deepEqual(Object.keys(roster).sort(), ["eventId", "participants"]);
+  for (const participant of roster.participants) {
+    assert.deepEqual(Object.keys(participant).sort(), [
+      "checkedIn",
+      "checkedInAt",
+      "displayName",
+      "participantId",
+    ]);
+  }
+
+  const revokedActorId = "actor:revoked-between-layers";
+  harness.grantCheckInCapability(revokedActorId);
+  harness.revokeLimitedRosterOnNextRepositoryRead(revokedActorId);
+  await assert.rejects(
+    () =>
+      harness.service.getLimitedCheckInRoster({
+        actorId: revokedActorId,
+        eventId,
+      }),
+    /access is denied/u,
+  );
 });
 
 test("event persona becomes read-only exactly at the configured profile deadline", async () => {

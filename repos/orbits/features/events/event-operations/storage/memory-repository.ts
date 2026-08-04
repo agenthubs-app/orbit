@@ -25,6 +25,7 @@ import type {
   EventOperationsTaskAttemptTelemetry,
   EventOperationsRepository,
   InitializeEventOperationsGenerationInput,
+  ListEventOperationsLimitedCheckInRosterInput,
   RespondToEventContactRequestInput,
 } from "../repository";
 
@@ -179,6 +180,9 @@ export interface MemoryEventOperationsRepository
 }
 
 export interface CreateMemoryEventOperationsRepositoryOptions {
+  canReadLimitedCheckInRoster?: (
+    input: ListEventOperationsLimitedCheckInRosterInput,
+  ) => boolean | Promise<boolean>;
   canonicalRegistrations?: readonly EventRegistration[];
   configurations?: readonly EventOperationsConfiguration[];
   now?: () => string;
@@ -906,6 +910,46 @@ export function createMemoryEventOperationsRepository(
         .sort(
           (left, right) =>
             left.checkedInAt.localeCompare(right.checkedInAt) ||
+            left.participantId.localeCompare(right.participantId),
+        )
+        .map(clone);
+    },
+
+    async listLimitedCheckInRoster(input) {
+      const eventId = input.eventId;
+      const authorized = options.canReadLimitedCheckInRoster
+        ? await options.canReadLimitedCheckInRoster(input)
+        : configurations.get(eventId)?.organizerActorId === input.actorId;
+      if (!authorized) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "Event check-in roster access is denied.",
+        );
+      }
+      const registrations = await canonicalRegistrationService.list({ eventId });
+      const checkInsByParticipant = new Map(
+        [...checkIns.values()]
+          .filter((checkIn) => checkIn.eventId === eventId)
+          .map((checkIn) => [checkIn.participantId, checkIn] as const),
+      );
+      return registrations
+        .filter((registration) => registration.status === "rsvped")
+        .map((registration) => {
+          const checkIn = checkInsByParticipant.get(
+            registration.participantProfileId,
+          );
+          return {
+            checkedIn: Boolean(checkIn),
+            checkedInAt: checkIn?.checkedInAt ?? null,
+            displayName:
+              registration.participantProfile.displayName ??
+              registration.participantProfileId,
+            participantId: registration.participantProfileId,
+          };
+        })
+        .sort(
+          (left, right) =>
+            left.displayName.localeCompare(right.displayName) ||
             left.participantId.localeCompare(right.participantId),
         )
         .map(clone);

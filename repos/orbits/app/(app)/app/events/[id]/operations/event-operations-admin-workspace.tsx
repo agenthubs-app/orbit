@@ -318,6 +318,7 @@ export function EventOperationsAdminWorkspace({
     [workspace],
   );
   const checkInHref = `/app/party/checkin?eventId=${encodeURIComponent(event.id)}`;
+  const operationsCheckInHref = `/app/events/${encodeURIComponent(event.id)}/operations/check-in`;
   const configuration = workspace?.configuration ?? null;
   const checkInOpen = configuration
     ? currentTimeMs >= Date.parse(configuration.checkInOpensAt) &&
@@ -349,7 +350,16 @@ export function EventOperationsAdminWorkspace({
             <h1 className="h-display" style={{ margin: "8px 0 0" }}>{event.title}</h1>
             <p style={{ color: "var(--text-2)", margin: "8px 0 0" }}>Configure time gates, inspect real registrations, run strict AI shards, and publish complete results.</p>
           </div>
-          {workspace ? <a className="btn btn-ghost" href={`${baseUrl}/export`}><Icon name="download" size={16} />Export CSV</a> : null}
+          {workspace ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <a className="btn btn-ghost" href={operationsCheckInHref}>
+                <Icon name="check" size={16} />打开签到台
+              </a>
+              <a className="btn btn-ghost" href={`${baseUrl}/export`}>
+                <Icon name="download" size={16} />Export CSV
+              </a>
+            </div>
+          ) : null}
         </div>
 
         {error ? <div className="card" role="alert" style={{ borderColor: "var(--rose)", color: "var(--rose)", marginTop: 18, padding: 14 }}>{error}</div> : null}

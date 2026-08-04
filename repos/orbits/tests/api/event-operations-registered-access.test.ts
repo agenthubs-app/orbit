@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createEventOperationsCheckInPostHandler,
   createEventOperationsGenerationRunPostHandler,
+  createEventOperationsLimitedCheckInRosterGetHandler,
   createEventOperationsManualCheckInPostHandler,
 } from "../../app/api/events/[id]/operations/handlers";
 import type {
@@ -413,4 +414,74 @@ test("manual check-in preserves a capability revocation found by the service rec
   );
 
   assert.equal(response.status, 403);
+});
+
+test("limited check-in roster admits only roster readers and returns an exact minimal envelope", async (t) => {
+  const cases: readonly [
+    string,
+    boolean,
+    EventAccessRole | null,
+    EventAccessAssignmentState | null,
+    number,
+  ][] = [
+    ["owner", true, null, null, 200],
+    ["active operations", false, "operations", "active", 200],
+    ["active check-in", false, "check_in", "active", 200],
+    ["reviewer", false, "reviewer", "active", 403],
+    ["analyst", false, "read_only_analyst", "active", 403],
+    ["revoked", false, "check_in", "revoked", 403],
+    ["unassigned", false, null, null, 403],
+  ];
+
+  for (const [name, owner, role, state, expectedStatus] of cases) {
+    await t.test(name, async () => {
+      let serviceCalls = 0;
+      const handler = createEventOperationsLimitedCheckInRosterGetHandler({
+        createAccessService: () =>
+          manualAccessService({ owner, role, state }),
+        createService: () =>
+          ({
+            async getLimitedCheckInRoster() {
+              serviceCalls += 1;
+              return {
+                eventId: EVENT_ID,
+                participants: [
+                  {
+                    checkedIn: false,
+                    checkedInAt: null,
+                    displayName: "佐藤 葵",
+                    participantId: "participant:sato",
+                  },
+                ],
+              };
+            },
+          }) as unknown as EventOperationsService,
+        resolveActor: async () => ({ id: "actor:staff" }),
+      });
+
+      const response = await handler(
+        new Request(`http://test/api/events/${EVENT_ID}/operations/admin/check-ins`),
+        { params: Promise.resolve({ id: EVENT_ID }) },
+      );
+
+      assert.equal(response.status, expectedStatus);
+      assert.equal(serviceCalls, expectedStatus === 200 ? 1 : 0);
+      if (expectedStatus === 200) {
+        const body = (await response.json()) as {
+          data: { eventId: string; participants: Record<string, unknown>[] };
+        };
+        assert.deepEqual(Object.keys(body.data).sort(), [
+          "eventId",
+          "participants",
+        ]);
+        assert.deepEqual(Object.keys(body.data.participants[0]!).sort(), [
+          "checkedIn",
+          "checkedInAt",
+          "displayName",
+          "participantId",
+        ]);
+        assert.doesNotMatch(JSON.stringify(body), /SECRET|company|answers|email/iu);
+      }
+    });
+  }
 });

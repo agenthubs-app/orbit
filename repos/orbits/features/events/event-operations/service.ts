@@ -14,11 +14,15 @@ import {
 import type { EventOperationsEngine } from "./engine";
 import { eventOperationsParticipantFromRegistration } from "./participant";
 import type { EventOperationsRepository } from "./repository";
+import type { EventOperationsLimitedCheckInRoster } from "./check-in-roster";
 
 export interface EventOperationsAccessPolicy {
   requireCapability(input: {
     actorId: string;
-    capability: "operations.read_sensitive" | "check_in.roster.write";
+    capability:
+      | "operations.read_sensitive"
+      | "check_in.roster.read_limited"
+      | "check_in.roster.write";
     eventId: string;
   }): Promise<void>;
   isOrganizer(input: { actorId: string; eventId: string }): Promise<boolean>;
@@ -78,6 +82,10 @@ export interface EventOperationsService {
     eventId: string;
     participantId: string;
   }): Promise<EventOperationsCheckIn>;
+  getLimitedCheckInRoster(input: {
+    actorId: string;
+    eventId: string;
+  }): Promise<EventOperationsLimitedCheckInRoster>;
   configure(input: {
     actorId: string;
     configuration: Omit<EventOperationsConfiguration, "organizerActorId" | "updatedAt">;
@@ -368,6 +376,32 @@ export function createEventOperationsService({
     async checkIn({ actorId, eventId }) {
       await requireRegistered(eventId, actorId);
       return repository.checkInAtomically({ actorId, eventId, kind: "self" });
+    },
+
+    async getLimitedCheckInRoster({ actorId, eventId }) {
+      await access.requireCapability({
+        actorId,
+        capability: "check_in.roster.read_limited",
+        eventId,
+      });
+      const participants = await repository.listLimitedCheckInRoster({
+        actorId,
+        capability: "check_in.roster.read_limited",
+        eventId,
+      });
+      return Object.freeze({
+        eventId,
+        participants: Object.freeze(
+          participants.map((participant) =>
+            Object.freeze({
+              checkedIn: participant.checkedIn,
+              checkedInAt: participant.checkedInAt,
+              displayName: participant.displayName,
+              participantId: participant.participantId,
+            }),
+          ),
+        ),
+      });
     },
 
     async checkInParticipant({ actorId, eventId, participantId }) {
