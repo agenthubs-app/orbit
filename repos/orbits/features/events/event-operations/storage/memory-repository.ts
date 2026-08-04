@@ -890,6 +890,13 @@ export function createMemoryEventOperationsRepository(
       return canonicalRegistrationService.list({ eventId });
     },
 
+    listCanonicalRegistrationsForUser(userId, eventIds) {
+      return canonicalRegistrationProvider.listRegistrationsForUser(
+        userId,
+        eventIds,
+      );
+    },
+
     async listContactRequests(eventId, viewerActorId) {
       return [...contactRequests.values()]
         .filter(

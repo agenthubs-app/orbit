@@ -116,6 +116,13 @@ test("session account control and inbox extras stay in the actions segment", () 
   );
 });
 
+test("signed-in desktop and mobile account menus link to registered events", () => {
+  const matches = shell.match(/\/app\/events\?scope=registered/gu) ?? [];
+  assert.equal(matches.length, 2);
+  assert.match(shell, /My events/);
+  assert.match(shell, /我的活动/);
+});
+
 test("theme controls are absent from global navigation", () => {
   const themeSource = readFileSync(
     join(projectRoot, "app/(app)/app/orbit-theme.tsx"),

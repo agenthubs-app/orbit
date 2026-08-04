@@ -368,7 +368,6 @@ export function EventRegistrationWorkspace({
       {
         answer: turn.answer,
         questionToken,
-        visibility: "event_attendees" as const,
       },
     ];
 

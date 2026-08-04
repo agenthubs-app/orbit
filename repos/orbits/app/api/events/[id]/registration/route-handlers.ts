@@ -61,11 +61,6 @@ async function readRegistrationPayload(
           {
             answer: value.answer,
             questionToken: value.questionToken,
-            visibility:
-              value.visibility === "matching_only" ||
-              value.visibility === "private"
-                ? value.visibility
-                : "event_attendees",
           } satisfies EventInterviewResponseSubmission,
         ];
       });

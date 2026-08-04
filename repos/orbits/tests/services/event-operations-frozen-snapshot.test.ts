@@ -167,6 +167,108 @@ test("frozen snapshot cutoff uses the database boundary and allows equality", as
   assert.equal(exact.snapshot.participants.length, 0);
 });
 
+test("frozen snapshot hash changes when a typed profile answer changes", async () => {
+  const config = configuration(
+    "event-profile-answer-hash",
+    Date.parse("2026-08-04T10:00:00.000Z"),
+  );
+  const configurationRow = {
+    check_in_opens_at: config.checkInOpensAt,
+    configuration_version: "1",
+    cutoff_reached: true,
+    event_ends_at: config.eventEndsAt,
+    event_id: config.eventId,
+    event_starts_at: config.eventStartsAt,
+    max_attempts_per_task: config.maxAttemptsPerTask,
+    organizer_actor_id: config.organizerActorId,
+    profile_edit_deadline_at: config.profileEditDeadlineAt,
+    recommendation_count: config.recommendationCount,
+    registration_cutoff_at: config.registrationCutoffAt,
+    results_available_at: config.resultsAvailableAt,
+    round_one_starts_at: config.roundOneStartsAt,
+    round_two_starts_at: config.roundTwoStartsAt,
+    shard_size: config.shardSize,
+    table_size: config.tableSize,
+    updated_at: config.updatedAt,
+  };
+  const answersFor = (desiredOutcome: string) => ({
+    desiredOutcome,
+    energyStyle: "snapshot-canary-energy-style",
+    experienceHighlight: "snapshot-canary-experience-highlight",
+    followUpPreference: "snapshot-canary-follow-up-preference",
+    industry: "snapshot-canary-industry",
+    positioning: "snapshot-canary-positioning",
+    targetAttendees: "snapshot-canary-target-attendees",
+    valueOffered: "snapshot-canary-value-offered",
+  });
+  async function capture(desiredOutcome: string) {
+    let queryCount = 0;
+    return readFrozenGenerationSnapshot({
+      eventId: config.eventId,
+      executor: {
+        async query<TRow>() {
+          queryCount += 1;
+          return queryCount === 1
+            ? {
+                rowCount: 1,
+                rows: [{
+                  ...configurationRow,
+                  captured_at: config.registrationCutoffAt,
+                }] as TRow[],
+              }
+            : {
+                rowCount: 1,
+                rows: [{
+                  actor_id: "actor:profile-hash",
+                  late_registration: false,
+                  membership_version: "1",
+                  participant_id: "participant:profile-hash",
+                  profile_payload: {
+                    participant: {
+                      actorId: "actor:profile-hash",
+                      company: "Orbit Labs",
+                      displayName: "Profile Hash",
+                      energyStyle: "Focused",
+                      evidenceIds: ["evidence:profile-hash"],
+                      experienceHighlight: "Built a founder community",
+                      industry: "AI",
+                      languages: ["en"],
+                      lateRegistration: false,
+                      needs: ["Pilot partner"],
+                      offers: ["Market access"],
+                      participantId: "participant:profile-hash",
+                      profileCompleteness: "complete",
+                      role: "Founder",
+                      seniority: null,
+                      topics: ["AI"],
+                    },
+                    registrationProfile: {
+                      answers: answersFor(desiredOutcome),
+                    },
+                  },
+                  profile_version: "1",
+                }] as TRow[],
+              };
+        },
+      },
+      workspaceId: "workspace-profile-hash",
+    });
+  }
+
+  const first = await capture("Find a Japan launch partner");
+  const second = await capture("Find a healthcare pilot owner");
+
+  assert.notEqual(first.snapshot.hash, second.snapshot.hash);
+  assert.deepEqual(
+    first.snapshot.participants[0]?.profileAnswers,
+    answersFor("Find a Japan launch partner"),
+  );
+  assert.equal(
+    Object.keys(first.snapshot.participants[0]?.profileAnswers ?? {}).length,
+    8,
+  );
+});
+
 test(
   "frozen snapshots use lifecycle effective time, exclude late signups, and fail closed on unknowable profile history",
   { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured" },

@@ -143,7 +143,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     "valueOffered",
     "desiredOutcome",
   ] as const satisfies readonly EventParticipantProfileField[];
-  const responses = fields.map((field) => ({
+  const responses = fields.map((field, index) => ({
     answer: `${field} option A`,
     questionToken: signAdaptiveInterviewQuestion({
       actorId: tokenActor.id,
@@ -162,6 +162,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
         },
       },
     }),
+    ...(index === 0 ? { visibility: "private" } : {}),
   }));
 
   try {
@@ -192,6 +193,13 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     assert.equal(
       acceptedBody.data.participantProfile.interviewResponses.length,
       4,
+    );
+    assert.equal(
+      acceptedBody.data.participantProfile.interviewResponses.every(
+        (response: { visibility: string }) =>
+          response.visibility === "event_attendees",
+      ),
+      true,
     );
     assert.match(
       acceptedBody.data.participantProfile.interviewResponses[0].question.prompt,

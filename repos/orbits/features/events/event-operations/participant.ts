@@ -62,7 +62,9 @@ export function eventOperationsParticipantFromRegistration(
   registration: EventRegistration,
   configuration: Pick<EventOperationsConfiguration, "profileEditDeadlineAt">,
 ): EventOperationsParticipant {
-  const answers = registration.participantProfile.answers;
+  const answers = normalizeEventParticipantAnswers(
+    registration.participantProfile.answers,
+  );
   const positioning = splitPositioning(answers.positioning);
   const answeredFields = Object.values(answers).filter(
     (answer) => typeof answer === "string" && answer.trim().length > 0,
@@ -99,6 +101,7 @@ export function eventOperationsParticipantFromRegistration(
         : answeredFields >= 3
           ? "partial"
           : "minimal",
+    profileAnswers: { ...answers },
     role: positioning.role,
     seniority: positioning.seniority,
     topics: values(answers.industry, answers.desiredOutcome),

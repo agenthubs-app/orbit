@@ -14,6 +14,10 @@ export interface EventRegistrationProvider {
   listRegistrations: (
     eventId: string,
   ) => Promise<readonly EventRegistration[]>;
+  listRegistrationsForUser: (
+    userId: string,
+    eventIds: readonly string[],
+  ) => Promise<readonly EventRegistration[]>;
   saveRegistration: (
     registration: EventRegistration,
   ) => Promise<EventRegistration>;
@@ -101,6 +105,16 @@ export function createMemoryEventRegistrationProvider(
     async listRegistrations(eventId) {
       return [...registrations.values()]
         .filter((registration) => registration.eventId === eventId)
+        .map(clone);
+    },
+    async listRegistrationsForUser(userId, eventIds) {
+      const selectedEventIds = new Set(eventIds);
+      return [...registrations.values()]
+        .filter(
+          (registration) =>
+            registration.userId === userId &&
+            selectedEventIds.has(registration.eventId),
+        )
         .map(clone);
     },
     async saveRegistration(registration) {

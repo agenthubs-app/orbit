@@ -56,7 +56,7 @@ function table(
   };
 }
 
-test("participant detail uses the published profile version, filters private answers, and exposes both seats", async () => {
+test("participant detail uses the published profile version, shows every answer, and exposes both seats", async () => {
   const me = participant("participant:me", "actor:me", "Li Wei");
   const target = participant("participant:target", "actor:target", "Aiko Mori");
   const roundOne = table(1, [me.participantId, target.participantId]);
@@ -165,8 +165,9 @@ test("participant detail uses the published profile version, filters private ans
   assert.ok(detail);
   assert.equal(detail.profileVersion, 7);
   assert.equal(detail.sourceContext, "published_generation");
-  assert.equal(detail.responses.length, 1);
+  assert.equal(detail.responses.length, 2);
   assert.equal(detail.responses[0]?.fieldKey, "energyStyle");
+  assert.equal(detail.responses[1]?.fieldKey, "followUpPreference");
   assert.deepEqual(
     detail.placements.map((placement) => [placement.roundNumber, placement.tableNumber, placement.seat]),
     [[1, 3, "T1-S2"], [2, 4, "T2-S1"]],

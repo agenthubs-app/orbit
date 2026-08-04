@@ -63,3 +63,15 @@ test("progressive product imagery is responsive, LQIP-backed, and decode-gated",
   assert.match(contactAvatarSource, /<OrbitProgressiveImage/u);
   assert.match(generatedLqipSource, /data:image\/webp;base64,/u);
 });
+
+test("registered empty state and map variants keep one coherent event action", () => {
+  const exploreSource = source("app/(app)/app/events/orbit-real-explore-client.tsx");
+
+  assert.match(exploreSource, /还没有已报名活动/u);
+  assert.match(exploreSource, /No registered events yet/u);
+  assert.match(exploreSource, /\{located\.map\(\(item\)/u);
+  assert.doesNotMatch(exploreSource, /\{mapItems\.map\(\(item\)/u);
+  assert.match(exploreSource, /<MapEventCard compact item=\{selectedItem\}/u);
+  assert.match(exploreSource, /zIndex: ORBIT_Z\.raised/u);
+  assert.doesNotMatch(exploreSource, /zIndex:\s*[0-9]/u);
+});

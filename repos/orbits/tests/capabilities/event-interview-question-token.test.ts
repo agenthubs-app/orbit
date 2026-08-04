@@ -59,7 +59,6 @@ test("verified AI question tokens produce immutable response snapshots and answe
     responses: fields.map((field, index) => ({
       answer: index === 4 ? "I listen first, then go deep." : `${field} option A`,
       questionToken: token(field),
-      visibility: field === "energyStyle" ? "matching_only" : "event_attendees",
     })),
   });
 
@@ -67,7 +66,7 @@ test("verified AI question tokens produce immutable response snapshots and answe
   assert.equal(responses[0]?.question?.prompt.includes("positioning"), true);
   assert.deepEqual(responses[0]?.answer.selectedOptionIds, ["option-1"]);
   assert.equal(responses[4]?.answer.customText, "I listen first, then go deep.");
-  assert.equal(responses[4]?.visibility, "matching_only");
+  assert.equal(responses[4]?.visibility, "event_attendees");
   assert.equal(responses.every((response) => response.questionSource === "ai_adaptive"), true);
   assert.equal(answersFromProfileResponses(responses).desiredOutcome, "desiredOutcome option A");
 });

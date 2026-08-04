@@ -137,29 +137,19 @@ function placementsFor(
 
 function publicResponses(
   version: EventProfileResponseVersion | null,
-  viewerOwnsProfile: boolean,
 ): readonly EventParticipantDetailResponseView[] {
   if (!version) return [];
-  return version.responses.flatMap((response: EventProfileResponseSnapshot) => {
-    if (!viewerOwnsProfile && response.visibility !== "event_attendees") {
-      return [];
-    }
-    return [
-      {
-        answer: response.answer.displayText,
-        answeredAt:
-          response.questionSource === "legacy_unknown"
-            ? null
-            : response.answeredAt,
-        fieldKey: response.field,
-        label:
-          response.question?.fieldLabel ??
-          EVENT_PROFILE_FIELD_LABELS[response.field],
-        prompt: response.question?.prompt ?? null,
-        questionSource: response.questionSource,
-      },
-    ];
-  });
+  return version.responses.map((response: EventProfileResponseSnapshot) => ({
+    answer: response.answer.displayText,
+    answeredAt:
+      response.questionSource === "legacy_unknown" ? null : response.answeredAt,
+    fieldKey: response.field,
+    label:
+      response.question?.fieldLabel ??
+      EVENT_PROFILE_FIELD_LABELS[response.field],
+    prompt: response.question?.prompt ?? null,
+    questionSource: response.questionSource,
+  }));
 }
 
 function contactView(
@@ -239,10 +229,7 @@ export function createEventParticipantDetailService(input: {
               score: recommendation.score,
             }
           : null,
-        responses: publicResponses(
-          responseVersion,
-          participant.participantId === workspace.me.participantId,
-        ),
+        responses: publicResponses(responseVersion),
         role: participant.role,
         sourceContext: published
           ? "published_generation"

@@ -20,7 +20,6 @@ export type EventProfileResponseVisibility =
 export interface EventInterviewResponseSubmission {
   answer: string;
   questionToken: string;
-  visibility?: EventProfileResponseVisibility;
 }
 
 export interface SignedAdaptiveInterviewQuestion {

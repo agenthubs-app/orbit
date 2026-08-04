@@ -1,3 +1,5 @@
+import type { EventParticipantProfileAnswers } from "../registration/contract";
+
 export const EVENT_OPERATIONS_COLLECTIONS = {
   configurations: "event_operations_configurations",
   contactRequests: "event_operations_contact_requests",
@@ -41,6 +43,8 @@ export interface EventOperationsParticipant {
   offers: readonly string[];
   participantId: string;
   profileCompleteness: "complete" | "partial" | "minimal";
+  /** Complete typed event-profile facets. Optional only for persisted v2 snapshots. */
+  profileAnswers?: EventParticipantProfileAnswers;
   role: string | null;
   seniority: string | null;
   topics: readonly string[];

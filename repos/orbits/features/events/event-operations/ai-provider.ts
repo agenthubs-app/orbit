@@ -275,7 +275,7 @@ Use only the supplied source, deterministic shortlist, validated recommendation,
 Never invent participant ids, never use hidden identities, and never substitute a deterministic content fallback.`;
 
 export const EVENT_OPERATIONS_AI_PROMPT_VERSION =
-  "event-operations-compact-closed-json-v2";
+  "event-operations-compact-closed-json-v3-full-profile";
 
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
@@ -319,6 +319,7 @@ function compactParticipant(
     offers: participant.offers,
     participantId: participant.participantId,
     profileCompleteness: participant.profileCompleteness,
+    profileAnswers: participant.profileAnswers ?? {},
     role: participant.role,
     seniority: participant.seniority,
     topics: participant.topics,

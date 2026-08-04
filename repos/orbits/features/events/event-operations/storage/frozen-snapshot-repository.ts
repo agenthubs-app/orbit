@@ -6,6 +6,8 @@ import {
   type EventOperationsConfiguration,
   type EventOperationsParticipant,
 } from "../contract";
+import type { EventParticipantProfile } from "../../registration/contract";
+import { normalizeEventParticipantAnswers } from "../participant";
 import type { EventOperationsRepository } from "../repository";
 import type {
   EventOperationsPostgresRuntime,
@@ -21,6 +23,7 @@ type SqlRow = Record<string, unknown>;
 
 interface ProfilePayload {
   participant: EventOperationsParticipant;
+  registrationProfile?: Pick<EventParticipantProfile, "answers">;
 }
 
 function clone<TValue>(value: TValue): TValue {
@@ -121,7 +124,13 @@ function profilePayload(value: unknown): ProfilePayload {
   if (!participant || typeof participant !== "object" || Array.isArray(participant)) {
     throw new Error("Frozen event snapshot profile is missing its participant DTO.");
   }
-  return clone(parsed) as ProfilePayload;
+  const payload = clone(parsed) as ProfilePayload;
+  if (!payload.participant.profileAnswers && payload.registrationProfile) {
+    payload.participant.profileAnswers = normalizeEventParticipantAnswers(
+      payload.registrationProfile.answers,
+    );
+  }
+  return payload;
 }
 
 export async function readFrozenGenerationSnapshot(input: {

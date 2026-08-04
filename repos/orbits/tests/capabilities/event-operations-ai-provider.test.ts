@@ -7,6 +7,17 @@ import {
 } from "../../features/events/event-operations/ai-provider";
 import type { EventOperationsParticipant } from "../../features/events/event-operations/contract";
 
+const profileCanaries = [
+  "canary-desired-outcome",
+  "canary-energy-style",
+  "canary-experience-highlight",
+  "canary-follow-up-preference",
+  "canary-industry",
+  "canary-positioning",
+  "canary-target-attendees",
+  "canary-value-offered",
+] as const;
+
 const participants: EventOperationsParticipant[] = [
   {
     actorId: "actor:a",
@@ -22,6 +33,16 @@ const participants: EventOperationsParticipant[] = [
     offers: ["model evaluation"],
     participantId: "participant:a",
     profileCompleteness: "complete",
+    profileAnswers: {
+      desiredOutcome: "canary-desired-outcome",
+      energyStyle: "canary-energy-style",
+      experienceHighlight: "canary-experience-highlight",
+      followUpPreference: "canary-follow-up-preference",
+      industry: "canary-industry",
+      positioning: "canary-positioning",
+      targetAttendees: "canary-target-attendees",
+      valueOffered: "canary-value-offered",
+    },
     role: "Founder",
     seniority: "founder",
     topics: ["AI safety"],
@@ -58,7 +79,7 @@ test("event operations request fingerprint versions prompt, provider, model, and
     },
   });
   assert.notEqual(baseline.requestFingerprint, json.requestFingerprint);
-  assert.match(json.requestFingerprint ?? "", /event-operations-compact-closed-json-v2/u);
+  assert.match(json.requestFingerprint ?? "", /event-operations-compact-closed-json-v3-full-profile/u);
   assert.match(json.requestFingerprint ?? "", /deepseek-test/u);
   assert.match(json.requestFingerprint ?? "", /"jsonOutput":true/u);
   assert.match(
@@ -117,6 +138,52 @@ test("event operations AI adapter accepts one strict recommendation JSON documen
   assert.equal(result.success, true);
   assert.doesNotMatch(prompt, /actor:a|actor:b|evidence:a|evidence:b/u);
   assert.match(prompt, /Aster Labs|Beacon Health|participant:a|participant:b/u);
+  for (const canary of profileCanaries) {
+    assert.match(prompt, new RegExp(canary, "u"));
+  }
+});
+
+test("grouping feature prompt includes every typed event-profile answer", async () => {
+  let prompt = "";
+  const provider = createEventOperationsAiProvider({
+    async runModelText(input) {
+      prompt = input.userText;
+      return successfulText(
+        JSON.stringify({
+          features: [
+            {
+              affinityParticipantIds: ["participant:b"],
+              facilitationHint: "Start from the regulated pilot dependency.",
+              participantId: "participant:a",
+              primaryTopic: "Regulated AI pilots",
+              secondaryTopic: "Evaluation evidence",
+            },
+          ],
+        }),
+      )();
+    },
+  });
+
+  const result = await provider.generateGroupingFeatures({
+    eventId: "event:test",
+    maxAffinityCount: 3,
+    sources: [
+      {
+        candidateParticipants: [participants[1]],
+        recommendations: {
+          noMatchReason: null,
+          recommendations: [],
+          sourceParticipantId: "participant:a",
+        },
+        sourceParticipant: participants[0],
+      },
+    ],
+  });
+
+  assert.equal(result.success, true);
+  for (const canary of profileCanaries) {
+    assert.match(prompt, new RegExp(canary, "u"));
+  }
 });
 
 test("event operations AI adapter rejects fenced or malformed JSON without repair or fallback", async () => {
@@ -207,6 +274,9 @@ test("table content requires one non-empty member rationale for every exact assi
   assert.equal(validResult.success, true);
   assert.match(prompt, /memberRationales/u);
   assert.match(prompt, /no missing, duplicate, unknown, or extra member id/u);
+  for (const canary of profileCanaries) {
+    assert.match(prompt, new RegExp(canary, "u"));
+  }
 
   const invalidRationales = [
     {

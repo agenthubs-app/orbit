@@ -264,9 +264,18 @@ test("/app/events renders the public event catalogue without requiring authentic
 
   assert.match(pageSource, /OrbitRealExploreClient/);
   assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.match(pageSource, /eventRegistrationRuntimeService\.get/);
+  assert.match(pageSource, /listRuntimeEventRegistrationsForUser/);
+  assert.match(
+    pageSource,
+    /const registrations = session\?\.user\?\.id\s*\?\s*await listRuntimeEventRegistrationsForUser[\s\S]*?: \[\];/u,
+  );
+  assert.doesNotMatch(pageSource, /eventRegistrationRuntimeService\.get/);
+  assert.doesNotMatch(pageSource, /Promise\.all\(\s*catalogue\.events\.map/);
   assert.match(pageSource, /attendees: \[\]/);
-  assert.doesNotMatch(pageSource, /searchParams|scenario/);
+  assert.match(pageSource, /source-backed roster/u);
+  assert.doesNotMatch(pageSource, /participantCount\s*[+:]\s*.*\+\s*1/u);
+  assert.match(pageSource, /searchParams/);
+  assert.doesNotMatch(pageSource, /scenario/);
   assert.doesNotMatch(pageSource, /redirect\("\/app\/account\/login/);
   assert.doesNotMatch(pageSource, /AppEventsCommandCenter/);
   assert.doesNotMatch(

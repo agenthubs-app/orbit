@@ -179,6 +179,14 @@ function OrbitNavAccountControl({
             {t({ en: "Profile", zh: "个人资料" })}
           </a>
           <a
+            href={preserveHref("/app/events?scope=registered")}
+            role="menuitem"
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+          >
+            <Icon name="calendar" size={15} />
+            {t({ en: "My events", zh: "我的活动" })}
+          </a>
+          <a
             href={preserveHref("/app/settings")}
             role="menuitem"
             style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
@@ -272,6 +280,12 @@ function OrbitNavMobileAccountLinks({
           href={preserveHref(meHref)}
         >
           {t({ en: "Me", zh: "我的" })}
+        </a>
+        <a
+          className="orbit-nav-menu-item"
+          href={preserveHref("/app/events?scope=registered")}
+        >
+          {t({ en: "My events", zh: "我的活动" })}
         </a>
         <a
           aria-current={active === "settings" ? "page" : undefined}

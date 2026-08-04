@@ -195,6 +195,10 @@ export interface EventOperationsRepository {
   listCanonicalRegistrations(
     eventId: string,
   ): Promise<readonly EventRegistration[]>;
+  listCanonicalRegistrationsForUser(
+    userId: string,
+    eventIds: readonly string[],
+  ): Promise<readonly EventRegistration[]>;
   listContactRequests(
     eventId: string,
     viewerActorId: string | null,

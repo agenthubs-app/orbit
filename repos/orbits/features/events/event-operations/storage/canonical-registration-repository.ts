@@ -30,6 +30,7 @@ type CanonicalRegistrationMethods = Pick<
   | "cancelCanonicalRegistration"
   | "getCanonicalRegistration"
   | "listCanonicalRegistrations"
+  | "listCanonicalRegistrationsForUser"
   | "registerCanonicalParticipant"
   | "seedCanonicalRegistration"
 >;
@@ -866,6 +867,19 @@ export function createPostgresCanonicalRegistrationMethods({
            and membership_head.event_id = $2
          order by membership_head.participant_id`,
         [workspaceId, eventId],
+      );
+      return result.rows.map(registrationFromRow);
+    },
+
+    async listCanonicalRegistrationsForUser(userId, eventIds) {
+      if (eventIds.length === 0) return [];
+      const result = await client.query<SqlRow>(
+        `${registrationSelect()}
+         where membership_head.workspace_id = $1
+           and membership_head.actor_id = $2
+           and membership_head.event_id = any($3::text[])
+         order by membership_head.event_id`,
+        [workspaceId, userId, [...new Set(eventIds)]],
       );
       return result.rows.map(registrationFromRow);
     },

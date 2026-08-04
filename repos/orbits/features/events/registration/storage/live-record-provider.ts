@@ -126,6 +126,24 @@ export function createEventRegistrationLiveRecordProvider({
         return registration.eventId === eventId ? [clone(registration)] : [];
       });
     },
+    async listRegistrationsForUser(userId, eventIds) {
+      if (eventIds.length === 0) return [];
+      const selectedEventIds = new Set(eventIds);
+      const records = await store.listRecords({
+        collectionName: EVENT_REGISTRATION_COLLECTION,
+        userId,
+        workspaceId,
+      });
+
+      return records.flatMap((record) => {
+        if (!isStoredEventRegistration(record.payload)) return [];
+        const registration = record.payload.registration;
+        return registration.userId === userId &&
+          selectedEventIds.has(registration.eventId)
+          ? [clone(registration)]
+          : [];
+      });
+    },
     async saveRegistration(registration) {
       const next = clone(registration);
 

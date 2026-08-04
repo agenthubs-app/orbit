@@ -9,7 +9,6 @@ import {
   EVENT_PROFILE_FIELD_LABELS,
   type EventInterviewResponseSubmission,
   type EventProfileResponseSnapshot,
-  type EventProfileResponseVisibility,
 } from "./interview-response-contract";
 import {
   EVENT_PARTICIPANT_PROFILE_FIELDS,
@@ -230,14 +229,6 @@ function verifiedPayload(input: {
   return payload;
 }
 
-function responseVisibility(
-  value: EventProfileResponseVisibility | undefined,
-): EventProfileResponseVisibility {
-  return value === "matching_only" || value === "private"
-    ? value
-    : "event_attendees";
-}
-
 export function verifyInterviewResponseSubmissions(input: {
   actorId: string;
   eventId: string;
@@ -297,7 +288,10 @@ export function verifyInterviewResponseSubmissions(input: {
       questionId: payload.questionId,
       questionSource: "ai_adaptive" as const,
       responseId: `response:${payload.questionId}`,
-      visibility: responseVisibility(submission.visibility),
+      // New event-profile answers are shared with event attendees by product
+      // policy. The client cannot lower visibility and accidentally hide data
+      // from matching or participant detail.
+      visibility: "event_attendees" as const,
     };
   });
 }
