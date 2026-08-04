@@ -178,3 +178,68 @@ test("DeepSeek thinking/maxTokens are opt-in and terminal responses fail closed"
     if (failed.success === false) assert.equal(failed.retryable, retryable);
   }
 });
+
+test("DeepSeek temperature is bounded, sent alone, and leaves non-DeepSeek payloads unchanged", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const fetchImplementation = (async (_url, init) => {
+    bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return Response.json({
+      choices: [{ finish_reason: "stop", message: { content: "ok" } }],
+      output_text: "ok",
+    });
+  }) as typeof fetch;
+  const deepSeek = await runOrbitAgentModelText({
+    ...baseInput,
+    config: { apiKey: "key", fetchImplementation, provider: "deepseek", temperature: 0.2 },
+  });
+  assert.equal(deepSeek.success, true);
+  assert.equal(bodies[0]?.temperature, 0.2);
+  assert.equal("top_p" in bodies[0]!, false);
+  const invalid = await runOrbitAgentModelText({
+    ...baseInput,
+    config: { apiKey: "key", fetchImplementation, provider: "deepseek", temperature: 2.1 },
+  });
+  assert.equal(invalid.success, false);
+  if (invalid.success === false) assert.equal(invalid.retryable, false);
+  const openAi = await runOrbitAgentModelText({
+    ...baseInput,
+    config: { apiKey: "key", fetchImplementation, provider: "openai", temperature: 0.2 },
+  });
+  assert.equal(openAi.success, true);
+  assert.equal("temperature" in bodies[1]!, false);
+  const gemini = await runOrbitAgentModelText({
+    ...baseInput,
+    config: { apiKey: "key", fetchImplementation, provider: "gemini", temperature: 0.2 },
+  });
+  assert.equal(gemini.success, true);
+  assert.equal("temperature" in bodies[2]!, false);
+});
+
+test("DeepSeek temperature normalizes absent values and rejects invalid values before fetch", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  let fetchCalls = 0;
+  const fetchImplementation = (async (_url, init) => {
+    fetchCalls += 1;
+    bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "ok" } }], output_text: "ok" });
+  }) as typeof fetch;
+  for (const temperature of [0, 2]) {
+    const result = await runOrbitAgentModelText({ ...baseInput, config: { apiKey: "key", fetchImplementation, provider: "deepseek", temperature } });
+    assert.equal(result.success, true);
+  }
+  assert.equal(bodies[0]?.temperature, 0);
+  assert.equal(bodies[1]?.temperature, 2);
+  for (const temperature of [null, undefined]) {
+    const result = await runOrbitAgentModelText({ ...baseInput, config: { apiKey: "key", fetchImplementation, provider: "deepseek", temperature } });
+    assert.equal(result.success, true);
+  }
+  assert.equal("temperature" in bodies[2]!, false);
+  assert.equal("temperature" in bodies[3]!, false);
+  const beforeInvalid = fetchCalls;
+  for (const temperature of [-0.1, 2.1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    const result = await runOrbitAgentModelText({ ...baseInput, config: { apiKey: "key", fetchImplementation, provider: "deepseek", temperature } });
+    assert.equal(result.success, false);
+    if (result.success === false) assert.equal(result.retryable, false);
+  }
+  assert.equal(fetchCalls, beforeInvalid);
+});

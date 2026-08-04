@@ -319,6 +319,14 @@ function requestFingerprint(
       : provider === "openai"
         ? process.env.ORBIT_OPENAI_MODEL ?? DEFAULT_OPENAI_ORBIT_AGENT_MODEL
         : process.env.ORBIT_GEMINI_MODEL ?? DEFAULT_GEMINI_ORBIT_AGENT_MODEL);
+  const temperature =
+    provider === "deepseek" &&
+    typeof config?.temperature === "number" &&
+    Number.isFinite(config.temperature) &&
+    config.temperature >= 0 &&
+    config.temperature <= 2
+      ? config.temperature
+      : null;
   return JSON.stringify({
     jsonOutput: config?.jsonOutput === true,
     maxTokens: config?.maxTokens ?? null,
@@ -326,6 +334,7 @@ function requestFingerprint(
     promptVersion: EVENT_OPERATIONS_AI_PROMPT_VERSION,
     provider,
     thinking: config?.deepseekThinking ?? null,
+    temperature,
     responseSchema: "event-operations-closed-json-v2",
   });
 }
@@ -506,6 +515,7 @@ export function createConfiguredEventOperationsAiProvider({
       deepseekThinking: false,
       jsonOutput: true,
       maxTokens: 8192,
+      temperature: 0.2,
       ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
     },
   });

@@ -181,6 +181,8 @@ export interface GeminiOrbitAgentProviderConfig {
   maxTokens?: number | null;
   provider?: OrbitAgentModelProvider | "gpt" | string | null;
   requestTimeoutMs?: number | null;
+  /** DeepSeek-only sampling temperature; omitted preserves existing requests. */
+  temperature?: number | null;
 }
 
 export type GeminiOrbitAgentPlannerResult =
@@ -266,6 +268,12 @@ function readMaxTokens(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0
     ? Math.floor(value)
     : null;
+}
+
+function readDeepSeekTemperature(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 2
+    ? value
+    : undefined;
 }
 
 function requestErrorMessage(error: unknown, provider: OrbitAgentModelProvider) {
@@ -993,6 +1001,7 @@ function providerRequestBody(input: {
   model: string;
   provider: OrbitAgentModelProvider;
   systemInstructionText: string;
+  temperature?: number;
 }) {
   if (input.provider === "deepseek") {
     return {
@@ -1013,6 +1022,7 @@ function providerRequestBody(input: {
       ...(readMaxTokens(input.maxTokens) === null
         ? {}
         : { max_tokens: readMaxTokens(input.maxTokens)! }),
+      ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
       ...(input.jsonOutput
         ? { response_format: { type: "json_object" as const } }
         : {}),
@@ -1124,6 +1134,24 @@ export async function runOrbitAgentModelText(input: {
   const fetchImplementation = config.fetchImplementation ?? fetch;
   const timeoutMs = readRequestTimeoutMs(config.requestTimeoutMs);
 
+  const configuredTemperature = config.temperature;
+  const deepSeekTemperature =
+    provider.provider === "deepseek" && configuredTemperature !== null && configuredTemperature !== undefined
+      ? readDeepSeekTemperature(configuredTemperature)
+      : undefined;
+  if (provider.provider === "deepseek" && configuredTemperature !== null && configuredTemperature !== undefined && deepSeekTemperature === undefined) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: "DeepSeek temperature must be a finite number from 0 through 2.",
+        provider: provider.provider,
+        source: provider.source,
+      },
+      retryable: false,
+      success: false,
+    };
+  }
+
   if (!provider.apiKey) {
     return {
       error: {
@@ -1153,6 +1181,7 @@ export async function runOrbitAgentModelText(input: {
             model: provider.model,
             provider: provider.provider,
             systemInstructionText: input.systemInstruction,
+            temperature: deepSeekTemperature,
           }),
         ),
         headers: providerHeaders(provider),

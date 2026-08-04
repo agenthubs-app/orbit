@@ -92,9 +92,37 @@ test("event operations request fingerprint versions provider behavior as well as
   const thinkingOn = createEventOperationsAiProvider({
     config: { deepseekThinking: true, maxTokens: 8192, model: "deepseek-test", provider: "deepseek" },
   });
+  const warmer = createEventOperationsAiProvider({
+    config: { deepseekThinking: false, maxTokens: 8192, model: "deepseek-test", provider: "deepseek", temperature: 0.3 },
+  });
   assert.notEqual(thinkingOff.requestFingerprint, thinkingOn.requestFingerprint);
+  assert.notEqual(thinkingOff.requestFingerprint, warmer.requestFingerprint);
+  for (const temperature of [0, 0.2, 2]) {
+    assert.notEqual(
+      createEventOperationsAiProvider({ config: { model: "deepseek-test", provider: "deepseek", temperature } }).requestFingerprint,
+      baseline.requestFingerprint,
+    );
+  }
+  for (const provider of ["openai", "gemini"] as const) {
+    assert.equal(
+      createEventOperationsAiProvider({ config: { model: "test", provider, temperature: 0.2 } }).requestFingerprint,
+      createEventOperationsAiProvider({ config: { model: "test", provider } }).requestFingerprint,
+    );
+  }
   assert.match(createConfiguredEventOperationsAiProvider().requestFingerprint ?? "", /"maxTokens":8192/u);
   assert.match(createConfiguredEventOperationsAiProvider().requestFingerprint ?? "", /"thinking":false/u);
+  assert.match(warmer.requestFingerprint ?? "", /"temperature":0.3/u);
+  const previousProvider = process.env.ORBIT_AGENT_PROVIDER;
+  try {
+    process.env.ORBIT_AGENT_PROVIDER = "deepseek";
+    const configuredFingerprint = JSON.parse(
+      createConfiguredEventOperationsAiProvider().requestFingerprint ?? "{}",
+    ) as Record<string, unknown>;
+    assert.equal(configuredFingerprint.temperature, 0.2);
+  } finally {
+    if (previousProvider === undefined) delete process.env.ORBIT_AGENT_PROVIDER;
+    else process.env.ORBIT_AGENT_PROVIDER = previousProvider;
+  }
 });
 
 function successfulText(text: string) {
