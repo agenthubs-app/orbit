@@ -628,12 +628,14 @@ test("engine fails a table task when member rationales have missing, extra, or u
   for (const variant of ["missing", "extra", "unknown-replacement"] as const) {
     await context.test(variant, async () => {
       const delegate = createAiProvider();
+      let tableContentCalls = 0;
       const aiProvider: EventOperationsAiProvider = {
         generateGroupingFeatures: (request) =>
           delegate.generateGroupingFeatures(request),
         generateRecommendations: (request) =>
           delegate.generateRecommendations(request),
         async generateTableContent(request) {
+          tableContentCalls += 1;
           const result = await delegate.generateTableContent(request);
           if (result.success === false) return result;
           const memberRationales = { ...result.data.memberRationales };
@@ -654,7 +656,7 @@ test("engine fails a table task when member rationales have missing, extra, or u
           };
         },
       };
-      const configured = configuration({ maxAttemptsPerTask: 1 });
+      const configured = configuration({ maxAttemptsPerTask: 3 });
       const repository = createMemoryEventOperationsRepository({
         configurations: [configured],
       });
@@ -675,18 +677,30 @@ test("engine fails a table task when member rationales have missing, extra, or u
         4,
       );
       assert.equal(progress.status, "failed");
-      const failedTableTask = (
+      const failedTableTasks = (
         await repository.listTasks(generation.generationId)
-      ).find(
+      ).filter(
         (task) =>
           task.kind === "table_content_shard" &&
           task.status === "failed",
       );
-      assert.equal(
-        failedTableTask?.errorCode,
-        "EVENT_OPERATIONS_AI_SCHEMA_INVALID",
-      );
-      assert.match(failedTableTask?.errorMessage ?? "", /rationales/u);
+      assert.ok(failedTableTasks.length > 0);
+      assert.equal(tableContentCalls, failedTableTasks.length);
+      const attempts = await repository.listTaskAttempts(generation.generationId);
+      for (const failedTableTask of failedTableTasks) {
+        assert.equal(
+          failedTableTask.errorCode,
+          "EVENT_OPERATIONS_AI_SCHEMA_INVALID",
+        );
+        assert.match(failedTableTask.errorMessage ?? "", /rationales/u);
+        assert.equal(failedTableTask.attempts, 3);
+        assert.deepEqual(
+          attempts
+            .filter((attempt) => attempt.taskId === failedTableTask.taskId)
+            .map((attempt) => attempt.outcome),
+          ["terminal_failed"],
+        );
+      }
     });
   }
 });

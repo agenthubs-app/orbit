@@ -890,7 +890,9 @@ export function createEventOperationsEngine({
         retryable: providerRetryable ?? (
           code !== "EVENT_OPERATIONS_CONFIGURATION_INVALID" &&
           code !== "EVENT_OPERATIONS_GENERATION_NOT_READY" &&
-          code !== "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND"),
+          code !== "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND" &&
+          code !== "EVENT_OPERATIONS_AI_JSON_INVALID" &&
+          code !== "EVENT_OPERATIONS_AI_SCHEMA_INVALID"),
         taskId: claimed.taskId,
         telemetry: { ...measurement },
       });
