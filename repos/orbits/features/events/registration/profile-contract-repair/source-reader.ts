@@ -334,16 +334,26 @@ export async function readProfileContractRepairSource(input: {
        membership_head.status as membership_head_status,
        membership_head.revision as membership_head_revision,
        membership_head.updated_at as membership_head_updated_at,
-       membership_version.participant_id as membership_version_participant_id,
-       membership_version.profile_version as membership_version_profile_version,
-       membership_version.status as membership_version_status,
-       membership_version.registered_at,
-       membership_version.cancelled_at,
-       membership_version.reactivated_at,
-       membership_version.late_registration,
-       membership_version.source_registration_id,
-       membership_version.effective_at as membership_effective_at,
-       membership_version.created_at as membership_created_at,
+       membership_version_row.participant_id as membership_version_participant_id,
+       membership_version_row.profile_version as membership_version_profile_version,
+       membership_version_row.status as membership_version_status,
+       membership_version_row.registered_at,
+       membership_version_row.cancelled_at,
+       membership_version_row.reactivated_at,
+       membership_version_row.late_registration,
+       membership_version_row.source_registration_id,
+       case
+         when to_jsonb(membership_version_row) ? 'origin'
+           then to_jsonb(membership_version_row) ->> 'origin'
+         else 'legacy_registration'
+       end as membership_origin,
+       case
+         when to_jsonb(membership_version_row) ? 'admission_application_version'
+           then to_jsonb(membership_version_row) ->> 'admission_application_version'
+         else null
+       end as admission_application_version,
+       membership_version_row.effective_at as membership_effective_at,
+       membership_version_row.created_at as membership_created_at,
        profile_head.actor_id as profile_head_actor_id,
        profile_head.profile_version as profile_head_profile_version,
        profile_head.revision as profile_head_revision,
@@ -359,11 +369,11 @@ export async function readProfileContractRepairSource(input: {
        on event_row.workspace_id = membership_head.workspace_id
       and event_row.event_id = membership_head.event_id
       and event_row.registration_migration_state = 'canonical'
-     join event_ops_membership_versions membership_version
-       on membership_version.workspace_id = membership_head.workspace_id
-      and membership_version.event_id = membership_head.event_id
-      and membership_version.actor_id = membership_head.actor_id
-      and membership_version.membership_version = membership_head.membership_version
+     join event_ops_membership_versions membership_version_row
+       on membership_version_row.workspace_id = membership_head.workspace_id
+      and membership_version_row.event_id = membership_head.event_id
+      and membership_version_row.actor_id = membership_head.actor_id
+      and membership_version_row.membership_version = membership_head.membership_version
      join event_ops_profile_heads profile_head
        on profile_head.workspace_id = membership_head.workspace_id
       and profile_head.event_id = membership_head.event_id
@@ -547,6 +557,16 @@ export async function readProfileContractRepairSource(input: {
     const participant = object(payload?.participant);
     const registrationProfile = object(payload?.registrationProfile);
     const lateRegistration = row.late_registration;
+    const membershipOrigin = row.membership_origin;
+    const admissionApplicationVersion =
+      row.admission_application_version === null
+        ? null
+        : positiveInteger(row.admission_application_version);
+    const membershipProvenanceValid =
+      (membershipOrigin === "legacy_registration" &&
+        row.admission_application_version === null) ||
+      (membershipOrigin === "admission_application" &&
+        admissionApplicationVersion !== null);
     const sourceIdentityValid = Boolean(
       token &&
         actorId &&
@@ -563,6 +583,7 @@ export async function readProfileContractRepairSource(input: {
         profileVersion &&
         membershipHeadRevision &&
         profileHeadRevision &&
+        membershipProvenanceValid &&
         typeof lateRegistration === "boolean" &&
         dbTimestamp(row.membership_head_updated_at) &&
         dbTimestamp(row.profile_head_updated_at) &&
@@ -686,11 +707,13 @@ export async function readProfileContractRepairSource(input: {
           )
         : null;
     const lifecycleHash = profileRepairHash(
-      "canonical-profile-contract-repair:lifecycle:v1",
+      "canonical-profile-contract-repair:lifecycle:v2",
       {
+        admissionApplicationVersion,
         cancelledAt: dbTimestamp(row.cancelled_at),
         effectiveAt: dbTimestamp(row.membership_effective_at),
         lateRegistration,
+        origin: membershipOrigin,
         reactivatedAt: dbTimestamp(row.reactivated_at),
         registeredAt: dbTimestamp(row.registered_at),
         sourceRegistrationId: row.source_registration_id,
