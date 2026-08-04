@@ -16,8 +16,10 @@ import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
 } from "../../registration/service";
+import { EventRegistrationWindowError } from "../../registration/deadline-gated-service";
 import { eventOperationsParticipantFromRegistration } from "../participant";
 import type {
+  CanonicalRegistrationMigrationOptions,
   CreateEventContactRequestInput,
   CreateEventOperationsCheckInInput,
   EventOperationsTaskAttemptTelemetry,
@@ -180,6 +182,38 @@ export interface CreateMemoryEventOperationsRepositoryOptions {
   canonicalRegistrations?: readonly EventRegistration[];
   configurations?: readonly EventOperationsConfiguration[];
   now?: () => string;
+  publishedEventIds?: readonly string[];
+}
+
+function requireMemoryMigrationManifest(
+  options: CanonicalRegistrationMigrationOptions | undefined,
+): void {
+  if (!options) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+      "Canonical membership migration without an operations configuration requires an explicit operator manifest.",
+    );
+  }
+  if (
+    options.source !== "operator_manifest" ||
+    typeof options.evidenceId !== "string" ||
+    !options.evidenceId.trim()
+  ) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      "Canonical membership migration requires a valid operator manifest source and evidenceId.",
+    );
+  }
+  const parsed = Date.parse(options.profileEditDeadlineAt);
+  if (
+    !Number.isFinite(parsed) ||
+    new Date(parsed).toISOString() !== options.profileEditDeadlineAt
+  ) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      "Canonical membership migration requires profileEditDeadlineAt to be a canonical ISO timestamp.",
+    );
+  }
 }
 
 export function createMemoryEventOperationsRepository(
@@ -208,19 +242,30 @@ export function createMemoryEventOperationsRepository(
     EventOperationsConfiguration
   >();
   const publishedResults = new Map<string, EventOperationsPublishedResult>();
+  const explicitlyPublishedEventIds = new Set(options.publishedEventIds ?? []);
+  const legacyActiveConfigurationEventIds = new Set<string>();
   const tasks = new Map<string, EventOperationsGenerationTask>();
   const taskAttempts = new Map<string, EventOperationsTaskAttemptTelemetry>();
   const repositoryNow = () => options.now?.() ?? new Date().toISOString();
   for (const configuration of options.configurations ?? []) {
+    const seededRegistrations =
+      options.canonicalRegistrations?.filter(
+        (registration) => registration.eventId === configuration.eventId,
+      ) ?? [];
     configurations.set(configuration.eventId, clone(configuration));
     configurationVersions.set(configuration.eventId, 1);
     registrationMigrationStates.set(configuration.eventId, {
-      count: options.canonicalRegistrations?.filter(
-        (registration) => registration.eventId === configuration.eventId,
-      ).length ?? 0,
-      hash: "memory-seeded-canonical",
+      count: seededRegistrations.length,
+      hash: snapshotHash(
+        [...seededRegistrations].sort(
+          (left, right) =>
+            left.userId.localeCompare(right.userId) ||
+            left.id.localeCompare(right.id),
+        ),
+      ),
       state: "canonical",
     });
+    legacyActiveConfigurationEventIds.add(configuration.eventId);
   }
 
   function requireGeneration(generationId: string): EventOperationsGeneration {
@@ -235,20 +280,26 @@ export function createMemoryEventOperationsRepository(
   }
 
   const repository: MemoryEventOperationsRepository = {
-    async activateCanonicalRegistrations(eventId, registrations) {
+    async activateCanonicalRegistrations(
+      eventId,
+      registrations,
+      registrationMigrationOptions,
+    ) {
       const current = registrationMigrationStates.get(eventId);
       if (current?.state === "canonical") {
         return { ...current, state: "canonical" as const };
       }
-      const ordered = [...registrations].sort((left, right) =>
-        left.userId.localeCompare(right.userId),
+      if (!configurations.has(eventId)) {
+        requireMemoryMigrationManifest(registrationMigrationOptions);
+      }
+      const ordered = [...registrations].sort(
+        (left, right) =>
+          left.userId.localeCompare(right.userId) || left.id.localeCompare(right.id),
       );
       for (const registration of ordered) {
         await canonicalRegistrationProvider.saveRegistration(registration);
       }
-      const hash = createHash("sha256")
-        .update(JSON.stringify(ordered))
-        .digest("hex");
+      const hash = snapshotHash(ordered);
       const activated = {
         count: ordered.length,
         hash,
@@ -900,7 +951,13 @@ export function createMemoryEventOperationsRepository(
     async listCatalogueSummaries(eventIds) {
       const summaries = [];
       for (const eventId of [...new Set(eventIds.filter(Boolean))].sort()) {
-        if (!configurations.has(eventId)) continue;
+        if (
+          registrationMigrationStates.get(eventId)?.state !== "canonical" ||
+          (!explicitlyPublishedEventIds.has(eventId) &&
+            !legacyActiveConfigurationEventIds.has(eventId))
+        ) {
+          continue;
+        }
         const registrations = await canonicalRegistrationService.list({ eventId });
         const publication = publishedResults.get(eventId) ?? null;
         summaries.push({
@@ -1040,6 +1097,7 @@ export function createMemoryEventOperationsRepository(
     async resetEventForSeed(eventId) {
       configurations.delete(eventId);
       configurationVersions.delete(eventId);
+      legacyActiveConfigurationEventIds.delete(eventId);
       registrationMigrationStates.delete(eventId);
       publishedResults.delete(eventId);
       for (const [key, value] of checkIns) {
@@ -1204,6 +1262,7 @@ export function createMemoryEventOperationsRepository(
         );
       }
       configurations.set(value.eventId, clone(value));
+      legacyActiveConfigurationEventIds.add(value.eventId);
       configurationVersions.set(
         value.eventId,
         (configurationVersions.get(value.eventId) ?? 0) + 1,

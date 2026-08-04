@@ -138,10 +138,17 @@ export interface RespondToEventContactRequestInput {
   targetActorId: string;
 }
 
+export interface CanonicalRegistrationMigrationOptions {
+  evidenceId: string;
+  profileEditDeadlineAt: string;
+  source: "operator_manifest";
+}
+
 export interface EventOperationsRepository {
   activateCanonicalRegistrations(
     eventId: string,
     registrations: readonly EventRegistration[],
+    registrationMigrationOptions?: CanonicalRegistrationMigrationOptions,
   ): Promise<{
     count: number;
     hash: string;

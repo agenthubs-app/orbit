@@ -1431,9 +1431,6 @@ export function createPostgresEventOperationsRepository({
                 <= statement_timestamp()
             ) as attendee_results_available
           from event_ops_events event_row
-          join event_ops_configuration_heads configuration_head
-            on configuration_head.workspace_id = event_row.workspace_id
-            and configuration_head.event_id = event_row.event_id
           left join event_ops_membership_heads membership_head
             on membership_head.workspace_id = event_row.workspace_id
             and membership_head.event_id = event_row.event_id
@@ -1445,7 +1442,13 @@ export function createPostgresEventOperationsRepository({
             and publication.publication_id = publication_head.publication_id
           where event_row.workspace_id = $1
             and event_row.event_id = any($2::text[])
-            and event_row.lifecycle_state = 'active'
+            and (
+              event_row.lifecycle_state_v2 = 'published'
+              or (
+                event_row.lifecycle_state_v2 is null
+                and event_row.lifecycle_state = 'active'
+              )
+            )
             and event_row.registration_migration_state = 'canonical'
           group by
             event_row.event_id,

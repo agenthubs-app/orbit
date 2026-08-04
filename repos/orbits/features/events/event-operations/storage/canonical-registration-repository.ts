@@ -17,7 +17,10 @@ import {
   eventParticipantAnswersEqual,
   normalizeEventParticipantAnswers,
 } from "../participant";
-import type { EventOperationsRepository } from "../repository";
+import type {
+  CanonicalRegistrationMigrationOptions,
+  EventOperationsRepository,
+} from "../repository";
 import { appendCanonicalMembershipVersion } from "./canonical-membership-writer";
 import type {
   EventOperationsPostgresRuntime,
@@ -47,6 +50,10 @@ interface ConfigurationWindowRow {
   profile_edit_deadline_at: Date | string;
   registration_cutoff_at: Date | string;
 }
+
+type MigrationProfileDeadlineSource =
+  | "event_operations_configuration"
+  | "operator_manifest";
 
 function clone<TValue>(value: TValue): TValue {
   return JSON.parse(JSON.stringify(value)) as TValue;
@@ -134,6 +141,78 @@ function registrationMigrationHash(
         left.userId.localeCompare(right.userId) || left.id.localeCompare(right.id),
     ),
   );
+}
+
+function strictIsoTimestamp(value: unknown, field: string): string {
+  if (typeof value !== "string") {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      `Canonical membership migration requires ${field} to be an ISO timestamp.`,
+    );
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      `Canonical membership migration requires ${field} to be a canonical ISO timestamp.`,
+    );
+  }
+  return value;
+}
+
+function migrationProfileDeadline(
+  eventId: string,
+  row: SqlRow,
+  options: CanonicalRegistrationMigrationOptions | undefined,
+): {
+  evidenceId: string;
+  profileEditDeadlineAt: string;
+  reason: string;
+  source: MigrationProfileDeadlineSource;
+} {
+  if (
+    row.profile_edit_deadline_at !== null &&
+    row.profile_edit_deadline_at !== undefined
+  ) {
+    return {
+      evidenceId: [
+        "event-operations-configuration",
+        encodeURIComponent(eventId),
+        String(row.configuration_version),
+      ].join(":"),
+      profileEditDeadlineAt: timestamp(
+        row.profile_edit_deadline_at,
+        "profile_edit_deadline_at",
+      ),
+      reason: "EXISTING_EVENT_OPERATIONS_CONFIGURATION",
+      source: "event_operations_configuration",
+    };
+  }
+  if (!options) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+      "Canonical membership migration without an operations configuration requires an explicit operator manifest.",
+    );
+  }
+  if (
+    options.source !== "operator_manifest" ||
+    typeof options.evidenceId !== "string" ||
+    !options.evidenceId.trim()
+  ) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      "Canonical membership migration requires a valid operator manifest source and evidenceId.",
+    );
+  }
+  return {
+    evidenceId: options.evidenceId.trim(),
+    profileEditDeadlineAt: strictIsoTimestamp(
+      options.profileEditDeadlineAt,
+      "profileEditDeadlineAt",
+    ),
+    reason: "OPERATOR_MANIFEST_PROFILE_DEADLINE",
+    source: "operator_manifest",
+  };
 }
 
 function legacyMembershipStages(
@@ -408,7 +487,11 @@ export function createPostgresCanonicalRegistrationMethods({
   workspaceId,
 }: EventOperationsPostgresRuntime): CanonicalRegistrationMethods {
   return {
-    async activateCanonicalRegistrations(eventId, registrations) {
+    async activateCanonicalRegistrations(
+      eventId,
+      registrations,
+      registrationMigrationOptions,
+    ) {
       const ordered = [...registrations].sort(
         (left, right) =>
           left.userId.localeCompare(right.userId) || left.id.localeCompare(right.id),
@@ -445,18 +528,19 @@ export function createPostgresCanonicalRegistrationMethods({
               event_row.registration_migration_state,
               event_row.registration_migration_count,
               event_row.registration_migration_hash,
+              configuration.configuration_version,
               configuration.profile_edit_deadline_at,
               statement_timestamp() as db_now
             from event_ops_events event_row
-            join event_ops_configuration_heads configuration_head
+            left join event_ops_configuration_heads configuration_head
               on configuration_head.workspace_id = event_row.workspace_id
               and configuration_head.event_id = event_row.event_id
-            join event_ops_configurations configuration
+            left join event_ops_configurations configuration
               on configuration.workspace_id = configuration_head.workspace_id
               and configuration.event_id = configuration_head.event_id
               and configuration.configuration_version = configuration_head.configuration_version
             where event_row.workspace_id = $1 and event_row.event_id = $2
-            for update of event_row, configuration_head, configuration
+            for update of event_row
           `,
           [workspaceId, eventId],
         );
@@ -464,7 +548,7 @@ export function createPostgresCanonicalRegistrationMethods({
         if (!eventRow) {
           throw new EventRegistrationWindowError(
             "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
-            "Event operations must be configured before canonical registration activation.",
+            "The canonical event must exist before canonical registration activation.",
           );
         }
         if (eventRow.registration_migration_state === "canonical") {
@@ -481,8 +565,64 @@ export function createPostgresCanonicalRegistrationMethods({
               "Canonical registration activation metadata is incomplete.",
             );
           }
+          const activationAudits = await transaction.query<SqlRow>(
+            `select
+               audit_id, actor_id, aggregate_type, aggregate_id, after_payload
+             from event_ops_audit_log
+             where workspace_id = $1
+               and event_id = $2
+               and action = 'registration_migration_activated'
+             order by audit_id`,
+            [workspaceId, eventId],
+          );
+          const activationAudit = activationAudits.rows[0];
+          const expectedAuditId = `audit:registration-migration:${encodeURIComponent(eventId)}:${storedHash}`;
+          if (
+            activationAudits.rows.length !== 1 ||
+            !activationAudit ||
+            activationAudit.audit_id !== expectedAuditId ||
+            activationAudit.actor_id !== null ||
+            activationAudit.aggregate_type !== "event" ||
+            activationAudit.aggregate_id !== eventId
+          ) {
+            throw new EventRegistrationWindowError(
+              "EVENT_REGISTRATION_WINDOW_INVALID",
+              "Canonical registration activation audit identity is missing or ambiguous.",
+            );
+          }
+          let auditPayload: Record<string, unknown>;
+          try {
+            auditPayload = jsonValue<Record<string, unknown>>(
+              activationAudit.after_payload,
+              "registration_migration_after_payload",
+            );
+          } catch {
+            throw new EventRegistrationWindowError(
+              "EVENT_REGISTRATION_WINDOW_INVALID",
+              "Canonical registration activation audit payload is invalid.",
+            );
+          }
+          if (
+            typeof auditPayload.count !== "number" ||
+            !Number.isSafeInteger(auditPayload.count) ||
+            auditPayload.count < 0 ||
+            typeof auditPayload.hash !== "string" ||
+            auditPayload.hash !== storedHash ||
+            auditPayload.count !== storedCount
+          ) {
+            throw new EventRegistrationWindowError(
+              "EVENT_REGISTRATION_WINDOW_INVALID",
+              "Canonical registration activation audit does not match the immutable migration baseline.",
+            );
+          }
           return { count: storedCount, hash: storedHash, state: "canonical" };
         }
+
+        const deadline = migrationProfileDeadline(
+          eventId,
+          eventRow,
+          registrationMigrationOptions,
+        );
 
         await transaction.query(
           `
@@ -510,9 +650,7 @@ export function createPostgresCanonicalRegistrationMethods({
         }
 
         const window = {
-          profile_edit_deadline_at: eventRow.profile_edit_deadline_at as
-            | Date
-            | string,
+          profile_edit_deadline_at: deadline.profileEditDeadlineAt,
         };
         const migratedAt = timestamp(eventRow.db_now, "db_now");
         for (const registration of ordered) {
@@ -596,14 +734,22 @@ export function createPostgresCanonicalRegistrationMethods({
               evidence_ids, occurred_at
             ) values (
               $1, $2, $3, null, 'registration_migration_activated',
-              'event', $3, null, $4::jsonb, '{}', $5
+              'event', $3, null, $4::jsonb, $5::text[], $6
             )
           `,
           [
             workspaceId,
             `audit:registration-migration:${encodeURIComponent(eventId)}:${migrationHash}`,
             eventId,
-            JSON.stringify({ count: ordered.length, hash: migrationHash }),
+            JSON.stringify({
+              count: ordered.length,
+              hash: migrationHash,
+              profileDeadlineAt: deadline.profileEditDeadlineAt,
+              profileDeadlineEvidenceId: deadline.evidenceId,
+              profileDeadlineReason: deadline.reason,
+              profileDeadlineSource: deadline.source,
+            }),
+            [deadline.evidenceId],
             migratedAt,
           ],
         );
