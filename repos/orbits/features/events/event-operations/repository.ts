@@ -74,6 +74,13 @@ export interface EventOperationsTaskAttemptTelemetry {
   workerId: string;
 }
 
+export interface EventOperationsCatalogueSummary {
+  activeRegistrationCount: number;
+  attendeeResultsAvailable: boolean;
+  eventId: string;
+  hasPublishedResults: boolean;
+}
+
 export interface CompleteEventOperationsTaskInput {
   artifact: {
     evidenceMetadata: Readonly<Record<string, unknown>>;
@@ -199,6 +206,9 @@ export interface EventOperationsRepository {
     userId: string,
     eventIds: readonly string[],
   ): Promise<readonly EventRegistration[]>;
+  listCatalogueSummaries(
+    eventIds: readonly string[],
+  ): Promise<readonly EventOperationsCatalogueSummary[]>;
   listContactRequests(
     eventId: string,
     viewerActorId: string | null,

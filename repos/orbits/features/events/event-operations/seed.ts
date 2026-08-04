@@ -12,7 +12,7 @@ import {
 } from "./contract";
 import type { EventOperationsRepository } from "./repository";
 
-export const EVENT_OPERATIONS_E2E_EVENT_ID = "event:e2e:orbit-connection-night";
+export const EVENT_OPERATIONS_E2E_EVENT_ID = "event_signup_01";
 export const EVENT_OPERATIONS_E2E_ORGANIZER_EMAIL = "organizer.event-ops@orbit.example.test";
 
 export interface EventOperationsSeedParticipantDefinition {
@@ -145,6 +145,14 @@ export const EVENT_OPERATIONS_E2E_SEED_ACCOUNTS = [
 ] as const satisfies readonly EventOperationsSeedParticipantDefinition[];
 
 export interface SeedEventOperationsE2EInput {
+  event: {
+    description: string;
+    endsAt: string;
+    id: string;
+    startsAt: string;
+    title: string;
+    venue: string;
+  };
   now?: () => string;
   organizerActorId: string;
   operationsRepository: EventOperationsRepository;
@@ -206,6 +214,7 @@ async function resetExactEventScope(input: {
 }
 
 export async function seedEventOperationsE2E({
+  event,
   now = () => new Date().toISOString(),
   organizerActorId,
   operationsRepository,
@@ -238,10 +247,27 @@ export async function seedEventOperationsE2E({
   if (new Set(participants.map((value) => value.actorId)).size !== participants.length) {
     throw new Error("Every seeded participant must have a distinct actorId.");
   }
+  if (event.id !== EVENT_OPERATIONS_E2E_EVENT_ID) {
+    throw new Error(
+      `The full-flow fixture must enrich the public catalogue event ${EVENT_OPERATIONS_E2E_EVENT_ID}.`,
+    );
+  }
   const seededAt = now();
   const base = Date.parse(seededAt);
   if (!Number.isFinite(base)) throw new Error("The seed clock must return an ISO timestamp.");
-  const eventId = EVENT_OPERATIONS_E2E_EVENT_ID;
+  const startsAtMs = Date.parse(event.startsAt);
+  const endsAtMs = Date.parse(event.endsAt);
+  if (
+    !Number.isFinite(startsAtMs) ||
+    !Number.isFinite(endsAtMs) ||
+    endsAtMs - startsAtMs < 75 * 60_000
+  ) {
+    throw new Error(
+      "The public full-flow event must provide a valid window of at least 75 minutes.",
+    );
+  }
+  const eventId = event.id;
+  const resultsAtMs = Math.min(base, startsAtMs);
   const resetCollections = await resetExactEventScope({
     deletedAt: seededAt,
     eventId,
@@ -249,8 +275,8 @@ export async function seedEventOperationsE2E({
     store,
     workspaceId,
   });
-  const startsAt = at(base, -30);
-  const endsAt = at(base, 180);
+  const startsAt = new Date(startsAtMs).toISOString();
+  const endsAt = new Date(endsAtMs).toISOString();
   const eventEvidenceId = `evidence:${eventId}:seed`;
 
   await store.upsertRecord({
@@ -260,21 +286,21 @@ export async function seedEventOperationsE2E({
     lifecycleState: "active",
     occurredAt: startsAt,
     payload: {
-      description: "A reusable, fictional E2E event for exercising the complete Orbit on-site operations chain.",
+      description: event.description,
       endsAt,
       evidence: [{ capturedAt: seededAt, createdBy: organizerActorId, evidenceId: eventEvidenceId, excerpt: "Explicit event-operations E2E seed." }],
-      nextAction: "Use organizer operations to run strict AI tasks and publish results.",
-      recommendedPreparation: "Review participant profiles and configured time gates before generation.",
-      relationshipContext: "Fictional test registrations only; no external people or providers are represented.",
+      nextAction: "Complete registration preparation, then use the attendee workspace from the public event detail.",
+      recommendedPreparation: "Review participant profiles and the published matching schedule before arrival.",
+      relationshipContext: event.description,
       startsAt,
       status: "confirmed",
-      title: "Orbit Connection Night · E2E",
-      venue: "Orbit Test Hall, Tokyo",
+      title: event.title,
+      venue: event.venue,
     },
     provider: "event-operations-e2e-seed",
     providerRecordId: eventId,
     recordId: eventId,
-    searchText: "Orbit Connection Night E2E event operations Tokyo",
+    searchText: `${event.title} ${event.venue} event operations`,
     sourceId: `source:${eventId}:seed`,
     sourceLabel: "Explicit event-operations E2E seed",
     sourceType: "manual",
@@ -294,12 +320,12 @@ export async function seedEventOperationsE2E({
   const shadowRegistrations: EventRegistration[] = [];
   for (const definition of participants) {
     const registeredAt = at(
-      base,
+      resultsAtMs,
       definition.registrationTiming === "late" ? -5 : -120,
     );
     const cancelledAt =
       definition.registrationStatus === "cancelled"
-        ? at(base, definition.registrationTiming === "late" ? -2 : -40)
+        ? at(resultsAtMs, definition.registrationTiming === "late" ? -2 : -40)
         : null;
     const updatedAt = cancelledAt ?? registeredAt;
     const id = eventRegistrationId(eventId, definition.actorId);
@@ -328,18 +354,18 @@ export async function seedEventOperationsE2E({
   }
 
   const configuration = await operationsRepository.saveConfiguration({
-    checkInOpensAt: at(base, -60),
+    checkInOpensAt: at(startsAtMs, -60),
     eventEndsAt: endsAt,
     eventId,
     eventStartsAt: startsAt,
     maxAttemptsPerTask: 3,
     organizerActorId,
-    profileEditDeadlineAt: at(base, -10),
+    profileEditDeadlineAt: at(resultsAtMs, -10),
     recommendationCount: 4,
-    registrationCutoffAt: at(base, -5),
-    resultsAvailableAt: at(base, 0),
-    roundOneStartsAt: at(base, 15),
-    roundTwoStartsAt: at(base, 60),
+    registrationCutoffAt: at(resultsAtMs, -5),
+    resultsAvailableAt: at(resultsAtMs, 0),
+    roundOneStartsAt: at(startsAtMs, 15),
+    roundTwoStartsAt: at(startsAtMs, 60),
     shardSize: 6,
     tableSize: 6,
     updatedAt: seededAt,

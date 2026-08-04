@@ -1,6 +1,7 @@
 import { createOrbitLocalRemoteDatabase } from "../../shared/local-remote-store/orbit-database";
 import { eventCodeFor } from "./public-route-code";
 import { eventRegistrationRuntimeService } from "./registration/runtime";
+import { createConfiguredEventOperationsRepository } from "./event-operations/repository";
 
 export interface RegisteredCatalogueAttendee {
   displayName: string;
@@ -42,6 +43,27 @@ export async function readRegisteredCatalogueAttendees(input: {
 
   if (registration?.status !== "rsvped") {
     return null;
+  }
+
+  const operationsRepository = createConfiguredEventOperationsRepository();
+  const operationsConfiguration = operationsRepository
+    ? await operationsRepository.getConfiguration(event.id)
+    : null;
+  if (operationsRepository && operationsConfiguration) {
+    const registrations = await operationsRepository.listCanonicalRegistrations(
+      event.id,
+    );
+    return {
+      attendees: registrations
+        .filter((item) => item.status === "rsvped")
+        .map((item) => ({
+          displayName:
+            item.participantProfile.displayName?.trim() || "Orbit attendee",
+          organization: null,
+          role: item.participantProfile.answers.positioning?.trim() || null,
+        })),
+      eventId: event.id,
+    };
   }
 
   return {

@@ -267,12 +267,13 @@ test("/app/events renders the public event catalogue without requiring authentic
   assert.match(pageSource, /listRuntimeEventRegistrationsForUser/);
   assert.match(
     pageSource,
-    /const registrations = session\?\.user\?\.id\s*\?\s*await listRuntimeEventRegistrationsForUser[\s\S]*?: \[\];/u,
+    /const \[registrations, operationSummaries\] = await Promise\.all/u,
   );
+  assert.match(pageSource, /readEventOperationsCatalogueSummaries\(eventIds\)/u);
   assert.doesNotMatch(pageSource, /eventRegistrationRuntimeService\.get/);
   assert.doesNotMatch(pageSource, /Promise\.all\(\s*catalogue\.events\.map/);
   assert.match(pageSource, /attendees: \[\]/);
-  assert.match(pageSource, /source-backed roster/u);
+  assert.match(pageSource, /source-backed public roster aggregate/u);
   assert.doesNotMatch(pageSource, /participantCount\s*[+:]\s*.*\+\s*1/u);
   assert.match(pageSource, /searchParams/);
   assert.doesNotMatch(pageSource, /scenario/);

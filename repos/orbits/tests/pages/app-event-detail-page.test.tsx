@@ -66,6 +66,31 @@ test("event detail component keeps mobile detail content reachable without colla
   assert.doesNotMatch(html, /data-collapsed="true"/);
 });
 
+test("registered attendees can open the normal preparation workspace before the event starts", async () => {
+  const routeModel = await loadAppEventDetailRoute({
+    eventId: "demo-event-1",
+    mode: "mock",
+  });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") return;
+  const event = eventDetailRouteToOrbitLandingEventView(routeModel);
+  const html = renderToStaticMarkup(
+    <OrbitRealEventDetail
+      event={{
+        ...event,
+        status: "upcoming",
+        stats: { ...event.stats, youRsvped: true },
+        youRsvped: true,
+      }}
+      workspaceAvailable
+    />,
+  );
+
+  assert.match(html, /查看活动准备|View event preparation/);
+  assert.match(html, /class="btn btn-ghost"/);
+  assert.doesNotMatch(html, />未开始<|>Not started</);
+});
+
 test("/app/events/[id] serves public catalogue first and protects only private fallback", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 

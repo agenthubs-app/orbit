@@ -103,6 +103,19 @@ test(
         userId: "actor-ari",
       });
       assert.equal(cancelled?.status, "cancelled");
+      assert.deepEqual(
+        await repository.listCatalogueSummaries([
+          "event-canonical-registration",
+        ]),
+        [
+          {
+            activeRegistrationCount: 0,
+            attendeeResultsAvailable: false,
+            eventId: "event-canonical-registration",
+            hasPublishedResults: false,
+          },
+        ],
+      );
 
       const counts = await scopedPool.query<{
         audit_count: string;

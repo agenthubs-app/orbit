@@ -866,6 +866,47 @@ test("manual retry resumes only failed shards and never reruns completed shards"
   assert.equal(shardAttempts[1]?.claimedAt, repositoryTime);
 });
 
+test("manual retry waits until every task from the failed run has settled", async () => {
+  const repository = createMemoryEventOperationsRepository({
+    configurations: [configuration()],
+  });
+  const engine = createEventOperationsEngine({
+    aiProvider: createAiProvider(),
+    repository,
+  });
+  const generation = await engine.createGeneration({
+    actorId: ORGANIZER_ID,
+    capturedSnapshot: capturedSnapshot(participants(2)),
+    idempotencyKey: "retry-in-flight-guard",
+  });
+  const [task] = await repository.listTasks(generation.generationId);
+  assert.ok(task);
+  await repository.replaceGenerationForTest({
+    ...generation,
+    errorCode: "EVENT_OPERATIONS_SHARD_FAILED",
+    errorMessage: "A peer task exhausted its attempts.",
+    status: "failed",
+  });
+  await repository.replaceTaskForTest({
+    ...task,
+    attempts: 1,
+    leaseExpiresAt: "2026-08-02T10:05:00.000Z",
+    leaseToken: "lease:still-running",
+    status: "running",
+    workerId: "worker:still-running",
+  });
+
+  await assert.rejects(
+    engine.retryGeneration({
+      actorId: ORGANIZER_ID,
+      generationId: generation.generationId,
+    }),
+    (error: unknown) =>
+      error instanceof EventOperationsError &&
+      error.code === "EVENT_OPERATIONS_GENERATION_NOT_READY",
+  );
+});
+
 test("an expired running lease is requeued and resumes within the original retry budget", async () => {
   const tracker = { active: 0, maxActive: 0, calls: new Map<string, number>() };
   const repository = createMemoryEventOperationsRepository({

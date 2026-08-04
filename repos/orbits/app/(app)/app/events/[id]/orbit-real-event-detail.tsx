@@ -164,10 +164,17 @@ function enterAction(
   event: OrbitLandingEventView,
   t: Translate,
   youRsvped: boolean,
+  workspaceAvailable: boolean,
   flex = 1,
 ) {
-  const canEnter = youRsvped && (event.status === "active" || event.status === "ended");
-  const label = event.status === "ended" ? t({ en: "Replay", zh: "回看" }) : event.status === "upcoming" && youRsvped ? t({ en: "Not started", zh: "未开始" }) : t({ en: "Enter event", zh: "进入活动" });
+  const canEnter = youRsvped && workspaceAvailable;
+  const label = event.status === "ended"
+    ? t({ en: "Replay", zh: "回看" })
+    : event.status === "upcoming" && youRsvped && workspaceAvailable
+      ? t({ en: "View event preparation", zh: "查看活动准备" })
+      : event.status === "upcoming" && youRsvped
+        ? t({ en: "Not started", zh: "未开始" })
+        : t({ en: "Enter event", zh: "进入活动" });
 
   if (!canEnter) {
     return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{label}</ActionButton>;
@@ -233,7 +240,7 @@ function OrganizerRailCard({ event, mobile = false, t }: { event: OrbitLandingEv
 
 const ATTENDEE_PREVIEW_COUNT = 12;
 
-function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate }) {
+function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate; workspaceAvailable: boolean }) {
   const [showAllAttendees, setShowAllAttendees] = useState(false);
   const [registrationStatus, setRegistrationStatus] =
     useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
@@ -283,7 +290,7 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
           <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)", whiteSpace: "nowrap" }}>{event.feeLabel}</h3></div>
           <StatusBadge language={language} status={event.status} />
         </div>
-        <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped)}</div>
+        <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
 
@@ -380,13 +387,13 @@ function EventDetailPanel({ event, language, t }: { event: OrbitLandingEventView
       </section>
 
       <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: ORBIT_Z.sticky }}>
-        {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped)}
+        {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped, workspaceAvailable)}
       </div>
     </>
   );
 }
 
-export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }) {
+export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { event: OrbitLandingEventView; workspaceAvailable?: boolean }) {
   const { t, language } = useOrbitLanguage();
   const cover = gradientFromString(event.code || event.name || "orbit");
   const time = eventTime(event, t, language);
@@ -498,7 +505,7 @@ export function OrbitRealEventDetail({ event }: { event: OrbitLandingEventView }
               </div>
               <OrganizerRailCard event={event} mobile t={t} />
             </div>
-            <EventDetailPanel event={event} language={language} t={t} />
+            <EventDetailPanel event={event} language={language} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>
       </main>

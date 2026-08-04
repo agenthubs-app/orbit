@@ -110,7 +110,9 @@ async function readWith(
         and response.profile_version = profile.profile_version
       order by response.answered_at nulls last, response.field_key nulls last
     `,
-    [workspaceId, input.eventId, input.participantId, input.generationId ?? null],
+    input.generationId
+      ? [workspaceId, input.eventId, input.participantId, input.generationId]
+      : [workspaceId, input.eventId, input.participantId],
   );
   const first = result.rows[0];
   if (!first) return null;

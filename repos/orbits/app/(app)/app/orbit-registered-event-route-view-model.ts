@@ -50,10 +50,12 @@ export async function getOrbitRegisteredEventViewModel(input: {
 
   return {
     ...event,
+    participantCount: registeredContext.attendees.length,
     stats: {
       ...event.stats,
       attendees: registeredAttendeeViews(registeredContext.attendees),
       authed: true,
+      count: registeredContext.attendees.length,
       youRsvped: true,
     },
     youRsvped: true,

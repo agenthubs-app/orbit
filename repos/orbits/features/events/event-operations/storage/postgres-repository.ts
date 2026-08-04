@@ -17,6 +17,7 @@ import type {
   ClaimEventOperationsTasksInput,
   CompleteEventOperationsTaskInput,
   EventOperationsTaskAttemptTelemetry,
+  EventOperationsCatalogueSummary,
   EventOperationsRepository,
   FailEventOperationsTaskInput,
   InitializeEventOperationsGenerationInput,
@@ -1413,6 +1414,57 @@ export function createPostgresEventOperationsRepository({
       return result.rows.map(checkInFromRow);
     },
 
+    async listCatalogueSummaries(eventIds) {
+      const normalizedEventIds = [...new Set(eventIds.filter(Boolean))];
+      if (normalizedEventIds.length === 0) return [];
+      const result = await client.query<SqlRow>(
+        `
+          select
+            event_row.event_id,
+            count(membership_head.actor_id) filter (
+              where membership_head.status = 'rsvped'
+            )::text as active_registration_count,
+            (publication.publication_id is not null) as has_published_results,
+            (
+              publication.publication_id is not null
+              and (publication.published_dto ->> 'resultsAvailableAt')::timestamptz
+                <= statement_timestamp()
+            ) as attendee_results_available
+          from event_ops_events event_row
+          join event_ops_configuration_heads configuration_head
+            on configuration_head.workspace_id = event_row.workspace_id
+            and configuration_head.event_id = event_row.event_id
+          left join event_ops_membership_heads membership_head
+            on membership_head.workspace_id = event_row.workspace_id
+            and membership_head.event_id = event_row.event_id
+          left join event_ops_publication_heads publication_head
+            on publication_head.workspace_id = event_row.workspace_id
+            and publication_head.event_id = event_row.event_id
+          left join event_ops_publications publication
+            on publication.workspace_id = publication_head.workspace_id
+            and publication.publication_id = publication_head.publication_id
+          where event_row.workspace_id = $1
+            and event_row.event_id = any($2::text[])
+            and event_row.lifecycle_state = 'active'
+            and event_row.registration_migration_state = 'canonical'
+          group by
+            event_row.event_id,
+            publication.publication_id,
+            publication.published_dto
+          order by event_row.event_id
+        `,
+        [workspaceId, normalizedEventIds],
+      );
+      return result.rows.map(
+        (row): EventOperationsCatalogueSummary => ({
+          activeRegistrationCount: integer(row, "active_registration_count"),
+          attendeeResultsAvailable: row.attendee_results_available === true,
+          eventId: text(row, "event_id"),
+          hasPublishedResults: row.has_published_results === true,
+        }),
+      );
+    },
+
     async listCandidates(generationId, sourceParticipantIds) {
       if (sourceParticipantIds.length === 0) return [];
       const result = await client.query<SqlRow>(
@@ -1757,6 +1809,21 @@ export function createPostgresEventOperationsRepository({
           );
         }
         if (current.status !== "failed") return current;
+        const inFlight = await transaction.query<{ count: string }>(
+          `
+            select count(*)::text as count
+            from event_ops_tasks
+            where workspace_id = $1 and generation_id = $2
+              and status = 'running'
+          `,
+          [workspaceId, generationId],
+        );
+        if (Number(inFlight.rows[0]?.count ?? 0) > 0) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_GENERATION_NOT_READY",
+            "Retry is unavailable until every in-flight task from the failed run has settled.",
+          );
+        }
         await transaction.query(
           `
             update event_ops_tasks

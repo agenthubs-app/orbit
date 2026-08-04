@@ -18,6 +18,7 @@ import {
 import { loadLocalEnv } from "./load-local-env";
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
+import { readPublicEventCatalogue } from "../features/events/public-catalogue";
 
 async function main(): Promise<void> {
   loadLocalEnv();
@@ -26,11 +27,13 @@ async function main(): Promise<void> {
     throw new Error("Configure ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL before seeding.");
   }
   const password = process.env.ORBIT_EVENT_OPERATIONS_SEED_PASSWORD;
-  if (!password || password.length < 8) {
-    throw new Error("Set ORBIT_EVENT_OPERATIONS_SEED_PASSWORD to at least 8 characters. The seed never embeds or prints a password.");
-  }
   const resetFixturePasswords =
     process.env.ORBIT_EVENT_OPERATIONS_RESET_FIXTURE_PASSWORDS === "1";
+  if (resetFixturePasswords && (!password || password.length < 8)) {
+    throw new Error(
+      "Resetting fixture passwords requires ORBIT_EVENT_OPERATIONS_SEED_PASSWORD with at least 8 characters.",
+    );
+  }
 
   const client = createPgLiveRecordSqlClient({ connectionString: database.connectionString });
   const operationsClient = createEventOperationsPostgresClient({
@@ -48,11 +51,7 @@ async function main(): Promise<void> {
     async function ensureCredentialsAccount(input: { displayName: string; email: string }) {
       const existing = await authProvider.getUserByEmail(input.email);
       if (existing) {
-        let verified = await authService.verifyCredentials({
-          email: input.email,
-          password,
-        });
-        if (verified.state !== "success" && resetFixturePasswords) {
+        if (resetFixturePasswords && password) {
           await authProvider.saveUser({
             ...existing,
             displayName: input.displayName,
@@ -61,17 +60,13 @@ async function main(): Promise<void> {
             providerAccountId: null,
             updatedAt: new Date().toISOString(),
           });
-          verified = await authService.verifyCredentials({
-            email: input.email,
-            password,
-          });
         }
-        if (verified.state !== "success") {
-          throw new Error(
-            `The existing fixture account ${input.email} uses a different password. Use its password, a clean fixture database, or explicitly set ORBIT_EVENT_OPERATIONS_RESET_FIXTURE_PASSWORDS=1 for these .example.test fixtures.`,
-          );
-        }
-        return verified.data.user;
+        return existing;
+      }
+      if (!password || password.length < 8) {
+        throw new Error(
+          `Fixture account ${input.email} does not exist. Set ORBIT_EVENT_OPERATIONS_SEED_PASSWORD to at least 8 characters to create missing accounts.`,
+        );
       }
       const registered = await authService.registerUser({
         displayName: input.displayName,
@@ -92,7 +87,25 @@ async function main(): Promise<void> {
     for (const definition of EVENT_OPERATIONS_E2E_SEED_ACCOUNTS) {
       participantUsers.push(await ensureCredentialsAccount(definition));
     }
+    const publicEvent = readPublicEventCatalogue().events.find(
+      (event) => event.id === EVENT_OPERATIONS_E2E_EVENT_ID,
+    );
+    if (!publicEvent) {
+      throw new Error(
+        `Public catalogue event ${EVENT_OPERATIONS_E2E_EVENT_ID} is required for the full-flow fixture.`,
+      );
+    }
     const result = await seedEventOperationsE2E({
+      event: {
+        description:
+          publicEvent.description ??
+          "Curated cross-border business matching for operators, founders, investors, and industry partners.",
+        endsAt: publicEvent.endsAt ?? publicEvent.startsAt,
+        id: publicEvent.id,
+        startsAt: publicEvent.startsAt,
+        title: publicEvent.name,
+        venue: publicEvent.location ?? "Venue pending",
+      },
       operationsRepository: createPostgresEventOperationsRepository({
         client: operationsClient,
         workspaceId: database.workspaceId,
@@ -111,8 +124,8 @@ async function main(): Promise<void> {
     console.log(`Organizer login: ${EVENT_OPERATIONS_E2E_ORGANIZER_EMAIL}`);
     console.log(`Attendee login: ${EVENT_OPERATIONS_E2E_PARTICIPANTS[0]!.email}`);
     console.log(`Second attendee login: ${EVENT_OPERATIONS_E2E_PARTICIPANTS[1]!.email}`);
+    console.log(`Public event URL: /app/events/${encodeURIComponent(EVENT_OPERATIONS_E2E_EVENT_ID)}`);
     console.log(`Organizer URL: /app/events/${encodeURIComponent(EVENT_OPERATIONS_E2E_EVENT_ID)}/operations`);
-    console.log(`Attendee URL: /app/party?eventId=${encodeURIComponent(EVENT_OPERATIONS_E2E_EVENT_ID)}`);
     console.log("No recommendation, table, graph, check-in, or contact-request result was fabricated by the seed.");
   } finally {
     await operationsClient.close();

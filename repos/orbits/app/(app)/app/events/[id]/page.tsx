@@ -32,6 +32,7 @@ import { createEventCrudAndImportService } from "../../../../../features/events/
 import { getOrbitLandingViewModel } from "../../orbit-landing-route-view-model";
 import { getOrbitRegisteredEventViewModel } from "../../orbit-registered-event-route-view-model";
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
+import { readEventOperationsCatalogueSummary } from "../../../../../features/events/event-operations/catalogue-summary";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -141,12 +142,15 @@ export default async function AppEventDetailPage({
     ) ?? null;
 
   if (catalogueEvent) {
-    const registeredEvent = session?.user?.id
-      ? await getOrbitRegisteredEventViewModel({
-          actorId: session.user.id,
-          eventId: catalogueEvent.id,
-        })
-      : null;
+    const [registeredEvent, operationSummary] = await Promise.all([
+      session?.user?.id
+        ? getOrbitRegisteredEventViewModel({
+            actorId: session.user.id,
+            eventId: catalogueEvent.id,
+          })
+        : Promise.resolve(null),
+      readEventOperationsCatalogueSummary(catalogueEvent.id),
+    ]);
     const registered = Boolean(registeredEvent);
     const presentedEvent = presentOrbitEvent(
       registeredEvent ?? catalogueEvent,
@@ -163,6 +167,9 @@ export default async function AppEventDetailPage({
           : "upcoming";
     const accessibleEvent = {
       ...presentedEvent,
+      participantCount:
+        operationSummary?.activeRegistrationCount ??
+        presentedEvent.participantCount,
       status,
       stats: {
         ...presentedEvent.stats,
@@ -170,6 +177,9 @@ export default async function AppEventDetailPage({
         // account has an active registration for this exact event.
         attendees: registered ? presentedEvent.stats.attendees : [],
         authed: Boolean(session?.user?.id),
+        count:
+          operationSummary?.activeRegistrationCount ??
+          presentedEvent.stats.count,
         youRsvped: registered,
       },
       youRsvped: registered,
@@ -180,6 +190,7 @@ export default async function AppEventDetailPage({
         <OrbitReferenceStyles />
         <OrbitRealEventDetail
           event={localizeOrbitTree(accessibleEvent, language)}
+          workspaceAvailable={operationSummary !== null}
         />
         <OrbitVisualFreezeRuntime />
       </>

@@ -23,12 +23,21 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   const workspaceId = "workspace:event-operations-seed-test";
   const organizerActorId = "actor:event-operations-organizer";
   const timestamp = "2026-08-02T12:00:00.000Z";
+  const event = {
+    description: "关西地区跨境商务合作与产业对接活动。",
+    endsAt: "2026-08-18T12:00:00+09:00",
+    id: EVENT_OPERATIONS_E2E_EVENT_ID,
+    startsAt: "2026-08-18T10:00:00+09:00",
+    title: "关西跨境商务对接会",
+    venue: "大阪",
+  };
   const participants = EVENT_OPERATIONS_E2E_SEED_ACCOUNTS.map((definition, index) => ({
     ...definition,
     actorId: `actor:event-operations-attendee:${index + 1}`,
   }));
+  let repositoryTimestamp = timestamp;
   const repository = createMemoryEventOperationsRepository({
-    now: () => timestamp,
+    now: () => repositoryTimestamp,
   });
 
   assert.equal(EVENT_OPERATIONS_E2E_PARTICIPANTS.length, 64);
@@ -71,6 +80,7 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   );
   await assert.rejects(
     seedEventOperationsE2E({
+      event,
       now: () => timestamp,
       organizerActorId,
       operationsRepository: repository,
@@ -119,6 +129,7 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   });
 
   const first = await seedEventOperationsE2E({
+    event,
     now: () => timestamp,
     organizerActorId,
     operationsRepository: repository,
@@ -126,12 +137,15 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
     store,
     workspaceId,
   });
+  repositoryTimestamp = "2026-08-18T09:05:00+09:00";
   await repository.checkInAtomically({
     actorId: participants[0]!.actorId,
     eventId: EVENT_OPERATIONS_E2E_EVENT_ID,
   });
+  repositoryTimestamp = timestamp;
 
   const second = await seedEventOperationsE2E({
+    event,
     now: () => timestamp,
     organizerActorId,
     operationsRepository: repository,
@@ -202,6 +216,17 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
     canonicalRegistrations.filter((record) => record.status === "cancelled")
       .length,
     6,
+  );
+  assert.deepEqual(
+    await repository.listCatalogueSummaries([EVENT_OPERATIONS_E2E_EVENT_ID]),
+    [
+      {
+        activeRegistrationCount: 64,
+        attendeeResultsAvailable: false,
+        eventId: EVENT_OPERATIONS_E2E_EVENT_ID,
+        hasPublishedResults: false,
+      },
+    ],
   );
 
   let aiCalls = 0;
@@ -274,7 +299,7 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   assert.equal(attendee.resultsState, "not_generated");
   assert.equal(attendee.graph, null);
   assert.equal(attendee.recommendations, null);
-  assert.equal(attendee.checkInAvailable, true);
+  assert.equal(attendee.checkInAvailable, false);
   assert.equal(aiCalls, 0);
 
   const generation = await service.startGeneration({

@@ -897,6 +897,28 @@ export function createMemoryEventOperationsRepository(
       );
     },
 
+    async listCatalogueSummaries(eventIds) {
+      const summaries = [];
+      for (const eventId of [...new Set(eventIds.filter(Boolean))].sort()) {
+        if (!configurations.has(eventId)) continue;
+        const registrations = await canonicalRegistrationService.list({ eventId });
+        const publication = publishedResults.get(eventId) ?? null;
+        summaries.push({
+          activeRegistrationCount: registrations.filter(
+            (registration) => registration.status === "rsvped",
+          ).length,
+          attendeeResultsAvailable: Boolean(
+            publication &&
+              Date.parse(publication.resultsAvailableAt) <=
+                Date.parse(repositoryNow()),
+          ),
+          eventId,
+          hasPublishedResults: Boolean(publication),
+        });
+      }
+      return summaries;
+    },
+
     async listContactRequests(eventId, viewerActorId) {
       return [...contactRequests.values()]
         .filter(
@@ -1128,6 +1150,17 @@ export function createMemoryEventOperationsRepository(
       const requeuedAt = repositoryNow();
       const generation = requireGeneration(generationId);
       if (generation.status !== "failed") return clone(generation);
+      if (
+        [...tasks.values()].some(
+          (task) =>
+            task.generationId === generationId && task.status === "running",
+        )
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_GENERATION_NOT_READY",
+          "Retry is unavailable until every in-flight task from the failed run has settled.",
+        );
+      }
       for (const [taskId, task] of tasks) {
         if (task.generationId !== generationId || task.status !== "failed") {
           continue;

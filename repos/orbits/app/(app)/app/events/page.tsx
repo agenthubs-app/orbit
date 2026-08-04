@@ -1,5 +1,6 @@
 import { auth } from "../../../../auth";
 import { listRuntimeEventRegistrationsForUser } from "../../../../features/events/registration/runtime";
+import { readEventOperationsCatalogueSummaries } from "../../../../features/events/event-operations/catalogue-summary";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { applyOrbitEventPresentation } from "../orbit-event-presentation";
 import {
@@ -14,6 +15,7 @@ function publicListEvent(
   event: OrbitLandingEventView,
   authenticated: boolean,
   registered: boolean,
+  canonicalParticipantCount: number | null,
 ): OrbitLandingEventView {
   const startsAt = new Date(event.startsAt).getTime();
   const endsAt = new Date(event.endsAt).getTime();
@@ -27,12 +29,13 @@ function publicListEvent(
 
   return {
     ...event,
-    // participantCount stays on the public catalogue's source-backed roster
-    // aggregate. Registration state spans canonical and legacy stores, so this
-    // read path must not fabricate a live-looking count with local +1 math.
+    // Enrolled events use canonical active memberships. Non-enrolled catalogue
+    // items retain their source-backed public roster aggregate.
+    participantCount: canonicalParticipantCount ?? event.participantCount,
     status,
     stats: {
       ...event.stats,
+      count: canonicalParticipantCount ?? event.stats.count,
       // The catalogue may show a truthful aggregate count, but names are not
       // part of the public list payload.
       attendees: [],
@@ -55,14 +58,21 @@ export default async function AppEventsPage({
       Promise.resolve<{ scope?: string | string[] }>({}),
   ]);
   const catalogue = getOrbitLandingViewModel();
-  const registrations = session?.user?.id
-    ? await listRuntimeEventRegistrationsForUser({
+  const eventIds = catalogue.events.map((event) => event.id);
+  const [registrations, operationSummaries] = await Promise.all([
+    session?.user?.id
+      ? listRuntimeEventRegistrationsForUser({
         eventIds: catalogue.events.map((event) => event.id),
         userId: session.user.id,
       })
-    : [];
+      : Promise.resolve([]),
+    readEventOperationsCatalogueSummaries(eventIds),
+  ]);
   const registrationsByEventId = new Map(
     registrations.map((registration) => [registration.eventId, registration]),
+  );
+  const operationSummariesByEventId = new Map(
+    operationSummaries.map((summary) => [summary.eventId, summary]),
   );
   const presentedCatalogue = applyOrbitEventPresentation(catalogue, language);
   const events = presentedCatalogue.events.map((event) =>
@@ -70,6 +80,7 @@ export default async function AppEventsPage({
       event,
       Boolean(session?.user?.id),
       registrationsByEventId.get(event.id)?.status === "rsvped",
+      operationSummariesByEventId.get(event.id)?.activeRegistrationCount ?? null,
     ),
   );
   const viewModel = localizeOrbitTree(
