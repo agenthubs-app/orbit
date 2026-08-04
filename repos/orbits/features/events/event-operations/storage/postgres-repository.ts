@@ -228,6 +228,7 @@ function taskAttemptFromRow(row: SqlRow): EventOperationsTaskAttemptTelemetry {
       row,
       "failure_code",
     ) as EventOperationsFailureCode | null,
+    finishReason: optionalText(row, "finish_reason"),
     finishedAt: optionalTimestamp(row, "finished_at"),
     generationId: text(row, "generation_id"),
     kind: taskKindFromRow(row),
@@ -240,6 +241,10 @@ function taskAttemptFromRow(row: SqlRow): EventOperationsTaskAttemptTelemetry {
       row,
       "provider_adapter_duration_ms",
     ),
+    promptTokens: optionalNumber(row, "prompt_tokens"),
+    completionTokens: optionalNumber(row, "completion_tokens"),
+    reasoningTokens: optionalNumber(row, "reasoning_tokens"),
+    cacheHitTokens: optionalNumber(row, "cache_hit_tokens"),
     requestBytes: optionalNumber(row, "request_bytes"),
     responseBytes: optionalNumber(row, "response_bytes"),
     retryRound: integer(row, "retry_round"),
@@ -1321,6 +1326,11 @@ export function createPostgresEventOperationsRepository({
               response_bytes = $8,
               provider = $9,
               model = $10,
+              finish_reason = $11,
+              prompt_tokens = $12,
+              completion_tokens = $13,
+              reasoning_tokens = $14,
+              cache_hit_tokens = $15,
               outcome = 'completed',
               failure_code = null
             where workspace_id = $1 and task_id = $2 and attempt = $3
@@ -1337,6 +1347,11 @@ export function createPostgresEventOperationsRepository({
             telemetry?.responseBytes ?? null,
             telemetry?.provider ?? null,
             telemetry?.model ?? null,
+            telemetry?.responseMetadata?.finishReason ?? null,
+            telemetry?.responseMetadata?.usage?.promptTokens ?? null,
+            telemetry?.responseMetadata?.usage?.completionTokens ?? null,
+            telemetry?.responseMetadata?.usage?.reasoningTokens ?? null,
+            telemetry?.responseMetadata?.usage?.cacheHitTokens ?? null,
           ],
         );
         if (closedAttempt.rowCount !== 1) {
@@ -1373,7 +1388,7 @@ export function createPostgresEventOperationsRepository({
           ],
         );
         return true;
-      });
+      }, { isolation: "read committed" });
     },
 
     async failTask(input: FailEventOperationsTaskInput) {
@@ -1427,8 +1442,13 @@ export function createPostgresEventOperationsRepository({
               response_bytes = $8,
               provider = $9,
               model = $10,
-              outcome = $11,
-              failure_code = $12
+              finish_reason = $11,
+              prompt_tokens = $12,
+              completion_tokens = $13,
+              reasoning_tokens = $14,
+              cache_hit_tokens = $15,
+              outcome = $16,
+              failure_code = $17
             where workspace_id = $1 and task_id = $2 and attempt = $3
               and lease_epoch = $4 and outcome is null
           `,
@@ -1443,6 +1463,11 @@ export function createPostgresEventOperationsRepository({
             telemetry?.responseBytes ?? null,
             telemetry?.provider ?? null,
             telemetry?.model ?? null,
+            telemetry?.responseMetadata?.finishReason ?? null,
+            telemetry?.responseMetadata?.usage?.promptTokens ?? null,
+            telemetry?.responseMetadata?.usage?.completionTokens ?? null,
+            telemetry?.responseMetadata?.usage?.reasoningTokens ?? null,
+            telemetry?.responseMetadata?.usage?.cacheHitTokens ?? null,
             retryable ? "retryable_failed" : "terminal_failed",
             input.code,
           ],
@@ -1454,7 +1479,7 @@ export function createPostgresEventOperationsRepository({
           );
         }
         return true;
-      });
+      }, { isolation: "read committed" });
     },
 
     async heartbeatTask(input) {

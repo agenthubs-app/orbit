@@ -751,9 +751,56 @@ test("a failed shard fails the whole new generation and keeps the old published 
         attempt.failureCode === "EVENT_OPERATIONS_AI_UNAVAILABLE" &&
         (attempt.providerAdapterDurationMs ?? -1) >= 0 &&
         (attempt.requestBytes ?? 0) > 0 &&
-        (attempt.responseBytes ?? 0) > 0,
+        attempt.responseBytes === 0,
     ),
   );
+});
+
+test("engine honors provider retryability when closing failed recommendation attempts", async (t) => {
+  for (const [name, retryable] of [
+    ["terminal provider failure", false],
+    ["transient provider failure", true],
+  ] as const) {
+    await t.test(name, async () => {
+      const base = createAiProvider();
+      let recommendationCalls = 0;
+      const { engine, repository } = harness({
+        aiProvider: {
+          ...base,
+          async generateRecommendations() {
+            recommendationCalls += 1;
+            return {
+              error: { code: "AI_REQUEST_FAILED" as const, message: name },
+              retryable,
+              success: false as const,
+            };
+          },
+        },
+      });
+      const generation = await engine.createGeneration({
+        actorId: ORGANIZER_ID,
+        capturedSnapshot: capturedSnapshot(participants(2)),
+        idempotencyKey: `retryability:${name}`,
+      });
+      await runUntilTerminal(engine, generation.generationId, 1);
+      const task = (await repository.listTasks(generation.generationId)).find(
+        (value) => value.kind === "recommendation_shard",
+      );
+      assert.ok(task);
+      const attempts = (await repository.listTaskAttempts(generation.generationId))
+        .filter((attempt) => attempt.taskId === task.taskId);
+      const expectedCalls = retryable ? task.attemptLimit : 1;
+      assert.equal(recommendationCalls, expectedCalls);
+      assert.equal(attempts.length, expectedCalls);
+      assert.deepEqual(
+        attempts.map((attempt) => attempt.outcome),
+        retryable
+          ? [...Array(expectedCalls - 1).fill("retryable_failed"), "terminal_failed"]
+          : ["terminal_failed"],
+      );
+      if (!retryable) assert.equal(task.attempts, task.attemptLimit);
+    });
+  }
 });
 
 test("hard topology/configuration failures are terminal on the first provider attempt", async () => {

@@ -307,10 +307,25 @@ export class EventOperationsError extends Error {
   }
 }
 
+export interface EventOperationsAiUsage {
+  cacheHitTokens: number | null;
+  completionTokens: number | null;
+  promptTokens: number | null;
+  reasoningTokens: number | null;
+}
+
+/** Provider-neutral response accounting owned by Event Operations. */
+export interface EventOperationsAiResponseMetadata {
+  finishReason: string | null;
+  providerResponseBytes: number;
+  usage: EventOperationsAiUsage | null;
+}
+
 export type EventOperationsAiResult<TValue> =
   | {
       data: TValue;
       model: string;
+      responseMetadata?: EventOperationsAiResponseMetadata;
       provider: string;
       success: true;
     }
@@ -324,6 +339,8 @@ export type EventOperationsAiResult<TValue> =
           | "AI_REQUEST_FAILED";
         message: string;
       };
+      responseMetadata?: EventOperationsAiResponseMetadata;
+      retryable?: boolean;
       success: false;
     };
 

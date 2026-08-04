@@ -102,7 +102,7 @@ test("DeepSeek JSON output mode is explicit and leaves the default request body 
   const fetchImplementation = (async (_url, init) => {
     requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
     return Response.json({
-      choices: [{ message: { content: '{"ok":true}' } }],
+      choices: [{ finish_reason: "stop", message: { content: '{"ok":true}' } }],
     });
   }) as typeof fetch;
 
@@ -121,5 +121,60 @@ test("DeepSeek JSON output mode is explicit and leaves the default request body 
   }
 
   assert.equal("response_format" in requestBodies[0], false);
+  assert.equal("thinking" in requestBodies[0], false);
+  assert.equal("max_tokens" in requestBodies[0], false);
   assert.deepEqual(requestBodies[1].response_format, { type: "json_object" });
+});
+
+test("DeepSeek thinking/maxTokens are opt-in and terminal responses fail closed", async () => {
+  const requestBodies: Record<string, unknown>[] = [];
+  const responseFor = (finish_reason: string, content = "{\"ok\":true}") =>
+    (async (_url: unknown, init?: RequestInit) => {
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return Response.json({
+        choices: [{ finish_reason, message: { content } }],
+        usage: {
+          completion_tokens: 7,
+          prompt_cache_hit_tokens: 2,
+          prompt_tokens: 5,
+          reasoning_tokens: 3,
+        },
+      });
+    }) as typeof fetch;
+  const successful = await runOrbitAgentModelText({
+    ...baseInput,
+    config: {
+      apiKey: "test-deepseek-key",
+      deepseekThinking: false,
+      fetchImplementation: responseFor("stop"),
+      maxTokens: 8192,
+      provider: "deepseek",
+    },
+  });
+  assert.equal(successful.success, true);
+  if (successful.success) {
+    assert.equal(successful.responseMetadata?.finishReason, "stop");
+    assert.equal(successful.responseMetadata?.providerResponseBytes, 175);
+    assert.deepEqual(successful.responseMetadata?.usage, {
+      cacheHitTokens: 2, completionTokens: 7, promptTokens: 5, reasoningTokens: 3,
+    });
+  }
+  assert.deepEqual(requestBodies[0]?.thinking, { type: "disabled" });
+  assert.equal(requestBodies[0]?.max_tokens, 8192);
+
+  for (const [finishReason, retryable] of [
+    ["length", false], ["content_filter", false], ["tool_calls", false],
+    ["unknown", false], ["insufficient_system_resource", true],
+  ] as const) {
+    const failed = await runOrbitAgentModelText({
+      ...baseInput,
+      config: {
+        apiKey: "test-deepseek-key",
+        fetchImplementation: responseFor(finishReason),
+        provider: "deepseek",
+      },
+    });
+    assert.equal(failed.success, false);
+    if (failed.success === false) assert.equal(failed.retryable, retryable);
+  }
 });

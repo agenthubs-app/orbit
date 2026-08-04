@@ -9,6 +9,7 @@ import type {
   EventOperationsCheckIn,
   EventOperationsCandidate,
   EventOperationsCapturedSnapshot,
+  EventOperationsAiResponseMetadata,
   EventOperationsConfiguration,
   EventOperationsFailureCode,
   EventOperationsGeneration,
@@ -64,6 +65,7 @@ export interface EventOperationsTaskAttemptMeasurement {
   provider: string | null;
   providerAdapterDurationMs: number;
   requestBytes: number;
+  responseMetadata?: EventOperationsAiResponseMetadata | null;
   responseBytes: number;
 }
 
@@ -74,6 +76,7 @@ export interface EventOperationsTaskAttemptTelemetry {
   domainValidationDurationMs: number | null;
   eligibleAt: string;
   failureCode: EventOperationsFailureCode | null;
+  finishReason: string | null;
   finishedAt: string | null;
   generationId: string;
   kind: EventOperationsGenerationTask["kind"];
@@ -83,6 +86,10 @@ export interface EventOperationsTaskAttemptTelemetry {
   participantCount: number;
   provider: string | null;
   providerAdapterDurationMs: number | null;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  reasoningTokens: number | null;
+  cacheHitTokens: number | null;
   requestBytes: number | null;
   responseBytes: number | null;
   retryRound: number;

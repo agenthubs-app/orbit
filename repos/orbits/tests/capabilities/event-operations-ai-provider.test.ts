@@ -67,7 +67,7 @@ const participants: EventOperationsParticipant[] = [
   },
 ];
 
-test("event operations request fingerprint versions prompt, provider, model, and JSON mode", () => {
+test("event operations request fingerprint versions provider behavior as well as prompt/model/schema", () => {
   const baseline = createEventOperationsAiProvider({
     config: { model: "deepseek-test", provider: "deepseek" },
   });
@@ -86,6 +86,15 @@ test("event operations request fingerprint versions prompt, provider, model, and
     createConfiguredEventOperationsAiProvider().requestFingerprint ?? "",
     /"jsonOutput":true/u,
   );
+  const thinkingOff = createEventOperationsAiProvider({
+    config: { deepseekThinking: false, maxTokens: 8192, model: "deepseek-test", provider: "deepseek" },
+  });
+  const thinkingOn = createEventOperationsAiProvider({
+    config: { deepseekThinking: true, maxTokens: 8192, model: "deepseek-test", provider: "deepseek" },
+  });
+  assert.notEqual(thinkingOff.requestFingerprint, thinkingOn.requestFingerprint);
+  assert.match(createConfiguredEventOperationsAiProvider().requestFingerprint ?? "", /"maxTokens":8192/u);
+  assert.match(createConfiguredEventOperationsAiProvider().requestFingerprint ?? "", /"thinking":false/u);
 });
 
 function successfulText(text: string) {
@@ -184,6 +193,70 @@ test("grouping feature prompt includes every typed event-profile answer", async 
   for (const canary of profileCanaries) {
     assert.match(prompt, new RegExp(canary, "u"));
   }
+});
+
+test("recommendation prompt retains six full profiles and sixteen candidates per source without fallback", async () => {
+  const sources = Array.from({ length: 6 }, (_, sourceIndex) => {
+    const source = {
+      ...participants[0]!,
+      actorId: `actor:source:${sourceIndex}`,
+      displayName: `Source ${sourceIndex}`,
+      participantId: `participant:source:${sourceIndex}`,
+      profileAnswers: {
+        ...participants[0]!.profileAnswers,
+        canary: `source-profile-answer-${sourceIndex}`,
+      },
+    };
+    const candidateParticipants = Array.from({ length: 16 }, (_, candidateIndex) => ({
+      ...participants[1]!,
+      actorId: `actor:candidate:${sourceIndex}:${candidateIndex}`,
+      displayName: `Candidate ${sourceIndex}/${candidateIndex}`,
+      participantId: `participant:candidate:${sourceIndex}:${candidateIndex}`,
+      profileAnswers: {
+        ...participants[1]!.profileAnswers,
+        canary: `candidate-profile-answer-${sourceIndex}-${candidateIndex}`,
+      },
+    }));
+    return { candidateParticipants, sourceParticipant: source };
+  });
+  let prompt = "";
+  const provider = createEventOperationsAiProvider({
+    async runModelText(input) {
+      prompt = input.userText;
+      return successfulText(JSON.stringify({
+        recommendations: sources.map((source) => ({
+          noMatchReason: null,
+          recommendations: source.candidateParticipants.slice(0, 4).map((candidate, index) => ({
+            icebreakers: [`Question ${index}a`, `Question ${index}b`],
+            memberHint: `Bounded hint ${index}`,
+            rank: index + 1,
+            reasons: [`Reason ${index}`],
+            score: 90 - index,
+            targetParticipantId: candidate.participantId,
+          })),
+          sourceParticipantId: source.sourceParticipant.participantId,
+        })),
+      }))();
+    },
+  });
+  const result = await provider.generateRecommendations({
+    eventId: "event:prompt-scale",
+    recommendationCount: 4,
+    sources,
+  });
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.length, 6);
+    assert.equal(result.data.flatMap((row) => row.recommendations).length, 24);
+  }
+  for (let sourceIndex = 0; sourceIndex < 6; sourceIndex += 1) {
+    assert.match(prompt, new RegExp(`source-profile-answer-${sourceIndex}`, "u"));
+    for (let candidateIndex = 0; candidateIndex < 16; candidateIndex += 1) {
+      assert.match(prompt, new RegExp(`candidate-profile-answer-${sourceIndex}-${candidateIndex}`, "u"));
+    }
+  }
+  for (const canary of profileCanaries) assert.match(prompt, new RegExp(canary, "u"));
+  assert.doesNotMatch(prompt, /fallback|summary|deduplicat/iu);
 });
 
 test("event operations AI adapter rejects fenced or malformed JSON without repair or fallback", async () => {
@@ -318,6 +391,7 @@ test("event operations AI adapter maps missing keys and timeouts to explicit fai
         provider: "openai",
         source: "provider:openai-responses-api",
       },
+      retryable: false,
       success: false,
     }),
   });
@@ -329,6 +403,7 @@ test("event operations AI adapter maps missing keys and timeouts to explicit fai
         provider: "openai",
         source: "provider:openai-responses-api",
       },
+      retryable: true,
       success: false,
     }),
   });
@@ -348,5 +423,27 @@ test("event operations AI adapter maps missing keys and timeouts to explicit fai
     });
     assert.equal(result.success, false);
     if (result.success === false) assert.equal(result.error.code, code);
+  }
+});
+
+test("event operations preserves provider retryability for terminal DeepSeek reasons", async () => {
+  for (const [finishReason, retryable] of [
+    ["length", false], ["content_filter", false], ["tool_calls", false],
+    ["unknown", false], ["insufficient_system_resource", true],
+  ] as const) {
+    const provider = createEventOperationsAiProvider({
+      runModelText: async () => ({
+        error: { code: "MODEL_REQUEST_FAILED", message: finishReason, provider: "deepseek", source: "provider:deepseek-chat-completions-api" },
+        responseMetadata: { finishReason, providerResponseBytes: 10, usage: null },
+        retryable,
+        success: false as const,
+      }),
+    });
+    const result = await provider.generateRecommendations({
+      eventId: "event:test", recommendationCount: 1,
+      sources: [{ candidateParticipants: [participants[1]!], sourceParticipant: participants[0]! }],
+    });
+    assert.equal(result.success, false);
+    if (result.success === false) assert.equal(result.retryable, retryable);
   }
 });

@@ -8,6 +8,7 @@ import {
 } from "../../orbit-ai/gemini-provider";
 import type {
   EventOperationsAiProvider,
+  EventOperationsAiResponseMetadata,
   EventOperationsAiResult,
   EventOperationsGroupingFeature,
   EventOperationsParticipantRecommendations,
@@ -244,26 +245,48 @@ function modelFailure<TValue>(
             : "AI_REQUEST_FAILED",
       message: result.error.message,
     },
+    ...(result.responseMetadata
+      ? { responseMetadata: toEventOperationsMetadata(result.responseMetadata) }
+      : {}),
+    retryable: result.retryable === true,
     success: false,
   };
 }
 
-function invalidJson<TValue>(): EventOperationsAiResult<TValue> {
+function toEventOperationsMetadata(
+  value: import("../../orbit-ai/gemini-provider").OrbitAgentModelResponseMetadata,
+): EventOperationsAiResponseMetadata {
+  return {
+    finishReason: value.finishReason,
+    providerResponseBytes: value.providerResponseBytes,
+    usage: value.usage ? { ...value.usage } : null,
+  };
+}
+
+function invalidJson<TValue>(
+  responseMetadata?: EventOperationsAiResponseMetadata,
+): EventOperationsAiResult<TValue> {
   return {
     error: {
       code: "AI_JSON_INVALID",
       message: "The model response was not one strict JSON document.",
     },
+    ...(responseMetadata ? { responseMetadata } : {}),
+    retryable: false,
     success: false,
   };
 }
 
-function invalidSchema<TValue>(): EventOperationsAiResult<TValue> {
+function invalidSchema<TValue>(
+  responseMetadata?: EventOperationsAiResponseMetadata,
+): EventOperationsAiResult<TValue> {
   return {
     error: {
       code: "AI_SCHEMA_INVALID",
       message: "The model JSON did not match the closed event operations schema.",
     },
+    ...(responseMetadata ? { responseMetadata } : {}),
+    retryable: false,
     success: false,
   };
 }
@@ -298,9 +321,11 @@ function requestFingerprint(
         : process.env.ORBIT_GEMINI_MODEL ?? DEFAULT_GEMINI_ORBIT_AGENT_MODEL);
   return JSON.stringify({
     jsonOutput: config?.jsonOutput === true,
+    maxTokens: config?.maxTokens ?? null,
     model,
     promptVersion: EVENT_OPERATIONS_AI_PROMPT_VERSION,
     provider,
+    thinking: config?.deepseekThinking ?? null,
     responseSchema: "event-operations-closed-json-v2",
   });
 }
@@ -378,13 +403,16 @@ ${JSON.stringify(compactRecommendationSources(input.sources))}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson();
+      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const rows = parseRecommendationRows(json);
-      if (!rows) return invalidSchema();
+      if (!rows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
         data: rows,
         model: response.model,
         provider: response.provider,
+        ...(response.responseMetadata
+          ? { responseMetadata: toEventOperationsMetadata(response.responseMetadata) }
+          : {}),
         success: true,
       };
     },
@@ -410,13 +438,16 @@ ${JSON.stringify(compactGroupingSources(input.sources))}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson();
+      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const features = parseGroupingFeatures(json);
-      if (!features) return invalidSchema();
+      if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
         data: features,
         model: response.model,
         provider: response.provider,
+        ...(response.responseMetadata
+          ? { responseMetadata: toEventOperationsMetadata(response.responseMetadata) }
+          : {}),
         success: true,
       };
     },
@@ -446,16 +477,19 @@ ${JSON.stringify(input.features)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson();
+      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const table = parseTable(
         json,
         new Set(input.members.map((member) => member.participantId)),
       );
-      if (!table) return invalidSchema();
+      if (!table) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
         data: table,
         model: response.model,
         provider: response.provider,
+        ...(response.responseMetadata
+          ? { responseMetadata: toEventOperationsMetadata(response.responseMetadata) }
+          : {}),
         success: true,
       };
     },
@@ -469,7 +503,9 @@ export function createConfiguredEventOperationsAiProvider({
 } = {}): EventOperationsAiProvider {
   return createEventOperationsAiProvider({
     config: {
+      deepseekThinking: false,
       jsonOutput: true,
+      maxTokens: 8192,
       ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
     },
   });

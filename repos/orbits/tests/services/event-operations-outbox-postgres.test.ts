@@ -251,6 +251,22 @@ test(
       assert.deepEqual(firstAttempts.map((attempt) => attempt.outcome), [null]);
       assert.ok(firstAttempts[0]!.eligibleAt <= firstAttempts[0]!.claimedAt);
       assert.doesNotMatch(firstAttempts[0]!.claimedAt, /^2099-/u);
+      assert.deepEqual(
+        {
+          cacheHitTokens: firstAttempts[0]?.cacheHitTokens,
+          completionTokens: firstAttempts[0]?.completionTokens,
+          finishReason: firstAttempts[0]?.finishReason,
+          promptTokens: firstAttempts[0]?.promptTokens,
+          reasoningTokens: firstAttempts[0]?.reasoningTokens,
+        },
+        {
+          cacheHitTokens: null,
+          completionTokens: null,
+          finishReason: null,
+          promptTokens: null,
+          reasoningTokens: null,
+        },
+      );
       assert.equal(
         (
           await repository.claimTasks({
@@ -389,6 +405,16 @@ test(
             provider: "test-provider",
             providerAdapterDurationMs: 8,
             requestBytes: 128,
+            responseMetadata: {
+              finishReason: "stop",
+              providerResponseBytes: 192,
+              usage: {
+                cacheHitTokens: 5,
+                completionTokens: 7,
+                promptTokens: 31,
+                reasoningTokens: null,
+              },
+            },
             responseBytes: 256,
           },
         }),
@@ -402,6 +428,24 @@ test(
         ["lease_lost", "completed"],
       );
       assert.equal(completedAttempts[1]?.providerAdapterDurationMs, 8);
+      assert.deepEqual(
+        {
+          cacheHitTokens: completedAttempts[1]?.cacheHitTokens,
+          completionTokens: completedAttempts[1]?.completionTokens,
+          finishReason: completedAttempts[1]?.finishReason,
+          promptTokens: completedAttempts[1]?.promptTokens,
+          reasoningTokens: completedAttempts[1]?.reasoningTokens,
+          responseBytes: completedAttempts[1]?.responseBytes,
+        },
+        {
+          cacheHitTokens: 5,
+          completionTokens: 7,
+          finishReason: "stop",
+          promptTokens: 31,
+          reasoningTokens: null,
+          responseBytes: 256,
+        },
+      );
 
       await client.query(
         `

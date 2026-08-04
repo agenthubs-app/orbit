@@ -171,10 +171,14 @@ export interface GeminiOrbitAgentSynthesisInput {
 
 export interface GeminiOrbitAgentProviderConfig {
   apiKey?: string | null;
+  /** DeepSeek-only; omitted preserves the established Orbit Agent request body. */
+  deepseekThinking?: boolean;
   endpoint?: string;
   fetchImplementation?: typeof fetch;
   jsonOutput?: boolean;
   model?: string | null;
+  /** DeepSeek-only; omitted preserves the established Orbit Agent request body. */
+  maxTokens?: number | null;
   provider?: OrbitAgentModelProvider | "gpt" | string | null;
   requestTimeoutMs?: number | null;
 }
@@ -256,6 +260,12 @@ function readRequestTimeoutMs(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0
     ? Math.floor(value)
     : defaultProviderRequestTimeoutMs;
+}
+
+function readMaxTokens(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : null;
 }
 
 function requestErrorMessage(error: unknown, provider: OrbitAgentModelProvider) {
@@ -858,6 +868,49 @@ function readChatCompletionsOutputText(value: unknown): string | null {
   return outputParts.length > 0 ? outputParts.join("\n") : null;
 }
 
+export interface OrbitAgentModelUsage {
+  cacheHitTokens: number | null;
+  completionTokens: number | null;
+  promptTokens: number | null;
+  reasoningTokens: number | null;
+}
+
+export interface OrbitAgentModelResponseMetadata {
+  finishReason: string | null;
+  /** UTF-8 bytes of the JSON-decoded provider response reserialized by this adapter. */
+  providerResponseBytes: number;
+  usage: OrbitAgentModelUsage | null;
+}
+
+function nonNegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : null;
+}
+
+function deepSeekResponseMetadata(value: unknown): OrbitAgentModelResponseMetadata {
+  const choice = isRecord(value) && Array.isArray(value.choices)
+    ? value.choices.find(isRecord)
+    : undefined;
+  const usage = isRecord(value) && isRecord(value.usage) ? value.usage : null;
+  return {
+    finishReason: choice ? readString(choice.finish_reason) : null,
+    providerResponseBytes: new TextEncoder().encode(JSON.stringify(value)).byteLength,
+    usage: usage
+      ? {
+          cacheHitTokens: nonNegativeInteger(usage.prompt_cache_hit_tokens),
+          completionTokens: nonNegativeInteger(usage.completion_tokens),
+          promptTokens: nonNegativeInteger(usage.prompt_tokens),
+          reasoningTokens:
+            nonNegativeInteger(usage.reasoning_tokens) ??
+            (isRecord(usage.completion_tokens_details)
+              ? nonNegativeInteger(usage.completion_tokens_details.reasoning_tokens)
+              : null),
+        }
+      : null,
+  };
+}
+
 function readOpenAiResponsesOutputText(value: unknown): string | null {
   if (!isRecord(value)) {
     return null;
@@ -933,8 +986,10 @@ function readProviderErrorMessage(value: unknown): string | null {
 // 各 provider 的请求体不同：
 // DeepSeek 使用 Chat Completions，OpenAI 使用 Responses，Gemini 使用 interactions。
 function providerRequestBody(input: {
+  deepseekThinking?: boolean;
   inputText: string;
   jsonOutput?: boolean;
+  maxTokens?: number | null;
   model: string;
   provider: OrbitAgentModelProvider;
   systemInstructionText: string;
@@ -952,6 +1007,12 @@ function providerRequestBody(input: {
         },
       ],
       model: input.model,
+      ...(input.deepseekThinking === undefined
+        ? {}
+        : { thinking: { type: input.deepseekThinking ? "enabled" as const : "disabled" as const } }),
+      ...(readMaxTokens(input.maxTokens) === null
+        ? {}
+        : { max_tokens: readMaxTokens(input.maxTokens)! }),
       ...(input.jsonOutput
         ? { response_format: { type: "json_object" as const } }
         : {}),
@@ -1034,6 +1095,7 @@ export type OrbitAgentModelTextResult =
       success: true;
       model: string;
       provider: OrbitAgentModelProvider;
+      responseMetadata?: OrbitAgentModelResponseMetadata;
       source: OrbitAgentProviderSource;
       text: string;
     }
@@ -1045,6 +1107,8 @@ export type OrbitAgentModelTextResult =
         provider: OrbitAgentModelProvider;
         source: OrbitAgentProviderSource;
       };
+      responseMetadata?: OrbitAgentModelResponseMetadata;
+      retryable: boolean;
     };
 
 // 通用文本调用：给一段 system instruction 和 user 文本，返回模型纯文本输出。
@@ -1068,6 +1132,7 @@ export async function runOrbitAgentModelText(input: {
         provider: provider.provider,
         source: provider.source,
       },
+      retryable: false,
       success: false,
     };
   }
@@ -1081,8 +1146,10 @@ export async function runOrbitAgentModelText(input: {
       init: {
         body: JSON.stringify(
           providerRequestBody({
+            deepseekThinking: config.deepseekThinking,
             inputText: input.userText,
             jsonOutput: config.jsonOutput,
+            maxTokens: config.maxTokens,
             model: provider.model,
             provider: provider.provider,
             systemInstructionText: input.systemInstruction,
@@ -1103,6 +1170,7 @@ export async function runOrbitAgentModelText(input: {
         provider: provider.provider,
         source: provider.source,
       },
+      retryable: true,
       success: false,
     };
   }
@@ -1117,11 +1185,34 @@ export async function runOrbitAgentModelText(input: {
         provider: provider.provider,
         source: provider.source,
       },
+      retryable: response.status === 429 || response.status >= 500,
       success: false,
     };
   }
 
   const outputText = readProviderOutputText(provider.provider, responseBody);
+
+  const responseMetadata =
+    provider.provider === "deepseek"
+      ? deepSeekResponseMetadata(responseBody)
+      : undefined;
+
+  if (
+    provider.provider === "deepseek" &&
+    responseMetadata?.finishReason !== "stop"
+  ) {
+    return {
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: `deepseek response finished with unusable reason ${responseMetadata.finishReason ?? "missing"}.`,
+        provider: provider.provider,
+        source: provider.source,
+      },
+      ...(responseMetadata ? { responseMetadata } : {}),
+      retryable: responseMetadata?.finishReason === "insufficient_system_resource",
+      success: false,
+    };
+  }
 
   if (!outputText) {
     return {
@@ -1131,6 +1222,8 @@ export async function runOrbitAgentModelText(input: {
         provider: provider.provider,
         source: provider.source,
       },
+      ...(responseMetadata ? { responseMetadata } : {}),
+      retryable: true,
       success: false,
     };
   }
@@ -1138,6 +1231,7 @@ export async function runOrbitAgentModelText(input: {
   return {
     model: provider.model,
     provider: provider.provider,
+    ...(responseMetadata ? { responseMetadata } : {}),
     source: provider.source,
     success: true,
     text: outputText,

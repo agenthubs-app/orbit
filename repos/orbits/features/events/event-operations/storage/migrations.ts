@@ -1548,6 +1548,18 @@ before truncate on event_ops_event_role_assignment_heads
 for each statement execute function event_ops_event_role_assignment_head_advance_guard();
 `,
   },
+  {
+    name: "event-operations-v14-task-attempt-provider-usage",
+    version: 14,
+    sql: `
+alter table event_ops_task_attempts
+  add column finish_reason text,
+  add column prompt_tokens integer check (prompt_tokens is null or prompt_tokens >= 0),
+  add column completion_tokens integer check (completion_tokens is null or completion_tokens >= 0),
+  add column reasoning_tokens integer check (reasoning_tokens is null or reasoning_tokens >= 0),
+  add column cache_hit_tokens integer check (cache_hit_tokens is null or cache_hit_tokens >= 0);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

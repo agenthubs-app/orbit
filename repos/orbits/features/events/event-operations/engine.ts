@@ -838,6 +838,7 @@ export function createEventOperationsEngine({
       provider: null,
       providerAdapterDurationMs: 0,
       requestBytes: 0,
+      responseMetadata: null,
       responseBytes: 0,
     };
     const elapsed = (startedAt: number) =>
@@ -851,7 +852,11 @@ export function createEventOperationsEngine({
       const startedAt = monotonicNow();
       try {
         const result = await operation();
-        measurement.responseBytes += safeSerializedBytes(result);
+        const responseMetadata = result.responseMetadata;
+        if (responseMetadata) {
+          measurement.responseBytes = responseMetadata.providerResponseBytes;
+          measurement.responseMetadata = responseMetadata;
+        }
         if (result.success) {
           measurement.provider = result.provider;
           measurement.model = result.model;
@@ -874,6 +879,7 @@ export function createEventOperationsEngine({
     async function fail(
       code: EventOperationsFailureCode,
       message: string,
+      providerRetryable?: boolean,
     ): Promise<void> {
       await repository.failTask({
         code,
@@ -881,10 +887,10 @@ export function createEventOperationsEngine({
         leaseEpoch: claimed.leaseEpoch,
         leaseToken: claimed.leaseToken!,
         message,
-        retryable:
+        retryable: providerRetryable ?? (
           code !== "EVENT_OPERATIONS_CONFIGURATION_INVALID" &&
           code !== "EVENT_OPERATIONS_GENERATION_NOT_READY" &&
-          code !== "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND",
+          code !== "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND"),
         taskId: claimed.taskId,
         telemetry: { ...measurement },
       });
@@ -977,7 +983,7 @@ export function createEventOperationsEngine({
           aiProvider.generateRecommendations(request),
         );
         if (result.success === false) {
-          await fail(failureCodeFor(result), result.error.message);
+          await fail(failureCodeFor(result), result.error.message, result.retryable);
           return;
         }
         const recommendations = measureValidation(() =>
@@ -1060,7 +1066,7 @@ export function createEventOperationsEngine({
           aiProvider.generateGroupingFeatures(request),
         );
         if (result.success === false) {
-          await fail(failureCodeFor(result), result.error.message);
+          await fail(failureCodeFor(result), result.error.message, result.retryable);
           return;
         }
         const features = measureValidation(() =>
@@ -1190,7 +1196,7 @@ export function createEventOperationsEngine({
         aiProvider.generateTableContent(request),
       );
       if (result.success === false) {
-        await fail(failureCodeFor(result), result.error.message);
+        await fail(failureCodeFor(result), result.error.message, result.retryable);
         return;
       }
       measureValidation(() => {
