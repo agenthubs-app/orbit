@@ -540,6 +540,304 @@ async function appendRegistrationVersion(input: {
   });
 }
 
+interface PreparedCanonicalRegistrationActivation {
+  migrationHash: string;
+  ordered: readonly EventRegistration[];
+}
+
+function prepareCanonicalRegistrationActivation(
+  eventId: string,
+  registrations: readonly EventRegistration[],
+): PreparedCanonicalRegistrationActivation {
+  const ordered = [...registrations].sort(
+    (left, right) =>
+      left.userId.localeCompare(right.userId) || left.id.localeCompare(right.id),
+  );
+  const actorIds = new Set<string>();
+  const participantIds = new Set<string>();
+  const registrationIds = new Set<string>();
+  for (const registration of ordered) {
+    if (
+      registration.eventId !== eventId ||
+      !registration.userId.trim() ||
+      !registration.participantProfileId.trim() ||
+      registration.participantProfile.eventId !== eventId ||
+      registration.participantProfile.userId !== registration.userId ||
+      actorIds.has(registration.userId) ||
+      participantIds.has(registration.participantProfileId) ||
+      registrationIds.has(registration.id)
+    ) {
+      throw new EventRegistrationWindowError(
+        "EVENT_REGISTRATION_WINDOW_INVALID",
+        "Legacy event registrations contain mismatched or duplicate migration identities.",
+      );
+    }
+    actorIds.add(registration.userId);
+    participantIds.add(registration.participantProfileId);
+    registrationIds.add(registration.id);
+  }
+  return {
+    migrationHash: registrationMigrationHash(ordered),
+    ordered,
+  };
+}
+
+async function activatePreparedCanonicalRegistrationsWithExecutor(input: {
+  eventId: string;
+  executor: EventOperationsSqlExecutor;
+  prepared: PreparedCanonicalRegistrationActivation;
+  registrationMigrationOptions?: CanonicalRegistrationMigrationOptions;
+  workspaceId: string;
+}): Promise<{ count: number; hash: string; state: "canonical" }> {
+  const {
+    eventId,
+    executor: transaction,
+    prepared: { migrationHash, ordered },
+    registrationMigrationOptions,
+    workspaceId,
+  } = input;
+
+  const event = await transaction.query<SqlRow>(
+    `
+      select
+        event_row.registration_migration_state,
+        event_row.registration_migration_count,
+        event_row.registration_migration_hash,
+        event_row.registration_migrated_at,
+        configuration.configuration_version,
+        configuration.profile_edit_deadline_at,
+        statement_timestamp() as db_now
+      from event_ops_events event_row
+      left join event_ops_configuration_heads configuration_head
+        on configuration_head.workspace_id = event_row.workspace_id
+        and configuration_head.event_id = event_row.event_id
+      left join event_ops_configurations configuration
+        on configuration.workspace_id = configuration_head.workspace_id
+        and configuration.event_id = configuration_head.event_id
+        and configuration.configuration_version = configuration_head.configuration_version
+      where event_row.workspace_id = $1 and event_row.event_id = $2
+      for update of event_row
+    `,
+    [workspaceId, eventId],
+  );
+  const eventRow = event.rows[0];
+  if (!eventRow) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+      "The canonical event must exist before canonical registration activation.",
+    );
+  }
+  if (eventRow.registration_migration_state === "canonical") {
+    const storedCount = Number(eventRow.registration_migration_count);
+    const storedHash = eventRow.registration_migration_hash;
+    if (
+      !Number.isSafeInteger(storedCount) ||
+      storedCount < 0 ||
+      typeof storedHash !== "string" ||
+      !storedHash
+    ) {
+      throw new EventRegistrationWindowError(
+        "EVENT_REGISTRATION_WINDOW_INVALID",
+        "Canonical registration activation metadata is incomplete.",
+      );
+    }
+    const activationAudits = await transaction.query<SqlRow>(
+      `select
+         audit_id, actor_id, aggregate_type, aggregate_id, after_payload,
+         evidence_ids, occurred_at
+       from event_ops_audit_log
+       where workspace_id = $1
+         and event_id = $2
+         and action = 'registration_migration_activated'
+       order by audit_id`,
+      [workspaceId, eventId],
+    );
+    const activationAudit = activationAudits.rows[0];
+    if (activationAudits.rows.length !== 1 || !activationAudit) {
+      throw new EventRegistrationWindowError(
+        "EVENT_REGISTRATION_WINDOW_INVALID",
+        "Canonical registration activation audit identity is missing or ambiguous.",
+      );
+    }
+    if (
+      !validateCanonicalRegistrationActivationAudit({
+        audit: activationAudit,
+        count: storedCount,
+        eventId,
+        hash: storedHash,
+        migratedAt: eventRow.registration_migrated_at,
+      })
+    ) {
+      throw new EventRegistrationWindowError(
+        "EVENT_REGISTRATION_WINDOW_INVALID",
+        "Canonical registration activation audit does not match the immutable migration baseline.",
+      );
+    }
+    return { count: storedCount, hash: storedHash, state: "canonical" };
+  }
+
+  const deadline = migrationProfileDeadline(
+    eventId,
+    eventRow,
+    registrationMigrationOptions,
+  );
+
+  await transaction.query(
+    `
+      update event_ops_events
+      set registration_migration_state = 'importing',
+        revision = revision + 1,
+        updated_at = statement_timestamp()
+      where workspace_id = $1 and event_id = $2
+    `,
+    [workspaceId, eventId],
+  );
+  const existing = await transaction.query<{ count: string }>(
+    `
+      select count(*)::text as count
+      from event_ops_membership_heads
+      where workspace_id = $1 and event_id = $2
+    `,
+    [workspaceId, eventId],
+  );
+  if (Number(existing.rows[0]?.count ?? -1) !== 0) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      "Canonical registration activation found unverified shadow records.",
+    );
+  }
+
+  const window = {
+    profile_edit_deadline_at: deadline.profileEditDeadlineAt,
+  };
+  const migratedAt = timestamp(eventRow.db_now, "db_now");
+  for (const registration of ordered) {
+    const stages = legacyMembershipStages(registration);
+    for (const [index, stage] of stages.entries()) {
+      await appendRegistrationVersion({
+        effectiveAt: stage.effectiveAt,
+        eventId,
+        interviewResponses:
+          index === 0
+            ? registration.participantProfile.interviewResponses
+            : undefined,
+        membershipVersion: index + 1,
+        observedAt: migratedAt,
+        profileChanged: index === 0,
+        profileEffectiveAt: registration.participantProfile.updatedAt,
+        profileVersion: 1,
+        registration: stage.registration,
+        transaction,
+        window,
+        workspaceId,
+      });
+    }
+  }
+
+  const verification = await transaction.query<{
+    head_count: string;
+    orphan_count: string;
+  }>(
+    `
+      select
+        count(*)::text as head_count,
+        count(*) filter (
+          where membership_version.actor_id is null
+            or profile_version.participant_id is null
+        )::text as orphan_count
+      from event_ops_membership_heads membership_head
+      left join event_ops_membership_versions membership_version
+        on membership_version.workspace_id = membership_head.workspace_id
+        and membership_version.event_id = membership_head.event_id
+        and membership_version.actor_id = membership_head.actor_id
+        and membership_version.membership_version = membership_head.membership_version
+      left join event_ops_profile_versions profile_version
+        on profile_version.workspace_id = membership_head.workspace_id
+        and profile_version.event_id = membership_head.event_id
+        and profile_version.participant_id = membership_head.participant_id
+        and profile_version.profile_version = membership_head.profile_version
+      where membership_head.workspace_id = $1
+        and membership_head.event_id = $2
+    `,
+    [workspaceId, eventId],
+  );
+  if (
+    Number(verification.rows[0]?.head_count ?? -1) !== ordered.length ||
+    Number(verification.rows[0]?.orphan_count ?? -1) !== 0
+  ) {
+    throw new EventRegistrationWindowError(
+      "EVENT_REGISTRATION_WINDOW_INVALID",
+      "Canonical registration activation failed count or orphan verification.",
+    );
+  }
+  await transaction.query(
+    `
+      update event_ops_events
+      set registration_migration_state = 'canonical',
+        registration_migration_count = $3,
+        registration_migration_hash = $4,
+        registration_migrated_at = $5,
+        revision = revision + 1,
+        updated_at = $5
+      where workspace_id = $1 and event_id = $2
+        and registration_migration_state = 'importing'
+    `,
+    [workspaceId, eventId, ordered.length, migrationHash, migratedAt],
+  );
+  await transaction.query(
+    `
+      insert into event_ops_audit_log (
+        workspace_id, audit_id, event_id, actor_id, action,
+        aggregate_type, aggregate_id, before_payload, after_payload,
+        evidence_ids, occurred_at
+      ) values (
+        $1, $2, $3, null, 'registration_migration_activated',
+        'event', $3, null, $4::jsonb, $5::text[], $6
+      )
+    `,
+    [
+      workspaceId,
+      `audit:registration-migration:${encodeURIComponent(eventId)}:${migrationHash}`,
+      eventId,
+      JSON.stringify({
+        contractVersion: 2,
+        count: ordered.length,
+        hash: migrationHash,
+        profileDeadlineAt: deadline.profileEditDeadlineAt,
+        profileDeadlineEvidenceId: deadline.evidenceId,
+        profileDeadlineReason: deadline.reason,
+        profileDeadlineSource: deadline.source,
+      }),
+      [deadline.evidenceId],
+      migratedAt,
+    ],
+  );
+  return {
+    count: ordered.length,
+    hash: migrationHash,
+    state: "canonical" as const,
+  };
+}
+
+export async function activateCanonicalRegistrationsWithExecutor(input: {
+  eventId: string;
+  executor: EventOperationsSqlExecutor;
+  registrationMigrationOptions?: CanonicalRegistrationMigrationOptions;
+  registrations: readonly EventRegistration[];
+  workspaceId: string;
+}): Promise<{ count: number; hash: string; state: "canonical" }> {
+  return activatePreparedCanonicalRegistrationsWithExecutor({
+    eventId: input.eventId,
+    executor: input.executor,
+    prepared: prepareCanonicalRegistrationActivation(
+      input.eventId,
+      input.registrations,
+    ),
+    registrationMigrationOptions: input.registrationMigrationOptions,
+    workspaceId: input.workspaceId,
+  });
+}
+
 export function createPostgresCanonicalRegistrationMethods({
   client,
   workspaceId,
@@ -550,257 +848,19 @@ export function createPostgresCanonicalRegistrationMethods({
       registrations,
       registrationMigrationOptions,
     ) {
-      const ordered = [...registrations].sort(
-        (left, right) =>
-          left.userId.localeCompare(right.userId) || left.id.localeCompare(right.id),
+      const prepared = prepareCanonicalRegistrationActivation(
+        eventId,
+        registrations,
       );
-      const actorIds = new Set<string>();
-      const participantIds = new Set<string>();
-      const registrationIds = new Set<string>();
-      for (const registration of ordered) {
-        if (
-          registration.eventId !== eventId ||
-          !registration.userId.trim() ||
-          !registration.participantProfileId.trim() ||
-          registration.participantProfile.eventId !== eventId ||
-          registration.participantProfile.userId !== registration.userId ||
-          actorIds.has(registration.userId) ||
-          participantIds.has(registration.participantProfileId) ||
-          registrationIds.has(registration.id)
-        ) {
-          throw new EventRegistrationWindowError(
-            "EVENT_REGISTRATION_WINDOW_INVALID",
-            "Legacy event registrations contain mismatched or duplicate migration identities.",
-          );
-        }
-        actorIds.add(registration.userId);
-        participantIds.add(registration.participantProfileId);
-        registrationIds.add(registration.id);
-      }
-      const migrationHash = registrationMigrationHash(ordered);
-
-      return client.transaction(async (transaction) => {
-        const event = await transaction.query<SqlRow>(
-          `
-            select
-              event_row.registration_migration_state,
-              event_row.registration_migration_count,
-              event_row.registration_migration_hash,
-              event_row.registration_migrated_at,
-              configuration.configuration_version,
-              configuration.profile_edit_deadline_at,
-              statement_timestamp() as db_now
-            from event_ops_events event_row
-            left join event_ops_configuration_heads configuration_head
-              on configuration_head.workspace_id = event_row.workspace_id
-              and configuration_head.event_id = event_row.event_id
-            left join event_ops_configurations configuration
-              on configuration.workspace_id = configuration_head.workspace_id
-              and configuration.event_id = configuration_head.event_id
-              and configuration.configuration_version = configuration_head.configuration_version
-            where event_row.workspace_id = $1 and event_row.event_id = $2
-            for update of event_row
-          `,
-          [workspaceId, eventId],
-        );
-        const eventRow = event.rows[0];
-        if (!eventRow) {
-          throw new EventRegistrationWindowError(
-            "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
-            "The canonical event must exist before canonical registration activation.",
-          );
-        }
-        if (eventRow.registration_migration_state === "canonical") {
-          const storedCount = Number(eventRow.registration_migration_count);
-          const storedHash = eventRow.registration_migration_hash;
-          if (
-            !Number.isSafeInteger(storedCount) ||
-            storedCount < 0 ||
-            typeof storedHash !== "string" ||
-            !storedHash
-          ) {
-            throw new EventRegistrationWindowError(
-              "EVENT_REGISTRATION_WINDOW_INVALID",
-              "Canonical registration activation metadata is incomplete.",
-            );
-          }
-          const activationAudits = await transaction.query<SqlRow>(
-            `select
-               audit_id, actor_id, aggregate_type, aggregate_id, after_payload,
-               evidence_ids, occurred_at
-             from event_ops_audit_log
-             where workspace_id = $1
-               and event_id = $2
-               and action = 'registration_migration_activated'
-             order by audit_id`,
-            [workspaceId, eventId],
-          );
-          const activationAudit = activationAudits.rows[0];
-          if (activationAudits.rows.length !== 1 || !activationAudit) {
-            throw new EventRegistrationWindowError(
-              "EVENT_REGISTRATION_WINDOW_INVALID",
-              "Canonical registration activation audit identity is missing or ambiguous.",
-            );
-          }
-          if (
-            !validateCanonicalRegistrationActivationAudit({
-              audit: activationAudit,
-              count: storedCount,
-              eventId,
-              hash: storedHash,
-              migratedAt: eventRow.registration_migrated_at,
-            })
-          ) {
-            throw new EventRegistrationWindowError(
-              "EVENT_REGISTRATION_WINDOW_INVALID",
-              "Canonical registration activation audit does not match the immutable migration baseline.",
-            );
-          }
-          return { count: storedCount, hash: storedHash, state: "canonical" };
-        }
-
-        const deadline = migrationProfileDeadline(
+      return client.transaction((transaction) =>
+        activatePreparedCanonicalRegistrationsWithExecutor({
           eventId,
-          eventRow,
+          executor: transaction,
+          prepared,
           registrationMigrationOptions,
-        );
-
-        await transaction.query(
-          `
-            update event_ops_events
-            set registration_migration_state = 'importing',
-              revision = revision + 1,
-              updated_at = statement_timestamp()
-            where workspace_id = $1 and event_id = $2
-          `,
-          [workspaceId, eventId],
-        );
-        const existing = await transaction.query<{ count: string }>(
-          `
-            select count(*)::text as count
-            from event_ops_membership_heads
-            where workspace_id = $1 and event_id = $2
-          `,
-          [workspaceId, eventId],
-        );
-        if (Number(existing.rows[0]?.count ?? -1) !== 0) {
-          throw new EventRegistrationWindowError(
-            "EVENT_REGISTRATION_WINDOW_INVALID",
-            "Canonical registration activation found unverified shadow records.",
-          );
-        }
-
-        const window = {
-          profile_edit_deadline_at: deadline.profileEditDeadlineAt,
-        };
-        const migratedAt = timestamp(eventRow.db_now, "db_now");
-        for (const registration of ordered) {
-          const stages = legacyMembershipStages(registration);
-          for (const [index, stage] of stages.entries()) {
-            await appendRegistrationVersion({
-              effectiveAt: stage.effectiveAt,
-              eventId,
-              interviewResponses:
-                index === 0
-                  ? registration.participantProfile.interviewResponses
-                  : undefined,
-              membershipVersion: index + 1,
-              observedAt: migratedAt,
-              profileChanged: index === 0,
-              profileEffectiveAt: registration.participantProfile.updatedAt,
-              profileVersion: 1,
-              registration: stage.registration,
-              transaction,
-              window,
-              workspaceId,
-            });
-          }
-        }
-
-        const verification = await transaction.query<{
-          head_count: string;
-          orphan_count: string;
-        }>(
-          `
-            select
-              count(*)::text as head_count,
-              count(*) filter (
-                where membership_version.actor_id is null
-                  or profile_version.participant_id is null
-              )::text as orphan_count
-            from event_ops_membership_heads membership_head
-            left join event_ops_membership_versions membership_version
-              on membership_version.workspace_id = membership_head.workspace_id
-              and membership_version.event_id = membership_head.event_id
-              and membership_version.actor_id = membership_head.actor_id
-              and membership_version.membership_version = membership_head.membership_version
-            left join event_ops_profile_versions profile_version
-              on profile_version.workspace_id = membership_head.workspace_id
-              and profile_version.event_id = membership_head.event_id
-              and profile_version.participant_id = membership_head.participant_id
-              and profile_version.profile_version = membership_head.profile_version
-            where membership_head.workspace_id = $1
-              and membership_head.event_id = $2
-          `,
-          [workspaceId, eventId],
-        );
-        if (
-          Number(verification.rows[0]?.head_count ?? -1) !== ordered.length ||
-          Number(verification.rows[0]?.orphan_count ?? -1) !== 0
-        ) {
-          throw new EventRegistrationWindowError(
-            "EVENT_REGISTRATION_WINDOW_INVALID",
-            "Canonical registration activation failed count or orphan verification.",
-          );
-        }
-        await transaction.query(
-          `
-            update event_ops_events
-            set registration_migration_state = 'canonical',
-              registration_migration_count = $3,
-              registration_migration_hash = $4,
-              registration_migrated_at = $5,
-              revision = revision + 1,
-              updated_at = $5
-            where workspace_id = $1 and event_id = $2
-              and registration_migration_state = 'importing'
-          `,
-          [workspaceId, eventId, ordered.length, migrationHash, migratedAt],
-        );
-        await transaction.query(
-          `
-            insert into event_ops_audit_log (
-              workspace_id, audit_id, event_id, actor_id, action,
-              aggregate_type, aggregate_id, before_payload, after_payload,
-              evidence_ids, occurred_at
-            ) values (
-              $1, $2, $3, null, 'registration_migration_activated',
-              'event', $3, null, $4::jsonb, $5::text[], $6
-            )
-          `,
-          [
-            workspaceId,
-            `audit:registration-migration:${encodeURIComponent(eventId)}:${migrationHash}`,
-            eventId,
-            JSON.stringify({
-              contractVersion: 2,
-              count: ordered.length,
-              hash: migrationHash,
-              profileDeadlineAt: deadline.profileEditDeadlineAt,
-              profileDeadlineEvidenceId: deadline.evidenceId,
-              profileDeadlineReason: deadline.reason,
-              profileDeadlineSource: deadline.source,
-            }),
-            [deadline.evidenceId],
-            migratedAt,
-          ],
-        );
-        return {
-          count: ordered.length,
-          hash: migrationHash,
-          state: "canonical" as const,
-        };
-      });
+          workspaceId,
+        }),
+      );
     },
 
     async cancelCanonicalRegistration({ eventId, userId }) {
