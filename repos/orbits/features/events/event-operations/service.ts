@@ -16,6 +16,11 @@ import { eventOperationsParticipantFromRegistration } from "./participant";
 import type { EventOperationsRepository } from "./repository";
 
 export interface EventOperationsAccessPolicy {
+  requireCapability(input: {
+    actorId: string;
+    capability: "operations.read_sensitive";
+    eventId: string;
+  }): Promise<void>;
   isOrganizer(input: { actorId: string; eventId: string }): Promise<boolean>;
   isRegistered(input: { actorId: string; eventId: string }): Promise<boolean>;
 }
@@ -418,8 +423,13 @@ export function createEventOperationsService({
     },
 
     async adminWorkspace({ actorId, eventId }) {
+      await access.requireCapability({
+        actorId,
+        capability: "operations.read_sensitive",
+        eventId,
+      });
       const configuration = requireConfiguration(
-        await requireOrganizer(eventId, actorId),
+        await repository.getConfiguration(eventId),
       );
       const [participants, generations, publishedResult, checkIns, contactRequests] =
         await Promise.all([

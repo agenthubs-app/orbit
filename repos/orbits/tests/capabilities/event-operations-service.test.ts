@@ -39,6 +39,17 @@ async function createHarness() {
   const repository = createMemoryEventOperationsRepository({
     now: () => timestamp,
   });
+  const repositoryCalls: string[] = [];
+  const observedRepository = new Proxy(repository, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof value !== "function") return value;
+      return (...args: unknown[]) => {
+        repositoryCalls.push(String(property));
+        return Reflect.apply(value, target, args);
+      };
+    },
+  });
   const registrationService = createEventRegistrationService({
     now: () => "2026-08-01T06:00:00.000Z",
     provider: createMemoryEventRegistrationProvider(),
@@ -97,8 +108,18 @@ async function createHarness() {
     token: () => "lease:test",
   });
   const registeredActors = new Set(people.map((person) => person.actorId));
+  const adminActors = new Set([organizerActorId]);
   const service = createEventOperationsService({
     access: {
+      async requireCapability(input) {
+        if (
+          input.eventId !== eventId ||
+          !adminActors.has(input.actorId) ||
+          input.capability !== "operations.read_sensitive"
+        ) {
+          throw new Error("denied");
+        }
+      },
       async isOrganizer(input) {
         return input.eventId === eventId && input.actorId === organizerActorId;
       },
@@ -109,7 +130,7 @@ async function createHarness() {
     engine,
     now: () => timestamp,
     registrationService,
-    repository,
+    repository: observedRepository,
   });
   await service.configure({
     actorId: organizerActorId,
@@ -130,13 +151,42 @@ async function createHarness() {
     },
   });
   return {
+    grantAdminCapability(actorId: string) {
+      adminActors.add(actorId);
+    },
     repository,
+    repositoryCallCount() {
+      return repositoryCalls.length;
+    },
     service,
     setTimestamp(value: string) {
       timestamp = value;
     },
   };
 }
+
+test("admin workspace enforces capability before repository reads and admits an operations delegate", async () => {
+  const harness = await createHarness();
+  const beforeDeniedRequest = harness.repositoryCallCount();
+
+  await assert.rejects(
+    () =>
+      harness.service.adminWorkspace({
+        actorId: "actor:unauthorized",
+        eventId,
+      }),
+    /denied/u,
+  );
+  assert.equal(harness.repositoryCallCount(), beforeDeniedRequest);
+
+  harness.grantAdminCapability("actor:operations-delegate");
+  const workspace = await harness.service.adminWorkspace({
+    actorId: "actor:operations-delegate",
+    eventId,
+  });
+  assert.equal(workspace.metrics.participantCount, 3);
+  assert.ok(harness.repositoryCallCount() > beforeDeniedRequest);
+});
 
 test("attendee workspace exposes the real registration directory and a real idempotent check-in", async () => {
   const harness = await createHarness();

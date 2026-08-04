@@ -250,6 +250,15 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   });
   const service = createEventOperationsService({
     access: {
+      async requireCapability({ actorId, capability, eventId }) {
+        if (
+          actorId !== organizerActorId ||
+          capability !== "operations.read_sensitive" ||
+          eventId !== EVENT_OPERATIONS_E2E_EVENT_ID
+        ) {
+          throw new Error("Event access denied.");
+        }
+      },
       async isOrganizer({ actorId, eventId }) {
         return actorId === organizerActorId && eventId === EVENT_OPERATIONS_E2E_EVENT_ID;
       },

@@ -24,6 +24,11 @@ import {
   withRegisteredEventAccess,
   type RegisteredEventAccessDependencies,
 } from "../registered-event-access";
+import {
+  isEventCapabilityAccessError,
+  withEventCapabilityAccess,
+  type EventCapabilityAccessDependencies,
+} from "../event-capability-access";
 import { toAttendeeOperationsResponse } from "./attendee-response";
 
 interface EventOperationsRouteContext {
@@ -39,6 +44,8 @@ interface EventOperationsContactRequestRouteContext {
 }
 
 export interface EventOperationsHandlerDependencies {
+  createAccessService?: EventCapabilityAccessDependencies["createAccessService"];
+  resolveActor?: EventCapabilityAccessDependencies["resolveActor"];
   createService?: () => EventOperationsService | null;
   ownedAccess?: OwnedEventAccessDependencies;
   registeredAccess?: RegisteredEventAccessDependencies;
@@ -255,23 +262,27 @@ export function createEventOperationsContactRequestResponsePostHandler(
 export function createEventOperationsAdminGetHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function getAdminEventOperations(
-    _request: Request,
-    _context: EventOperationsRouteContext,
-    access,
-  ) {
-    try {
-      const workspace = await serviceFor(dependencies).adminWorkspace({
-        actorId: access.actor.id,
-        eventId: access.eventId,
-      });
-      return NextResponse.json(success(workspace), {
-        headers: runtimeBoundaryHeaders(access.mode),
-      });
-    } catch (error) {
-      return errorResponse(error, access.mode);
-    }
-  }, dependencies.ownedAccess);
+  return withEventCapabilityAccess(
+    "operations.read_sensitive",
+    async function getAdminEventOperations(_request, _context, access) {
+      try {
+        const workspace = await serviceFor(dependencies).adminWorkspace({
+          actorId: access.actor.id,
+          eventId: access.eventId,
+        });
+        return NextResponse.json(success(workspace), {
+          headers: runtimeBoundaryHeaders(access.mode),
+        });
+      } catch (error) {
+        if (isEventCapabilityAccessError(error)) throw error;
+        return errorResponse(error, access.mode);
+      }
+    },
+    {
+      createAccessService: dependencies.createAccessService,
+      resolveActor: dependencies.resolveActor,
+    },
+  );
 }
 
 export function createEventOperationsManualCheckInPostHandler(
