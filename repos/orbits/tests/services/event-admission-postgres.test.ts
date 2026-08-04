@@ -31,9 +31,9 @@ test("admission bridge v10 appends without changing v1-v9 migration checksums", 
     EVENT_OPERATIONS_SCHEMA_MIGRATIONS.slice(0, 9).map((item) => item.checksum),
     V1_TO_V9_CHECKSUMS,
   );
-  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.version, 10);
+  assert.equal(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.version, 12);
   assert.equal(
-    EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)?.name,
+    EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find((item) => item.version === 10)?.name,
     "event-operations-v10-admission-membership-bridge",
   );
 });
@@ -106,7 +106,7 @@ test(
       const migrations = await operationPool.query<{ checksum: string }>(
         "select checksum from event_ops_schema_migrations order by version",
       );
-      assert.equal(migrations.rows.length, 10);
+      assert.equal(migrations.rows.length, 12);
       assert.deepEqual(migrations.rows.slice(0, 9).map((item) => item.checksum), V1_TO_V9_CHECKSUMS);
 
       for (const eventId of [

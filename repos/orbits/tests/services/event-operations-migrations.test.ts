@@ -136,11 +136,21 @@ test(
           (row) => row.table_name === "event_ops_data_repair_items",
         ),
       );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_canonical_membership_migration_runs",
+        ),
+      );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_canonical_membership_migration_events",
+        ),
+      );
 
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "11");
+      assert.equal(applied.rows[0]?.count, "12");
 
       await migrationPool.query(`
         insert into event_ops_events (

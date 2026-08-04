@@ -37,6 +37,33 @@ function storedFixtureHash(value: unknown): string {
     .digest("hex");
 }
 
+async function restoreReviewedProfileRepairDefects(
+  pool: Pool,
+  sourceSchema: string,
+  workspaceId: string,
+): Promise<void> {
+  assert.match(sourceSchema, /^[A-Za-z_][A-Za-z0-9_]*$/u);
+  const ledger = await pool.query<{ present: boolean }>(
+    "select to_regclass($1) is not null as present",
+    [`${sourceSchema}.event_ops_data_repair_items`],
+  );
+  if (!ledger.rows[0]?.present) return;
+  await pool.query(`update event_ops_profile_versions current_profile
+    set profile_payload=source_profile.profile_payload,
+        profile_hash=source_profile.profile_hash
+    from ${sourceSchema}.event_ops_data_repair_items item
+    join ${sourceSchema}.event_ops_data_repair_runs repair_run
+      on repair_run.workspace_id=item.workspace_id and repair_run.repair_id=item.repair_id
+    join ${sourceSchema}.event_ops_profile_versions source_profile
+      on source_profile.workspace_id=item.workspace_id and source_profile.event_id=item.event_id
+      and source_profile.participant_id=item.participant_id
+      and source_profile.profile_version=item.source_profile_version
+    where item.workspace_id=$1 and repair_run.repair_type='canonical_profile_empty_answer_v1'
+      and current_profile.workspace_id=item.workspace_id
+      and current_profile.event_id=item.event_id and current_profile.participant_id=item.participant_id
+      and current_profile.profile_version=item.target_profile_version`, [workspaceId]);
+}
+
 async function cloneFixture(
   prefix: string,
   prepare?: (input: { pool: Pool; workspaceId: string }) => Promise<void>,
@@ -82,6 +109,7 @@ async function cloneFixture(
   await pool.query(`insert into event_ops_membership_heads select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1`, [workspaceId]);
   await pool.query(`insert into event_ops_audit_log select * from ${sourceSchema}.event_ops_audit_log
     where workspace_id=$1 and action='registration_migration_activated'`, [workspaceId]);
+  await restoreReviewedProfileRepairDefects(pool, sourceSchema, workspaceId);
   await prepare?.({ pool, workspaceId });
   const reviewed = await withCanonicalMembershipMigrationSnapshot({ connectionString: scopedUrl,
     isolation: "serializable", operation: async (snapshot) => {
@@ -160,6 +188,7 @@ test(
         `insert into event_ops_audit_log select * from ${sourceSchema}.event_ops_audit_log
           where workspace_id=$1 and action='registration_migration_activated'`, [workspaceId],
       );
+      await restoreReviewedProfileRepairDefects(pool, sourceSchema, workspaceId);
       await pool.query(
         `insert into orbit_records select * from ${sourceSchema}.orbit_records where workspace_id=$1`, [workspaceId],
       );
@@ -533,8 +562,11 @@ test("apply preserves adaptive and legacy responses, mirror absence, second-canc
       const registration = payload.registrationProfile as {
         answers: Record<string, string>;
         interviewResponses?: unknown[];
+        updatedAt?: unknown;
       };
-      const answeredAt = spec.row.profile_effective_at.toISOString();
+      const answeredAt = typeof registration.updatedAt === "string"
+        ? registration.updatedAt
+        : spec.row.profile_effective_at.toISOString();
       const responses = Object.entries(registration.answers).flatMap(([field, answer]) => {
         if (!answer.trim()) return [];
         const adaptive = field === spec.adaptiveField;
@@ -567,6 +599,9 @@ test("apply preserves adaptive and legacy responses, mirror absence, second-canc
         where workspace_id=$1 and event_id=$2 and participant_id=$3 and profile_version=$4
           and actor_id=$5`, [fixtureWorkspaceId,spec.row.event_id,spec.row.participant_id,
         spec.row.profile_version,spec.row.actor_id,JSON.stringify(payload),storedFixtureHash(payload)]);
+      await pool.query(`delete from event_ops_profile_response_versions
+        where workspace_id=$1 and event_id=$2 and participant_id=$3 and profile_version=$4`,
+      [fixtureWorkspaceId,spec.row.event_id,spec.row.participant_id,spec.row.profile_version]);
       for (const response of responses) {
         await pool.query(`insert into event_ops_profile_response_versions
           (workspace_id,event_id,participant_id,profile_version,response_id,field_key,visibility,

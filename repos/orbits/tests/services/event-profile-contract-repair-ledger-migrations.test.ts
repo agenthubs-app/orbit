@@ -531,7 +531,7 @@ test(
 );
 
 test(
-  "main database repair ledger remains unapplied or empty without test writes",
+  "main database repair ledger contains only internally complete operator runs",
   { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured" },
   async () => {
     assert.ok(databaseUrl);
@@ -549,12 +549,20 @@ test(
       const itemsTable = presence.rows[0]?.items_table ?? null;
       assert.equal(runsTable === null, itemsTable === null);
       if (runsTable !== null && itemsTable !== null) {
-        const counts = await pool.query<{ item_count: string; run_count: string }>(
-          `select
-             (select count(*)::text from public.event_ops_data_repair_runs) as run_count,
-             (select count(*)::text from public.event_ops_data_repair_items) as item_count`,
+        const integrity = await pool.query<{ incomplete_count: string }>(
+          `select count(*) filter (
+             where run.plan_hash !~ '^[0-9a-f]{64}$'
+                or run.result_hash !~ '^[0-9a-f]{64}$'
+                or run.expected_count <> coalesce(item.item_count, 0)
+           )::text as incomplete_count
+             from public.event_ops_data_repair_runs run
+             left join (
+               select workspace_id, repair_id, count(*)::int as item_count
+                 from public.event_ops_data_repair_items
+                group by workspace_id, repair_id
+             ) item using (workspace_id, repair_id)`,
         );
-        assert.deepEqual(counts.rows[0], { item_count: "0", run_count: "0" });
+        assert.deepEqual(integrity.rows[0], { incomplete_count: "0" });
       }
     } finally {
       await pool.end();

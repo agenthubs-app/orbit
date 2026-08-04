@@ -6,6 +6,7 @@ import {
   type CanonicalMembershipOperatorManifestEntry,
   type ParsedCanonicalMembershipOperatorManifest,
 } from "./contract";
+import { parseJsonWithUniqueObjectKeys } from "../operator-json";
 
 function object(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -82,7 +83,7 @@ function parseManifest(
   const blockers: CanonicalMembershipMigrationBlocker[] = [];
   if (typeof input === "string") {
     try {
-      value = JSON.parse(input) as unknown;
+      value = parseJsonWithUniqueObjectKeys(input);
     } catch {
       return {
         blockers: [blocker("MANIFEST_JSON_INVALID", "Operator manifest JSON is invalid.")],
@@ -111,7 +112,9 @@ function parseManifest(
     };
   }
 
-  const entries: Record<string, CanonicalMembershipOperatorManifestEntry> = {};
+  const parsedEntries: Array<
+    readonly [string, CanonicalMembershipOperatorManifestEntry]
+  > = [];
   Object.entries(root.events as Record<string, unknown>)
     .sort(([left], [right]) => left.localeCompare(right))
     .forEach(([eventId, rawEntry]) => {
@@ -139,15 +142,18 @@ function parseManifest(
       );
       return;
     }
-    entries[eventId] = {
-      evidenceId: entry.evidenceId,
-      profileEditDeadlineAt,
-      source: "operator_manifest",
-    };
+    parsedEntries.push([
+      eventId,
+      {
+        evidenceId: entry.evidenceId,
+        profileEditDeadlineAt,
+        source: "operator_manifest",
+      },
+    ]);
   });
 
   const manifest = {
-    events: entries,
+    events: Object.fromEntries(parsedEntries),
     schemaVersion: CANONICAL_MEMBERSHIP_MIGRATION_SCHEMA_VERSION,
   } as const;
   return {

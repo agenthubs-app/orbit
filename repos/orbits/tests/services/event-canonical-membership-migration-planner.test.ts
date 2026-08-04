@@ -496,6 +496,71 @@ test("manifest parser validates RFC3339 calendar fields and preserves valid offs
   );
 });
 
+test("manifest parser rejects decoded duplicate keys at every accepted object level", () => {
+  for (const source of [
+    '{"events":{},"events":{},"schemaVersion":1}',
+    '{"events":{"event_01":{"evidenceId":"first","evidenceId":"second","profileEditDeadlineAt":"2026-08-10T10:00:00.000Z","source":"operator_manifest"}},"schemaVersion":1}',
+    '{"events":{"event_01":{"evidenceId":"first","profileEditDeadlineAt":"2026-08-10T10:00:00.000Z","source":"operator_manifest"},"\\u0065vent_01":{"evidenceId":"second","profileEditDeadlineAt":"2026-08-10T10:00:00.000Z","source":"operator_manifest"}},"schemaVersion":1}',
+  ]) {
+    const parsed = parseCanonicalMembershipOperatorManifest(source);
+    assert.equal(parsed.manifest, null);
+    assert.deepEqual(parsed.blockers.map((value) => value.code), ["MANIFEST_JSON_INVALID"]);
+  }
+});
+
+test("manifest preserves prototype-named event ids and binds them into plan hashes", () => {
+  const source = (evidenceId: string) =>
+    JSON.stringify({
+      events: {
+        __proto__: null,
+      },
+      schemaVersion: 1,
+    }).replace(
+      '"events":{}',
+      `"events":{"__proto__":{"evidenceId":${JSON.stringify(evidenceId)},"profileEditDeadlineAt":"2026-08-10T10:00:00.000Z","source":"operator_manifest"},"constructor":{"evidenceId":"operator-manifest:event:constructor","profileEditDeadlineAt":"2026-08-11T10:00:00.000Z","source":"operator_manifest"}}`,
+    );
+  const first = parseCanonicalMembershipOperatorManifest(
+    source("operator-manifest:event:prototype:first"),
+  );
+  const second = parseCanonicalMembershipOperatorManifest(
+    source("operator-manifest:event:prototype:second"),
+  );
+
+  assert.deepEqual(first.blockers, []);
+  assert.equal(Object.hasOwn(first.manifest?.events ?? {}, "__proto__"), true);
+  assert.equal(Object.hasOwn(first.manifest?.events ?? {}, "constructor"), true);
+  assert.equal(
+    first.manifest?.events.__proto__?.evidenceId,
+    "operator-manifest:event:prototype:first",
+  );
+  assert.notEqual(second.manifestHash, first.manifestHash);
+
+  const prototypeFact: CanonicalMembershipMigrationEventFact = {
+    authority: "legacy_registration",
+    configurationDeadline: null,
+    contentHash: "core-content-prototype-event",
+    eventId: "__proto__",
+    eventVersion: 1,
+    ...inventory([]),
+  };
+  const constructorFact: CanonicalMembershipMigrationEventFact = {
+    ...prototypeFact,
+    contentHash: "core-content-constructor-event",
+    eventId: "constructor",
+  };
+  const firstPlan = buildCanonicalMembershipMigrationPlan({
+    facts: [prototypeFact, constructorFact],
+    parsedManifest: first,
+  });
+  const secondPlan = buildCanonicalMembershipMigrationPlan({
+    facts: [prototypeFact, constructorFact],
+    parsedManifest: second,
+  });
+  assert.equal(firstPlan.applyEligible, true);
+  assert.match(firstPlan.applyPlanHash ?? "", /^[a-f0-9]{64}$/u);
+  assert.notEqual(secondPlan.applyPlanHash, firstPlan.applyPlanHash);
+});
+
 test("manifest diagnostics hash hostile and non-JSON values without throwing", () => {
   const circular: Record<string, unknown> = { schemaVersion: 1 };
   circular.self = circular;

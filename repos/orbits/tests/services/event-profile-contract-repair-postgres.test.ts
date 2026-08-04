@@ -738,7 +738,7 @@ test(
 );
 
 test(
-  "real main profile repair inventory is read-only and contains exactly 24 targets in two canonical events",
+  "real main profile repair inventory matches the append-only repair ledger state",
   {
     skip:
       databaseUrl && realWorkspaceId
@@ -759,8 +759,28 @@ test(
       source.inventory.length,
     );
     assert.equal(plan.eventCount, 2);
-    assert.equal(plan.targetCount, 24);
-    assert.equal(plan.applyEligible, true);
-    assert.match(plan.applyPlanHash ?? "", /^[a-f0-9]{64}$/u);
+    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    try {
+      const presence = await pool.query<{ table_name: string | null }>(
+        "select to_regclass('event_ops_data_repair_runs')::text as table_name",
+      );
+      const applied = presence.rows[0]?.table_name
+        ? Boolean((await pool.query<{ applied: boolean }>(`select exists (
+            select 1 from event_ops_data_repair_runs
+             where workspace_id=$1 and repair_type='canonical_profile_empty_answer_v1'
+          ) as applied`, [realWorkspaceId])).rows[0]?.applied)
+        : false;
+      if (applied) {
+        assert.equal(plan.targetCount, 0);
+        assert.equal(plan.applyEligible, true);
+        assert.match(plan.applyPlanHash ?? "", /^[a-f0-9]{64}$/u);
+      } else {
+        assert.equal(plan.targetCount, 24);
+        assert.equal(plan.applyEligible, true);
+        assert.match(plan.applyPlanHash ?? "", /^[a-f0-9]{64}$/u);
+      }
+    } finally {
+      await pool.end();
+    }
   },
 );

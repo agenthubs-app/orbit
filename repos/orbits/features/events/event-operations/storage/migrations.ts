@@ -1364,6 +1364,73 @@ before truncate on event_ops_data_repair_items
 for each statement execute function event_ops_data_repair_items_immutable_guard();
 `,
   },
+  {
+    name: "event-operations-v12-canonical-membership-apply-ledger",
+    version: 12,
+    sql: `
+create table event_ops_canonical_membership_migration_runs (
+  workspace_id text not null check (workspace_id = btrim(workspace_id) and workspace_id <> ''),
+  migration_run_id text not null check (migration_run_id = btrim(migration_run_id) and char_length(migration_run_id) between 1 and 200),
+  migration_id text not null check (migration_id = btrim(migration_id) and char_length(migration_id) between 1 and 200),
+  schema_version integer not null check (schema_version > 0),
+  plan_hash text not null check (plan_hash ~ '^[0-9a-f]{64}$'),
+  manifest_hash text not null check (manifest_hash ~ '^[0-9a-f]{64}$'),
+  expected_count integer not null check (expected_count >= 0),
+  result_hash text not null check (result_hash ~ '^[0-9a-f]{64}$'),
+  applied_at timestamptz not null check (isfinite(applied_at)),
+  created_at timestamptz not null default now() check (isfinite(created_at)),
+  primary key (workspace_id, migration_run_id),
+  unique (workspace_id, migration_id, plan_hash),
+  check (applied_at <= created_at)
+);
+
+create table event_ops_canonical_membership_migration_events (
+  workspace_id text not null,
+  migration_run_id text not null,
+  event_id text not null check (event_id = btrim(event_id) and event_id <> ''),
+  authority text not null check (authority in ('canonical_membership', 'legacy_registration')),
+  event_aggregate_hash text not null check (event_aggregate_hash ~ '^[0-9a-f]{64}$'),
+  deadline_evidence_hash text check (deadline_evidence_hash is null or deadline_evidence_hash ~ '^[0-9a-f]{64}$'),
+  target_count integer not null check (target_count >= 0),
+  created_at timestamptz not null default now() check (isfinite(created_at)),
+  primary key (workspace_id, migration_run_id, event_id),
+  foreign key (workspace_id, migration_run_id)
+    references event_ops_canonical_membership_migration_runs (workspace_id, migration_run_id)
+    on delete restrict,
+  check (
+    (authority = 'canonical_membership' and deadline_evidence_hash is null)
+    or
+    (authority = 'legacy_registration' and deadline_evidence_hash is not null)
+  )
+);
+
+create index event_ops_canonical_membership_migration_events_event_idx
+  on event_ops_canonical_membership_migration_events (
+    workspace_id, event_id, migration_run_id
+  );
+
+create function event_ops_canonical_membership_migration_immutable_guard()
+returns trigger language plpgsql as $guard$
+begin
+  raise exception 'canonical membership migration ledger is immutable'
+    using errcode = '55000';
+end
+$guard$;
+
+create trigger event_ops_canonical_membership_migration_runs_immutable
+before update or delete on event_ops_canonical_membership_migration_runs
+for each row execute function event_ops_canonical_membership_migration_immutable_guard();
+create trigger event_ops_canonical_membership_migration_runs_immutable_truncate
+before truncate on event_ops_canonical_membership_migration_runs
+for each statement execute function event_ops_canonical_membership_migration_immutable_guard();
+create trigger event_ops_canonical_membership_migration_events_immutable
+before update or delete on event_ops_canonical_membership_migration_events
+for each row execute function event_ops_canonical_membership_migration_immutable_guard();
+create trigger event_ops_canonical_membership_migration_events_immutable_truncate
+before truncate on event_ops_canonical_membership_migration_events
+for each statement execute function event_ops_canonical_membership_migration_immutable_guard();
+`,
+  },
 ];
 
 function checksum(sql: string): string {
