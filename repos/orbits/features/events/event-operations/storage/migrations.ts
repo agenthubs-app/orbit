@@ -1153,6 +1153,217 @@ alter table event_ops_membership_versions
   ) on delete restrict;
 `,
   },
+  {
+    name: "event-operations-v11-profile-repair-audit-ledger",
+    version: 11,
+    sql: `
+create function event_ops_profile_repair_removed_paths_valid(candidate text[])
+returns boolean
+language sql
+immutable
+parallel safe
+as $event_ops_profile_repair_paths$
+  select coalesce(
+    cardinality(candidate) > 0
+    and array_ndims(candidate) = 1
+    and array_position(candidate, null) is null
+    and candidate <@ array[
+      'participant.profileAnswers.desiredOutcome',
+      'participant.profileAnswers.energyStyle',
+      'participant.profileAnswers.experienceHighlight',
+      'participant.profileAnswers.followUpPreference',
+      'participant.profileAnswers.industry',
+      'participant.profileAnswers.positioning',
+      'participant.profileAnswers.targetAttendees',
+      'participant.profileAnswers.valueOffered',
+      'registrationProfile.answers.desiredOutcome',
+      'registrationProfile.answers.energyStyle',
+      'registrationProfile.answers.experienceHighlight',
+      'registrationProfile.answers.followUpPreference',
+      'registrationProfile.answers.industry',
+      'registrationProfile.answers.positioning',
+      'registrationProfile.answers.targetAttendees',
+      'registrationProfile.answers.valueOffered'
+    ]::text[]
+    and candidate && array[
+      'registrationProfile.answers.desiredOutcome',
+      'registrationProfile.answers.energyStyle',
+      'registrationProfile.answers.experienceHighlight',
+      'registrationProfile.answers.followUpPreference',
+      'registrationProfile.answers.industry',
+      'registrationProfile.answers.positioning',
+      'registrationProfile.answers.targetAttendees',
+      'registrationProfile.answers.valueOffered'
+    ]::text[]
+    and not exists (
+      select 1
+      from unnest(candidate) as participant_candidate(path)
+      where path like 'participant.profileAnswers.%'
+        and replace(
+          path,
+          'participant.profileAnswers.',
+          'registrationProfile.answers.'
+        ) <> all(candidate)
+    )
+    and candidate = (
+      select array_agg(path order by path collate "C")
+      from (
+        select distinct path
+        from unnest(candidate) as candidate_path(path)
+      ) unique_paths
+    ),
+    false
+  )
+$event_ops_profile_repair_paths$;
+
+create table event_ops_data_repair_runs (
+  workspace_id text not null
+    check (workspace_id = btrim(workspace_id) and workspace_id <> ''),
+  repair_id text not null
+    check (
+      repair_id = btrim(repair_id)
+      and char_length(repair_id) between 1 and 200
+    ),
+  repair_type text not null
+    check (repair_type in ('canonical_profile_empty_answer_v1')),
+  schema_version integer not null check (schema_version > 0),
+  plan_hash text not null check (plan_hash ~ '^[0-9a-f]{64}$'),
+  expected_count integer not null check (expected_count > 0),
+  result_hash text not null check (result_hash ~ '^[0-9a-f]{64}$'),
+  applied_at timestamptz not null,
+  reverted_at timestamptz,
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, repair_id),
+  constraint event_ops_data_repair_runs_type_plan_unique
+    unique (workspace_id, repair_type, plan_hash),
+  check (isfinite(applied_at)),
+  check (isfinite(created_at)),
+  check (applied_at <= created_at),
+  check (
+    reverted_at is null
+    or (isfinite(reverted_at) and reverted_at >= created_at)
+  )
+);
+
+create table event_ops_data_repair_items (
+  workspace_id text not null
+    check (workspace_id = btrim(workspace_id) and workspace_id <> ''),
+  repair_id text not null
+    check (
+      repair_id = btrim(repair_id)
+      and char_length(repair_id) between 1 and 200
+    ),
+  event_id text not null
+    check (event_id = btrim(event_id) and event_id <> ''),
+  actor_id text not null
+    check (actor_id = btrim(actor_id) and actor_id <> ''),
+  participant_id text not null
+    check (participant_id = btrim(participant_id) and participant_id <> ''),
+  source_profile_version bigint not null check (source_profile_version > 0),
+  target_profile_version bigint not null check (target_profile_version > 0),
+  source_membership_version bigint not null check (source_membership_version > 0),
+  target_membership_version bigint not null check (target_membership_version > 0),
+  before_profile_hash text not null
+    check (before_profile_hash ~ '^[0-9a-f]{64}$'),
+  after_profile_hash text not null
+    check (after_profile_hash ~ '^[0-9a-f]{64}$'),
+  before_membership_hash text not null
+    check (before_membership_hash ~ '^[0-9a-f]{64}$'),
+  after_membership_hash text not null
+    check (after_membership_hash ~ '^[0-9a-f]{64}$'),
+  removed_paths text[] not null
+    check (event_ops_profile_repair_removed_paths_valid(removed_paths)),
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, repair_id, event_id, actor_id),
+  constraint event_ops_data_repair_items_participant_unique
+    unique (workspace_id, repair_id, event_id, participant_id),
+  constraint event_ops_data_repair_items_run_fk
+    foreign key (workspace_id, repair_id)
+    references event_ops_data_repair_runs (workspace_id, repair_id)
+    on delete restrict,
+  check (target_profile_version = source_profile_version + 1),
+  check (target_membership_version = source_membership_version + 1),
+  check (before_profile_hash <> after_profile_hash),
+  check (before_membership_hash <> after_membership_hash),
+  check (isfinite(created_at))
+);
+
+create index event_ops_data_repair_items_event_actor_idx
+  on event_ops_data_repair_items (
+    workspace_id, event_id, actor_id, repair_id
+  );
+
+create index event_ops_data_repair_items_event_participant_idx
+  on event_ops_data_repair_items (
+    workspace_id, event_id, participant_id, repair_id
+  );
+
+create function event_ops_data_repair_runs_immutable_guard()
+returns trigger
+language plpgsql
+as $event_ops_data_repair_runs_guard$
+begin
+  if tg_op = 'UPDATE' then
+    if old.reverted_at is null
+      and new.reverted_at is not null
+      and isfinite(new.reverted_at)
+      and new.reverted_at >= old.created_at
+      and row(
+        new.workspace_id,
+        new.repair_id,
+        new.repair_type,
+        new.schema_version,
+        new.plan_hash,
+        new.expected_count,
+        new.result_hash,
+        new.applied_at,
+        new.created_at
+      ) is not distinct from row(
+        old.workspace_id,
+        old.repair_id,
+        old.repair_type,
+        old.schema_version,
+        old.plan_hash,
+        old.expected_count,
+        old.result_hash,
+        old.applied_at,
+        old.created_at
+      ) then
+      return new;
+    end if;
+  end if;
+  raise exception 'event operations data repair runs are append-only'
+    using errcode = '55000';
+end
+$event_ops_data_repair_runs_guard$;
+
+create trigger event_ops_data_repair_runs_immutable_row_guard
+before update or delete on event_ops_data_repair_runs
+for each row execute function event_ops_data_repair_runs_immutable_guard();
+
+create trigger event_ops_data_repair_runs_immutable_truncate_guard
+before truncate on event_ops_data_repair_runs
+for each statement execute function event_ops_data_repair_runs_immutable_guard();
+
+create function event_ops_data_repair_items_immutable_guard()
+returns trigger
+language plpgsql
+as $event_ops_data_repair_items_guard$
+begin
+  raise exception 'event operations data repair items are append-only'
+    using errcode = '55000';
+end
+$event_ops_data_repair_items_guard$;
+
+create trigger event_ops_data_repair_items_immutable_row_guard
+before update or delete on event_ops_data_repair_items
+for each row execute function event_ops_data_repair_items_immutable_guard();
+
+create trigger event_ops_data_repair_items_immutable_truncate_guard
+before truncate on event_ops_data_repair_items
+for each statement execute function event_ops_data_repair_items_immutable_guard();
+`,
+  },
 ];
 
 function checksum(sql: string): string {
