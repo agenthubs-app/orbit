@@ -16,7 +16,10 @@ import type {
   CanonicalMembershipMigrationEventFact,
 } from "./contract";
 import { validateCanonicalRegistrationActivationAudit } from "./activation-audit-contract";
-import type { CanonicalMembershipMigrationSnapshot } from "./snapshot-runner";
+import {
+  isCanonicalMembershipMigrationSnapshot,
+  type CanonicalMembershipMigrationSnapshot,
+} from "./snapshot-runner";
 
 type SqlRow = Record<string, unknown>;
 
@@ -460,6 +463,11 @@ export async function readCanonicalMembershipMigrationSource(input: {
   snapshot: CanonicalMembershipMigrationSnapshot;
   workspaceId: string;
 }): Promise<CanonicalMembershipMigrationSourceReadResult> {
+  if (!isCanonicalMembershipMigrationSnapshot(input.snapshot)) {
+    throw new Error(
+      "Canonical membership migration requires an active runtime-attested database snapshot.",
+    );
+  }
   const executor = input.snapshot.executor;
   const eventResult = await executor.query<SqlRow>(
       `select
@@ -814,5 +822,10 @@ export async function readCanonicalMembershipMigrationSource(input: {
     });
   }
   facts.sort((left, right) => left.eventId.localeCompare(right.eventId));
+  if (!isCanonicalMembershipMigrationSnapshot(input.snapshot)) {
+    throw new Error(
+      "Canonical membership migration requires an active runtime-attested database snapshot.",
+    );
+  }
   return { blockers: sortBlockers(blockers), facts };
 }

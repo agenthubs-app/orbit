@@ -16,8 +16,11 @@ import { createPostgresEventOperationsRepository } from "../../features/events/e
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
-import type { EventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
-import { withCanonicalMembershipMigrationSnapshot } from "../../features/events/registration/canonical-migration/snapshot-runner";
+import {
+  isCanonicalMembershipMigrationSnapshot,
+  withCanonicalMembershipMigrationSnapshot,
+  type CanonicalMembershipMigrationSnapshot,
+} from "../../features/events/registration/canonical-migration/snapshot-runner";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 const canonicalEventIds = [
@@ -49,12 +52,15 @@ function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function readSource(
-  client: EventOperationsPostgresClient,
-  workspaceId: string,
-) {
+function connectionStringForSchema(connectionString: string, schema: string): string {
+  const value = new URL(connectionString);
+  value.searchParams.set("options", `-c search_path=${schema}`);
+  return value.toString();
+}
+
+function readSource(connectionString: string, workspaceId: string) {
   return withCanonicalMembershipMigrationSnapshot({
-    client,
+    connectionString,
     operation: (snapshot) =>
       readCanonicalMembershipMigrationSource({ snapshot, workspaceId }),
   });
@@ -407,141 +413,114 @@ test("strict registration validator accepts partial/adaptive contracts and rejec
   }
 });
 
-test("canonical registration read failures become source blockers without aborting event facts", async () => {
-  const migrationHash = "a".repeat(64);
-  const executor = {
-    async query<TRow>(text: string) {
-      if (text.includes("from event_ops_events event_row")) {
-        return {
-          rowCount: 2,
-          rows: [
-            {
-              configuration_head_version: null,
-              configuration_version: null,
-              content_hash: sha256("content-hash"),
-              canonical_head_count: "2",
-              event_id: "event-canonical-read-error",
-              event_version: 1,
-              profile_edit_deadline_at: null,
-              registration_migration_count: 2,
-              registration_migration_hash: migrationHash,
-              registration_migrated_at: "2026-08-04T10:00:00.000Z",
-              registration_migration_state: "canonical",
-            },
-            {
-              configuration_head_version: null,
-              configuration_version: null,
-              content_hash: sha256("legacy-content-hash"),
-              canonical_head_count: "1",
-              event_id: "event-legacy-with-audit",
-              event_version: 1,
-              profile_edit_deadline_at: null,
-              registration_migration_count: 1,
-              registration_migration_hash: "b".repeat(64),
-              registration_migrated_at: "2026-08-04T10:00:00.000Z",
-              registration_migration_state: "importing",
-            },
-          ] as TRow[],
-        };
-      }
-      if (text.includes("from event_ops_audit_log")) {
-        return {
-          rowCount: 3,
-          rows: [
-            {
-              actor_id: null,
-              after_payload: { count: 2, hash: migrationHash },
-              aggregate_id: "event-canonical-read-error",
-              aggregate_type: "event",
-              audit_id: `audit:registration-migration:${encodeURIComponent("event-canonical-read-error")}:${migrationHash}`,
-              event_id: "event-canonical-read-error",
-              evidence_ids: [],
-              occurred_at: "2026-08-04T10:00:00.000Z",
-            },
-            {
-              actor_id: null,
-              after_payload: { count: 0, hash: migrationHash },
-              aggregate_id: "event-unknown-audit",
-              aggregate_type: "event",
-              audit_id: "audit:unknown",
-              event_id: "event-unknown-audit",
-              evidence_ids: [],
-              occurred_at: "2026-08-04T10:00:00.000Z",
-            },
-            {
-              actor_id: null,
-              after_payload: { count: 0, hash: migrationHash },
-              aggregate_id: "event-legacy-with-audit",
-              aggregate_type: "event",
-              audit_id: "audit:legacy-state",
-              event_id: "event-legacy-with-audit",
-              evidence_ids: [],
-              occurred_at: "2026-08-04T10:00:00.000Z",
-            },
-          ] as TRow[],
-        };
-      }
-      if (text.includes("from orbit_records")) {
-        return { rowCount: 0, rows: [] as TRow[] };
-      }
-      throw new Error("corrupted canonical row");
-    },
-  };
-  const fakeClient: EventOperationsPostgresClient = {
+test("legacy client input and fake snapshots are rejected before transaction or query", async () => {
+  let transactionCount = 0;
+  let queryCount = 0;
+  const fakeClient = {
     async close() {},
-    query: executor.query,
-    async transaction(operation) {
-      return operation(executor);
+    async query() {
+      queryCount += 1;
+      throw new Error("fake query must never execute");
+    },
+    async transaction() {
+      transactionCount += 1;
+      throw new Error("fake transaction must never execute");
     },
   };
-  const source = await readSource(fakeClient, "workspace:test");
-  assert.equal(source.facts.length, 2);
-  const canonicalFact = source.facts.find(
-    (fact) => fact.eventId === "event-canonical-read-error",
+  if (false) {
+    await withCanonicalMembershipMigrationSnapshot({
+      // @ts-expect-error The public runner no longer accepts structural clients.
+      client: fakeClient,
+      operation: async () => null,
+    });
+  }
+  const legacyInput = {
+    client: fakeClient,
+    operation: async () => null,
+  } as unknown as Parameters<typeof withCanonicalMembershipMigrationSnapshot>[0];
+  await assert.rejects(
+    () => withCanonicalMembershipMigrationSnapshot(legacyInput),
+    /snapshot runner input is invalid/u,
   );
-  assert.equal(canonicalFact?.authority, "canonical_membership");
-  assert.equal(
-    canonicalFact?.authority === "canonical_membership"
-      ? canonicalFact.activationBaselineValid
-      : true,
-    false,
+  await assert.rejects(
+    () =>
+      withCanonicalMembershipMigrationSnapshot({
+        connectionString: "postgresql://unused.invalid/orbit",
+        extra: true,
+        operation: async () => null,
+      } as unknown as Parameters<typeof withCanonicalMembershipMigrationSnapshot>[0]),
+    /snapshot runner input is invalid/u,
   );
-  assert.equal(canonicalFact?.rawRegistrationCount, 2);
-  assert.equal(canonicalFact?.validRegistrationCount, 0);
-  assert.equal(canonicalFact?.invalidRegistrationCount, 2);
-  assert.ok(
-    source.blockers.some(
-      (value) => value.code === "CANONICAL_REGISTRATION_SOURCE_INVALID",
-    ),
+  await assert.rejects(
+    () =>
+      withCanonicalMembershipMigrationSnapshot({
+        connectionString: " ",
+        operation: async () => null,
+      }),
+    /snapshot runner input is invalid/u,
   );
-  assert.ok(
-    source.blockers.some(
-      (value) => value.code === "REGISTRATION_MIGRATION_STATE_INVALID",
-    ),
+  const fakeSnapshot = Object.freeze({
+    executor: fakeClient,
+  }) as unknown as CanonicalMembershipMigrationSnapshot;
+  assert.equal(isCanonicalMembershipMigrationSnapshot(fakeSnapshot), false);
+  await assert.rejects(
+    () =>
+      readCanonicalMembershipMigrationSource({
+        snapshot: fakeSnapshot,
+        workspaceId: "workspace:fake",
+      }),
+    /active runtime-attested database snapshot/u,
   );
-  assert.ok(
-    source.blockers.some(
-      (value) => value.code === "CANONICAL_ACTIVATION_AUDIT_STATE_INVALID",
-    ),
-  );
-  assert.ok(
-    source.blockers.some(
-      (value) => value.code === "CANONICAL_ACTIVATION_AUDIT_EVENT_UNKNOWN",
-    ),
-  );
-  const emptyManifest = parseCanonicalMembershipOperatorManifest({
-    events: {},
-    schemaVersion: 1,
-  });
-  assert.equal(
-    buildCanonicalMembershipMigrationPlan({
-      facts: source.facts,
-      parsedManifest: emptyManifest,
-      sourceBlockers: source.blockers,
-    }).applyPlanHash,
-    null,
-  );
+  assert.equal(transactionCount, 0);
+  assert.equal(queryCount, 0);
 });
+
+test(
+  "snapshot attestation is active only inside the transaction and internal clients close on success or throw",
+  { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured", timeout: 30_000 },
+  async () => {
+    assert.ok(databaseUrl);
+    const applicationName = `canonical_snapshot_${randomUUID().replaceAll("-", "")}`;
+    const connection = new URL(databaseUrl);
+    connection.searchParams.set("application_name", applicationName);
+    const adminPool = new Pool({ connectionString: databaseUrl, max: 1 });
+    let completedSnapshot: CanonicalMembershipMigrationSnapshot | null = null;
+    const completed = await withCanonicalMembershipMigrationSnapshot({
+      connectionString: connection.toString(),
+      operation: async (snapshot) => {
+        completedSnapshot = snapshot;
+        assert.equal(isCanonicalMembershipMigrationSnapshot(snapshot), true);
+        return "completed" as const;
+      },
+    });
+    assert.equal(completed, "completed");
+    assert.equal(isCanonicalMembershipMigrationSnapshot(completedSnapshot), false);
+
+    let thrownSnapshot: CanonicalMembershipMigrationSnapshot | null = null;
+    await assert.rejects(
+      () =>
+        withCanonicalMembershipMigrationSnapshot({
+          connectionString: connection.toString(),
+          operation: async (snapshot) => {
+            thrownSnapshot = snapshot;
+            assert.equal(isCanonicalMembershipMigrationSnapshot(snapshot), true);
+            throw new Error("operation failed after snapshot creation");
+          },
+        }),
+      /operation failed after snapshot creation/u,
+    );
+    assert.equal(isCanonicalMembershipMigrationSnapshot(thrownSnapshot), false);
+    const activity = await adminPool.query<{ count: string }>(
+      `select count(*)::text as count
+         from pg_stat_activity
+        where datname = current_database()
+          and application_name = $1`,
+      [applicationName],
+    );
+    assert.equal(activity.rows[0]?.count, "0");
+    await adminPool.end();
+  },
+);
 
 test(
   "Postgres snapshot reader preserves concurrent consistency, inventories all events, and aggregates blockers",
@@ -556,6 +535,7 @@ test(
       max: 6,
       options: `-c search_path=${schema}`,
     });
+    const scopedDatabaseUrl = connectionStringForSchema(databaseUrl, schema);
     const client = createEventOperationsPostgresClient({
       connectionString: databaseUrl,
       pool: scopedPool,
@@ -593,6 +573,27 @@ test(
       await adminPool.query(`create schema ${schema}`);
       await runOrbitRecordsMigration(scopedPool);
       await runEventOperationsMigrations(client);
+      let leakedSnapshot: CanonicalMembershipMigrationSnapshot | null = null;
+      let pendingRead:
+        | ReturnType<typeof readCanonicalMembershipMigrationSource>
+        | undefined;
+      await withCanonicalMembershipMigrationSnapshot({
+        connectionString: scopedDatabaseUrl,
+        operation: async (snapshot) => {
+          leakedSnapshot = snapshot;
+          pendingRead = readCanonicalMembershipMigrationSource({
+            snapshot,
+            workspaceId,
+          });
+          void pendingRead.catch(() => undefined);
+        },
+      });
+      assert.equal(isCanonicalMembershipMigrationSnapshot(leakedSnapshot), false);
+      assert.ok(pendingRead);
+      await assert.rejects(
+        pendingRead,
+        /snapshot is no longer active|active runtime-attested database snapshot/u,
+      );
       for (const [index, eventId] of allEventIds.entries()) {
         await scopedPool.query(
           `insert into event_ops_events (
@@ -682,7 +683,7 @@ test(
         [workspaceId, canonicalEventIds[0]],
       );
       await repository.activateCanonicalRegistrations(canonicalEventIds[0], []);
-      const cleanPostActivation = await readSource(client, workspaceId);
+      const cleanPostActivation = await readSource(scopedDatabaseUrl, workspaceId);
       assert.deepEqual(cleanPostActivation.blockers, []);
       assert.ok(
         cleanPostActivation.facts
@@ -775,7 +776,7 @@ test(
         );
       }
 
-      const source = await readSource(client, workspaceId);
+      const source = await readSource(scopedDatabaseUrl, workspaceId);
       assert.equal(
         source.blockers.filter(
           (value) => value.code === "REGISTRATION_SOURCE_INVALID",
@@ -850,7 +851,7 @@ test(
          where workspace_id = $1 and event_id = any($2::text[])`,
         [workspaceId, canonicalEventIds],
       );
-      const configurationDriftRead = await readSource(client, workspaceId);
+      const configurationDriftRead = await readSource(scopedDatabaseUrl, workspaceId);
       const configurationDriftPlan = buildCanonicalMembershipMigrationPlan({
         facts: configurationDriftRead.facts,
         parsedManifest: emptyManifest,
@@ -876,7 +877,7 @@ test(
          where workspace_id = $1 and target_id = 'event_signup_01'`,
         [workspaceId],
       );
-      const reread = await readSource(client, workspaceId);
+      const reread = await readSource(scopedDatabaseUrl, workspaceId);
       const replay = buildCanonicalMembershipMigrationPlan({
         facts: reread.facts,
         parsedManifest: emptyManifest,
@@ -897,7 +898,7 @@ test(
         status: "rsvped",
       });
       const withinSnapshot = await withCanonicalMembershipMigrationSnapshot({
-        client,
+        connectionString: scopedDatabaseUrl,
         operation: async (snapshot) => {
           const before = await readCanonicalMembershipMigrationSource({
             snapshot,
@@ -951,7 +952,7 @@ test(
         (fact) => fact.eventId === "event_06",
       )!;
       assert.deepEqual(sameConcurrent, beforeConcurrent);
-      const nextSnapshot = await readSource(client, workspaceId);
+      const nextSnapshot = await readSource(scopedDatabaseUrl, workspaceId);
       const nextConcurrent = nextSnapshot.facts.find(
         (fact) => fact.eventId === "event_06",
       )!;
@@ -1012,7 +1013,7 @@ test(
          where workspace_id = $1 and event_id = 'event_05' and event_version = 1`,
         [workspaceId],
       );
-      const corrupted = await readSource(client, workspaceId);
+      const corrupted = await readSource(scopedDatabaseUrl, workspaceId);
       const corruptedBlockerJson = JSON.stringify(corrupted.blockers);
       for (const forbidden of [
         "actor:event_signup_02:1",
