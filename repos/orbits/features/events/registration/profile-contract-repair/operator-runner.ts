@@ -1,6 +1,9 @@
-import { constants } from "node:fs";
-import { lstat, open } from "node:fs/promises";
 import { Pool } from "pg";
+import {
+  operatorReviewedFileSnapshotMatches,
+  readOperatorReviewedFile,
+  type OperatorReviewedFileSnapshot,
+} from "../operator-reviewed-file";
 
 import { withCanonicalMembershipMigrationSnapshot } from "../canonical-migration/snapshot-runner";
 import { applyProfileContractRepair } from "./apply-repository";
@@ -60,62 +63,23 @@ function freeze<T>(value: T, seen = new WeakSet<object>()): T {
   return Object.freeze(value);
 }
 
-interface OperatorManifestFileSnapshot {
-  readonly ctimeNs: bigint;
-  readonly dev: bigint;
-  readonly ino: bigint;
-  readonly mtimeNs: bigint;
-  readonly size: bigint;
-}
-
+/** @deprecated Kept as the profile runner's public compatibility wrapper. */
 export function profileContractRepairOperatorFileSnapshotMatches(
-  left: OperatorManifestFileSnapshot,
-  right: OperatorManifestFileSnapshot,
+  left: OperatorReviewedFileSnapshot,
+  right: OperatorReviewedFileSnapshot,
 ): boolean {
-  return left.dev === right.dev && left.ino === right.ino && left.size === right.size &&
-    left.mtimeNs === right.mtimeNs && left.ctimeNs === right.ctimeNs;
-}
-
-async function readExact(
-  handle: Awaited<ReturnType<typeof open>>,
-  size: number,
-): Promise<Uint8Array> {
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  while (offset < bytes.length) {
-    const read = await handle.read(bytes, offset, bytes.length - offset, offset);
-    if (read.bytesRead === 0) fail();
-    offset += read.bytesRead;
-  }
-  return bytes;
+  return operatorReviewedFileSnapshotMatches(left, right);
 }
 
 /** Reads a reviewed scope manifest without following a path swap or symlink. */
 export async function readProfileContractRepairOperatorManifestFile(path: string): Promise<ProfileContractRepairOperatorManifest> {
-  let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
-    const before = await lstat(path, { bigint: true });
-    if (!before.isFile() || before.isSymbolicLink() || before.size < 1n || before.size > 65_536n) fail();
-    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const opened = await handle.stat({ bigint: true });
-    if (!opened.isFile() || !profileContractRepairOperatorFileSnapshotMatches(before, opened)) fail();
-    const bytes = await readExact(handle, Number(before.size));
-    const middle = await handle.stat({ bigint: true });
-    if (!profileContractRepairOperatorFileSnapshotMatches(opened, middle)) fail();
-    const verification = await readExact(handle, Number(before.size));
-    const after = await handle.stat({ bigint: true });
-    if (
-      !profileContractRepairOperatorFileSnapshotMatches(middle, after) ||
-      Buffer.compare(bytes, verification) !== 0
-    ) fail();
-    const parsed = parseProfileContractRepairOperatorManifest(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    const parsed = parseProfileContractRepairOperatorManifest(await readOperatorReviewedFile(path));
     if (!("manifestHash" in parsed)) fail();
     return parsed;
   } catch (error) {
     if (error instanceof ProfileContractRepairOperatorError) throw error;
     fail();
-  } finally {
-    try { await handle?.close(); } catch { /* close is best effort after a read failure */ }
   }
 }
 
