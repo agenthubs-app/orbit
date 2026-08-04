@@ -105,7 +105,7 @@ test(
       const version = await pool.query<{ count: string; version: string }>(`select
         count(*) filter (where version=12)::text as count, max(version)::text as version
         from event_ops_schema_migrations`);
-      assert.deepEqual(version.rows[0], { count: "1", version: "12" });
+      assert.deepEqual(version.rows[0], { count: "1", version: "13" });
 
       await insertRun(pool);
       await insertEvent(pool);

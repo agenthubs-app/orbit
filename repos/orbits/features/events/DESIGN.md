@@ -96,6 +96,10 @@ Phase 2-B2B2a4c 增加唯一显式的 canonical membership operator CLI；仍不
 
 两个 operator 共用一个 reviewed-file reader：regular file、`O_NOFOLLOW`、bigint inode/size/mtime/ctime、64 KiB、双读 byte-for-byte 一致和 fatal UTF-8；profile repair 保留原 public compatibility wrapper。CLI 不接受 inline JSON、stdin、连接串参数、重复/未知/`--x=y` 选项；数据库与 workspace 仅来自显式环境配置且 workspace 必须与 argv/review 相同。stdout/stderr 都是单行脱敏 JSON，稳定退出码区分 blocker、命令/配置、证据文件、v12 readiness、drift/replay/activation、retry exhausted 与内部失败。main 仍保持 v11；只有 dry-run 可以只读盘点，apply 固定 fail closed。
 
+Phase 2-B2B2a5a 只增加 event access v13 foundation，不提供 authorization repository、writer、API、route guard 或 UI，也不自动迁移 main。Owner 继续只从 Event Core `organizer_actor_id` 派生，绝不写入 delegated assignment；普通角色只有 `operations`、`check_in`、`reviewer`、`read_only_analyst`。每个 event/subject 的 assignment version 永久 append-only，current head 只能以 assignment version/revision 同时加一的方式单调推进，role/state 必须通过复合 FK 精确指向对应 version；version 的 UPDATE/DELETE/TRUNCATE 和 head 的回退、DELETE/TRUNCATE 全部以 SQLSTATE 55000 拒绝。两个 head 索引分别服务 actor 活动中心与 event 授权查询。
+
+纯 capability policy 默认拒绝未知、撤销或畸形事实。Owner 拥有角色管理、专用 owner transfer、敏感运营、完整名单/导出、签到、审核、生成和聚合分析；运营不具备角色/owner transfer/报名审核；签到人员只能读取有限签到名单并写签到；审核员只能读取和决定 admission；只读分析员只能查看聚合分析。foundation 不读取参会者/profile/contact，也不把 workspace 全局角色映射为 event 权限。临时 PostgreSQL 验收 v1→v13 幂等迁移、FK/check/index、version immutability、head 单调推进及失败事务回滚；main 只读保持 v11 且两张 role table 不存在。
+
 每个 target 只追加 profile version、原样复制当前 response rows、追加指向新 profile 的 membership version并以 optimistic revision 推进两个 head；报名状态、注册/取消/重启时间、late、origin、admission application、response payload/answeredAt/createdAt 均保持不变，repair DB timestamp 只用于新 version 与投递事实。24 个 target、24 个 redacted audit/outbox、24 个 ledger item 与一个 run 在同一事务提交；任一写阶段失败全部回滚。相同 repair ID 精确重放直接返回原 result，即使 heads 后续已变化；同 ID 事实不符或同 plan 换 ID 均 fail closed。真实临时 PostgreSQL 测试从两个 canonical event 的 24-target 多样 fixture 克隆事实，验证完整 apply/replay、错误 count、同 plan 不同 ID、中途 trigger 注入回滚，以及 legacy `orbit_records` byte-for-byte 不变。
 
 ## Mock 行为

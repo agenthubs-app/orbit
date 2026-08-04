@@ -8,6 +8,9 @@ import {
   EVENT_OPERATIONS_SCHEMA_MIGRATIONS,
   runEventOperationsMigrations,
 } from "../../features/events/event-operations/storage/migrations";
+import { loadLocalEnv } from "../../scripts/load-local-env";
+
+loadLocalEnv();
 
 test("event operations migrations use one implicit transaction per statement", async () => {
   const calls: string[] = [];
@@ -69,6 +72,23 @@ test("event operations migrations use one implicit transaction per statement", a
   assert.match(calls[11] ?? "", /create table event_ops_data_repair_items/i);
   assert.match(calls[11] ?? "", /canonical_profile_empty_answer_v1/i);
   assert.doesNotMatch(calls[11] ?? "", /jsonb|answer_payload|response_payload/i);
+  assert.match(
+    calls[12] ?? "",
+    /event_ops_canonical_membership_migration_runs/i,
+  );
+  assert.match(
+    calls[12] ?? "",
+    /event_ops_canonical_membership_migration_events/i,
+  );
+  assert.match(
+    calls[13] ?? "",
+    /event_ops_event_role_assignment_versions/i,
+  );
+  assert.match(
+    calls[13] ?? "",
+    /event_ops_event_role_assignment_heads/i,
+  );
+  assert.doesNotMatch(calls[13] ?? "", /\bowner\b[^\n]*role/i);
 });
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -146,11 +166,21 @@ test(
           (row) => row.table_name === "event_ops_canonical_membership_migration_events",
         ),
       );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_event_role_assignment_versions",
+        ),
+      );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_event_role_assignment_heads",
+        ),
+      );
 
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "12");
+      assert.equal(applied.rows[0]?.count, "13");
 
       await migrationPool.query(`
         insert into event_ops_events (

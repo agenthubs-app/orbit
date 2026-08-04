@@ -1431,6 +1431,123 @@ before truncate on event_ops_canonical_membership_migration_events
 for each statement execute function event_ops_canonical_membership_migration_immutable_guard();
 `,
   },
+  {
+    name: "event-operations-v13-event-access-role-assignments",
+    version: 13,
+    sql: `
+create table event_ops_event_role_assignment_versions (
+  workspace_id text not null
+    check (
+      workspace_id = btrim(workspace_id)
+      and char_length(workspace_id) between 1 and 200
+    ),
+  event_id text not null
+    check (
+      event_id = btrim(event_id)
+      and char_length(event_id) between 1 and 512
+    ),
+  subject_actor_id text not null
+    check (
+      subject_actor_id = btrim(subject_actor_id)
+      and char_length(subject_actor_id) between 1 and 200
+    ),
+  assignment_version bigint not null check (assignment_version > 0),
+  role text not null
+    check (role in ('operations','check_in','reviewer','read_only_analyst')),
+  state text not null check (state in ('active','revoked')),
+  assigned_by_actor_id text not null
+    check (
+      assigned_by_actor_id = btrim(assigned_by_actor_id)
+      and char_length(assigned_by_actor_id) between 1 and 200
+    ),
+  reason text not null
+    check (
+      reason = btrim(reason)
+      and char_length(reason) between 1 and 1000
+    ),
+  created_at timestamptz not null default now() check (isfinite(created_at)),
+  primary key (
+    workspace_id, event_id, subject_actor_id, assignment_version
+  ),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id)
+    on delete restrict,
+  unique (
+    workspace_id, event_id, subject_actor_id, assignment_version, role, state
+  )
+);
+
+create table event_ops_event_role_assignment_heads (
+  workspace_id text not null,
+  event_id text not null,
+  subject_actor_id text not null,
+  assignment_version bigint not null,
+  role text not null
+    check (role in ('operations','check_in','reviewer','read_only_analyst')),
+  state text not null check (state in ('active','revoked')),
+  revision bigint not null check (revision = assignment_version),
+  updated_at timestamptz not null default now() check (isfinite(updated_at)),
+  primary key (workspace_id, event_id, subject_actor_id),
+  foreign key (
+    workspace_id, event_id, subject_actor_id, assignment_version, role, state
+  ) references event_ops_event_role_assignment_versions (
+    workspace_id, event_id, subject_actor_id, assignment_version, role, state
+  )
+    on delete restrict
+);
+
+create index event_ops_event_role_assignment_heads_subject_state_idx
+  on event_ops_event_role_assignment_heads (
+    workspace_id, subject_actor_id, state, event_id
+  );
+
+create index event_ops_event_role_assignment_heads_event_state_idx
+  on event_ops_event_role_assignment_heads (
+    workspace_id, event_id, state, role
+  );
+
+create function event_ops_event_role_assignment_version_immutable_guard()
+returns trigger language plpgsql as $event_role_version_guard$
+begin
+  raise exception 'event role assignment versions are immutable'
+    using errcode = '55000';
+end
+$event_role_version_guard$;
+
+create trigger event_ops_event_role_assignment_versions_immutable
+before update or delete on event_ops_event_role_assignment_versions
+for each row execute function event_ops_event_role_assignment_version_immutable_guard();
+
+create trigger event_ops_event_role_assignment_versions_immutable_truncate
+before truncate on event_ops_event_role_assignment_versions
+for each statement execute function event_ops_event_role_assignment_version_immutable_guard();
+
+create function event_ops_event_role_assignment_head_advance_guard()
+returns trigger language plpgsql as $event_role_head_guard$
+begin
+  if tg_op = 'UPDATE'
+    and new.workspace_id = old.workspace_id
+    and new.event_id = old.event_id
+    and new.subject_actor_id = old.subject_actor_id
+    and new.assignment_version = old.assignment_version + 1
+    and new.revision = old.revision + 1
+    and new.updated_at >= old.updated_at then
+    return new;
+  end if;
+  raise exception 'event role assignment heads can only advance'
+    using errcode = '55000';
+end
+$event_role_head_guard$;
+
+create trigger event_ops_event_role_assignment_heads_advance
+before update or delete on event_ops_event_role_assignment_heads
+for each row execute function event_ops_event_role_assignment_head_advance_guard();
+
+create trigger event_ops_event_role_assignment_heads_immutable_truncate
+before truncate on event_ops_event_role_assignment_heads
+for each statement execute function event_ops_event_role_assignment_head_advance_guard();
+`,
+  },
 ];
 
 function checksum(sql: string): string {
