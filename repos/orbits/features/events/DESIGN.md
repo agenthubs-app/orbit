@@ -50,6 +50,8 @@ Events 的 live 数据链路使用 `orbit_records`，通过 `collectionName` 区
 
 Phase 1 不改变 event CRUD、报名或活动生命周期写链。旧 public catalogue 与 `orbit_records/events` 在完成迁移后只作为 backfill/import 来源；产品页面的 canonical read cutover 需要独立受控切换与页面/API 一致性回归后才能完成。
 
+Phase 2-A1 只增加 canonical public catalogue 基础边界，不切换任何生产消费者。`features/events/core/public-catalogue.ts` 只接受 `EventCoreService`、canonical participant summary reader 与读取时刻注入：公开编号、名称、场地、时间和描述均来自 PostgreSQL canonical event；只有 published 且具有 canonical `publicCode` 的活动进入公开快照，其他公开必需字段残缺时 fail closed；快照通过 `publicCodes[eventId]` 直接暴露已校验的 canonical public code，消费者不得再按列表顺序派生 route code。每个公开活动必须有显式 canonical participant summary，真实零人也必须保存 count `0` 的 summary；缺行时 fail closed，不得把未迁移或读取失败伪装成零人，也不得读取旧 catalogue 补数。来源统一标记为 `event-core-postgres`，证据只从受校验的 canonical `sourcePayload` 提取，没有证据时按 event version 生成稳定 evidence id。下一独立 commit 才会删除生产页面/API 对旧 public catalogue 的读取并做消费者切换回归。
+
 ## Mock 行为
 
 Mock 使用本地活动 fixture，不访问真实日历、会议平台、联系人库、消息系统或通知服务。want-to-connect 只记录本地意图，post-event review 只生成复核候选。
