@@ -60,6 +60,12 @@ Phase 2-B2B1 把 legacy registration 激活与 AI/运营 configuration 解耦，
 
 Phase 2-B2B2a1 只定义 canonical membership migration 的事实输入、operator manifest v1 parser 和纯 planner，不读取数据库、不写入、不提供 CLI，也不切换运行时。Planner 的 canonical fact 类型不接收 legacy projection，因此 canonical source hash 不会被旧投影漂移污染；Event Core 的 eventVersion/contentHash 单独形成 `eventCoreHash`。Manifest 固定为 `{ schemaVersion, events }`，event map 的 value 只允许 deadline/source/evidence 三个字段；RFC3339 `Z` 或 offset 时间在解析边界规范化为 UTC ISO 后参与稳定 hash。JSON object 的 event key 天然唯一；parser 接受原始 string 时遵循 `JSON.parse` 语义，无法恢复并检测已经被解析器覆盖的重复 key。Canonical event 的 deadline 不读取可变 current configuration；legacy event 才能使用现有 configuration 或显式 manifest，包含零报名在内都不推断缺失 deadline。任何 blocker 都使 `applyPlanHash` 为 null，而 `diagnosticHash` 始终可复现。
 
+Phase 2-B2B2a2 增加只读 source reader，并强制通过模块私有 brand 的 snapshot runner 在 PostgreSQL `repeatable read`（未来 apply 可选 `serializable`）事务内读取；Event Core head、版本、audit、legacy records 与 canonical current heads 必须来自同一个数据库快照。Canonical 事件只从 membership/profile current heads 读取，旧 `orbit_records` 投影即使恶意或损坏也不参与事实或 hash；mutable current operations configuration 对 canonical fact 完全无效，immutable activation baseline 只由事件迁移 metadata 与唯一 activation audit 验证。Activation audit 有显式兼容版本：历史 v1 必须精确为 `{count,hash}` 且 evidence 为空；新 writer 只写带 `contractVersion:2` 的 deadline/source/reason/evidence 完整契约，partial 或混合形态 fail closed。
+
+Source fact 与 plan 显式报告 physical `rawCount`、`validCount`、`invalidCount`；三者必须是非负安全整数且 `raw = valid + invalid`。`total.registrations` 是所有已知物理 legacy rows/canonical heads，`rsvped`、`cancelled` 与 source hash 只统计严格验证通过的 registration，因为非法行的 status 不可信。Legacy wrapper、record/provider/source/user/target identity 与完整 registration 使用 exact-key、稳定 identity、canonical ISO timestamp、正式 RSVP→cancel→reactivate→cancel 生命周期、all-false side effects，以及 signed adaptive/legacy_unknown interview snapshot 闭合校验；重复 identity 的所有冲突行都计入 invalid，不选择赢家。Blocker 的 record identity 只输出 domain-separated SHA-256 diagnostic token，不输出原 record/user/provider/source/answer。
+
+B2B2a2 不写库、不提供 apply/CLI、不读取真实 operator manifest。2026-08-04 对 main 的 branded snapshot 盘点会如实 fail closed：19 个事件、raw 144、valid 120、invalid 24；24 个 canonical profile 含 present empty-string answer，两个 canonical event 均 blocked，`applyPlanHash = null`。空字符串不会被删除、trim、默认或修补；它们只能由后续独立、显式、可审计的 canonical profile repair 流程处理。在 repair 完成并重新通过 snapshot plan 前，apply 与 runtime cutover 均禁止。
+
 ## Mock 行为
 
 Mock 使用本地活动 fixture，不访问真实日历、会议平台、联系人库、消息系统或通知服务。want-to-connect 只记录本地意图，post-event review 只生成复核候选。

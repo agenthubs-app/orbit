@@ -72,20 +72,58 @@ test(
         "event-canonical-registration",
         [],
       );
+      const activationAuditV2 = await scopedPool.query<{
+        after_payload: Record<string, unknown>;
+        evidence_ids: string[];
+      }>(
+        `select after_payload, evidence_ids
+         from event_ops_audit_log
+         where workspace_id = 'workspace-registration-test'
+           and event_id = 'event-canonical-registration'
+           and action = 'registration_migration_activated'`,
+      );
+      assert.equal(activationAuditV2.rows[0]?.after_payload.contractVersion, 2);
+      assert.deepEqual(activationAuditV2.rows[0]?.evidence_ids, [
+        activationAuditV2.rows[0]?.after_payload.profileDeadlineEvidenceId,
+      ]);
+      await scopedPool.query(
+        `update event_ops_audit_log
+         set after_payload = after_payload - 'profileDeadlineReason'
+         where workspace_id = 'workspace-registration-test'
+           and event_id = 'event-canonical-registration'
+           and action = 'registration_migration_activated'`,
+      );
+      await assert.rejects(
+        repository.activateCanonicalRegistrations(
+          "event-canonical-registration",
+          [],
+        ),
+        (error: unknown) =>
+          error instanceof EventRegistrationWindowError &&
+          error.code === "EVENT_REGISTRATION_WINDOW_INVALID",
+      );
+      await scopedPool.query(
+        `update event_ops_audit_log
+         set after_payload = $1::jsonb
+         where workspace_id = 'workspace-registration-test'
+           and event_id = 'event-canonical-registration'
+           and action = 'registration_migration_activated'`,
+        [JSON.stringify(activationAuditV2.rows[0]!.after_payload)],
+      );
 
       const firstAnswers = { industry: "Climate", valueOffered: "Grid operations" };
       const first = await repository.registerCanonicalParticipant({
         answers: firstAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
-        interviewResponses: legacyResponsesFromAnswers(firstAnswers, at(base, -1)),
+        interviewResponses: [...legacyResponsesFromAnswers(firstAnswers, at(base, -1))],
         userId: "actor-ari",
       });
       const duplicate = await repository.registerCanonicalParticipant({
         answers: firstAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
-        interviewResponses: legacyResponsesFromAnswers(firstAnswers, at(base, -1)),
+        interviewResponses: [...legacyResponsesFromAnswers(firstAnswers, at(base, -1))],
         userId: "actor-ari",
       });
       assert.deepEqual(duplicate, first);
@@ -95,7 +133,9 @@ test(
         answers: editedAnswers,
         displayName: "Ari",
         eventId: "event-canonical-registration",
-        interviewResponses: legacyResponsesFromAnswers(editedAnswers, at(base, 1)),
+        interviewResponses: [
+          ...legacyResponsesFromAnswers(editedAnswers, at(base, -0.5)),
+        ],
         userId: "actor-ari",
       });
       assert.equal(edited.participantProfile.answers.valueOffered, "Market design");
@@ -317,6 +357,78 @@ test(
         eventId: "event-shadow-import",
       });
       assert.deepEqual(canonicalRows, [legacyRegistration]);
+
+      const lifecycleProvider = createMemoryEventRegistrationProvider();
+      const lifecycleTimes = [
+        at(base, -120),
+        at(base, -110),
+        at(base, -100),
+        at(base, -90),
+      ];
+      const lifecycleService = createEventRegistrationService({
+        now: () => lifecycleTimes.shift()!,
+        provider: lifecycleProvider,
+      });
+      const lifecycleInput = {
+        answers: { industry: "Advanced manufacturing" },
+        eventId: "event-second-cancel-import",
+        userId: "actor-second-cancel",
+      };
+      await lifecycleService.register(lifecycleInput);
+      await lifecycleService.cancel(lifecycleInput);
+      await lifecycleService.register(lifecycleInput);
+      const secondCancelled = await lifecycleService.cancel(lifecycleInput);
+      assert.equal(secondCancelled?.status, "cancelled");
+      assert.equal(secondCancelled?.reactivatedAt, at(base, -100));
+      assert.equal(secondCancelled?.cancelledAt, at(base, -90));
+      await repository.saveConfiguration({
+        ...canonicalConfiguration,
+        eventId: lifecycleInput.eventId,
+      });
+      await repository.activateCanonicalRegistrations(
+        lifecycleInput.eventId,
+        [secondCancelled!],
+      );
+      assert.deepEqual(
+        await repository.listCanonicalRegistrations(lifecycleInput.eventId),
+        [secondCancelled],
+      );
+      const importedLifecycle = await scopedPool.query<{
+        cancelled_at: Date | null;
+        membership_version: string;
+        reactivated_at: Date | null;
+        status: string;
+      }>(
+        `select membership_version::text, status, cancelled_at, reactivated_at
+         from event_ops_membership_versions
+         where workspace_id = 'workspace-registration-test'
+           and event_id = $1 and actor_id = $2
+         order by membership_version`,
+        [lifecycleInput.eventId, lifecycleInput.userId],
+      );
+      assert.equal(importedLifecycle.rows.length, 2);
+      assert.deepEqual(
+        importedLifecycle.rows.map((row) => ({
+          cancelledAt: row.cancelled_at?.toISOString() ?? null,
+          reactivatedAt: row.reactivated_at?.toISOString() ?? null,
+          status: row.status,
+          version: row.membership_version,
+        })),
+        [
+          {
+            cancelledAt: null,
+            reactivatedAt: null,
+            status: "rsvped",
+            version: "1",
+          },
+          {
+            cancelledAt: at(base, -90),
+            reactivatedAt: at(base, -100),
+            status: "cancelled",
+            version: "2",
+          },
+        ],
+      );
     } finally {
       await client.close();
       await adminPool.query(`drop schema if exists ${schema} cascade`);

@@ -9,6 +9,7 @@ import {
   answersFromProfileResponses,
   type EventProfileResponseSnapshot,
 } from "../../registration/interview-response-contract";
+import { validateCanonicalRegistrationActivationAudit } from "../../registration/canonical-migration/activation-audit-contract";
 import {
   EventRegistrationWindowError,
 } from "../../registration/deadline-gated-service";
@@ -227,14 +228,22 @@ function legacyMembershipStages(
     registration.reactivatedAt,
     "reactivated_at",
   );
+  const sourceUpdatedAt = timestamp(registration.updatedAt, "updated_at");
   if (
     (registration.status === "cancelled" && !cancelledAt) ||
-    (reactivatedAt && !cancelledAt) ||
+    (registration.status === "rsvped" && Boolean(cancelledAt) !== Boolean(reactivatedAt)) ||
     (cancelledAt && Date.parse(cancelledAt) < Date.parse(registeredAt)) ||
-    (reactivatedAt &&
+    (registration.status === "rsvped" &&
+      reactivatedAt &&
       cancelledAt &&
       Date.parse(reactivatedAt) < Date.parse(cancelledAt)) ||
-    (registration.status === "cancelled" && reactivatedAt)
+    (registration.status === "cancelled" &&
+      reactivatedAt &&
+      (Date.parse(reactivatedAt) < Date.parse(registeredAt) ||
+        Date.parse(reactivatedAt) >= Date.parse(cancelledAt))) ||
+    Date.parse(sourceUpdatedAt) < Date.parse(registeredAt) ||
+    (cancelledAt && Date.parse(cancelledAt) > Date.parse(sourceUpdatedAt)) ||
+    (reactivatedAt && Date.parse(reactivatedAt) > Date.parse(sourceUpdatedAt))
   ) {
     throw new EventRegistrationWindowError(
       "EVENT_REGISTRATION_WINDOW_INVALID",
@@ -254,7 +263,15 @@ function legacyMembershipStages(
       },
     },
   ];
-  if (cancelledAt) {
+  if (registration.status === "cancelled" && cancelledAt) {
+    stages.push({
+      effectiveAt: cancelledAt,
+      registration: {
+        ...clone(registration),
+        updatedAt: cancelledAt,
+      },
+    });
+  } else if (cancelledAt && reactivatedAt) {
     stages.push({
       effectiveAt: cancelledAt,
       registration: {
@@ -265,8 +282,6 @@ function legacyMembershipStages(
         updatedAt: cancelledAt,
       },
     });
-  }
-  if (reactivatedAt && registration.status === "rsvped") {
     stages.push({
       effectiveAt: reactivatedAt,
       registration: {
@@ -279,7 +294,6 @@ function legacyMembershipStages(
     });
   }
 
-  const sourceUpdatedAt = timestamp(registration.updatedAt, "updated_at");
   const last = stages[stages.length - 1]!;
   if (Date.parse(sourceUpdatedAt) < Date.parse(last.effectiveAt)) {
     throw new EventRegistrationWindowError(
@@ -375,6 +389,50 @@ async function getRegistrationWith(
     [workspaceId, eventId, userId],
   );
   return result.rows[0] ? registrationFromRow(result.rows[0]) : null;
+}
+
+export async function listCanonicalRegistrationsWithExecutor(input: {
+  eventId: string;
+  executor: EventOperationsSqlExecutor;
+  workspaceId: string;
+}): Promise<readonly EventRegistration[]> {
+  const inventory = await readCanonicalRegistrationInventoryWithExecutor(input);
+  if (inventory.invalidCount > 0) {
+    throw new Error("Canonical event registration rows contain invalid data.");
+  }
+  return inventory.registrations;
+}
+
+export async function readCanonicalRegistrationInventoryWithExecutor(input: {
+  eventId: string;
+  executor: EventOperationsSqlExecutor;
+  workspaceId: string;
+}): Promise<{
+  invalidCount: number;
+  rawCount: number;
+  registrations: readonly EventRegistration[];
+}> {
+  const result = await input.executor.query<SqlRow>(
+    `${registrationSelect()}
+     where membership_head.workspace_id = $1
+       and membership_head.event_id = $2
+     order by membership_head.participant_id`,
+    [input.workspaceId, input.eventId],
+  );
+  const registrations: EventRegistration[] = [];
+  let invalidCount = 0;
+  for (const row of result.rows) {
+    try {
+      registrations.push(registrationFromRow(row));
+    } catch {
+      invalidCount += 1;
+    }
+  }
+  return {
+    invalidCount,
+    rawCount: result.rows.length,
+    registrations,
+  };
 }
 
 async function lockRegistrationScope(
@@ -528,6 +586,7 @@ export function createPostgresCanonicalRegistrationMethods({
               event_row.registration_migration_state,
               event_row.registration_migration_count,
               event_row.registration_migration_hash,
+              event_row.registration_migrated_at,
               configuration.configuration_version,
               configuration.profile_edit_deadline_at,
               statement_timestamp() as db_now
@@ -567,7 +626,8 @@ export function createPostgresCanonicalRegistrationMethods({
           }
           const activationAudits = await transaction.query<SqlRow>(
             `select
-               audit_id, actor_id, aggregate_type, aggregate_id, after_payload
+               audit_id, actor_id, aggregate_type, aggregate_id, after_payload,
+               evidence_ids, occurred_at
              from event_ops_audit_log
              where workspace_id = $1
                and event_id = $2
@@ -576,39 +636,20 @@ export function createPostgresCanonicalRegistrationMethods({
             [workspaceId, eventId],
           );
           const activationAudit = activationAudits.rows[0];
-          const expectedAuditId = `audit:registration-migration:${encodeURIComponent(eventId)}:${storedHash}`;
-          if (
-            activationAudits.rows.length !== 1 ||
-            !activationAudit ||
-            activationAudit.audit_id !== expectedAuditId ||
-            activationAudit.actor_id !== null ||
-            activationAudit.aggregate_type !== "event" ||
-            activationAudit.aggregate_id !== eventId
-          ) {
+          if (activationAudits.rows.length !== 1 || !activationAudit) {
             throw new EventRegistrationWindowError(
               "EVENT_REGISTRATION_WINDOW_INVALID",
               "Canonical registration activation audit identity is missing or ambiguous.",
             );
           }
-          let auditPayload: Record<string, unknown>;
-          try {
-            auditPayload = jsonValue<Record<string, unknown>>(
-              activationAudit.after_payload,
-              "registration_migration_after_payload",
-            );
-          } catch {
-            throw new EventRegistrationWindowError(
-              "EVENT_REGISTRATION_WINDOW_INVALID",
-              "Canonical registration activation audit payload is invalid.",
-            );
-          }
           if (
-            typeof auditPayload.count !== "number" ||
-            !Number.isSafeInteger(auditPayload.count) ||
-            auditPayload.count < 0 ||
-            typeof auditPayload.hash !== "string" ||
-            auditPayload.hash !== storedHash ||
-            auditPayload.count !== storedCount
+            !validateCanonicalRegistrationActivationAudit({
+              audit: activationAudit,
+              count: storedCount,
+              eventId,
+              hash: storedHash,
+              migratedAt: eventRow.registration_migrated_at,
+            })
           ) {
             throw new EventRegistrationWindowError(
               "EVENT_REGISTRATION_WINDOW_INVALID",
@@ -742,6 +783,7 @@ export function createPostgresCanonicalRegistrationMethods({
             `audit:registration-migration:${encodeURIComponent(eventId)}:${migrationHash}`,
             eventId,
             JSON.stringify({
+              contractVersion: 2,
               count: ordered.length,
               hash: migrationHash,
               profileDeadlineAt: deadline.profileEditDeadlineAt,
@@ -807,14 +849,11 @@ export function createPostgresCanonicalRegistrationMethods({
     },
 
     async listCanonicalRegistrations(eventId) {
-      const result = await client.query<SqlRow>(
-        `${registrationSelect()}
-         where membership_head.workspace_id = $1
-           and membership_head.event_id = $2
-         order by membership_head.participant_id`,
-        [workspaceId, eventId],
-      );
-      return result.rows.map(registrationFromRow);
+      return listCanonicalRegistrationsWithExecutor({
+        eventId,
+        executor: client,
+        workspaceId,
+      });
     },
 
     async listCanonicalRegistrationsForUser(userId, eventIds) {
@@ -893,6 +932,19 @@ export function createPostgresCanonicalRegistrationMethods({
         }
 
         const dbNow = timestamp(window.db_now, "db_now");
+        const responseAnsweredAts = (interviewResponses ?? []).map((response) =>
+          strictIsoTimestamp(response.answeredAt, "interviewResponses.answeredAt"),
+        );
+        if (
+          responseAnsweredAts.some(
+            (answeredAt) => Date.parse(answeredAt) > Date.parse(dbNow),
+          )
+        ) {
+          throw new EventRegistrationWindowError(
+            "EVENT_REGISTRATION_WINDOW_INVALID",
+            "Verified interview response timestamps must fall within the participant profile timeline.",
+          );
+        }
         const profileDeadline = timestamp(
           window.profile_edit_deadline_at,
           "profile_edit_deadline_at",

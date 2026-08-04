@@ -46,15 +46,17 @@ function orderedRegistrations(
   );
 }
 
-function sourceSummary(registrations: readonly EventRegistration[]) {
-  const ordered = orderedRegistrations(registrations);
+function sourceSummary(fact: CanonicalMembershipMigrationEventFact) {
+  const ordered = orderedRegistrations(fact.registrations);
   return {
     cancelled: ordered.filter((registration) => registration.status === "cancelled")
       .length,
-    count: ordered.length,
     hash: canonicalMigrationHash(ordered),
+    invalidCount: fact.invalidRegistrationCount,
+    rawCount: fact.rawRegistrationCount,
     rsvped: ordered.filter((registration) => registration.status === "rsvped")
       .length,
+    validCount: fact.validRegistrationCount,
   };
 }
 
@@ -88,13 +90,14 @@ function factIdentity(fact: CanonicalMembershipMigrationEventFact) {
     contentHash: fact.contentHash,
     eventId: fact.eventId,
     eventVersion: fact.eventVersion,
-    source: sourceSummary(fact.registrations),
+    source: sourceSummary(fact),
   };
 }
 
 export function buildCanonicalMembershipMigrationPlan(input: {
   facts: readonly CanonicalMembershipMigrationEventFact[];
   parsedManifest: ParsedCanonicalMembershipOperatorManifest;
+  sourceBlockers?: readonly CanonicalMembershipMigrationBlocker[];
 }): CanonicalMembershipMigrationPlan {
   const globalBlockers = [...input.parsedManifest.blockers];
   const identifiedFacts = input.facts
@@ -140,6 +143,41 @@ export function buildCanonicalMembershipMigrationPlan(input: {
   ) => {
     eventBlockers.set(eventId, [...(eventBlockers.get(eventId) ?? []), value]);
   };
+
+  for (const sourceBlocker of input.sourceBlockers ?? []) {
+    if (sourceBlocker.eventId && factByEventId.has(sourceBlocker.eventId)) {
+      addEventBlocker(sourceBlocker.eventId, sourceBlocker);
+    } else {
+      globalBlockers.push(sourceBlocker);
+    }
+  }
+
+  for (const fact of factByEventId.values()) {
+    if (
+      !Number.isSafeInteger(fact.rawRegistrationCount) ||
+      !Number.isSafeInteger(fact.validRegistrationCount) ||
+      !Number.isSafeInteger(fact.invalidRegistrationCount) ||
+      fact.rawRegistrationCount < 0 ||
+      fact.validRegistrationCount < 0 ||
+      fact.invalidRegistrationCount < 0 ||
+      fact.validRegistrationCount !== fact.registrations.length ||
+      !fact.registrations.every(
+        (registration) =>
+          registration.status === "rsvped" || registration.status === "cancelled",
+      ) ||
+      fact.rawRegistrationCount !==
+        fact.validRegistrationCount + fact.invalidRegistrationCount
+    ) {
+      addEventBlocker(
+        fact.eventId,
+        blocker({
+          code: "REGISTRATION_INVENTORY_INVALID",
+          eventId: fact.eventId,
+          message: "Registration inventory raw/valid/invalid counts are inconsistent.",
+        }),
+      );
+    }
+  }
 
   for (const [eventId] of manifestEntries) {
     const fact = factByEventId.get(eventId);
@@ -215,7 +253,7 @@ export function buildCanonicalMembershipMigrationPlan(input: {
         fact.authority === "canonical_membership" ? "canonical" : "legacy",
       deadline,
       eventId: fact.eventId,
-      source: sourceSummary(fact.registrations),
+      source: sourceSummary(fact),
     });
   }
   eventPlans.sort((left, right) => left.eventId.localeCompare(right.eventId));
@@ -225,8 +263,16 @@ export function buildCanonicalMembershipMigrationPlan(input: {
   ]);
   const total = {
     cancelled: eventPlans.reduce((sum, event) => sum + event.source.cancelled, 0),
-    registrations: eventPlans.reduce((sum, event) => sum + event.source.count, 0),
+    invalidRegistrations: eventPlans.reduce(
+      (sum, event) => sum + event.source.invalidCount,
+      0,
+    ),
+    registrations: eventPlans.reduce((sum, event) => sum + event.source.rawCount, 0),
     rsvped: eventPlans.reduce((sum, event) => sum + event.source.rsvped, 0),
+    validRegistrations: eventPlans.reduce(
+      (sum, event) => sum + event.source.validCount,
+      0,
+    ),
   };
   const eventCoreHash = canonicalMigrationHash(
     facts

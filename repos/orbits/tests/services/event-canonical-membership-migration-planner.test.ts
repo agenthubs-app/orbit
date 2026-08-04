@@ -136,6 +136,15 @@ function registrations(
   ];
 }
 
+function inventory(values: readonly EventRegistration[]) {
+  return {
+    invalidRegistrationCount: 0,
+    rawRegistrationCount: values.length,
+    registrations: values,
+    validRegistrationCount: values.length,
+  };
+}
+
 function facts(): readonly CanonicalMembershipMigrationEventFact[] {
   const legacyCounts: Readonly<Record<string, readonly [number, number]>> = {
     event_01: [0, 1],
@@ -143,6 +152,8 @@ function facts(): readonly CanonicalMembershipMigrationEventFact[] {
     event_signup_03: [1, 0],
     "event:live-record:20260729": [0, 1],
   };
+  const firstCanonical = registrations(canonicalEventIds[0], 64, 6);
+  const secondCanonical = registrations(canonicalEventIds[1], 64, 6);
   return [
     {
       activationBaselineValid: true,
@@ -154,7 +165,7 @@ function facts(): readonly CanonicalMembershipMigrationEventFact[] {
       contentHash: "core-content-signup-01",
       eventId: canonicalEventIds[0],
       eventVersion: 1,
-      registrations: registrations(canonicalEventIds[0], 64, 6),
+      ...inventory(firstCanonical),
     },
     {
       activationBaselineValid: true,
@@ -166,17 +177,18 @@ function facts(): readonly CanonicalMembershipMigrationEventFact[] {
       contentHash: "core-content-e2e",
       eventId: canonicalEventIds[1],
       eventVersion: 1,
-      registrations: registrations(canonicalEventIds[1], 64, 6),
+      ...inventory(secondCanonical),
     },
     ...legacyEventIds.map((eventId, index) => {
       const [rsvped, cancelled] = legacyCounts[eventId] ?? [0, 0];
+      const values = registrations(eventId, rsvped, cancelled);
       return {
         authority: "legacy_registration" as const,
         configurationDeadline: null,
         contentHash: `core-content-legacy-${index}`,
         eventId,
         eventVersion: 1,
-        registrations: registrations(eventId, rsvped, cancelled),
+        ...inventory(values),
       };
     }),
   ];
@@ -216,11 +228,24 @@ test("planner covers all 19 Event Core events and blocks every legacy zero event
       .length,
     17,
   );
-  assert.deepEqual(plan.total, { cancelled: 14, registrations: 144, rsvped: 130 });
+  assert.deepEqual(plan.total, {
+    cancelled: 14,
+    invalidRegistrations: 0,
+    registrations: 144,
+    rsvped: 130,
+    validRegistrations: 144,
+  });
   assert.equal(plan.applyEligible, false);
   assert.equal(plan.applyPlanHash, null);
   assert.match(plan.diagnosticHash, /^[a-f0-9]{64}$/u);
   assert.match(plan.eventCoreHash, /^[a-f0-9]{64}$/u);
+  assert.ok(
+    plan.events.every(
+      (event) =>
+        event.source.rsvped + event.source.cancelled === event.source.validCount &&
+        event.source.validCount + event.source.invalidCount === event.source.rawCount,
+    ),
+  );
   assert.ok(
     plan.events
       .filter((event) => event.currentState === "canonical")
@@ -229,7 +254,7 @@ test("planner covers all 19 Event Core events and blocks every legacy zero event
   );
   assert.deepEqual(
     plan.events
-      .filter((event) => event.authority === "legacy_registration" && event.source.count > 0)
+      .filter((event) => event.authority === "legacy_registration" && event.source.rawCount > 0)
       .map((event) => [event.eventId, event.source.rsvped, event.source.cancelled]),
     [
       ["event_01", 0, 1],
@@ -384,7 +409,7 @@ test("duplicate facts select a stable identity independent of input order", () =
     ...base,
     contentHash: "different-event-core-content",
     eventVersion: 2,
-    registrations: registrations("event_01", 1, 0),
+    ...inventory(registrations("event_01", 1, 0)),
   };
   const parsedManifest = parseCanonicalMembershipOperatorManifest(
     manifestFor(["event_01"]),
@@ -403,6 +428,28 @@ test("duplicate facts select a stable identity independent of input order", () =
   assert.equal(second.eventCoreHash, first.eventCoreHash);
   assert.equal(second.diagnosticHash, first.diagnosticHash);
   assert.deepEqual(second.events, first.events);
+});
+
+test("fractional or inconsistent source inventory fails closed before apply hashing", () => {
+  const base = facts().find((fact) => fact.eventId === "event_01")!;
+  const malformed: CanonicalMembershipMigrationEventFact = {
+    ...base,
+    invalidRegistrationCount: 0.5,
+    rawRegistrationCount: base.validRegistrationCount + 0.5,
+  };
+  const plan = buildCanonicalMembershipMigrationPlan({
+    facts: [malformed],
+    parsedManifest: parseCanonicalMembershipOperatorManifest(
+      manifestFor(["event_01"]),
+    ),
+  });
+  assert.equal(plan.events[0]?.action, "blocked");
+  assert.ok(
+    plan.events[0]?.blockers.some(
+      (value) => value.code === "REGISTRATION_INVENTORY_INVALID",
+    ),
+  );
+  assert.equal(plan.applyPlanHash, null);
 });
 
 test("manifest parser validates RFC3339 calendar fields and preserves valid offsets", () => {

@@ -17,6 +17,7 @@ export interface CanonicalMembershipMigrationBlocker {
   code: string;
   eventId: string | null;
   message: string;
+  /** Domain-separated SHA-256 diagnostic token; never a raw source record id. */
   recordId: string | null;
 }
 
@@ -27,10 +28,16 @@ export interface CanonicalMembershipMigrationDeadline {
 }
 
 export interface CanonicalMembershipMigrationSourceSummary {
+  /** Counts only validated registrations because invalid row status is untrusted. */
   cancelled: number;
-  count: number;
+  /** Stable hash of validated registrations only. */
   hash: string;
+  invalidCount: number;
+  /** Physical known source rows/heads; rawCount = validCount + invalidCount. */
+  rawCount: number;
+  /** Counts only validated registrations because invalid row status is untrusted. */
   rsvped: number;
+  validCount: number;
 }
 
 export interface CanonicalMembershipMigrationEventPlan {
@@ -56,8 +63,11 @@ export interface CanonicalMembershipMigrationPlan {
   schemaVersion: typeof CANONICAL_MEMBERSHIP_MIGRATION_SCHEMA_VERSION;
   total: {
     cancelled: number;
+    invalidRegistrations: number;
+    /** Physical known source rows/heads across all Event Core events. */
     registrations: number;
     rsvped: number;
+    validRegistrations: number;
   };
 }
 
@@ -90,7 +100,10 @@ export interface CanonicalMembershipMigrationCanonicalFact {
   contentHash: string;
   eventId: string;
   eventVersion: number;
+  invalidRegistrationCount: number;
+  rawRegistrationCount: number;
   registrations: readonly EventRegistration[];
+  validRegistrationCount: number;
 }
 
 export interface CanonicalMembershipMigrationLegacyFact {
@@ -99,7 +112,10 @@ export interface CanonicalMembershipMigrationLegacyFact {
   contentHash: string;
   eventId: string;
   eventVersion: number;
+  invalidRegistrationCount: number;
+  rawRegistrationCount: number;
   registrations: readonly EventRegistration[];
+  validRegistrationCount: number;
 }
 
 export type CanonicalMembershipMigrationEventFact =
