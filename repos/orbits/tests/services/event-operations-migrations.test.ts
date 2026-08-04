@@ -50,6 +50,15 @@ test("event operations migrations use one implicit transaction per statement", a
   assert.match(calls[7] ?? "", /visibility = 'private'/i);
   assert.match(calls[7] ?? "", /matching_only/i);
   assert.match(calls[7] ?? "", /drop constraint/i);
+  assert.match(calls[8] ?? "", /add column public_code text/i);
+  assert.match(calls[8] ?? "", /create table event_event_versions/i);
+  assert.match(calls[8] ?? "", /create table event_aliases/i);
+  assert.match(
+    calls[8] ?? "",
+    /unique index event_ops_events_public_code_unique_idx[\s\S]*lower\(btrim\(public_code\)\)/i,
+  );
+  assert.match(calls[8] ?? "", /normalized_alias = lower\(btrim\(alias_value\)\)/i);
+  assert.doesNotMatch(calls[8] ?? "", /alter column title set not null/i);
 });
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -76,7 +85,10 @@ test(
         select table_name
         from information_schema.tables
         where table_schema = current_schema()
-          and table_name like 'event_ops_%'
+          and (
+            table_name like 'event_ops_%'
+            or table_name in ('event_event_versions', 'event_aliases')
+          )
       `);
       assert.ok(tables.rows.some((row) => row.table_name === "event_ops_tasks"));
       assert.ok(
@@ -90,11 +102,67 @@ test(
           (row) => row.table_name === "event_ops_profile_response_versions",
         ),
       );
+      assert.ok(
+        tables.rows.some((row) => row.table_name === "event_event_versions"),
+      );
+      assert.ok(tables.rows.some((row) => row.table_name === "event_aliases"));
 
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "7");
+      assert.equal(applied.rows[0]?.count, "8");
+
+      await migrationPool.query(`
+        insert into event_ops_events (
+          workspace_id,
+          event_id,
+          organizer_actor_id,
+          lifecycle_state,
+          revision,
+          created_at,
+          updated_at
+        ) values (
+          'workspace:legacy-v7',
+          'event:legacy-v7',
+          'actor:legacy-owner',
+          'active',
+          1,
+          now(),
+          now()
+        )
+      `);
+      await migrationPool.query(`
+        delete from event_ops_schema_migrations where version = 8;
+        drop table event_aliases;
+        drop table event_event_versions;
+        alter table event_ops_events
+          drop column public_code,
+          drop column title,
+          drop column description,
+          drop column venue,
+          drop column timezone,
+          drop column starts_at,
+          drop column ends_at,
+          drop column lifecycle_state_v2,
+          drop column source_payload,
+          drop column cancelled_at,
+          drop column archived_at,
+          drop column event_version;
+      `);
+      await runEventOperationsMigrations(migrationPool);
+      const legacyRow = await migrationPool.query<{
+        lifecycle_state_v2: string | null;
+        title: string | null;
+      }>(`
+        select lifecycle_state_v2, title
+        from event_ops_events
+        where workspace_id = 'workspace:legacy-v7'
+          and event_id = 'event:legacy-v7'
+      `);
+      assert.deepEqual(legacyRow.rows[0], {
+        lifecycle_state_v2: null,
+        title: null,
+      });
 
       await migrationPool.query(`
         delete from event_ops_schema_migrations where version = 2;

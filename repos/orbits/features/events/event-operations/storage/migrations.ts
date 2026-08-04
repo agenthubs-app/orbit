@@ -917,6 +917,102 @@ alter table event_ops_profile_response_versions
   check (visibility in ('event_attendees', 'matching_only'));
 `,
   },
+  {
+    name: "event-operations-v8-canonical-event-core",
+    version: 8,
+    sql: `
+alter table event_ops_events
+  add column public_code text,
+  add column title text,
+  add column description text,
+  add column venue text,
+  add column timezone text,
+  add column starts_at timestamptz,
+  add column ends_at timestamptz,
+  add column lifecycle_state_v2 text,
+  add column source_payload jsonb,
+  add column cancelled_at timestamptz,
+  add column archived_at timestamptz,
+  add column event_version bigint not null default 1
+    check (event_version > 0);
+
+alter table event_ops_events
+  add constraint event_ops_events_lifecycle_state_v2_check
+  check (
+    lifecycle_state_v2 is null
+    or lifecycle_state_v2 in ('draft', 'published', 'cancelled', 'archived')
+  ),
+  add constraint event_ops_events_canonical_time_check
+  check (starts_at is null or ends_at is null or starts_at < ends_at),
+  add constraint event_ops_events_source_payload_check
+  check (source_payload is null or jsonb_typeof(source_payload) = 'object'),
+  add constraint event_ops_events_cancelled_at_check
+  check (cancelled_at is null or lifecycle_state_v2 = 'cancelled'),
+  add constraint event_ops_events_archived_at_check
+  check (archived_at is null or lifecycle_state_v2 = 'archived');
+
+create unique index event_ops_events_public_code_unique_idx
+  on event_ops_events (workspace_id, lower(btrim(public_code)))
+  where public_code is not null and btrim(public_code) <> '';
+
+create index event_ops_events_public_catalogue_idx
+  on event_ops_events (
+    workspace_id,
+    lifecycle_state_v2,
+    starts_at,
+    event_id
+  );
+
+create table event_event_versions (
+  workspace_id text not null,
+  event_id text not null,
+  event_version bigint not null check (event_version > 0),
+  public_code text,
+  title text,
+  description text,
+  venue text,
+  timezone text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  lifecycle_state_v2 text,
+  source_payload jsonb,
+  cancelled_at timestamptz,
+  archived_at timestamptz,
+  organizer_actor_id text not null,
+  content_hash text not null,
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, event_version),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id) on delete cascade,
+  check (
+    lifecycle_state_v2 is null
+    or lifecycle_state_v2 in ('draft', 'published', 'cancelled', 'archived')
+  ),
+  check (starts_at is null or ends_at is null or starts_at < ends_at),
+  check (source_payload is null or jsonb_typeof(source_payload) = 'object')
+);
+
+create table event_aliases (
+  workspace_id text not null,
+  normalized_alias text not null,
+  alias_value text not null,
+  alias_type text not null
+    check (alias_type in ('event_id', 'public_code', 'legacy_route_id')),
+  event_id text not null,
+  source_payload jsonb,
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, normalized_alias),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id) on delete cascade,
+  check (normalized_alias = lower(btrim(alias_value))),
+  check (btrim(alias_value) <> ''),
+  check (source_payload is null or jsonb_typeof(source_payload) = 'object')
+);
+
+create index event_aliases_event_idx
+  on event_aliases (workspace_id, event_id, alias_type);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

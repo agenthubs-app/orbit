@@ -9,6 +9,7 @@
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
+    "db:backfill:event-core": "tsx scripts/backfill-event-core.ts",
     "db:smoke:live-runtime": "tsx scripts/smoke-live-runtime.ts",
     "agent:worker": "tsx scripts/run-agent-worker.ts",
     "event-operations:worker": "tsx scripts/run-event-operations-worker.ts",
