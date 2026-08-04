@@ -1312,13 +1312,10 @@ export function createEventOperationsEngine({
           "The captured event configuration hash is invalid.",
         );
       }
-      if (
-        !actorId.trim() ||
-        actorId.trim() !== configuration.organizerActorId.trim()
-      ) {
+      if (!actorId.trim()) {
         throw new EventOperationsError(
           "EVENT_OPERATIONS_FORBIDDEN",
-          "Only the configured organizer can create an AI generation.",
+          "An authenticated event operator is required to create an AI generation.",
         );
       }
       const normalized = normalizedParticipants(
@@ -1386,7 +1383,7 @@ export function createEventOperationsEngine({
         expectedTaskCount,
         generationId,
         idempotencyKey: resolvedIdempotencyKey,
-        organizerActorId: actorId.trim(),
+        organizerActorId: configuration.organizerActorId.trim(),
         publishedAt: null,
         snapshot: {
           capturedAt: capturedSnapshot.snapshot.capturedAt,
@@ -1506,6 +1503,12 @@ export function createEventOperationsEngine({
         recommendationCount: configuration.recommendationCount,
       });
       return repository.initializeGeneration({
+        authorization: {
+          actingActorId: actorId.trim(),
+          capability: "generation.run",
+          eventId: configuration.eventId,
+          ownerOrganizerActorId: configuration.organizerActorId,
+        },
         candidates: candidateRetrieval.candidates,
         capturedSnapshot,
         generation,
@@ -1523,10 +1526,41 @@ export function createEventOperationsEngine({
 
     async publishGeneration({ actorId, generationId }) {
       const generation = await requireGeneration(generationId);
-      requireOrganizer(generation, actorId);
+      if (!actorId.trim()) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "An authenticated event operator is required to publish an AI generation.",
+        );
+      }
+      const configuration = await configurationFor(generation);
+      if (
+        configuration.eventId !== generation.eventId ||
+        configuration.organizerActorId !== generation.organizerActorId
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONFIGURATION_INVALID",
+          "The generation owner no longer matches its frozen event configuration.",
+        );
+      }
+      const authorization = {
+        actingActorId: actorId.trim(),
+        capability: "generation.publish" as const,
+        eventId: generation.eventId,
+        ownerOrganizerActorId: generation.organizerActorId,
+      };
       if (generation.status === "published") {
         const existing = await repository.getPublishedResult(generation.eventId);
-        if (existing?.generationId === generation.generationId) return existing;
+        if (existing?.generationId !== generation.generationId) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_GENERATION_NOT_READY",
+            "The published generation is not the current publication head.",
+          );
+        }
+        return repository.publishGenerationAtomically(
+          existing,
+          generation.organizerActorId,
+          authorization,
+        );
       }
       if (generation.status !== "completed") {
         throw new EventOperationsError(
@@ -1534,7 +1568,6 @@ export function createEventOperationsEngine({
           "Only a fully completed AI generation can be published.",
         );
       }
-      const configuration = await configurationFor(generation);
       const tasks = await repository.listTasks(generation.generationId);
       if (tasks.length === 0 || tasks.some((task) => task.status !== "completed")) {
         throw new EventOperationsError(
@@ -1591,13 +1624,24 @@ export function createEventOperationsEngine({
       return repository.publishGenerationAtomically(
         result,
         generation.organizerActorId,
+        authorization,
       );
     },
 
     async retryGeneration({ actorId, generationId }) {
       const generation = await requireGeneration(generationId);
-      requireOrganizer(generation, actorId);
-      return repository.retryFailedGeneration(generationId, now());
+      if (!actorId.trim()) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "An authenticated event operator is required to retry an AI generation.",
+        );
+      }
+      return repository.retryFailedGeneration(generationId, now(), {
+        actingActorId: actorId.trim(),
+        capability: "generation.run",
+        eventId: generation.eventId,
+        ownerOrganizerActorId: generation.organizerActorId,
+      });
     },
 
     async runGeneration({

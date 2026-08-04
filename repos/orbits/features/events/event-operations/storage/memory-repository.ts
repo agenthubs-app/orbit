@@ -22,6 +22,8 @@ import type {
   CanonicalRegistrationMigrationOptions,
   CreateEventContactRequestInput,
   CreateEventOperationsCheckInInput,
+  EventOperationsGenerationPublishAuthorization,
+  EventOperationsGenerationRunAuthorization,
   EventOperationsTaskAttemptTelemetry,
   EventOperationsRepository,
   InitializeEventOperationsGenerationInput,
@@ -181,6 +183,11 @@ export interface MemoryEventOperationsRepository
 }
 
 export interface CreateMemoryEventOperationsRepositoryOptions {
+  canAuthorizeGeneration?: (
+    input:
+      | EventOperationsGenerationPublishAuthorization
+      | EventOperationsGenerationRunAuthorization,
+  ) => boolean | Promise<boolean>;
   canConfigureEvent?: (
     input: SaveEventOperationsConfigurationAsOperatorInput,
   ) => boolean | Promise<boolean>;
@@ -311,6 +318,27 @@ export function createMemoryEventOperationsRepository(
     return generation;
   }
 
+  async function requireGenerationAuthorization(
+    authorization:
+      | EventOperationsGenerationPublishAuthorization
+      | EventOperationsGenerationRunAuthorization,
+  ): Promise<void> {
+    const configuration = configurations.get(authorization.eventId);
+    const authorized =
+      configuration?.organizerActorId ===
+        authorization.ownerOrganizerActorId &&
+      (authorization.actingActorId === authorization.ownerOrganizerActorId ||
+        (options.canAuthorizeGeneration
+          ? await options.canAuthorizeGeneration(authorization)
+          : false));
+    if (!authorized) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_FORBIDDEN",
+        "Event generation access is denied.",
+      );
+    }
+  }
+
   const repository: MemoryEventOperationsRepository = {
     async activateCanonicalRegistrations(
       eventId,
@@ -396,6 +424,11 @@ export function createMemoryEventOperationsRepository(
           profileVersion: 1,
         })),
       };
+    },
+
+    async captureGenerationSnapshotAsOperator(authorization) {
+      await requireGenerationAuthorization(authorization);
+      return repository.captureGenerationSnapshot(authorization.eventId);
     },
 
     async checkInAtomically(input: CreateEventOperationsCheckInInput) {
@@ -878,6 +911,17 @@ export function createMemoryEventOperationsRepository(
     },
 
     async initializeGeneration(input) {
+      await requireGenerationAuthorization(input.authorization);
+      if (
+        input.authorization.eventId !== input.generation.eventId ||
+        input.authorization.ownerOrganizerActorId !==
+          input.generation.organizerActorId
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "The generation authorization does not match its event owner.",
+        );
+      }
       assertTopology(input);
       const existing = [...generations.values()].find(
         (value) =>
@@ -1087,7 +1131,12 @@ export function createMemoryEventOperationsRepository(
         .map(clone);
     },
 
-    async publishGenerationAtomically(value, organizerActorId) {
+    async publishGenerationAtomically(
+      value,
+      organizerActorId,
+      authorization,
+    ) {
+      await requireGenerationAuthorization(authorization);
       const generation = requireGeneration(value.generationId);
       const existing = publishedResults.get(value.eventId);
       if (
@@ -1098,7 +1147,9 @@ export function createMemoryEventOperationsRepository(
       }
       if (
         generation.eventId !== value.eventId ||
-        generation.organizerActorId !== organizerActorId
+        generation.organizerActorId !== organizerActorId ||
+        authorization.eventId !== value.eventId ||
+        authorization.ownerOrganizerActorId !== organizerActorId
       ) {
         throw new EventOperationsError(
           "EVENT_OPERATIONS_FORBIDDEN",
@@ -1267,9 +1318,20 @@ export function createMemoryEventOperationsRepository(
       return contactRequestForViewer(next, input.targetActorId);
     },
 
-    async retryFailedGeneration(generationId, retriedAt) {
+    async retryFailedGeneration(generationId, retriedAt, authorization) {
+      await requireGenerationAuthorization(authorization);
       const requeuedAt = repositoryNow();
       const generation = requireGeneration(generationId);
+      if (
+        generation.eventId !== authorization.eventId ||
+        generation.organizerActorId !==
+          authorization.ownerOrganizerActorId
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "The retry authorization does not match this event generation.",
+        );
+      }
       if (generation.status !== "failed") return clone(generation);
       if (
         [...tasks.values()].some(

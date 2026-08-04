@@ -412,7 +412,7 @@ export function createEventOperationsConfigurePutHandler(
 export function createEventOperationsGenerationStartPostHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function startGeneration(
+  return withEventCapabilityAccess("generation.run", async function startGeneration(
     request: Request,
     _context: EventOperationsRouteContext,
     access,
@@ -430,15 +430,19 @@ export function createEventOperationsGenerationStartPostHandler(
         status: 202,
       });
     } catch (error) {
+      if (isEventCapabilityAccessError(error)) throw error;
       return errorResponse(error, access.mode);
     }
-  }, dependencies.ownedAccess);
+  }, {
+    createAccessService: dependencies.createAccessService,
+    resolveActor: dependencies.resolveActor,
+  });
 }
 
 export function createEventOperationsGenerationRunPostHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function runGeneration(
+  return withEventCapabilityAccess("generation.run", async function runGeneration(
     _request: Request,
     _context: EventOperationsGenerationRouteContext,
     access,
@@ -450,13 +454,16 @@ export function createEventOperationsGenerationRunPostHandler(
       ),
       access.mode,
     );
-  }, dependencies.ownedAccess);
+  }, {
+    createAccessService: dependencies.createAccessService,
+    resolveActor: dependencies.resolveActor,
+  });
 }
 
 export function createEventOperationsGenerationRetryPostHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function retryGeneration(
+  return withEventCapabilityAccess("generation.run", async function retryGeneration(
     _request: Request,
     context: EventOperationsGenerationRouteContext,
     access,
@@ -473,15 +480,19 @@ export function createEventOperationsGenerationRetryPostHandler(
         status: 202,
       });
     } catch (error) {
+      if (isEventCapabilityAccessError(error)) throw error;
       return errorResponse(error, access.mode);
     }
-  }, dependencies.ownedAccess);
+  }, {
+    createAccessService: dependencies.createAccessService,
+    resolveActor: dependencies.resolveActor,
+  });
 }
 
 export function createEventOperationsGenerationPublishPostHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function publishGeneration(
+  return withEventCapabilityAccess("generation.publish", async function publishGeneration(
     _request: Request,
     context: EventOperationsGenerationRouteContext,
     access,
@@ -497,9 +508,13 @@ export function createEventOperationsGenerationPublishPostHandler(
         headers: runtimeBoundaryHeaders(access.mode),
       });
     } catch (error) {
+      if (isEventCapabilityAccessError(error)) throw error;
       return errorResponse(error, access.mode);
     }
-  }, dependencies.ownedAccess);
+  }, {
+    createAccessService: dependencies.createAccessService,
+    resolveActor: dependencies.resolveActor,
+  });
 }
 
 function csvCell(value: unknown): string {

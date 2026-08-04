@@ -46,12 +46,19 @@ async function createHarness() {
         "check_in.roster.write",
         "operations.configure",
         "operations.read_sensitive",
+        "generation.publish",
+        "generation.run",
       ]),
     ],
   ]);
   const revokeConfigureAfterServiceCheck = new Set<string>();
   const revokeLimitedRosterAfterServiceCheck = new Set<string>();
+  const revokeGenerationAfterServiceCheck = new Set<string>();
   const repository = createMemoryEventOperationsRepository({
+    canAuthorizeGeneration: (input) =>
+      capabilitiesByActor
+        .get(input.actingActorId)
+        ?.has(input.capability) ?? false,
     canConfigureEvent: (input) =>
       capabilitiesByActor
         .get(input.actorId)
@@ -156,6 +163,13 @@ async function createHarness() {
             .get(input.actorId)
             ?.delete("operations.configure");
         }
+        if (
+          (input.capability === "generation.run" ||
+            input.capability === "generation.publish") &&
+          revokeGenerationAfterServiceCheck.delete(input.actorId)
+        ) {
+          capabilitiesByActor.get(input.actorId)?.delete(input.capability);
+        }
       },
       async isOrganizer(input) {
         return input.eventId === eventId && input.actorId === organizerActorId;
@@ -198,6 +212,12 @@ async function createHarness() {
       capabilities.add("operations.configure");
       capabilitiesByActor.set(actorId, capabilities);
     },
+    grantGenerationCapabilities(actorId: string) {
+      const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
+      capabilities.add("generation.publish");
+      capabilities.add("generation.run");
+      capabilitiesByActor.set(actorId, capabilities);
+    },
     grantCheckInCapability(actorId: string) {
       const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
       capabilities.add("check_in.roster.read_limited");
@@ -213,6 +233,9 @@ async function createHarness() {
     },
     revokeConfigureOnNextRepositoryWrite(actorId: string) {
       revokeConfigureAfterServiceCheck.add(actorId);
+    },
+    revokeGenerationOnNextRepositoryOperation(actorId: string) {
+      revokeGenerationAfterServiceCheck.add(actorId);
     },
     service,
     setTimestamp(value: string) {
@@ -276,6 +299,37 @@ test("event configuration preserves the owner and fails closed when delegated ca
         configuration,
       }),
     /configuration access is denied/u,
+  );
+});
+
+test("generation start preserves the owner and fails closed when delegated capability is revoked between layers", async () => {
+  const harness = await createHarness();
+  const delegate = "actor:operations-generation";
+  harness.grantGenerationCapabilities(delegate);
+
+  const generated = await harness.service.startGeneration({
+    actorId: delegate,
+    eventId,
+    idempotencyKey: "delegate-generation",
+  });
+  assert.equal(generated.organizerActorId, organizerActorId);
+
+  harness.revokeGenerationOnNextRepositoryOperation(delegate);
+  await assert.rejects(
+    () =>
+      harness.service.startGeneration({
+        actorId: delegate,
+        eventId,
+        idempotencyKey: "revoked-between-layers",
+      }),
+    /Event generation access is denied/u,
+  );
+  assert.equal(
+    await harness.repository.findGenerationByIdempotencyKey(
+      eventId,
+      "revoked-between-layers",
+    ),
+    null,
   );
 });
 

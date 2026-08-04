@@ -290,10 +290,15 @@ export function createEventOperationsService({
 
   async function requireGenerationScope(input: {
     actorId: string;
+    capability: "generation.publish" | "generation.run";
     eventId: string;
     generationId: string;
   }) {
-    await requireOrganizer(input.eventId, input.actorId);
+    await access.requireCapability({
+      actorId: input.actorId,
+      capability: input.capability,
+      eventId: input.eventId,
+    });
     const generation = await repository.getGeneration(input.generationId);
     if (!generation) {
       throw new EventOperationsError(
@@ -302,12 +307,23 @@ export function createEventOperationsService({
       );
     }
     if (
-      generation.eventId !== input.eventId ||
-      generation.organizerActorId !== input.actorId.trim()
+      generation.eventId !== input.eventId
     ) {
       throw new EventOperationsError(
         "EVENT_OPERATIONS_FORBIDDEN",
-        "The generation does not belong to this actor-scoped event.",
+        "The generation does not belong to this event.",
+      );
+    }
+    const configuration = requireConfiguration(
+      await repository.getGenerationConfiguration(input.generationId),
+    );
+    if (
+      configuration.eventId !== input.eventId ||
+      configuration.organizerActorId !== generation.organizerActorId
+    ) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_CONFIGURATION_INVALID",
+        "The generation owner does not match its frozen event configuration.",
       );
     }
     return generation;
@@ -532,7 +548,12 @@ export function createEventOperationsService({
     },
 
     async publishGeneration({ actorId, eventId, generationId }) {
-      await requireGenerationScope({ actorId, eventId, generationId });
+      await requireGenerationScope({
+        actorId,
+        capability: "generation.publish",
+        eventId,
+        generationId,
+      });
       return engine.publishGeneration({ actorId, generationId });
     },
 
@@ -547,7 +568,12 @@ export function createEventOperationsService({
     },
 
     async retryGeneration({ actorId, eventId, generationId }) {
-      await requireGenerationScope({ actorId, eventId, generationId });
+      await requireGenerationScope({
+        actorId,
+        capability: "generation.run",
+        eventId,
+        generationId,
+      });
       return engine.retryGeneration({ actorId, generationId });
     },
 
@@ -558,7 +584,12 @@ export function createEventOperationsService({
       maxConcurrency,
       workerId,
     }) {
-      await requireGenerationScope({ actorId, eventId, generationId });
+      await requireGenerationScope({
+        actorId,
+        capability: "generation.run",
+        eventId,
+        generationId,
+      });
       return engine.runGeneration({
         actorId,
         generationId,
@@ -568,10 +599,21 @@ export function createEventOperationsService({
     },
 
     async startGeneration({ actorId, eventId, idempotencyKey }) {
-      requireConfiguration(await requireOrganizer(eventId, actorId));
-      const capturedSnapshot = await repository.captureGenerationSnapshot(
+      await access.requireCapability({
+        actorId,
+        capability: "generation.run",
         eventId,
+      });
+      const configuration = requireConfiguration(
+        await repository.getConfiguration(eventId),
       );
+      const capturedSnapshot =
+        await repository.captureGenerationSnapshotAsOperator({
+          actingActorId: actorId.trim(),
+          capability: "generation.run",
+          eventId,
+          ownerOrganizerActorId: configuration.organizerActorId,
+        });
       return engine.createGeneration({
         actorId,
         capturedSnapshot,

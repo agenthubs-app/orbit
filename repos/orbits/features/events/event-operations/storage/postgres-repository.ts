@@ -18,6 +18,8 @@ import type {
   CompleteEventOperationsTaskInput,
   EventOperationsTaskAttemptTelemetry,
   EventOperationsCatalogueSummary,
+  EventOperationsGenerationPublishAuthorization,
+  EventOperationsGenerationRunAuthorization,
   EventOperationsRepository,
   FailEventOperationsTaskInput,
   InitializeEventOperationsGenerationInput,
@@ -25,6 +27,7 @@ import type {
 } from "../repository";
 import { canAccessEventCapability } from "../../event-access/capability-policy";
 import type {
+  EventAccessCapability,
   EventAccessAssignmentState,
   EventAccessRole,
 } from "../../event-access/contract";
@@ -436,6 +439,75 @@ export function createPostgresEventOperationsRepository({
     client,
     workspaceId,
   });
+
+  async function requireOperatorCapabilityInTransaction(
+    transaction: EventOperationsSqlExecutor,
+    authorization: {
+      actingActorId: string;
+      capability: EventAccessCapability;
+      eventId: string;
+      ownerOrganizerActorId: string;
+    },
+    denialMessage = "Event operations access is denied.",
+  ): Promise<{
+    assignmentRevision: number | null;
+    ownerOrganizerActorId: string;
+    principalRole: "owner" | EventAccessRole;
+  }> {
+    await requireEventAccessRepositoryReadiness(transaction);
+    const actingActorId = authorization.actingActorId.trim();
+    const event = await transaction.query<{ organizer_actor_id: string }>(
+      `select organizer_actor_id
+         from event_ops_events
+        where workspace_id = $1 and event_id = $2
+        for update`,
+      [workspaceId, authorization.eventId],
+    );
+    const organizerActorId = event.rows[0]?.organizer_actor_id ?? null;
+    const assignment = await transaction.query<{
+      revision: number | string;
+      role: EventAccessRole;
+      state: EventAccessAssignmentState;
+    }>(
+      `select revision, role, state
+         from event_ops_event_role_assignment_heads
+        where workspace_id = $1
+          and event_id = $2
+          and subject_actor_id = $3
+        for share`,
+      [workspaceId, authorization.eventId, actingActorId],
+    );
+    const assignmentRow = assignment.rows[0] ?? null;
+    const owner = organizerActorId === actingActorId;
+    const assignmentRevision = assignmentRow
+      ? Number(assignmentRow.revision)
+      : null;
+    if (
+      !actingActorId ||
+      event.rows.length !== 1 ||
+      assignment.rows.length > 1 ||
+      organizerActorId !== authorization.ownerOrganizerActorId ||
+      (owner && assignmentRow !== null) ||
+      (assignmentRow !== null && !Number.isSafeInteger(assignmentRevision)) ||
+      !canAccessEventCapability({
+        capability: authorization.capability,
+        owner,
+        role: assignmentRow?.role ?? null,
+        state: assignmentRow?.state ?? null,
+      })
+    ) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_FORBIDDEN",
+        denialMessage,
+      );
+    }
+    return {
+      assignmentRevision,
+      ownerOrganizerActorId: organizerActorId,
+      principalRole: owner ? "owner" : assignmentRow!.role,
+    };
+  }
+
   async function getGenerationWith(
     executor: EventOperationsSqlExecutor,
     generationId: string,
@@ -494,12 +566,42 @@ export function createPostgresEventOperationsRepository({
     return existing;
   }
 
+  async function requireGenerationInitializationAuthorization(
+    transaction: EventOperationsSqlExecutor,
+    input: InitializeEventOperationsGenerationInput,
+  ) {
+    const validatedAuthorization =
+      await requireOperatorCapabilityInTransaction(
+        transaction,
+        input.authorization,
+      );
+    if (
+      input.authorization.eventId !== input.generation.eventId ||
+      input.authorization.ownerOrganizerActorId !==
+        input.generation.organizerActorId ||
+      validatedAuthorization.ownerOrganizerActorId !==
+        input.generation.organizerActorId
+    ) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_FORBIDDEN",
+        "The generation authorization does not match its event owner.",
+      );
+    }
+    return validatedAuthorization;
+  }
+
   async function initializeGeneration(
     input: InitializeEventOperationsGenerationInput,
+    retryAfterSerializationFailure = true,
   ): Promise<EventOperationsGeneration> {
     assertGenerationTopology(input);
     try {
       return await client.transaction(async (transaction) => {
+        const validatedAuthorization =
+          await requireGenerationInitializationAuthorization(
+            transaction,
+            input,
+          );
         const existing = await existingGenerationForInitialization(
           transaction,
           input,
@@ -779,10 +881,15 @@ export function createPostgresEventOperationsRepository({
             workspaceId,
             `audit:generation-initialized:${input.generation.generationId}`,
             input.generation.eventId,
-            input.generation.organizerActorId,
+            input.authorization.actingActorId,
             input.generation.generationId,
             JSON.stringify({
+              actingRole: validatedAuthorization.principalRole,
+              assignmentRevision:
+                validatedAuthorization.assignmentRevision,
               expectedTaskCount: input.generation.expectedTaskCount,
+              ownerOrganizerActorId:
+                validatedAuthorization.ownerOrganizerActorId,
               snapshotHash: input.generation.snapshot.hash,
             }),
             input.generation.snapshot.participants.flatMap(
@@ -794,19 +901,14 @@ export function createPostgresEventOperationsRepository({
         return clone(input.generation);
       });
     } catch (error) {
-      if (isPostgresCode(error, "23505")) {
-        const existing = await repository.findGenerationByIdempotencyKey(
-          input.generation.eventId,
-          input.generation.idempotencyKey,
-        );
-        if (
-          existing &&
-          existing.snapshot.hash === input.generation.snapshot.hash &&
-          existing.expectedTaskCount === input.generation.expectedTaskCount
-        ) {
-          const tasks = await repository.listTasks(existing.generationId);
-          if (tasks.length === existing.expectedTaskCount) return existing;
-        }
+      if (
+        retryAfterSerializationFailure &&
+        (isPostgresCode(error, "23505") || isPostgresCode(error, "40001"))
+      ) {
+        // The fresh SERIALIZABLE transaction repeats capability, owner, and
+        // topology checks before returning an idempotent winner. Never read
+        // an existing generation outside that authorization boundary.
+        return initializeGeneration(input, false);
       }
       throw error;
     }
@@ -821,32 +923,16 @@ export function createPostgresEventOperationsRepository({
   ): Promise<EventOperationsConfiguration> {
     return client.transaction(async (transaction) => {
       if (authorization) {
-        await requireEventAccessRepositoryReadiness(transaction);
-        const event = await transaction.query<{
-          organizer_actor_id: string;
-        }>(
-          `select organizer_actor_id
-             from event_ops_events
-            where workspace_id = $1 and event_id = $2
-            for update`,
-          [workspaceId, value.eventId],
+        const validated = await requireOperatorCapabilityInTransaction(
+          transaction,
+          {
+            actingActorId: authorization.actorId,
+            capability: authorization.capability,
+            eventId: value.eventId,
+            ownerOrganizerActorId: value.organizerActorId,
+          },
+          "Event configuration access is denied.",
         );
-        const organizerActorId = event.rows[0]?.organizer_actor_id ?? null;
-        const assignment = await transaction.query<{
-          revision: number | string;
-          role: EventAccessRole;
-          state: EventAccessAssignmentState;
-        }>(
-          `select revision, role, state
-             from event_ops_event_role_assignment_heads
-            where workspace_id = $1
-              and event_id = $2
-              and subject_actor_id = $3
-            for share`,
-          [workspaceId, value.eventId, authorization.actorId.trim()],
-        );
-        const assignmentRow = assignment.rows[0] ?? null;
-        const owner = organizerActorId === authorization.actorId.trim();
         const configurationHead = await transaction.query<{
           configuration_version: number | string;
         }>(
@@ -857,21 +943,10 @@ export function createPostgresEventOperationsRepository({
           [workspaceId, value.eventId],
         );
         if (
-          !organizerActorId ||
-          event.rows.length !== 1 ||
-          assignment.rows.length > 1 ||
-          value.organizerActorId !== organizerActorId ||
-          (configurationHead.rows.length === 0 && !owner) ||
+          (configurationHead.rows.length === 0 &&
+            validated.principalRole !== "owner") ||
           configurationHead.rows.length > 1 ||
-          (owner && assignmentRow !== null) ||
-          (assignmentRow !== null &&
-            !Number.isSafeInteger(Number(assignmentRow.revision))) ||
-          !canAccessEventCapability({
-            capability: authorization.capability,
-            owner,
-            role: assignmentRow?.role ?? null,
-            state: assignmentRow?.state ?? null,
-          })
+          value.organizerActorId !== validated.ownerOrganizerActorId
         ) {
           throw new EventOperationsError(
             "EVENT_OPERATIONS_FORBIDDEN",
@@ -998,6 +1073,33 @@ export function createPostgresEventOperationsRepository({
     ...canonicalRegistration,
     ...frozenSnapshots,
     ...onsiteOperations,
+    async captureGenerationSnapshotAsOperator(authorization) {
+      return client.transaction(
+        async (transaction) => {
+          await requireOperatorCapabilityInTransaction(
+            transaction,
+            authorization,
+          );
+          const captured = await readFrozenGenerationSnapshot({
+            eventId: authorization.eventId,
+            executor: transaction,
+            lockConfiguration: true,
+            workspaceId,
+          });
+          if (
+            captured.configuration.organizerActorId !==
+            authorization.ownerOrganizerActorId
+          ) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_FORBIDDEN",
+              "The frozen event owner changed during snapshot capture.",
+            );
+          }
+          return captured;
+        },
+        { isolation: "repeatable read" },
+      );
+    },
     async claimTasks(input: ClaimEventOperationsTasksInput) {
       const limit = Math.max(1, Math.min(32, Math.floor(input.limit)));
       return client.transaction(
@@ -1715,12 +1817,31 @@ export function createPostgresEventOperationsRepository({
       return result.rows.map(taskAttemptFromRow);
     },
 
-    async publishGenerationAtomically(value, organizerActorId) {
+    async publishGenerationAtomically(
+      value,
+      organizerActorId,
+      authorization,
+    ) {
       const dtoHash = payloadHash(value);
       const publicationId = `event-operations-publication:${payloadHash(
         value.generationId,
       ).slice(0, 32)}`;
       return client.transaction(async (transaction) => {
+        const validatedAuthorization =
+          await requireOperatorCapabilityInTransaction(
+            transaction,
+            authorization,
+          );
+        if (
+          authorization.eventId !== value.eventId ||
+          authorization.ownerOrganizerActorId !== organizerActorId ||
+          validatedAuthorization.ownerOrganizerActorId !== organizerActorId
+        ) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "The publication authorization does not match its event owner.",
+          );
+        }
         await transaction.query(
           `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
           [`event-operations-publication-head:${workspaceId}:${value.eventId}`],
@@ -1742,7 +1863,9 @@ export function createPostgresEventOperationsRepository({
         }
         if (
           text(generationRow, "event_id") !== value.eventId ||
-          text(generationRow, "organizer_actor_id") !== organizerActorId
+          text(generationRow, "organizer_actor_id") !== organizerActorId ||
+          text(generationRow, "organizer_actor_id") !==
+            validatedAuthorization.ownerOrganizerActorId
         ) {
           throw new EventOperationsError(
             "EVENT_OPERATIONS_FORBIDDEN",
@@ -1834,7 +1957,7 @@ export function createPostgresEventOperationsRepository({
             value.snapshotHash,
             dtoHash,
             JSON.stringify(value),
-            organizerActorId,
+            authorization.actingActorId,
             value.publishedAt,
           ],
         );
@@ -1908,9 +2031,17 @@ export function createPostgresEventOperationsRepository({
             workspaceId,
             `audit:generation-published:${value.generationId}`,
             value.eventId,
-            organizerActorId,
+            authorization.actingActorId,
             publicationId,
-            JSON.stringify({ dtoHash, generationId: value.generationId }),
+            JSON.stringify({
+              actingRole: validatedAuthorization.principalRole,
+              assignmentRevision:
+                validatedAuthorization.assignmentRevision,
+              dtoHash,
+              generationId: value.generationId,
+              ownerOrganizerActorId:
+                validatedAuthorization.ownerOrganizerActorId,
+            }),
             value.publishedAt,
           ],
         );
@@ -1991,13 +2122,37 @@ export function createPostgresEventOperationsRepository({
       });
     },
 
-    async retryFailedGeneration(generationId, retriedAt) {
+    async retryFailedGeneration(generationId, retriedAt, authorization) {
       return client.transaction(async (transaction) => {
+        const validatedAuthorization =
+          await requireOperatorCapabilityInTransaction(
+            transaction,
+            authorization,
+          );
+        await transaction.query(
+          `select generation_id
+             from event_ops_generations
+            where workspace_id = $1 and generation_id = $2
+            for update`,
+          [workspaceId, generationId],
+        );
         const current = await getGenerationWith(transaction, generationId);
         if (!current) {
           throw new EventOperationsError(
             "EVENT_OPERATIONS_GENERATION_NOT_FOUND",
             "The event operations generation does not exist.",
+          );
+        }
+        if (
+          current.eventId !== authorization.eventId ||
+          current.organizerActorId !==
+            authorization.ownerOrganizerActorId ||
+          current.organizerActorId !==
+            validatedAuthorization.ownerOrganizerActorId
+        ) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_FORBIDDEN",
+            "The retry authorization does not match this event generation.",
           );
         }
         if (current.status !== "failed") return current;
@@ -2038,6 +2193,37 @@ export function createPostgresEventOperationsRepository({
             returning *
           `,
           [workspaceId, generationId],
+        );
+        await transaction.query(
+          `insert into event_ops_audit_log (
+             workspace_id, audit_id, event_id, actor_id, action,
+             aggregate_type, aggregate_id, before_payload, after_payload,
+             evidence_ids, occurred_at
+           ) values (
+             $1,$2,$3,$4,'generation_retried','generation',$5,
+             $6::jsonb,$7::jsonb,'{}',$8
+           )`,
+          [
+            workspaceId,
+            `audit:generation-retried:${payloadHash({
+              generationId,
+              retriedAt,
+              workspaceId,
+            })}`,
+            current.eventId,
+            authorization.actingActorId,
+            generationId,
+            JSON.stringify({ status: current.status }),
+            JSON.stringify({
+              actingRole: validatedAuthorization.principalRole,
+              assignmentRevision:
+                validatedAuthorization.assignmentRevision,
+              ownerOrganizerActorId:
+                validatedAuthorization.ownerOrganizerActorId,
+              status: "queued",
+            }),
+            retriedAt,
+          ],
         );
         return generationFromRow(transaction, workspaceId, updated.rows[0]!);
       });

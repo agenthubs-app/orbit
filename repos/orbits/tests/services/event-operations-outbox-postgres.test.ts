@@ -494,6 +494,12 @@ test(
       const retriedGeneration = await repository.retryFailedGeneration(
         "generation:task-lease",
         "1900-01-01T00:00:00.000Z",
+        {
+          actingActorId: "actor:organizer",
+          capability: "generation.run",
+          eventId: "event:task-lease",
+          ownerOrganizerActorId: "actor:organizer",
+        },
       );
       assert.equal(retriedGeneration.status, "queued");
       const manualEligibleAt = (

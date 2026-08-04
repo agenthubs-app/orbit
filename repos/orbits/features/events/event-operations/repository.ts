@@ -20,7 +20,22 @@ import { createPostgresEventOperationsRepository } from "./storage/postgres-repo
 import { createConfiguredEventOperationsPostgresRuntime } from "./storage/postgres-client";
 import type { EventOperationsLimitedCheckInRosterItem } from "./check-in-roster";
 
+export interface EventOperationsGenerationRunAuthorization {
+  actingActorId: string;
+  capability: "generation.run";
+  eventId: string;
+  ownerOrganizerActorId: string;
+}
+
+export interface EventOperationsGenerationPublishAuthorization {
+  actingActorId: string;
+  capability: "generation.publish";
+  eventId: string;
+  ownerOrganizerActorId: string;
+}
+
 export interface InitializeEventOperationsGenerationInput {
+  authorization: EventOperationsGenerationRunAuthorization;
   candidates: readonly EventOperationsCandidate[];
   capturedSnapshot: EventOperationsCapturedSnapshot;
   generation: EventOperationsGeneration;
@@ -185,6 +200,9 @@ export interface EventOperationsRepository {
   captureGenerationSnapshot(
     eventId: string,
   ): Promise<EventOperationsCapturedSnapshot>;
+  captureGenerationSnapshotAsOperator(
+    authorization: EventOperationsGenerationRunAuthorization,
+  ): Promise<EventOperationsCapturedSnapshot>;
   checkInAtomically(
     input: CreateEventOperationsCheckInInput,
   ): Promise<EventOperationsCheckIn>;
@@ -256,6 +274,7 @@ export interface EventOperationsRepository {
   publishGenerationAtomically(
     value: EventOperationsPublishedResult,
     organizerActorId: string,
+    authorization: EventOperationsGenerationPublishAuthorization,
   ): Promise<EventOperationsPublishedResult>;
   resetEventForSeed(eventId: string): Promise<void>;
   registerCanonicalParticipant(
@@ -267,6 +286,7 @@ export interface EventOperationsRepository {
   retryFailedGeneration(
     generationId: string,
     retriedAt: string,
+    authorization: EventOperationsGenerationRunAuthorization,
   ): Promise<EventOperationsGeneration>;
   saveConfiguration(
     value: EventOperationsConfiguration,

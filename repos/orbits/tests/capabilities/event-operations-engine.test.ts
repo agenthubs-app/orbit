@@ -1114,7 +1114,7 @@ test("a recovered lease fences the stale worker result", async () => {
   assert.equal(attempts[0]?.responseBytes, null);
 });
 
-test("event operations rejects organizer mutations from a different actor", async () => {
+test("memory generation authorization rejects delegates by default", async () => {
   const { engine } = harness();
   await assert.rejects(
     () =>
@@ -1122,7 +1122,60 @@ test("event operations rejects organizer mutations from a different actor", asyn
         actorId: "actor:not-organizer",
         capturedSnapshot: capturedSnapshot(participants()),
       }),
-    /Only the configured organizer/u,
+    /Event generation access is denied/u,
+  );
+});
+
+test("an authorized delegate creates an owner-held generation", async () => {
+  const configured = configuration();
+  const repository = createMemoryEventOperationsRepository({
+    canAuthorizeGeneration: ({ actingActorId, capability }) =>
+      actingActorId === "actor:operations" && capability === "generation.run",
+    configurations: [configured],
+  });
+  const engine = createEventOperationsEngine({
+    aiProvider: createAiProvider(),
+    now: () => "2026-08-02T09:00:00.000Z",
+    repository,
+  });
+  const generation = await engine.createGeneration({
+    actorId: "actor:operations",
+    capturedSnapshot: capturedSnapshot(participants(), configured),
+  });
+  assert.equal(generation.organizerActorId, ORGANIZER_ID);
+});
+
+test("a revoked delegate cannot replay an engine-level publication", async () => {
+  let authorized = true;
+  const configured = configuration();
+  const repository = createMemoryEventOperationsRepository({
+    canAuthorizeGeneration: ({ actingActorId }) =>
+      authorized && actingActorId === "actor:operations",
+    configurations: [configured],
+  });
+  const engine = createEventOperationsEngine({
+    aiProvider: createAiProvider(),
+    now: () => "2026-08-02T09:00:00.000Z",
+    repository,
+  });
+  const generation = await engine.createGeneration({
+    actorId: "actor:operations",
+    capturedSnapshot: capturedSnapshot(participants(), configured),
+  });
+  await runUntilTerminal(engine, generation.generationId, 8);
+  await engine.publishGeneration({
+    actorId: "actor:operations",
+    generationId: generation.generationId,
+  });
+
+  authorized = false;
+  await assert.rejects(
+    () =>
+      engine.publishGeneration({
+        actorId: "actor:operations",
+        generationId: generation.generationId,
+      }),
+    /Event generation access is denied/u,
   );
 });
 
