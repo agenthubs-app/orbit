@@ -208,7 +208,14 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
   );
 }
 
-type TimelineItem = { time: string; body: string; evidenceId?: string; muted?: boolean };
+type TimelineItem = {
+  time: string;
+  body: string;
+  evidenceId?: string;
+  muted?: boolean;
+  privacy?: "private" | "relationship_shared";
+  sourceLabel?: string;
+};
 
 function formatTimelineDate(value: string, t: Translate): string {
   const date = new Date(value);
@@ -229,7 +236,13 @@ function formatTimelineDate(value: string, t: Translate): string {
 function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const items: TimelineItem[] = (contact.notes ?? [])
     .filter((note) => note.body?.trim())
-    .map((note) => ({ time: note.createdAt, body: note.body, evidenceId: note.id }));
+    .map((note) => ({
+      time: note.createdAt,
+      body: note.body,
+      evidenceId: note.id,
+      privacy: note.privacy,
+      sourceLabel: note.sourceLabel,
+    }));
 
   return (
     <div className="card nc-card-pad">
@@ -239,6 +252,15 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
           <div className={`nc-tl-item${item.muted ? " is-muted" : ""}`} key={`${item.body}-${index}`} style={item.muted ? { paddingBottom: 0 } : undefined}>
             <time className="nc-tl-time mono" dateTime={item.time}>{formatTimelineDate(item.time, t)}</time>
             <div className="nc-tl-body" style={item.muted ? { color: "var(--text-3)" } : undefined}>{item.body}</div>
+            {item.privacy || item.sourceLabel ? (
+              <span className="nc-tl-src">
+                <Icon name="lock" size={13} />
+                {item.privacy === "private"
+                  ? t({ en: "Private to you", zh: "仅自己可见" })
+                  : t({ en: "Relationship shared", zh: "关系双方可见" })}
+                {item.sourceLabel ? ` · ${item.sourceLabel}` : ""}
+              </span>
+            ) : null}
             {item.evidenceId ? (
               <span className="nc-tl-src">
                 <Icon name="checkCircle" size={13} />

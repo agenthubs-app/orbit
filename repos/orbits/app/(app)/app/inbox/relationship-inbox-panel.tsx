@@ -314,12 +314,35 @@ function AlertsTab() {
     };
   }, [language]);
 
-  const dismiss = (id: string) =>
+  const persistNotificationState = (id: string, state: "read" | "ignored") =>
+    fetch(`/api/notifications/${encodeURIComponent(id)}/state`, {
+      body: JSON.stringify({ state }),
+      headers: { "content-type": "application/json" },
+      keepalive: true,
+      method: "POST",
+    });
+
+  const dismiss = (id: string) => {
     setDismissed((prev) => {
       const next = new Set(prev);
       next.add(id);
       return next;
     });
+    void persistNotificationState(id, "ignored").then((response) => {
+      if (response.ok) return;
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }).catch(() => {
+      setDismissed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    });
+  };
 
   if (state === "loading") {
     return <EmptyState hint={t({ en: "Loading alerts…", zh: "正在加载提醒…" })} icon="bell" title={t({ en: "Loading", zh: "加载中" })} />;
@@ -338,7 +361,7 @@ function AlertsTab() {
           <div className="ri-alert-eyebrow">{t({ en: "Reminders", zh: "跟进提醒" })}</div>
           {visibleReminders.map((alert) => (
             <div className={`ri-alert ri-alert-pri-${alert.priority}`} key={alert.id}>
-              <a className="ri-alert-main ri-alert-nav" href={alert.href}>
+              <a className="ri-alert-main ri-alert-nav" href={alert.href} onClick={() => { void persistNotificationState(alert.id, "read"); }}>
                 <div className="ri-alert-title">{alert.title}</div>
                 <div className="ri-alert-meta">
                   {[alert.contactName, alert.organization].filter(Boolean).join(" · ")}

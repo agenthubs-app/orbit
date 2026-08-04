@@ -332,6 +332,8 @@ function noteViews(
     body: displayText(note.body, language),
     createdAt: note.createdAt,
     id: note.evidenceIds[0] ?? note.noteId,
+    privacy: note.privacy,
+    sourceLabel: note.sourceLabel,
   }));
 
   if (sourceNotes.length > 0) {

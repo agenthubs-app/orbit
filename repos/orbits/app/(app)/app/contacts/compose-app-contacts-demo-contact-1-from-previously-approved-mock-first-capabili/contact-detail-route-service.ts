@@ -33,6 +33,10 @@ import { createLiveContactDetailTagStatusService } from "../../../../../features
 import type { LiveContactsGraphProvider } from "../../../../../features/contacts/live-service";
 import { createContactDetailTagStatusService } from "../../../../../features/contacts/service-factory";
 import { createConfiguredStorageContactGraphProvider } from "../../../../../features/contacts/storage/contact-live-record-provider";
+import {
+  createConfiguredEventRelationshipContactGraphReader,
+  type EventRelationshipContactGraphReader,
+} from "../../../../../features/contacts/storage/event-relationship-contact-reader";
 import type {
   ContactDetail,
   ContactDetailTagStatusPayload,
@@ -61,6 +65,7 @@ export interface AppContactDetailRouteInput {
   actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
+  eventRelationshipContactGraphReader?: EventRelationshipContactGraphReader | null;
   mode?: ModuleMode | string;
   scenario?: string | null;
 }
@@ -356,7 +361,67 @@ function contactProviderForGraph(input: {
     readContactGraph: () => input.graph,
     readContactGraphForContact: () => input.graph,
     readContactGraphForList: () => input.graph,
+    readContactDetailState: input.provider.readContactDetailState
+      ? (contactId, actorId) =>
+          input.provider.readContactDetailState!(contactId, actorId)
+      : undefined,
+    upsertContactDetailState: input.provider.upsertContactDetailState
+      ? (state) => input.provider.upsertContactDetailState!(state)
+      : undefined,
   };
+}
+
+function mergeFocusedContactGraphs(
+  primary: LocalRemoteContactGraph,
+  canonical: LocalRemoteContactGraph,
+): LocalRemoteContactGraph {
+  return {
+    contacts: Array.from(
+      new Map(
+        [...primary.contacts, ...canonical.contacts].map((item) => [item.id, item]),
+      ).values(),
+    ),
+    connections: Array.from(
+      new Map(
+        [...primary.connections, ...canonical.connections].map((item) => [item.id, item]),
+      ).values(),
+    ),
+    evidence: Array.from(
+      new Map(
+        [...primary.evidence, ...canonical.evidence].map((item) => [item.id, item]),
+      ).values(),
+    ),
+    generatedAt:
+      primary.generatedAt > canonical.generatedAt
+        ? primary.generatedAt
+        : canonical.generatedAt,
+  };
+}
+
+async function contactDetailCompositeProvider(input: {
+  actorId: string;
+  contactId: string;
+  eventRelationshipContactGraphReader?: EventRelationshipContactGraphReader | null;
+  provider: LiveContactsGraphProvider;
+}): Promise<LiveContactsGraphProvider> {
+  const graph = input.provider.readContactGraphForContact
+    ? await input.provider.readContactGraphForContact(
+        input.contactId,
+        input.actorId,
+      )
+    : await input.provider.readContactGraph(input.actorId);
+  if (graph.contacts.some((contact) => contact.id === input.contactId)) {
+    return contactProviderForGraph({ graph, provider: input.provider });
+  }
+  const canonical =
+    await input.eventRelationshipContactGraphReader?.readAcceptedContactGraph({
+      actorId: input.actorId,
+      contactId: input.contactId,
+    });
+  return contactProviderForGraph({
+    graph: canonical ? mergeFocusedContactGraphs(graph, canonical) : graph,
+    provider: input.provider,
+  });
 }
 
 function connectionProviderForGraph(input: {
@@ -387,17 +452,16 @@ async function resolveLiveRouteServicesFromGraph(input: {
   actorId: string;
   contactId: string;
   provider: LiveContactsGraphProvider;
+  eventRelationshipContactGraphReader?: EventRelationshipContactGraphReader | null;
 }): Promise<AppContactDetailRouteServices> {
-  const graph = input.provider.readContactGraphForContact
-    ? await input.provider.readContactGraphForContact(
-        input.contactId.trim(),
-        input.actorId,
-      )
-    : await input.provider.readContactGraph(input.actorId);
-  const contactProvider = contactProviderForGraph({
-    graph,
+  const contactProvider = await contactDetailCompositeProvider({
+    actorId: input.actorId,
+    contactId: input.contactId.trim(),
+    eventRelationshipContactGraphReader:
+      input.eventRelationshipContactGraphReader,
     provider: input.provider,
   });
+  const graph = await contactProvider.readContactGraph(input.actorId);
   const connectionProvider = connectionProviderForGraph({
     graph,
     provider: input.provider,
@@ -550,6 +614,7 @@ async function loadLiveAppContactDetailRoute(input: {
   actorId?: string | null;
   contactId: string;
   liveContactGraphProvider?: LiveContactsGraphProvider | null;
+  eventRelationshipContactGraphReader?: EventRelationshipContactGraphReader | null;
   scenario?: string | null;
 }): Promise<AppContactDetailRouteModel> {
   const actorId = input.actorId?.trim();
@@ -572,6 +637,10 @@ async function loadLiveAppContactDetailRoute(input: {
     actorId,
     contactId: input.contactId,
     provider,
+    eventRelationshipContactGraphReader:
+      input.eventRelationshipContactGraphReader === undefined
+        ? createConfiguredEventRelationshipContactGraphReader()
+        : input.eventRelationshipContactGraphReader,
   });
 
   return loadComposedContactDetailRoute({
@@ -586,6 +655,7 @@ export async function loadAppContactDetailRoute({
   actorId,
   contactId,
   liveContactGraphProvider,
+  eventRelationshipContactGraphReader,
   mode,
   scenario,
 }: AppContactDetailRouteInput): Promise<AppContactDetailRouteModel> {
@@ -598,6 +668,7 @@ export async function loadAppContactDetailRoute({
       actorId,
       contactId: normalizedContactId,
       liveContactGraphProvider,
+      eventRelationshipContactGraphReader,
       scenario,
     });
   }

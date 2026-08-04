@@ -56,6 +56,7 @@ export interface ChatKnownWorkflowContextReader {
 
 export interface ChatKnownWorkflowOrchestratorOptions {
   contextReader?: ChatKnownWorkflowContextReader;
+  legacyDeterministicPostEventFollowupEnabled?: boolean;
   now?: () => string;
   processOutboxAfterStart?: boolean;
   runtime?: AgentRuntimeService;
@@ -407,10 +408,14 @@ export function createChatKnownWorkflowOrchestrator(
       conversationResult: OrbitAgentConversationResult;
     }): Promise<ChatKnownWorkflowResponse> {
       const message = input.conversationInput.message?.trim() ?? "";
+      const legacyWorkflowEnabled =
+        options.legacyDeterministicPostEventFollowupEnabled ??
+        options.processOutboxAfterStart === true;
       if (
         !message ||
         !isPostEventFollowupIntent(message) ||
-        input.conversationResult.success === false
+        input.conversationResult.success === false ||
+        !legacyWorkflowEnabled
       ) {
         return {
           outcome: "not_applicable",

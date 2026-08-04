@@ -77,13 +77,18 @@ async function records(
   });
 }
 
-test("known workflow router resolves deterministic relationship workflows before planner fallback", () => {
-  const router = createOrbitKnownWorkflowRouter();
+test("known workflow router keeps the retired matchmaking trigger out of planner fallback", async () => {
+  const router = createOrbitKnownWorkflowRouter({ includeLegacyPostEventFollowup: true });
   assert.equal(router.find("event_ended")?.key, "post_event_followup_v1");
   assert.equal(router.find("event_in_24_hours")?.key, "pre_event_brief_v1");
-  assert.equal(
-    router.find("event_matchmaking_requested")?.key,
-    "event_matchmaking_v1",
+  const retired = router.find("event_matchmaking_requested");
+  assert.equal(retired?.key, "event_matchmaking_v1");
+  await assert.rejects(
+    () => retired!.run({}),
+    {
+      code: "LEGACY_MATCHMAKING_READ_ONLY",
+      message: /LEGACY_MATCHMAKING_READ_ONLY/,
+    },
   );
   assert.equal(router.find("general_business_question"), null);
 });
@@ -367,169 +372,25 @@ function participant(
   };
 }
 
-test("matchmaking requires mutual consent, supports manual slots, outcomes, and private aggregate metrics", async () => {
+test("legacy matchmaking workflow rejects before ranking or writing", async () => {
   const harness = createWorkflowHarness();
-  const workflow = createEventMatchmakingWorkflow(
-    harness.runtime,
-    harness.matchmaking,
-  );
-  const result = await workflow.run({
-    eventId: "event-match",
-    eventTitle: "AI Summit",
-    organizerActorId: "actor:organizer",
-    requester: participant("requester"),
-    candidates: [
-      participant("a", { offers: ["fundraising"] }),
-      participant("b"),
-      participant("c"),
-      participant("d"),
-    ],
-  });
-  assert.equal(result.artifact.matches.length, 3);
-  assert.ok(result.artifact.matches.every((match) => match.reasons.length > 0));
-  assert.ok(
-    result.artifact.matches.every(
-      (match) => match.contactDetailsDisclosed === false,
-    ),
-  );
-
-  const action = result.actions[0];
-  await harness.runtime.approveAction({
-    actionId: action.actionId,
-    actorLabel: "Requester",
-  });
-  await harness.runtime.processOutbox({ actionId: action.actionId });
-  const requestId = String(action.operations[0].payload.requestId);
-  const request = await harness.matchmaking.getRequest({
-    requestId,
-    actorId: "actor:requester",
-  });
-  assert.equal(request?.status, "awaiting_target_consent");
-  assert.equal(request?.contactDetailsDisclosed, false);
-  const otherWorkspace = createEventMatchmakingService({
-    store: harness.store,
-    workspaceId: "agent-workflow-other-workspace",
-  });
-  assert.equal(
-    await otherWorkspace.getRequest({
-      requestId,
-      actorId: "actor:requester",
-    }),
-    null,
-  );
+  const workflow = createEventMatchmakingWorkflow();
   await assert.rejects(
     () =>
-      harness.matchmaking.selectSlot({
-        requestId,
-        actorId: "actor:a",
-        slot: "2026-07-26T01:00:00.000Z",
-        now: "2026-07-25T02:00:00.000Z",
-      }),
-    /mutually consented/,
-  );
-
-  const accepted = await harness.matchmaking.respondToIntroduction({
-    requestId,
-    actorId: "actor:a",
-    accept: true,
-    now: "2026-07-25T02:00:00.000Z",
-  });
-  assert.equal(accepted.contactDetailsDisclosed, true);
-  await harness.matchmaking.proposeSlots({
-    requestId,
-    actorId: "actor:requester",
-    slots: ["2026-07-26T02:00:00.000Z"],
-    now: "2026-07-25T02:01:00.000Z",
-  });
-  await harness.matchmaking.selectSlot({
-    requestId,
-    actorId: "actor:a",
-    slot: "2026-07-26T02:00:00.000Z",
-    now: "2026-07-25T02:02:00.000Z",
-  });
-  await harness.matchmaking.recordOutcome({
-    requestId,
-    actorId: "actor:requester",
-    outcome: "met",
-    now: "2026-07-26T03:00:00.000Z",
-  });
-  const completed = await harness.matchmaking.recordOutcome({
-    requestId,
-    actorId: "actor:a",
-    outcome: "followup_recorded",
-    now: "2026-07-27T03:00:00.000Z",
-  });
-  assert.equal(completed.status, "followup_recorded");
-
-  const suppressed = await harness.matchmaking.organizerMetrics({
-    eventId: "event-match",
-    actorId: "actor:organizer",
-  });
-  assert.equal(suppressed.suppressed, true);
-  assert.equal(suppressed.counts.requests, 0);
-  assert.equal(suppressed.privateMemoIncluded, false);
-  assert.equal(suppressed.relationshipHistoryIncluded, false);
-  assert.equal(suppressed.privateFollowupIncluded, false);
-
-  await assert.rejects(
-    () =>
-      harness.matchmaking.respondToIntroduction({
-        requestId,
-        actorId: "actor:attacker",
-        accept: false,
-        now: "2026-07-27T03:01:00.000Z",
-      }),
-    /not accessible/,
-  );
-  await assert.rejects(
-    () =>
-      harness.matchmaking.organizerMetrics({
+      workflow.run({
         eventId: "event-match",
-        actorId: "actor:attacker",
+        eventTitle: "AI Summit",
+        organizerActorId: "actor:organizer",
+        requester: participant("requester"),
+        candidates: [participant("a"), participant("b")],
       }),
-    /event organizer/,
+    {
+      code: "LEGACY_MATCHMAKING_READ_ONLY",
+      message: /LEGACY_MATCHMAKING_READ_ONLY/,
+    },
   );
-
-  for (let index = 1; index <= 5; index += 1) {
-    await harness.matchmaking.createIntroductionRequest({
-      requestId: `duplicate-actor-request-${index}`,
-      eventId: "event-duplicate-cohort",
-      actorId: "actor:duplicate-requester",
-      requesterParticipantId: `duplicate-participant-${index}`,
-      requesterActorId: "actor:duplicate-requester",
-      targetParticipantId: `duplicate-target-${index}`,
-      targetActorId: `actor:duplicate-target-${index}`,
-      organizerActorId: "actor:organizer",
-      now: `2026-07-25T0${index}:00:00.000Z`,
-    });
-  }
-  const duplicateCohort = await harness.matchmaking.organizerMetrics({
-    eventId: "event-duplicate-cohort",
-    actorId: "actor:organizer",
-  });
-  assert.equal(duplicateCohort.suppressed, true);
-  assert.equal(duplicateCohort.counts.requests, 0);
-
-  for (let index = 2; index <= 5; index += 1) {
-    await harness.matchmaking.createIntroductionRequest({
-      requestId: `request-${index}`,
-      eventId: "event-match",
-      actorId: `actor:requester-${index}`,
-      requesterParticipantId: `requester-${index}`,
-      requesterActorId: `actor:requester-${index}`,
-      targetParticipantId: `target-${index}`,
-      targetActorId: `actor:target-${index}`,
-      organizerActorId: "actor:organizer",
-      now: `2026-07-25T0${index}:00:00.000Z`,
-    });
-  }
-  const aggregate = await harness.matchmaking.organizerMetrics({
-    eventId: "event-match",
-    actorId: "actor:organizer",
-  });
-  assert.equal(aggregate.suppressed, false);
-  assert.equal(aggregate.counts.requests, 5);
-  assert.equal(JSON.stringify(aggregate).includes("memo"), false);
+  assert.deepEqual(await records(harness, "matchmakingIntroductionRequests"), []);
+  assert.deepEqual(await records(harness, "agentRuns"), []);
 });
 
 test("voice memo validates privacy bounds and always falls back to typed note on ASR failure", async () => {

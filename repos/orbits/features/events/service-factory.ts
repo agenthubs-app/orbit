@@ -21,7 +21,6 @@ import type { EventGoalAndReadinessService } from "./goal-readiness/contract";
 import { createMockPostEventContactReviewService } from "./post-event-review/mock-service";
 import { createLivePostEventContactReviewService } from "./post-event-review/live-service";
 import type { PostEventContactReviewService } from "./post-event-review/contract";
-import { createConfiguredGeneratedPostEventContactReviewProvider } from "./post-event-review/storage/generated-post-event-review-live-record-provider";
 import { createConfiguredGeneratedEventEncounterNoteProvider } from "./encounter-note/storage/generated-encounter-note-live-record-provider";
 import { createConfiguredGeneratedWantConnectProvider } from "./want-connect/storage/generated-want-connect-live-record-provider";
 import {
@@ -129,7 +128,10 @@ export const postEventContactReviewServiceFactory =
         }),
       live: () =>
         createLivePostEventContactReviewService({
-          provider: createConfiguredGeneratedPostEventContactReviewProvider(),
+          // Live post-event prose is fail-closed until a real summary provider
+          // and worker persist a reviewed result. Generated attendee fixtures
+          // must never be presented as an AI summary or follow-up suggestion.
+          provider: null,
         }),
       mock: () => createMockPostEventContactReviewService(),
     },

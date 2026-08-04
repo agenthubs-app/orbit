@@ -44,6 +44,8 @@ export interface OrbitContactNoteView {
   body: string;
   createdAt: string;
   id: string;
+  privacy?: "private" | "relationship_shared";
+  sourceLabel?: string;
 }
 
 export interface OrbitContactPublicProfileView {

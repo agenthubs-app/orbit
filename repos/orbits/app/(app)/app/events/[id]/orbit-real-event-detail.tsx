@@ -12,7 +12,6 @@ import { Avatar, gradientFromString, Icon, StatusBadge } from "../../orbit-refer
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../../orbit-z";
 import { EventCover } from "../orbit-event-cover";
-import { OrbitPostEventFollowupCapture } from "./orbit-post-event-followup-capture";
 import { OrbitEventMatchmaking } from "./orbit-event-matchmaking";
 
 type Translate = (copy: { en: string; zh: string }) => string;
@@ -293,16 +292,6 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
         <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
-
-      {event.status === "ended" && canSeeAttendees ? (
-        <OrbitPostEventFollowupCapture
-          attendeeNames={event.stats.attendees.map(
-            (attendee) => attendee.name,
-          )}
-          eventId={event.id}
-          eventTitle={event.name}
-        />
-      ) : null}
 
       <OrbitEventMatchmaking
         authenticated={event.stats.authed}

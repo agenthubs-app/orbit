@@ -88,6 +88,11 @@ function storedNote(value: unknown): LiveContactDetailStoredNote | null {
     body: value.body,
     authorLabel: value.authorLabel,
     createdAt: value.createdAt,
+    privacy:
+      value.privacy === "private" || value.privacy === "relationship_shared"
+        ? value.privacy
+        : undefined,
+    sourceLabel: optionalString(value.sourceLabel),
   };
 }
 

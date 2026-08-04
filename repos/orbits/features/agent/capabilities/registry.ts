@@ -309,9 +309,9 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
   }),
   runtimeAction({
     executorKey: AGENT_RUNTIME_EXECUTOR_KEYS[9],
-    title: "Create introduction request",
+    title: "Retired introduction request boundary",
     description:
-      "Create a consent-preserving introduction request without exposing contact details.",
+      "Fail closed for queued legacy introduction actions; new contact requests use event operations.",
     domains: ["agent", "events", "matchmaking"],
     riskLevel: "write",
     requiredPermissions: [],
@@ -337,9 +337,9 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
   }),
   workflowServiceAction({
     id: "matchmaking.acceptIntroductionRequest",
-    title: "Respond to introduction request",
+    title: "Retired introduction response boundary",
     description:
-      "Accept or decline an introduction while preserving mutual consent.",
+      "Legacy introduction responses are read-only; event operations owns current contact-request consent.",
     domains: ["agent", "events", "matchmaking"],
     requiredPermissions: [],
     operationTypes: ["accept_intro_request"],
@@ -347,9 +347,9 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
   }),
   workflowServiceAction({
     id: "matchmaking.proposeMeetingSlots",
-    title: "Propose meeting slots",
+    title: "Retired matchmaking slot boundary",
     description:
-      "Propose meeting times only after both sides consent to an introduction.",
+      "Legacy matchmaking slots are read-only; accepted event contacts use the appointment aggregate.",
     domains: ["agent", "events", "matchmaking"],
     requiredPermissions: [],
     operationTypes: ["propose_meeting_slots"],
@@ -390,9 +390,9 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
   }),
   workflowCapability({
     workflowKey: AGENT_WORKFLOW_KEYS[2],
-    title: "Event matchmaking",
+    title: "Retired event matchmaking boundary",
     description:
-      "Coordinate consent-based introductions and meeting slots for an event.",
+      "Intercept retired matchmaking triggers and fail closed without ranking, fallback, or writes.",
     domains: ["agent", "events", "matchmaking"],
     operationTypes: [
       "create_intro_request",

@@ -74,6 +74,7 @@ test("chat asks for missing confirmed meeting content and creates no action", as
     "请创建会后跟进。联系人：Kenji Watanabe。活动：Climate founders dinner。";
   const response = await createChatKnownWorkflowOrchestrator({
     contextReader: contextReader(),
+    legacyDeterministicPostEventFollowupEnabled: true,
     now: () => "2026-07-26T00:00:00.000Z",
     runtime,
   }).handle({
@@ -96,6 +97,7 @@ test("explicit verified chat command starts the known post-event workflow in the
     "请创建会后跟进。联系人：Kenji Watanabe。活动：Climate founders dinner。会面内容：Kenji 希望下周继续讨论储能试点，我答应发送合作案例。";
   const response = await createChatKnownWorkflowOrchestrator({
     contextReader: contextReader(),
+    legacyDeterministicPostEventFollowupEnabled: true,
     now: () => "2026-07-26T00:00:00.000Z",
     runtime,
   }).handle({
@@ -130,12 +132,30 @@ test("explicit verified chat command starts the known post-event workflow in the
   }
 });
 
+test("live-default chat boundary does not trigger the deterministic post-event workflow", async () => {
+  const runtime = runtimeHarness();
+  const message =
+    "请创建会后跟进。联系人：Kenji Watanabe。活动：Climate founders dinner。会面内容：Kenji 希望下周继续讨论储能试点，我答应发送合作案例。";
+  const response = await createChatKnownWorkflowOrchestrator({
+    contextReader: contextReader(),
+    now: () => "2026-07-26T00:00:00.000Z",
+    runtime,
+  }).handle({
+    conversationInput: { locale: "zh", message },
+    conversationResult: await conversationResult(message),
+  });
+
+  assert.equal(response.outcome, "not_applicable");
+  assert.equal((await runtime.listActions({})).length, 0);
+});
+
 test("chat can infer one event from authoritative attendee context", async () => {
   const runtime = runtimeHarness();
   const message =
     "请创建会后跟进。联系人：Kenji Watanabe。会面内容：我们确认了下周三继续评审储能试点方案。";
   const response = await createChatKnownWorkflowOrchestrator({
     contextReader: contextReader({ eventMatchesContact: true }),
+    legacyDeterministicPostEventFollowupEnabled: true,
     now: () => "2026-07-26T00:00:00.000Z",
     runtime,
   }).handle({
@@ -171,6 +191,7 @@ test("ambiguous authoritative events cause clarification without writes", async 
         },
       ],
     }),
+    legacyDeterministicPostEventFollowupEnabled: true,
     now: () => "2026-07-26T00:00:00.000Z",
     runtime,
   }).handle({

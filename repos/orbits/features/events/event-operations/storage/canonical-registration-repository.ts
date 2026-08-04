@@ -18,6 +18,7 @@ import {
   eventParticipantAnswersEqual,
   normalizeEventParticipantAnswers,
 } from "../participant";
+import { normalizeProfileResponseForStorage } from "../profile-response-policy";
 import type { EventOperationsRepository } from "../repository";
 import type {
   EventOperationsPostgresRuntime,
@@ -442,7 +443,8 @@ async function appendRegistrationVersion(input: {
     );
     if (input.interviewResponses?.length) {
       const values: unknown[] = [];
-      const rows = input.interviewResponses.map((response, index) => {
+      const rows = input.interviewResponses.map((rawResponse, index) => {
+        const response = normalizeProfileResponseForStorage(rawResponse);
         const offset = index * 11;
         values.push(
           input.workspaceId,

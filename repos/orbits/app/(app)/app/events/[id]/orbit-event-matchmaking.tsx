@@ -1,13 +1,174 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  EventMatchmakingRequestView,
-  EventMatchmakingWorkspace,
-} from "../../../../../features/events/matchmaking/context-service";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Icon } from "../../orbit-reference-primitives";
+import { OrbitAppointmentNegotiation } from "./orbit-appointment-negotiation";
+import { OrbitEncounterCapture } from "./orbit-encounter-capture";
+import { OrbitPostEventCenter } from "./orbit-post-event-center";
+
+type Participant = {
+  company: string | null;
+  displayName: string;
+  experienceHighlight: string | null;
+  industry: string | null;
+  languages: readonly string[];
+  needs: readonly string[];
+  offers: readonly string[];
+  participantId: string;
+  role: string | null;
+  topics: readonly string[];
+};
+
+type ContactRequest = {
+  contactId: string | null;
+  requestId: string;
+  requesterParticipantId: string;
+  status: "awaiting_target_consent" | "accepted" | "declined";
+  targetParticipantId: string;
+};
+
+type Recommendation = {
+  icebreakers: readonly string[];
+  memberHint: string;
+  reasons: readonly string[];
+  score: number;
+  targetParticipantId: string;
+};
+
+type Table = {
+  icebreakers: readonly string[];
+  memberPrompts: Readonly<Record<string, readonly string[]>>;
+  memberRationales: Readonly<Record<string, string>>;
+  members: readonly { participantId: string; seat: string }[];
+  rationale: string;
+  tableNumber: number;
+  theme: string;
+};
+
+type OperationsWorkspace = {
+  configuration: {
+    eventEndsAt: string;
+    profileEditDeadlineAt: string;
+    resultsAvailableAt: string;
+  };
+  contactRequests: readonly ContactRequest[];
+  directory: readonly Participant[];
+  me: Participant;
+  recommendations: {
+    noMatchReason: string | null;
+    recommendations: readonly Recommendation[];
+    sourceParticipantId: string;
+  } | null;
+  resultsState: "locked" | "not_generated" | "processing" | "failed" | "ready";
+  roundOneTable: Table | null;
+  roundTwoTable: Table | null;
+};
+
+function CandidateContactAction({
+  busy,
+  participantId,
+  request,
+  onRequest,
+}: {
+  busy: boolean;
+  participantId: string;
+  request: ContactRequest | null;
+  onRequest: (participantId: string) => Promise<void>;
+}) {
+  const { t } = useOrbitLanguage();
+
+  if (!request) {
+    return (
+      <button
+        className="btn btn-primary btn-sm"
+        data-contact-request-state="none"
+        disabled={busy}
+        onClick={() => void onRequest(participantId)}
+        type="button"
+      >
+        {t({ en: "Request business card", zh: "申请交换名片" })}
+      </button>
+    );
+  }
+
+  if (request.status === "awaiting_target_consent") {
+    return (
+      <button
+        aria-live="polite"
+        className="btn btn-ghost btn-sm"
+        data-contact-request-state="awaiting_target_consent"
+        disabled
+        type="button"
+      >
+        {t({ en: "Waiting for their consent", zh: "等待对方同意" })}
+      </button>
+    );
+  }
+
+  if (request.status === "accepted") {
+    return (
+      <a
+        className="btn btn-primary btn-sm"
+        data-contact-request-state="accepted"
+        href={request.contactId
+          ? `/app/contacts/${encodeURIComponent(request.contactId)}`
+          : "/app/contacts"}
+      >
+        {t({ en: "Open contact", zh: "打开联系人" })}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      className="btn btn-ghost btn-sm"
+      data-contact-request-state="declined"
+      disabled
+      type="button"
+    >
+      {t({ en: "Request declined", zh: "对方暂不交换" })}
+    </button>
+  );
+}
+
+type ParticipantDetail = {
+  company: string | null;
+  contactRequest: {
+    contactId: string | null;
+    direction: "incoming" | "outgoing" | null;
+    requestId: string | null;
+    status: "none" | "awaiting_target_consent" | "accepted" | "declined";
+  };
+  displayName: string;
+  industry: string | null;
+  participantId: string;
+  placements: readonly {
+    groupingRationale: string | null;
+    icebreakers: readonly string[];
+    roundNumber: 1 | 2;
+    seat: string;
+    tableNumber: number;
+    theme: string;
+  }[];
+  profileVersion: number | null;
+  recommendation: {
+    icebreakers: readonly string[];
+    memberHint: string;
+    reasons: readonly string[];
+    score: number;
+  } | null;
+  responses: readonly {
+    answer: string;
+    fieldKey: string;
+    label: { en: string; zh: string };
+    prompt: string | null;
+  }[];
+  role: string | null;
+  sourceContext: "current_profile" | "published_generation";
+  topics: readonly string[];
+};
 
 function messageFrom(value: unknown): string {
   if (
@@ -24,248 +185,161 @@ function messageFrom(value: unknown): string {
   return "请求没有完成，请稍后再试。";
 }
 
-function RequestCard({
-  onChanged,
-  request,
-  setError,
-  setWorking,
-  working,
+function formatGate(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function ParticipantDetailPanel({
+  busy,
+  detail,
+  onClose,
+  onRequest,
+  onRespond,
+  eventId,
 }: {
-  onChanged: () => Promise<void>;
-  request: EventMatchmakingRequestView;
-  setError: (value: string) => void;
-  setWorking: (value: string | null) => void;
-  working: string | null;
+  busy: boolean;
+  detail: ParticipantDetail;
+  onClose: () => void;
+  onRequest: (participantId: string) => Promise<void>;
+  onRespond: (requestId: string, accept: boolean) => Promise<void>;
+  eventId: string;
 }) {
-  const { t } = useOrbitLanguage();
-  const [slot, setSlot] = useState("");
-  const busy = working === request.requestId;
-
-  const mutate = useCallback(
-    async (url: string, init: RequestInit) => {
-      setError("");
-      setWorking(request.requestId);
-      try {
-        const response = await fetch(url, {
-          ...init,
-          headers: {
-            "content-type": "application/json",
-            ...init.headers,
-          },
-        });
-        const body = (await response.json().catch(() => ({}))) as unknown;
-        if (!response.ok) throw new Error(messageFrom(body));
-        await onChanged();
-      } catch (error) {
-        setError(error instanceof Error ? error.message : messageFrom(error));
-      } finally {
-        setWorking(null);
-      }
-    },
-    [onChanged, request.requestId, setError, setWorking],
-  );
-
-  const other = request.otherParticipant;
-  const isIncoming = request.direction === "incoming";
+  const { language, t } = useOrbitLanguage();
+  const contact = detail.contactRequest;
 
   return (
-    <article
-      className="card-flat"
-      data-matchmaking-request={request.requestId}
-      style={{ display: "grid", gap: 12, padding: 14 }}
+    <div
+      aria-label={t({ en: "Participant detail", zh: "参会者详情" })}
+      aria-modal="true"
+      data-event-participant-detail={detail.participantId}
+      onClick={onClose}
+      role="dialog"
+      style={{
+        alignItems: "center",
+        background: "color-mix(in srgb, var(--ink) 38%, transparent)",
+        display: "flex",
+        inset: 0,
+        justifyContent: "center",
+        padding: 20,
+        position: "fixed",
+        zIndex: "var(--z-modal)",
+      }}
     >
-      <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
-        <div>
-          <strong style={{ color: "var(--ink)", fontSize: 15 }}>
-            {other.displayName}
-          </strong>
-          {other.organization ? (
-            <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
-              {other.organization}
-            </div>
-          ) : null}
-        </div>
-        <span className="chip" style={{ fontSize: 12 }}>
-          {isIncoming
-            ? t({ en: "Incoming", zh: "对方申请" })
-            : t({ en: "Your request", zh: "我的申请" })}
-        </span>
-      </div>
-
-      {request.status === "awaiting_target_consent" && isIncoming ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={busy}
-            onClick={() =>
-              void mutate(
-                `/api/agent/matchmaking/requests/${encodeURIComponent(request.requestId)}/respond`,
-                { method: "POST", body: JSON.stringify({ accept: true }) },
-              )
-            }
-            type="button"
-          >
-            {t({ en: "Accept introduction", zh: "同意认识" })}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            disabled={busy}
-            onClick={() =>
-              void mutate(
-                `/api/agent/matchmaking/requests/${encodeURIComponent(request.requestId)}/respond`,
-                { method: "POST", body: JSON.stringify({ accept: false }) },
-              )
-            }
-            type="button"
-          >
-            {t({ en: "Decline", zh: "暂不认识" })}
-          </button>
-        </div>
-      ) : null}
-
-      {request.status === "awaiting_target_consent" && !isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          {t({
-            en: "Waiting for the other participant. No contact details have been shared.",
-            zh: "等待对方决定，联系方式尚未披露。",
-          })}
-        </p>
-      ) : null}
-
-      {request.status === "accepted" && !isIncoming ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          <label
-            htmlFor={`match-slot-${request.requestId}`}
-            style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 600 }}
-          >
-            {t({
-              en: "Calendar is not connected. Propose a time manually",
-              zh: "日历暂未连接，请手动提议时间",
-            })}
-          </label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <input
-              className="field"
-              id={`match-slot-${request.requestId}`}
-              onChange={(event) => setSlot(event.target.value)}
-              style={{ flex: "1 1 210px" }}
-              type="datetime-local"
-              value={slot}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={busy || !slot}
-              onClick={() => {
-                const parsed = new Date(slot);
-                if (!Number.isFinite(parsed.getTime())) return;
-                void mutate(
-                  `/api/agent/matchmaking/requests/${encodeURIComponent(request.requestId)}/slots`,
-                  {
-                    method: "POST",
-                    body: JSON.stringify({ slots: [parsed.toISOString()] }),
-                  },
-                );
-              }}
-              type="button"
-            >
-              {t({ en: "Propose time", zh: "提议时间" })}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {request.status === "accepted" && isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          {t({
-            en: "You both agreed. Waiting for the requester to propose a time.",
-            zh: "双方已经同意，等待对方提议时间。",
-          })}
-        </p>
-      ) : null}
-
-      {request.status === "scheduling" && isIncoming ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "var(--text-2)", fontSize: 13 }}>
-            {t({ en: "Choose one proposed time", zh: "选择一个合适时间" })}
-          </span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {request.proposedSlots.map((value) => (
-              <button
-                className="btn btn-ghost btn-sm"
-                disabled={busy}
-                key={value}
-                onClick={() =>
-                  void mutate(
-                    `/api/agent/matchmaking/requests/${encodeURIComponent(request.requestId)}/slots`,
-                    {
-                      method: "PATCH",
-                      body: JSON.stringify({ slot: value }),
-                    },
-                  )
-                }
-                type="button"
-              >
-                {new Intl.DateTimeFormat(undefined, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(value))}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {request.status === "scheduling" && !isIncoming ? (
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          {t({
-            en: "Time proposed. Waiting for the other participant to choose.",
-            zh: "时间已经提议，等待对方选择。",
-          })}
-        </p>
-      ) : null}
-
-      {request.status === "scheduled" ? (
-        <p style={{ color: "var(--success)", fontSize: 14, margin: 0 }}>
-          {t({ en: "Confirmed for", zh: "已确认时间" })}{" "}
-          {request.selectedSlot
-            ? new Intl.DateTimeFormat(undefined, {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(request.selectedSlot))
-            : null}
-        </p>
-      ) : null}
-
-      {request.status === "declined" ? (
-        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
-          {t({
-            en: "This introduction was declined. No contact details were shared.",
-            zh: "本次介绍未达成，联系方式没有披露。",
-          })}
-        </p>
-      ) : null}
-
-      <div
+      <article
+        className="card"
+        onClick={(event) => event.stopPropagation()}
         style={{
-          alignItems: "center",
-          color: "var(--text-3)",
-          display: "flex",
-          fontSize: 12,
-          gap: 8,
+          display: "grid",
+          gap: 18,
+          maxHeight: "min(760px, calc(100dvh - 40px))",
+          maxWidth: 720,
+          overflow: "auto",
+          padding: 20,
+          width: "100%",
         }}
       >
-        <Icon name={request.contactDetailsDisclosed ? "check" : "lock"} size={13} />
-        {request.contactDetailsDisclosed
-          ? t({
-              en: "Mutual consent recorded; Orbit still sends no message automatically.",
-              zh: "已记录双方同意；Orbit 仍不会自动发送消息。",
-            })
-          : t({
-              en: "Contact details stay hidden until mutual consent.",
-              zh: "双方同意前，联系方式保持隐藏。",
-            })}
-      </div>
-    </article>
+        <header style={{ display: "flex", gap: 12, justifyContent: "space-between" }}>
+          <div>
+            <div className="eyebrow">
+              {detail.sourceContext === "published_generation"
+                ? t({ en: "PUBLISHED EVENT PROFILE", zh: "已发布活动画像" })
+                : t({ en: "EVENT PROFILE", zh: "活动画像" })}
+            </div>
+            <h3 className="h-section" style={{ margin: "4px 0 0" }}>
+              {detail.displayName}
+            </h3>
+            <p style={{ color: "var(--text-3)", fontSize: 13, margin: "4px 0 0" }}>
+              {[detail.role, detail.company, detail.industry].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <button aria-label={t({ en: "Close", zh: "关闭" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
+            ×
+          </button>
+        </header>
+
+        {detail.recommendation ? (
+          <section className="card-flat" style={{ display: "grid", gap: 9, padding: 14 }}>
+            <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
+              <strong>{t({ en: "Why Orbit recommends this person", zh: "Orbit 为什么推荐 TA" })}</strong>
+              <span className="chip">{detail.recommendation.score}</span>
+            </div>
+            <ul style={{ color: "var(--text-2)", fontSize: 13, margin: 0, paddingLeft: 18 }}>
+              {detail.recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+            </ul>
+            {detail.recommendation.icebreakers.length ? (
+              <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>
+                <strong>{t({ en: "Opening", zh: "开场建议" })}：</strong>{detail.recommendation.icebreakers.join(" · ")}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {detail.placements.length ? (
+          <section style={{ display: "grid", gap: 8 }}>
+            <strong>{t({ en: "Table and seat", zh: "分桌与座位" })}</strong>
+            {detail.placements.map((placement) => (
+              <div className="card-flat" key={`${placement.roundNumber}-${placement.tableNumber}`} style={{ display: "grid", gap: 6, padding: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  <span className="chip">{t({ en: `Round ${placement.roundNumber}`, zh: `第 ${placement.roundNumber} 轮` })}</span>
+                  <span className="chip">{t({ en: `Table ${placement.tableNumber}`, zh: `${placement.tableNumber} 号桌` })}</span>
+                  <span className="chip">{t({ en: `Seat ${placement.seat}`, zh: `座位 ${placement.seat}` })}</span>
+                </div>
+                <strong style={{ fontSize: 14 }}>{placement.theme}</strong>
+                {placement.groupingRationale ? <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>{placement.groupingRationale}</p> : null}
+                {placement.icebreakers.length ? <p style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}>{placement.icebreakers.join(" · ")}</p> : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        <section style={{ display: "grid", gap: 8 }}>
+          <strong>{t({ en: "Registration profile", zh: "报名画像" })}</strong>
+          {detail.responses.length ? detail.responses.map((response) => (
+            <div key={response.fieldKey} style={{ borderTop: "1px solid var(--border)", paddingTop: 9 }}>
+              <div style={{ color: "var(--text-3)", fontSize: 12 }}>{response.label[language]}</div>
+              {response.prompt ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>{response.prompt}</div> : null}
+              <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.55, margin: "5px 0 0" }}>{response.answer}</p>
+            </div>
+          )) : <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "No shareable profile answers.", zh: "暂无可展示的画像回答。" })}</p>}
+        </section>
+
+        <footer style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {contact.status === "none" ? (
+            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId)} type="button">
+              {t({ en: "Request business card", zh: "申请交换名片" })}
+            </button>
+          ) : null}
+          {contact.status === "awaiting_target_consent" && contact.direction === "incoming" && contact.requestId ? (
+            <>
+              <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, true)} type="button">
+                {t({ en: "Accept", zh: "同意交换" })}
+              </button>
+              <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, false)} type="button">
+                {t({ en: "Decline", zh: "暂不交换" })}
+              </button>
+            </>
+          ) : null}
+          {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" ? <span style={{ color: "var(--text-2)", fontSize: 13 }}>{t({ en: "Waiting for consent. Contact details remain hidden.", zh: "等待对方同意，联系方式仍保持隐藏。" })}</span> : null}
+          {contact.status === "accepted" ? <a className="btn btn-primary btn-sm" href={contact.contactId ? `/app/contacts/${encodeURIComponent(contact.contactId)}` : "/app/contacts"}>{t({ en: "Open contact", zh: "打开联系人" })}</a> : null}
+          {contact.status === "declined" ? <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was declined.", zh: "这次名片申请已被婉拒。" })}</span> : null}
+        </footer>
+        {contact.status === "accepted" && contact.contactId && contact.requestId ? (
+          <>
+            <OrbitEncounterCapture contactId={contact.contactId} eventId={eventId} />
+            <OrbitAppointmentNegotiation
+              contactId={contact.contactId}
+              eventContactRequestId={contact.requestId}
+              eventId={eventId}
+            />
+          </>
+        ) : null}
+      </article>
+    </div>
   );
 }
 
@@ -279,16 +353,17 @@ export function OrbitEventMatchmaking({
   registrationOpen?: boolean;
 }) {
   const { t } = useOrbitLanguage();
-  const [workspace, setWorkspace] =
-    useState<EventMatchmakingWorkspace | null>(null);
+  const [workspace, setWorkspace] = useState<OperationsWorkspace | null>(null);
+  const [detail, setDetail] = useState<ParticipantDetail | null>(null);
   const [loading, setLoading] = useState(authenticated);
   const [unauthorized, setUnauthorized] = useState(!authenticated);
   const [error, setError] = useState("");
   const [working, setWorking] = useState<string | null>(null);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const visibleError = error
     ? t({
-        en: "Matchmaking data is not available for this event yet.",
-        zh: "当前活动暂时没有可用的撮合数据。",
+        en: "The published event operations data is temporarily unavailable.",
+        zh: "当前活动的已发布运营数据暂时不可用。",
       })
     : "";
 
@@ -298,228 +373,151 @@ export function OrbitEventMatchmaking({
       setWorkspace(null);
       return;
     }
-
-    const response = await fetch(
-      `/api/events/${encodeURIComponent(eventId)}/matchmaking`,
-      { cache: "no-store" },
-    );
-    if (response.status === 401) {
+    const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/operations`, { cache: "no-store" });
+    if (response.status === 401 || response.status === 403) {
       setUnauthorized(true);
       setWorkspace(null);
       return;
     }
-    const body = (await response.json().catch(() => ({}))) as {
-      data?: EventMatchmakingWorkspace;
-    };
+    const body = (await response.json().catch(() => ({}))) as { data?: OperationsWorkspace };
     if (!response.ok || !body.data) throw new Error(messageFrom(body));
     setUnauthorized(false);
     setWorkspace(body.data);
   }, [authenticated, eventId]);
 
   useEffect(() => {
-    if (!authenticated) {
-      setLoading(false);
-      setUnauthorized(true);
-      setWorkspace(null);
-      setError("");
-      return;
-    }
-
     let active = true;
-    setLoading(true);
-    void load()
-      .catch((loadError) => {
-        if (active) {
-          setError(
-            loadError instanceof Error ? loadError.message : messageFrom(loadError),
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [load]);
+    setLoading(authenticated);
+    setError("");
+    void load().catch((loadError) => {
+      if (active) setError(loadError instanceof Error ? loadError.message : messageFrom(loadError));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [authenticated, load]);
 
-  async function requestIntroduction(targetParticipantId: string) {
-    setWorking(targetParticipantId);
+  const participants = useMemo(() => {
+    const byId = new Map(workspace?.directory.map((participant) => [participant.participantId, participant]) ?? []);
+    return workspace?.recommendations?.recommendations.map((recommendation) => ({
+      participant: byId.get(recommendation.targetParticipantId) ?? null,
+      recommendation,
+    })) ?? [];
+  }, [workspace]);
+
+  async function openParticipant(participantId: string) {
+    setWorking(`detail:${participantId}`);
     setError("");
     try {
-      const response = await fetch(
-        `/api/events/${encodeURIComponent(eventId)}/matchmaking`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ targetParticipantId }),
-        },
-      );
-      const body = (await response.json().catch(() => ({}))) as {
-        data?: EventMatchmakingWorkspace;
-      };
+      const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/operations/participants/${encodeURIComponent(participantId)}`, { cache: "no-store" });
+      const body = (await response.json().catch(() => ({}))) as { data?: ParticipantDetail };
       if (!response.ok || !body.data) throw new Error(messageFrom(body));
-      setWorkspace(body.data);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : messageFrom(requestError),
-      );
+      setDetail(body.data);
+    } catch (detailError) {
+      setError(detailError instanceof Error ? detailError.message : messageFrom(detailError));
     } finally {
       setWorking(null);
     }
   }
 
+  async function mutateContact(url: string, body: object, key: string) {
+    setWorking(key);
+    setError("");
+    try {
+      const response = await fetch(url, {
+        body: JSON.stringify(body),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const value = (await response.json().catch(() => ({}))) as unknown;
+      if (!response.ok) throw new Error(messageFrom(value));
+      await load();
+      if (detail) await openParticipant(detail.participantId);
+    } catch (mutationError) {
+      setError(mutationError instanceof Error ? mutationError.message : messageFrom(mutationError));
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  const requestContact = (participantId: string) => mutateContact(
+    `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests`,
+    { targetParticipantId: participantId },
+    `request:${participantId}`,
+  );
+  const respondContact = (requestId: string, accept: boolean) => mutateContact(
+    `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(requestId)}/respond`,
+    { accept },
+    `respond:${requestId}`,
+  );
+
   return (
-    <section
-      aria-labelledby="event-matchmaking-title"
-      className="card"
-      data-event-matchmaking
-      style={{ display: "grid", gap: 16, padding: 16 }}
-    >
+    <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking style={{ display: "grid", gap: 16, padding: 16 }}>
       <div style={{ display: "grid", gap: 4 }}>
-        <span className="eyebrow">ORBIT MATCH</span>
-        <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>
-          {t({ en: "People worth meeting", zh: "值得认识的人" })}
-        </h3>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          {workspace?.state === "registration_required" && !registrationOpen
-            ? t({
-                en: "Ended-event matching is limited to people who registered before it ended. Contact details still require mutual consent.",
-                zh: "会后撮合仅限结束前已确认报名的参与者；联系方式仍需双方同意后才会披露。",
-              })
-            : workspace?.privacyNotice ??
-              t({
-                en: "A small, explainable shortlist. No automatic messages.",
-                zh: "只给少量、可解释的候选，不自动发送消息。",
-              })}
-        </p>
+        <span className="eyebrow">ORBIT MATCH · PUBLISHED</span>
+        <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>{t({ en: "People worth meeting", zh: "值得认识的人" })}</h3>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only the organizer-published AI result appears here. Orbit does not locally rank or pad the list.", zh: "这里只展示主办方已发布的 AI 结果；Orbit 不在本地排序，也不会用候选名单补位。" })}</p>
       </div>
 
-      {loading ? (
-        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
-          {t({ en: "Loading matches…", zh: "正在读取撮合信息…" })}
-        </p>
-      ) : null}
-
+      {loading ? <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{t({ en: "Loading the published result…", zh: "正在读取已发布结果…" })}</p> : null}
       {unauthorized ? (
-        <a
-          className="btn btn-primary btn-sm"
-          href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`}
-          style={{ justifySelf: "start", textDecoration: "none" }}
-        >
-          {t({ en: "Sign in to use matching", zh: "登录后使用撮合" })}
-        </a>
-      ) : null}
-
-      {workspace?.state === "registration_required" ? (
-        <div className="card-flat" style={{ display: "grid", gap: 8, padding: 14 }}>
-          <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-            {registrationOpen
-              ? t({
-                  en: "Only confirmed event participants can appear in matching.",
-                  zh: "只有已确认报名的活动参与者才能进入撮合。",
-                })
-              : t({
-                  en: "This event has ended and registration is closed.",
-                  zh: "活动已结束，报名已关闭。",
-                })}
-          </p>
-          {registrationOpen ? (
-            <a
-              className="btn btn-primary btn-sm"
-              href={`/app/events/${encodeURIComponent(eventId)}/register`}
-              style={{ justifySelf: "start", textDecoration: "none" }}
-            >
-              {t({ en: "Complete registration", zh: "完成报名资料" })}
-            </a>
-          ) : null}
+        <div className="card-flat" style={{ display: "grid", gap: 9, padding: 14 }}>
+          <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
+          {authenticated && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : !authenticated ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
         </div>
       ) : null}
 
-      {workspace?.recommendations.map((candidate) => (
-        <article
-          className="card-flat"
-          data-matchmaking-candidate={candidate.participantId}
-          key={candidate.participantId}
-          style={{ display: "grid", gap: 8, padding: 14 }}
-        >
-          <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
-            <div>
-              <strong style={{ color: "var(--ink)", fontSize: 15 }}>
-                {candidate.displayName}
-              </strong>
-              {candidate.organization ? (
-                <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
-                  {candidate.organization}
+      {workspace?.resultsState === "locked" ? <div className="card-flat" data-operations-state="locked" style={{ padding: 14 }}><strong>{t({ en: "Results are not open yet", zh: "匹配结果尚未开放" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: `Available at ${formatGate(workspace.configuration.resultsAvailableAt)}.`, zh: `将在 ${formatGate(workspace.configuration.resultsAvailableAt)} 开放。` })}</p></div> : null}
+      {workspace?.resultsState === "processing" ? <div className="card-flat" data-operations-state="processing" style={{ padding: 14 }}><strong>{t({ en: "AI matching is being generated", zh: "AI 匹配正在生成" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer has not published a result. No fallback list is shown.", zh: "主办方尚未发布结果，因此不会展示备用名单。" })}</p></div> : null}
+      {workspace?.resultsState === "failed" ? <div className="card-flat" data-operations-state="failed" style={{ padding: 14 }}><strong>{t({ en: "Generation failed", zh: "匹配生成失败" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "The organizer can retry. Orbit will not synthesize a replacement.", zh: "主办方可以重试；Orbit 不会合成替代结果。" })}</p></div> : null}
+      {workspace?.resultsState === "not_generated" ? <div className="card-flat" data-operations-state="not_generated" style={{ padding: 14 }}><strong>{t({ en: "Matching has not been generated", zh: "尚未生成匹配" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: "Wait for the organizer to run and publish the AI result.", zh: "请等待主办方运行并发布 AI 结果。" })}</p></div> : null}
+
+      {workspace?.resultsState === "ready" ? (
+        <>
+          {participants.map(({ participant, recommendation }) => participant ? (() => {
+            const contactRequest = workspace.contactRequests.find(
+              (request) =>
+                request.requesterParticipantId === participant.participantId ||
+                request.targetParticipantId === participant.participantId,
+            ) ?? null;
+            return (
+            <article className="card-flat" data-matchmaking-candidate={participant.participantId} key={participant.participantId} style={{ display: "grid", gap: 9, padding: 14 }}>
+              <button aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })} onClick={() => void openParticipant(participant.participantId)} style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }} type="button">
+                <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+                  <div><strong style={{ color: "var(--ink)", fontSize: 15 }}>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div></div>
+                  <span className="chip">{recommendation.score}</span>
                 </div>
-              ) : null}
-            </div>
-            <span className="chip" style={{ fontSize: 12 }}>
-              {candidate.score}
-            </span>
-          </div>
-          <ul style={{ color: "var(--text-2)", fontSize: 13, margin: 0, paddingLeft: 18 }}>
-            {candidate.reasons.slice(0, 3).map((reason) => (
-              <li key={reason} style={{ marginTop: 3 }}>
-                {reason}
-              </li>
-            ))}
-          </ul>
-          <p
-            data-matchmaking-source
-            style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}
-          >
-            {t({
-              en: "Source: this event's registration profiles and matching goals",
-              zh: "来源：本场报名画像与活动匹配目标",
-            })}
-          </p>
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={working === candidate.participantId}
-            onClick={() => void requestIntroduction(candidate.participantId)}
-            style={{ justifySelf: "start" }}
-            type="button"
-          >
-            {t({ en: "Request an introduction", zh: "申请认识" })}
+                <ul style={{ color: "var(--text-2)", fontSize: 13, margin: "9px 0 0", paddingLeft: 18 }}>{recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                <p style={{ color: "var(--text-3)", fontSize: 12, margin: "8px 0 0" }}>{recommendation.memberHint}</p>
+              </button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <button className="btn btn-ghost btn-sm" disabled={working === `detail:${participant.participantId}`} onClick={() => void openParticipant(participant.participantId)} type="button">{t({ en: "View evidence and profile", zh: "查看依据与画像" })}</button>
+                <CandidateContactAction
+                  busy={working === `request:${participant.participantId}`}
+                  onRequest={requestContact}
+                  participantId={participant.participantId}
+                  request={contactRequest}
+                />
+              </div>
+            </article>
+            );
+          })() : null)}
+          {!participants.length ? <p data-operations-state="ready-empty" style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{workspace.recommendations?.noMatchReason ?? t({ en: "The published result contains no recommendation for you.", zh: "已发布结果中没有适合你的推荐。" })}</p> : null}
+        </>
+      ) : null}
+
+      {workspace ? (
+        <section style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 10, paddingTop: 14 }}>
+          <button aria-expanded={directoryOpen} className="btn btn-ghost btn-sm" onClick={() => setDirectoryOpen((value) => !value)} style={{ justifySelf: "start" }} type="button">
+            <Icon name="users" size={14} /> {t({ en: `All participants (${workspace.directory.length})`, zh: `全部参会者（${workspace.directory.length}）` })}
           </button>
-        </article>
-      ))}
-
-      {workspace?.state === "no_matches" ? (
-        <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>
-          {t({
-            en: "No high-confidence match is available yet. Orbit will not pad the list.",
-            zh: "暂时没有高置信候选，Orbit 不会为了凑数展示名单。",
-          })}
-        </p>
+          {directoryOpen ? <div data-event-participant-directory style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>{workspace.directory.filter((participant) => participant.participantId !== workspace.me.participantId).map((participant) => <button className="card-flat" key={participant.participantId} onClick={() => void openParticipant(participant.participantId)} style={{ cursor: "pointer", padding: 12, textAlign: "left" }} type="button"><strong>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div><div style={{ color: "var(--text-2)", fontSize: 12, marginTop: 6 }}>{participant.topics.slice(0, 3).join(" · ")}</div></button>)}</div> : null}
+        </section>
       ) : null}
+      {workspace && !registrationOpen ? <OrbitPostEventCenter acceptedContacts={workspace.contactRequests.filter((request) => request.status === "accepted").length} eventId={eventId} /> : null}
 
-      {workspace?.requests.length ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          <h4 style={{ color: "var(--ink)", fontSize: 14, margin: 0 }}>
-            {t({ en: "Introduction requests", zh: "撮合进度" })}
-          </h4>
-          {workspace.requests.map((request) => (
-            <RequestCard
-              key={request.requestId}
-              onChanged={load}
-              request={request}
-              setError={setError}
-              setWorking={setWorking}
-              working={working}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      {visibleError ? (
-        <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>
-          {visibleError}
-        </p>
-      ) : null}
+      {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
+      {detail ? <ParticipantDetailPanel busy={working !== null} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} /> : null}
     </section>
   );
 }

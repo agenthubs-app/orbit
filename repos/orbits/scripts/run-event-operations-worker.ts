@@ -1,7 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 
+import { createPostgresAppointmentNotificationProjector } from "../features/appointments/notification-projector";
+import { runAppointmentOutboxBatch } from "../features/appointments/outbox-worker";
+import { runAppointmentMigrations } from "../features/appointments/storage/migrations";
 import { createStorageBusinessCardContactWriteProvider } from "../features/contacts/storage/contact-write-live-record-provider";
+import { createPostgresHumanEncounterProjectionRepository } from "../features/encounters/projection-repository";
+import { projectPendingHumanEncounters } from "../features/encounters/projector";
+import { processAttendeePostEventAiTask } from "../features/events/post-event-artifact/processor";
+import { resolveAttendeePostEventAiProviderConfiguration } from "../features/events/post-event-artifact/provider-config";
+import { createAttendeePostEventAiTaskRepository } from "../features/events/post-event-artifact/task-repository";
 import { createConfiguredEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
 import { createEventOperationsEngine } from "../features/events/event-operations/engine";
 import { createEventOperationsOutboxProjector } from "../features/events/event-operations/outbox-projector";
@@ -12,6 +20,7 @@ import { runEventOperationsMigrations } from "../features/events/event-operation
 import { createEventOperationsWorker } from "../features/events/event-operations/worker";
 import { createEventRegistrationLiveRecordProvider } from "../features/events/registration/storage/live-record-provider";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
+import { abortableWait } from "./abortable-wait";
 
 function positiveInteger(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -21,10 +30,6 @@ function positiveInteger(name: string, fallback: number): number {
     throw new Error(`${name} must be a positive integer.`);
   }
   return value;
-}
-
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function main(): Promise<void> {
@@ -46,6 +51,7 @@ async function main(): Promise<void> {
   }
 
   await runEventOperationsMigrations(runtime.client);
+  await runAppointmentMigrations(runtime.client);
 
   const workerId =
     process.env.ORBIT_EVENT_OPERATIONS_WORKER_ID?.trim() ||
@@ -117,6 +123,10 @@ async function main(): Promise<void> {
     taskConcurrency,
     workerId,
   });
+  const appointmentProjector = createPostgresAppointmentNotificationProjector(runtime);
+  const encounterRepository = createPostgresHumanEncounterProjectionRepository(runtime);
+  const postEventProvider = resolveAttendeePostEventAiProviderConfiguration();
+  const postEventRepository = createAttendeePostEventAiTaskRepository({ client: liveRecords.client, store: liveRecords.store, workspaceId: liveRecords.workspaceId });
 
   let stopping = false;
   const stopController = new AbortController();
@@ -133,8 +143,8 @@ async function main(): Promise<void> {
   );
   try {
     async function runDrainLoop(
-      scope: "generation" | "outbox",
-      drain: () => ReturnType<typeof worker.drainOnce>,
+      scope: "generation" | "outbox" | "appointment" | "encounter" | "post_event_ai",
+      drain: () => Promise<{ errors: readonly unknown[]; workClaimed: number }>,
     ): Promise<void> {
       let consecutiveDrainFailures = 0;
       while (!stopping) {
@@ -149,10 +159,10 @@ async function main(): Promise<void> {
           if (result.workClaimed > 0) {
             // A different worker can win between runnable discovery and claim.
             // Yield briefly even after work so that race cannot busy-spin.
-            await sleep(Math.min(25, pollMs));
+            await abortableWait(Math.min(25, pollMs), stopController.signal);
             continue;
           }
-          await sleep(pollMs);
+          await abortableWait(pollMs, stopController.signal);
         } catch (error) {
           consecutiveDrainFailures += 1;
           const backoffMs = Math.min(
@@ -169,7 +179,7 @@ async function main(): Promise<void> {
               workerId,
             })}\n`,
           );
-          await sleep(backoffMs);
+          await abortableWait(backoffMs, stopController.signal);
         }
       }
     }
@@ -179,6 +189,18 @@ async function main(): Promise<void> {
         worker.drainGenerationsOnce({ signal: stopController.signal }),
       ),
       runDrainLoop("outbox", () => worker.drainOutboxOnce()),
+      runDrainLoop("appointment", async () => {
+        const result = await runAppointmentOutboxBatch({ projector: appointmentProjector, runtime });
+        return { ...result, errors: [], workClaimed: result.completed + result.failed + result.retried };
+      }),
+      runDrainLoop("encounter", async () => {
+        const result = await projectPendingHumanEncounters({ repository: encounterRepository, workerId: `${workerId}:encounter` });
+        return { ...result, errors: [], workClaimed: result.completed + result.failed + result.retried + result.leaseLost };
+      }),
+      ...(postEventProvider ? [runDrainLoop("post_event_ai", async () => {
+        const outcome = await processAttendeePostEventAiTask({ config: postEventProvider.config, repository: postEventRepository, workerId: `${workerId}:post-event-ai` });
+        return { errors: [], workClaimed: outcome === "empty" ? 0 : 1 };
+      })] : []),
     ]);
   } finally {
     process.stdout.write(

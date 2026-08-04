@@ -197,6 +197,111 @@ test("app contact detail live route uses one shared focused graph for success pa
   }
 });
 
+test("accepted event contact opens before base projection and preserves actor-scoped encounter timeline", async () => {
+  const generatedAt = "2026-08-04T06:00:00.000Z";
+  const emptyGraph: LocalRemoteContactGraph = {
+    connections: [],
+    contacts: [],
+    evidence: [],
+    generatedAt,
+  };
+  const canonicalGraph: LocalRemoteContactGraph = {
+    contacts: [{
+      id: "contact:event-consent:aiko-ren",
+      displayName: "蓮 高橋",
+      organization: "Tokyo Mobility Lab",
+      role: "事業開発責任者",
+      location: "東京",
+      profileSnippet: "日中のモビリティ実証を設計しています。",
+      stage: "active",
+      source: { id: "event:tokyo-ai-night", label: "Tokyo AI Night", type: "event_import" },
+      evidenceIds: ["evidence:event-consent:aiko-ren"],
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    }],
+    connections: [{
+      id: "connection:event-consent:aiko-ren",
+      accountId: "actor:aiko",
+      contactId: "contact:event-consent:aiko-ren",
+      stage: "active",
+      valueTypes: ["strategic_fit"],
+      summary: "双方在活动现场明确同意交换名片。",
+      sharedTopics: ["cross-border mobility"],
+      suggestedActions: ["周五一起复核试点经济模型"],
+      source: { id: "event:tokyo-ai-night", label: "Tokyo AI Night", type: "event_import" },
+      evidenceIds: ["evidence:event-consent:aiko-ren"],
+      createdAt: generatedAt,
+      updatedAt: generatedAt,
+    }],
+    evidence: [{
+      id: "evidence:event-consent:aiko-ren",
+      sourceType: "event_import",
+      sourceId: "event:tokyo-ai-night",
+      summary: "Aiko 与蓮在活动现场互相接受了名片申请。",
+      occurredAt: generatedAt,
+      confidence: 1,
+      createdBy: "actor:ren",
+    }],
+    generatedAt,
+  };
+  let canonicalReads = 0;
+  const provider: LiveContactsGraphProvider = {
+    source: "live-record-store:contacts:test",
+    sourceLabel: "Actor-scoped contact state",
+    readContactGraph: () => emptyGraph,
+    readContactGraphForContact: () => emptyGraph,
+    readContactDetailState: async (contactId, actorId) => {
+      assert.equal(actorId, "actor:aiko");
+      assert.equal(contactId, "contact:event-consent:aiko-ren");
+      return {
+        actorId,
+        contactId,
+        notes: [{
+          authorLabel: "You · explicit encounter",
+          body: "记录：讨论了跨境移动数据试点\n下一步：周五复核单位经济模型",
+          createdAt: "2026-08-04T06:10:00.000Z",
+          noteId: "note:encounter:aiko-ren",
+          privacy: "private",
+          sourceLabel: "Explicit human encounter",
+        }],
+        status: "active",
+        tags: ["event"],
+        updatedAt: "2026-08-04T06:10:00.000Z",
+      };
+    },
+  };
+
+  const routeModel = await loadAppContactDetailRoute({
+    actorId: "actor:aiko",
+    contactId: "contact:event-consent:aiko-ren",
+    eventRelationshipContactGraphReader: {
+      async readAcceptedContactGraph(input) {
+        canonicalReads += 1;
+        assert.deepEqual(input, {
+          actorId: "actor:aiko",
+          contactId: "contact:event-consent:aiko-ren",
+        });
+        return canonicalGraph;
+      },
+    },
+    liveContactGraphProvider: provider,
+    mode: "live",
+  });
+
+  assert.equal(canonicalReads, 1);
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState === "success") {
+    assert.equal(routeModel.contact.id, "contact:event-consent:aiko-ren");
+    const view = contactDetailRouteToOrbitContactsViewModel(routeModel, "zh");
+    assert.match(view.connections[0]!.notes.at(-1)!.body, /跨境移动数据试点/u);
+    assert.equal(view.connections[0]!.notes.at(-1)!.privacy, "private");
+    assert.equal(
+      view.connections[0]!.notes.at(-1)!.sourceLabel,
+      "Explicit human encounter",
+    );
+  }
+});
+
 test("app contact detail live route renders a source-backed contact without fabricated relationship enrichment", async () => {
   const graph: LocalRemoteContactGraph = {
     contacts: [

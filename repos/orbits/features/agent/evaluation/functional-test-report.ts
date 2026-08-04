@@ -133,20 +133,20 @@ const capabilityChineseCopy: Record<
     effect: "必须同时具备明确确认和 calendar.events.write 权限，使用幂等回执并支持补偿。",
   },
   "events.createIntroductionRequest": {
-    title: "创建引荐请求",
-    effect: "先创建保护双方同意的请求，不提前泄露联系方式。",
+    title: "旧引荐请求退役边界",
+    effect: "旧执行器固定拒绝写入；新名片申请只通过活动运营接口逐人发起。",
   },
   "memory.save": {
     title: "保存 Agent 记忆",
     effect: "只保存用户明确要求的长期上下文；用户可停用、查看和删除。",
   },
   "matchmaking.acceptIntroductionRequest": {
-    title: "回应引荐请求",
-    effect: "通过工作流门确认接受或拒绝，并保留双方同意状态。",
+    title: "旧引荐回应退役边界",
+    effect: "旧回应接口只读；当前同意状态由活动运营名片申请维护。",
   },
   "matchmaking.proposeMeetingSlots": {
-    title: "提出会面时间",
-    effect: "仅在双方同意引荐后提出时段，不绕过日历权限。",
+    title: "旧撮合时段退役边界",
+    effect: "旧时段接口只读；双方建立联系后改用预约聚合协商时间。",
   },
   post_event_followup_v1: {
     title: "会后跟进工作流",
@@ -157,8 +157,8 @@ const capabilityChineseCopy: Record<
     effect: "生成简报、目标、准备任务及内外日程方案，外部写入单独确认。",
   },
   event_matchmaking_v1: {
-    title: "活动撮合工作流",
-    effect: "按双方同意推进引荐、回应、时段和结果记录。",
+    title: "旧活动撮合工作流退役边界",
+    effect: "截获旧触发并明确拒绝，不排名、不生成结果、不回退到普通推荐。",
   },
 };
 
@@ -392,11 +392,11 @@ export const AGENT_EVALUATION_CASES: readonly AgentEvaluationCase[] = [
     id: "W-05",
     category: "工作流",
     capabilityId: "event_matchmaking_v1",
-    experiment: "完整推进引荐、双方回应、时段和结果。",
-    expected: "所有步骤可审计且保护双方同意，指标只保留隐私安全聚合。",
-    actual: "活动页报名、名单门控和引荐详情通过；聊天不再被普通活动推荐吞掉，但完整撮合仍只在活动页执行。",
-    evidence: "event matchmaking workflow",
-    method: "自动化契约",
+    experiment: "从 router 与聊天触发已退役的活动撮合工作流。",
+    expected: "统一返回 LEGACY_MATCHMAKING_READ_ONLY，且不调用模型、不排名、不写入。",
+    actual: "router 保留退役 tombstone 防止 planner fallback；聊天停在本地边界；workflow 在创建 run 和排名前拒绝。",
+    evidence: "legacy matchmaking shutdown regression",
+    method: "安全边界验证",
     status: "limited",
   },
   {

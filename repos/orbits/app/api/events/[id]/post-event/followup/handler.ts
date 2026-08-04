@@ -116,6 +116,18 @@ export function createPostEventFollowupPostHandler(
     _context: Context,
     access,
   ): Promise<Response> {
+    if (access.mode !== "mock") {
+      return NextResponse.json(
+        {
+          error: {
+            code: "LEGACY_POST_EVENT_FOLLOWUP_DISABLED",
+            message:
+              "Live meeting notes must be captured as explicit HumanEncounter evidence. AI summaries and message drafts are read only from a stored provider artifact in ready state.",
+          },
+        },
+        { status: 410 },
+      );
+    }
     const agentContext = await resolveAgentRequestContext(access.mode, {
       authenticate: async () => ({ user: { id: access.actor.id } }),
     });

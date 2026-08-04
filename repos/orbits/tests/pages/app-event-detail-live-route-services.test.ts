@@ -341,7 +341,7 @@ test("public event detail keeps registration and matchmaking requests behind aut
   );
   assert.match(matchmakingSource, /if \(!authenticated\)/);
   assert.match(matchmakingSource, /useState\(!authenticated\)/);
-  assert.match(matchmakingSource, /登录后使用撮合/);
+  assert.match(matchmakingSource, /只有已确认报名的参与者可以查看活动匹配/);
 });
 
 test("event detail with no organizer source renders a non-link pending boundary", () => {
@@ -384,7 +384,7 @@ test("event matchmaking hides raw service errors behind product copy", () => {
   );
 
   assert.match(matchmakingSource, /const visibleError = error/);
-  assert.match(matchmakingSource, /当前活动暂时没有可用的撮合数据/);
+  assert.match(matchmakingSource, /当前活动的已发布运营数据暂时不可用/);
   assert.match(matchmakingSource, /\{visibleError\}/);
   assert.doesNotMatch(matchmakingSource, />\s*\{error\}\s*</);
 });
@@ -409,7 +409,7 @@ test("ended event matchmaking does not offer a dead registration route", () => {
   );
 
   assert.match(detailSource, /registrationOpen=\{event\.status !== "ended"\}/);
-  assert.match(matchmakingSource, /会后撮合仅限结束前已确认报名的参与者/);
-  assert.match(matchmakingSource, /活动已结束，报名已关闭/);
-  assert.match(matchmakingSource, /\{registrationOpen \? \(/);
+  assert.match(matchmakingSource, /authenticated && registrationOpen/);
+  assert.match(matchmakingSource, /resultsState === "ready"/);
+  assert.doesNotMatch(matchmakingSource, /!registrationOpen[^]*\/register/);
 });

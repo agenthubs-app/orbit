@@ -1447,7 +1447,7 @@ test("live Orbit Agent routes page-only capabilities explicitly instead of hallu
     },
     {
       prompt: "运行 event_matchmaking_v1，为 Tokyo AI 产品圆桌做活动撮合。",
-      expected: /真实报名人|不会用普通活动推荐替代/,
+      expected: /LEGACY_MATCHMAKING_READ_ONLY|已彻底退役/,
     },
     {
       prompt: "为林玫和佐藤健司创建一条双方同意前不共享联系方式的引荐请求。",

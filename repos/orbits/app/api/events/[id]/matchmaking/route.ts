@@ -45,56 +45,19 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  context: Context,
+  _request: Request,
+  _context: Context,
 ): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) return unauthorized();
-  const body = (await request.json().catch(() => ({}))) as {
-    targetParticipantId?: unknown;
-  };
-  if (
-    typeof body.targetParticipantId !== "string" ||
-    !body.targetParticipantId.trim()
-  ) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "targetParticipantId is required.",
-        },
+  return NextResponse.json(
+    {
+      error: {
+        code: "LEGACY_MATCHMAKING_READ_ONLY",
+        message:
+          "Legacy matchmaking writes are gone. Use event operations contact requests.",
       },
-      { status: 400 },
-    );
-  }
-  const { id } = await context.params;
-  try {
-    const service = createEventMatchmakingContextService();
-    await service.createRequest({
-      eventId: id,
-      actorId: session.user.id,
-      targetParticipantId: body.targetParticipantId,
-      now: new Date().toISOString(),
-    });
-    return NextResponse.json(
-      {
-        data: await service.view({
-          eventId: id,
-          actorId: session.user.id,
-        }),
-      },
-      { status: 201 },
-    );
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "EVENT_MATCHMAKING_REQUEST_FAILED",
-          message:
-            error instanceof Error ? error.message : "Matchmaking failed.",
-        },
-      },
-      { status: 409 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }

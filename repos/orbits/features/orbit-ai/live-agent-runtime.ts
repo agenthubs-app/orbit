@@ -848,8 +848,8 @@ function chatPageCapabilityBoundaryPayload(
     },
     event_matchmaking: {
       assistant:
-        "活动撮合必须读取该活动的真实报名人、目标和同意状态。当前 Agent 聊天尚未接入这套参与者上下文，因此不会用普通活动推荐替代，也不会编造匹配结果。请在活动详情的“人脉撮合”中运行。",
-      nextAction: "Open the selected event's matchmaking panel and rank verified participants there.",
+        "LEGACY_MATCHMAKING_READ_ONLY：旧活动撮合工作流及其排序结果已彻底退役。Orbit 没有调用旧 workflow、没有重新排名、没有用普通推荐替代，也没有创建引荐请求。请在活动详情查看已发布的活动运营推荐，并逐人发起名片申请。",
+      nextAction: "Open the selected event's published operations recommendations and send an individual contact request there.",
     },
     pre_event_brief: {
       assistant:

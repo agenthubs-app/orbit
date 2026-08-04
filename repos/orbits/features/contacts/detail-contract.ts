@@ -202,6 +202,8 @@ export interface ContactDetailNote {
   evidenceIds: readonly string[];
   noteWriteExecuted: boolean;
   productionAuditLogWriteExecuted: false;
+  privacy?: "private" | "relationship_shared";
+  sourceLabel?: string;
 }
 
 // PublicProfile 是可展示的公开关系资料摘要。

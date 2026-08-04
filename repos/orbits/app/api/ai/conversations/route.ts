@@ -486,7 +486,7 @@ export async function POST(request: Request): Promise<Response> {
     : createOrbitAgentConversationService();
   let result: OrbitAgentConversationResult;
 
-  if (isChatKnownWorkflowInput(trustedInput)) {
+  if (mode === "mock" && isChatKnownWorkflowInput(trustedInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
     const conversationResult = await service.listConversations({

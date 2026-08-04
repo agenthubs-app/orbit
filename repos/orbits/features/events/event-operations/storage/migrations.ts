@@ -894,6 +894,29 @@ create index event_ops_profile_responses_public_lookup_idx
   );
 `,
   },
+  {
+    name: "event-operations-v7-registration-answer-ai-policy",
+    version: 7,
+    sql: `
+update event_ops_profile_response_versions
+set visibility = 'matching_only',
+    response_payload = jsonb_set(
+      response_payload,
+      '{visibility}',
+      '"matching_only"'::jsonb,
+      true
+    )
+where visibility = 'private'
+   or response_payload ->> 'visibility' = 'private';
+
+alter table event_ops_profile_response_versions
+  drop constraint event_ops_profile_response_versions_visibility_check;
+
+alter table event_ops_profile_response_versions
+  add constraint event_ops_profile_response_versions_visibility_check
+  check (visibility in ('event_attendees', 'matching_only'));
+`,
+  },
 ];
 
 function checksum(sql: string): string {

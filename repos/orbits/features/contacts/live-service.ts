@@ -19,6 +19,8 @@ export interface LiveContactDetailStoredNote {
   body: string;
   createdAt: string;
   noteId: string;
+  privacy?: "private" | "relationship_shared";
+  sourceLabel?: string;
 }
 
 export interface LiveContactDetailStoredInteraction {

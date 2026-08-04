@@ -7,6 +7,8 @@ import type {
   EventOperationsConfiguration,
   EventOperationsParticipant,
 } from "./contract";
+import { answersFromProfileResponses } from "../registration/interview-response-contract";
+import { profileResponsesForAiGeneration } from "./profile-response-policy";
 
 export function normalizeEventParticipantAnswers(
   value?: EventParticipantProfileAnswers | null,
@@ -62,8 +64,13 @@ export function eventOperationsParticipantFromRegistration(
   registration: EventRegistration,
   configuration: Pick<EventOperationsConfiguration, "profileEditDeadlineAt">,
 ): EventOperationsParticipant {
+  const interviewResponses = registration.participantProfile.interviewResponses;
   const answers = normalizeEventParticipantAnswers(
-    registration.participantProfile.answers,
+    interviewResponses?.length
+      ? answersFromProfileResponses(
+          profileResponsesForAiGeneration(interviewResponses),
+        )
+      : registration.participantProfile.answers,
   );
   const positioning = splitPositioning(answers.positioning);
   const answeredFields = Object.values(answers).filter(

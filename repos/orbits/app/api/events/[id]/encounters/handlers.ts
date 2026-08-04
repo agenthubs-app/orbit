@@ -217,14 +217,16 @@ export function createEventEncounterPostHandler(
       );
     }
 
-    await triggerPostEventFollowup(result.data, agentContext.runtime).catch(
-      (error) => {
-        console.error(
-          "post-event Agent trigger failed after encounter note write",
-          error,
-        );
-      },
-    );
+    if (access.mode === "mock") {
+      await triggerPostEventFollowup(result.data, agentContext.runtime).catch(
+        (error) => {
+          console.error(
+            "post-event Agent trigger failed after encounter note write",
+            error,
+          );
+        },
+      );
+    }
 
     return NextResponse.json(success(result.data), {
       headers: runtimeBoundaryHeaders(access.mode),

@@ -18,6 +18,7 @@ import {
   EVENT_PROFILE_FIELD_LABELS,
   type EventProfileResponseSnapshot,
 } from "../registration/interview-response-contract";
+import { profileResponsesForParticipantDetail } from "./profile-response-policy";
 
 export interface EventParticipantDetailResponseView {
   answer: string;
@@ -137,9 +138,12 @@ function placementsFor(
 
 function publicResponses(
   version: EventProfileResponseVersion | null,
+  viewerOwnsTarget: boolean,
 ): readonly EventParticipantDetailResponseView[] {
   if (!version) return [];
-  return version.responses.map((response: EventProfileResponseSnapshot) => ({
+  return profileResponsesForParticipantDetail(version.responses, {
+    viewerOwnsTarget,
+  }).map((response: EventProfileResponseSnapshot) => ({
     answer: response.answer.displayText,
     answeredAt:
       response.questionSource === "legacy_unknown" ? null : response.answeredAt,
@@ -175,6 +179,32 @@ function contactView(
       };
 }
 
+function visibleParticipantFields(
+  version: EventProfileResponseVersion | null,
+  viewerOwnsTarget: boolean,
+): {
+  fields: ReadonlySet<string> | null;
+  topics: readonly string[] | null;
+} {
+  if (!version) return { fields: null, topics: null };
+  const responses = profileResponsesForParticipantDetail(version.responses, {
+    viewerOwnsTarget,
+  });
+  const fields = new Set(responses.map((response) => response.field));
+  const topics = responses
+    .filter(
+      (response) =>
+        response.field === "industry" || response.field === "desiredOutcome",
+    )
+    .flatMap((response) =>
+      response.answer.displayText
+        .split(/[,，、;/|]+/u)
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+  return { fields, topics: [...new Set(topics)] };
+}
+
 export function createEventParticipantDetailService(input: {
   operationsService: Pick<EventOperationsService, "attendeeWorkspace">;
   repository: Pick<EventOperationsRepository, "getPublishedResultForAttendee">;
@@ -208,11 +238,19 @@ export function createEventParticipantDetailService(input: {
       const recommendation = workspace.recommendations?.recommendations.find(
         (value) => value.targetParticipantId === participant.participantId,
       );
+      const viewerOwnsTarget =
+        participant.participantId === workspace.me.participantId;
+      const visible = visibleParticipantFields(
+        responseVersion,
+        viewerOwnsTarget,
+      );
+      const canSeeField = (field: string) =>
+        visible.fields === null || visible.fields.has(field);
       return {
-        company: participant.company,
+        company: canSeeField("positioning") ? participant.company : null,
         contactRequest: contactView(workspace, participant.participantId),
         displayName: participant.displayName,
-        industry: participant.industry,
+        industry: canSeeField("industry") ? participant.industry : null,
         participantId: participant.participantId,
         placements: placementsFor(
           published,
@@ -229,12 +267,15 @@ export function createEventParticipantDetailService(input: {
               score: recommendation.score,
             }
           : null,
-        responses: publicResponses(responseVersion),
-        role: participant.role,
+        responses: publicResponses(
+          responseVersion,
+          viewerOwnsTarget,
+        ),
+        role: canSeeField("positioning") ? participant.role : null,
         sourceContext: published
           ? "published_generation"
           : "current_profile",
-        topics: [...participant.topics],
+        topics: visible.topics ?? [...participant.topics],
       };
     },
   };

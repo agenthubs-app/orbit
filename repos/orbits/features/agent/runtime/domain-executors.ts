@@ -375,34 +375,13 @@ export function createAgentDomainExecutors(
       ...getAgentRuntimeExecutorDescriptor(
         "events.createIntroductionRequest",
       ),
-      async execute(payload, context) {
-        const requestId =
-          optionalString(payload, "requestId") ??
-          `intro-request:${context.idempotencyKey}`;
-        const request =
-          await dependencies.matchmaking.createIntroductionRequest({
-            requestId,
-            eventId: requiredString(payload, "eventId"),
-            actorId: requiredString(payload, "actorId"),
-            requesterParticipantId: requiredString(
-              payload,
-              "requesterParticipantId",
-            ),
-            requesterActorId: requiredString(payload, "requesterActorId"),
-            targetParticipantId: requiredString(
-              payload,
-              "targetParticipantId",
-            ),
-            targetActorId: requiredString(payload, "targetActorId"),
-            organizerActorId: requiredString(payload, "organizerActorId"),
-            proposedSlots: stringArray(payload, "proposedSlots"),
-            now: context.now,
-          });
-        return {
-          resultRef: `matchmakingIntroductionRequests:${request.requestId}`,
-          summary:
-            "Introduction request created. Contact details remain hidden until mutual consent.",
-        };
+      async execute() {
+        throw Object.assign(
+          new Error(
+            "LEGACY_MATCHMAKING_READ_ONLY: legacy matchmaking writes are gone; use event operations contact requests.",
+          ),
+          { code: "LEGACY_MATCHMAKING_READ_ONLY" as const },
+        );
       },
     },
     {
