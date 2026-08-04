@@ -4,6 +4,10 @@ import test from "node:test";
 
 import { Pool } from "pg";
 
+import {
+  createPostgresEventAccessRepository,
+  EventAccessRepositoryError,
+} from "../../features/events/event-access/storage/postgres-repository";
 import type { EventOperationsConfiguration } from "../../features/events/event-operations/contract";
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
@@ -103,6 +107,10 @@ test(
       client,
       workspaceId,
     });
+    const eventAccess = createPostgresEventAccessRepository({
+      client,
+      workspaceId,
+    });
 
     try {
       await adminPool.query(`create schema ${schema}`);
@@ -112,15 +120,24 @@ test(
       );
       const base = clock.rows[0]!.now.getTime();
       const eventId = "event-onsite-concurrency";
-      const people = ["actor:a", "actor:b", "actor:c", "actor:d"].map(
-        (actorId) => registration(eventId, actorId, at(base, -60)),
-      );
+      const people = [
+        "actor:a",
+        "actor:b",
+        "actor:c",
+        "actor:d",
+        "actor:e",
+        "actor:f",
+      ].map((actorId) => registration(eventId, actorId, at(base, -60)));
       await repository.saveConfiguration(configuration(eventId, base));
       await repository.activateCanonicalRegistrations(eventId, people);
 
       const checkIns = await Promise.all(
         Array.from({ length: 100 }, () =>
-          repository.checkInAtomically({ actorId: "actor:a", eventId }),
+          repository.checkInAtomically({
+            actorId: "actor:a",
+            eventId,
+            kind: "self",
+          }),
         ),
       );
       assert.equal(
@@ -160,7 +177,9 @@ test(
         Array.from({ length: 100 }, (_, index) =>
           repository.checkInAtomically({
             actorId: "actor:onsite-organizer",
+            capability: "check_in.roster.write",
             eventId,
+            kind: "staff",
             participantId: index % 2 === 0 ? participantB : participantC,
           }),
         ),
@@ -186,6 +205,7 @@ test(
           await repository.checkInAtomically({
             actorId: "actor:b",
             eventId,
+            kind: "self",
           })
         ).checkedInAt,
         manualCheckIns.find((value) => value.participantId === participantB)
@@ -195,10 +215,12 @@ test(
       await assert.rejects(
         repository.checkInAtomically({
           actorId: "actor:a",
+          capability: "check_in.roster.write",
           eventId,
+          kind: "staff",
           participantId: people[3]!.participantProfileId,
         }),
-        /Only the event organizer/u,
+        /check-in access is denied/u,
       );
       const manualCounts = await scopedPool.query<{
         audit_count: string;
@@ -211,7 +233,7 @@ test(
             as checkin_count,
           (select count(*) from event_ops_audit_log
             where event_id = '${eventId}'
-              and action = 'event_checkin_marked_by_organizer'
+              and action = 'event_checkin_marked_by_staff'
               and actor_id = 'actor:onsite-organizer')::text as audit_count,
           (select count(*) from event_ops_outbox
             where event_id = '${eventId}' and event_type = 'event.checkin.created'
@@ -223,6 +245,174 @@ test(
         checkin_count: "2",
         outbox_count: "2",
       });
+
+      async function grantRole(
+        subjectActorId: string,
+        role: "operations" | "check_in" | "reviewer" | "read_only_analyst",
+      ) {
+        return eventAccess.grant({
+          actingActorId: "actor:onsite-organizer",
+          eventId,
+          expectedRevision: 0,
+          reason: `Onsite test assignment for ${subjectActorId}`,
+          role,
+          subjectActorId,
+        });
+      }
+
+      await grantRole("actor:reviewer", "reviewer");
+      await grantRole("actor:analyst", "read_only_analyst");
+      await grantRole("actor:revoked-check-in", "check_in");
+      await eventAccess.revoke({
+        actingActorId: "actor:onsite-organizer",
+        eventId,
+        expectedRevision: 1,
+        reason: "Revoked before onsite access",
+        subjectActorId: "actor:revoked-check-in",
+      });
+      for (const deniedActorId of [
+        "actor:reviewer",
+        "actor:analyst",
+        "actor:revoked-check-in",
+        "actor:unassigned",
+      ]) {
+        await assert.rejects(
+          repository.checkInAtomically({
+            actorId: deniedActorId,
+            capability: "check_in.roster.write",
+            eventId,
+            kind: "staff",
+            participantId: people[3]!.participantProfileId,
+          }),
+          /check-in access is denied/u,
+        );
+      }
+      assert.equal(
+        (
+          await scopedPool.query<{ count: string }>(`
+            select count(*)::text as count
+              from event_ops_checkins
+             where event_id = '${eventId}' and actor_id = 'actor:d'
+          `)
+        ).rows[0]?.count,
+        "0",
+      );
+
+      await grantRole("actor:operations-staff", "operations");
+      await grantRole("actor:check-in-staff", "check_in");
+      await repository.checkInAtomically({
+        actorId: "actor:operations-staff",
+        capability: "check_in.roster.write",
+        eventId,
+        kind: "staff",
+        participantId: people[3]!.participantProfileId,
+      });
+      await repository.checkInAtomically({
+        actorId: "actor:check-in-staff",
+        capability: "check_in.roster.write",
+        eventId,
+        kind: "staff",
+        participantId: people[4]!.participantProfileId,
+      });
+      const delegatedAudit = await scopedPool.query<{
+        actor_id: string;
+        after_payload: {
+          authorization: {
+            capability: string;
+            kind: string;
+            owner: boolean;
+            revision: number;
+            role: string;
+            state: string;
+          };
+        };
+      }>(`
+        select actor_id, after_payload
+          from event_ops_audit_log
+         where event_id = '${eventId}'
+           and action = 'event_checkin_marked_by_staff'
+           and actor_id in ('actor:operations-staff','actor:check-in-staff')
+         order by actor_id
+      `);
+      assert.deepEqual(
+        delegatedAudit.rows.map((row) => ({
+          actorId: row.actor_id,
+          authorization: row.after_payload.authorization,
+        })),
+        [
+          {
+            actorId: "actor:check-in-staff",
+            authorization: {
+              capability: "check_in.roster.write",
+              kind: "staff",
+              owner: false,
+              revision: 1,
+              role: "check_in",
+              state: "active",
+            },
+          },
+          {
+            actorId: "actor:operations-staff",
+            authorization: {
+              capability: "check_in.roster.write",
+              kind: "staff",
+              owner: false,
+              revision: 1,
+              role: "operations",
+              state: "active",
+            },
+          },
+        ],
+      );
+
+      await Promise.all(
+        Array.from({ length: 100 }, (_, index) =>
+          repository.checkInAtomically({
+            actorId:
+              index % 2 === 0
+                ? "actor:operations-staff"
+                : "actor:check-in-staff",
+            capability: "check_in.roster.write",
+            eventId,
+            kind: "staff",
+            participantId: people[5]!.participantProfileId,
+          }),
+        ),
+      );
+      const contestedCheckIn = await scopedPool.query<{
+        actor_id: string;
+        audit_count: string;
+        checkin_count: string;
+        outbox_count: string;
+      }>(`
+        select
+          max(audit.actor_id) as actor_id,
+          count(distinct audit.audit_id)::text as audit_count,
+          (select count(*) from event_ops_checkins
+            where event_id = '${eventId}' and actor_id = 'actor:f')::text
+            as checkin_count,
+          (select count(*) from event_ops_outbox
+            where event_id = '${eventId}'
+              and aggregate_id = '${eventId}:actor:f'
+              and event_type = 'event.checkin.created')::text as outbox_count
+        from event_ops_audit_log audit
+        where audit.event_id = '${eventId}'
+          and audit.aggregate_id = '${eventId}:actor:f'
+          and audit.action = 'event_checkin_marked_by_staff'
+      `);
+      assert.ok(
+        ["actor:operations-staff", "actor:check-in-staff"].includes(
+          contestedCheckIn.rows[0]!.actor_id,
+        ),
+      );
+      assert.deepEqual(
+        {
+          audit_count: contestedCheckIn.rows[0]!.audit_count,
+          checkin_count: contestedCheckIn.rows[0]!.checkin_count,
+          outbox_count: contestedCheckIn.rows[0]!.outbox_count,
+        },
+        { audit_count: "1", checkin_count: "1", outbox_count: "1" },
+      );
 
       const concurrentRequests = await Promise.all(
         Array.from({ length: 100 }, () =>
@@ -482,7 +672,11 @@ test(
         userId: "actor:a",
       });
       await assert.rejects(
-        repository.checkInAtomically({ actorId: "actor:a", eventId }),
+        repository.checkInAtomically({
+          actorId: "actor:a",
+          eventId,
+          kind: "self",
+        }),
         /active canonical registration is required/i,
         "even an idempotent replay must remain scoped to an active membership",
       );
@@ -499,6 +693,7 @@ test(
         repository.checkInAtomically({
           actorId: "actor:future",
           eventId: futureEventId,
+          kind: "self",
         }),
         /outside its configured time window/i,
       );
@@ -507,6 +702,54 @@ test(
           await scopedPool.query<{ count: string }>(`
             select count(*)::text as count from event_ops_checkins
             where event_id = '${futureEventId}'
+          `)
+        ).rows[0]?.count,
+        "0",
+      );
+
+      const foreignWorkspaceRepository =
+        createPostgresEventOperationsRepository({
+          client,
+          workspaceId: "workspace:foreign-onsite",
+        });
+      await assert.rejects(
+        foreignWorkspaceRepository.checkInAtomically({
+          actorId: "actor:onsite-organizer",
+          capability: "check_in.roster.write",
+          eventId,
+          kind: "staff",
+          participantId: people[3]!.participantProfileId,
+        }),
+        /not configured/u,
+      );
+
+      const notReadyEventId = "event-onsite-access-not-ready";
+      await repository.saveConfiguration(
+        configuration(notReadyEventId, base),
+      );
+      await repository.activateCanonicalRegistrations(notReadyEventId, [
+        registration(notReadyEventId, "actor:not-ready-target", at(base, -60)),
+      ]);
+      await scopedPool.query(
+        "drop table event_ops_event_role_assignment_heads",
+      );
+      await assert.rejects(
+        repository.checkInAtomically({
+          actorId: "actor:onsite-organizer",
+          capability: "check_in.roster.write",
+          eventId: notReadyEventId,
+          kind: "staff",
+          participantId: `participant:${notReadyEventId}:actor:not-ready-target`,
+        }),
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
+      );
+      assert.equal(
+        (
+          await scopedPool.query<{ count: string }>(`
+            select count(*)::text as count from event_ops_checkins
+             where event_id = '${notReadyEventId}'
           `)
         ).rows[0]?.count,
         "0",

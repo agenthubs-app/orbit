@@ -6,6 +6,12 @@ import {
   createEventOperationsGenerationRunPostHandler,
   createEventOperationsManualCheckInPostHandler,
 } from "../../app/api/events/[id]/operations/handlers";
+import type {
+  EventAccessAssignmentState,
+  EventAccessRole,
+} from "../../features/events/event-access/contract";
+import { EventCapabilityDeniedError } from "../../features/events/event-access/guard";
+import type { EventAccessService } from "../../features/events/event-access/service";
 import type { EventOperationsService } from "../../features/events/event-operations/service";
 import {
   buildEventDetailPayload,
@@ -15,6 +21,32 @@ import type { EventRegistration } from "../../features/events/registration/contr
 
 const EVENT_ID = "event:e2e:registered-access";
 const ATTENDEE_ID = "actor:attendee-01";
+
+function manualAccessService(input: {
+  owner: boolean;
+  role: EventAccessRole | null;
+  state: EventAccessAssignmentState | null;
+}): EventAccessService {
+  return {
+    async get(query) {
+      const value = query as { eventId: string; subjectActorId: string };
+      return {
+        eventId: value.eventId,
+        owner: input.owner,
+        revision: 1,
+        role: input.role,
+        state: input.state,
+        subjectActorId: value.subjectActorId,
+      };
+    },
+    async grant() {
+      throw new Error("unused");
+    },
+    async revoke() {
+      throw new Error("unused");
+    },
+  };
+}
 
 function registrationFor(
   eventId = EVENT_ID,
@@ -202,9 +234,11 @@ test("public generation run route rejects HTTP execution and never constructs th
   );
 });
 
-test("organizer manual check-in route forwards only server-owned event and actor scope", async () => {
+test("manual check-in forwards only server-owned event and actor scope", async () => {
   const calls: unknown[] = [];
   const handler = createEventOperationsManualCheckInPostHandler({
+    createAccessService: () =>
+      manualAccessService({ owner: true, role: null, state: null }),
     createService: () => ({
       async checkInParticipant(input) {
         calls.push(input);
@@ -217,22 +251,11 @@ test("organizer manual check-in route forwards only server-owned event and actor
         };
       },
     } as EventOperationsService),
-    ownedAccess: {
-      createEventService: () => ({
-        async getEvent() {
-          return { data: buildEventDetailPayload(dynamicEvent), success: true } as const;
-        },
-      }),
-      resolveActor: async () => ({ id: "actor:organizer", name: "Organizer" }),
-    },
+    resolveActor: async () => ({ id: "actor:organizer", name: "Organizer" }),
   });
   const response = await handler(
     new Request(`http://localhost/api/events/${EVENT_ID}/operations/admin/check-ins`, {
-      body: JSON.stringify({
-        actorId: "actor:forged",
-        eventId: "event:forged",
-        participantId: "participant:mei",
-      }),
+      body: JSON.stringify({ participantId: "participant:mei" }),
       headers: { "content-type": "application/json" },
       method: "POST",
     }),
@@ -247,4 +270,147 @@ test("organizer manual check-in route forwards only server-owned event and actor
       participantId: "participant:mei",
     },
   ]);
+});
+
+test("manual check-in authenticates before constructing either runtime", async () => {
+  let accessRuntimeCalls = 0;
+  let operationsRuntimeCalls = 0;
+  const handler = createEventOperationsManualCheckInPostHandler({
+    createAccessService: () => {
+      accessRuntimeCalls += 1;
+      return manualAccessService({ owner: true, role: null, state: null });
+    },
+    createService: () => {
+      operationsRuntimeCalls += 1;
+      throw new Error("Anonymous requests must not construct operations.");
+    },
+    resolveActor: async () => null,
+  });
+
+  const response = await handler(
+    new Request(`http://test/api/events/${EVENT_ID}/operations/admin/check-ins`, {
+      body: JSON.stringify({ participantId: "participant:target" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: EVENT_ID }) },
+  );
+
+  assert.equal(response.status, 401);
+  assert.equal(accessRuntimeCalls, 0);
+  assert.equal(operationsRuntimeCalls, 0);
+});
+
+test("manual check-in admits only principals with check-in roster write capability", async (t) => {
+  const cases: readonly [
+    string,
+    boolean,
+    EventAccessRole | null,
+    EventAccessAssignmentState | null,
+    number,
+  ][] = [
+    ["owner", true, null, null, 200],
+    ["active operations", false, "operations", "active", 200],
+    ["active check-in", false, "check_in", "active", 200],
+    ["reviewer", false, "reviewer", "active", 403],
+    ["analyst", false, "read_only_analyst", "active", 403],
+    ["revoked check-in", false, "check_in", "revoked", 403],
+    ["unassigned", false, null, null, 403],
+  ];
+
+  for (const [name, owner, role, state, expectedStatus] of cases) {
+    await t.test(name, async () => {
+      let operationsCalls = 0;
+      const handler = createEventOperationsManualCheckInPostHandler({
+        createAccessService: () =>
+          manualAccessService({ owner, role, state }),
+        createService: () =>
+          ({
+            async checkInParticipant(input) {
+              operationsCalls += 1;
+              return {
+                actorId: "actor:target",
+                checkedInAt: "2026-08-02T09:15:00.000Z",
+                eventId: input.eventId,
+                evidenceId: "evidence:manual-check-in",
+                participantId: input.participantId,
+              };
+            },
+          }) as EventOperationsService,
+        resolveActor: async () => ({ id: "actor:staff" }),
+      });
+
+      const response = await handler(
+        new Request(`http://test/api/events/${EVENT_ID}/operations/admin/check-ins`, {
+          body: JSON.stringify({ participantId: "participant:target" }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        }),
+        { params: Promise.resolve({ id: EVENT_ID }) },
+      );
+
+      assert.equal(response.status, expectedStatus);
+      assert.equal(operationsCalls, expectedStatus === 200 ? 1 : 0);
+    });
+  }
+});
+
+test("manual check-in rejects identity and scope fields supplied by the client", async (t) => {
+  for (const forgedKey of ["actorId", "eventId", "role", "workspaceId"]) {
+    await t.test(forgedKey, async () => {
+      let operationsCalls = 0;
+      const handler = createEventOperationsManualCheckInPostHandler({
+        createAccessService: () =>
+          manualAccessService({ owner: true, role: null, state: null }),
+        createService: () =>
+          ({
+            async checkInParticipant() {
+              operationsCalls += 1;
+              throw new Error("Invalid input must not reach operations.");
+            },
+          }) as unknown as EventOperationsService,
+        resolveActor: async () => ({ id: "actor:organizer" }),
+      });
+
+      const response = await handler(
+        new Request(`http://test/api/events/${EVENT_ID}/operations/admin/check-ins`, {
+          body: JSON.stringify({
+            [forgedKey]: "forged",
+            participantId: "participant:target",
+          }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        }),
+        { params: Promise.resolve({ id: EVENT_ID }) },
+      );
+
+      assert.equal(response.status, 400);
+      assert.equal(operationsCalls, 0);
+    });
+  }
+});
+
+test("manual check-in preserves a capability revocation found by the service recheck", async () => {
+  const handler = createEventOperationsManualCheckInPostHandler({
+    createAccessService: () =>
+      manualAccessService({ owner: false, role: "check_in", state: "active" }),
+    createService: () =>
+      ({
+        async checkInParticipant() {
+          throw new EventCapabilityDeniedError();
+        },
+      }) as unknown as EventOperationsService,
+    resolveActor: async () => ({ id: "actor:check-in-staff" }),
+  });
+
+  const response = await handler(
+    new Request(`http://test/api/events/${EVENT_ID}/operations/admin/check-ins`, {
+      body: JSON.stringify({ participantId: "participant:target" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: EVENT_ID }) },
+  );
+
+  assert.equal(response.status, 403);
 });

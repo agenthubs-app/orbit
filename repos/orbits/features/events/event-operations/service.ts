@@ -18,7 +18,7 @@ import type { EventOperationsRepository } from "./repository";
 export interface EventOperationsAccessPolicy {
   requireCapability(input: {
     actorId: string;
-    capability: "operations.read_sensitive";
+    capability: "operations.read_sensitive" | "check_in.roster.write";
     eventId: string;
   }): Promise<void>;
   isOrganizer(input: { actorId: string; eventId: string }): Promise<boolean>;
@@ -367,14 +367,20 @@ export function createEventOperationsService({
 
     async checkIn({ actorId, eventId }) {
       await requireRegistered(eventId, actorId);
-      return repository.checkInAtomically({ actorId, eventId });
+      return repository.checkInAtomically({ actorId, eventId, kind: "self" });
     },
 
     async checkInParticipant({ actorId, eventId, participantId }) {
-      await requireOrganizer(eventId, actorId);
+      await access.requireCapability({
+        actorId,
+        capability: "check_in.roster.write",
+        eventId,
+      });
       return repository.checkInAtomically({
         actorId,
+        capability: "check_in.roster.write",
         eventId,
+        kind: "staff",
         participantId,
       });
     },

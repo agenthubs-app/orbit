@@ -18,6 +18,12 @@ import type {
   EventOperationsRepository,
   RespondToEventContactRequestInput,
 } from "../repository";
+import { canAccessEventCapability } from "../../event-access/capability-policy";
+import type {
+  EventAccessAssignmentState,
+  EventAccessRole,
+} from "../../event-access/contract";
+import { requireEventAccessRepositoryReadiness } from "../../event-access/storage/postgres-repository";
 import type {
   EventOperationsPostgresRuntime,
   EventOperationsSqlExecutor,
@@ -37,6 +43,15 @@ interface ContactParticipantRow extends SqlRow {
   actor_id: string;
   participant_id: string;
   participant_payload: unknown;
+}
+
+interface StaffAuthorizationSnapshot {
+  capability: "check_in.roster.write";
+  kind: "staff";
+  owner: boolean;
+  revision: number;
+  role: EventAccessRole | null;
+  state: EventAccessAssignmentState | null;
 }
 
 function clone<TValue>(value: TValue): TValue {
@@ -542,7 +557,8 @@ export function createPostgresOnsiteOperationsMethods({
     async checkInAtomically(input: CreateEventOperationsCheckInInput) {
       const actorId = input.actorId.trim();
       const eventId = input.eventId.trim();
-      const requestedParticipantId = input.participantId?.trim() || null;
+      const requestedParticipantId =
+        input.kind === "staff" ? input.participantId.trim() : null;
       if (!actorId || !eventId) {
         throw new EventOperationsError(
           "EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND",
@@ -587,14 +603,51 @@ export function createPostgresOnsiteOperationsMethods({
               "Canonical event operations are not configured for check-in.",
             );
           }
-          if (
-            requestedParticipantId &&
-            row.organizer_actor_id !== actorId
-          ) {
-            throw new EventOperationsError(
-              "EVENT_OPERATIONS_FORBIDDEN",
-              "Only the event organizer can mark another participant as arrived.",
+          let staffAuthorization: StaffAuthorizationSnapshot | null = null;
+          if (input.kind === "staff") {
+            await requireEventAccessRepositoryReadiness(transaction);
+            const assignment = await transaction.query<{
+              revision: number | string;
+              role: EventAccessRole;
+              state: EventAccessAssignmentState;
+            }>(
+              `select revision, role, state
+                 from event_ops_event_role_assignment_heads
+                where workspace_id = $1
+                  and event_id = $2
+                  and subject_actor_id = $3
+                for share`,
+              [workspaceId, eventId, actorId],
             );
+            const assignmentRow = assignment.rows[0] ?? null;
+            const owner = row.organizer_actor_id === actorId;
+            const revision = assignmentRow
+              ? Number(assignmentRow.revision)
+              : 0;
+            const role = assignmentRow?.role ?? null;
+            const state = assignmentRow?.state ?? null;
+            if (
+              !Number.isSafeInteger(revision) ||
+              !canAccessEventCapability({
+                capability: input.capability,
+                owner,
+                role,
+                state,
+              })
+            ) {
+              throw new EventOperationsError(
+                "EVENT_OPERATIONS_FORBIDDEN",
+                "Event check-in access is denied.",
+              );
+            }
+            staffAuthorization = {
+              capability: input.capability,
+              kind: "staff",
+              owner,
+              revision,
+              role,
+              state,
+            };
           }
           const membership = await transaction.query<SqlRow>(
             `
@@ -694,11 +747,15 @@ export function createPostgresOnsiteOperationsMethods({
               `audit:event-checkin:${digest(eventId, participantActorId)}`,
               eventId,
               actorId,
-              requestedParticipantId
-                ? "event_checkin_marked_by_organizer"
+              input.kind === "staff"
+                ? "event_checkin_marked_by_staff"
                 : "event_checkin_created",
               `${eventId}:${participantActorId}`,
-              JSON.stringify(value),
+              JSON.stringify(
+                staffAuthorization
+                  ? { ...value, authorization: staffAuthorization }
+                  : value,
+              ),
               [value.evidenceId],
               checkedInAt,
             ],

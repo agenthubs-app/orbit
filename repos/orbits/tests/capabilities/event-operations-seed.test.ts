@@ -141,6 +141,7 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   await repository.checkInAtomically({
     actorId: participants[0]!.actorId,
     eventId: EVENT_OPERATIONS_E2E_EVENT_ID,
+    kind: "self",
   });
   repositoryTimestamp = timestamp;
 

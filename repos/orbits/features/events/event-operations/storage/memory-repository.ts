@@ -375,19 +375,10 @@ export function createMemoryEventOperationsRepository(
           "Canonical event operations are not configured for check-in.",
         );
       }
-      if (
-        input.participantId &&
-        configuration.organizerActorId !== input.actorId
-      ) {
-        throw new EventOperationsError(
-          "EVENT_OPERATIONS_FORBIDDEN",
-          "Only the event organizer can mark another participant as arrived.",
-        );
-      }
       const registrations = await canonicalRegistrationService.list({
         eventId: input.eventId,
       });
-      const registration = input.participantId
+      const registration = input.kind === "staff"
         ? registrations.find(
             (value) => value.participantProfileId === input.participantId,
           ) ?? null

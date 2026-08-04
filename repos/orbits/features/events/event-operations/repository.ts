@@ -119,11 +119,23 @@ export interface HeartbeatEventOperationsTaskInput {
   workerId: string;
 }
 
-export interface CreateEventOperationsCheckInInput {
+export interface CreateEventOperationsSelfCheckInInput {
   actorId: string;
   eventId: string;
-  participantId?: string;
+  kind: "self";
 }
+
+export interface CreateEventOperationsStaffCheckInInput {
+  actorId: string;
+  capability: "check_in.roster.write";
+  eventId: string;
+  kind: "staff";
+  participantId: string;
+}
+
+export type CreateEventOperationsCheckInInput =
+  | CreateEventOperationsSelfCheckInInput
+  | CreateEventOperationsStaffCheckInInput;
 
 export interface CreateEventContactRequestInput {
   eventId: string;

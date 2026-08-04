@@ -153,6 +153,12 @@ async function requireReadiness(
   }
 }
 
+export async function requireEventAccessRepositoryReadiness(
+  executor: EventOperationsSqlExecutor,
+): Promise<void> {
+  return protectedOperation(() => requireReadiness(executor));
+}
+
 function parseRevision(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 1) {

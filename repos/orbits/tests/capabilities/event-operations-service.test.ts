@@ -108,14 +108,21 @@ async function createHarness() {
     token: () => "lease:test",
   });
   const registeredActors = new Set(people.map((person) => person.actorId));
-  const adminActors = new Set([organizerActorId]);
+  type OperationsCapability =
+    | "operations.read_sensitive"
+    | "check_in.roster.write";
+  const capabilitiesByActor = new Map<string, Set<OperationsCapability>>([
+    [
+      organizerActorId,
+      new Set(["operations.read_sensitive", "check_in.roster.write"]),
+    ],
+  ]);
   const service = createEventOperationsService({
     access: {
       async requireCapability(input) {
         if (
           input.eventId !== eventId ||
-          !adminActors.has(input.actorId) ||
-          input.capability !== "operations.read_sensitive"
+          !capabilitiesByActor.get(input.actorId)?.has(input.capability)
         ) {
           throw new Error("denied");
         }
@@ -152,7 +159,14 @@ async function createHarness() {
   });
   return {
     grantAdminCapability(actorId: string) {
-      adminActors.add(actorId);
+      const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
+      capabilities.add("operations.read_sensitive");
+      capabilitiesByActor.set(actorId, capabilities);
+    },
+    grantCheckInCapability(actorId: string) {
+      const capabilities = capabilitiesByActor.get(actorId) ?? new Set();
+      capabilities.add("check_in.roster.write");
+      capabilitiesByActor.set(actorId, capabilities);
     },
     repository,
     repositoryCallCount() {
@@ -221,7 +235,7 @@ test("attendee workspace exposes the real registration directory and a real idem
   );
 });
 
-test("organizer can mark one registered participant arrived idempotently while attendees cannot", async () => {
+test("authorized event staff can mark one participant arrived idempotently while attendees cannot", async () => {
   const harness = await createHarness();
   const workspace = await harness.service.adminWorkspace({
     actorId: organizerActorId,
@@ -256,6 +270,7 @@ test("organizer can mark one registered participant arrived idempotently while a
     1,
   );
 
+  const beforeDeniedRequest = harness.repositoryCallCount();
   await assert.rejects(
     () =>
       harness.service.checkInParticipant({
@@ -263,8 +278,22 @@ test("organizer can mark one registered participant arrived idempotently while a
         eventId,
         participantId: mei.participantId,
       }),
-    /cannot operate this event/u,
+    /denied/u,
   );
+  assert.equal(harness.repositoryCallCount(), beforeDeniedRequest);
+
+  const sora = workspace.participants.find(
+    (participant) => participant.actorId === "actor:sora",
+  );
+  assert.ok(sora);
+  harness.grantCheckInCapability("actor:check-in-staff");
+  const delegated = await harness.service.checkInParticipant({
+    actorId: "actor:check-in-staff",
+    eventId,
+    participantId: sora.participantId,
+  });
+  assert.equal(delegated.actorId, "actor:sora");
+  assert.equal(delegated.participantId, sora.participantId);
 });
 
 test("event persona becomes read-only exactly at the configured profile deadline", async () => {

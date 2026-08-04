@@ -288,25 +288,42 @@ export function createEventOperationsAdminGetHandler(
 export function createEventOperationsManualCheckInPostHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function markParticipantArrived(
-    request: Request,
-    _context: EventOperationsRouteContext,
-    access,
-  ) {
-    try {
-      const body = await jsonBody(request);
-      const result = await serviceFor(dependencies).checkInParticipant({
-        actorId: access.actor.id,
-        eventId: access.eventId,
-        participantId: requiredText(body, "participantId"),
-      });
-      return NextResponse.json(success(result), {
-        headers: runtimeBoundaryHeaders(access.mode),
-      });
-    } catch (error) {
-      return errorResponse(error, access.mode);
-    }
-  }, dependencies.ownedAccess);
+  return withEventCapabilityAccess(
+    "check_in.roster.write",
+    async function markParticipantArrived(
+      request: Request,
+      _context: EventOperationsRouteContext,
+      access,
+    ) {
+      try {
+        const body = await jsonBody(request);
+        if (
+          Object.keys(body).length !== 1 ||
+          !Object.hasOwn(body, "participantId")
+        ) {
+          throw new AppError(
+            "VALIDATION_ERROR",
+            "Manual check-in request must contain only participantId.",
+          );
+        }
+        const result = await serviceFor(dependencies).checkInParticipant({
+          actorId: access.actor.id,
+          eventId: access.eventId,
+          participantId: requiredText(body, "participantId"),
+        });
+        return NextResponse.json(success(result), {
+          headers: runtimeBoundaryHeaders(access.mode),
+        });
+      } catch (error) {
+        if (isEventCapabilityAccessError(error)) throw error;
+        return errorResponse(error, access.mode);
+      }
+    },
+    {
+      createAccessService: dependencies.createAccessService,
+      resolveActor: dependencies.resolveActor,
+    },
+  );
 }
 
 export function createEventOperationsConfigurePutHandler(
