@@ -22,11 +22,19 @@ import type {
 } from "../../event-operations/storage/postgres-client";
 import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS } from "../../event-operations/storage/migrations";
 
-export const EVENT_ACCESS_REPOSITORY_FAILED =
-  "EVENT_ACCESS_REPOSITORY_FAILED" as const;
+export const EVENT_ACCESS_REPOSITORY_ERROR_CODES = [
+  "EVENT_ACCESS_NOT_READY",
+  "EVENT_ACCESS_NOT_FOUND",
+  "EVENT_ACCESS_FORBIDDEN",
+  "EVENT_ACCESS_CONFLICT",
+  "EVENT_ACCESS_REPOSITORY_FAILED",
+] as const;
+
+export type EventAccessRepositoryErrorCode =
+  (typeof EVENT_ACCESS_REPOSITORY_ERROR_CODES)[number];
 
 export class EventAccessRepositoryError extends Error {
-  constructor(readonly code = EVENT_ACCESS_REPOSITORY_FAILED) {
+  constructor(readonly code: EventAccessRepositoryErrorCode) {
     super("Event access operation failed.");
     this.name = "EventAccessRepositoryError";
   }
@@ -49,8 +57,8 @@ interface ReadinessRow {
   readonly versions_current: boolean;
 }
 
-function failure(): never {
-  throw new EventAccessRepositoryError();
+function failure(code: EventAccessRepositoryErrorCode): never {
+  throw new EventAccessRepositoryError(code);
 }
 
 async function protectedOperation<TValue>(
@@ -60,7 +68,18 @@ async function protectedOperation<TValue>(
     return await operation();
   } catch (error) {
     if (error instanceof EventAccessRepositoryError) throw error;
-    failure();
+    const sqlState =
+      error && typeof error === "object" && "code" in error
+        ? (error as { code?: unknown }).code
+        : null;
+    if (
+      sqlState === "23505" ||
+      sqlState === "40001" ||
+      sqlState === "40P01"
+    ) {
+      failure("EVENT_ACCESS_CONFLICT");
+    }
+    failure("EVENT_ACCESS_REPOSITORY_FAILED");
   }
 }
 
@@ -70,7 +89,7 @@ async function requireReadiness(
   const expected = EVENT_OPERATIONS_SCHEMA_MIGRATIONS.find(
     (migration) => migration.version === 13,
   );
-  if (!expected) failure();
+  if (!expected) failure("EVENT_ACCESS_NOT_READY");
   const result = await executor.query<ReadinessRow>(
     `select
        migration.name,
@@ -130,13 +149,15 @@ async function requireReadiness(
     !row.events_current ||
     !row.audit_current
   ) {
-    failure();
+    failure("EVENT_ACCESS_NOT_READY");
   }
 }
 
 function parseRevision(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) failure();
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    failure("EVENT_ACCESS_REPOSITORY_FAILED");
+  }
   return parsed;
 }
 
@@ -147,7 +168,7 @@ function storedHead(row: Record<string, unknown> | undefined): {
 } {
   if (!row) return { revision: 0, role: null, state: null };
   if (!isEventAccessRole(row.role) || !isEventAccessAssignmentState(row.state)) {
-    failure();
+    failure("EVENT_ACCESS_REPOSITORY_FAILED");
   }
   return {
     revision: parseRevision(row.revision),
@@ -171,7 +192,9 @@ async function loadAssignment(
     [workspaceId, query.eventId],
   );
   const organizerActorId = event.rows[0]?.organizer_actor_id;
-  if (!organizerActorId || event.rows.length !== 1) failure();
+  if (!organizerActorId || event.rows.length !== 1) {
+    failure("EVENT_ACCESS_NOT_FOUND");
+  }
   const headResult = await executor.query<Record<string, unknown>>(
     `select revision, role, state
        from event_ops_event_role_assignment_heads
@@ -181,13 +204,15 @@ async function loadAssignment(
       ${lock ? "for update" : ""}`,
     [workspaceId, query.eventId, query.subjectActorId],
   );
-  if (headResult.rows.length > 1) failure();
+  if (headResult.rows.length > 1) {
+    failure("EVENT_ACCESS_REPOSITORY_FAILED");
+  }
   const head = storedHead(headResult.rows[0]);
   if (
     organizerActorId === query.subjectActorId &&
     (head.role !== null || head.state !== null || head.revision !== 0)
   ) {
-    failure();
+    failure("EVENT_ACCESS_REPOSITORY_FAILED");
   }
   return {
     organizerActorId,
@@ -242,23 +267,29 @@ export function createPostgresEventAccessRepository(
         );
         if (
           current.organizerActorId !== command.actingActorId ||
-          current.organizerActorId === command.subjectActorId ||
-          current.revision !== command.expectedRevision
+          current.organizerActorId === command.subjectActorId
         ) {
-          failure();
+          failure("EVENT_ACCESS_FORBIDDEN");
+        }
+        if (current.revision !== command.expectedRevision) {
+          failure("EVENT_ACCESS_CONFLICT");
         }
 
         let action: string;
         let role: EventAccessRole;
         let state: EventAccessAssignmentState;
         if (operation === "revoke") {
-          if (current.state !== "active" || !current.role) failure();
+          if (current.state !== "active" || !current.role) {
+            failure("EVENT_ACCESS_CONFLICT");
+          }
           action = "event.access.revoked";
           role = current.role;
           state = "revoked";
         } else {
           role = (command as EventAccessGrantCommand).role;
-          if (current.state === "active" && current.role === role) failure();
+          if (current.state === "active" && current.role === role) {
+            failure("EVENT_ACCESS_CONFLICT");
+          }
           action =
             current.state === "active"
               ? "event.access.changed"
@@ -305,7 +336,7 @@ export function createPostgresEventAccessRepository(
             command.expectedRevision,
           ],
         );
-        if (head.rowCount !== 1) failure();
+        if (head.rowCount !== 1) failure("EVENT_ACCESS_CONFLICT");
         await executor.query(
           `insert into event_ops_audit_log (
              workspace_id, audit_id, event_id, actor_id, action,

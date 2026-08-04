@@ -83,9 +83,17 @@ async function mutationCounts(pool: Pool): Promise<{
 async function expectNoMutation(
   pool: Pool,
   operation: () => Promise<unknown>,
+  expectedCode?: ConstructorParameters<typeof EventAccessRepositoryError>[0],
 ): Promise<void> {
   const before = await mutationCounts(pool);
-  await assert.rejects(operation());
+  await assert.rejects(
+    operation(),
+    expectedCode
+      ? (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === expectedCode
+      : undefined,
+  );
   assert.deepEqual(await mutationCounts(pool), before);
 }
 
@@ -119,7 +127,9 @@ test(
           eventId: "event:not-ready",
           subjectActorId: "actor:not-ready",
         }),
-        EventAccessRepositoryError,
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
       );
       await assert.rejects(
         service.grant({
@@ -130,7 +140,9 @@ test(
           role: "operations",
           subjectActorId: "actor:not-ready-operator",
         }),
-        EventAccessRepositoryError,
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
       );
       await assert.rejects(
         service.revoke({
@@ -140,7 +152,9 @@ test(
           reason: "Main must remain read only before approved cutover",
           subjectActorId: "actor:not-ready-operator",
         }),
-        EventAccessRepositoryError,
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
       );
       assert.deepEqual(await mainEvidence(pool, workspaceId), before);
     } finally {
@@ -200,8 +214,9 @@ test(
           subjectActorId: "actor:owner-a",
         },
       );
-      await expectNoMutation(pool, () =>
-        serviceA.grant({
+      await expectNoMutation(
+        pool,
+        () => serviceA.grant({
           actingActorId: "actor:owner-b",
           eventId: "event:shared",
           expectedRevision: 0,
@@ -209,9 +224,11 @@ test(
           role: "operations",
           subjectActorId: "actor:cross-workspace",
         }),
+        "EVENT_ACCESS_FORBIDDEN",
       );
-      await expectNoMutation(pool, () =>
-        serviceB.grant({
+      await expectNoMutation(
+        pool,
+        () => serviceB.grant({
           actingActorId: "actor:owner-a",
           eventId: "event:shared",
           expectedRevision: 0,
@@ -219,6 +236,7 @@ test(
           role: "reviewer",
           subjectActorId: "actor:cross-workspace",
         }),
+        "EVENT_ACCESS_FORBIDDEN",
       );
       await serviceB.grant({
         actingActorId: "actor:owner-b",
@@ -246,8 +264,9 @@ test(
         ).role,
         "read_only_analyst",
       );
-      await expectNoMutation(pool, () =>
-        serviceA.grant({
+      await expectNoMutation(
+        pool,
+        () => serviceA.grant({
           actingActorId: "actor:owner-a",
           eventId: "event:shared",
           expectedRevision: 0,
@@ -255,6 +274,7 @@ test(
           role: "operations",
           subjectActorId: "actor:owner-a",
         }),
+        "EVENT_ACCESS_FORBIDDEN",
       );
 
       const grant = await serviceA.grant({
@@ -269,8 +289,9 @@ test(
         { revision: grant.revision, role: grant.role, state: grant.state },
         { revision: 1, role: "operations", state: "active" },
       );
-      await expectNoMutation(pool, () =>
-        serviceA.grant({
+      await expectNoMutation(
+        pool,
+        () => serviceA.grant({
           actingActorId: "actor:owner-a",
           eventId: "event:shared",
           expectedRevision: 1,
@@ -278,6 +299,7 @@ test(
           role: "operations",
           subjectActorId: "actor:operator-a",
         }),
+        "EVENT_ACCESS_CONFLICT",
       );
       const changed = await serviceA.grant({
         actingActorId: "actor:owner-a",
@@ -306,14 +328,16 @@ test(
         },
         { revision: 3, role: "check_in", state: "revoked" },
       );
-      await expectNoMutation(pool, () =>
-        serviceA.revoke({
+      await expectNoMutation(
+        pool,
+        () => serviceA.revoke({
           actingActorId: "actor:owner-a",
           eventId: "event:shared",
           expectedRevision: 3,
           reason: "A revoked assignment cannot be revoked twice",
           subjectActorId: "actor:operator-a",
         }),
+        "EVENT_ACCESS_CONFLICT",
       );
       await serviceA.grant({
         actingActorId: "actor:owner-a",
@@ -443,6 +467,7 @@ test(
         }),
         (error: unknown) =>
           error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_REPOSITORY_FAILED" &&
           !error.message.includes("private"),
       );
       assert.deepEqual(await mutationCounts(pool), beforeRollback);
@@ -515,7 +540,9 @@ test(
           eventId: "event:mixed",
           subjectActorId: "actor:mixed",
         }),
-        EventAccessRepositoryError,
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
       );
       await assert.rejects(
         service.grant({
@@ -526,7 +553,9 @@ test(
           role: "operations",
           subjectActorId: "actor:mixed",
         }),
-        EventAccessRepositoryError,
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_READY",
       );
       assert.deepEqual(await mutationCounts(sourcePool), before);
     } finally {
