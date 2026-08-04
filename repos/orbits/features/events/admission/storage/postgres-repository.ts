@@ -1,0 +1,667 @@
+import { randomUUID } from "node:crypto";
+
+import type {
+  EventOperationsPostgresClient,
+  EventOperationsSqlExecutor,
+} from "../../event-operations/storage/postgres-client";
+import {
+  EVENT_ADMISSION_APPLICATION_STATUSES,
+  EVENT_ADMISSION_MODES,
+  EventAdmissionError,
+  type ConfigureEventAdmissionPolicyInput,
+  type EventAdmissionApplication,
+  type EventAdmissionApplicationStatus,
+  type EventAdmissionMode,
+  type EventAdmissionPolicy,
+} from "../contract";
+import type { EventAdmissionRepository } from "../repository";
+
+type SqlRow = Record<string, unknown>;
+
+function invalid(message: string): never {
+  throw new EventAdmissionError("DATA_INVALID", message);
+}
+
+function normalizedText(value: string, field: string): string {
+  const normalized = value.normalize("NFC").trim();
+  return normalized || invalid(`Admission ${field} must not be empty.`);
+}
+
+function isoTimestamp(value: unknown, field: string): string {
+  const parsed = value instanceof Date ? value.getTime() : Date.parse(String(value));
+  if (!Number.isFinite(parsed)) invalid(`Admission ${field} is invalid.`);
+  return new Date(parsed).toISOString();
+}
+
+function positiveVersion(value: unknown, field: string): number {
+  const version = Number(value);
+  if (!Number.isSafeInteger(version) || version < 1) {
+    invalid(`Admission ${field} is invalid.`);
+  }
+  return version;
+}
+
+function jsonObject(value: unknown, field: string): Readonly<Record<string, unknown>> {
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    invalid(`Admission ${field} must be an object.`);
+  }
+  return parsed as Readonly<Record<string, unknown>>;
+}
+
+function validateJson(value: unknown, field: string): void {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  ) return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateJson(item, `${field}[${index}]`));
+    return;
+  }
+  if (typeof value === "object") {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      invalid(`Admission ${field} contains a non-JSON object.`);
+    }
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      validateJson(item, `${field}.${key}`);
+    }
+    return;
+  }
+  invalid(`Admission ${field} contains a non-JSON value.`);
+}
+
+function normalizedProfile(
+  value: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  jsonObject(value, "profilePayload");
+  validateJson(value, "profilePayload");
+  return JSON.parse(JSON.stringify(value)) as Readonly<Record<string, unknown>>;
+}
+
+function stableJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJson);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, stableJson(item)]),
+  );
+}
+
+function admissionMode(value: unknown): EventAdmissionMode {
+  if (EVENT_ADMISSION_MODES.includes(value as EventAdmissionMode)) {
+    return value as EventAdmissionMode;
+  }
+  return invalid("Admission mode is invalid.");
+}
+
+function applicationStatus(value: unknown): EventAdmissionApplicationStatus {
+  if (EVENT_ADMISSION_APPLICATION_STATUSES.includes(value as EventAdmissionApplicationStatus)) {
+    return value as EventAdmissionApplicationStatus;
+  }
+  return invalid("Admission application status is invalid.");
+}
+
+function nullableText(value: unknown): string | null {
+  return value === null || value === undefined ? null : String(value);
+}
+
+function policyFromRow(row: SqlRow): EventAdmissionPolicy {
+  const rawCapacity = row.capacity;
+  const capacity = rawCapacity === null || rawCapacity === undefined
+    ? null
+    : Number(rawCapacity);
+  if (capacity !== null && (!Number.isSafeInteger(capacity) || capacity < 0)) {
+    invalid("Admission capacity is invalid.");
+  }
+  if (typeof row.waitlist_enabled !== "boolean") {
+    invalid("Admission waitlistEnabled is invalid.");
+  }
+  return {
+    admissionMode: admissionMode(row.admission_mode),
+    capacity,
+    eventId: normalizedText(String(row.event_id ?? ""), "eventId"),
+    policyVersion: positiveVersion(row.policy_version, "policyVersion"),
+    registrationClosesAt: isoTimestamp(row.registration_closes_at, "registrationClosesAt"),
+    registrationOpensAt: isoTimestamp(row.registration_opens_at, "registrationOpensAt"),
+    updatedAt: isoTimestamp(row.updated_at, "updatedAt"),
+    waitlistEnabled: row.waitlist_enabled,
+  };
+}
+
+function applicationFromRow(row: SqlRow): EventAdmissionApplication {
+  return {
+    actorId: normalizedText(String(row.actor_id ?? ""), "actorId"),
+    applicationVersion: positiveVersion(row.application_version, "applicationVersion"),
+    decidedAt: row.decided_at == null ? null : isoTimestamp(row.decided_at, "decidedAt"),
+    decisionActorId: nullableText(row.decision_actor_id),
+    eventId: normalizedText(String(row.event_id ?? ""), "eventId"),
+    policyVersion: positiveVersion(row.policy_version, "policyVersion"),
+    profilePayload: jsonObject(row.profile_payload, "profilePayload"),
+    status: applicationStatus(row.status),
+    submittedAt: isoTimestamp(row.submitted_at, "submittedAt"),
+    updatedAt: isoTimestamp(row.updated_at, "updatedAt"),
+  };
+}
+
+function normalizedPolicy(input: ConfigureEventAdmissionPolicyInput) {
+  const eventId = normalizedText(input.eventId, "eventId");
+  const opensAt = isoTimestamp(input.registrationOpensAt, "registrationOpensAt");
+  const closesAt = isoTimestamp(input.registrationClosesAt, "registrationClosesAt");
+  if (Date.parse(opensAt) >= Date.parse(closesAt)) {
+    invalid("Admission registration window must have positive duration.");
+  }
+  if (
+    input.capacity !== null &&
+    (!Number.isSafeInteger(input.capacity) || input.capacity < 0)
+  ) {
+    invalid("Admission capacity must be a non-negative integer or null.");
+  }
+  return {
+    admissionMode: admissionMode(input.admissionMode),
+    capacity: input.capacity,
+    eventId,
+    registrationClosesAt: closesAt,
+    registrationOpensAt: opensAt,
+    waitlistEnabled: input.waitlistEnabled,
+  };
+}
+
+async function databaseNow(executor: EventOperationsSqlExecutor): Promise<string> {
+  const result = await executor.query<{ now: unknown }>(
+    "select clock_timestamp() as now",
+  );
+  return isoTimestamp(result.rows[0]?.now, "database clock");
+}
+
+async function lockEvent(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<void> {
+  const result = await executor.query(
+    `select event_id from event_ops_events
+     where workspace_id = $1 and event_id = $2
+     for update`,
+    [workspaceId, eventId],
+  );
+  if (result.rowCount !== 1) {
+    throw new EventAdmissionError(
+      "NOT_CONFIGURED",
+      `Admission event ${eventId} is not configured.`,
+    );
+  }
+}
+
+async function currentPolicy(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<EventAdmissionPolicy | null> {
+  const result = await executor.query<SqlRow>(
+    `select policy.*
+     from event_ops_admission_policy_heads head
+     join event_ops_admission_policy_versions policy
+       on policy.workspace_id = head.workspace_id
+      and policy.event_id = head.event_id
+      and policy.policy_version = head.policy_version
+     where head.workspace_id = $1 and head.event_id = $2`,
+    [workspaceId, eventId],
+  );
+  return result.rows[0] ? policyFromRow(result.rows[0]) : null;
+}
+
+async function policyAtVersion(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+  policyVersion: number,
+): Promise<EventAdmissionPolicy | null> {
+  const result = await executor.query<SqlRow>(
+    `select * from event_ops_admission_policy_versions
+     where workspace_id = $1 and event_id = $2 and policy_version = $3`,
+    [workspaceId, eventId, policyVersion],
+  );
+  return result.rows[0] ? policyFromRow(result.rows[0]) : null;
+}
+
+async function admittedCount(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<number> {
+  const result = await executor.query<{ count: unknown }>(
+    `select count(*)::int as count
+     from event_ops_admission_application_heads
+     where workspace_id = $1 and event_id = $2 and status = 'admitted'`,
+    [workspaceId, eventId],
+  );
+  const count = Number(result.rows[0]?.count ?? -1);
+  if (!Number.isSafeInteger(count) || count < 0) {
+    invalid("Admission admitted count is invalid.");
+  }
+  return count;
+}
+
+async function appendApplication(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  application: EventAdmissionApplication,
+): Promise<void> {
+  await executor.query(
+    `insert into event_ops_admission_application_versions (
+       workspace_id, event_id, actor_id, application_version, policy_version,
+       status, profile_payload, submitted_at, updated_at, decided_at,
+       decision_actor_id
+     ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)`,
+    [
+      workspaceId,
+      application.eventId,
+      application.actorId,
+      application.applicationVersion,
+      application.policyVersion,
+      application.status,
+      JSON.stringify(application.profilePayload),
+      application.submittedAt,
+      application.updatedAt,
+      application.decidedAt,
+      application.decisionActorId,
+    ],
+  );
+  await executor.query(
+    `insert into event_ops_admission_application_heads (
+       workspace_id, event_id, actor_id, application_version, policy_version,
+       status, profile_payload, submitted_at, updated_at, decided_at,
+       decision_actor_id
+     ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
+     on conflict (workspace_id, event_id, actor_id) do update set
+       application_version = excluded.application_version,
+       policy_version = excluded.policy_version,
+       status = excluded.status,
+       profile_payload = excluded.profile_payload,
+       submitted_at = excluded.submitted_at,
+       updated_at = excluded.updated_at,
+       decided_at = excluded.decided_at,
+       decision_actor_id = excluded.decision_actor_id`,
+    [
+      workspaceId,
+      application.eventId,
+      application.actorId,
+      application.applicationVersion,
+      application.policyVersion,
+      application.status,
+      JSON.stringify(application.profilePayload),
+      application.submittedAt,
+      application.updatedAt,
+      application.decidedAt,
+      application.decisionActorId,
+    ],
+  );
+}
+
+async function audit(
+  executor: EventOperationsSqlExecutor,
+  input: {
+    action: string;
+    actorId: string;
+    after: Readonly<object>;
+    aggregateId: string;
+    aggregateType: "admission_application" | "admission_policy";
+    before: Readonly<object> | null;
+    eventId: string;
+    occurredAt: string;
+    workspaceId: string;
+  },
+): Promise<void> {
+  await executor.query(
+    `insert into event_ops_audit_log (
+       workspace_id, audit_id, event_id, actor_id, action, aggregate_type,
+       aggregate_id, before_payload, after_payload, evidence_ids, occurred_at
+     ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, '{}', $10)`,
+    [
+      input.workspaceId,
+      `admission:audit:${randomUUID()}`,
+      input.eventId,
+      input.actorId,
+      input.action,
+      input.aggregateType,
+      input.aggregateId,
+      input.before ? JSON.stringify(input.before) : null,
+      JSON.stringify(input.after),
+      input.occurredAt,
+    ],
+  );
+}
+
+function applicationAuditPayload(application: EventAdmissionApplication) {
+  return {
+    actorId: application.actorId,
+    applicationVersion: application.applicationVersion,
+    policyVersion: application.policyVersion,
+    status: application.status,
+  };
+}
+
+async function runTransaction<TValue>(
+  client: EventOperationsPostgresClient,
+  operation: (executor: EventOperationsSqlExecutor) => Promise<TValue>,
+): Promise<TValue> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await client.transaction(operation);
+    } catch (error) {
+      if (error instanceof EventAdmissionError) throw error;
+      const code = error && typeof error === "object"
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
+      if ((code === "40001" || code === "40P01") && attempt < 3) continue;
+      throw new EventAdmissionError(
+        "DATA_INVALID",
+        `Admission persistence failed: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+  }
+  throw new EventAdmissionError("DATA_INVALID", "Admission transaction retry exhausted.");
+}
+
+export function createPostgresEventAdmissionRepository(input: {
+  client: EventOperationsPostgresClient;
+  workspaceId: string;
+}): EventAdmissionRepository {
+  const workspaceId = normalizedText(input.workspaceId, "workspaceId");
+  const { client } = input;
+  return {
+    async configurePolicy(raw) {
+      const policy = normalizedPolicy(raw);
+      const updatedByActorId = normalizedText(raw.updatedByActorId, "updatedByActorId");
+      return runTransaction(client, async (executor) => {
+        await lockEvent(executor, workspaceId, policy.eventId);
+        const previous = await currentPolicy(executor, workspaceId, policy.eventId);
+        const count = await admittedCount(executor, workspaceId, policy.eventId);
+        if (policy.capacity !== null && count > policy.capacity) {
+          throw new EventAdmissionError(
+            "DATA_INVALID",
+            `Admission capacity ${policy.capacity} is below ${count} admitted applications.`,
+          );
+        }
+        const updatedAt = await databaseNow(executor);
+        const next: EventAdmissionPolicy = {
+          ...policy,
+          policyVersion: (previous?.policyVersion ?? 0) + 1,
+          updatedAt,
+        };
+        await executor.query(
+          `insert into event_ops_admission_policy_versions (
+             workspace_id, event_id, policy_version, capacity, admission_mode,
+             waitlist_enabled, registration_opens_at,
+             registration_closes_at, updated_at
+           ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [workspaceId, next.eventId, next.policyVersion, next.capacity,
+            next.admissionMode, next.waitlistEnabled, next.registrationOpensAt,
+            next.registrationClosesAt, next.updatedAt],
+        );
+        await executor.query(
+          `insert into event_ops_admission_policy_heads (
+             workspace_id, event_id, policy_version, updated_at
+           ) values ($1, $2, $3, $4)
+           on conflict (workspace_id, event_id) do update set
+             policy_version = excluded.policy_version,
+             updated_at = excluded.updated_at`,
+          [workspaceId, next.eventId, next.policyVersion, next.updatedAt],
+        );
+        await audit(executor, {
+          action: "admission.policy.configured",
+          actorId: updatedByActorId,
+          after: next,
+          aggregateId: next.eventId,
+          aggregateType: "admission_policy",
+          before: previous,
+          eventId: next.eventId,
+          occurredAt: updatedAt,
+          workspaceId,
+        });
+        return next;
+      });
+    },
+
+    async decideApplication(raw) {
+      const eventId = normalizedText(raw.eventId, "eventId");
+      const actorId = normalizedText(raw.actorId, "actorId");
+      const decisionActorId = normalizedText(raw.decisionActorId, "decisionActorId");
+      if (raw.decision !== "approve" && raw.decision !== "reject") {
+        invalid("Admission decision is invalid.");
+      }
+      return runTransaction(client, async (executor) => {
+        await lockEvent(executor, workspaceId, eventId);
+        const policy = await currentPolicy(executor, workspaceId, eventId);
+        if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
+        const currentResult = await executor.query<SqlRow>(
+          `select * from event_ops_admission_application_heads
+           where workspace_id = $1 and event_id = $2 and actor_id = $3
+           for update`,
+          [workspaceId, eventId, actorId],
+        );
+        const current = currentResult.rows[0] ? applicationFromRow(currentResult.rows[0]) : null;
+        if (!current || current.status !== "pending_review") {
+          throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} cannot be decided.`);
+        }
+        // The immutable submission policy proves why this application entered
+        // review. The current policy still governs capacity and waitlisting,
+        // so a later mode change cannot strand an already-pending application.
+        const submissionPolicy = await policyAtVersion(
+          executor,
+          workspaceId,
+          eventId,
+          current.policyVersion,
+        );
+        if (submissionPolicy?.admissionMode !== "approval_required") {
+          throw new EventAdmissionError(
+            "DATA_INVALID",
+            `Admission application ${eventId}/${actorId} has no valid review policy provenance.`,
+          );
+        }
+        const now = await databaseNow(executor);
+        let status: EventAdmissionApplicationStatus = "rejected";
+        if (raw.decision === "approve") {
+          const count = await admittedCount(executor, workspaceId, eventId);
+          if (policy.capacity === null || count < policy.capacity) status = "admitted";
+          else if (policy.waitlistEnabled) status = "waitlisted";
+          else throw new EventAdmissionError("CAPACITY_FULL", `Admission event ${eventId} is full.`);
+        }
+        const next: EventAdmissionApplication = {
+          ...current,
+          applicationVersion: current.applicationVersion + 1,
+          decidedAt: now,
+          decisionActorId,
+          policyVersion: policy.policyVersion,
+          status,
+          updatedAt: now,
+        };
+        await appendApplication(executor, workspaceId, next);
+        await audit(executor, {
+          action: `admission.application.${status}`,
+          actorId: decisionActorId,
+          after: applicationAuditPayload(next),
+          aggregateId: `${eventId}:${actorId}`,
+          aggregateType: "admission_application",
+          before: applicationAuditPayload(current),
+          eventId,
+          occurredAt: now,
+          workspaceId,
+        });
+        return next;
+      });
+    },
+
+    async getApplication(rawEventId, rawActorId) {
+      const eventId = normalizedText(rawEventId, "eventId");
+      const actorId = normalizedText(rawActorId, "actorId");
+      try {
+        const result = await client.query<SqlRow>(
+          `select * from event_ops_admission_application_heads
+           where workspace_id = $1 and event_id = $2 and actor_id = $3`,
+          [workspaceId, eventId, actorId],
+        );
+        return result.rows[0] ? applicationFromRow(result.rows[0]) : null;
+      } catch (error) {
+        if (error instanceof EventAdmissionError) throw error;
+        throw new EventAdmissionError("DATA_INVALID", "Admission application read failed.");
+      }
+    },
+
+    async getPolicy(rawEventId) {
+      const eventId = normalizedText(rawEventId, "eventId");
+      try {
+        return await currentPolicy(client, workspaceId, eventId);
+      } catch (error) {
+        if (error instanceof EventAdmissionError) throw error;
+        throw new EventAdmissionError("DATA_INVALID", "Admission policy read failed.");
+      }
+    },
+
+    async submitApplication(raw) {
+      const eventId = normalizedText(raw.eventId, "eventId");
+      const actorId = normalizedText(raw.actorId, "actorId");
+      const profilePayload = normalizedProfile(raw.profilePayload);
+      return runTransaction(client, async (executor) => {
+        await lockEvent(executor, workspaceId, eventId);
+        const existingResult = await executor.query<SqlRow>(
+          `select * from event_ops_admission_application_heads
+           where workspace_id = $1 and event_id = $2 and actor_id = $3
+           for update`,
+          [workspaceId, eventId, actorId],
+        );
+        if (existingResult.rows[0]) {
+          const existing = applicationFromRow(existingResult.rows[0]);
+          if (
+            JSON.stringify(stableJson(existing.profilePayload)) ===
+            JSON.stringify(stableJson(profilePayload))
+          ) return existing;
+          throw new EventAdmissionError(
+            "INVALID_TRANSITION",
+            `Admission application ${eventId}/${actorId} already exists with different profile content.`,
+          );
+        }
+        const policy = await currentPolicy(executor, workspaceId, eventId);
+        if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
+        const now = await databaseNow(executor);
+        if (
+          Date.parse(now) < Date.parse(policy.registrationOpensAt) ||
+          Date.parse(now) >= Date.parse(policy.registrationClosesAt)
+        ) {
+          throw new EventAdmissionError("WINDOW_CLOSED", `Admission window for ${eventId} is closed.`);
+        }
+        let status: EventAdmissionApplicationStatus = "pending_review";
+        if (policy.admissionMode === "instant") {
+          const count = await admittedCount(executor, workspaceId, eventId);
+          if (policy.capacity === null || count < policy.capacity) status = "admitted";
+          else if (policy.waitlistEnabled) status = "waitlisted";
+          else throw new EventAdmissionError("CAPACITY_FULL", `Admission event ${eventId} is full.`);
+        }
+        const application: EventAdmissionApplication = {
+          actorId,
+          applicationVersion: 1,
+          decidedAt: null,
+          decisionActorId: null,
+          eventId,
+          policyVersion: policy.policyVersion,
+          profilePayload,
+          status,
+          submittedAt: now,
+          updatedAt: now,
+        };
+        await appendApplication(executor, workspaceId, application);
+        await audit(executor, {
+          action: "admission.application.submitted",
+          actorId,
+          after: applicationAuditPayload(application),
+          aggregateId: `${eventId}:${actorId}`,
+          aggregateType: "admission_application",
+          before: null,
+          eventId,
+          occurredAt: now,
+          workspaceId,
+        });
+        return application;
+      });
+    },
+
+    async withdrawApplication(raw) {
+      const eventId = normalizedText(raw.eventId, "eventId");
+      const actorId = normalizedText(raw.actorId, "actorId");
+      return runTransaction(client, async (executor) => {
+        await lockEvent(executor, workspaceId, eventId);
+        const currentResult = await executor.query<SqlRow>(
+          `select * from event_ops_admission_application_heads
+           where workspace_id = $1 and event_id = $2 and actor_id = $3
+           for update`,
+          [workspaceId, eventId, actorId],
+        );
+        const current = currentResult.rows[0] ? applicationFromRow(currentResult.rows[0]) : null;
+        if (!current || !["pending_review", "waitlisted", "admitted"].includes(current.status)) {
+          throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} cannot be withdrawn.`);
+        }
+        const policy = await currentPolicy(executor, workspaceId, eventId);
+        if (!policy) throw new EventAdmissionError("NOT_CONFIGURED", `Admission policy for ${eventId} is not configured.`);
+        const now = await databaseNow(executor);
+        const withdrawn: EventAdmissionApplication = {
+          ...current,
+          applicationVersion: current.applicationVersion + 1,
+          policyVersion: policy.policyVersion,
+          status: "withdrawn",
+          updatedAt: now,
+        };
+        await appendApplication(executor, workspaceId, withdrawn);
+        await audit(executor, {
+          action: "admission.application.withdrawn",
+          actorId,
+          after: applicationAuditPayload(withdrawn),
+          aggregateId: `${eventId}:${actorId}`,
+          aggregateType: "admission_application",
+          before: applicationAuditPayload(current),
+          eventId,
+          occurredAt: now,
+          workspaceId,
+        });
+        if (current.status === "admitted") {
+          const count = await admittedCount(executor, workspaceId, eventId);
+          if (policy.capacity === null || count < policy.capacity) {
+            const waitingResult = await executor.query<SqlRow>(
+              `select * from event_ops_admission_application_heads
+               where workspace_id = $1 and event_id = $2 and status = 'waitlisted'
+               order by submitted_at, actor_id
+               limit 1 for update`,
+              [workspaceId, eventId],
+            );
+            if (waitingResult.rows[0]) {
+              const waiting = applicationFromRow(waitingResult.rows[0]);
+              const promoted: EventAdmissionApplication = {
+                ...waiting,
+                applicationVersion: waiting.applicationVersion + 1,
+                policyVersion: policy.policyVersion,
+                status: "admitted",
+                updatedAt: now,
+              };
+              await appendApplication(executor, workspaceId, promoted);
+              await audit(executor, {
+                action: "admission.application.promoted",
+                actorId,
+                after: applicationAuditPayload(promoted),
+                aggregateId: `${eventId}:${promoted.actorId}`,
+                aggregateType: "admission_application",
+                before: applicationAuditPayload(waiting),
+                eventId,
+                occurredAt: now,
+                workspaceId,
+              });
+            }
+          }
+        }
+        return withdrawn;
+      });
+    },
+  };
+}

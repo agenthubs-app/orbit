@@ -1013,6 +1013,103 @@ create index event_aliases_event_idx
   on event_aliases (workspace_id, event_id, alias_type);
 `,
   },
+  {
+    name: "event-operations-v9-canonical-admission",
+    version: 9,
+    sql: `
+create table event_ops_admission_policy_versions (
+  workspace_id text not null,
+  event_id text not null,
+  policy_version bigint not null check (policy_version > 0),
+  capacity integer check (capacity is null or capacity >= 0),
+  admission_mode text not null
+    check (admission_mode in ('instant', 'approval_required')),
+  waitlist_enabled boolean not null,
+  registration_opens_at timestamptz not null,
+  registration_closes_at timestamptz not null,
+  updated_at timestamptz not null,
+  primary key (workspace_id, event_id, policy_version),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id) on delete cascade,
+  check (registration_opens_at < registration_closes_at)
+);
+
+create table event_ops_admission_policy_heads (
+  workspace_id text not null,
+  event_id text not null,
+  policy_version bigint not null,
+  updated_at timestamptz not null,
+  primary key (workspace_id, event_id),
+  foreign key (workspace_id, event_id, policy_version)
+    references event_ops_admission_policy_versions (
+      workspace_id, event_id, policy_version
+    ) on delete restrict
+);
+
+create table event_ops_admission_application_versions (
+  workspace_id text not null,
+  event_id text not null,
+  actor_id text not null,
+  application_version bigint not null check (application_version > 0),
+  policy_version bigint not null check (policy_version > 0),
+  status text not null check (status in (
+    'pending_review', 'waitlisted', 'admitted', 'rejected', 'withdrawn'
+  )),
+  profile_payload jsonb not null
+    check (jsonb_typeof(profile_payload) = 'object'),
+  submitted_at timestamptz not null,
+  updated_at timestamptz not null,
+  decided_at timestamptz,
+  decision_actor_id text,
+  primary key (workspace_id, event_id, actor_id, application_version),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id) on delete cascade,
+  foreign key (workspace_id, event_id, policy_version)
+    references event_ops_admission_policy_versions (
+      workspace_id, event_id, policy_version
+    ) on delete restrict,
+  check (
+    (decided_at is null and decision_actor_id is null)
+    or (decided_at is not null and decision_actor_id is not null)
+  )
+);
+
+create table event_ops_admission_application_heads (
+  workspace_id text not null,
+  event_id text not null,
+  actor_id text not null,
+  application_version bigint not null,
+  policy_version bigint not null,
+  status text not null check (status in (
+    'pending_review', 'waitlisted', 'admitted', 'rejected', 'withdrawn'
+  )),
+  profile_payload jsonb not null
+    check (jsonb_typeof(profile_payload) = 'object'),
+  submitted_at timestamptz not null,
+  updated_at timestamptz not null,
+  decided_at timestamptz,
+  decision_actor_id text,
+  primary key (workspace_id, event_id, actor_id),
+  foreign key (workspace_id, event_id, actor_id, application_version)
+    references event_ops_admission_application_versions (
+      workspace_id, event_id, actor_id, application_version
+    ) on delete restrict,
+  foreign key (workspace_id, event_id, policy_version)
+    references event_ops_admission_policy_versions (
+      workspace_id, event_id, policy_version
+    ) on delete restrict,
+  check (
+    (decided_at is null and decision_actor_id is null)
+    or (decided_at is not null and decision_actor_id is not null)
+  )
+);
+
+create index event_ops_admission_application_heads_status_queue_idx
+  on event_ops_admission_application_heads (
+    workspace_id, event_id, status, submitted_at, actor_id
+  );
+`,
+  },
 ];
 
 function checksum(sql: string): string {

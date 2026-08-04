@@ -52,6 +52,8 @@ Phase 1 不改变 event CRUD、报名或活动生命周期写链。旧 public ca
 
 Phase 2-A1 只增加 canonical public catalogue 基础边界，不切换任何生产消费者。`features/events/core/public-catalogue.ts` 只接受 `EventCoreService`、canonical participant summary reader 与读取时刻注入：公开编号、名称、场地、时间和描述均来自 PostgreSQL canonical event；只有 published 且具有 canonical `publicCode` 的活动进入公开快照，其他公开必需字段残缺时 fail closed；快照通过 `publicCodes[eventId]` 直接暴露已校验的 canonical public code，消费者不得再按列表顺序派生 route code。每个公开活动必须有显式 canonical participant summary，真实零人也必须保存 count `0` 的 summary；缺行时 fail closed，不得把未迁移或读取失败伪装成零人，也不得读取旧 catalogue 补数。来源统一标记为 `event-core-postgres`，证据只从受校验的 canonical `sourcePayload` 提取，没有证据时按 event version 生成稳定 evidence id。下一独立 commit 才会删除生产页面/API 对旧 public catalogue 的读取并做消费者切换回归。
 
+Phase 2-B1 只建立 canonical admission foundation，不切换现有报名消费者。Admission application 表示申请、审批、候补和退出，不扩展也不等同于旧 `EventRegistration.status`，更不等同于 canonical membership。v9 以不可变 policy/application version 和唯一 head 保存每个 application version 所依据的 `policyVersion`；容量、窗口、审批与候补提升均在 event row lock 下使用数据库时钟原子执行并写入既有 audit log。Policy mode 只决定新申请的入队状态；已有 `pending_review` 不会因模式切换被卡死，仍可审核且使用最新 policy 执行容量/候补约束。后续独立切换只有在 application 为 `admitted` 时，才能在同一受控事务边界投影为 canonical membership；pending、waitlisted、rejected 与 withdrawn 均不得进入参会者目录或匹配计算。
+
 ## Mock 行为
 
 Mock 使用本地活动 fixture，不访问真实日历、会议平台、联系人库、消息系统或通知服务。want-to-connect 只记录本地意图，post-event review 只生成复核候选。

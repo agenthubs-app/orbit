@@ -59,6 +59,9 @@ test("event operations migrations use one implicit transaction per statement", a
   );
   assert.match(calls[8] ?? "", /normalized_alias = lower\(btrim\(alias_value\)\)/i);
   assert.doesNotMatch(calls[8] ?? "", /alter column title set not null/i);
+  assert.match(calls[9] ?? "", /create table event_ops_admission_policy_versions/i);
+  assert.match(calls[9] ?? "", /create table event_ops_admission_application_versions/i);
+  assert.match(calls[9] ?? "", /policy_version bigint not null/i);
 });
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -106,11 +109,21 @@ test(
         tables.rows.some((row) => row.table_name === "event_event_versions"),
       );
       assert.ok(tables.rows.some((row) => row.table_name === "event_aliases"));
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_admission_policy_versions",
+        ),
+      );
+      assert.ok(
+        tables.rows.some(
+          (row) => row.table_name === "event_ops_admission_application_heads",
+        ),
+      );
 
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "8");
+      assert.equal(applied.rows[0]?.count, "9");
 
       await migrationPool.query(`
         insert into event_ops_events (
