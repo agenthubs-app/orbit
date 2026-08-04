@@ -14,12 +14,11 @@ import {
 } from "../../registration/deadline-gated-service";
 import type { EventOperationsParticipant } from "../contract";
 import {
-  eventOperationsParticipantFromRegistration,
   eventParticipantAnswersEqual,
   normalizeEventParticipantAnswers,
 } from "../participant";
-import { normalizeProfileResponseForStorage } from "../profile-response-policy";
 import type { EventOperationsRepository } from "../repository";
+import { appendCanonicalMembershipVersion } from "./canonical-membership-writer";
 import type {
   EventOperationsPostgresRuntime,
   EventOperationsSqlExecutor,
@@ -383,226 +382,25 @@ async function appendRegistrationVersion(input: {
   window: Pick<ConfigurationWindowRow, "profile_edit_deadline_at">;
   observedAt?: string;
 }): Promise<EventRegistration> {
-  const effectiveAt = input.effectiveAt ?? input.registration.updatedAt;
-  const observedAt = input.observedAt ?? input.registration.updatedAt;
-  const participant = eventOperationsParticipantFromRegistration(
-    input.registration,
-    {
-      profileEditDeadlineAt: timestamp(
-        input.window.profile_edit_deadline_at,
-        "profile_edit_deadline_at",
-      ),
-    },
-  );
-  const profilePayload: CanonicalProfilePayload = {
-    participant,
-    registrationProfile: clone(input.registration.participantProfile),
-  };
-  if (input.profileChanged) {
-    await input.transaction.query(
-      `
-        insert into event_ops_profile_versions (
-          workspace_id, event_id, participant_id, profile_version, actor_id,
-          profile_payload, profile_hash, source_registration_id, effective_at,
-          created_at
-        ) values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10)
-      `,
-      [
-        input.workspaceId,
-        input.eventId,
-        input.registration.participantProfileId,
-        input.profileVersion,
-        input.registration.userId,
-        JSON.stringify(profilePayload),
-        payloadHash(profilePayload),
-        input.registration.id,
-        input.profileEffectiveAt ?? effectiveAt,
-        observedAt,
-      ],
-    );
-    await input.transaction.query(
-      `
-        insert into event_ops_profile_heads (
-          workspace_id, event_id, participant_id, actor_id, profile_version,
-          revision, updated_at
-        ) values ($1, $2, $3, $4, $5, 1, $6)
-        on conflict (workspace_id, event_id, participant_id) do update
-        set profile_version = excluded.profile_version,
-          revision = event_ops_profile_heads.revision + 1,
-          updated_at = excluded.updated_at
-        where event_ops_profile_heads.actor_id = excluded.actor_id
-      `,
-      [
-        input.workspaceId,
-        input.eventId,
-        input.registration.participantProfileId,
-        input.registration.userId,
-        input.profileVersion,
-        input.registration.participantProfile.updatedAt,
-      ],
-    );
-    if (input.interviewResponses?.length) {
-      const values: unknown[] = [];
-      const rows = input.interviewResponses.map((rawResponse, index) => {
-        const response = normalizeProfileResponseForStorage(rawResponse);
-        const offset = index * 11;
-        values.push(
-          input.workspaceId,
-          input.eventId,
-          input.registration.participantProfileId,
-          input.profileVersion,
-          response.responseId,
-          response.field,
-          response.visibility,
-          response.questionSource,
-          JSON.stringify(response),
-          response.answeredAt,
-          observedAt,
-        );
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}::jsonb, $${offset + 10}, $${offset + 11})`;
-      });
-      await input.transaction.query(
-        `
-          insert into event_ops_profile_response_versions (
-            workspace_id, event_id, participant_id, profile_version,
-            response_id, field_key, visibility, question_source,
-            response_payload, answered_at, created_at
-          ) values ${rows.join(", ")}
-        `,
-        values,
-      );
-    } else if (input.copyResponsesFromProfileVersion) {
-      await input.transaction.query(
-        `
-          insert into event_ops_profile_response_versions (
-            workspace_id, event_id, participant_id, profile_version,
-            response_id, field_key, visibility, question_source,
-            response_payload, answered_at, created_at
-          )
-          select
-            workspace_id, event_id, participant_id, $4,
-            response_id, field_key, visibility, question_source,
-            response_payload, answered_at, $5
-          from event_ops_profile_response_versions
-          where workspace_id = $1
-            and event_id = $2
-            and participant_id = $3
-            and profile_version = $6
-        `,
-        [
-          input.workspaceId,
-          input.eventId,
-          input.registration.participantProfileId,
-          input.profileVersion,
-          observedAt,
-          input.copyResponsesFromProfileVersion,
-        ],
-      );
-    }
-  }
-
-  await input.transaction.query(
-    `
-      insert into event_ops_membership_versions (
-        workspace_id, event_id, actor_id, membership_version, participant_id,
-        profile_version, status, registered_at, cancelled_at, reactivated_at,
-        late_registration, source_registration_id, effective_at, created_at
-      ) values (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-      )
-    `,
-    [
-      input.workspaceId,
-      input.eventId,
-      input.registration.userId,
-      input.membershipVersion,
-      input.registration.participantProfileId,
-      input.profileVersion,
-      input.registration.status,
-      input.registration.registeredAt,
-      input.registration.cancelledAt,
-      input.registration.reactivatedAt,
-      participant.lateRegistration,
-      input.registration.id,
-      effectiveAt,
-      observedAt,
-    ],
-  );
-  await input.transaction.query(
-    `
-      insert into event_ops_membership_heads (
-        workspace_id, event_id, actor_id, membership_version, participant_id,
-        profile_version, status, revision, updated_at
-      ) values ($1, $2, $3, $4, $5, $6, $7, 1, $8)
-      on conflict (workspace_id, event_id, actor_id) do update
-      set membership_version = excluded.membership_version,
-        participant_id = excluded.participant_id,
-        profile_version = excluded.profile_version,
-        status = excluded.status,
-        revision = event_ops_membership_heads.revision + 1,
-        updated_at = excluded.updated_at
-    `,
-    [
-      input.workspaceId,
-      input.eventId,
-      input.registration.userId,
-      input.membershipVersion,
-      input.registration.participantProfileId,
-      input.profileVersion,
-      input.registration.status,
-      input.registration.updatedAt,
-    ],
-  );
-
-  const eventType =
-    input.registration.status === "cancelled"
-      ? "event.registration.cancelled"
-      : "event.registration.upserted";
-  const suffix = `${encodeURIComponent(input.eventId)}:${encodeURIComponent(input.registration.userId)}:${input.membershipVersion}`;
-  await input.transaction.query(
-    `
-      insert into event_ops_outbox (
-        workspace_id, outbox_id, event_id, aggregate_type, aggregate_id,
-        event_type, payload, status, attempts, available_at, created_at,
-        updated_at
-      ) values (
-        $1, $2, $3, 'event_registration', $4, $5, $6::jsonb, 'pending', 0,
-        $7, $7, $7
-      )
-    `,
-    [
-      input.workspaceId,
-      `outbox:event-registration:${suffix}`,
-      input.eventId,
-      input.registration.id,
-      eventType,
-      JSON.stringify(input.registration),
-      observedAt,
-    ],
-  );
-  await input.transaction.query(
-    `
-      insert into event_ops_audit_log (
-        workspace_id, audit_id, event_id, actor_id, action, aggregate_type,
-        aggregate_id, before_payload, after_payload, evidence_ids, occurred_at
-      ) values (
-        $1, $2, $3, $4, $5, 'event_registration', $6, null, $7::jsonb,
-        $8::text[], $9
-      )
-    `,
-    [
-      input.workspaceId,
-      `audit:event-registration:${suffix}`,
-      input.eventId,
-      input.registration.userId,
-      eventType,
-      input.registration.id,
-      JSON.stringify(input.registration),
-      participant.evidenceIds,
-      observedAt,
-    ],
-  );
-  return clone(input.registration);
+  return appendCanonicalMembershipVersion({
+    admissionApplicationVersion: null,
+    copyResponsesFromProfileVersion: input.copyResponsesFromProfileVersion,
+    effectiveAt: input.effectiveAt,
+    executor: input.transaction,
+    interviewResponses: input.interviewResponses,
+    membershipVersion: input.membershipVersion,
+    observedAt: input.observedAt,
+    origin: "legacy_registration",
+    profileChanged: input.profileChanged,
+    profileEditDeadlineAt: timestamp(
+      input.window.profile_edit_deadline_at,
+      "profile_edit_deadline_at",
+    ),
+    profileEffectiveAt: input.profileEffectiveAt,
+    profileVersion: input.profileVersion,
+    registration: input.registration,
+    workspaceId: input.workspaceId,
+  });
 }
 
 export function createPostgresCanonicalRegistrationMethods({

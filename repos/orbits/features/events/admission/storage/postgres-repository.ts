@@ -13,8 +13,16 @@ import {
   type EventAdmissionApplicationStatus,
   type EventAdmissionMode,
   type EventAdmissionPolicy,
+  type EventAdmissionProfileSnapshot,
 } from "../contract";
 import type { EventAdmissionRepository } from "../repository";
+import { EVENT_PARTICIPANT_PROFILE_FIELDS } from "../../registration/contract";
+import type { EventRegistration } from "../../registration/contract";
+import {
+  appendCanonicalMembershipVersion,
+  canonicalParticipantProfileId,
+  canonicalRegistrationId,
+} from "../../event-operations/storage/canonical-membership-writer";
 
 type SqlRow = Record<string, unknown>;
 
@@ -73,12 +81,77 @@ function validateJson(value: unknown, field: string): void {
   invalid(`Admission ${field} contains a non-JSON value.`);
 }
 
+function exactKeys(
+  value: Record<string, unknown>,
+  allowed: readonly string[],
+  field: string,
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) invalid(`Admission ${field}.${key} is unsupported.`);
+  }
+}
+
+function requiredString(value: unknown, field: string): void {
+  if (typeof value !== "string" || !value) invalid(`Admission ${field} is invalid.`);
+}
+
 function normalizedProfile(
-  value: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-  jsonObject(value, "profilePayload");
+  value: unknown,
+): EventAdmissionProfileSnapshot {
+  const profile = jsonObject(value, "profilePayload") as Record<string, unknown>;
   validateJson(value, "profilePayload");
-  return JSON.parse(JSON.stringify(value)) as Readonly<Record<string, unknown>>;
+  exactKeys(profile, ["answers", "displayName", "interviewResponses"], "profilePayload");
+  const answers = jsonObject(profile.answers, "profilePayload.answers") as Record<string, unknown>;
+  exactKeys(answers, EVENT_PARTICIPANT_PROFILE_FIELDS, "profilePayload.answers");
+  for (const [field, answer] of Object.entries(answers)) {
+    requiredString(answer, `profilePayload.answers.${field}`);
+  }
+  if (profile.displayName !== undefined) {
+    requiredString(profile.displayName, "profilePayload.displayName");
+  }
+  if (profile.interviewResponses !== undefined) {
+    if (!Array.isArray(profile.interviewResponses)) {
+      invalid("Admission profilePayload.interviewResponses is invalid.");
+    }
+    const responseIds = new Set<string>();
+    const fields = new Set<string>();
+    for (const [index, raw] of profile.interviewResponses.entries()) {
+      const response = jsonObject(raw, `profilePayload.interviewResponses[${index}]`) as Record<string, unknown>;
+      exactKeys(response, [
+        "answer", "answerSource", "answeredAt", "field", "generation",
+        "question", "questionId", "questionSource", "responseId", "visibility",
+      ], `profilePayload.interviewResponses[${index}]`);
+      requiredString(response.responseId, `profilePayload.interviewResponses[${index}].responseId`);
+      requiredString(response.answeredAt, `profilePayload.interviewResponses[${index}].answeredAt`);
+      isoTimestamp(response.answeredAt, `profilePayload.interviewResponses[${index}].answeredAt`);
+      if (!EVENT_PARTICIPANT_PROFILE_FIELDS.includes(response.field as never)) {
+        invalid(`Admission profilePayload.interviewResponses[${index}].field is invalid.`);
+      }
+      if (response.answerSource !== "participant") invalid("Admission interview answerSource is invalid.");
+      if (!['ai_adaptive', 'legacy_unknown'].includes(String(response.questionSource))) invalid("Admission interview questionSource is invalid.");
+      if (!['event_attendees', 'matching_only', 'private'].includes(String(response.visibility))) invalid("Admission interview visibility is invalid.");
+      const answer = jsonObject(response.answer, `profilePayload.interviewResponses[${index}].answer`) as Record<string, unknown>;
+      exactKeys(answer, ["customText", "displayText", "selectedOptionIds"], `profilePayload.interviewResponses[${index}].answer`);
+      requiredString(answer.displayText, `profilePayload.interviewResponses[${index}].answer.displayText`);
+      if (answer.customText !== null && typeof answer.customText !== "string") invalid("Admission interview customText is invalid.");
+      if (!Array.isArray(answer.selectedOptionIds) || answer.selectedOptionIds.some((item) => typeof item !== "string")) invalid("Admission interview selectedOptionIds is invalid.");
+      const responseId = String(response.responseId);
+      const field = String(response.field);
+      if (answers[field] !== answer.displayText) {
+        invalid(`Admission profilePayload.answers.${field} does not match its verified response snapshot.`);
+      }
+      if (responseIds.has(responseId) || fields.has(field)) invalid("Admission interview responses contain duplicate identity or field.");
+      responseIds.add(responseId);
+      fields.add(field);
+      if ((response.question === null) !== (response.questionSource === "legacy_unknown")) {
+        invalid("Admission interview question provenance is inconsistent.");
+      }
+      if ((response.generation === null) !== (response.questionSource === "legacy_unknown")) {
+        invalid("Admission interview generation provenance is inconsistent.");
+      }
+    }
+  }
+  return JSON.parse(JSON.stringify(value)) as EventAdmissionProfileSnapshot;
 }
 
 function stableJson(value: unknown): unknown {
@@ -125,6 +198,7 @@ function policyFromRow(row: SqlRow): EventAdmissionPolicy {
     capacity,
     eventId: normalizedText(String(row.event_id ?? ""), "eventId"),
     policyVersion: positiveVersion(row.policy_version, "policyVersion"),
+    profileEditDeadlineAt: isoTimestamp(row.profile_edit_deadline_at, "profileEditDeadlineAt"),
     registrationClosesAt: isoTimestamp(row.registration_closes_at, "registrationClosesAt"),
     registrationOpensAt: isoTimestamp(row.registration_opens_at, "registrationOpensAt"),
     updatedAt: isoTimestamp(row.updated_at, "updatedAt"),
@@ -140,7 +214,7 @@ function applicationFromRow(row: SqlRow): EventAdmissionApplication {
     decisionActorId: nullableText(row.decision_actor_id),
     eventId: normalizedText(String(row.event_id ?? ""), "eventId"),
     policyVersion: positiveVersion(row.policy_version, "policyVersion"),
-    profilePayload: jsonObject(row.profile_payload, "profilePayload"),
+    profilePayload: normalizedProfile(row.profile_payload),
     status: applicationStatus(row.status),
     submittedAt: isoTimestamp(row.submitted_at, "submittedAt"),
     updatedAt: isoTimestamp(row.updated_at, "updatedAt"),
@@ -151,9 +225,14 @@ function normalizedPolicy(input: ConfigureEventAdmissionPolicyInput) {
   const eventId = normalizedText(input.eventId, "eventId");
   const opensAt = isoTimestamp(input.registrationOpensAt, "registrationOpensAt");
   const closesAt = isoTimestamp(input.registrationClosesAt, "registrationClosesAt");
+  const profileEditDeadlineAt = isoTimestamp(input.profileEditDeadlineAt, "profileEditDeadlineAt");
   if (Date.parse(opensAt) >= Date.parse(closesAt)) {
     invalid("Admission registration window must have positive duration.");
   }
+  if (
+    Date.parse(profileEditDeadlineAt) < Date.parse(opensAt) ||
+    Date.parse(profileEditDeadlineAt) > Date.parse(closesAt)
+  ) invalid("Admission profile edit deadline must be within the registration window.");
   if (
     input.capacity !== null &&
     (!Number.isSafeInteger(input.capacity) || input.capacity < 0)
@@ -164,6 +243,7 @@ function normalizedPolicy(input: ConfigureEventAdmissionPolicyInput) {
     admissionMode: admissionMode(input.admissionMode),
     capacity: input.capacity,
     eventId,
+    profileEditDeadlineAt,
     registrationClosesAt: closesAt,
     registrationOpensAt: opensAt,
     waitlistEnabled: input.waitlistEnabled,
@@ -226,6 +306,21 @@ async function policyAtVersion(
     [workspaceId, eventId, policyVersion],
   );
   return result.rows[0] ? policyFromRow(result.rows[0]) : null;
+}
+
+async function currentPolicyVersion(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<number> {
+  const result = await executor.query<{ policy_version: unknown }>(
+    `select policy_version from event_ops_admission_policy_heads
+     where workspace_id = $1 and event_id = $2`,
+    [workspaceId, eventId],
+  );
+  return result.rows[0]
+    ? positiveVersion(result.rows[0].policy_version, "policyVersion")
+    : 0;
 }
 
 async function admittedCount(
@@ -345,6 +440,101 @@ function applicationAuditPayload(application: EventAdmissionApplication) {
   };
 }
 
+function registrationSideEffects(): EventRegistration["sideEffects"] {
+  return {
+    calendarUpdateExecuted: false,
+    emailSent: false,
+    globalProfileWriteExecuted: false,
+    notificationDelivered: false,
+    organizerMessageSent: false,
+    refundRequested: false,
+  };
+}
+
+async function projectCanonicalMembership(input: {
+  application: EventAdmissionApplication;
+  executor: EventOperationsSqlExecutor;
+  profileEditDeadlineAt: string;
+  status: "cancelled" | "rsvped";
+  workspaceId: string;
+}): Promise<EventRegistration> {
+  const currentResult = await input.executor.query<SqlRow>(
+    `select head.membership_version, head.profile_version, head.status,
+            version.registered_at
+     from event_ops_membership_heads head
+     join event_ops_membership_versions version
+       on version.workspace_id = head.workspace_id
+      and version.event_id = head.event_id
+      and version.actor_id = head.actor_id
+      and version.membership_version = head.membership_version
+     where head.workspace_id = $1 and head.event_id = $2 and head.actor_id = $3`,
+    [input.workspaceId, input.application.eventId, input.application.actorId],
+  );
+  const current = currentResult.rows[0];
+  if (
+    (input.status === "rsvped" && current) ||
+    (input.status === "cancelled" && (!current || current.status !== "rsvped"))
+  ) invalid("Admission membership projection state is invalid.");
+  const membershipVersion = current
+    ? positiveVersion(current.membership_version, "membershipVersion") + 1
+    : 1;
+  const profileVersion = current
+    ? positiveVersion(current.profile_version, "profileVersion")
+    : 1;
+  const participantProfileId = canonicalParticipantProfileId(
+    input.application.eventId,
+    input.application.actorId,
+  );
+  const registrationId = canonicalRegistrationId(
+    input.application.eventId,
+    input.application.actorId,
+  );
+  const registeredAt = current
+    ? isoTimestamp(current.registered_at, "registeredAt")
+    : input.application.updatedAt;
+  const registration: EventRegistration = {
+    cancelledAt: input.status === "cancelled" ? input.application.updatedAt : null,
+    eventId: input.application.eventId,
+    id: registrationId,
+    participantProfile: {
+      answers: input.application.profilePayload.answers,
+      createdAt: input.application.submittedAt,
+      ...(input.application.profilePayload.displayName
+        ? { displayName: input.application.profilePayload.displayName }
+        : {}),
+      eventId: input.application.eventId,
+      id: participantProfileId,
+      ...(input.application.profilePayload.interviewResponses
+        ? { interviewResponses: input.application.profilePayload.interviewResponses }
+        : {}),
+      updatedAt: input.application.submittedAt,
+      userId: input.application.actorId,
+    },
+    participantProfileId,
+    reactivatedAt: null,
+    registeredAt,
+    sideEffects: registrationSideEffects(),
+    status: input.status,
+    updatedAt: input.application.updatedAt,
+    userId: input.application.actorId,
+  };
+  return appendCanonicalMembershipVersion({
+    admissionApplicationVersion: input.application.applicationVersion,
+    executor: input.executor,
+    interviewResponses: input.status === "rsvped"
+      ? input.application.profilePayload.interviewResponses
+      : undefined,
+    membershipVersion,
+    origin: "admission_application",
+    profileChanged: input.status === "rsvped",
+    profileEditDeadlineAt: input.profileEditDeadlineAt,
+    profileEffectiveAt: input.application.submittedAt,
+    profileVersion,
+    registration,
+    workspaceId: input.workspaceId,
+  });
+}
+
 async function runTransaction<TValue>(
   client: EventOperationsPostgresClient,
   operation: (executor: EventOperationsSqlExecutor) => Promise<TValue>,
@@ -379,7 +569,21 @@ export function createPostgresEventAdmissionRepository(input: {
       const updatedByActorId = normalizedText(raw.updatedByActorId, "updatedByActorId");
       return runTransaction(client, async (executor) => {
         await lockEvent(executor, workspaceId, policy.eventId);
-        const previous = await currentPolicy(executor, workspaceId, policy.eventId);
+        const previousVersion = await currentPolicyVersion(
+          executor,
+          workspaceId,
+          policy.eventId,
+        );
+        let previous: EventAdmissionPolicy | null = null;
+        try {
+          previous = await currentPolicy(executor, workspaceId, policy.eventId);
+        } catch (error) {
+          if (
+            !(error instanceof EventAdmissionError) ||
+            error.code !== "DATA_INVALID" ||
+            previousVersion === 0
+          ) throw error;
+        }
         const count = await admittedCount(executor, workspaceId, policy.eventId);
         if (policy.capacity !== null && count > policy.capacity) {
           throw new EventAdmissionError(
@@ -390,18 +594,18 @@ export function createPostgresEventAdmissionRepository(input: {
         const updatedAt = await databaseNow(executor);
         const next: EventAdmissionPolicy = {
           ...policy,
-          policyVersion: (previous?.policyVersion ?? 0) + 1,
+          policyVersion: previousVersion + 1,
           updatedAt,
         };
         await executor.query(
           `insert into event_ops_admission_policy_versions (
              workspace_id, event_id, policy_version, capacity, admission_mode,
              waitlist_enabled, registration_opens_at,
-             registration_closes_at, updated_at
-           ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+             registration_closes_at, profile_edit_deadline_at, updated_at
+           ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [workspaceId, next.eventId, next.policyVersion, next.capacity,
             next.admissionMode, next.waitlistEnabled, next.registrationOpensAt,
-            next.registrationClosesAt, next.updatedAt],
+            next.registrationClosesAt, next.profileEditDeadlineAt, next.updatedAt],
         );
         await executor.query(
           `insert into event_ops_admission_policy_heads (
@@ -418,7 +622,9 @@ export function createPostgresEventAdmissionRepository(input: {
           after: next,
           aggregateId: next.eventId,
           aggregateType: "admission_policy",
-          before: previous,
+          before: previous ?? (previousVersion > 0
+            ? { legacyPolicyVersion: previousVersion, profileEditDeadlineAt: null }
+            : null),
           eventId: next.eventId,
           occurredAt: updatedAt,
           workspaceId,
@@ -481,6 +687,15 @@ export function createPostgresEventAdmissionRepository(input: {
           updatedAt: now,
         };
         await appendApplication(executor, workspaceId, next);
+        if (next.status === "admitted") {
+          await projectCanonicalMembership({
+            application: next,
+            executor,
+            profileEditDeadlineAt: policy.profileEditDeadlineAt,
+            status: "rsvped",
+            workspaceId,
+          });
+        }
         await audit(executor, {
           action: `admission.application.${status}`,
           actorId: decisionActorId,
@@ -574,6 +789,15 @@ export function createPostgresEventAdmissionRepository(input: {
           updatedAt: now,
         };
         await appendApplication(executor, workspaceId, application);
+        if (application.status === "admitted") {
+          await projectCanonicalMembership({
+            application,
+            executor,
+            profileEditDeadlineAt: policy.profileEditDeadlineAt,
+            status: "rsvped",
+            workspaceId,
+          });
+        }
         await audit(executor, {
           action: "admission.application.submitted",
           actorId,
@@ -615,6 +839,15 @@ export function createPostgresEventAdmissionRepository(input: {
           updatedAt: now,
         };
         await appendApplication(executor, workspaceId, withdrawn);
+        if (current.status === "admitted") {
+          await projectCanonicalMembership({
+            application: withdrawn,
+            executor,
+            profileEditDeadlineAt: policy.profileEditDeadlineAt,
+            status: "cancelled",
+            workspaceId,
+          });
+        }
         await audit(executor, {
           action: "admission.application.withdrawn",
           actorId,
@@ -646,6 +879,13 @@ export function createPostgresEventAdmissionRepository(input: {
                 updatedAt: now,
               };
               await appendApplication(executor, workspaceId, promoted);
+              await projectCanonicalMembership({
+                application: promoted,
+                executor,
+                profileEditDeadlineAt: policy.profileEditDeadlineAt,
+                status: "rsvped",
+                workspaceId,
+              });
               await audit(executor, {
                 action: "admission.application.promoted",
                 actorId,

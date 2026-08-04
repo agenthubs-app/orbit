@@ -1110,6 +1110,49 @@ create index event_ops_admission_application_heads_status_queue_idx
   );
 `,
   },
+  {
+    name: "event-operations-v10-admission-membership-bridge",
+    version: 10,
+    sql: `
+alter table event_ops_admission_policy_versions
+  add column profile_edit_deadline_at timestamptz;
+
+alter table event_ops_admission_policy_versions
+  add constraint event_ops_admission_policy_versions_profile_deadline_check
+  check (
+    profile_edit_deadline_at is null
+    or (
+      registration_opens_at <= profile_edit_deadline_at
+      and profile_edit_deadline_at <= registration_closes_at
+    )
+  );
+
+alter table event_ops_membership_versions
+  add column origin text,
+  add column admission_application_version bigint;
+
+update event_ops_membership_versions
+set origin = 'legacy_registration'
+where origin is null;
+
+alter table event_ops_membership_versions
+  alter column origin set not null,
+  add constraint event_ops_membership_versions_origin_check
+  check (origin in ('legacy_registration', 'admission_application')),
+  add constraint event_ops_membership_versions_admission_origin_check
+  check (
+    (origin = 'legacy_registration' and admission_application_version is null)
+    or
+    (origin = 'admission_application' and admission_application_version is not null)
+  ),
+  add constraint event_ops_membership_versions_admission_application_fk
+  foreign key (
+    workspace_id, event_id, actor_id, admission_application_version
+  ) references event_ops_admission_application_versions (
+    workspace_id, event_id, actor_id, application_version
+  ) on delete restrict;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

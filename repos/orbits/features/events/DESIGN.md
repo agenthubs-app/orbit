@@ -54,6 +54,8 @@ Phase 2-A1 只增加 canonical public catalogue 基础边界，不切换任何�
 
 Phase 2-B1 只建立 canonical admission foundation，不切换现有报名消费者。Admission application 表示申请、审批、候补和退出，不扩展也不等同于旧 `EventRegistration.status`，更不等同于 canonical membership。v9 以不可变 policy/application version 和唯一 head 保存每个 application version 所依据的 `policyVersion`；容量、窗口、审批与候补提升均在 event row lock 下使用数据库时钟原子执行并写入既有 audit log。Policy mode 只决定新申请的入队状态；已有 `pending_review` 不会因模式切换被卡死，仍可审核且使用最新 policy 执行容量/候补约束。后续独立切换只有在 application 为 `admitted` 时，才能在同一受控事务边界投影为 canonical membership；pending、waitlisted、rejected 与 withdrawn 均不得进入参会者目录或匹配计算。
 
+Phase 2-B2A 仍不切换 UI 或生产消费者，只把 admission 的已录取状态与 canonical membership 建立同事务桥接。v10 为 membership version 记录 `legacy_registration` 或 `admission_application` origin；admission origin 必须以同 workspace/event/actor/applicationVersion 外键指向不可变 application version。Instant admitted、审批 admitted 与候补提升原子写入 `rsvped` membership，admitted 退出原子追加 `cancelled` membership；pending、waitlisted、rejected 不写 membership。共享 executor writer 在同一事务写 profile、逐字段 answers、自适应 response snapshot、membership、audit 和 outbox，任何一步失败都会连同 application 变更整体回滚。新 policy 必须显式配置 `profileEditDeadlineAt`；v10 不用 registration close 猜测旧 policy 的 deadline，历史 null policy 在重新配置前 fail closed。Catalogue summary 解耦、legacy admission 迁移和生产读取切换保留给 Phase 2-B2B。
+
 ## Mock 行为
 
 Mock 使用本地活动 fixture，不访问真实日历、会议平台、联系人库、消息系统或通知服务。want-to-connect 只记录本地意图，post-event review 只生成复核候选。

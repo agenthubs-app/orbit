@@ -34,6 +34,7 @@ export interface EventAdmissionPolicy {
   capacity: number | null;
   eventId: string;
   policyVersion: number;
+  profileEditDeadlineAt: string;
   registrationClosesAt: string;
   registrationOpensAt: string;
   updatedAt: string;
@@ -47,7 +48,7 @@ export interface EventAdmissionApplication {
   decisionActorId: string | null;
   eventId: string;
   policyVersion: number;
-  profilePayload: Readonly<Record<string, unknown>>;
+  profilePayload: EventAdmissionProfileSnapshot;
   status: EventAdmissionApplicationStatus;
   submittedAt: string;
   updatedAt: string;
@@ -57,6 +58,7 @@ export interface ConfigureEventAdmissionPolicyInput {
   admissionMode: EventAdmissionMode;
   capacity: number | null;
   eventId: string;
+  profileEditDeadlineAt: string;
   registrationClosesAt: string;
   registrationOpensAt: string;
   waitlistEnabled: boolean;
@@ -65,7 +67,13 @@ export interface ConfigureEventAdmissionPolicyInput {
 export interface SubmitEventAdmissionApplicationInput {
   actorId: string;
   eventId: string;
-  profilePayload: Readonly<Record<string, unknown>>;
+  profilePayload: EventAdmissionProfileSnapshot;
+}
+
+export interface EventAdmissionProfileSnapshot {
+  answers: EventParticipantProfileAnswers;
+  displayName?: string;
+  interviewResponses?: readonly EventProfileResponseSnapshot[];
 }
 
 export interface DecideEventAdmissionApplicationInput {
@@ -79,3 +87,5 @@ export interface WithdrawEventAdmissionApplicationInput {
   actorId: string;
   eventId: string;
 }
+import type { EventParticipantProfileAnswers } from "../registration/contract";
+import type { EventProfileResponseSnapshot } from "../registration/interview-response-contract";
