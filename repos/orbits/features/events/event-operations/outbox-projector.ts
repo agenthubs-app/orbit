@@ -5,6 +5,10 @@ import type {
 } from "../../../shared/domain/contracts";
 import type { RelationshipRecordWriteProvider } from "../../contacts/contact-write-contract";
 import type { EventRegistration } from "../registration/contract";
+import {
+  PROFILE_CONTRACT_REPAIR_EVENT_TYPE,
+  parseProfileContractRepairAuditOutboxPayload,
+} from "../registration/profile-contract-repair/audit-outbox-contract";
 import type { EventRegistrationProvider } from "../registration/service";
 import type { EventOperationsCheckIn } from "./contract";
 import type { EventOperationsOutboxMessage } from "./storage/postgres-outbox-repository";
@@ -189,9 +193,40 @@ export function createEventOperationsOutboxProjector({
           };
         }
 
+        if (message.eventType === PROFILE_CONTRACT_REPAIR_EVENT_TYPE) {
+          let parsed: ReturnType<
+            typeof parseProfileContractRepairAuditOutboxPayload
+          > | null = null;
+          try {
+            parsed = parseProfileContractRepairAuditOutboxPayload(
+              message.payload,
+            );
+          } catch {
+            // This branch intentionally normalizes all contract-boundary
+            // failures to a terminal, non-identifying repair error.
+          }
+          if (
+            !parsed?.ok ||
+            parsed.value.eventId !== message.eventId ||
+            message.aggregateType !== "event_participant_profile" ||
+            message.aggregateId !== parsed.value.targetToken
+          ) {
+            throw new EventOperationsOutboxProjectionError(
+              "EVENT_OPERATIONS_PROFILE_REPAIR_PAYLOAD_INVALID",
+              "The profile repair outbox payload is invalid.",
+              false,
+            );
+          }
+          return {
+            policy: "canonical_only",
+            projectedIds: [],
+            projection: "none",
+          };
+        }
+
         throw new EventOperationsOutboxProjectionError(
           "EVENT_OPERATIONS_OUTBOX_EVENT_UNSUPPORTED",
-          `No explicit projection policy exists for ${message.eventType}.`,
+          "No explicit projection policy exists for this event type.",
           false,
         );
       } catch (error) {
