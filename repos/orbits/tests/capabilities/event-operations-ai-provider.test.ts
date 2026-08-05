@@ -439,6 +439,73 @@ test("event operations AI adapter rejects fenced or malformed JSON without repai
   }
 });
 
+test("JSON failure retry policy is opt-in, fingerprinted, and never enables fence or trailing text", async () => {
+  const input = { eventId: "event:test", recommendationCount: 1, sources: [{ candidateParticipants: [participants[1]!], sourceParticipant: participants[0]! }] };
+  const baseline = createEventOperationsAiProvider({ runModelText: successfulText("") });
+  const optedIn = createEventOperationsAiProvider({ retryableJsonFailureShapes: ["unterminated_envelope", "empty", "parse_syntax", "empty"], runModelText: successfulText("") });
+  assert.notEqual(baseline.requestFingerprint, optedIn.requestFingerprint);
+  assert.equal(
+    baseline.requestFingerprint,
+    createEventOperationsAiProvider({
+      retryableJsonFailureShapes: ["fence_or_prefix", "trailing_text"],
+      runModelText: successfulText(""),
+    }).requestFingerprint,
+  );
+  for (const [text, retryable] of [["", true], ["{", true], ["{\"x\":]}", true], ["```json\n{}", false], ["{} trailing", false]] as const) {
+    const provider = createEventOperationsAiProvider({ retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope", "fence_or_prefix", "trailing_text"], runModelText: successfulText(text) });
+    const result = await provider.generateRecommendations(input);
+    assert.equal(result.success, false);
+    if (result.success === false) assert.equal(result.retryable, retryable);
+  }
+  const invalidSchema = createEventOperationsAiProvider({
+    retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
+    runModelText: successfulText('{"recommendations":[]}'),
+  });
+  const invalidSchemaResult = await invalidSchema.generateRecommendations(input);
+  assert.equal(invalidSchemaResult.success, false);
+  if (invalidSchemaResult.success === false) {
+    assert.equal(invalidSchemaResult.error.code, "AI_SCHEMA_INVALID");
+    assert.equal(invalidSchemaResult.retryable, false);
+  }
+  const configured = JSON.parse(createConfiguredEventOperationsAiProvider().requestFingerprint ?? "{}") as Record<string, unknown>;
+  assert.equal(configured.recommendationPromptEncoding, "deduplicated");
+  assert.deepEqual(configured.retryableJsonFailureShapes, ["empty", "parse_syntax", "unterminated_envelope"]);
+});
+
+test("grouping and table adapters share the bounded JSON retry policy", async () => {
+  const provider = createEventOperationsAiProvider({
+    retryableJsonFailureShapes: ["unterminated_envelope"],
+    runModelText: successfulText("{"),
+  });
+  const grouping = await provider.generateGroupingFeatures({
+    eventId: "event:test",
+    maxAffinityCount: 1,
+    sources: [{
+      candidateParticipants: [participants[1]!],
+      recommendations: {
+        noMatchReason: null,
+        recommendations: [],
+        sourceParticipantId: "participant:a",
+      },
+      sourceParticipant: participants[0]!,
+    }],
+  });
+  const table = await provider.generateTableContent({
+    eventId: "event:test",
+    features: [],
+    members: participants,
+    roundNumber: 1,
+    tableNumber: 1,
+  });
+  for (const result of [grouping, table]) {
+    assert.equal(result.success, false);
+    if (result.success === false) {
+      assert.equal(result.error.code, "AI_JSON_INVALID");
+      assert.equal(result.retryable, true);
+    }
+  }
+});
+
 test("event operations AI adapter rejects valid JSON with an incomplete schema", async () => {
   const provider = createEventOperationsAiProvider({
     runModelText: successfulText(

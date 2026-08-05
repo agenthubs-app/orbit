@@ -27,6 +27,7 @@ export interface EventOperationsModelRunner {
 export interface EventOperationsAiProviderOptions {
   config?: GeminiOrbitAgentProviderConfig;
   recommendationPromptEncoding?: "expanded" | "deduplicated";
+  retryableJsonFailureShapes?: readonly EventOperationsJsonFailureShape[];
   runModelText?: EventOperationsModelRunner;
 }
 
@@ -324,6 +325,7 @@ function toEventOperationsMetadata(
 function invalidJson<TValue>(
   jsonFailureShape: EventOperationsJsonFailureShape,
   responseMetadata?: EventOperationsAiResponseMetadata,
+  retryableJsonFailureShapes: ReadonlySet<EventOperationsJsonFailureShape> = new Set(),
 ): EventOperationsAiResult<TValue> {
   return {
     error: {
@@ -332,7 +334,7 @@ function invalidJson<TValue>(
       message: "The model response was not one strict JSON document.",
     },
     ...(responseMetadata ? { responseMetadata } : {}),
-    retryable: false,
+    retryable: retryableJsonFailureShapes.has(jsonFailureShape),
     success: false,
   };
 }
@@ -365,6 +367,7 @@ const DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION =
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
   recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
+  retryableJsonFailureShapes: readonly EventOperationsJsonFailureShape[] = [],
 ): string {
   const configuredProvider = String(
     config?.provider ?? process.env.ORBIT_AGENT_PROVIDER ?? "gemini",
@@ -402,9 +405,34 @@ function requestFingerprint(
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
   };
-  return JSON.stringify(recommendationPromptEncoding === "deduplicated"
-    ? { ...fingerprint, recommendationPromptEncoding }
-    : fingerprint);
+  return JSON.stringify(
+    recommendationPromptEncoding === "deduplicated" ||
+      retryableJsonFailureShapes.length > 0
+      ? {
+          ...fingerprint,
+          ...(recommendationPromptEncoding === "deduplicated"
+            ? { recommendationPromptEncoding }
+            : {}),
+          ...(retryableJsonFailureShapes.length > 0
+            ? { retryableJsonFailureShapes }
+            : {}),
+        }
+      : fingerprint,
+  );
+}
+
+const supportedRetryableJsonFailureShapes = new Set<EventOperationsJsonFailureShape>([
+  "empty",
+  "parse_syntax",
+  "unterminated_envelope",
+]);
+
+function normalizeRetryableJsonFailureShapes(
+  shapes: readonly EventOperationsJsonFailureShape[],
+): readonly EventOperationsJsonFailureShape[] {
+  return [...new Set(shapes)]
+    .filter((shape) => supportedRetryableJsonFailureShapes.has(shape))
+    .sort();
 }
 
 function compactParticipant(
@@ -553,10 +581,20 @@ function compactGroupingSources(
 export function createEventOperationsAiProvider({
   config,
   recommendationPromptEncoding = "expanded",
+  retryableJsonFailureShapes = [],
   runModelText = runOrbitAgentModelText,
 }: EventOperationsAiProviderOptions = {}): EventOperationsAiProvider {
+  const effectiveRetryableJsonFailureShapes =
+    normalizeRetryableJsonFailureShapes(retryableJsonFailureShapes);
+  const retryableJsonFailureShapeSet = new Set(
+    effectiveRetryableJsonFailureShapes,
+  );
   return {
-    requestFingerprint: requestFingerprint(config, recommendationPromptEncoding),
+    requestFingerprint: requestFingerprint(
+      config,
+      recommendationPromptEncoding,
+      effectiveRetryableJsonFailureShapes,
+    ),
     async generateRecommendations(input) {
       const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
       const response = await runModelText({
@@ -582,7 +620,7 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined, retryableJsonFailureShapeSet);
       const tokenRows = parseTokenRecommendationRows(json);
       if (!tokenRows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const rows = mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources);
@@ -619,7 +657,7 @@ ${JSON.stringify(compactGroupingSources(input.sources))}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined, retryableJsonFailureShapeSet);
       const features = parseGroupingFeatures(json);
       if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
@@ -658,7 +696,7 @@ ${JSON.stringify(input.features)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined, retryableJsonFailureShapeSet);
       const table = parseTable(
         json,
         new Set(input.members.map((member) => member.participantId)),
@@ -690,6 +728,8 @@ export function createConfiguredEventOperationsAiProvider({
       temperature: 0.2,
       ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
     },
+    recommendationPromptEncoding: "deduplicated",
+    retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
   });
 }
 
