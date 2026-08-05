@@ -241,11 +241,11 @@ test("grouping feature prompt includes every typed event-profile answer", async 
         JSON.stringify({
           features: [
             {
-              affinityParticipantIds: ["participant:b"],
+              affinityCandidateKeys: ["S1C1"],
               facilitationHint: "Start from the regulated pilot dependency.",
-              participantId: "participant:a",
               primaryTopic: "Regulated AI pilots",
               secondaryTopic: "Evaluation evidence",
+              sourceKey: "S1",
             },
           ],
         }),
@@ -271,7 +271,38 @@ test("grouping feature prompt includes every typed event-profile answer", async 
 
   assert.equal(result.success, true);
   for (const canary of profileCanaries) {
-    assert.match(prompt, new RegExp(canary, "u"));
+    assert.equal((prompt.match(new RegExp(canary, "gu")) ?? []).length, 1);
+  }
+  assert.doesNotMatch(prompt, /participant:a|participant:b/u);
+  assert.match(prompt, /sourceProfileKey|affinityCandidateKeys/u);
+});
+
+test("grouping tokens map exactly and reject cross-source, duplicate, missing, and oversized rows", async () => {
+  const thirdParticipant = {
+    ...participants[1]!,
+    actorId: "actor:c",
+    participantId: "participant:c",
+  };
+  const sources = [
+    { candidateParticipants: [participants[1]!, thirdParticipant], recommendations: { noMatchReason: null, recommendations: [], sourceParticipantId: participants[0]!.participantId }, sourceParticipant: participants[0]! },
+    { candidateParticipants: [participants[0]!], recommendations: { noMatchReason: null, recommendations: [], sourceParticipantId: participants[1]!.participantId }, sourceParticipant: participants[1]! },
+  ];
+  const feature = (sourceKey: string, affinityCandidateKeys: string[]) => ({ affinityCandidateKeys, facilitationHint: "bounded", primaryTopic: "topic", secondaryTopic: "secondary", sourceKey });
+  const run = async (features: unknown) => createEventOperationsAiProvider({ runModelText: successfulText(JSON.stringify({ features })) }).generateGroupingFeatures({ eventId: "event:test", maxAffinityCount: 1, sources });
+  const valid = await run([feature("S2", ["S2C1"]), feature("S1", ["S1C1"])]);
+  assert.equal(valid.success, true);
+  if (valid.success) assert.deepEqual(valid.data.map((item) => item.participantId), ["participant:b", "participant:a"]);
+  for (const features of [
+    [feature("S1", ["S1C1"])],
+    [feature("S1", ["S1C1"]), feature("S1", ["S1C1"])],
+    [feature("S1", ["S2C1"]), feature("S2", ["S2C1"])],
+    [feature("S1", ["unknown"]), feature("S2", ["S2C1"])],
+    [feature("S1", ["S1C1", "S1C1"]), feature("S2", ["S2C1"])],
+    [feature("S1", ["S1C1", "S1C2"]), feature("S2", ["S2C1"])],
+  ]) {
+    const result = await run(features);
+    assert.equal(result.success, false);
+    if (result.success === false) assert.equal(result.error.code, "AI_SCHEMA_INVALID");
   }
 });
 

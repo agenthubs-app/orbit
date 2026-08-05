@@ -135,9 +135,21 @@ function parseTokenRecommendationRows(
   return value.recommendations as unknown as readonly TokenRecommendationRow[];
 }
 
-function parseGroupingFeatures(
-  value: unknown,
-): readonly EventOperationsGroupingFeature[] | null {
+interface TokenGroupingFeature {
+  affinityCandidateKeys: readonly string[];
+  facilitationHint: string;
+  primaryTopic: string;
+  secondaryTopic: string;
+  sourceKey: string;
+}
+
+interface TokenizedGroupingSource {
+  candidateIdByKey: ReadonlyMap<string, string>;
+  sourceParticipantId: string;
+  sourceKey: string;
+}
+
+function parseTokenGroupingFeatures(value: unknown): readonly TokenGroupingFeature[] | null {
   if (
     !isRecord(value) ||
     !exactKeys(value, ["features"]) ||
@@ -149,25 +161,24 @@ function parseGroupingFeatures(
     if (
       !isRecord(feature) ||
       !exactKeys(feature, [
-        "affinityParticipantIds",
+        "affinityCandidateKeys",
         "facilitationHint",
-        "participantId",
         "primaryTopic",
         "secondaryTopic",
+        "sourceKey",
       ]) ||
-      !Array.isArray(feature.affinityParticipantIds) ||
-      !feature.affinityParticipantIds.every(nonEmptyString) ||
-      new Set(feature.affinityParticipantIds).size !==
-        feature.affinityParticipantIds.length ||
+      !Array.isArray(feature.affinityCandidateKeys) ||
+      !feature.affinityCandidateKeys.every(nonEmptyString) ||
+      new Set(feature.affinityCandidateKeys).size !== feature.affinityCandidateKeys.length ||
       !nonEmptyString(feature.facilitationHint) ||
-      !nonEmptyString(feature.participantId) ||
+      !nonEmptyString(feature.sourceKey) ||
       !nonEmptyString(feature.primaryTopic) ||
       !nonEmptyString(feature.secondaryTopic)
     ) {
       return null;
     }
   }
-  return value.features as unknown as readonly EventOperationsGroupingFeature[];
+  return value.features as unknown as readonly TokenGroupingFeature[];
 }
 
 function parseMemberPrompts(value: unknown): boolean {
@@ -394,6 +405,7 @@ function requestFingerprint(
       ? config.temperature
       : null;
   const fingerprint = {
+    groupingPromptVersion: "event-operations-tokenized-grouping-v2-profile-lookup",
     jsonOutput: config?.jsonOutput === true,
     maxTokens: config?.maxTokens ?? null,
     model,
@@ -570,12 +582,70 @@ function compactGroupingSources(
   sources: Parameters<
     EventOperationsAiProvider["generateGroupingFeatures"]
   >[0]["sources"],
-) {
-  return sources.map((source) => ({
-    candidateParticipants: source.candidateParticipants.map(compactParticipant),
-    recommendations: source.recommendations,
-    sourceParticipant: compactParticipant(source.sourceParticipant),
-  }));
+): { prompt: unknown; tokenSources: readonly TokenizedGroupingSource[] } {
+  const profileKeyByParticipantId = new Map<string, string>();
+  const profiles: unknown[] = [];
+  const profileKey = (participant: import("./contract").EventOperationsParticipant) => {
+    const existing = profileKeyByParticipantId.get(participant.participantId);
+    if (existing) return existing;
+    const key = `P${profileKeyByParticipantId.size + 1}`;
+    profileKeyByParticipantId.set(participant.participantId, key);
+    profiles.push({ profile: compactParticipantWithoutId(participant), profileKey: key });
+    return key;
+  };
+  const tokenSources: TokenizedGroupingSource[] = [];
+  const promptSources = sources.map((source, sourceIndex) => {
+    const sourceKey = `S${sourceIndex + 1}`;
+    const candidateKeyByParticipantId = new Map<string, string>();
+    const candidateIdByKey = new Map<string, string>();
+    const candidateParticipants = source.candidateParticipants.map((candidate, candidateIndex) => {
+      const candidateKey = `${sourceKey}C${candidateIndex + 1}`;
+      candidateKeyByParticipantId.set(candidate.participantId, candidateKey);
+      candidateIdByKey.set(candidateKey, candidate.participantId);
+      return { candidateKey, profileKey: profileKey(candidate) };
+    });
+    tokenSources.push({ candidateIdByKey, sourceKey, sourceParticipantId: source.sourceParticipant.participantId });
+    return {
+      candidateParticipants,
+      recommendations: {
+        noMatchReason: source.recommendations.noMatchReason,
+        recommendations: source.recommendations.recommendations.map((recommendation) => ({
+          ...recommendation,
+          targetCandidateKey: candidateKeyByParticipantId.get(recommendation.targetParticipantId),
+          targetParticipantId: undefined,
+        })),
+      },
+      sourceKey,
+      sourceProfileKey: profileKey(source.sourceParticipant),
+    };
+  });
+  return { prompt: { profiles, sources: promptSources }, tokenSources };
+}
+
+function mapTokenGroupingFeatures(
+  features: readonly TokenGroupingFeature[],
+  tokenSources: readonly TokenizedGroupingSource[],
+  maxAffinityCount: number,
+): readonly EventOperationsGroupingFeature[] | null {
+  if (features.length !== tokenSources.length) return null;
+  const sourceByKey = new Map(tokenSources.map((source) => [source.sourceKey, source]));
+  const seenSources = new Set<string>();
+  const mapped: EventOperationsGroupingFeature[] = [];
+  for (const feature of features) {
+    const source = sourceByKey.get(feature.sourceKey);
+    if (!source || seenSources.has(feature.sourceKey) || feature.affinityCandidateKeys.length > maxAffinityCount) return null;
+    seenSources.add(feature.sourceKey);
+    const affinityParticipantIds: string[] = [];
+    const seenAffinity = new Set<string>();
+    for (const candidateKey of feature.affinityCandidateKeys) {
+      const participantId = source.candidateIdByKey.get(candidateKey);
+      if (!participantId || seenAffinity.has(candidateKey)) return null;
+      seenAffinity.add(candidateKey);
+      affinityParticipantIds.push(participantId);
+    }
+    mapped.push({ affinityParticipantIds, facilitationHint: feature.facilitationHint, participantId: source.sourceParticipantId, primaryTopic: feature.primaryTopic, secondaryTopic: feature.secondaryTopic });
+  }
+  return seenSources.size === sourceByKey.size ? mapped : null;
 }
 
 export function createEventOperationsAiProvider({
@@ -637,28 +707,32 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
     },
 
     async generateGroupingFeatures(input) {
+      const tokenizedSources = compactGroupingSources(input.sources);
       const response = await runModelText({
         config,
         systemInstruction,
         userText: `Extract bounded grouping features for this source shard.
 
 Requirements:
-- Return one feature for every supplied sourceParticipant and no other participant.
-- affinityParticipantIds contains at most ${input.maxAffinityCount} unique ids and only ids from that source's deterministic shortlist.
+- Return one feature for every supplied sourceKey and no other sourceKey.
+- affinityCandidateKeys contains at most ${input.maxAffinityCount} unique keys and only keys from that sourceKey's deterministic shortlist.
+- Resolve sourceProfileKey and candidate profileKey from the profiles lookup; never output participant ids.
 - primaryTopic, secondaryTopic, and facilitationHint must be concrete and evidence-backed.
 - Every object must contain exactly the documented keys.
 
 JSON shape:
-{"features":[{"participantId":"participant id","primaryTopic":"specific topic","secondaryTopic":"specific topic","affinityParticipantIds":["shortlisted id"],"facilitationHint":"specific facilitation hint"}]}
+{"features":[{"sourceKey":"S1","primaryTopic":"specific topic","secondaryTopic":"specific topic","affinityCandidateKeys":["S1C1"],"facilitationHint":"specific facilitation hint"}]}
 
 Event id: ${input.eventId}
 Bounded sources, shortlists, and validated recommendations:
-${JSON.stringify(compactGroupingSources(input.sources))}`,
+${JSON.stringify(tokenizedSources.prompt)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
       if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined, retryableJsonFailureShapeSet);
-      const features = parseGroupingFeatures(json);
+      const tokenFeatures = parseTokenGroupingFeatures(json);
+      if (!tokenFeatures) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const features = mapTokenGroupingFeatures(tokenFeatures, tokenizedSources.tokenSources, input.maxAffinityCount);
       if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
         data: features,
@@ -734,7 +808,7 @@ export function createConfiguredEventOperationsAiProvider({
 }
 
 export const __eventOperationsAiProviderTestExports = {
-  parseGroupingFeatures,
+  parseTokenGroupingFeatures,
   classifyJsonFailureShape,
   parseTokenRecommendationRows,
   parseTable,
