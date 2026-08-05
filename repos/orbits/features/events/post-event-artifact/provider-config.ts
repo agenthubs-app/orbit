@@ -6,7 +6,7 @@ import {
   type OrbitAgentModelProvider,
 } from "../../orbit-ai/gemini-provider";
 
-export const ATTENDEE_POST_EVENT_AI_PROMPT_VERSION = 1;
+export const ATTENDEE_POST_EVENT_AI_PROMPT_VERSION = 2;
 
 export interface AttendeePostEventAiProviderConfiguration {
   config: GeminiOrbitAgentProviderConfig;

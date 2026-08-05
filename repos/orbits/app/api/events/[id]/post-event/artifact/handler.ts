@@ -73,6 +73,7 @@ export function createAttendeePostEventAiArtifactPostHandler(
     const requestedAt = now;
     const task = await repository.request({
       attendeeActorId: access.actor.id,
+      attendeeDisplayName: access.actor.name,
       eventId: access.eventId,
       evidenceSnapshot,
       evidenceWhitelist: evidenceSnapshot.map((evidence) => evidence.evidenceId),

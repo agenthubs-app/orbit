@@ -165,6 +165,7 @@ test("artifact request is idempotent and worker leases a real queued task into s
   const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
   const requested = {
     attendeeActorId: actorA,
+    attendeeDisplayName: "Attendee A",
     eventId,
     evidenceSnapshot: [{ commitments: ["Send benchmark"], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review next week", noteText: "Discussed a concrete benchmark.", observedAt: timestamp, talked: "yes" as const }],
     evidenceWhitelist: ["evidence:human-encounter:a"],
@@ -177,11 +178,17 @@ test("artifact request is idempotent and worker leases a real queued task into s
   assert.equal((await repository.request(requested)).status, "queued");
   assert.equal((await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 1);
 
+  let observedSystemInstruction = "";
+  let observedUserText = "";
   const outcome = await processAttendeePostEventAiTask({
     config: { apiKey: "test", provider: "openai" },
     now: () => "2026-08-04T12:01:00.000Z",
     repository,
-    runModelText: async () => ({ model: "gpt-5.6", provider: "openai", source: "provider:openai-responses-api", success: true, text: JSON.stringify({ messageDraft: "Thank you for the benchmark discussion.", summary: "The attendee committed to send a benchmark before next week's review." }) }),
+    runModelText: async (input) => {
+      observedSystemInstruction = input.systemInstruction;
+      observedUserText = input.userText;
+      return { model: "gpt-5.6", provider: "openai", source: "provider:openai-responses-api", success: true, text: JSON.stringify({ messageDraft: "Thank you for the benchmark discussion.", summary: "The attendee committed to send a benchmark before next week's review." }) };
+    },
     workerId: "worker:test",
   });
   assert.equal(outcome, "ready");
@@ -190,6 +197,35 @@ test("artifact request is idempotent and worker leases a real queued task into s
   assert.equal(view.status, "ready");
   assert.equal(view.artifact?.provider, "openai");
   assert.deepEqual(view.artifact?.evidenceIds, requested.evidenceWhitelist);
+  assert.match(observedSystemInstruction, /first-person perspective/);
+  assert.match(observedSystemInstruction, /relative time expressions/);
+  assert.equal(JSON.parse(observedUserText).attendee.displayName, "Attendee A");
+});
+
+test("same evidence queues a new immutable artifact when generation inputs change", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
+  const request = {
+    attendeeActorId: actorA,
+    attendeeDisplayName: "Attendee A",
+    eventId,
+    evidenceSnapshot: [{ commitments: ["Send benchmark"], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review next week", noteText: "Discussed a concrete benchmark.", observedAt: timestamp, talked: "yes" as const }],
+    evidenceWhitelist: ["evidence:human-encounter:a"],
+    model: "gpt-5.6",
+    promptVersion: 1,
+    provider: "openai",
+    requestedAt: timestamp,
+  };
+  const first = await repository.request(request);
+  const second = await repository.request({
+    ...request,
+    promptVersion: 2,
+    requestedAt: "2026-08-04T12:01:00.000Z",
+  });
+  assert.equal(first.version, 1);
+  assert.equal(second.version, 2);
+  assert.equal(second.promptVersion, 2);
+  assert.equal((await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 2);
 });
 
 test("changed encounter evidence queues a new artifact version and the older ready artifact is history, not current", async () => {
@@ -197,6 +233,7 @@ test("changed encounter evidence queues a new artifact version and the older rea
   const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
   const firstRequest = {
     attendeeActorId: actorA,
+    attendeeDisplayName: "Attendee A",
     eventId,
     evidenceSnapshot: [{ commitments: ["Send benchmark"], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review next week", noteText: "Initial evidence", observedAt: timestamp, talked: "yes" as const }],
     evidenceWhitelist: ["evidence:human-encounter:a"],
@@ -234,6 +271,7 @@ test("worker stores strict schema failures with attempt metadata and no fallback
   const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
   await repository.request({
     attendeeActorId: actorA,
+    attendeeDisplayName: "Attendee A",
     eventId,
     evidenceSnapshot: [{ commitments: [], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "", noteText: "Recorded evidence", observedAt: timestamp, talked: "yes" }],
     evidenceWhitelist: ["evidence:human-encounter:a"],
@@ -265,6 +303,7 @@ test("worker honors the provider retryability decision instead of retrying termi
   const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
   await repository.request({
     attendeeActorId: actorA,
+    attendeeDisplayName: "Attendee A",
     eventId,
     evidenceSnapshot: [{ commitments: ["Send benchmark"], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review next week", noteText: "Discussed a concrete benchmark.", observedAt: timestamp, talked: "yes" }],
     evidenceWhitelist: ["evidence:human-encounter:a"],
@@ -435,6 +474,7 @@ test("artifact POST queues one idempotent task from the registered attendee's ex
   assert.equal(records.length, 1);
   assert.equal(records[0]?.userId, actorA);
   assert.deepEqual(records[0]?.evidenceIds, ["evidence:human-encounter:encounter:a"]);
+  assert.equal((records[0]?.payload as any).attendeeDisplayName, "Attendee A");
 });
 
 test("artifact POST excludes encounters that the attendee marked as no conversation or uncertain", async () => {

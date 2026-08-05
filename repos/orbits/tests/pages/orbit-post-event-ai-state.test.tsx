@@ -8,10 +8,16 @@ import { OrbitPostEventCenter } from "../../app/(app)/app/events/[id]/orbit-post
 const EVENT_ID = "event:post-event-ai-state";
 
 interface PostEventAiStateTestEnvelope {
-  artifact: null;
+  artifact: null | {
+    generatedAt: string;
+    messageDraft: string | null;
+    model: string;
+    provider: string;
+    summary: string;
+  };
   eventId: string;
   failureCode: string | null;
-  status: "failed" | "unconfigured";
+  status: "failed" | "ready" | "unconfigured";
   updatedAt: null;
 }
 
@@ -85,6 +91,32 @@ test("post-event center does not treat no-conversation evidence as eligible AI i
     const action = renderer.root.find((node) => node.props["data-post-event-ai-action"] === "request");
     assert.equal(action.props.disabled, true);
     assert.match(JSON.stringify(renderer.toJSON()), /请先记录真实交流/u);
+  } finally {
+    renderer?.unmount();
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("ready post-event AI artifact exposes an explicit regeneration action", async () => {
+  const originalFetch = globalThis.fetch;
+  let renderer: ReactTestRenderer | null = null;
+  try {
+    renderer = await renderArtifactState({
+      artifact: {
+        generatedAt: "2026-08-05T10:00:00.000Z",
+        messageDraft: "Thanks for the discussion.",
+        model: "deepseek-v4-flash",
+        provider: "deepseek",
+        summary: "Provider-generated review.",
+      },
+      eventId: EVENT_ID,
+      failureCode: null,
+      status: "ready",
+      updatedAt: null,
+    });
+    assert.equal(renderer.root.findAll((node) => node.props["data-post-event-ai-artifact"] !== undefined).length, 1);
+    const action = renderer.root.find((node) => node.props["data-post-event-ai-action"] === "regenerate");
+    assert.match(JSON.stringify(action.children), /重新生成 AI 复盘/u);
   } finally {
     renderer?.unmount();
     globalThis.fetch = originalFetch;

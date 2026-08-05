@@ -5,7 +5,8 @@ import type { AttendeePostEventAiTaskPayload, AttendeePostEventAiTaskRepository 
 const SYSTEM_INSTRUCTION = `You create one attendee's post-event reflection from explicit evidence owned by that attendee.
 Return exactly one JSON object with exactly two keys: summary and messageDraft.
 summary must be a non-empty string grounded only in the supplied evidence.
-messageDraft must be either a non-empty string or null. Never invent people, commitments, meetings, or outcomes.`;
+messageDraft must be either a non-empty string or null. Write it from the current attendee's first-person perspective to the counterpart, so never refer to the current attendee by name in the third person.
+Never invent people, commitments, meetings, outcomes, or relative time expressions such as yesterday, tomorrow, or next week unless that exact relative expression appears in the supplied evidence.`;
 
 function parsedArtifact(text: string, task: AttendeePostEventAiTaskPayload, generatedAt: string): AttendeePostEventAiArtifact | null {
   let value: unknown;
@@ -42,7 +43,11 @@ export async function processAttendeePostEventAiTask(input: {
   const result = await (input.runModelText ?? runOrbitAgentModelText)({
     config: input.config,
     systemInstruction: SYSTEM_INSTRUCTION,
-    userText: JSON.stringify({ eventId: task.eventId, evidence: task.evidenceSnapshot }),
+    userText: JSON.stringify({
+      attendee: { displayName: task.attendeeDisplayName?.trim() || "the attendee" },
+      eventId: task.eventId,
+      evidence: task.evidenceSnapshot,
+    }),
   });
   const finishedAt = now();
   if (result.success === false) {

@@ -19,6 +19,7 @@ export interface AttendeePostEventEvidenceSnapshot {
 export interface AttendeePostEventAiTaskPayload extends Record<string, unknown> {
   artifact: AttendeePostEventAiArtifact | null;
   attendeeActorId: string;
+  attendeeDisplayName?: string;
   attemptCount: number;
   error: { at: string; code: string; retryable: boolean } | null;
   eventId: string;
@@ -49,6 +50,7 @@ export interface AttendeePostEventAiTaskRepository {
   fail(input: { code: string; leaseToken: string; now: string; retryable: boolean; taskId: string }): Promise<boolean>;
   request(input: {
     attendeeActorId: string;
+    attendeeDisplayName: string;
     eventId: string;
     evidenceSnapshot: readonly AttendeePostEventEvidenceSnapshot[];
     evidenceWhitelist: readonly string[];
@@ -92,7 +94,13 @@ export function createAttendeePostEventAiTaskRepository(input: {
       const existingTasks = existingRecords.map((record) => payload(record.payload)).filter((task): task is AttendeePostEventAiTaskPayload => Boolean(task));
       const evidenceHash = postEventEvidenceHash(value.evidenceSnapshot, value.evidenceWhitelist);
       const matching = existingTasks
-        .filter((task) => task.evidenceHash === evidenceHash)
+        .filter((task) =>
+          task.evidenceHash === evidenceHash &&
+          task.attendeeDisplayName === value.attendeeDisplayName &&
+          task.model === value.model &&
+          task.promptVersion === value.promptVersion &&
+          task.provider === value.provider
+        )
         .sort((left, right) => right.version - left.version)[0];
       if (matching && (matching.status === "ready" || matching.status === "running" || matching.status === "queued")) {
         return matching;
