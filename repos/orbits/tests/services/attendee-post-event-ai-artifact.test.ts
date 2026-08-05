@@ -247,6 +247,48 @@ test("worker stores strict schema failures with attempt metadata and no fallback
   assert.equal(stored.artifact, null);
 });
 
+test("worker honors the provider retryability decision instead of retrying terminal billing failures", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
+  await repository.request({
+    attendeeActorId: actorA,
+    eventId,
+    evidenceSnapshot: [{ commitments: ["Send benchmark"], contactId: "contact:a", evidenceId: "evidence:human-encounter:a", nextStep: "Review next week", noteText: "Discussed a concrete benchmark.", observedAt: timestamp, talked: "yes" }],
+    evidenceWhitelist: ["evidence:human-encounter:a"],
+    maxAttempts: 4,
+    model: "deepseek-v4-flash",
+    promptVersion: 1,
+    provider: "deepseek",
+    requestedAt: timestamp,
+  });
+
+  const outcome = await processAttendeePostEventAiTask({
+    config: { apiKey: "test", provider: "deepseek" },
+    now: () => "2026-08-04T12:01:00.000Z",
+    repository,
+    runModelText: async () => ({
+      error: {
+        code: "MODEL_REQUEST_FAILED",
+        message: "Insufficient Balance",
+        provider: "deepseek",
+        source: "provider:deepseek-chat-completions-api",
+      },
+      retryable: false,
+      success: false,
+    }),
+    workerId: "worker:terminal-provider-failure",
+  });
+
+  assert.equal(outcome, "failed");
+  const record = (await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
+  const stored = record?.payload as any;
+  assert.equal(stored.status, "failed");
+  assert.equal(stored.attemptCount, 1);
+  assert.equal(stored.error.code, "MODEL_REQUEST_FAILED");
+  assert.equal(stored.error.retryable, false);
+  assert.equal(stored.artifact, null);
+});
+
 test("attendee artifact API uses the registered actor scope instead of organizer scope", async () => {
   let observedActorId = "";
   const handler = createAttendeePostEventAiArtifactGetHandler({

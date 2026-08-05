@@ -46,7 +46,7 @@ export async function processAttendeePostEventAiTask(input: {
   });
   const finishedAt = now();
   if (result.success === false) {
-    const retryable = result.error.code !== "MODEL_API_KEY_MISSING";
+    const retryable = result.retryable;
     await input.repository.fail({ code: result.error.code, leaseToken: task.lease.token, now: finishedAt, retryable, taskId: task.taskId });
     return retryable && task.attemptCount < task.maxAttempts ? "retry" : "failed";
   }
