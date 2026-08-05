@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createEventRegistrationRouteHandlers } from "../../app/api/events/[id]/registration/route-handlers";
+import { mockEventRecords } from "../../features/events/event-crud-and-import/fixtures";
 import { createDeadlineGatedEventRegistrationService } from "../../features/events/registration/deadline-gated-service";
 import {
   createEventRegistrationService,
@@ -30,6 +31,8 @@ test("registration route returns a clear 409 after the event profile deadline", 
     },
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    loadEvent: async (eventId) =>
+      mockEventRecords.find((event) => event.id === eventId) ?? null,
     registrationService,
     resolveActor: async () => ({
       id: "actor:deadline-route",

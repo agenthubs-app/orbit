@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import type { OrbitPartyPersonView } from "../orbit-party-route-view-model";
+import { OrbitAppointmentNegotiation } from "../events/[id]/orbit-appointment-negotiation";
+import { OrbitEncounterCapture } from "../events/[id]/orbit-encounter-capture";
 import { formatOrbitPartyDateTime } from "./party-date-time";
 import { Icon } from "../orbit-reference-primitives";
 
@@ -61,11 +63,13 @@ export function EventContactRequestControl({
   contactRequestsOpen = true,
   eventId,
   person,
+  showAcceptedWorkflow = false,
   t,
 }: {
   contactRequestsOpen?: boolean;
   eventId: string;
   person: OrbitPartyPersonView;
+  showAcceptedWorkflow?: boolean;
   t: Translate;
 }) {
   const cachedState = contactRequestStateByPerson.get(person);
@@ -288,14 +292,45 @@ export function EventContactRequestControl({
         </div>
       ) : null}
       {status === "accepted" ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <span className="chip chip-accent">{t({ en: "Contact exchange accepted", zh: "双方已同意交换联系信息" })}</span>
-          {contactId ? (
-            <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(contactId)}`}>
-              {t({ en: "Open contact", zh: "打开联系人" })}
-            </a>
-          ) : null}
-        </div>
+        showAcceptedWorkflow ? (
+          <div data-party-post-contact-workflow style={{ display: "grid", gap: 12 }}>
+            <span className="chip chip-accent" style={{ justifySelf: "start" }}>{t({ en: "Contact exchange accepted", zh: "双方已同意交换联系信息" })}</span>
+            {contactId ? (
+              <>
+              <OrbitEncounterCapture contactId={contactId} eventId={eventId} />
+              <div data-party-appointment-action style={{ display: "grid", gap: 7 }}>
+                <strong style={{ fontSize: 14 }}>{t({ en: "Start / manage appointment", zh: "发起/管理约谈" })}</strong>
+                {requestId ? (
+                  <OrbitAppointmentNegotiation
+                    contactId={contactId}
+                    eventContactRequestId={requestId}
+                    eventId={eventId}
+                  />
+                ) : (
+                  <p role="alert" style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}>
+                    {t({
+                      en: "The accepted exchange is missing its request id. Refresh Party before scheduling.",
+                      zh: "这次已接受的名片交换缺少申请 ID，请刷新 Party 后再发起约谈。",
+                    })}
+                  </p>
+                )}
+              </div>
+              <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(contactId)}`} style={{ justifySelf: "start" }}>
+                {t({ en: "Open contact", zh: "打开联系人" })}
+              </a>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <div data-party-accepted-contact-summary style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <span className="chip chip-accent">{t({ en: "Contact exchange accepted", zh: "双方已同意交换联系信息" })}</span>
+            {contactId ? (
+              <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(contactId)}`} style={{ justifySelf: "start" }}>
+                {t({ en: "Open contact", zh: "打开联系人" })}
+              </a>
+            ) : null}
+          </div>
+        )
       ) : null}
       {status === "declined" ? (
         <span className="chip">{t({ en: "Contact request declined", zh: "联系申请已拒绝" })}</span>

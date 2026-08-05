@@ -29,8 +29,11 @@ interface AdaptiveRegistrationRouteContext {
   params: Promise<{ id: string }>;
 }
 
+type LoadEventForRegistration = typeof loadEventForRegistration;
+
 export function createRegistrationInterviewPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  loadEvent: LoadEventForRegistration = loadEventForRegistration,
 ) {
   return async function POST(
     request: Request,
@@ -41,7 +44,7 @@ export function createRegistrationInterviewPostHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id, actor.id);
+    const event = await loadEvent(id, actor.id);
 
     if (!event) {
       return NextResponse.json(
@@ -114,6 +117,7 @@ export function createRegistrationInterviewPostHandler(
 
 export function createRegistrationPersonaPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  loadEvent: LoadEventForRegistration = loadEventForRegistration,
 ) {
   return async function POST(
     request: Request,
@@ -124,7 +128,7 @@ export function createRegistrationPersonaPostHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id, actor.id);
+    const event = await loadEvent(id, actor.id);
 
     if (!event) {
       return NextResponse.json(

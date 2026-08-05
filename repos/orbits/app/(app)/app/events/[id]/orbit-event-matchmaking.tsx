@@ -378,6 +378,7 @@ export function OrbitEventMatchmaking({
   const { t } = useOrbitLanguage();
   const [workspace, setWorkspace] = useState<OperationsWorkspace | null>(null);
   const [detail, setDetail] = useState<ParticipantDetail | null>(null);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const [loading, setLoading] = useState(authenticated);
   const [unauthorized, setUnauthorized] = useState(!authenticated);
   const [error, setError] = useState("");
@@ -492,6 +493,89 @@ export function OrbitEventMatchmaking({
           <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
           {authenticated && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : !authenticated ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
         </div>
+      ) : null}
+
+      {workspace ? (
+        <section
+          className="card-flat"
+          data-event-participant-directory
+          style={{ display: "grid", gap: 12, padding: 14 }}
+        >
+          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
+            <div>
+              <strong>{t({ en: "All participants", zh: "全部参会者" })}</strong>
+              <p style={{ color: "var(--text-3)", fontSize: 12, margin: "3px 0 0" }}>
+                {t({
+                  en: `${workspace.directory.length} confirmed registration profiles. This directory is independent of AI publishing; open any card to review the event profile.`,
+                  zh: `${workspace.directory.length} 份已确认报名画像；参会者目录不依赖 AI 结果发布，点击任意卡片查看活动画像。`,
+                })}
+              </p>
+            </div>
+            <button
+              aria-expanded={directoryOpen}
+              className="btn btn-ghost btn-sm"
+              onClick={() => setDirectoryOpen((open) => !open)}
+              type="button"
+            >
+              {directoryOpen
+                ? t({ en: "Collapse directory", zh: "收起参会者" })
+                : t({ en: `All participants · ${workspace.directory.length}`, zh: `全部参会者 · ${workspace.directory.length}` })}
+            </button>
+          </div>
+          {directoryOpen ? (
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
+              {workspace.directory.map((participant) => {
+                const contactRequest = workspace.contactRequests.find(
+                  (request) =>
+                    request.requesterParticipantId === participant.participantId ||
+                    request.targetParticipantId === participant.participantId,
+                ) ?? null;
+                const isMe = participant.participantId === workspace.me.participantId;
+                return (
+                  <article
+                    className="card-flat"
+                    data-event-directory-participant={participant.participantId}
+                    key={participant.participantId}
+                    style={{ display: "grid", gap: 9, minWidth: 0, padding: 12 }}
+                  >
+                    <button
+                      aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })}
+                      onClick={() => void openParticipant(participant.participantId)}
+                      style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }}
+                      type="button"
+                    >
+                      <div style={{ alignItems: "start", display: "flex", gap: 8, justifyContent: "space-between" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ color: "var(--ink)", fontSize: 14 }}>{participant.displayName}</strong>
+                          <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>
+                            {[participant.role, participant.company].filter(Boolean).join(" · ")}
+                          </div>
+                        </div>
+                        {isMe ? <span className="chip">{t({ en: "You", zh: "你" })}</span> : null}
+                      </div>
+                      {participant.topics.length ? (
+                        <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0 0" }}>
+                          {participant.topics.slice(0, 3).join(" · ")}
+                        </p>
+                      ) : null}
+                    </button>
+                    {!isMe ? (
+                      <CandidateContactAction
+                        busy={working === `request:${participant.participantId}`}
+                        canWithdraw={contactRequest?.requesterParticipantId === workspace.me.participantId}
+                        contactRequestsOpen={contactRequestsOpen}
+                        onRequest={requestContact}
+                        onWithdraw={withdrawContact}
+                        participantId={participant.participantId}
+                        request={contactRequest}
+                      />
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {workspace?.resultsState === "locked" ? <div className="card-flat" data-operations-state="locked" style={{ padding: 14 }}><strong>{t({ en: "Results are not open yet", zh: "匹配结果尚未开放" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: `Available at ${formatGate(workspace.configuration.resultsAvailableAt)}.`, zh: `将在 ${formatGate(workspace.configuration.resultsAvailableAt)} 开放。` })}</p></div> : null}

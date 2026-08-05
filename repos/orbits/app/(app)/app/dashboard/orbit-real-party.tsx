@@ -1108,7 +1108,7 @@ function PersonDetailOverlay({ contactRequestsOpen, eventId, onClose, person, t 
           <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 18 }}>{person.reason}</p>
         )}
         <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
-          <EventContactRequestControl contactRequestsOpen={contactRequestsOpen} eventId={eventId} person={contactPerson} t={t} />
+          <EventContactRequestControl contactRequestsOpen={contactRequestsOpen} eventId={eventId} person={contactPerson} showAcceptedWorkflow t={t} />
         </div>
       </div>
     </ModalShell>

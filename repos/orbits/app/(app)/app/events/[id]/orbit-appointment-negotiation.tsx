@@ -120,6 +120,14 @@ export function OrbitAppointmentNegotiation({
   const [showProposal, setShowProposal] = useState(false);
   const [clockMs, setClockMs] = useState(() => Date.now());
   const actionKeys = useRef<ReturnType<typeof createAppointmentActionIdempotencyRegistry> | null>(null);
+  const appointmentsUnavailableMessage = t({
+    en: "Appointments are temporarily unavailable.",
+    zh: "约谈功能暂时不可用。",
+  });
+  const appointmentForbiddenMessage = t({
+    en: "This appointment does not belong to this contact and event.",
+    zh: "该约谈不属于当前联系人和活动。",
+  });
   actionKeys.current ??= createAppointmentActionIdempotencyRegistry();
   const keyFor = useCallback((fingerprint: string) => {
     return actionKeys.current!.keyFor(fingerprint);
@@ -155,10 +163,10 @@ export function OrbitAppointmentNegotiation({
     setLoading(true);
     void load()
       .catch((loadError) => setError(loadError instanceof AppointmentUiError && loadError.code === "APPOINTMENT_FORBIDDEN"
-        ? t({ en: "This appointment does not belong to this contact and event.", zh: "该约谈不属于当前联系人和活动。" })
-        : t({ en: "Appointments are temporarily unavailable.", zh: "约谈功能暂时不可用。" })))
+        ? appointmentForbiddenMessage
+        : appointmentsUnavailableMessage))
       .finally(() => setLoading(false));
-  }, [load, t]);
+  }, [appointmentForbiddenMessage, appointmentsUnavailableMessage, load]);
 
   async function createDraft() {
     setBusy(true); setError("");

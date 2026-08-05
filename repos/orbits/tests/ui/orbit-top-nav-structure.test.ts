@@ -123,6 +123,13 @@ test("signed-in desktop and mobile account menus link to registered events", () 
   assert.match(shell, /我的活动/);
 });
 
+test("signed-in desktop and mobile account menus expose the event operations center", () => {
+  const matches = shell.match(/\/app\/events\/center/gu) ?? [];
+  assert.equal(matches.length, 2);
+  assert.match(shell, /Event operations/);
+  assert.match(shell, /活动运营中心/);
+});
+
 test("theme controls are absent from global navigation", () => {
   const themeSource = readFileSync(
     join(projectRoot, "app/(app)/app/orbit-theme.tsx"),

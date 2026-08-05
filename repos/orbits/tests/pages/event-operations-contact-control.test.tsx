@@ -50,6 +50,9 @@ test("incoming contact accept immediately enters busy state and posts the exact 
     resolveResponse = resolve;
   });
   globalThis.fetch = (async (url, init) => {
+    if (String(url) === "/api/appointments") {
+      return Response.json({ data: [], success: true });
+    }
     observedUrl = String(url);
     observedInit = init;
     return response;
@@ -62,6 +65,7 @@ test("incoming contact accept immediately enters busy state and posts the exact 
         <EventContactRequestControl
           eventId={EVENT_ID}
           person={person()}
+          showAcceptedWorkflow
           t={(copy) => copy.en}
         />,
       );
@@ -122,6 +126,15 @@ test("incoming contact accept immediately enters busy state and posts the exact 
           `/app/contacts/${encodeURIComponent("contact:owner:aiko")}`,
     );
     assert.equal(contactLinks.length, 1);
+    const rendered = JSON.stringify(renderer.toJSON());
+    const encounterIndex = rendered.indexOf("data-human-encounter-capture");
+    const appointmentActionIndex = rendered.indexOf("data-party-appointment-action");
+    const appointmentIndex = rendered.indexOf("data-appointment-negotiation");
+    const contactIndex = rendered.indexOf(`/app/contacts/${encodeURIComponent("contact:owner:aiko")}`);
+    assert.ok(encounterIndex >= 0, "accepted exchange exposes encounter capture");
+    assert.ok(appointmentActionIndex > encounterIndex, "appointment action follows encounter capture");
+    assert.ok(appointmentIndex > appointmentActionIndex, "appointment negotiation is mounted");
+    assert.ok(contactIndex > appointmentIndex, "contact link remains the final workflow action");
   } finally {
     globalThis.fetch = originalFetch;
     renderer?.unmount();
@@ -324,6 +337,7 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
           contactRequestId: null,
           contactRequestStatus: "none",
         })}
+        showAcceptedWorkflow
         t={(copy) => copy.en}
       />,
     );
@@ -347,6 +361,45 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
             `/app/contacts/${encodeURIComponent("contact:owner:participant:aiko/primary")}`,
       ).length,
       1,
+    );
+    assert.equal(
+      renderer.root.findAll((node) => node.props["data-human-encounter-capture"] !== undefined).length,
+      1,
+    );
+    assert.match(
+      JSON.stringify(renderer.toJSON()),
+      /accepted exchange is missing its request id/u,
+    );
+  } finally {
+    renderer.unmount();
+  }
+});
+
+test("an accepted contact stays compact outside the participant detail drawer", async () => {
+  let renderer!: ReactTestRenderer;
+  await act(async () => {
+    renderer = create(
+      <EventContactRequestControl
+        eventId={EVENT_ID}
+        person={person({
+          contactId: "contact:owner:aiko",
+          contactRequestDirection: "outgoing",
+          contactRequestStatus: "accepted",
+        })}
+        t={(copy) => copy.en}
+      />,
+    );
+  });
+
+  try {
+    const summaries = renderer.root.findAll(
+      (node) => node.props["data-party-accepted-contact-summary"] !== undefined,
+    );
+    assert.equal(summaries.length, 1);
+    assert.equal(summaries[0].props.style.display, "flex");
+    assert.equal(
+      renderer.root.findAll((node) => node.props["data-party-post-contact-workflow"] !== undefined).length,
+      0,
     );
   } finally {
     renderer.unmount();

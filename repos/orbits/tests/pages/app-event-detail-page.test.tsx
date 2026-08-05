@@ -103,7 +103,8 @@ test("/app/events/[id] resolves public and authorized private details through ca
   assert.doesNotMatch(pageSource, /loadAppEventsRouteViewModel/);
   assert.match(pageSource, /resolution\.state === "success"/);
   assert.doesNotMatch(pageSource, /Open organizer operations/);
-  assert.doesNotMatch(matchmakingSource, /All participants/);
+  assert.match(matchmakingSource, /data-event-participant-directory/);
+  assert.match(matchmakingSource, /参会者目录不依赖 AI 结果发布/);
   assert.match(matchmakingSource, /contactRequestsOpen/);
   assert.match(pageSource, /attendees: resolution\.registered \?/);
   assert.match(

@@ -9,6 +9,9 @@ import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compos
 import { eventChoiceToLandingEvent } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
 import { fmtDay } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { loadLocalEnv } from "../../scripts/load-local-env";
+
+loadLocalEnv();
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",

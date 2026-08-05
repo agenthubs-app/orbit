@@ -161,6 +161,12 @@ test(
       const base = now.rows[0]!.value.getTime();
       const config = configuration(eventId, base);
       await repository.saveConfiguration(config);
+      await pool.query(
+        `update event_ops_events
+            set lifecycle_state_v2 = 'published'
+          where workspace_id = $1 and event_id = $2`,
+        [workspaceId, eventId],
+      );
       await repository.activateCanonicalRegistrations(eventId, [
         registration(eventId, "actor:mei", "Mei Lin", "climate finance", at(base, -90)),
         registration(eventId, "actor:akio", "秋山 明", "robotics", at(base, -90)),

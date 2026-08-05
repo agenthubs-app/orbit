@@ -174,6 +174,12 @@ test(
         };
       });
       await repository.saveConfiguration(configuration(eventId, base));
+      await scopedPool.query(
+        `update event_ops_events
+            set lifecycle_state_v2 = 'published'
+          where workspace_id = $1 and event_id = $2`,
+        [workspaceId, eventId],
+      );
       await repository.activateCanonicalRegistrations(eventId, people);
 
       const checkIns = await Promise.all(

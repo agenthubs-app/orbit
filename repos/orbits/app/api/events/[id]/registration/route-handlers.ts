@@ -109,12 +109,14 @@ function errorResponse(error: AppError, status: number): Response {
 }
 
 export function createEventRegistrationRouteHandlers(input: {
+  loadEvent?: typeof loadEventForRegistration;
   registrationService?: EventRegistrationService;
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveActor: () => Promise<RegistrationActor | null>;
 }) {
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
+  const loadEvent = input.loadEvent ?? loadEventForRegistration;
   async function GET(
     request: Request,
     context: EventRegistrationRouteContext,
@@ -129,7 +131,7 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id, actor.id);
+    const event = await loadEvent(id, actor.id);
     if (!event) {
       return errorResponse(
         new AppError("NOT_FOUND", "The event could not be found."),
@@ -180,7 +182,7 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const event = await loadEventForRegistration(id, actor.id);
+    const event = await loadEvent(id, actor.id);
     if (!event) {
       return errorResponse(
         new AppError("NOT_FOUND", "The event could not be found."),

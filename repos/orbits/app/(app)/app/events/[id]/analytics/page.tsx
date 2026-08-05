@@ -29,10 +29,14 @@ export default async function EventAnalyticsPage({
   }
 
   return (
-    <>
+    <div
+      className="orbit-shell"
+      data-appscroll
+      data-orbit-real-page="event-analytics"
+    >
       <OrbitReferenceStyles />
       <PublicTopNav active="events" />
       <EventAnalyticsRoute eventId={eventId} />
-    </>
+    </div>
   );
 }

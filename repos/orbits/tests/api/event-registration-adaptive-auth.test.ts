@@ -5,10 +5,13 @@ import {
   createRegistrationInterviewPostHandler,
   createRegistrationPersonaPostHandler,
 } from "../../app/api/events/[id]/registration/adaptive-handlers";
+import { mockEventRecords } from "../../features/events/event-crud-and-import/fixtures";
 
 const routeContext = {
   params: Promise.resolve({ id: "demo-event-1" }),
 };
+const loadEvent = async (eventId: string) =>
+  mockEventRecords.find((event) => event.id === eventId) ?? null;
 
 const modelEnvironmentKeys = [
   "DEEPSEEK_API_KEY",
@@ -118,8 +121,8 @@ test("authenticated participants can use adaptive registration generation", asyn
     }) as typeof fetch,
     async () => {
       const resolveActor = async () => ({ id: "actor:participant" });
-      const interview = createRegistrationInterviewPostHandler(resolveActor);
-      const persona = createRegistrationPersonaPostHandler(resolveActor);
+      const interview = createRegistrationInterviewPostHandler(resolveActor, loadEvent);
+      const persona = createRegistrationPersonaPostHandler(resolveActor, loadEvent);
       const transcript = [
         {
           answer: "Meet storage operators",
@@ -192,12 +195,14 @@ test("authenticated adaptive registration fails closed when AI is unconfigured",
       );
       const interviewResponse = await createRegistrationInterviewPostHandler(
         resolveActor,
+        loadEvent,
       )(
         requestFor("/api/events/demo-event-1/registration/interview"),
         routeContext,
       );
       const personaResponse = await createRegistrationPersonaPostHandler(
         resolveActor,
+        loadEvent,
       )(
         requestFor("/api/events/demo-event-1/registration/persona"),
         routeContext,
