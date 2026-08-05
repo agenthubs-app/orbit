@@ -44,6 +44,8 @@ const dateFields = [
   "roundTwoStartsAt",
 ] as const;
 
+const canonicalScheduleFields = ["eventStartsAt", "eventEndsAt"] as const;
+
 const numberFields = [
   "recommendationCount",
   "tableSize",
@@ -207,7 +209,11 @@ export function EventOperationsAdminWorkspace({
       const payload: Record<string, string | number> = {};
       for (const field of dateFields) {
         if (!form[field]) throw new Error(`${field} is required.`);
-        payload[field] = new Date(form[field]).toISOString();
+        payload[field] = field === "eventStartsAt"
+          ? event.startsAt
+          : field === "eventEndsAt"
+            ? event.endsAt
+            : new Date(form[field]).toISOString();
       }
       for (const field of numberFields) {
         const value = Number(form[field]);
@@ -382,12 +388,18 @@ export function EventOperationsAdminWorkspace({
         <section className="card" style={{ marginTop: 18, padding: 20 }}>
           <div className="eyebrow">TIME GATES & SHARD POLICY</div>
           <h2 className="h-title" style={{ margin: "8px 0 0" }}>Operations configuration</h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>Only event start/end are prefilled from the owned event record. Every other rule requires an explicit organizer value.</p>
+          <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>Event start/end are locked to the canonical event schedule. Every other rule requires an explicit organizer value.</p>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", marginTop: 18 }}>
             {dateFields.map((field) => (
               <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
                 <span className="mono">{field}</span>
-                <input className="field" onChange={(input) => setForm((value) => ({ ...value, [field]: input.target.value }))} type="datetime-local" value={form[field]} />
+                <input
+                  className="field"
+                  onChange={(input) => setForm((value) => ({ ...value, [field]: input.target.value }))}
+                  readOnly={canonicalScheduleFields.includes(field as (typeof canonicalScheduleFields)[number])}
+                  type="datetime-local"
+                  value={form[field]}
+                />
               </label>
             ))}
             {numberFields.map((field) => (

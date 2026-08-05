@@ -48,6 +48,10 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /No QR image is generated/);
   assert.match(client, /party\/checkin\?eventId=/);
   assert.match(client, /CONFIGURED TIMELINE/);
+  assert.match(client, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
+  assert.match(client, /field === "eventStartsAt"\s*\? event\.startsAt/);
+  assert.match(client, /field === "eventEndsAt"\s*\? event\.endsAt/);
+  assert.match(client, /readOnly=\{canonicalScheduleFields\.includes/);
   assert.match(client, /profileEditDeadlineAt/);
   assert.match(client, /roundOneStartsAt/);
   assert.match(client, /PUBLISHED SEATING PREVIEW/);
