@@ -3,10 +3,30 @@ import test from "node:test";
 
 import {
   createRecommendationTaskEvaluationRecords,
+  evaluateRecommendationTask,
   hashEvaluationValue,
+  interleaveEvaluationArms,
   parseEvaluationOptions,
   redactEvaluationRecord,
 } from "../../scripts/evaluate-event-operations-recommendations";
+
+test("evaluation schedule pairs every shard and rotates arm ordering", () => {
+  const planned = interleaveEvaluationArms(
+    [
+      ["warm:one", "warm:two"],
+      ["cold:one", "cold:two"],
+    ],
+    2,
+  );
+  assert.deepEqual(
+    planned.map((item) => item.value),
+    [
+      "warm:one", "cold:one", "cold:two", "warm:two",
+      "cold:one", "warm:one", "warm:two", "cold:two",
+    ],
+  );
+  assert.deepEqual(planned.map((item) => item.round), [1, 1, 1, 1, 2, 2, 2, 2]);
+});
 
 test("evaluation options default to read-only A/B settings", () => {
   assert.deepEqual(parseEvaluationOptions(["--generation-id", "generation:one"]), {
@@ -61,7 +81,7 @@ test("evaluation builds a hash-only record for each recommendation task", () => 
     aiRequestFingerprint: "fingerprint:one",
     candidates,
     eventId: "event:private",
-    participants,
+    participants: participants as never,
     recommendationCount: 3,
     tasks: tasks as never,
   });
@@ -91,7 +111,7 @@ test("evaluation builds a hash-only record for each recommendation task", () => 
       aiRequestFingerprint: "fingerprint:one",
       candidates: [...candidates].reverse(),
       eventId: "event:private",
-      participants,
+      participants: participants as never,
       recommendationCount: 3,
       tasks: [...tasks].reverse() as never,
     });
@@ -100,7 +120,7 @@ test("evaluation builds a hash-only record for each recommendation task", () => 
     aiRequestFingerprint: "fingerprint:two",
     candidates,
     eventId: "event:private",
-    participants,
+    participants: participants as never,
     recommendationCount: 3,
     tasks: tasks as never,
   });
@@ -120,7 +140,7 @@ test("evaluation builds a hash-only record for each recommendation task", () => 
       index === 0
         ? { ...value, profileAnswers: { fullProfileCanary: "changed" } }
         : value,
-    ),
+    ) as never,
     recommendationCount: 3,
     tasks: tasks as never,
   });
@@ -128,4 +148,99 @@ test("evaluation builds a hash-only record for each recommendation task", () => 
     changedProfile[0]?.requestContentHash,
     records[0]?.requestContentHash,
   );
+});
+
+const evaluationTask = {
+  allowedTargetIdsBySource: new Map([["source", new Set(["target"])]]),
+  participantIds: ["source"],
+  record: {},
+  request: { eventId: "event:private", recommendationCount: 1, sources: [] },
+} as never;
+const snapshotParticipants = [{ participantId: "source" }, { participantId: "target" }] as never;
+
+test("evaluation classifies adapter failure without exposing its message", async () => {
+  const result = await evaluateRecommendationTask({
+    provider: {
+      async generateRecommendations() {
+        return {
+          error: { code: "AI_TIMEOUT" as const, message: "participant:secret timeout" },
+          success: false as const,
+        };
+      },
+    },
+    recommendationCount: 1,
+    snapshotParticipants,
+    task: evaluationTask,
+  });
+  assert.equal(result.adapterOutcome, "failed");
+  assert.equal(result.domainValidation, "not-run");
+  assert.equal(result.errorCode, "AI_TIMEOUT");
+  assert.equal(result.messageCategory, "adapter-ai_timeout");
+  assert.doesNotMatch(JSON.stringify(result), /participant:secret/u);
+});
+
+test("evaluation distinguishes domain validation failure from adapter success", async () => {
+  const result = await evaluateRecommendationTask({
+    provider: {
+      async generateRecommendations() {
+        return {
+          data: [{ noMatchReason: null, recommendations: [], sourceParticipantId: "source" }],
+          model: "test-model",
+          provider: "test-provider",
+          success: true as const,
+        };
+      },
+    },
+    recommendationCount: 1,
+    snapshotParticipants,
+    task: evaluationTask,
+  });
+  assert.equal(result.adapterOutcome, "succeeded");
+  assert.equal(result.domainValidation, "failed");
+  assert.equal(result.errorCode, "EVENT_OPERATIONS_AI_SCHEMA_INVALID");
+  assert.equal(result.overallBusinessValid, false);
+});
+
+test("evaluation records a valid adapter result and provider telemetry", async () => {
+  const result = await evaluateRecommendationTask({
+    provider: {
+      async generateRecommendations() {
+        return {
+          data: [
+            {
+              noMatchReason: null,
+              recommendations: [{
+                icebreakers: ["first", "second"],
+                memberHint: "relevant",
+                rank: 1,
+                reasons: ["compatible"],
+                score: 90,
+                targetParticipantId: "target",
+              }],
+              sourceParticipantId: "source",
+            },
+          ],
+          model: "test-model",
+          provider: "test-provider",
+          responseMetadata: {
+            finishReason: "stop",
+            providerResponseBytes: 321,
+            usage: { cacheHitTokens: 3, completionTokens: 5, promptTokens: 7, reasoningTokens: 2 },
+          },
+          success: true as const,
+        };
+      },
+    },
+    recommendationCount: 1,
+    snapshotParticipants,
+    task: evaluationTask,
+  });
+  assert.equal(result.adapterOutcome, "succeeded");
+  assert.equal(result.domainValidation, "passed");
+  assert.equal(result.overallBusinessValid, true);
+  assert.equal(result.promptTokens, 7);
+  assert.equal(result.completionTokens, 5);
+  assert.equal(result.cacheHitTokens, 3);
+  assert.equal(result.finishReason, "stop");
+  assert.equal(result.providerResponseBytes, 321);
 });
