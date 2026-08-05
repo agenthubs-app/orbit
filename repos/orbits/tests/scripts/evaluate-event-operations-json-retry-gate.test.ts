@@ -1,9 +1,34 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { mapRolling, runBoundedJsonRetry, shouldRetryJsonAttempt } from "../../scripts/evaluate-event-operations-json-retry-gate";
+import { mapRolling, parseJsonRetryOptions, runBoundedJsonRetry, shouldRetryJsonAttempt } from "../../scripts/evaluate-event-operations-json-retry-gate";
 
 const result = (overrides: Record<string, unknown> = {}) => ({ adapterDurationMs: 1, adapterOutcome: "failed", cacheHitTokens: null, completionTokens: null, domainValidation: "not-run", domainValidationDurationMs: 0, errorCode: "AI_JSON_INVALID", finishReason: null, jsonFailureShape: "parse_syntax", messageCategory: null, overallBusinessValid: false, promptTokens: null, providerResponseBytes: null, reasoningTokens: null, totalDurationMs: 1, validationReason: null, ...overrides }) as never;
+
+test("JSON retry gate keeps expanded compatibility and supports explicit deduplication", () => {
+  assert.deepEqual(
+    parseJsonRetryOptions(["--generation-id", "generation:one"]),
+    {
+      concurrency: 8,
+      execute: false,
+      generationId: "generation:one",
+      promptEncoding: "expanded",
+      rounds: 3,
+    },
+  );
+  assert.equal(
+    parseJsonRetryOptions([
+      "--generation-id", "generation:one", "--prompt-encoding", "deduplicated",
+    ]).promptEncoding,
+    "deduplicated",
+  );
+  assert.throws(
+    () => parseJsonRetryOptions([
+      "--generation-id", "generation:one", "--prompt-encoding", "compressed",
+    ]),
+    /prompt-encoding/u,
+  );
+});
 
 test("bounded retry recovers only transient JSON shapes", async () => {
   const values = [result(), result({ adapterOutcome: "succeeded", domainValidation: "passed", errorCode: null, jsonFailureShape: null, overallBusinessValid: true })];

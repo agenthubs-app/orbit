@@ -9,7 +9,13 @@ import { loadLocalEnv } from "./load-local-env";
 
 const RETRYABLE_JSON_SHAPES = new Set(["empty", "parse_syntax", "unterminated_envelope"]);
 
-export interface JsonRetryOptions { concurrency: number; execute: boolean; generationId: string; rounds: number; }
+export interface JsonRetryOptions {
+  concurrency: number;
+  execute: boolean;
+  generationId: string;
+  promptEncoding: "expanded" | "deduplicated";
+  rounds: number;
+}
 export interface JsonRetryAttempt extends EvaluationExecutionResult {
   attemptOrdinal: number;
   retryDelayMsAfter: number | null;
@@ -24,9 +30,19 @@ export function parseJsonRetryOptions(args: readonly string[]): JsonRetryOptions
   if (!generationId) throw new Error("--generation-id is required.");
   const concurrency = Number(value("concurrency") ?? 8);
   const rounds = Number(value("rounds") ?? 3);
+  const promptEncoding = value("prompt-encoding") ?? "expanded";
   if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error("--concurrency must be a positive integer.");
   if (!Number.isInteger(rounds) || rounds < 1) throw new Error("--rounds must be a positive integer.");
-  return { concurrency, execute: args.includes("--execute"), generationId, rounds };
+  if (promptEncoding !== "expanded" && promptEncoding !== "deduplicated") {
+    throw new Error("--prompt-encoding must be expanded or deduplicated.");
+  }
+  return {
+    concurrency,
+    execute: args.includes("--execute"),
+    generationId,
+    promptEncoding,
+    rounds,
+  };
 }
 
 export function shouldRetryJsonAttempt(result: EvaluationExecutionResult): boolean {
@@ -83,7 +99,18 @@ async function main(): Promise<void> {
     const [configuration, tasks, candidates] = await Promise.all([repository.getGenerationConfiguration(options.generationId), repository.listTasks(options.generationId), repository.listCandidates(options.generationId, generation.snapshot.participants.map((p) => p.participantId))]);
     if (!configuration || tasks.some((task) => task.status === "running" || task.leaseToken !== null)) throw new Error("Configuration or lease precondition failed.");
     const before = hashEvaluationValue({ candidates, configuration, generation, tasks });
-    const built = buildRecommendationTasks({ aiRequestFingerprint: "json-retry-gate", candidates, configuration, eventId: generation.eventId, participants: generation.snapshot.participants, tasks });
+    const provider = createEventOperationsAiProvider({
+      config: {
+        deepseekThinking: false,
+        jsonOutput: true,
+        maxTokens: 8192,
+        provider: "deepseek",
+        requestTimeoutMs: 90_000,
+        temperature: 0.2,
+      },
+      recommendationPromptEncoding: options.promptEncoding,
+    });
+    const built = buildRecommendationTasks({ aiRequestFingerprint: provider.requestFingerprint ?? "", candidates, configuration, eventId: generation.eventId, participants: generation.snapshot.participants, tasks });
     const sourceParticipantIds = built.flatMap((task) => task.participantIds);
     const sourceCounts = built.map((task) => task.request.sources.length).sort((left, right) => left - right);
     if (
@@ -97,14 +124,18 @@ async function main(): Promise<void> {
     const logical = Array.from({ length: options.rounds }, (_, round) => built.map((task) => ({ round: round + 1, task }))).flat();
     const results = options.execute ? await mapRolling(logical, options.concurrency, async ({ round, task }) => {
       const retry = await runBoundedJsonRetry({ evaluate: async () => {
-        const provider = createEventOperationsAiProvider({ config: { deepseekThinking: false, jsonOutput: true, maxTokens: 8192, provider: "deepseek", requestTimeoutMs: 90_000, temperature: 0.2 } });
         return evaluateRecommendationTask({ provider, recommendationCount: configuration.recommendationCount, snapshotParticipants: generation.snapshot.participants, task });
       } });
       return { ...retry, requestHash: hashEvaluationValue(task.request), round, taskOrdinal: task.record.taskOrdinal };
     }) : logical.map(({ round, task }) => ({ attemptCount: 0, attempts: [], finalValid: null, recoveredByRetry: null, requestHash: hashEvaluationValue(task.request), round, taskOrdinal: task.record.taskOrdinal, totalDurationMs: 0, totalTokens: 0 }));
     const [after, afterConfig, afterTasks, afterCandidates] = await Promise.all([repository.getGeneration(options.generationId), repository.getGenerationConfiguration(options.generationId), repository.listTasks(options.generationId), repository.listCandidates(options.generationId, generation.snapshot.participants.map((p) => p.participantId))]);
     if (!after || !afterConfig || hashEvaluationValue({ candidates: afterCandidates, configuration: afterConfig, generation: after, tasks: afterTasks }) !== before) throw new Error("Read-only state changed.");
-    for (const result of results) process.stdout.write(`${JSON.stringify(result)}\n`);
+    const safeBase = {
+      promptEncoding: options.promptEncoding,
+      requestFingerprintHash: hashEvaluationValue(provider.requestFingerprint ?? ""),
+      stateStable: true,
+    } as const;
+    for (const result of results) process.stdout.write(`${JSON.stringify({ ...safeBase, ...result })}\n`);
     if (options.execute && results.some((result) => result.finalValid !== true)) process.exitCode = 1;
   } finally { await client.close(); }
 }
