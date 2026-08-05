@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   createRecommendationTaskEvaluationRecords,
+  createEvaluationPairBlocks,
+  createPairedShardSchedule,
   evaluateRecommendationTask,
   hashEvaluationValue,
   interleaveEvaluationArms,
@@ -29,29 +31,71 @@ test("evaluation schedule pairs every shard and rotates arm ordering", () => {
   assert.deepEqual(planned.map((item) => item.round), [1, 1, 1, 1, 2, 2, 2, 2]);
 });
 
+test("paired shard blocks preserve source/candidate order and split 6 to 3+3 and 4 to 3+1", () => {
+  const source = (id: string) => ({ candidateCanary: `candidate:${id}`, id, profileCanary: `profile:${id}` });
+  const blocks = createEvaluationPairBlocks([
+    { sources: ["a", "b", "c", "d"].map(source), taskId: "task:two" },
+    { sources: ["e", "f", "g", "h", "i", "j"].map(source), taskId: "task:one" },
+  ]);
+  assert.deepEqual(blocks.map((block) => block.taskId), ["task:one", "task:two"]);
+  assert.deepEqual(blocks.map((block) => block.children.map((child) => child.map((item) => item.id))), [
+    [["e", "f", "g"], ["h", "i", "j"]],
+    [["a", "b", "c"], ["d"]],
+  ]);
+  assert.match(JSON.stringify(blocks), /candidate:e|profile:j/u);
+});
+
+test("paired shard schedule balances triad starts and yields 99 calls for eleven PG blocks", () => {
+  const tasks = Array.from({ length: 11 }, (_, index) => ({
+    sources: Array.from({ length: index === 10 ? 4 : 6 }, (_, sourceIndex) => `source:${index}:${sourceIndex}`),
+    taskId: `task:${String(index).padStart(2, "0")}`,
+  }));
+  const schedule = createPairedShardSchedule(tasks);
+  assert.equal(schedule.length, 99);
+  assert.deepEqual(schedule.slice(0, 3).map((item) => [item.armShardSize, item.childIndex]), [[3, 2], [6, 1], [3, 1]]);
+  for (const pairBlockOrdinal of [1, 2, 3]) {
+    const starts = [1, 2, 3].map((round) =>
+      schedule.find((item) => item.pairBlockOrdinal === pairBlockOrdinal && item.round === round),
+    );
+    assert.equal(new Set(starts.map((item) => `${item?.armShardSize}:${item?.childIndex}`)).size, 3);
+  }
+  assert.doesNotMatch(JSON.stringify(schedule.map(({ sources, ...safe }) => safe)), /source:/u);
+});
+
 test("evaluation options default to read-only A/B settings", () => {
   assert.deepEqual(parseEvaluationOptions(["--generation-id", "generation:one"]), {
-    concurrency: 1,
+    concurrency: 8,
     execute: false,
     generationId: "generation:one",
     requestTimeoutMs: 90_000,
     rounds: 3,
-    temperatures: [1, 0.2],
+    temperatures: [0.2],
   });
+});
+
+test("paired shard CLI rejects non-single or non-default temperatures", () => {
+  assert.throws(
+    () => parseEvaluationOptions(["--generation-id", "generation:one", "--temperatures", "0.2,1"]),
+    /exactly --temperatures 0.2/u,
+  );
+  assert.throws(
+    () => parseEvaluationOptions(["--generation-id", "generation:one", "--temperatures", "1"]),
+    /exactly --temperatures 0.2/u,
+  );
 });
 
 test("evaluation options accept an explicit execute switch", () => {
   assert.equal(
-    parseEvaluationOptions(["--generation-id", "generation:one", "--execute", "--rounds", "2"]).execute,
+    parseEvaluationOptions(["--generation-id", "generation:one", "--execute"]).execute,
     true,
   );
 });
 
-test("evaluation options deduplicate strict task ordinals and select before execution", () => {
-  const options = parseEvaluationOptions([
-    "--generation-id", "generation:one", "--task-ordinals", "1,7,1,8",
-  ]);
-  assert.deepEqual(options.taskOrdinals, [1, 7, 8]);
+test("paired shard CLI rejects partial task selection while the selector remains strict", () => {
+  assert.throws(
+    () => parseEvaluationOptions(["--generation-id", "generation:one", "--task-ordinals", "1,7,1,8"]),
+    /requires full 64-source coverage/u,
+  );
   assert.throws(
     () => parseEvaluationOptions(["--generation-id", "generation:one", "--task-ordinals", "0,2"]),
     /positive integers/u,
@@ -62,7 +106,7 @@ test("evaluation options deduplicate strict task ordinals and select before exec
   );
   const tasks = [1, 7, 8].map((taskOrdinal) => ({ record: { taskOrdinal } })) as never;
   assert.deepEqual(
-    selectEvaluationTasks(tasks, options.taskOrdinals).map((task) => task.record.taskOrdinal),
+    selectEvaluationTasks(tasks, [1, 7, 8]).map((task) => task.record.taskOrdinal),
     [1, 7, 8],
   );
   assert.throws(() => selectEvaluationTasks(tasks, [99]), /Unknown recommendation task ordinal/u);
