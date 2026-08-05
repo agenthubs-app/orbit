@@ -26,6 +26,7 @@ export interface EventOperationsModelRunner {
 
 export interface EventOperationsAiProviderOptions {
   config?: GeminiOrbitAgentProviderConfig;
+  recommendationPromptEncoding?: "expanded" | "deduplicated";
   runModelText?: EventOperationsModelRunner;
 }
 
@@ -358,9 +359,12 @@ Never invent participant ids, never use hidden identities, and never substitute 
 
 export const EVENT_OPERATIONS_AI_PROMPT_VERSION =
   "event-operations-tokenized-recommendations-v4-full-profile";
+const DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION =
+  "event-operations-tokenized-recommendations-v5-deduplicated-profile";
 
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
+  recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
 ): string {
   const configuredProvider = String(
     config?.provider ?? process.env.ORBIT_AGENT_PROVIDER ?? "gemini",
@@ -386,16 +390,21 @@ function requestFingerprint(
     config.temperature <= 2
       ? config.temperature
       : null;
-  return JSON.stringify({
+  const fingerprint = {
     jsonOutput: config?.jsonOutput === true,
     maxTokens: config?.maxTokens ?? null,
     model,
-    promptVersion: EVENT_OPERATIONS_AI_PROMPT_VERSION,
+    promptVersion: recommendationPromptEncoding === "deduplicated"
+      ? DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION
+      : EVENT_OPERATIONS_AI_PROMPT_VERSION,
     provider,
     thinking: config?.deepseekThinking ?? null,
     temperature,
     responseSchema: "event-operations-tokenized-recommendations-v1",
-  });
+  };
+  return JSON.stringify(recommendationPromptEncoding === "deduplicated"
+    ? { ...fingerprint, recommendationPromptEncoding }
+    : fingerprint);
 }
 
 function compactParticipant(
@@ -423,8 +432,9 @@ function compactRecommendationSources(
   sources: Parameters<
     EventOperationsAiProvider["generateRecommendations"]
   >[0]["sources"],
+  recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
 ): {
-  promptSources: readonly unknown[];
+  promptSources: unknown;
   tokenSources: readonly TokenizedRecommendationSource[];
 } {
   const tokenSources: TokenizedRecommendationSource[] = [];
@@ -450,7 +460,38 @@ function compactRecommendationSources(
       sourceProfile: compactParticipantWithoutId(source.sourceParticipant),
     };
   });
-  return { promptSources, tokenSources };
+  if (recommendationPromptEncoding === "expanded") return { promptSources, tokenSources };
+  const profileKeyByParticipantId = new Map<string, string>();
+  const profiles: unknown[] = [];
+  const profileKey = (participant: import("./contract").EventOperationsParticipant) => {
+    const existing = profileKeyByParticipantId.get(participant.participantId);
+    if (existing) return existing;
+    const key = `P${profileKeyByParticipantId.size + 1}`;
+    profileKeyByParticipantId.set(participant.participantId, key);
+    profiles.push({ profile: compactParticipantWithoutId(participant), profileKey: key });
+    return key;
+  };
+  for (const source of sources) profileKey(source.sourceParticipant);
+  for (const source of sources) {
+    for (const candidate of source.candidateParticipants) profileKey(candidate);
+  }
+  return {
+    promptSources: {
+      profiles,
+      sources: sources.map((source, sourceIndex) => {
+        const sourceKey = `S${sourceIndex + 1}`;
+        return {
+          candidateParticipants: source.candidateParticipants.map((candidate, candidateIndex) => ({
+            candidateKey: `${sourceKey}C${candidateIndex + 1}`,
+            profileKey: profileKeyByParticipantId.get(candidate.participantId)!,
+          })),
+          sourceKey,
+          sourceProfileKey: profileKeyByParticipantId.get(source.sourceParticipant.participantId)!,
+        };
+      }),
+    },
+    tokenSources,
+  };
 }
 
 function compactParticipantWithoutId(
@@ -511,12 +552,13 @@ function compactGroupingSources(
 
 export function createEventOperationsAiProvider({
   config,
+  recommendationPromptEncoding = "expanded",
   runModelText = runOrbitAgentModelText,
 }: EventOperationsAiProviderOptions = {}): EventOperationsAiProvider {
   return {
-    requestFingerprint: requestFingerprint(config),
+    requestFingerprint: requestFingerprint(config, recommendationPromptEncoding),
     async generateRecommendations(input) {
-      const tokenizedSources = compactRecommendationSources(input.sources);
+      const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
       const response = await runModelText({
         config,
         systemInstruction,
@@ -529,6 +571,7 @@ Requirements:
 - score is 0..100; reasons is non-empty; icebreakers has exactly 2 strings; memberHint is specific.
 - noMatchReason is required: use null when recommendations is non-empty, otherwise a concrete non-empty reason.
 - Every object must contain exactly the documented keys.
+${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup before making a recommendation.\n" : ""}
 
 JSON shape:
 {"recommendations":[{"sourceKey":"S1","noMatchReason":null,"recommendations":[{"targetCandidateKey":"S1C1","rank":1,"score":90,"reasons":["reason 1","reason 2"],"icebreakers":["question 1","question 2"],"memberHint":"specific hint"}]}]}

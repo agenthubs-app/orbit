@@ -199,6 +199,39 @@ test("event operations AI adapter accepts one strict recommendation JSON documen
   }
 });
 
+test("deduplicated recommendation prompt keeps one full profile per canonical participant", async () => {
+  let prompt = "";
+  const provider = createEventOperationsAiProvider({
+    recommendationPromptEncoding: "deduplicated",
+    async runModelText(input) {
+      prompt = input.userText;
+      return successfulText(JSON.stringify({ recommendations: [
+        { noMatchReason: null, recommendations: [{ icebreakers: ["one", "two"], memberHint: "specific", rank: 1, reasons: ["bounded"], score: 90, targetCandidateKey: "S1C1" }], sourceKey: "S1" },
+        { noMatchReason: null, recommendations: [{ icebreakers: ["one", "two"], memberHint: "specific", rank: 1, reasons: ["bounded"], score: 90, targetCandidateKey: "S2C1" }], sourceKey: "S2" },
+      ] }))();
+    },
+  });
+  const result = await provider.generateRecommendations({ eventId: "event:test", recommendationCount: 1, sources: [
+    { candidateParticipants: [participants[1]!], sourceParticipant: participants[0]! },
+    { candidateParticipants: [participants[1]!], sourceParticipant: participants[0]! },
+  ] });
+  assert.equal(result.success, true);
+  assert.equal((prompt.match(/"profile":\{/gu) ?? []).length, 2);
+  assert.match(prompt, /sourceProfileKey|profiles lookup/u);
+  assert.match(prompt, /"sourceProfileKey":"P1"/u);
+  assert.match(prompt, /"candidateKey":"S1C1"/u);
+  assert.match(prompt, /"candidateKey":"S2C1"/u);
+  assert.doesNotMatch(prompt, /participant:a|participant:b/u);
+  for (const canary of profileCanaries) {
+    assert.equal((prompt.match(new RegExp(canary, "gu")) ?? []).length, 1);
+  }
+  assert.match(provider.requestFingerprint ?? "", /deduplicated|v5/u);
+  assert.equal(
+    createEventOperationsAiProvider().requestFingerprint,
+    createEventOperationsAiProvider({ recommendationPromptEncoding: "expanded" }).requestFingerprint,
+  );
+});
+
 test("grouping feature prompt includes every typed event-profile answer", async () => {
   let prompt = "";
   const provider = createEventOperationsAiProvider({
