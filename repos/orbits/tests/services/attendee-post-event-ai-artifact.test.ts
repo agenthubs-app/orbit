@@ -367,3 +367,52 @@ test("artifact POST queues one idempotent task from the registered attendee's ex
   assert.equal(records[0]?.userId, actorA);
   assert.deepEqual(records[0]?.evidenceIds, ["evidence:human-encounter:encounter:a"]);
 });
+
+test("artifact POST excludes encounters that the attendee marked as no conversation or uncertain", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const taskRepository = createAttendeePostEventAiTaskRepository({ store, workspaceId: "workspace:test" });
+  const encounter = (encounterId: string, talked: "yes" | "no" | "uncertain") => ({
+    actorId: actorA,
+    commitments: talked === "yes" ? ["Send the benchmark"] : [],
+    connectionId: null,
+    contactId: `contact:${encounterId}`,
+    createdAt: timestamp,
+    encounterId,
+    eventId,
+    nextStep: talked === "yes" ? "Review next Thursday" : "",
+    noteText: talked === "yes" ? "Compared deployment constraints." : "No confirmed conversation took place.",
+    observedAt: timestamp,
+    privacy: "private" as const,
+    projection: { attempts: 0, availableAt: timestamp, lastError: null, leaseExpiresAt: null, leaseToken: null, status: "pending" as const },
+    requestHash: `request-hash:${encounterId}`,
+    talked,
+    tags: [],
+    voiceMemoReference: null,
+  });
+  const handler = createAttendeePostEventAiArtifactPostHandler({
+    encounterService: {
+      async list() {
+        return [
+          encounter("confirmed", "yes"),
+          encounter("not-spoken", "no"),
+          encounter("uncertain", "uncertain"),
+        ];
+      },
+    },
+    getRegistration: async () => registration(actorA),
+    loadEvent: async () => mockEventRecords.find((event) => event.id === eventId) ?? null,
+    providerConfiguration: { config: { apiKey: "test", provider: "openai" }, model: "gpt-5.6", provider: "openai" },
+    resolveActor: async () => ({ email: "a@example.test", id: actorA, name: "Attendee A" }),
+    taskRepository,
+  });
+
+  const response = await handler(
+    new Request(`http://localhost/api/events/${eventId}/post-event/artifact`, { method: "POST" }),
+    { params: Promise.resolve({ id: eventId }) },
+  );
+  assert.equal(response.status, 202);
+  const record = (await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
+  const task = record?.payload as any;
+  assert.deepEqual(task.evidenceWhitelist, ["evidence:human-encounter:confirmed"]);
+  assert.deepEqual(task.evidenceSnapshot.map((item: { talked: string }) => item.talked), ["yes"]);
+});

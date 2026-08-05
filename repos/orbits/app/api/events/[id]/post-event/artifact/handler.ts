@@ -53,7 +53,8 @@ export function createAttendeePostEventAiArtifactPostHandler(
     if (!provider || !repository || !encounters) {
       return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: null, status: "unconfigured", updatedAt: null }), { status: 200 });
     }
-    const source = await encounters.list({ actorId: access.actor.id, eventId: access.eventId });
+    const source = (await encounters.list({ actorId: access.actor.id, eventId: access.eventId }))
+      .filter((encounter) => encounter.talked === "yes");
     const evidenceSnapshot = source.map((encounter) => ({
       commitments: [...encounter.commitments],
       contactId: encounter.contactId,
