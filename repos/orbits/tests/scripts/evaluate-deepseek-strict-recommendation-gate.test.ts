@@ -65,6 +65,8 @@ test("strict runner rejects wrong tools and scoped-wire violations without fallb
     [JSON.stringify({ recommendations: [{ noMatchReason: "", recommendations: [recommendation("S1C2")], sourceKey: "S1" }] }), "unknown_target"],
     [JSON.stringify({ recommendations: [{ noMatchReason: "", recommendations: [recommendation("S1C1"), recommendation("S1C1", 2)], sourceKey: "S1" }] }), "duplicate_target"],
     [JSON.stringify({ recommendations: [{ noMatchReason: "", recommendations: [recommendation("S1C1")], sourceKey: "S2" }] }), "unknown_source"],
+    [JSON.stringify({ recommendations: [{ noMatchReason: "unexpected", recommendations: [recommendation("S1C1")], sourceKey: "S1" }] }), "no_match_contract"],
+    [JSON.stringify({ recommendations: [{ noMatchReason: "", recommendations: [{ ...recommendation("S1C1"), icebreakers: ["only one"] }], sourceKey: "S1" }] }), "icebreakers_contract"],
   ] as const) {
     const telemetry: Parameters<typeof createStrictTaskRunner>[0]["telemetry"] = { bytes: null, category: null, finish: null, timingMs: null, tokens: null };
     const runner = createStrictTaskRunner({ apiKey: "secret", fetchImpl: async () => response(argumentsText), model: "deepseek-v4-flash", task, telemetry });

@@ -9,7 +9,27 @@ import { loadLocalEnv } from "./load-local-env";
 
 export const STRICT_ENDPOINT = "https://api.deepseek.com/beta/chat/completions" as const;
 export const STRICT_TOOL = "submit_event_recommendations" as const;
-type StrictCategory = "bad_arguments" | "bad_tool" | "content" | "duplicate_source" | "duplicate_target" | "finish" | "http" | "missing_source" | "transport" | "unknown_source" | "unknown_target" | "wire" | null;
+type StrictCategory =
+  | "arguments_json"
+  | "arguments_type"
+  | "bad_tool"
+  | "content"
+  | "duplicate_source"
+  | "duplicate_target"
+  | "finish"
+  | "http"
+  | "icebreakers_contract"
+  | "member_hint_contract"
+  | "missing_source"
+  | "no_match_contract"
+  | "rank_contract"
+  | "reasons_contract"
+  | "score_contract"
+  | "transport"
+  | "unknown_source"
+  | "unknown_target"
+  | "wire"
+  | null;
 
 export function createScopedStrictSchema(task: BuiltRecommendationTask) {
   const branches = task.request.sources.map((source, sourceIndex) => {
@@ -68,7 +88,7 @@ function wireDecode(value: unknown, task: BuiltRecommendationTask): { category: 
     const noMatchReason = (row as { noMatchReason?: unknown }).noMatchReason;
     const recommendations = (row as { recommendations?: unknown }).recommendations;
     if (typeof noMatchReason !== "string" || !Array.isArray(recommendations)) return { category: "wire" };
-    if ((recommendations.length === 0 && !noMatchReason.trim()) || (recommendations.length > 0 && noMatchReason !== "")) return { category: "wire" };
+    if ((recommendations.length === 0 && !noMatchReason.trim()) || (recommendations.length > 0 && noMatchReason !== "")) return { category: "no_match_contract" };
     const targets = new Set<string>();
     const mapped = [];
     for (const [index, recommendation] of recommendations.entries()) {
@@ -84,13 +104,11 @@ function wireDecode(value: unknown, task: BuiltRecommendationTask): { category: 
       );
       if (typeof key !== "string" || !candidateIndexByKey.has(key)) return { category: "unknown_target" };
       if (targets.has(key)) return { category: "duplicate_target" };
-      if (
-        rank !== index + 1 ||
-        typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100 ||
-        !Array.isArray(reasons) || reasons.length === 0 || reasons.some((reason) => typeof reason !== "string" || !reason.trim()) ||
-        !Array.isArray(icebreakers) || icebreakers.length !== 2 || icebreakers.some((question) => typeof question !== "string" || !question.trim()) ||
-        typeof memberHint !== "string" || !memberHint.trim()
-      ) return { category: "wire" };
+      if (rank !== index + 1) return { category: "rank_contract" };
+      if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100) return { category: "score_contract" };
+      if (!Array.isArray(reasons) || reasons.length === 0 || reasons.some((reason) => typeof reason !== "string" || !reason.trim())) return { category: "reasons_contract" };
+      if (!Array.isArray(icebreakers) || icebreakers.length !== 2 || icebreakers.some((question) => typeof question !== "string" || !question.trim())) return { category: "icebreakers_contract" };
+      if (typeof memberHint !== "string" || !memberHint.trim()) return { category: "member_hint_contract" };
       targets.add(key);
       mapped.push({ icebreakers, memberHint, rank, reasons, score, targetCandidateKey: key });
     }
@@ -120,9 +138,9 @@ export function createStrictTaskRunner(input: { apiKey: string; fetchImpl: typeo
       const calls = message.tool_calls;
       const call = Array.isArray(calls) && calls.length === 1 && calls[0] && typeof calls[0] === "object" ? calls[0] as { type?: unknown; function?: { name?: unknown; arguments?: unknown } } : null;
       if (!call || call.type !== "function" || call.function?.name !== STRICT_TOOL) { input.telemetry.category = "bad_tool"; return { error: { code: "MODEL_REQUEST_FAILED", message: "strict-tool", provider: "deepseek" as const, source: "provider:deepseek-chat-completions-api" as const }, retryable: false, success: false }; }
-      if (typeof call.function.arguments !== "string") { input.telemetry.category = "bad_arguments"; return { error: { code: "MODEL_REQUEST_FAILED", message: "strict-arguments", provider: "deepseek" as const, source: "provider:deepseek-chat-completions-api" as const }, retryable: false, success: false }; }
-      let decoded: ReturnType<typeof wireDecode>; try { decoded = wireDecode(JSON.parse(call.function.arguments), input.task); } catch { decoded = { category: "bad_arguments" }; }
-      if (decoded.category || !decoded.rows) { input.telemetry.category = decoded.category ?? "bad_arguments"; return { error: { code: "MODEL_REQUEST_FAILED", message: "strict-decode", provider: "deepseek" as const, source: "provider:deepseek-chat-completions-api" as const }, retryable: false, success: false }; }
+      if (typeof call.function.arguments !== "string") { input.telemetry.category = "arguments_type"; return { error: { code: "MODEL_REQUEST_FAILED", message: "strict-arguments", provider: "deepseek" as const, source: "provider:deepseek-chat-completions-api" as const }, retryable: false, success: false }; }
+      let decoded: ReturnType<typeof wireDecode>; try { decoded = wireDecode(JSON.parse(call.function.arguments), input.task); } catch { decoded = { category: "arguments_json" }; }
+      if (decoded.category || !decoded.rows) { input.telemetry.category = decoded.category ?? "arguments_json"; return { error: { code: "MODEL_REQUEST_FAILED", message: "strict-decode", provider: "deepseek" as const, source: "provider:deepseek-chat-completions-api" as const }, retryable: false, success: false }; }
       input.telemetry.category = null;
       return {
         model: input.model,
