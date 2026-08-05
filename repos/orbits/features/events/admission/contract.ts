@@ -81,11 +81,45 @@ export interface DecideEventAdmissionApplicationInput {
   decision: "approve" | "reject";
   decisionActorId: string;
   eventId: string;
+  expectedApplicationVersion: number;
 }
 
 export interface WithdrawEventAdmissionApplicationInput {
   actorId: string;
   eventId: string;
+}
+
+export const EVENT_ADMISSION_REVIEW_BUCKETS = ["pending", "processed"] as const;
+export type EventAdmissionReviewBucket =
+  (typeof EVENT_ADMISSION_REVIEW_BUCKETS)[number];
+
+export interface EventAdmissionReviewCursor {
+  actorId: string;
+  timestamp: string;
+}
+
+export interface EventAdmissionReviewListItem {
+  actorId: string;
+  applicationVersion: number;
+  decidedAt: string | null;
+  decisionActorId: string | null;
+  displayName: string | null;
+  status: EventAdmissionApplicationStatus;
+  submittedAt: string;
+  updatedAt: string;
+}
+
+export interface EventAdmissionReviewPage {
+  items: readonly EventAdmissionReviewListItem[];
+  nextCursor: EventAdmissionReviewCursor | null;
+  total: number;
+}
+
+export interface ListEventAdmissionReviewsInput {
+  bucket: EventAdmissionReviewBucket;
+  cursor: EventAdmissionReviewCursor | null;
+  eventId: string;
+  limit: number;
 }
 import type { EventParticipantProfileAnswers } from "../registration/contract";
 import type { EventProfileResponseSnapshot } from "../registration/interview-response-contract";

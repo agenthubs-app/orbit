@@ -12,7 +12,9 @@ import {
   runEventOperationsMigrations,
 } from "../../features/events/event-operations/storage/migrations";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
+import { loadLocalEnv } from "../../scripts/load-local-env";
 
+loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 const V1_TO_V9_CHECKSUMS = [
   "cca6a82784aec67b23a682594bbf2cd822acd6fbd3aa574174f11e25714f6914",
@@ -126,7 +128,14 @@ test(
       }
       const repository = createPostgresEventAdmissionRepository({ client, workspaceId });
       const service = createEventAdmissionService({
-        async canManageEvent(actorId) { return actorId === managerId; },
+        async requireCapability(actorId) {
+          if (actorId !== managerId) {
+            throw new EventAdmissionError(
+              "FORBIDDEN",
+              "Admission capability is denied.",
+            );
+          }
+        },
         repository,
       });
       const openWindow = {
@@ -260,17 +269,21 @@ test(
       await assert.rejects(
         service.decideApplication("actor:not-manager", {
           actorId: "actor:P1", decision: "approve", eventId: "event:approval",
+          expectedApplicationVersion: 1,
         }),
         (error: unknown) => error instanceof EventAdmissionError && error.code === "FORBIDDEN",
       );
       assert.equal((await service.decideApplication(managerId, {
         actorId: "actor:P1", decision: "approve", eventId: "event:approval",
+        expectedApplicationVersion: 1,
       })).status, "admitted");
       assert.equal((await service.decideApplication(managerId, {
         actorId: "actor:P2", decision: "approve", eventId: "event:approval",
+        expectedApplicationVersion: 1,
       })).status, "waitlisted");
       assert.equal((await service.decideApplication(managerId, {
         actorId: "actor:P3", decision: "reject", eventId: "event:approval",
+        expectedApplicationVersion: 1,
       })).status, "rejected");
       await service.withdrawApplication("actor:P1", "event:approval");
       assert.equal((await service.getApplication("actor:P2", "event:approval"))?.status, "admitted");

@@ -14,6 +14,10 @@ import {
   type EventAdmissionMode,
   type EventAdmissionPolicy,
   type EventAdmissionProfileSnapshot,
+  type EventAdmissionReviewBucket,
+  type EventAdmissionReviewCursor,
+  type EventAdmissionReviewListItem,
+  type EventAdmissionReviewPage,
 } from "../contract";
 import type { EventAdmissionRepository } from "../repository";
 import { EVENT_PARTICIPANT_PROFILE_FIELDS } from "../../registration/contract";
@@ -219,6 +223,62 @@ function applicationFromRow(row: SqlRow): EventAdmissionApplication {
     submittedAt: isoTimestamp(row.submitted_at, "submittedAt"),
     updatedAt: isoTimestamp(row.updated_at, "updatedAt"),
   };
+}
+
+function reviewCursor(
+  value: EventAdmissionReviewCursor | null,
+): EventAdmissionReviewCursor | null {
+  if (value === null) return null;
+  return {
+    actorId: normalizedText(value.actorId, "review cursor actorId"),
+    timestamp: isoTimestamp(value.timestamp, "review cursor timestamp"),
+  };
+}
+
+function reviewLimit(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 100) {
+    invalid("Admission review limit must be between 1 and 100.");
+  }
+  return value;
+}
+
+function reviewBucket(value: EventAdmissionReviewBucket): EventAdmissionReviewBucket {
+  if (value !== "pending" && value !== "processed") {
+    invalid("Admission review bucket is invalid.");
+  }
+  return value;
+}
+
+function reviewListItem(
+  application: EventAdmissionApplication,
+): EventAdmissionReviewListItem {
+  return {
+    actorId: application.actorId,
+    applicationVersion: application.applicationVersion,
+    decidedAt: application.decidedAt,
+    decisionActorId: application.decisionActorId,
+    displayName: application.profilePayload.displayName?.trim() || null,
+    status: application.status,
+    submittedAt: application.submittedAt,
+    updatedAt: application.updatedAt,
+  };
+}
+
+function idempotentDecision(
+  application: EventAdmissionApplication,
+  input: {
+    decision: "approve" | "reject";
+    decisionActorId: string;
+    expectedApplicationVersion: number;
+  },
+): boolean {
+  if (
+    application.applicationVersion !== input.expectedApplicationVersion + 1 ||
+    application.decisionActorId !== input.decisionActorId
+  ) return false;
+  return input.decision === "reject"
+    ? application.status === "rejected"
+    : application.status === "admitted" || application.status === "waitlisted";
 }
 
 function normalizedPolicy(input: ConfigureEventAdmissionPolicyInput) {
@@ -637,6 +697,10 @@ export function createPostgresEventAdmissionRepository(input: {
       const eventId = normalizedText(raw.eventId, "eventId");
       const actorId = normalizedText(raw.actorId, "actorId");
       const decisionActorId = normalizedText(raw.decisionActorId, "decisionActorId");
+      const expectedApplicationVersion = positiveVersion(
+        raw.expectedApplicationVersion,
+        "expectedApplicationVersion",
+      );
       if (raw.decision !== "approve" && raw.decision !== "reject") {
         invalid("Admission decision is invalid.");
       }
@@ -651,6 +715,20 @@ export function createPostgresEventAdmissionRepository(input: {
           [workspaceId, eventId, actorId],
         );
         const current = currentResult.rows[0] ? applicationFromRow(currentResult.rows[0]) : null;
+        if (
+          current &&
+          idempotentDecision(current, {
+            decision: raw.decision,
+            decisionActorId,
+            expectedApplicationVersion,
+          })
+        ) return current;
+        if (current?.applicationVersion !== expectedApplicationVersion) {
+          throw new EventAdmissionError(
+            "INVALID_TRANSITION",
+            `Admission application ${eventId}/${actorId} changed before the decision could commit.`,
+          );
+        }
         if (!current || current.status !== "pending_review") {
           throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} cannot be decided.`);
         }
@@ -734,6 +812,68 @@ export function createPostgresEventAdmissionRepository(input: {
       } catch (error) {
         if (error instanceof EventAdmissionError) throw error;
         throw new EventAdmissionError("DATA_INVALID", "Admission policy read failed.");
+      }
+    },
+
+    async listApplications(raw) {
+      const eventId = normalizedText(raw.eventId, "eventId");
+      const bucket = reviewBucket(raw.bucket);
+      const cursor = reviewCursor(raw.cursor);
+      const limit = reviewLimit(raw.limit);
+      try {
+        return await client.transaction(async (executor) => {
+          const predicate = bucket === "pending"
+            ? "status = 'pending_review'"
+            : "status in ('waitlisted', 'admitted', 'rejected', 'withdrawn')";
+          const sortColumn = bucket === "pending" ? "submitted_at" : "updated_at";
+          const comparison = bucket === "pending" ? ">" : "<";
+          const direction = bucket === "pending" ? "asc" : "desc";
+          const countResult = await executor.query<{ count: unknown }>(
+            `select count(*)::int as count
+             from event_ops_admission_application_heads
+             where workspace_id = $1 and event_id = $2 and ${predicate}`,
+            [workspaceId, eventId],
+          );
+          const total = Number(countResult.rows[0]?.count ?? -1);
+          if (!Number.isSafeInteger(total) || total < 0) {
+            invalid("Admission review total is invalid.");
+          }
+          const result = await executor.query<SqlRow>(
+            `select * from event_ops_admission_application_heads
+             where workspace_id = $1 and event_id = $2 and ${predicate}
+               and ($3::timestamptz is null or (${sortColumn}, actor_id) ${comparison} ($3::timestamptz, $4::text))
+             order by ${sortColumn} ${direction}, actor_id ${direction}
+             limit $5`,
+            [
+              workspaceId,
+              eventId,
+              cursor?.timestamp ?? null,
+              cursor?.actorId ?? "",
+              limit + 1,
+            ],
+          );
+          const hasMore = result.rows.length > limit;
+          const pageRows = result.rows.slice(0, limit);
+          const applications = pageRows.map(applicationFromRow);
+          const last = applications.at(-1);
+          const nextCursor = hasMore && last
+            ? {
+                actorId: last.actorId,
+                timestamp: bucket === "pending" ? last.submittedAt : last.updatedAt,
+              }
+            : null;
+          return {
+            items: applications.map(reviewListItem),
+            nextCursor,
+            total,
+          } satisfies EventAdmissionReviewPage;
+        }, { isolation: "repeatable read" });
+      } catch (error) {
+        if (error instanceof EventAdmissionError) throw error;
+        throw new EventAdmissionError(
+          "DATA_INVALID",
+          "Admission review queue read failed.",
+        );
       }
     },
 

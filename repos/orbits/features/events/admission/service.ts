@@ -1,11 +1,13 @@
 import {
-  EventAdmissionError,
   type ConfigureEventAdmissionPolicyInput,
   type DecideEventAdmissionApplicationInput,
   type EventAdmissionApplication,
   type EventAdmissionPolicy,
+  type EventAdmissionReviewPage,
+  type ListEventAdmissionReviewsInput,
   type SubmitEventAdmissionApplicationInput,
 } from "./contract";
+import type { EventAccessCapability } from "../event-access/contract";
 import type { EventAdmissionRepository } from "./repository";
 
 export interface EventAdmissionService {
@@ -21,7 +23,16 @@ export interface EventAdmissionService {
     actingActorId: string,
     eventId: string,
   ): Promise<EventAdmissionApplication | null>;
+  getApplicationForReview(
+    actingActorId: string,
+    eventId: string,
+    applicantActorId: string,
+  ): Promise<EventAdmissionApplication | null>;
   getPolicy(eventId: string): Promise<EventAdmissionPolicy | null>;
+  listApplications(
+    actingActorId: string,
+    input: ListEventAdmissionReviewsInput,
+  ): Promise<EventAdmissionReviewPage>;
   submitApplication(
     actingActorId: string,
     input: Omit<SubmitEventAdmissionApplicationInput, "actorId">,
@@ -33,27 +44,31 @@ export interface EventAdmissionService {
 }
 
 export function createEventAdmissionService(input: {
-  canManageEvent(actorId: string, eventId: string): Promise<boolean>;
+  requireCapability(
+    actorId: string,
+    eventId: string,
+    capability: EventAccessCapability,
+  ): Promise<void>;
   repository: EventAdmissionRepository;
 }): EventAdmissionService {
-  const requireManager = async (actorId: string, eventId: string) => {
-    if (!(await input.canManageEvent(actorId, eventId))) {
-      throw new EventAdmissionError(
-        "FORBIDDEN",
-        `Actor ${actorId} cannot manage admission for event ${eventId}.`,
-      );
-    }
-  };
   return {
     async configurePolicy(actingActorId, policy) {
-      await requireManager(actingActorId, policy.eventId);
+      await input.requireCapability(
+        actingActorId,
+        policy.eventId,
+        "operations.configure",
+      );
       return input.repository.configurePolicy({
         ...policy,
         updatedByActorId: actingActorId,
       });
     },
     async decideApplication(actingActorId, decision) {
-      await requireManager(actingActorId, decision.eventId);
+      await input.requireCapability(
+        actingActorId,
+        decision.eventId,
+        "admission.decide",
+      );
       return input.repository.decideApplication({
         ...decision,
         decisionActorId: actingActorId,
@@ -62,7 +77,23 @@ export function createEventAdmissionService(input: {
     async getApplication(actingActorId, eventId) {
       return input.repository.getApplication(eventId, actingActorId);
     },
+    async getApplicationForReview(actingActorId, eventId, applicantActorId) {
+      await input.requireCapability(
+        actingActorId,
+        eventId,
+        "admission.read",
+      );
+      return input.repository.getApplication(eventId, applicantActorId);
+    },
     getPolicy: (eventId) => input.repository.getPolicy(eventId),
+    async listApplications(actingActorId, reviewInput) {
+      await input.requireCapability(
+        actingActorId,
+        reviewInput.eventId,
+        "admission.read",
+      );
+      return input.repository.listApplications(reviewInput);
+    },
     submitApplication(actingActorId, application) {
       return input.repository.submitApplication({
         ...application,

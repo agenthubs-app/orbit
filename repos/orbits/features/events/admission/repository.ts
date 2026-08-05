@@ -3,6 +3,8 @@ import type {
   DecideEventAdmissionApplicationInput,
   EventAdmissionApplication,
   EventAdmissionPolicy,
+  EventAdmissionReviewPage,
+  ListEventAdmissionReviewsInput,
   SubmitEventAdmissionApplicationInput,
   WithdrawEventAdmissionApplicationInput,
 } from "./contract";
@@ -19,6 +21,9 @@ export interface EventAdmissionRepository {
     actorId: string,
   ): Promise<EventAdmissionApplication | null>;
   getPolicy(eventId: string): Promise<EventAdmissionPolicy | null>;
+  listApplications(
+    input: ListEventAdmissionReviewsInput,
+  ): Promise<EventAdmissionReviewPage>;
   submitApplication(
     input: SubmitEventAdmissionApplicationInput,
   ): Promise<EventAdmissionApplication>;
