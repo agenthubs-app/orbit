@@ -321,6 +321,13 @@ export interface EventOperationsAiResponseMetadata {
   usage: EventOperationsAiUsage | null;
 }
 
+export type EventOperationsJsonFailureShape =
+  | "empty"
+  | "fence_or_prefix"
+  | "trailing_text"
+  | "unterminated_envelope"
+  | "parse_syntax";
+
 export type EventOperationsAiResult<TValue> =
   | {
       data: TValue;
@@ -338,6 +345,7 @@ export type EventOperationsAiResult<TValue> =
           | "AI_SCHEMA_INVALID"
           | "AI_REQUEST_FAILED";
         message: string;
+        jsonFailureShape?: EventOperationsJsonFailureShape;
       };
       responseMetadata?: EventOperationsAiResponseMetadata;
       retryable?: boolean;

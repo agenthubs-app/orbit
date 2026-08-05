@@ -8,6 +8,7 @@ import {
   type EventOperationsConfiguration,
   type EventOperationsGeneration,
   type EventOperationsGenerationTask,
+  type EventOperationsJsonFailureShape,
   type EventOperationsParticipant,
 } from "../features/events/event-operations/contract";
 import { createEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
@@ -26,6 +27,7 @@ export interface EvaluationOptions {
   generationId: string;
   requestTimeoutMs: number;
   rounds: number;
+  taskOrdinals?: readonly number[];
   temperatures: readonly number[];
 }
 
@@ -48,6 +50,7 @@ export interface EvaluationExecutionResult {
   errorCode: string | null;
   finishReason: string | null;
   messageCategory: string | null;
+  jsonFailureShape: EventOperationsJsonFailureShape | null;
   overallBusinessValid: boolean;
   promptTokens: number | null;
   providerResponseBytes: number | null;
@@ -86,12 +89,18 @@ export function parseEvaluationOptions(args: readonly string[]): EvaluationOptio
   if (!temperatures.length || temperatures.some((value) => !Number.isFinite(value) || value < 0 || value > 2)) {
     throw new Error("--temperatures must be comma-separated numbers from 0 through 2.");
   }
+  const rawTaskOrdinals = values.get("task-ordinals")?.split(",").map((value) => value.trim());
+  if (rawTaskOrdinals?.some((value) => !/^[1-9]\d*$/u.test(value))) {
+    throw new Error("--task-ordinals must be comma-separated positive integers.");
+  }
+  const taskOrdinals = rawTaskOrdinals?.map(Number);
   return {
     concurrency: numberValue("concurrency", 1),
     execute: values.get("execute") === "true",
     generationId,
     requestTimeoutMs: numberValue("request-timeout-ms", 90_000),
     rounds: numberValue("rounds", 3),
+    ...(taskOrdinals === undefined ? {} : { taskOrdinals: [...new Set(taskOrdinals)] }),
     temperatures,
   };
 }
@@ -109,6 +118,19 @@ function stableEvaluationValue(value: unknown): unknown {
 /** Stable identifier for logs; never emit prompt, response, or participant text. */
 export function hashEvaluationValue(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(stableEvaluationValue(value))).digest("hex");
+}
+
+export function selectEvaluationTasks<T extends { record: EvaluationTaskRecord }>(
+  tasks: readonly T[],
+  taskOrdinals?: readonly number[],
+): readonly T[] {
+  if (!taskOrdinals) return tasks;
+  const byOrdinal = new Map(tasks.map((task) => [task.record.taskOrdinal, task]));
+  for (const taskOrdinal of taskOrdinals) {
+    if (!byOrdinal.has(taskOrdinal)) throw new Error(`Unknown recommendation task ordinal: ${taskOrdinal}.`);
+  }
+  const requested = new Set(taskOrdinals);
+  return tasks.filter((task) => requested.has(task.record.taskOrdinal));
 }
 
 function buildRecommendationTasks(input: {
@@ -191,6 +213,7 @@ function emptyTelemetry(): EvaluationExecutionResult {
     errorCode: null,
     finishReason: null,
     messageCategory: null,
+    jsonFailureShape: null,
     overallBusinessValid: false,
     promptTokens: null,
     providerResponseBytes: null,
@@ -239,6 +262,7 @@ export async function evaluateRecommendationTask(input: {
       ...responseTelemetry(result),
       adapterDurationMs,
       errorCode: result.error.code,
+      jsonFailureShape: result.error.jsonFailureShape ?? null,
       messageCategory: `adapter-${result.error.code.toLowerCase()}`,
       totalDurationMs: adapterDurationMs,
     };
@@ -391,7 +415,7 @@ async function main(): Promise<void> {
         participants: generation.snapshot.participants,
         tasks,
       });
-      return builtTasks.map((task) => ({ provider, task, temperature }));
+      return selectEvaluationTasks(builtTasks, options.taskOrdinals).map((task) => ({ provider, task, temperature }));
     });
     const planned = interleaveEvaluationArms(arms, options.rounds).map(
       ({ round, value }) => ({ ...value, round }),

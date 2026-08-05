@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  __eventOperationsAiProviderTestExports,
   createConfiguredEventOperationsAiProvider,
   createEventOperationsAiProvider,
 } from "../../features/events/event-operations/ai-provider";
@@ -123,6 +124,22 @@ test("event operations request fingerprint versions provider behavior as well as
   } finally {
     if (previousProvider === undefined) delete process.env.ORBIT_AGENT_PROVIDER;
     else process.env.ORBIT_AGENT_PROVIDER = previousProvider;
+  }
+});
+
+test("JSON failure classifier is envelope-aware without retaining response text", () => {
+  const { classifyJsonFailureShape } = __eventOperationsAiProviderTestExports;
+  const cases = [
+    ["", "empty"],
+    ["  \n\t", "empty"],
+    ["```json\n{}", "fence_or_prefix"],
+    ["prefix {\"x\":1}", "fence_or_prefix"],
+    ["{\"text\":\"braces } ] and escaped quote \\\\\\\" remain text\"} trailing", "trailing_text"],
+    ["{\"text\":\"unterminated } \\\\\\\"", "unterminated_envelope"],
+    ["{\"x\":]}", "parse_syntax"],
+  ] as const;
+  for (const [text, expected] of cases) {
+    assert.equal(classifyJsonFailureShape(text), expected);
   }
 });
 
@@ -363,10 +380,10 @@ test("recommendation tokens map only exact source-local candidate keys without r
 });
 
 test("event operations AI adapter rejects fenced or malformed JSON without repair or fallback", async () => {
-  for (const text of [
-    '```json\n{"recommendations":[]}\n```',
-    '{"recommendations":[}',
-  ]) {
+  for (const [text, shape] of [
+    ['```json\n{"recommendations":[]}\n```', "fence_or_prefix"],
+    ['{"recommendations":[}', "parse_syntax"],
+  ] as const) {
     const provider = createEventOperationsAiProvider({
       runModelText: successfulText(text),
     });
@@ -381,7 +398,11 @@ test("event operations AI adapter rejects fenced or malformed JSON without repai
       ],
     });
     assert.equal(result.success, false);
-    if (result.success === false) assert.equal(result.error.code, "AI_JSON_INVALID");
+    if (result.success === false) {
+      assert.equal(result.error.code, "AI_JSON_INVALID");
+      assert.equal(result.error.jsonFailureShape, shape);
+      assert.equal(result.retryable, false);
+    }
   }
 });
 

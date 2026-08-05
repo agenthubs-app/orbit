@@ -8,6 +8,7 @@ import {
   interleaveEvaluationArms,
   parseEvaluationOptions,
   redactEvaluationRecord,
+  selectEvaluationTasks,
 } from "../../scripts/evaluate-event-operations-recommendations";
 
 test("evaluation schedule pairs every shard and rotates arm ordering", () => {
@@ -44,6 +45,27 @@ test("evaluation options accept an explicit execute switch", () => {
     parseEvaluationOptions(["--generation-id", "generation:one", "--execute", "--rounds", "2"]).execute,
     true,
   );
+});
+
+test("evaluation options deduplicate strict task ordinals and select before execution", () => {
+  const options = parseEvaluationOptions([
+    "--generation-id", "generation:one", "--task-ordinals", "1,7,1,8",
+  ]);
+  assert.deepEqual(options.taskOrdinals, [1, 7, 8]);
+  assert.throws(
+    () => parseEvaluationOptions(["--generation-id", "generation:one", "--task-ordinals", "0,2"]),
+    /positive integers/u,
+  );
+  assert.throws(
+    () => parseEvaluationOptions(["--generation-id", "generation:one", "--task-ordinals", "1e2,2"]),
+    /positive integers/u,
+  );
+  const tasks = [1, 7, 8].map((taskOrdinal) => ({ record: { taskOrdinal } })) as never;
+  assert.deepEqual(
+    selectEvaluationTasks(tasks, options.taskOrdinals).map((task) => task.record.taskOrdinal),
+    [1, 7, 8],
+  );
+  assert.throws(() => selectEvaluationTasks(tasks, [99]), /Unknown recommendation task ordinal/u);
 });
 
 test("evaluation redaction contains hashes and counts but no identifiers", () => {
@@ -177,6 +199,29 @@ test("evaluation classifies adapter failure without exposing its message", async
   assert.equal(result.domainValidation, "not-run");
   assert.equal(result.errorCode, "AI_TIMEOUT");
   assert.equal(result.messageCategory, "adapter-ai_timeout");
+  assert.doesNotMatch(JSON.stringify(result), /participant:secret/u);
+});
+
+test("evaluation forwards only the safe JSON failure shape", async () => {
+  const result = await evaluateRecommendationTask({
+    provider: {
+      async generateRecommendations() {
+        return {
+          error: {
+            code: "AI_JSON_INVALID" as const,
+            jsonFailureShape: "fence_or_prefix" as const,
+            message: "participant:secret response",
+          },
+          retryable: false,
+          success: false as const,
+        };
+      },
+    },
+    recommendationCount: 1,
+    snapshotParticipants,
+    task: evaluationTask,
+  });
+  assert.equal(result.jsonFailureShape, "fence_or_prefix");
   assert.doesNotMatch(JSON.stringify(result), /participant:secret/u);
 });
 

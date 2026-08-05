@@ -8,6 +8,7 @@ import {
 } from "../../orbit-ai/gemini-provider";
 import type {
   EventOperationsAiProvider,
+  EventOperationsJsonFailureShape,
   EventOperationsAiResponseMetadata,
   EventOperationsAiResult,
   EventOperationsGroupingFeature,
@@ -252,6 +253,41 @@ function parseJson(text: string): unknown | null {
   }
 }
 
+function classifyJsonFailureShape(text: string): EventOperationsJsonFailureShape {
+  const value = text.trim();
+  if (!value) return "empty";
+  if (value[0] !== "{" && value[0] !== "[") return "fence_or_prefix";
+
+  const expectedClosing = new Map<string, string>([["{", "}"], ["[", "]"]]);
+  const stack: string[] = [];
+  let escaped = false;
+  let inString = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      continue;
+    }
+    const closing = expectedClosing.get(character);
+    if (closing) {
+      stack.push(closing);
+      continue;
+    }
+    if (character !== "}" && character !== "]") continue;
+    if (stack.pop() !== character) return "parse_syntax";
+    if (stack.length === 0) {
+      return value.slice(index + 1).trim() ? "trailing_text" : "parse_syntax";
+    }
+  }
+  return "unterminated_envelope";
+}
+
 function modelFailure<TValue>(
   result: Extract<OrbitAgentModelTextResult, { success: false }>,
 ): EventOperationsAiResult<TValue> {
@@ -285,11 +321,13 @@ function toEventOperationsMetadata(
 }
 
 function invalidJson<TValue>(
+  jsonFailureShape: EventOperationsJsonFailureShape,
   responseMetadata?: EventOperationsAiResponseMetadata,
 ): EventOperationsAiResult<TValue> {
   return {
     error: {
       code: "AI_JSON_INVALID",
+      jsonFailureShape,
       message: "The model response was not one strict JSON document.",
     },
     ...(responseMetadata ? { responseMetadata } : {}),
@@ -501,7 +539,7 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const tokenRows = parseTokenRecommendationRows(json);
       if (!tokenRows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const rows = mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources);
@@ -538,7 +576,7 @@ ${JSON.stringify(compactGroupingSources(input.sources))}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const features = parseGroupingFeatures(json);
       if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
@@ -577,7 +615,7 @@ ${JSON.stringify(input.features)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
-      if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      if (json === null) return invalidJson(classifyJsonFailureShape(response.text), response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const table = parseTable(
         json,
         new Set(input.members.map((member) => member.participantId)),
@@ -614,6 +652,7 @@ export function createConfiguredEventOperationsAiProvider({
 
 export const __eventOperationsAiProviderTestExports = {
   parseGroupingFeatures,
+  classifyJsonFailureShape,
   parseTokenRecommendationRows,
   parseTable,
 };
