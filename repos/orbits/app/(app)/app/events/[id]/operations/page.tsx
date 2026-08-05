@@ -28,13 +28,22 @@ export default async function AppEventOperationsAdminPage({
   }
 
   const accessService = createConfiguredEventAccessService();
+  const eventCore = createConfiguredEventCoreService();
+  let canonicalEventId: string | null = null;
+  if (eventCore) {
+    try {
+      canonicalEventId = (await eventCore.getEvent(eventId))?.eventId ?? null;
+    } catch {
+      canonicalEventId = null;
+    }
+  }
   let accessGranted = false;
-  if (accessService) {
+  if (accessService && canonicalEventId) {
     try {
       await requireEventCapability({
         actorId: session.user.id,
         capability: "operations.read_sensitive",
-        eventId,
+        eventId: canonicalEventId,
         service: accessService,
       });
       accessGranted = true;
@@ -48,7 +57,7 @@ export default async function AppEventOperationsAdminPage({
       await requireEventCapability({
         actorId: session.user.id,
         capability: "roles.manage",
-        eventId,
+        eventId: canonicalEventId!,
         service: accessService,
       });
       canManageRoles = true;
@@ -58,8 +67,8 @@ export default async function AppEventOperationsAdminPage({
   }
   const pageEvent = accessGranted
     ? await loadEventOperationsPageEvent(
-        eventId,
-        createConfiguredEventCoreService(),
+        canonicalEventId!,
+        eventCore,
       )
     : null;
 

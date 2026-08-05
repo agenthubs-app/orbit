@@ -40,13 +40,15 @@ test("capability-authorized operations pages read title and schedule from canoni
   });
 });
 
-test("operations page keeps the Event Core read after the capability guard", () => {
+test("operations page resolves canonical identity before capability and reads details only after the guard", () => {
   const page = readFileSync(
     join(projectRoot, "app/(app)/app/events/[id]/operations/page.tsx"),
     "utf8",
   );
   assert.match(page, /capability: "operations\.read_sensitive"/u);
   assert.match(page, /createConfiguredEventCoreService\(\)/u);
+  assert.match(page, /canonicalEventId = \(await eventCore\.getEvent\(eventId\)\)\?\.eventId/u);
+  assert.match(page, /eventId: canonicalEventId/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
   assert.doesNotMatch(page, /createEventCrudAndImportService/u);
 });

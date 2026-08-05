@@ -14,9 +14,11 @@ test("event operations workspace requires login and per-event operations capabil
   assert.match(page, /const \[\{ id: routeId \}, session\] = await Promise\.all\(\[params, auth\(\)\]\)/);
   assert.match(page, /if \(!session\?\.user\?\.id\)/);
   assert.match(page, /createConfiguredEventAccessService\(\)/);
+  assert.match(page, /canonicalEventId = \(await eventCore\.getEvent\(eventId\)\)\?\.eventId/);
   assert.match(page, /requireEventCapability/);
   assert.match(page, /capability: "operations\.read_sensitive"/);
   assert.match(page, /actorId: session\.user\.id/);
+  assert.match(page, /eventId: canonicalEventId/);
   assert.match(page, /Event operations access required/);
   assert.doesNotMatch(page, /readPublicEventCatalogue/);
   assert.match(eventDetail, /\/operations/);
