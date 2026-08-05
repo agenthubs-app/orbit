@@ -20,6 +20,7 @@ const timestamp = "2026-08-04T12:00:00.000Z";
 
 function artifactRecord(input: {
   actorId: string;
+  errorCode?: string;
   evidenceIds?: readonly string[];
   generationMethod?: string;
   payloadEvidenceIds?: readonly string[];
@@ -45,6 +46,7 @@ function artifactRecord(input: {
       attendeeActorId: input.actorId,
       eventId,
       evidenceHash,
+      error: input.status === "failed" && input.errorCode ? { at: timestamp, code: input.errorCode, retryable: false } : null,
       failureCode: input.status === "failed" ? "PROVIDER_TIMEOUT" : null,
       provenance: {
         generationMethod: input.generationMethod ?? "ai-provider",
@@ -145,6 +147,17 @@ test("artifact reader preserves queued, running, and failed states without expos
     assert.equal(view.artifact, null);
     assert.equal(view.failureCode, expected === "failed" ? "AI_GENERATION_FAILED" : null);
   }
+});
+
+test("artifact reader preserves a safe stored terminal provider failure code without exposing prose", async () => {
+  const reader = createLiveRecordAttendeePostEventAiArtifactReader({
+    store: createMemoryLiveRecordStore([artifactRecord({ actorId: actorA, errorCode: "MODEL_REQUEST_FAILED", status: "failed" })]),
+    workspaceId: "workspace:test",
+  });
+  const view = await reader.read({ attendeeActorId: actorA, eventId });
+  assert.equal(view.status, "failed");
+  assert.equal(view.failureCode, "MODEL_REQUEST_FAILED");
+  assert.equal(view.artifact, null);
 });
 
 test("artifact request is idempotent and worker leases a real queued task into stored ready state", async () => {
@@ -318,11 +331,12 @@ test("attendee artifact API uses the registered actor scope instead of organizer
   });
 });
 
-test("attendee artifact API reports unconfigured without borrowing organizer review data", async () => {
+test("attendee artifact API reports the artifact service boundary without borrowing organizer review data", async () => {
   const handler = createAttendeePostEventAiArtifactGetHandler({
     artifactReader: null,
     getRegistration: async () => registration(actorA),
     loadEvent: async () => mockEventRecords.find((event) => event.id === eventId) ?? null,
+    providerConfiguration: { config: { apiKey: "test", provider: "openai" }, model: "gpt-5.6", provider: "openai" },
     resolveActor: async () => ({ email: "a@example.test", id: actorA, name: "Attendee A" }),
   });
   const response = await handler(
@@ -333,10 +347,65 @@ test("attendee artifact API reports unconfigured without borrowing organizer rev
   assert.deepEqual((await response.json()).data, {
     artifact: null,
     eventId,
-    failureCode: null,
+    failureCode: "AI_ARTIFACT_SERVICE_UNAVAILABLE",
     status: "unconfigured",
     updatedAt: null,
   });
+});
+
+test("attendee artifact API distinguishes not requested from an unconfigured provider without changing the status contract", async () => {
+  const base = {
+    getRegistration: async () => registration(actorA),
+    loadEvent: async () => mockEventRecords.find((event) => event.id === eventId) ?? null,
+    resolveActor: async () => ({ email: "a@example.test", id: actorA, name: "Attendee A" }),
+  };
+  const artifactReader = {
+    async read() {
+      return { artifact: null, eventId, failureCode: null, status: "unconfigured" as const, updatedAt: null };
+    },
+  };
+  const notRequested = createAttendeePostEventAiArtifactGetHandler({
+    ...base,
+    artifactReader,
+    providerConfiguration: { config: { apiKey: "test", provider: "openai" as const }, model: "gpt-5.6", provider: "openai" as const },
+  });
+  const providerUnconfigured = createAttendeePostEventAiArtifactGetHandler({
+    ...base,
+    artifactReader,
+    providerConfiguration: null,
+  });
+  const context = { params: Promise.resolve({ id: eventId }) };
+  assert.deepEqual((await (await notRequested(new Request(`http://localhost/api/events/${eventId}/post-event/artifact`), context)).json()).data, {
+    artifact: null, eventId, failureCode: null, status: "unconfigured", updatedAt: null,
+  });
+  assert.deepEqual((await (await providerUnconfigured(new Request(`http://localhost/api/events/${eventId}/post-event/artifact`), context)).json()).data, {
+    artifact: null, eventId, failureCode: "AI_PROVIDER_UNCONFIGURED", status: "unconfigured", updatedAt: null,
+  });
+});
+
+test("attendee artifact GET and POST keep EVENT_NOT_ENDED in the compatible failed envelope and do not enqueue", async () => {
+  let repositoryRequested = false;
+  const dependencies = {
+    artifactReader: null,
+    encounterService: null,
+    getRegistration: async () => registration(actorA),
+    loadEvent: async () => mockEventRecords.find((event) => event.id === eventId) ?? null,
+    now: () => "2026-06-01T00:00:00.000Z",
+    providerConfiguration: null,
+    resolveActor: async () => ({ email: "a@example.test", id: actorA, name: "Attendee A" }),
+    taskRepository: { async claim() { return null; }, async complete() { return false; }, async fail() { return false; }, async request() { repositoryRequested = true; throw new Error("must not enqueue"); } },
+  };
+  const context = { params: Promise.resolve({ id: eventId }) };
+  for (const [handler, method] of [
+    [createAttendeePostEventAiArtifactGetHandler(dependencies), "GET"],
+    [createAttendeePostEventAiArtifactPostHandler(dependencies), "POST"],
+  ] as const) {
+    const response = await handler(new Request(`http://localhost/api/events/${eventId}/post-event/artifact`, { method }), context);
+    assert.deepEqual((await response.json()).data, {
+      artifact: null, eventId, failureCode: "EVENT_NOT_ENDED", status: "failed", updatedAt: null,
+    });
+  }
+  assert.equal(repositoryRequested, false);
 });
 
 test("artifact POST queues one idempotent task from the registered attendee's explicit encounters", async () => {
@@ -415,4 +484,48 @@ test("artifact POST excludes encounters that the attendee marked as no conversat
   const task = record?.payload as any;
   assert.deepEqual(task.evidenceWhitelist, ["evidence:human-encounter:confirmed"]);
   assert.deepEqual(task.evidenceSnapshot.map((item: { talked: string }) => item.talked), ["yes"]);
+});
+
+test("artifact POST distinguishes missing evidence, provider configuration, and service dependencies without fallback", async () => {
+  const base = {
+    getRegistration: async () => registration(actorA),
+    loadEvent: async () => mockEventRecords.find((event) => event.id === eventId) ?? null,
+    resolveActor: async () => ({ email: "a@example.test", id: actorA, name: "Attendee A" }),
+  };
+  const context = { params: Promise.resolve({ id: eventId }) };
+  const invoke = async (handler: ReturnType<typeof createAttendeePostEventAiArtifactPostHandler>) => {
+    const response = await handler(new Request(`http://localhost/api/events/${eventId}/post-event/artifact`, { method: "POST" }), context);
+    return (await response.json()).data;
+  };
+
+  const providerUnconfigured = await invoke(createAttendeePostEventAiArtifactPostHandler({
+    ...base,
+    encounterService: { async list() { return []; } },
+    providerConfiguration: null,
+    taskRepository: null,
+  }));
+  assert.deepEqual(providerUnconfigured, {
+    artifact: null, eventId, failureCode: "AI_PROVIDER_UNCONFIGURED", status: "unconfigured", updatedAt: null,
+  });
+
+  const serviceUnavailable = await invoke(createAttendeePostEventAiArtifactPostHandler({
+    ...base,
+    encounterService: null,
+    providerConfiguration: { config: { apiKey: "test", provider: "openai" }, model: "gpt-5.6", provider: "openai" },
+    taskRepository: null,
+  }));
+  assert.deepEqual(serviceUnavailable, {
+    artifact: null, eventId, failureCode: "AI_ARTIFACT_SERVICE_UNAVAILABLE", status: "unconfigured", updatedAt: null,
+  });
+
+  const evidenceRequired = await invoke(createAttendeePostEventAiArtifactPostHandler({
+    ...base,
+    encounterService: { async list() { return []; } },
+    providerConfiguration: { config: { apiKey: "test", provider: "openai" }, model: "gpt-5.6", provider: "openai" },
+    taskRepository: createAttendeePostEventAiTaskRepository({ store: createMemoryLiveRecordStore(), workspaceId: "workspace:test" }),
+  }));
+  assert.deepEqual(evidenceRequired, {
+    artifact: null, eventId, failureCode: "AI_EVIDENCE_REQUIRED", status: "failed", updatedAt: null,
+  });
+  assert.equal(JSON.stringify([providerUnconfigured, serviceUnavailable, evidenceRequired]).includes("summary"), false);
 });

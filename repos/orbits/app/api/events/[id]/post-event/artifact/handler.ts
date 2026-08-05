@@ -50,8 +50,11 @@ export function createAttendeePostEventAiArtifactPostHandler(
     const encounters = dependencies.encounterService === undefined
       ? createConfiguredHumanEncounterService()
       : dependencies.encounterService;
-    if (!provider || !repository || !encounters) {
-      return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: null, status: "unconfigured", updatedAt: null }), { status: 200 });
+    if (!provider) {
+      return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: "AI_PROVIDER_UNCONFIGURED", status: "unconfigured", updatedAt: null }), { status: 200 });
+    }
+    if (!repository || !encounters) {
+      return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: "AI_ARTIFACT_SERVICE_UNAVAILABLE", status: "unconfigured", updatedAt: null }), { status: 200 });
     }
     const source = (await encounters.list({ actorId: access.actor.id, eventId: access.eventId }))
       .filter((encounter) => encounter.talked === "yes");
@@ -103,24 +106,25 @@ export function createAttendeePostEventAiArtifactGetHandler(
     const reader = dependencies.artifactReader === undefined
       ? createConfiguredAttendeePostEventAiArtifactReader()
       : dependencies.artifactReader;
-    const view = reader
-      ? await reader.read({
-          attendeeActorId: access.actor.id,
-          eventId: access.eventId,
-        })
-      : {
-          artifact: null,
-          eventId: access.eventId,
-          failureCode: null,
-          status: "unconfigured" as const,
-          updatedAt: null,
-        };
     const provider = dependencies.providerConfiguration === undefined
       ? resolveAttendeePostEventAiProviderConfiguration()
       : dependencies.providerConfiguration;
-    const honestView = !provider && (view.status === "queued" || view.status === "running")
-      ? { ...view, artifact: null, failureCode: null, status: "unconfigured" as const }
-      : view;
-    return NextResponse.json(success(honestView), { status: 200 });
+    if (!reader) {
+      return NextResponse.json(success({ artifact: null, eventId: access.eventId, failureCode: "AI_ARTIFACT_SERVICE_UNAVAILABLE", status: "unconfigured", updatedAt: null }), { status: 200 });
+    }
+    const view = await reader.read({
+      attendeeActorId: access.actor.id,
+      eventId: access.eventId,
+    });
+    if (view.status === "ready") {
+      return NextResponse.json(success(view), { status: 200 });
+    }
+    if (view.status === "failed") {
+      return NextResponse.json(success(view), { status: 200 });
+    }
+    if (!provider) {
+      return NextResponse.json(success({ ...view, artifact: null, failureCode: "AI_PROVIDER_UNCONFIGURED", status: "unconfigured" as const }), { status: 200 });
+    }
+    return NextResponse.json(success(view), { status: 200 });
   }, dependencies);
 }

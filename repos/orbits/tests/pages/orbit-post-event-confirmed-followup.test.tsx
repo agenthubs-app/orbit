@@ -29,7 +29,7 @@ test("post-event center requires a second confirmation and then renders persiste
   let posted: Record<string, unknown> | null = null;
   globalThis.fetch = (async (url, init) => {
     const href = String(url);
-    if (href === `/api/encounters?eventId=${encodeURIComponent(EVENT)}`) return Response.json({ data: [{ encounterId: candidate.encounterId }], success: true });
+    if (href === `/api/encounters?eventId=${encodeURIComponent(EVENT)}`) return Response.json({ data: [{ encounterId: candidate.encounterId, talked: "yes" }], success: true });
     if (href === "/api/appointments") return Response.json({ data: [], success: true });
     if (href.endsWith("/post-event/artifact")) return Response.json({ data: { artifact: null, status: "unconfigured" }, success: true });
     if (href.endsWith("/post-event/followups") && init?.method === "POST") {

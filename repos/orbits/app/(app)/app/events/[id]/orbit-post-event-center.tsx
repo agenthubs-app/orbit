@@ -29,11 +29,24 @@ interface ConfirmedFollowupView {
   taskStatus: "completed" | "dismissed" | "missing" | "open" | "scheduled";
 }
 
+type AiArtifactState =
+  | "checking"
+  | "evidence_required"
+  | "failed"
+  | "not_available"
+  | "not_requested"
+  | "provider_unconfigured"
+  | "queued"
+  | "ready"
+  | "running"
+  | "service_unavailable";
+
 export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedContacts: number; eventId: string }) {
   const { t } = useOrbitLanguage();
   const [encounters, setEncounters] = useState(0);
   const [completedMeetings, setCompletedMeetings] = useState(0);
-  const [aiState, setAiState] = useState<"checking" | "unconfigured" | "queued" | "running" | "failed" | "ready">("checking");
+  const [aiState, setAiState] = useState<AiArtifactState>("checking");
+  const [aiFailureCode, setAiFailureCode] = useState<string | null>(null);
   const [artifact, setArtifact] = useState<ReadyArtifact | null>(null);
   const [followups, setFollowups] = useState<readonly ConfirmedFollowupView[]>([]);
   const [followupState, setFollowupState] = useState<"loading" | "ready" | "failed">("loading");
@@ -44,14 +57,34 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
   function applyArtifactResponse(body: any, ok: boolean): void {
     const state = body?.data?.status;
     const readyArtifact = body?.data?.artifact;
+    const failureCode = typeof body?.data?.failureCode === "string" ? body.data.failureCode : null;
     if (ok && state === "ready" && readyArtifact && typeof readyArtifact.summary === "string") {
       setArtifact(readyArtifact as ReadyArtifact);
+      setAiFailureCode(null);
       setAiState("ready");
-    } else if (state === "queued" || state === "running" || state === "failed" || state === "unconfigured") {
+    } else if (ok && (state === "queued" || state === "running")) {
       setArtifact(null);
+      setAiFailureCode(failureCode);
       setAiState(state);
+    } else if (ok && state === "unconfigured") {
+      setArtifact(null);
+      setAiFailureCode(failureCode);
+      setAiState(failureCode === "AI_PROVIDER_UNCONFIGURED"
+        ? "provider_unconfigured"
+        : failureCode === "AI_ARTIFACT_SERVICE_UNAVAILABLE"
+          ? "service_unavailable"
+          : "not_requested");
+    } else if (ok && state === "failed") {
+      setArtifact(null);
+      setAiFailureCode(failureCode);
+      setAiState(failureCode === "EVENT_NOT_ENDED"
+        ? "not_available"
+        : failureCode === "AI_EVIDENCE_REQUIRED"
+          ? "evidence_required"
+          : "failed");
     } else {
       setArtifact(null);
+      setAiFailureCode(typeof body?.error?.code === "string" ? body.error.code : "AI_ARTIFACT_REQUEST_FAILED");
       setAiState("failed");
     }
   }
@@ -62,6 +95,7 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
       applyArtifactResponse(await response.json(), response.ok);
     } catch {
       setArtifact(null);
+      setAiFailureCode("NETWORK_ERROR");
       setAiState("failed");
     }
   }
@@ -105,7 +139,9 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
       fetch(`/api/events/${encodeURIComponent(eventId)}/post-event/artifact`, { cache: "no-store" }).then(async (response) => ({ body: await response.json(), ok: response.ok })),
       fetch(`/api/events/${encodeURIComponent(eventId)}/post-event/followups`, { cache: "no-store" }).then(async (response) => ({ body: await response.json(), ok: response.ok })),
     ]).then(([encounterBody, appointmentBody, review, followupResponse]) => {
-      setEncounters(Array.isArray(encounterBody?.data) ? encounterBody.data.length : 0);
+      setEncounters(Array.isArray(encounterBody?.data)
+        ? encounterBody.data.filter((value: { talked?: string }) => value.talked === "yes").length
+        : 0);
       setCompletedMeetings(Array.isArray(appointmentBody?.data) ? appointmentBody.data.filter((value: { eventId?: string; status?: string }) => value.eventId === eventId && value.status === "completed").length : 0);
       applyArtifactResponse(review.body, review.ok);
       if (followupResponse.ok && Array.isArray(followupResponse.body?.data)) {
@@ -115,6 +151,7 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
         setFollowupState("failed");
       }
     }).catch(() => {
+      setAiFailureCode("NETWORK_ERROR");
       setAiState("failed");
       setFollowupState("failed");
     });
@@ -128,6 +165,29 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
     }, 2_000);
     return () => window.clearInterval(timer);
   }, [aiState, eventId]);
+  const aiCopy = aiState === "not_available"
+    ? t({ en: "The AI review becomes available after this event ends. There is nothing to retry yet.", zh: "活动结束后才会开放 AI 会后复盘，目前无需重试。" })
+    : aiState === "not_requested"
+      ? t({ en: "No AI review has been requested for your current encounter evidence.", zh: "尚未基于你当前的交流证据发起 AI 会后复盘。" })
+      : aiState === "provider_unconfigured"
+        ? t({ en: "The AI provider is not configured. No fallback or generated prose is shown.", zh: "AI 服务尚未配置；不会展示备用文案或伪生成内容。" })
+        : aiState === "service_unavailable"
+          ? t({ en: "The AI artifact service is temporarily unavailable. No request was submitted and no fallback is shown.", zh: "AI 产物服务暂时不可用；本次未提交生成请求，也不会展示备用文案。" })
+          : aiState === "evidence_required"
+            ? t({ en: "Record a confirmed conversation with a note, next step, or commitment before requesting an AI review.", zh: "请先记录一段已确认的真实交流，并填写笔记、下一步或承诺，再发起 AI 复盘。" })
+            : aiState === "queued"
+              ? t({ en: "The real AI review is queued. Your evidence remains available while you wait.", zh: "真实 AI 复盘正在排队；等待期间交流证据仍可查看。" })
+              : aiState === "running"
+                ? t({ en: "Real AI generation is running. No draft is exposed before it is stored and ready.", zh: "真实 AI 正在生成；产物存储并就绪前不展示草稿。" })
+                : aiState === "ready"
+                  ? t({ en: "A provider-generated review is ready from your permitted evidence.", zh: "基于你有权访问的证据，真实 AI 复盘已就绪。" })
+                  : aiState === "checking"
+                    ? t({ en: "Checking AI review state…", zh: "正在检查 AI 复盘状态…" })
+                    : aiFailureCode === "MODEL_REQUEST_FAILED"
+                      ? t({ en: "The AI provider rejected or stopped this generation. No fallback was created; retry after the provider issue is resolved.", zh: "AI 服务拒绝或中止了本次生成。系统未创建备用内容；请在服务问题解决后重试。" })
+                      : aiFailureCode === "AI_ARTIFACT_POLICY_REJECTED"
+                        ? t({ en: "The stored artifact did not pass evidence policy checks and was not shown. No fallback was created.", zh: "已存储产物未通过证据策略校验，因此未展示；系统未创建备用内容。" })
+                        : t({ en: "AI generation failed. No fallback or fabricated prose is shown.", zh: "AI 生成失败；不会展示备用或虚构文案。" });
   const evidenceDone = Number(acceptedContacts > 0) + Number(encounters > 0) + Number(completedMeetings > 0);
   return <section className="card-flat" data-post-event-center style={{ display: "grid", gap: 12, padding: 14 }}>
     <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between" }}>
@@ -169,6 +229,35 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
         </div>;
       })}
     </div>
-    <div className="card-flat" data-post-event-ai-state={aiState} style={{ padding: 11 }}><strong>{t({ en: "AI review", zh: "AI 会后复盘" })}</strong><p style={{ color: "var(--text-2)", fontSize: 12, margin: "5px 0 0" }}>{aiState === "unconfigured" ? t({ en: "No attendee artifact request is configured, or the AI provider is unavailable. No generated prose is shown.", zh: "尚未配置参会者 AI 产物请求，或 AI 服务不可用；不展示生成文案。" }) : aiState === "queued" ? t({ en: "Real AI artifact is queued. Evidence remains available while you wait.", zh: "真实 AI 产物正在排队；等待期间仍可查看证据。" }) : aiState === "running" ? t({ en: "Real AI generation is running. No draft is exposed before it is stored and ready.", zh: "真实 AI 正在生成；产物存储并 ready 前不展示草稿。" }) : aiState === "ready" ? t({ en: "A provider-generated artifact is ready from your permitted evidence.", zh: "基于你有权访问的证据，真实 AI 产物已就绪。" }) : aiState === "checking" ? t({ en: "Checking AI artifact state…", zh: "正在检查 AI 产物状态…" }) : t({ en: "AI generation failed or needs explicit encounter evidence. No fallback prose is shown.", zh: "AI 生成失败或缺少明确交流证据；不展示备用文案。" })}</p>{aiState === "unconfigured" || aiState === "failed" ? <button className="btn btn-ghost btn-sm" disabled={encounters === 0} onClick={() => void requestArtifact()} style={{ marginTop: 8 }} type="button">{encounters === 0 ? t({ en: "Record an encounter first", zh: "请先记录真实交流" }) : t({ en: aiState === "failed" ? "Retry AI review" : "Request AI review", zh: aiState === "failed" ? "重试 AI 复盘" : "请求 AI 复盘" })}</button> : null}{aiState === "ready" && artifact ? <div data-post-event-ai-artifact style={{ display: "grid", gap: 8, marginTop: 10 }}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{artifact.summary}</p>{artifact.messageDraft ? <div className="card-flat" style={{ padding: 10 }}><strong style={{ fontSize: 12 }}>{t({ en: "Message draft", zh: "消息草稿" })}</strong><p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{artifact.messageDraft}</p></div> : null}<small style={{ color: "var(--text-3)" }}>{artifact.provider} · {artifact.model} · {new Date(artifact.generatedAt).toLocaleString()}</small></div> : null}</div>
+    <div
+      className="card-flat"
+      data-post-event-ai-failure-code={aiFailureCode ?? undefined}
+      data-post-event-ai-state={aiState}
+      style={{ padding: 11 }}
+    >
+      <strong>{t({ en: "AI review", zh: "AI 会后复盘" })}</strong>
+      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "5px 0 0" }}>{aiCopy}</p>
+      {aiState === "not_requested" ? <button
+        className="btn btn-ghost btn-sm"
+        data-post-event-ai-action="request"
+        disabled={encounters === 0}
+        onClick={() => void requestArtifact()}
+        style={{ marginTop: 8 }}
+        type="button"
+      >
+        {encounters === 0 ? t({ en: "Record an encounter first", zh: "请先记录真实交流" }) : t({ en: "Request AI review", zh: "请求 AI 复盘" })}
+      </button> : null}
+      {aiState === "failed" && aiFailureCode !== "AI_ARTIFACT_POLICY_REJECTED" ? <button
+        className="btn btn-ghost btn-sm"
+        data-post-event-ai-action="retry"
+        disabled={encounters === 0}
+        onClick={() => void requestArtifact()}
+        style={{ marginTop: 8 }}
+        type="button"
+      >
+        {encounters === 0 ? t({ en: "Record an encounter first", zh: "请先记录真实交流" }) : t({ en: "Retry AI review", zh: "重试 AI 复盘" })}
+      </button> : null}
+      {aiState === "ready" && artifact ? <div data-post-event-ai-artifact style={{ display: "grid", gap: 8, marginTop: 10 }}><p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{artifact.summary}</p>{artifact.messageDraft ? <div className="card-flat" style={{ padding: 10 }}><strong style={{ fontSize: 12 }}>{t({ en: "Message draft", zh: "消息草稿" })}</strong><p style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{artifact.messageDraft}</p></div> : null}<small style={{ color: "var(--text-3)" }}>{artifact.provider} · {artifact.model} · {new Date(artifact.generatedAt).toLocaleString()}</small></div> : null}
+    </div>
   </section>;
 }

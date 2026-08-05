@@ -26,6 +26,14 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function storedFailureCode(payload: Record<string, unknown>): string {
+  const error = isRecord(payload.error) ? payload.error : null;
+  const code = text(error?.code);
+  return code && /^[A-Z][A-Z0-9_]{1,95}$/.test(code)
+    ? code
+    : "AI_GENERATION_FAILED";
+}
+
 function evidenceIds(value: unknown): readonly string[] | null {
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string" && item.trim())) {
     return null;
@@ -84,7 +92,7 @@ function viewFromRecord(
       artifact: null,
       eventId: input.eventId,
       failureCode:
-        artifactStatus === "failed" ? "AI_GENERATION_FAILED" : null,
+        artifactStatus === "failed" ? storedFailureCode(payload) : null,
       status: artifactStatus,
       updatedAt: record.updatedAt,
     };
