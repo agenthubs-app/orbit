@@ -293,12 +293,6 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
         {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
       </section>
 
-      <OrbitEventMatchmaking
-        authenticated={event.stats.authed}
-        eventId={event.id}
-        registrationOpen={event.status !== "ended"}
-      />
-
       {event.about && event.about.length ? (
         <section>
           <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3>
@@ -350,9 +344,9 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
               {event.stats.count && event.status !== "ended" ? <a className="btn btn-dark btn-sm" href={`/app/events/${encodeURIComponent(event.id)}/register`} style={{ textDecoration: "none" }}><Icon name="lock" size={15} />{t({ en: "Register", zh: "报名参加" })}</a> : null}
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
               {attendees.map((person, index) => (
-                <div key={`${person.name}-${index}`} className="card-flat" style={{ padding: 12, display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                <div key={`${person.name}-${index}`} className="card-flat" style={{ padding: 12, display: "flex", alignItems: "center", gap: 12, minWidth: 0, overflow: "hidden" }}>
                   <Avatar letter={person.initial || person.name.slice(0, 1)} g={avatarGradients[index % avatarGradients.length]} size={40} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{person.name}</div>
@@ -374,6 +368,13 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
           ) : null}
         </div>
       </section>
+
+      <OrbitEventMatchmaking
+        authenticated={event.stats.authed}
+        contactRequestsOpen={event.status !== "upcoming"}
+        eventId={event.id}
+        registrationOpen={event.status !== "ended"}
+      />
 
       <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: ORBIT_Z.sticky }}>
         {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped, workspaceAvailable)}

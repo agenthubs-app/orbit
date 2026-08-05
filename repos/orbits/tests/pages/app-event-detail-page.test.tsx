@@ -93,6 +93,7 @@ test("registered attendees can open the normal preparation workspace before the 
 
 test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
+  const matchmakingSource = source("app/(app)/app/events/[id]/orbit-event-matchmaking.tsx");
 
   assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
   assert.doesNotMatch(pageSource, /getOrbitLandingViewModel\(/);
@@ -101,6 +102,9 @@ test("/app/events/[id] resolves public and authorized private details through ca
   assert.doesNotMatch(pageSource, /loadAppEventDetailRoute/);
   assert.doesNotMatch(pageSource, /loadAppEventsRouteViewModel/);
   assert.match(pageSource, /resolution\.state === "success"/);
+  assert.doesNotMatch(pageSource, /Open organizer operations/);
+  assert.doesNotMatch(matchmakingSource, /All participants/);
+  assert.match(matchmakingSource, /contactRequestsOpen/);
   assert.match(pageSource, /attendees: resolution\.registered \?/);
   assert.match(
     pageSource,

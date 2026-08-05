@@ -184,16 +184,6 @@ export default async function AppEventDetailPage({
     return (
       <>
         <OrbitReferenceStyles />
-        {resolution.canOpenOperations ? (
-          <div style={{ margin: "16px auto 0", maxWidth: 1120, padding: "0 20px" }}>
-            <a
-              className="btn btn-primary"
-              href={`/app/events/${encodeURIComponent(resolution.event.id)}/operations`}
-            >
-              Open organizer operations
-            </a>
-          </div>
-        ) : null}
         <OrbitRealEventDetail
           event={localizeOrbitTree(accessibleEvent, language)}
           workspaceAvailable={resolution.workspaceAvailable}

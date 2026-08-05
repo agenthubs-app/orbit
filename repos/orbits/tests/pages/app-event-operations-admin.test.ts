@@ -21,8 +21,7 @@ test("event operations workspace requires login and per-event operations capabil
   assert.match(page, /eventId: canonicalEventId/);
   assert.match(page, /Event operations access required/);
   assert.doesNotMatch(page, /readPublicEventCatalogue/);
-  assert.match(eventDetail, /\/operations/);
-  assert.match(eventDetail, /Open organizer operations/);
+  assert.doesNotMatch(eventDetail, /Open organizer operations/);
 });
 
 test("organizer workspace exposes the complete strict generation and audit workflow", () => {

@@ -539,6 +539,21 @@ export function createEventOperationsService({
       targetParticipantId,
     }) {
       await requireRegistered(eventId, actorId);
+      const configuration = requireConfiguration(
+        await repository.getConfiguration(eventId),
+      );
+      const eventStartsAtMs = Date.parse(configuration.eventStartsAt);
+      const currentMs = Date.parse(now());
+      if (
+        !Number.isFinite(eventStartsAtMs) ||
+        !Number.isFinite(currentMs) ||
+        currentMs < eventStartsAtMs
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "Contact requests open when the event starts.",
+        );
+      }
       const published = await repository.getPublishedResult(eventId);
       const { participants } = await participantContext(
         eventId,

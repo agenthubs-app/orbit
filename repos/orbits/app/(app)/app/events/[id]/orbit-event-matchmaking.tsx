@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { Icon } from "../../orbit-reference-primitives";
 import { OrbitAppointmentNegotiation } from "./orbit-appointment-negotiation";
 import { OrbitEncounterCapture } from "./orbit-encounter-capture";
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
@@ -70,6 +69,7 @@ type OperationsWorkspace = {
 function CandidateContactAction({
   busy,
   canWithdraw,
+  contactRequestsOpen,
   participantId,
   request,
   onRequest,
@@ -77,6 +77,7 @@ function CandidateContactAction({
 }: {
   busy: boolean;
   canWithdraw: boolean;
+  contactRequestsOpen: boolean;
   participantId: string;
   request: ContactRequest | null;
   onRequest: (participantId: string, expectedRevision: number | null) => Promise<void>;
@@ -87,13 +88,15 @@ function CandidateContactAction({
   if (!request) {
     return (
       <button
-        className="btn btn-primary btn-sm"
+        className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
         data-contact-request-state="none"
-        disabled={busy}
+        disabled={busy || !contactRequestsOpen}
         onClick={() => void onRequest(participantId, null)}
         type="button"
       >
-        {t({ en: "Request business card", zh: "申请交换名片" })}
+        {contactRequestsOpen
+          ? t({ en: "Request business card", zh: "申请交换名片" })
+          : t({ en: "Contact requests open when the event starts", zh: "活动开始后可申请交换联系" })}
       </button>
     );
   }
@@ -125,7 +128,7 @@ function CandidateContactAction({
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <span className="chip" data-contact-request-state="withdrawn">{t({ en: "Request withdrawn", zh: "申请已撤回" })}</span>
-        {canWithdraw ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(participantId, request.revision)} type="button">{t({ en: "Request again", zh: "再次申请" })}</button> : null}
+        {canWithdraw ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(participantId, request.revision)} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请" })}</button> : null}
       </div>
     );
   }
@@ -206,6 +209,7 @@ function formatGate(value: string): string {
 
 function ParticipantDetailPanel({
   busy,
+  contactRequestsOpen,
   detail,
   onClose,
   onRequest,
@@ -214,6 +218,7 @@ function ParticipantDetailPanel({
   eventId,
 }: {
   busy: boolean;
+  contactRequestsOpen: boolean;
   detail: ParticipantDetail;
   onClose: () => void;
   onRequest: (participantId: string, expectedRevision: number | null) => Promise<void>;
@@ -322,8 +327,10 @@ function ParticipantDetailPanel({
 
         <footer style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {contact.status === "none" ? (
-            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId, null)} type="button">
-              {t({ en: "Request business card", zh: "申请交换名片" })}
+            <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(detail.participantId, null)} type="button">
+              {contactRequestsOpen
+                ? t({ en: "Request business card", zh: "申请交换名片" })
+                : t({ en: "Contact requests open when the event starts", zh: "活动开始后可申请交换联系" })}
             </button>
           ) : null}
           {contact.status === "awaiting_target_consent" && contact.direction === "incoming" && contact.requestId ? (
@@ -340,7 +347,7 @@ function ParticipantDetailPanel({
           {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" && contact.requestId && contact.revision ? <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onWithdraw(contact.requestId!, contact.revision!)} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
           {contact.status === "accepted" ? <a className="btn btn-primary btn-sm" href={contact.contactId ? `/app/contacts/${encodeURIComponent(contact.contactId)}` : "/app/contacts"}>{t({ en: "Open contact", zh: "打开联系人" })}</a> : null}
           {contact.status === "declined" ? <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was declined.", zh: "这次名片申请已被婉拒。" })}</span> : null}
-          {contact.status === "withdrawn" ? <><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was withdrawn.", zh: "这次名片申请已撤回。" })}</span>{contact.direction === "outgoing" && contact.revision ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId, contact.revision)} type="button">{t({ en: "Request again", zh: "再次申请" })}</button> : null}</> : null}
+          {contact.status === "withdrawn" ? <><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was withdrawn.", zh: "这次名片申请已撤回。" })}</span>{contact.direction === "outgoing" && contact.revision ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(detail.participantId, contact.revision)} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请" })}</button> : null}</> : null}
         </footer>
         {contact.status === "accepted" && contact.contactId && contact.requestId ? (
           <>
@@ -359,10 +366,12 @@ function ParticipantDetailPanel({
 
 export function OrbitEventMatchmaking({
   authenticated = true,
+  contactRequestsOpen = true,
   eventId,
   registrationOpen = true,
 }: {
   authenticated?: boolean;
+  contactRequestsOpen?: boolean;
   eventId: string;
   registrationOpen?: boolean;
 }) {
@@ -373,7 +382,6 @@ export function OrbitEventMatchmaking({
   const [unauthorized, setUnauthorized] = useState(!authenticated);
   const [error, setError] = useState("");
   const [working, setWorking] = useState<string | null>(null);
-  const [directoryOpen, setDirectoryOpen] = useState(false);
   const visibleError = error
     ? t({
         en: "The published event operations data is temporarily unavailable.",
@@ -471,7 +479,7 @@ export function OrbitEventMatchmaking({
   );
 
   return (
-    <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking style={{ display: "grid", gap: 16, padding: 16 }}>
+    <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden", padding: 16 }}>
       <div style={{ display: "grid", gap: 4 }}>
         <span className="eyebrow">ORBIT MATCH · PUBLISHED</span>
         <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>{t({ en: "People worth meeting", zh: "值得认识的人" })}</h3>
@@ -500,7 +508,7 @@ export function OrbitEventMatchmaking({
                 request.targetParticipantId === participant.participantId,
             ) ?? null;
             return (
-            <article className="card-flat" data-matchmaking-candidate={participant.participantId} key={participant.participantId} style={{ display: "grid", gap: 9, padding: 14 }}>
+            <article className="card-flat" data-matchmaking-candidate={participant.participantId} key={participant.participantId} style={{ display: "grid", gap: 9, minWidth: 0, overflowWrap: "anywhere", padding: 14 }}>
               <button aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })} onClick={() => void openParticipant(participant.participantId)} style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }} type="button">
                 <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
                   <div><strong style={{ color: "var(--ink)", fontSize: 15 }}>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div></div>
@@ -514,6 +522,7 @@ export function OrbitEventMatchmaking({
                 <CandidateContactAction
                   busy={working === `request:${participant.participantId}`}
                   canWithdraw={contactRequest?.requesterParticipantId === workspace.me.participantId}
+                  contactRequestsOpen={contactRequestsOpen}
                   onRequest={requestContact}
                   onWithdraw={withdrawContact}
                   participantId={participant.participantId}
@@ -527,18 +536,10 @@ export function OrbitEventMatchmaking({
         </>
       ) : null}
 
-      {workspace ? (
-        <section style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 10, paddingTop: 14 }}>
-          <button aria-expanded={directoryOpen} className="btn btn-ghost btn-sm" onClick={() => setDirectoryOpen((value) => !value)} style={{ justifySelf: "start" }} type="button">
-            <Icon name="users" size={14} /> {t({ en: `All participants (${workspace.directory.length})`, zh: `全部参会者（${workspace.directory.length}）` })}
-          </button>
-          {directoryOpen ? <div data-event-participant-directory style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>{workspace.directory.filter((participant) => participant.participantId !== workspace.me.participantId).map((participant) => <button className="card-flat" key={participant.participantId} onClick={() => void openParticipant(participant.participantId)} style={{ cursor: "pointer", padding: 12, textAlign: "left" }} type="button"><strong>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div><div style={{ color: "var(--text-2)", fontSize: 12, marginTop: 6 }}>{participant.topics.slice(0, 3).join(" · ")}</div></button>)}</div> : null}
-        </section>
-      ) : null}
       {workspace && !registrationOpen ? <OrbitPostEventCenter acceptedContacts={workspace.contactRequests.filter((request) => request.status === "accepted").length} eventId={eventId} /> : null}
 
       {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
-      {detail ? <ParticipantDetailPanel busy={working !== null} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} /> : null}
+      {detail ? <ParticipantDetailPanel busy={working !== null} contactRequestsOpen={contactRequestsOpen} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} /> : null}
     </section>
   );
 }

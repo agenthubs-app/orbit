@@ -511,8 +511,37 @@ test("event persona becomes read-only exactly at the configured profile deadline
   assert.equal(workspace.profileEditable, false);
 });
 
+test("business-card requests stay closed until the event starts", async () => {
+  const harness = await createHarness();
+  const mei = (
+    await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
+  ).directory.find((participant) => participant.actorId === "actor:mei");
+  assert.ok(mei);
+
+  await assert.rejects(
+    () =>
+      harness.service.createContactRequest({
+        actorId: "actor:akira",
+        expectedRevision: null,
+        eventId,
+        targetParticipantId: mei.participantId,
+      }),
+    /open when the event starts/u,
+  );
+
+  harness.setTimestamp("2026-08-02T09:30:00.000Z");
+  const request = await harness.service.createContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: null,
+    eventId,
+    targetParticipantId: mei.participantId,
+  });
+  assert.equal(request.status, "awaiting_target_consent");
+});
+
 test("business-card requests are individual and create bilateral records only after target consent", async () => {
   const harness = await createHarness();
+  harness.setTimestamp("2026-08-02T09:31:00.000Z");
   const mei = (
     await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
   ).directory.find((participant) => participant.actorId === "actor:mei");
@@ -574,6 +603,7 @@ test("business-card requests are individual and create bilateral records only af
 
 test("requesters can idempotently withdraw a pending business-card request and request again", async () => {
   const harness = await createHarness();
+  harness.setTimestamp("2026-08-02T09:31:00.000Z");
   const mei = (
     await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
   ).directory.find((participant) => participant.actorId === "actor:mei");
@@ -658,6 +688,7 @@ test("requesters can idempotently withdraw a pending business-card request and r
 
 test("declined business-card requests never create contacts or evidence", async () => {
   const harness = await createHarness();
+  harness.setTimestamp("2026-08-02T09:31:00.000Z");
   const sora = (
     await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
   ).directory.find((participant) => participant.actorId === "actor:sora");
@@ -681,6 +712,7 @@ test("declined business-card requests never create contacts or evidence", async 
 
 test("a published attendee directory, me profile, and contact targets stay on the immutable publication snapshot", async () => {
   const harness = await createHarness();
+  harness.setTimestamp("2026-08-02T09:31:00.000Z");
   const beforePublication = await harness.service.attendeeWorkspace({
     actorId: "actor:akira",
     eventId,

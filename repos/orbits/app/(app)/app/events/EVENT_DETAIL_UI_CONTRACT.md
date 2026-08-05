@@ -12,8 +12,12 @@ Sprint 95 恢复 `/app/events/[id]` 的活动详情层级，目标页面是
 - schedule：日期、时间、地点与地址。
 - relationship priority：第一优先认识的人、第一动作、来源上下文与渲染期无副作用标记。
 - registration action：可报名活动显示 `/app/register?code=EVENT001` 入口；已报名活动显示已报名状态。
-- attendee context：参会者名单或报名后可见提示。
+- attendee context：参会者名单或报名后可见提示；参会者名单是唯一的参会者目录，
+  不再额外渲染重复的“全部参会者”入口。
 - supporting details：关系上下文、推荐认识的人、readiness、来源保护摘要。
+
+推荐认识的人必须位于参会者名单之后，作为详情页最后的关系动作区；活动开始前，
+交换联系信息入口必须保持禁用态。
 
 移动端必须保留 hero、摘要和底部报名动作，并为固定底部动作留出
 `data-event-detail-overlap-guard="fixed-mobile-cta-space"`，避免内容被 CTA 遮挡。
@@ -84,6 +88,9 @@ Live service/provider 文件保持在既有边界：
 活动时间和地点只来自 canonical event detail record。其他 capability payload
 若携带旧活动 logistics，只能进入 source consistency 摘要，不能覆盖页面主时间、
 主地点或报名入口。
+
+交换联系信息的活动开始时间闸门由 event operations service 在服务端强制执行；
+页面的禁用态只是对应的交互提示，不能替代服务端校验。
 
 公开目录使用稳定且唯一的 event code。长 source id 必须通过保留可读前缀并附加
 稳定 hash 的方式生成 code，禁止简单截断造成多个活动指向同一详情。所有登录入口

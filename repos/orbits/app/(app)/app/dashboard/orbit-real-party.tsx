@@ -210,18 +210,20 @@ function PartyDesktopChrome({
 }
 
 function NetworkPerson({
+  contactRequestsOpen,
   eventId,
   onSelect,
   p,
   t,
 }: {
+  contactRequestsOpen: boolean;
   eventId: string;
   onSelect: (person: OrbitPartyPersonView) => void;
   p: OrbitPartyPersonView;
   t: Translate;
 }) {
   return (
-    <article className="orbit-party-network-person card" style={{ position: "relative" }}>
+    <article className="orbit-party-network-person card" style={{ minWidth: 0, position: "relative" }}>
       <button
         aria-label={t({ en: `View ${p.name}'s details`, zh: `查看 ${p.name} 的详情` })}
         data-party-person-open={p.id}
@@ -243,16 +245,16 @@ function NetworkPerson({
           {p.title} · {p.company}
         </span>
         <div className="orbit-party-network-person-summary">{p.reason}</div>
-        <div className="orbit-party-network-tags">
-          <span className="chip chip-accent">{p.industry}</span>
+        <div className="orbit-party-network-tags" style={{ minWidth: 0 }}>
+          <span className="chip chip-accent" style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>{p.industry}</span>
           {p.topics.map((topic) => (
-            <span className="chip" key={topic}>
+            <span className="chip" key={topic} style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>
               {topic}
             </span>
           ))}
         </div>
         <div style={{ display: "grid", gap: 8, marginTop: 12, pointerEvents: "auto", position: "relative", zIndex: 2 }}>
-          <EventContactRequestControl eventId={eventId} person={p} t={t} />
+          <EventContactRequestControl contactRequestsOpen={contactRequestsOpen} eventId={eventId} person={p} t={t} />
         </div>
       </div>
     </article>
@@ -672,7 +674,7 @@ function PartyRecommendations({ onSelect, t, viewModel }: { onSelect: (person: O
       </div>
       <div className="orbit-party-network-list">
         {list.map((person) => (
-          <NetworkPerson eventId={viewModel.eventId} key={person.id} onSelect={onSelect} p={person} t={t} />
+          <NetworkPerson contactRequestsOpen={viewModel.eventPhase !== "upcoming"} eventId={viewModel.eventId} key={person.id} onSelect={onSelect} p={person} t={t} />
         ))}
       </div>
     </div>
@@ -740,10 +742,10 @@ function PartyAttendees({ onSelect, t, viewModel }: { onSelect: (person: OrbitPa
                 {person.company} · {person.title}
               </div>
               <div className="orbit-party-attendee-summary">{person.summary}</div>
-              <div className="orbit-party-attendee-tags">
-                <span className="chip chip-accent">{person.industry}</span>
+              <div className="orbit-party-attendee-tags" style={{ minWidth: 0 }}>
+                <span className="chip chip-accent" style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>{person.industry}</span>
                 {person.topics.map((topic) => (
-                  <span className="chip" key={topic}>
+                  <span className="chip" key={topic} style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>
                     {topic}
                   </span>
                 ))}
@@ -753,7 +755,7 @@ function PartyAttendees({ onSelect, t, viewModel }: { onSelect: (person: OrbitPa
               <span className="chip chip-accent orbit-party-attendee-seat" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{person.seat}</span>
             ) : null}
             <div style={{ gridColumn: "1 / -1", position: "relative", zIndex: 2 }}>
-              <EventContactRequestControl eventId={viewModel.eventId} person={person} t={t} />
+              <EventContactRequestControl contactRequestsOpen={viewModel.eventPhase !== "upcoming"} eventId={viewModel.eventId} person={person} t={t} />
             </div>
           </article>
         ))}
@@ -928,7 +930,7 @@ function SocialGraphLite({
   );
 }
 
-function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string; onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
+function PersonDetailOverlay({ contactRequestsOpen, eventId, onClose, person, t }: { contactRequestsOpen: boolean; eventId: string; onClose: () => void; person: OrbitPartyPersonView; t: Translate }) {
   const [detail, setDetail] = useState<EventParticipantDetailView | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -998,7 +1000,7 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
           {t({ en: "Back", zh: "返回" })}
         </button>
       </div>
-      <div data-party-person-detail={person.id} style={{ padding: 20 }}>
+      <div data-party-person-detail={person.id} style={{ minWidth: 0, overflowWrap: "anywhere", padding: 20 }}>
         {detail?.placements.length ? (
           <section
             style={{
@@ -1038,9 +1040,9 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
           {person.company} · {person.title}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-          <span className="chip chip-accent">{person.industry}</span>
+          <span className="chip chip-accent" style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>{person.industry}</span>
           {person.groupNumber !== null && person.seat ? (
-            <span className="chip">
+            <span className="chip" style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>
               {t({ en: `Group ${person.groupNumber}`, zh: `第${person.groupNumber}组` })} / {person.seat}
             </span>
           ) : null}
@@ -1048,7 +1050,7 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
         <p style={{ color: "var(--text)", lineHeight: 1.8, marginTop: 18 }}>{person.summary}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
           {person.topics.map((topic) => (
-            <span className="chip" key={topic}>
+            <span className="chip" key={topic} style={{ height: "auto", maxWidth: "100%", minHeight: 26, overflowWrap: "anywhere", whiteSpace: "normal" }}>
               {topic}
             </span>
           ))}
@@ -1106,7 +1108,7 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
           <p style={{ color: "var(--text-2)", lineHeight: 1.8, marginTop: 18 }}>{person.reason}</p>
         )}
         <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
-          <EventContactRequestControl eventId={eventId} person={contactPerson} t={t} />
+          <EventContactRequestControl contactRequestsOpen={contactRequestsOpen} eventId={eventId} person={contactPerson} t={t} />
         </div>
       </div>
     </ModalShell>
@@ -1259,7 +1261,7 @@ export function OrbitRealPartyGraph({ viewModel }: { viewModel: OrbitPartyViewMo
           )}
         </div>
       </div>
-      {selected ? <PersonDetailOverlay eventId={viewModel.eventId} onClose={() => setSelected(null)} person={selected} t={t} /> : null}
+      {selected ? <PersonDetailOverlay contactRequestsOpen={viewModel.eventPhase !== "upcoming"} eventId={viewModel.eventId} onClose={() => setSelected(null)} person={selected} t={t} /> : null}
     </div>
   );
 }
@@ -1454,6 +1456,7 @@ export function OrbitRealParty({ viewModel }: { viewModel: OrbitPartyViewModel }
       {tab === "agenda" ? <PartyAgenda t={t} viewModel={viewModel} /> : null}
       {selectedPerson ? (
         <PersonDetailOverlay
+          contactRequestsOpen={viewModel.eventPhase !== "upcoming"}
           eventId={viewModel.eventId}
           onClose={() => setSelectedPerson(null)}
           person={selectedPerson}

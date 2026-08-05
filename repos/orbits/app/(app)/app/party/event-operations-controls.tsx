@@ -58,10 +58,12 @@ async function postJson<T>(url: string, body?: Record<string, unknown>): Promise
 }
 
 export function EventContactRequestControl({
+  contactRequestsOpen = true,
   eventId,
   person,
   t,
 }: {
+  contactRequestsOpen?: boolean;
   eventId: string;
   person: OrbitPartyPersonView;
   t: Translate;
@@ -255,14 +257,16 @@ export function EventContactRequestControl({
       aria-busy={busy}
       data-event-contact-participant={person.id}
       data-event-contact-request-id={requestId ?? ""}
-      style={{ display: "grid", gap: 6 }}
+      style={{ display: "grid", gap: 6, minWidth: 0 }}
     >
       {status === "none" ? (
-        <button className="btn btn-primary btn-sm" data-event-contact-action="request" disabled={busy} onClick={createRequest} type="button">
+        <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} data-event-contact-action="request" disabled={busy || !contactRequestsOpen} onClick={createRequest} type="button">
           <Icon color="var(--on-dark)" name="users" size={15} />
           {busy
             ? t({ en: "Sending…", zh: "发送中…" })
-            : t({ en: "Request contact", zh: "申请交换联系信息" })}
+            : contactRequestsOpen
+              ? t({ en: "Request contact", zh: "申请交换联系信息" })
+              : t({ en: "Contact requests open when the event starts", zh: "活动开始后可申请交换联系" })}
         </button>
       ) : null}
       {canRespond ? (
@@ -299,7 +303,7 @@ export function EventContactRequestControl({
       {status === "withdrawn" ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <span className="chip">{t({ en: "Contact request withdrawn", zh: "联系申请已撤回" })}</span>
-          {direction === "outgoing" ? <button className="btn btn-primary btn-sm" data-event-contact-action="request-again" disabled={busy} onClick={() => void createRequest()} type="button">{t({ en: "Request contact again", zh: "再次申请交换联系信息" })}</button> : null}
+          {direction === "outgoing" ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} data-event-contact-action="request-again" disabled={busy || !contactRequestsOpen} onClick={() => void createRequest()} type="button">{contactRequestsOpen ? t({ en: "Request contact again", zh: "再次申请交换联系信息" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请交换联系" })}</button> : null}
         </div>
       ) : null}
       {error ? <span role="alert" style={{ color: "var(--rose)", fontSize: 12 }}>{error}</span> : null}
