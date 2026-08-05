@@ -1,11 +1,8 @@
 import type { EventRecord } from "../event-crud-and-import/contract";
 import { bilingualSegment } from "../../orbit-ai/event-recommendation-artifact-service";
-import { createEventCrudAndImportService } from "../service-factory";
-import {
-  publicEventCatalogueRecord,
-  readPublicEventCatalogue,
-} from "../public-catalogue";
-import { eventCodeFor } from "../public-route-code";
+import { publishedCanonicalEventToEventRecord } from "../core/public-catalogue";
+import { createConfiguredCanonicalPublicEventCatalogue } from "../core/public-catalogue-runtime";
+import { createConfiguredEventCoreService } from "../core/runtime";
 
 const kanaPattern = /[぀-ヿ]/u;
 const hanPattern = /[㐀-鿿]/u;
@@ -50,22 +47,11 @@ export function localizedEventTitle(
   return fromTitle;
 }
 
-function publicCatalogueEventRecord(eventId: string): EventRecord | null {
-  const catalogue = readPublicEventCatalogue();
-  const event = catalogue.events.find(
-    (item, index) =>
-      item.id === eventId || eventCodeFor(item, index) === eventId,
-  );
-
-  return event
-    ? publicEventCatalogueRecord(event, catalogue.generatedAt)
-    : null;
-}
-
-export function loadPublicEventForRegistration(
+export async function loadPublicEventForRegistration(
   eventId: string,
-): EventRecord | null {
-  return publicCatalogueEventRecord(eventId.trim());
+): Promise<EventRecord | null> {
+  const catalogue = createConfiguredCanonicalPublicEventCatalogue();
+  return catalogue ? catalogue.readRecord(eventId.trim()) : null;
 }
 
 export async function loadEventForRegistration(
@@ -73,20 +59,11 @@ export async function loadEventForRegistration(
   actorId?: string | null,
 ): Promise<EventRecord | null> {
   const normalizedEventId = eventId.trim();
-  const catalogueEvent = loadPublicEventForRegistration(normalizedEventId);
-
-  if (catalogueEvent) {
-    return catalogueEvent;
-  }
-
-  try {
-    const result = await createEventCrudAndImportService().getEvent({
-      actorId: actorId?.trim() || undefined,
-      eventId: normalizedEventId,
-    });
-
-    return result.success ? result.data.event : null;
-  } catch {
-    return null;
-  }
+  void actorId;
+  const eventCore = createConfiguredEventCoreService();
+  if (!eventCore) return null;
+  const event = await eventCore.getPublishedEvent(normalizedEventId);
+  return event
+    ? publishedCanonicalEventToEventRecord(event, new Date().toISOString())
+    : null;
 }

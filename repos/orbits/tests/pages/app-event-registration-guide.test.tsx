@@ -4,8 +4,10 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
+import { loadLocalEnv } from "../../scripts/load-local-env";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+loadLocalEnv();
 
 async function withOrbitModuleMode<T>(
   mode: string,
@@ -80,7 +82,7 @@ test("event registration auth return preserves the first language value and enco
   );
 });
 
-test("/app/events/[id]/register renders public event questions without a mock query", async () => {
+test("/app/events/[id]/register renders canonical event identity without inventing an unsigned AI question", async () => {
   const Page = (await import("../../app/(app)/app/events/[id]/register/page"))
     .default as (props: {
     params: Promise<{ id: string }>;
@@ -94,11 +96,9 @@ test("/app/events/[id]/register renders public event questions without a mock qu
   );
 
   assert.match(html, /Kansai Cross-Border Business Connect/);
-  // 新版是一屏一题的自适应问答:SSR 渲染第一题、进度指示与选项胶囊。
   assert.match(html, /data-registration-stage="interview"/);
-  assert.match(html, /1 \/ 8/);
-  assert.match(html, /data-reg-option/);
-  assert.match(html, /Answers stay scoped to this event/);
+  assert.doesNotMatch(html, /data-reg-option/);
+  assert.match(html, /No substitute question was used/);
 });
 
 test("/app/events/[id]/register renders a public event without query setup", async () => {
@@ -115,9 +115,13 @@ test("/app/events/[id]/register renders a public event without query setup", asy
     );
 
     assert.match(html, /<h1[^>]*>关西跨境商务对接会<\/h1>/);
-    // 默认中文:一屏一题 + 本活动范围声明。
+    // 没有真实请求 actor 时不能签发题目 token，也不能伪造替代题。
     assert.match(html, /data-registration-stage="interview"/);
-    assert.match(html, /回答只用于本次活动|Answers stay scoped to this event/);
+    assert.equal(
+      /data-reg-option/u.test(html) ||
+        /没有使用替代问题|No substitute question was used/u.test(html),
+      true,
+    );
   });
 });
 
@@ -140,7 +144,7 @@ test("/app/events/[id]/register uses reviewed English identity for public catalo
       /<h1[^>]*>Kansai Cross-Border Business Connect<\/h1>/,
     );
     assert.match(html, />Osaka</);
-    assert.match(html, /At Kansai Cross-Border Business Connect,/);
+    assert.match(html, /No substitute question was used/);
     assert.doesNotMatch(html, /关西跨境商务对接会|>大阪</);
   });
 });
@@ -161,7 +165,7 @@ test("registerable live events are not gated by the legacy deterministic-guide w
   assert.doesNotMatch(source, /loadRegistrationProfileGuideForCurrentTestUser/);
 });
 
-test("the approved public catalogue enters registration with honest time status", async () => {
+test("registration resolves only published canonical Event Core records and aliases", async () => {
   const { loadEventForRegistration } = await import(
     "../../features/events/registration/event-loader"
   );
@@ -171,18 +175,18 @@ test("the approved public catalogue enters registration with honest time status"
     await loadEventForRegistration("EVTSIGNUP01");
 
   assert.equal(endedEvent?.status, "cancelled");
+  assert.ok(Date.parse(endedEvent?.endsAt ?? "") < Date.now());
   assert.equal(upcomingEvent?.status, "imported");
   assert.equal(upcomingEventByPublicCode?.id, "event_signup_01");
   assert.equal(upcomingEvent?.title, "关西跨境商务对接会");
   assert.equal(
     upcomingEvent?.sourceMetadata.label,
-    "活动导入：关西跨境商务对接会",
+    "event-core-postgres",
   );
-  assert.ok(Date.parse(endedEvent?.endsAt ?? "") < Date.now());
   assert.ok(Date.parse(upcomingEvent?.endsAt ?? "") > Date.now());
   assert.equal(
     upcomingEvent?.sourceMetadata.provider,
-    "orbit-public-event-catalogue",
+    "event-core-postgres",
   );
   assert.equal(upcomingEvent?.liveDatabaseWriteExecuted, false);
   assert.equal(upcomingEvent?.externalNetworkRequested, false);

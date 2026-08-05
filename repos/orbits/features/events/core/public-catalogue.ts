@@ -155,10 +155,17 @@ export function publishedCanonicalEventToEventRecord(
   event: PublishedCanonicalEvent,
   generatedAt: string,
 ): EventRecord {
-  const dto = publishedCanonicalEventToEventDTO(event);
+  const startsAt = timestamp(event.startsAt, "startsAt", event.eventId);
+  const endsAt = timestamp(event.endsAt, "endsAt", event.eventId);
+  if (Date.parse(startsAt) >= Date.parse(endsAt)) {
+    invalid(event.eventId, "time range");
+  }
+  const venue = requiredText(event.venue, "venue", event.eventId);
+  const description = event.description?.trim() || "";
+  const evidenceIds = sourcePayloadEvidenceIds(event);
   const importedAt = timestamp(generatedAt, "generatedAt", event.eventId);
   const sourceMetadata = {
-    ...dto.source,
+    ...canonicalSource(event),
     calendarSyncRequested: false as const,
     captureMethod: "organizer_feed" as const,
     externalNetworkRequested: false as const,
@@ -173,30 +180,30 @@ export function publishedCanonicalEventToEventRecord(
     aiProviderRequested: false,
     calendarProviderRequested: false,
     calendarSyncRequested: false,
-    description: dto.description ?? "",
+    description,
     emailProviderRequested: false,
-    endsAt: dto.endsAt ?? dto.startsAt,
-    evidence: dto.evidenceIds.map((evidenceId) => ({
+    endsAt,
+    evidence: evidenceIds.map((evidenceId) => ({
       capturedAt: importedAt,
       createdBy: "event-core-postgres",
       evidenceId,
-      excerpt: dto.description ?? `Canonical event ${event.eventId}.`,
+      excerpt: description || `Canonical event ${event.eventId}.`,
       source: sourceMetadata,
     })),
     externalNetworkRequested: false,
-    id: dto.id,
+    id: event.eventId,
     liveDatabaseWriteExecuted: false,
     nextAction: "Sign in and register before viewing the attendee list.",
     notificationDelivered: false,
     organizerFeedRequested: false,
     recommendedPreparation:
       "Review the event details and complete the event-scoped registration profile.",
-    relationshipContext: dto.description ?? "Published event context.",
+    relationshipContext: description || "Published event context.",
     sourceMetadata,
-    startsAt: dto.startsAt,
+    startsAt,
     status: event.phase === "ended" ? "cancelled" : "imported",
-    title: dto.name,
-    venue: dto.location ?? "",
+    title: event.title,
+    venue,
   };
 }
 

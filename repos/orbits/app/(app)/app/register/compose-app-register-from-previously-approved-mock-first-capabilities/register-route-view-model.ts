@@ -198,7 +198,7 @@ export async function loadAppRegisterRouteViewModel(
     };
   }
 
-  const event = loadPublicEventForRegistration(eventId);
+  const event = await loadPublicEventForRegistration(eventId);
   if (!event) {
     return eventRouteState({
       code: "PUBLIC_REGISTRATION_EVENT_NOT_FOUND",

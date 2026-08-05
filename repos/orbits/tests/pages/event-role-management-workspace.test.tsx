@@ -355,6 +355,7 @@ test("role manager uses auto-fit grids and the center reserves only policy-valid
   assert.match(center, /function canOpenAnalytics/u);
   assert.match(center, /item\.role === "operations"/u);
   assert.match(center, /item\.role === "read_only_analyst"/u);
-  assert.match(center, /data-event-center-review-pending/u);
+  assert.match(center, /data-event-center-admission/u);
+  assert.doesNotMatch(center, /审核入口待实现/u);
   assert.doesNotMatch(center, /event\.role === "reviewer"[^\n]+analyticsHref/u);
 });

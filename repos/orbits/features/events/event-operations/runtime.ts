@@ -1,7 +1,6 @@
-import { createEventCrudAndImportService } from "../service-factory";
 import { requireEventCapability } from "../event-access/guard";
 import { createConfiguredEventAccessService } from "../event-access/runtime";
-import { loadEventForRegistration } from "../registration/event-loader";
+import { createConfiguredEventCoreService } from "../core/runtime";
 import { eventRegistrationRuntimeService } from "../registration/runtime";
 import { createConfiguredEventOperationsAiProvider } from "./ai-provider";
 import { createEventOperationsEngine } from "./engine";
@@ -14,9 +13,9 @@ import {
 export function createConfiguredEventOperationsService(): EventOperationsService | null {
   const repository = createConfiguredEventOperationsRepository();
   const eventAccess = createConfiguredEventAccessService();
-  if (!repository || !eventAccess) return null;
+  const eventCore = createConfiguredEventCoreService();
+  if (!repository || !eventAccess || !eventCore) return null;
 
-  const eventService = createEventCrudAndImportService("live");
   const engine = createEventOperationsEngine({
     aiProvider: createConfiguredEventOperationsAiProvider(),
     repository,
@@ -33,8 +32,8 @@ export function createConfiguredEventOperationsService(): EventOperationsService
         });
       },
       async isOrganizer({ actorId, eventId }) {
-        const result = await eventService.getEvent({ actorId, eventId });
-        return result.success === true;
+        const event = await eventCore.getEvent(eventId);
+        return event?.organizerActorId === actorId.trim();
       },
       async isRegistered({ actorId, eventId }) {
         const registration = await repository.getCanonicalRegistration(
@@ -47,9 +46,10 @@ export function createConfiguredEventOperationsService(): EventOperationsService
     engine,
     eventSchedule: {
       async getCanonicalSchedule({ actorId, eventId }) {
-        const event = await loadEventForRegistration(eventId, actorId);
+        void actorId;
+        const event = await eventCore.getPublishedEvent(eventId);
         return event
-          ? { endsAt: event.endsAt ?? event.startsAt, startsAt: event.startsAt }
+          ? { endsAt: event.endsAt, startsAt: event.startsAt }
           : null;
       },
     },

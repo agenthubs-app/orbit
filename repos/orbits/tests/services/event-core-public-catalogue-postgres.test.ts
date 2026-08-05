@@ -12,7 +12,10 @@ import {
 import { readEventCoreBackfillCandidates } from "../../features/events/core/backfill-sources";
 import { EventCoreDataError } from "../../features/events/core/contract";
 import { EVENT_CANONICAL_V1_MANIFEST } from "../../features/events/core/migration/manifests/event-canonical-v1";
-import { createCanonicalPublicEventCatalogue } from "../../features/events/core/public-catalogue";
+import {
+  createCanonicalPublicEventCatalogue,
+  publishedCanonicalEventToEventRecord,
+} from "../../features/events/core/public-catalogue";
 import { createEventCoreService } from "../../features/events/core/service";
 import { createPostgresEventCoreRepository } from "../../features/events/core/storage/postgres-repository";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
@@ -273,6 +276,31 @@ test("canonical public adapter has no production legacy catalogue dependency", (
   );
   assert.doesNotMatch(source, /from ["'][^"']*public-catalogue["']/);
   assert.doesNotMatch(source, /eventCodeFor/);
+});
+
+test("canonical EventRecord conversion supports a private published event without fabricating a public code", () => {
+  const record = publishedCanonicalEventToEventRecord({
+    archivedAt: null,
+    cancelledAt: null,
+    description: "A private operator working session.",
+    endsAt: "2030-01-01T12:00:00.000Z",
+    eventId: "event:private:operator-session",
+    eventVersion: 1,
+    lifecycleState: "published",
+    organizerActorId: "actor:organizer",
+    phase: "upcoming",
+    publicCode: null,
+    sourcePayload: { evidenceIds: ["evidence:private:operator-session"] },
+    startsAt: "2030-01-01T10:00:00.000Z",
+    timezone: "Asia/Tokyo",
+    title: "Private operator session",
+    venue: "Tokyo",
+    workspaceId: "workspace:test",
+  }, "2029-12-01T00:00:00.000Z");
+
+  assert.equal(record.id, "event:private:operator-session");
+  assert.equal(record.title, "Private operator session");
+  assert.equal(record.sourceMetadata.provider, "event-core-postgres");
 });
 
 test("canonical public adapter fails closed for duplicate codes and invalid source payload", async () => {

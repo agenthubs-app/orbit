@@ -141,7 +141,7 @@ test("party recommendations use individual consent requests and graph uses persi
   assert.match(controlsSource, /encodeURIComponent\(contactId\)/);
   assert.match(controlsSource, /targetParticipantId: person\.id/);
   assert.match(controlsSource, /operations\/contact-requests/);
-  assert.match(controlsSource, /accept: body|\{ accept \}/);
+  assert.match(controlsSource, /\{ accept, expectedRevision: revision \}/);
   assert.match(partyComponentSource, /graph\.edges\.flatMap/);
   assert.match(partyComponentSource, /source-backed and read only/);
   assert.doesNotMatch(

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "events": {
+    "demo-event-1": {
+      "evidenceId": "operator:orbit-dev:demo-event-1:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-06-27T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "demo-event-2": {
+      "evidenceId": "operator:orbit-dev:demo-event-2:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-07-01T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event:live-record:20260729": {
+      "evidenceId": "operator:orbit-dev:event-live-record-20260729:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-09-28T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event:live-record:runtime-evidence-forum": {
+      "evidenceId": "operator:orbit-dev:runtime-evidence-forum:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-08-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event:manual:founder-investor-salon": {
+      "evidenceId": "operator:orbit-dev:founder-investor-salon:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-07-08T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_01": {
+      "evidenceId": "operator:orbit-dev:event-01:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-02-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_02": {
+      "evidenceId": "operator:orbit-dev:event-02:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-03-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_03": {
+      "evidenceId": "operator:orbit-dev:event-03:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-04-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_04": {
+      "evidenceId": "operator:orbit-dev:event-04:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-05-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_05": {
+      "evidenceId": "operator:orbit-dev:event-05:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-06-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_06": {
+      "evidenceId": "operator:orbit-dev:event-06:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-01-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_07": {
+      "evidenceId": "operator:orbit-dev:event-07:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-02-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_08": {
+      "evidenceId": "operator:orbit-dev:event-08:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-03-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_09": {
+      "evidenceId": "operator:orbit-dev:event-09:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-04-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_10": {
+      "evidenceId": "operator:orbit-dev:event-10:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-05-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_signup_02": {
+      "evidenceId": "operator:orbit-dev:event-signup-02:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-08-31T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_signup_03": {
+      "evidenceId": "operator:orbit-dev:event-signup-03:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-09-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    }
+  }
+}

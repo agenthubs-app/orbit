@@ -1,10 +1,10 @@
 import { auth } from "../../../../auth";
+import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../features/events/core/public-catalogue-runtime";
 import { listRuntimeEventRegistrationsForUser } from "../../../../features/events/registration/runtime";
-import { readEventOperationsCatalogueSummaries } from "../../../../features/events/event-operations/catalogue-summary";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { applyOrbitEventPresentation } from "../orbit-event-presentation";
 import {
-  getOrbitLandingViewModel,
+  getOrbitLandingViewModelFromCatalogue,
   type OrbitLandingEventView,
 } from "../orbit-landing-route-view-model";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
@@ -57,22 +57,24 @@ export default async function AppEventsPage({
     searchParams ??
       Promise.resolve<{ scope?: string | string[] }>({}),
   ]);
-  const catalogue = getOrbitLandingViewModel();
+  const canonicalCatalogue = createConfiguredCanonicalPublicEventCatalogue();
+  if (!canonicalCatalogue) {
+    throw new Error("Canonical Event Core catalogue is not configured.");
+  }
+  const catalogue = getOrbitLandingViewModelFromCatalogue(
+    await canonicalCatalogue.read(),
+  );
   const eventIds = catalogue.events.map((event) => event.id);
-  const [registrations, operationSummaries] = await Promise.all([
+  const registrations = await (
     session?.user?.id
       ? listRuntimeEventRegistrationsForUser({
-        eventIds: catalogue.events.map((event) => event.id),
+        eventIds,
         userId: session.user.id,
       })
-      : Promise.resolve([]),
-    readEventOperationsCatalogueSummaries(eventIds),
-  ]);
+      : Promise.resolve([])
+  );
   const registrationsByEventId = new Map(
     registrations.map((registration) => [registration.eventId, registration]),
-  );
-  const operationSummariesByEventId = new Map(
-    operationSummaries.map((summary) => [summary.eventId, summary]),
   );
   const presentedCatalogue = applyOrbitEventPresentation(catalogue, language);
   const events = presentedCatalogue.events.map((event) =>
@@ -80,7 +82,7 @@ export default async function AppEventsPage({
       event,
       Boolean(session?.user?.id),
       registrationsByEventId.get(event.id)?.status === "rsvped",
-      operationSummariesByEventId.get(event.id)?.activeRegistrationCount ?? null,
+      event.participantCount,
     ),
   );
   const viewModel = localizeOrbitTree(

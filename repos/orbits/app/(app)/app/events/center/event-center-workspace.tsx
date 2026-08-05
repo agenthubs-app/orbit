@@ -100,6 +100,10 @@ function canOpenAnalytics(item: EventCenterItem): boolean {
   );
 }
 
+function canReviewAdmission(item: EventCenterItem): boolean {
+  return item.owner || item.role === "reviewer";
+}
+
 async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
@@ -168,6 +172,7 @@ export function EventCenterWorkspace() {
             const operationsHref = `/app/events/${encodeURIComponent(event.eventId)}/operations`;
             const rolesHref = `${operationsHref}/roles`;
             const checkInHref = `${operationsHref}/check-in`;
+            const admissionHref = `${operationsHref}/admission`;
             const analyticsHref = `/app/events/${encodeURIComponent(event.eventId)}/analytics`;
             return (
               <article className="card" data-event-center-card={event.eventId} key={event.eventId} style={{ display: "grid", gap: 16, padding: 20 }}>
@@ -195,8 +200,8 @@ export function EventCenterWorkspace() {
                       <a className="btn btn-ghost btn-sm" href={`/app/events/${encodeURIComponent(event.eventId)}`}>查看活动</a>
                       {canOpenOperations(event) ? <a className="btn btn-primary btn-sm" href={operationsHref}>打开运营台</a> : null}
                       {canOpenCheckIn(event) ? <a className="btn btn-ghost btn-sm" href={checkInHref}>签到台</a> : null}
+                      {canReviewAdmission(event) ? <a className="btn btn-ghost btn-sm" data-event-center-admission={event.eventId} href={admissionHref}>报名审核</a> : null}
                       {canOpenAnalytics(event) ? <a className="btn btn-ghost btn-sm" data-event-center-analytics={event.eventId} href={analyticsHref}>查看活动分析</a> : null}
-                      {event.role === "reviewer" ? <span className="badge" data-event-center-review-pending={event.eventId}>审核入口待实现</span> : null}
                       {event.owner ? <a className="btn btn-ghost btn-sm" data-event-center-manage-roles={event.eventId} href={rolesHref}>管理角色</a> : null}
                     </div>
                   </>

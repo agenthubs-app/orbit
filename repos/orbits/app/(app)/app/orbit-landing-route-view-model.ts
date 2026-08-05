@@ -87,6 +87,10 @@ export interface OrbitLandingViewModel {
   events: OrbitLandingEventView[];
 }
 
+type OrbitLandingCatalogueSnapshot = PublicEventCatalogueSnapshot & {
+  publicCodes?: Readonly<Record<string, string>>;
+};
+
 const brandColors = [
   "#6359E9",
   "#0E9E68",
@@ -147,7 +151,7 @@ function agendaFor(event: EventDTO): OrbitEventAgendaItem[] {
 }
 
 function eventView(
-  catalogue: PublicEventCatalogueSnapshot,
+  catalogue: OrbitLandingCatalogueSnapshot,
   event: EventDTO,
   index: number,
 ): OrbitLandingEventView {
@@ -166,7 +170,7 @@ function eventView(
     agenda: agendaFor(event),
     brandColor: color,
     cap: Math.max(20, attendeeCount + 20),
-    code: eventCodeFor(event, index),
+    code: catalogue.publicCodes?.[event.id] ?? eventCodeFor(event, index),
     descriptionZh: description,
     detailLogoUrl: logoUrl,
     endsAt: event.endsAt ?? event.startsAt,
@@ -197,8 +201,9 @@ function eventView(
   };
 }
 
-export function getOrbitLandingViewModel(): OrbitLandingViewModel {
-  const catalogue = readPublicEventCatalogue();
+export function getOrbitLandingViewModelFromCatalogue(
+  catalogue: OrbitLandingCatalogueSnapshot,
+): OrbitLandingViewModel {
   const events = [...catalogue.events].sort(
     (left, right) =>
       new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime(),
@@ -211,4 +216,8 @@ export function getOrbitLandingViewModel(): OrbitLandingViewModel {
       eventView(catalogue, event, index),
     ),
   };
+}
+
+export function getOrbitLandingViewModel(): OrbitLandingViewModel {
+  return getOrbitLandingViewModelFromCatalogue(readPublicEventCatalogue());
 }
