@@ -79,7 +79,8 @@ test("event operations request fingerprint versions provider behavior as well as
     },
   });
   assert.notEqual(baseline.requestFingerprint, json.requestFingerprint);
-  assert.match(json.requestFingerprint ?? "", /event-operations-compact-closed-json-v3-full-profile/u);
+  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v4-full-profile/u);
+  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v1/u);
   assert.match(json.requestFingerprint ?? "", /deepseek-test/u);
   assert.match(json.requestFingerprint ?? "", /"jsonOutput":true/u);
   assert.match(
@@ -152,10 +153,10 @@ test("event operations AI adapter accepts one strict recommendation JSON documen
                 rank: 1,
                 reasons: ["Aiko offers evaluation Bo needs", "Bo offers the pilot Aiko needs"],
                 score: 96,
-                targetParticipantId: "participant:b",
+                targetCandidateKey: "S1C1",
               },
             ],
-            sourceParticipantId: "participant:a",
+            sourceKey: "S1",
           },
         ],
         }),
@@ -174,7 +175,8 @@ test("event operations AI adapter accepts one strict recommendation JSON documen
   });
   assert.equal(result.success, true);
   assert.doesNotMatch(prompt, /actor:a|actor:b|evidence:a|evidence:b/u);
-  assert.match(prompt, /Aster Labs|Beacon Health|participant:a|participant:b/u);
+  assert.match(prompt, /Aster Labs|Beacon Health|S1|C1/u);
+  assert.doesNotMatch(prompt, /participant:a|participant:b/u);
   for (const canary of profileCanaries) {
     assert.match(prompt, new RegExp(canary, "u"));
   }
@@ -252,7 +254,7 @@ test("recommendation prompt retains six full profiles and sixteen candidates per
     async runModelText(input) {
       prompt = input.userText;
       return successfulText(JSON.stringify({
-        recommendations: sources.map((source) => ({
+        recommendations: sources.map((source, sourceIndex) => ({
           noMatchReason: null,
           recommendations: source.candidateParticipants.slice(0, 4).map((candidate, index) => ({
             icebreakers: [`Question ${index}a`, `Question ${index}b`],
@@ -260,9 +262,9 @@ test("recommendation prompt retains six full profiles and sixteen candidates per
             rank: index + 1,
             reasons: [`Reason ${index}`],
             score: 90 - index,
-            targetParticipantId: candidate.participantId,
+            targetCandidateKey: `S${sourceIndex + 1}C${index + 1}`,
           })),
-          sourceParticipantId: source.sourceParticipant.participantId,
+          sourceKey: `S${sourceIndex + 1}`,
         })),
       }))();
     },
@@ -278,13 +280,86 @@ test("recommendation prompt retains six full profiles and sixteen candidates per
     assert.equal(result.data.flatMap((row) => row.recommendations).length, 24);
   }
   for (let sourceIndex = 0; sourceIndex < 6; sourceIndex += 1) {
+    assert.match(prompt, new RegExp(`"sourceKey":"S${sourceIndex + 1}"`, "u"));
     assert.match(prompt, new RegExp(`source-profile-answer-${sourceIndex}`, "u"));
     for (let candidateIndex = 0; candidateIndex < 16; candidateIndex += 1) {
+      assert.match(prompt, new RegExp(`"candidateKey":"S${sourceIndex + 1}C${candidateIndex + 1}"`, "u"));
       assert.match(prompt, new RegExp(`candidate-profile-answer-${sourceIndex}-${candidateIndex}`, "u"));
     }
   }
+  const candidateKeys = [...prompt.matchAll(/"candidateKey":"(S\d+C\d+)"/gu)].map(
+    (match) => match[1],
+  );
+  assert.equal(candidateKeys.length, 96);
+  assert.equal(new Set(candidateKeys).size, 96);
   for (const canary of profileCanaries) assert.match(prompt, new RegExp(canary, "u"));
+  for (const source of sources) {
+    assert.doesNotMatch(prompt, new RegExp(source.sourceParticipant.participantId, "u"));
+    for (const candidate of source.candidateParticipants) {
+      assert.doesNotMatch(prompt, new RegExp(candidate.participantId, "u"));
+    }
+  }
   assert.doesNotMatch(prompt, /fallback|summary|deduplicat/iu);
+});
+
+test("recommendation tokens map only exact source-local candidate keys without repair", async () => {
+  const sharedTarget = { ...participants[1]!, participantId: "participant:shared-target" };
+  const sourceA = { ...participants[0]!, participantId: "participant:source-a" };
+  const sourceB = { ...participants[0]!, participantId: "participant:source-b" };
+  const sourceBOnly = { ...participants[1]!, participantId: "participant:source-b-only" };
+  const sources = [
+    { candidateParticipants: [sharedTarget], sourceParticipant: sourceA },
+    { candidateParticipants: [sharedTarget, sourceBOnly], sourceParticipant: sourceB },
+  ];
+  const recommendation = (targetCandidateKey: string, rank = 1) => ({
+    icebreakers: ["one", "two"],
+    memberHint: "specific",
+    rank,
+    reasons: ["bounded"],
+    score: 90,
+    targetCandidateKey,
+  });
+  const row = (sourceKey: string, targetCandidateKey: string) => ({
+    noMatchReason: null,
+    recommendations: [recommendation(targetCandidateKey)],
+    sourceKey,
+  });
+  const run = async (recommendations: unknown) => {
+    const provider = createEventOperationsAiProvider({
+      runModelText: successfulText(JSON.stringify({ recommendations })),
+    });
+    return provider.generateRecommendations({
+      eventId: "event:token-closure",
+      recommendationCount: 2,
+      sources,
+    });
+  };
+
+  const reordered = await run([row("S2", "S2C1"), row("S1", "S1C1")]);
+  assert.equal(reordered.success, true);
+  if (reordered.success) {
+    assert.deepEqual(
+      reordered.data.map((item) => [item.sourceParticipantId, item.recommendations[0]?.targetParticipantId]),
+      [["participant:source-b", "participant:shared-target"], ["participant:source-a", "participant:shared-target"]],
+    );
+  }
+
+  for (const recommendations of [
+    [row("S1", "S1C1")],
+    [row("S1", "S1C1"), row("S1", "S1C1")],
+    [row("S3", "S3C1"), row("S1", "S1C1")],
+    [row("S1", "S2C1"), row("S2", "S2C1")],
+    [{ ...row("S1", "S1C1"), recommendations: [recommendation("S1C1"), recommendation("S1C1", 2)] }, row("S2", "S2C1")],
+    [row("participant:source-a", "S1C1"), row("S2", "S2C1")],
+    [row("S1", "participant:shared-target"), row("S2", "S2C1")],
+  ]) {
+    const result = await run(recommendations);
+    assert.equal(result.success, false);
+    if (result.success === false) {
+      assert.equal(result.error.code, "AI_SCHEMA_INVALID");
+      assert.equal(result.retryable, false);
+    }
+  }
 });
 
 test("event operations AI adapter rejects fenced or malformed JSON without repair or fallback", async () => {

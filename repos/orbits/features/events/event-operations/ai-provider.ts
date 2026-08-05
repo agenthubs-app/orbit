@@ -56,7 +56,28 @@ function stringList(value: unknown, exactLength?: number): value is string[] {
   );
 }
 
-function parseRecommendation(value: unknown, index: number): boolean {
+interface TokenRecommendation {
+  icebreakers: readonly [string, string];
+  memberHint: string;
+  rank: number;
+  reasons: readonly [string, ...string[]];
+  score: number;
+  targetCandidateKey: string;
+}
+
+interface TokenRecommendationRow {
+  noMatchReason: string | null;
+  recommendations: readonly TokenRecommendation[];
+  sourceKey: string;
+}
+
+interface TokenizedRecommendationSource {
+  candidateIdByKey: ReadonlyMap<string, string>;
+  sourceParticipantId: string;
+  sourceKey: string;
+}
+
+function parseTokenRecommendation(value: unknown, index: number): value is TokenRecommendation {
   return (
     isRecord(value) &&
     exactKeys(value, [
@@ -65,9 +86,9 @@ function parseRecommendation(value: unknown, index: number): boolean {
       "rank",
       "reasons",
       "score",
-      "targetParticipantId",
+      "targetCandidateKey",
     ]) &&
-    nonEmptyString(value.targetParticipantId) &&
+    nonEmptyString(value.targetCandidateKey) &&
     value.rank === index + 1 &&
     typeof value.score === "number" &&
     Number.isFinite(value.score) &&
@@ -80,9 +101,9 @@ function parseRecommendation(value: unknown, index: number): boolean {
   );
 }
 
-function parseRecommendationRows(
+function parseTokenRecommendationRows(
   value: unknown,
-): readonly EventOperationsParticipantRecommendations[] | null {
+): readonly TokenRecommendationRow[] | null {
   if (
     !isRecord(value) ||
     !exactKeys(value, ["recommendations"]) ||
@@ -96,11 +117,11 @@ function parseRecommendationRows(
       !exactKeys(row, [
         "noMatchReason",
         "recommendations",
-        "sourceParticipantId",
+        "sourceKey",
       ]) ||
-      !nonEmptyString(row.sourceParticipantId) ||
+      !nonEmptyString(row.sourceKey) ||
       !Array.isArray(row.recommendations) ||
-      !row.recommendations.every(parseRecommendation) ||
+      !row.recommendations.every(parseTokenRecommendation) ||
       (row.recommendations.length === 0
         ? !nonEmptyString(row.noMatchReason)
         : row.noMatchReason !== null)
@@ -108,7 +129,7 @@ function parseRecommendationRows(
       return null;
     }
   }
-  return value.recommendations as unknown as readonly EventOperationsParticipantRecommendations[];
+  return value.recommendations as unknown as readonly TokenRecommendationRow[];
 }
 
 function parseGroupingFeatures(
@@ -298,7 +319,7 @@ Use only the supplied source, deterministic shortlist, validated recommendation,
 Never invent participant ids, never use hidden identities, and never substitute a deterministic content fallback.`;
 
 export const EVENT_OPERATIONS_AI_PROMPT_VERSION =
-  "event-operations-compact-closed-json-v3-full-profile";
+  "event-operations-tokenized-recommendations-v4-full-profile";
 
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
@@ -335,7 +356,7 @@ function requestFingerprint(
     provider,
     thinking: config?.deepseekThinking ?? null,
     temperature,
-    responseSchema: "event-operations-closed-json-v2",
+    responseSchema: "event-operations-tokenized-recommendations-v1",
   });
 }
 
@@ -364,11 +385,78 @@ function compactRecommendationSources(
   sources: Parameters<
     EventOperationsAiProvider["generateRecommendations"]
   >[0]["sources"],
+): {
+  promptSources: readonly unknown[];
+  tokenSources: readonly TokenizedRecommendationSource[];
+} {
+  const tokenSources: TokenizedRecommendationSource[] = [];
+  const promptSources = sources.map((source, sourceIndex) => {
+    const sourceKey = `S${sourceIndex + 1}`;
+    const candidateIdByKey = new Map<string, string>();
+    const candidateParticipants = source.candidateParticipants.map((candidate, candidateIndex) => {
+      const candidateKey = `${sourceKey}C${candidateIndex + 1}`;
+      candidateIdByKey.set(candidateKey, candidate.participantId);
+      return {
+        candidateKey,
+        profile: compactParticipantWithoutId(candidate),
+      };
+    });
+    tokenSources.push({
+      candidateIdByKey,
+      sourceKey,
+      sourceParticipantId: source.sourceParticipant.participantId,
+    });
+    return {
+      candidateParticipants,
+      sourceKey,
+      sourceProfile: compactParticipantWithoutId(source.sourceParticipant),
+    };
+  });
+  return { promptSources, tokenSources };
+}
+
+function compactParticipantWithoutId(
+  participant: import("./contract").EventOperationsParticipant,
 ) {
-  return sources.map((source) => ({
-    candidateParticipants: source.candidateParticipants.map(compactParticipant),
-    sourceParticipant: compactParticipant(source.sourceParticipant),
-  }));
+  const { participantId: _participantId, ...profile } = compactParticipant(participant);
+  return profile;
+}
+
+function mapTokenRecommendationRows(
+  rows: readonly TokenRecommendationRow[],
+  tokenSources: readonly TokenizedRecommendationSource[],
+): readonly EventOperationsParticipantRecommendations[] | null {
+  if (rows.length !== tokenSources.length) return null;
+  const sourceByKey = new Map(tokenSources.map((source) => [source.sourceKey, source]));
+  const seenSources = new Set<string>();
+  const mapped: EventOperationsParticipantRecommendations[] = [];
+  for (const row of rows) {
+    const source = sourceByKey.get(row.sourceKey);
+    if (!source || seenSources.has(row.sourceKey)) return null;
+    seenSources.add(row.sourceKey);
+    const seenTargets = new Set<string>();
+    const recommendations = [];
+    for (const recommendation of row.recommendations) {
+      const targetParticipantId = source.candidateIdByKey.get(recommendation.targetCandidateKey);
+      if (!targetParticipantId || seenTargets.has(recommendation.targetCandidateKey)) return null;
+      seenTargets.add(recommendation.targetCandidateKey);
+      recommendations.push({
+        icebreakers: recommendation.icebreakers,
+        memberHint: recommendation.memberHint,
+        rank: recommendation.rank,
+        reasons: recommendation.reasons,
+        score: recommendation.score,
+        targetParticipantId,
+      });
+    }
+    mapped.push({
+      noMatchReason: row.noMatchReason,
+      recommendations,
+      sourceParticipantId: source.sourceParticipantId,
+    });
+  }
+  if (seenSources.size !== sourceByKey.size) return null;
+  return mapped;
 }
 
 function compactGroupingSources(
@@ -390,30 +478,33 @@ export function createEventOperationsAiProvider({
   return {
     requestFingerprint: requestFingerprint(config),
     async generateRecommendations(input) {
+      const tokenizedSources = compactRecommendationSources(input.sources);
       const response = await runModelText({
         config,
         systemInstruction,
         userText: `Generate networking recommendations for this bounded source shard.
 
 Requirements:
-- Return one row for every supplied sourceParticipant and no other source.
-- Select targets only from that source's deterministic candidateParticipants shortlist.
+- Return one row for every supplied sourceKey and no other sourceKey; use every sourceKey exactly once.
+- Select targetCandidateKey only from that sourceKey's deterministic candidateParticipants shortlist; never reuse a targetCandidateKey within a source.
 - Return at most ${input.recommendationCount} unique targets per source, ordered with rank 1..N; never recommend the source itself.
 - score is 0..100; reasons is non-empty; icebreakers has exactly 2 strings; memberHint is specific.
 - noMatchReason is required: use null when recommendations is non-empty, otherwise a concrete non-empty reason.
 - Every object must contain exactly the documented keys.
 
 JSON shape:
-{"recommendations":[{"sourceParticipantId":"participant id","noMatchReason":null,"recommendations":[{"targetParticipantId":"participant id","rank":1,"score":90,"reasons":["reason 1","reason 2"],"icebreakers":["question 1","question 2"],"memberHint":"specific hint"}]}]}
+{"recommendations":[{"sourceKey":"S1","noMatchReason":null,"recommendations":[{"targetCandidateKey":"S1C1","rank":1,"score":90,"reasons":["reason 1","reason 2"],"icebreakers":["question 1","question 2"],"memberHint":"specific hint"}]}]}
 
 Event id: ${input.eventId}
 Sources and deterministic shortlists:
-${JSON.stringify(compactRecommendationSources(input.sources))}`,
+${JSON.stringify(tokenizedSources.promptSources)}`,
       });
       if (response.success === false) return modelFailure(response);
       const json = parseJson(response.text);
       if (json === null) return invalidJson(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
-      const rows = parseRecommendationRows(json);
+      const tokenRows = parseTokenRecommendationRows(json);
+      if (!tokenRows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const rows = mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources);
       if (!rows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       return {
         data: rows,
@@ -523,6 +614,6 @@ export function createConfiguredEventOperationsAiProvider({
 
 export const __eventOperationsAiProviderTestExports = {
   parseGroupingFeatures,
-  parseRecommendationRows,
+  parseTokenRecommendationRows,
   parseTable,
 };
