@@ -201,6 +201,32 @@ function eventView(
   };
 }
 
+/**
+ * Adapts one already-authorized Event Core event into the shared landing/detail
+ * presentation contract. Public route visibility remains the responsibility of
+ * the caller; `routeCode` may therefore be an internal canonical id for a
+ * private, authenticated detail page.
+ */
+export function getOrbitLandingEventView(input: {
+  event: EventDTO;
+  evidenceSummary: string;
+  generatedAt: string;
+  participantCount: number;
+  routeCode: string;
+}): OrbitLandingEventView {
+  return eventView(
+    {
+      evidenceSummaries: { [input.event.id]: input.evidenceSummary },
+      events: [input.event],
+      generatedAt: input.generatedAt,
+      participantCounts: { [input.event.id]: input.participantCount },
+      publicCodes: { [input.event.id]: input.routeCode },
+    },
+    input.event,
+    0,
+  );
+}
+
 export function getOrbitLandingViewModelFromCatalogue(
   catalogue: OrbitLandingCatalogueSnapshot,
 ): OrbitLandingViewModel {

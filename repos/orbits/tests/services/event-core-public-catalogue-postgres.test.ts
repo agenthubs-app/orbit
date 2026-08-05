@@ -14,6 +14,7 @@ import { EventCoreDataError } from "../../features/events/core/contract";
 import { EVENT_CANONICAL_V1_MANIFEST } from "../../features/events/core/migration/manifests/event-canonical-v1";
 import {
   createCanonicalPublicEventCatalogue,
+  publishedCanonicalEventToEventDTO,
   publishedCanonicalEventToEventRecord,
 } from "../../features/events/core/public-catalogue";
 import { createEventCoreService } from "../../features/events/core/service";
@@ -279,7 +280,7 @@ test("canonical public adapter has no production legacy catalogue dependency", (
 });
 
 test("canonical EventRecord conversion supports a private published event without fabricating a public code", () => {
-  const record = publishedCanonicalEventToEventRecord({
+  const canonicalEvent = {
     archivedAt: null,
     cancelledAt: null,
     description: "A private operator working session.",
@@ -296,11 +297,18 @@ test("canonical EventRecord conversion supports a private published event withou
     title: "Private operator session",
     venue: "Tokyo",
     workspaceId: "workspace:test",
-  }, "2029-12-01T00:00:00.000Z");
+  } as const;
+  const record = publishedCanonicalEventToEventRecord(
+    canonicalEvent,
+    "2029-12-01T00:00:00.000Z",
+  );
+  const event = publishedCanonicalEventToEventDTO(canonicalEvent);
 
   assert.equal(record.id, "event:private:operator-session");
   assert.equal(record.title, "Private operator session");
   assert.equal(record.sourceMetadata.provider, "event-core-postgres");
+  assert.equal(event.id, "event:private:operator-session");
+  assert.equal(event.name, "Private operator session");
 });
 
 test("canonical public adapter fails closed for duplicate codes and invalid source payload", async () => {

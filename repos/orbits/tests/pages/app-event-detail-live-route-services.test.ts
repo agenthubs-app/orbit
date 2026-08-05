@@ -27,12 +27,13 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("event detail production route does not silently force a canonical id into mock mode", () => {
+test("event detail production route is canonical-only and cannot switch into mock mode", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
   assert.doesNotMatch(pageSource, /canonicalDemoEventDetailIds/);
   assert.doesNotMatch(pageSource, /has\(input\.eventId\)\s*\?\s*"mock"/);
-  assert.match(pageSource, /const routeMode = undefined/);
+  assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
+  assert.doesNotMatch(pageSource, /loadAppEventDetailRoute/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "scenario"\)/);
   assert.doesNotMatch(pageSource, /action: readSearchParam/);
@@ -226,17 +227,20 @@ test("app event detail route preserves empty pending and failure boundaries", as
   }
 });
 
-test("/app/events/[id] serves public catalogue detail before private owner fallback", async () => {
+test("/app/events/[id] serves public and authorized private detail from one canonical resolver", async () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
-  assert.match(pageSource, /loadAppEventDetailRoute/);
-  assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.match(pageSource, /getOrbitRegisteredEventViewModel/);
-  assert.match(pageSource, /attendees: registered \?/);
+  assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
+  assert.doesNotMatch(pageSource, /loadAppEventDetailRoute/);
+  assert.doesNotMatch(pageSource, /resolveCanonicalPublicEventView/);
+  assert.doesNotMatch(pageSource, /getOrbitLandingViewModel\(/);
+  assert.doesNotMatch(pageSource, /getOrbitRegisteredEventViewModel/);
+  assert.match(pageSource, /attendees: resolution\.registered \?/);
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /const id = eventRouteId\(routeId\)/);
   assert.match(pageSource, /decodeURIComponent\(value\)/);
-  assert.match(pageSource, /getEvent\(\{\s*actorId: session\.user\.id/);
+  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.doesNotMatch(pageSource, /createEventCrudAndImportService/);
   assert.doesNotMatch(
     source(
       "app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service.ts",

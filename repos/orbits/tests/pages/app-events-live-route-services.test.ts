@@ -373,26 +373,27 @@ test("registered catalogue attendee access follows persisted registration lifecy
     await import("../../features/events/registration/runtime");
   const { getOrbitRegisteredEventViewModel } =
     await import("../../app/(app)/app/orbit-registered-event-route-view-model");
+  const { resolveCanonicalPublicEventView } =
+    await import("../../app/(app)/app/canonical-public-event-view");
+  const event = await resolveCanonicalPublicEventView(eventId);
+  assert.ok(event);
 
   assert.equal(
-    await getOrbitRegisteredEventViewModel({ actorId, eventId }),
+    await getOrbitRegisteredEventViewModel({ actorId, event }),
     null,
   );
   assert.equal(
-    await getOrbitRegisteredEventViewModel({
-      actorId,
-      eventId: "unknown-public-event",
-    }),
+    await resolveCanonicalPublicEventView("unknown-public-event"),
     null,
   );
   assert.equal(
-    await getOrbitRegisteredEventViewModel({ actorId: "", eventId }),
+    await getOrbitRegisteredEventViewModel({ actorId: "", event }),
     null,
   );
   assert.equal(
     await getOrbitRegisteredEventViewModel({
       actorId: "actor:catalogue-roster-other",
-      eventId,
+      event,
     }),
     null,
   );
@@ -415,7 +416,7 @@ test("registered catalogue attendee access follows persisted registration lifecy
 
   const registered = await getOrbitRegisteredEventViewModel({
     actorId,
-    eventId,
+    event,
   });
 
   assert.ok(registered);
@@ -431,7 +432,7 @@ test("registered catalogue attendee access follows persisted registration lifecy
   });
 
   assert.equal(
-    await getOrbitRegisteredEventViewModel({ actorId, eventId }),
+    await getOrbitRegisteredEventViewModel({ actorId, event }),
     null,
   );
 });

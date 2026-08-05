@@ -127,7 +127,6 @@ function canonicalSource(event: PublishedCanonicalEvent) {
 export function publishedCanonicalEventToEventDTO(
   event: PublishedCanonicalEvent,
 ): EventDTO {
-  const publicCode = requiredText(event.publicCode, "publicCode", event.eventId);
   const description = event.description?.trim() || undefined;
   const venue = requiredText(event.venue, "venue", event.eventId);
   const startsAt = timestamp(event.startsAt, "startsAt", event.eventId);
@@ -135,9 +134,6 @@ export function publishedCanonicalEventToEventDTO(
   if (Date.parse(startsAt) >= Date.parse(endsAt)) {
     invalid(event.eventId, "time range");
   }
-  // Reading publicCode here is intentional: it is validated at the canonical
-  // boundary and exposed by the snapshot without deriving a route code.
-  void publicCode;
   return {
     ...(description ? { description } : {}),
     endsAt,

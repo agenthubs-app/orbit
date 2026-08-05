@@ -15,24 +15,15 @@ import {
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../../shared/ui/state-view";
-import {
-  eventDetailRouteToOrbitLandingEventView,
-} from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
-import {
-  loadAppEventDetailRoute,
-  type AppEventDetailBoundaryModel,
-} from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import type { AppEventDetailBoundaryModel } from "../compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { OrbitRealEventDetail } from "./orbit-real-event-detail";
 import { presentOrbitEvent } from "../../orbit-event-presentation";
-import { loadAppEventsRouteViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
-import { eventsRouteToOrbitLandingViewModel } from "../compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
-import { createEventCrudAndImportService } from "../../../../../features/events/service-factory";
-import { getOrbitLandingViewModel } from "../../orbit-landing-route-view-model";
-import { getOrbitRegisteredEventViewModel } from "../../orbit-registered-event-route-view-model";
-import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
-import { readEventOperationsCatalogueSummary } from "../../../../../features/events/event-operations/catalogue-summary";
+import {
+  resolveConfiguredCanonicalEventDetailView,
+  type CanonicalEventDetailResolution,
+} from "../../canonical-event-detail-view";
 
 export type AppEventDetailPageSearchParams = Record<
   string,
@@ -136,94 +127,35 @@ export default async function AppEventDetailPage({
   const language = normalizeOrbitLanguage(
     readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
   );
-  const catalogueEvent =
-    getOrbitLandingViewModel().events.find(
-      (event) => event.id === id || event.code === id,
-    ) ?? null;
-
-  if (catalogueEvent) {
-    const [registeredEvent, operationSummary] = await Promise.all([
-      session?.user?.id
-        ? getOrbitRegisteredEventViewModel({
-            actorId: session.user.id,
-            eventId: catalogueEvent.id,
-          })
-        : Promise.resolve(null),
-      readEventOperationsCatalogueSummary(catalogueEvent.id),
-    ]);
-    const registered = Boolean(registeredEvent);
-    const presentedEvent = presentOrbitEvent(
-      registeredEvent ?? catalogueEvent,
-      language,
-    );
-    const startsAt = new Date(presentedEvent.startsAt).getTime();
-    const endsAt = new Date(presentedEvent.endsAt).getTime();
-    const now = Date.now();
-    const status: OrbitLandingEventView["status"] =
-      Number.isFinite(endsAt) && endsAt < now
-        ? "ended"
-        : Number.isFinite(startsAt) && startsAt <= now
-          ? "active"
-          : "upcoming";
-    const accessibleEvent = {
-      ...presentedEvent,
-      participantCount:
-        operationSummary?.activeRegistrationCount ??
-        presentedEvent.participantCount,
-      status,
-      stats: {
-        ...presentedEvent.stats,
-        // Attendee names are omitted from the server payload until the current
-        // account has an active registration for this exact event.
-        attendees: registered ? presentedEvent.stats.attendees : [],
-        authed: Boolean(session?.user?.id),
-        count:
-          operationSummary?.activeRegistrationCount ??
-          presentedEvent.stats.count,
-        youRsvped: registered,
-      },
-      youRsvped: registered,
-    };
-
-    return (
-      <>
-        <OrbitReferenceStyles />
-        <OrbitRealEventDetail
-          event={localizeOrbitTree(accessibleEvent, language)}
-          workspaceAvailable={operationSummary !== null}
-        />
-        <OrbitVisualFreezeRuntime />
-      </>
-    );
+  let resolution: CanonicalEventDetailResolution;
+  try {
+    resolution = await resolveConfiguredCanonicalEventDetailView({
+      actorId: session?.user?.id,
+      routeId: id,
+    });
+  } catch {
+    resolution = { state: "unavailable" } as const;
   }
 
-  if (!session?.user?.id) {
+  if (resolution.state === "authentication_required") {
     redirect(
       `/app/account/login?next=${encodeURIComponent(`/app/events/${id}`)}`,
     );
   }
 
-  const ownedEventResult = await createEventCrudAndImportService().getEvent({
-    actorId: session.user.id,
-    eventId: id,
-  });
-
-  if (ownedEventResult.success === false) {
+  if (resolution.state === "unavailable") {
     return (
       <>
         <OrbitReferenceStyles />
         <EventDetailRouteStateView
           eventId={id}
           routeModel={{
-            description:
-              "This event is not available to the authenticated account.",
-            evidence: ownedEventResult.error.evidenceIds,
-            nextStep: "Return to Events and choose an event owned by this account.",
-            recoveryActions: [
-              { href: "/app/events", label: "Return to events" },
-            ],
-            routeState: "empty",
-            title: "Event not found",
+            description: "Canonical Event Core is temporarily unavailable. No legacy event catalogue was used.",
+            evidence: ["event-core-public-catalogue-unavailable"],
+            nextStep: "Retry after the event service is restored.",
+            recoveryActions: [{ href: `/app/events/${encodeURIComponent(id)}`, label: "Retry current event" }],
+            routeState: "failure",
+            title: "Event detail temporarily unavailable",
           }}
         />
         <OrbitVisualFreezeRuntime />
@@ -231,61 +163,64 @@ export default async function AppEventDetailPage({
     );
   }
 
-  // Production route mode comes from server configuration. Query parameters
-  // must not switch an authenticated account onto demo capability fixtures.
-  const routeMode = undefined;
-  const routeModel = await loadAppEventDetailRoute({
-    actorId: session.user.id,
-    eventId: id,
-    mode: routeMode,
-  });
+  if (resolution.state === "success") {
+    const presentedEvent = presentOrbitEvent(
+      resolution.event,
+      language,
+    );
+    const accessibleEvent = {
+      ...presentedEvent,
+      stats: {
+        ...presentedEvent.stats,
+        // Attendee names are omitted from the server payload until the current
+        // account has an active registration for this exact event.
+        attendees: resolution.registered ? presentedEvent.stats.attendees : [],
+        authed: Boolean(session?.user?.id),
+        youRsvped: resolution.registered,
+      },
+      youRsvped: resolution.registered,
+    };
 
-  // Only a few events have full seeded detail (roster/readiness/etc.). For the
-  // rest, fall back to a basic detail built from the events-list data so every
-  // listed event opens a normal page (like the UI branch) instead of the
-  // "no event workspace" route-state boundary.
-  const detailSuccess = routeModel.routeState === "success";
-  const eventsListModel = detailSuccess
-    ? null
-    : await loadAppEventsRouteViewModel(session.user.id);
-  const fallbackEvent =
-    eventsListModel && eventsListModel.state === "success"
-      ? eventsRouteToOrbitLandingViewModel(eventsListModel).events.find(
-          (event) => event.id === id || event.code === id,
-        ) ?? null
-      : null;
+    return (
+      <>
+        <OrbitReferenceStyles />
+        {resolution.canOpenOperations ? (
+          <div style={{ margin: "16px auto 0", maxWidth: 1120, padding: "0 20px" }}>
+            <a
+              className="btn btn-primary"
+              href={`/app/events/${encodeURIComponent(resolution.event.id)}/operations`}
+            >
+              Open organizer operations
+            </a>
+          </div>
+        ) : null}
+        <OrbitRealEventDetail
+          event={localizeOrbitTree(accessibleEvent, language)}
+          workspaceAvailable={resolution.workspaceAvailable}
+        />
+        <OrbitVisualFreezeRuntime />
+      </>
+    );
+  }
 
   return (
     <>
       <OrbitReferenceStyles />
-      <div style={{ margin: "16px auto 0", maxWidth: 1120, padding: "0 20px" }}>
-        <a
-          className="btn btn-primary"
-          href={`/app/events/${encodeURIComponent(id)}/operations`}
-        >
-          Open organizer operations
-        </a>
-      </div>
-      {detailSuccess ? (
-        <OrbitRealEventDetail
-          event={localizeOrbitTree(
-            presentOrbitEvent(
-              eventDetailRouteToOrbitLandingEventView(routeModel),
-              language,
-            ),
-            language,
-          )}
-        />
-      ) : fallbackEvent ? (
-        <OrbitRealEventDetail
-          event={localizeOrbitTree(
-            presentOrbitEvent(fallbackEvent, language),
-            language,
-          )}
-        />
-      ) : (
-        <EventDetailRouteStateView eventId={id} routeModel={routeModel} />
-      )}
+      <EventDetailRouteStateView
+        eventId={id}
+        routeModel={{
+          description: "This event is not available to the authenticated account.",
+          evidence: [
+            resolution.state === "forbidden"
+              ? "event-core-access-denied"
+              : "event-core-event-not-found",
+          ],
+          nextStep: "Return to Events and choose an event available to this account.",
+          recoveryActions: [{ href: "/app/events", label: "Return to events" }],
+          routeState: "empty",
+          title: "Event not found",
+        }}
+      />
       <OrbitVisualFreezeRuntime />
     </>
   );

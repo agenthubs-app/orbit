@@ -52,7 +52,7 @@ export function createEventOperationsRegistrationWindowProvider(
       const row = result.rows[0];
       if (!row) return { state: "legacy_unenrolled" };
       if (row.registration_migration_state !== "canonical") {
-        return { state: "enrolled_misconfigured" };
+        return { state: "legacy_importing" };
       }
       const profileEditDeadlineAt = timestamp(row.profile_edit_deadline_at);
       const registrationCutoffAt = timestamp(row.registration_cutoff_at);
@@ -62,7 +62,7 @@ export function createEventOperationsRegistrationWindowProvider(
         !registrationCutoffAt ||
         !statementTimestamp
       ) {
-        return { state: "enrolled_misconfigured" };
+        return { state: "canonical_misconfigured" };
       }
       return {
         state: "enrolled",

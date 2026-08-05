@@ -1,5 +1,3 @@
-import { createOrbitLocalRemoteDatabase } from "../../shared/local-remote-store/orbit-database";
-import { eventCodeFor } from "./public-route-code";
 import { eventRegistrationRuntimeService } from "./registration/runtime";
 import { createConfiguredEventOperationsRepository } from "./event-operations/repository";
 
@@ -25,19 +23,8 @@ export async function readRegisteredCatalogueAttendees(input: {
     return null;
   }
 
-  const state = createOrbitLocalRemoteDatabase().getState();
-  const event =
-    state.events.find(
-      (item, index) =>
-        item.id === eventId || eventCodeFor(item, index) === eventId,
-    ) ?? null;
-
-  if (!event) {
-    return null;
-  }
-
   const registration = await eventRegistrationRuntimeService.get({
-    eventId: event.id,
+    eventId,
     userId: actorId,
   });
 
@@ -46,34 +33,19 @@ export async function readRegisteredCatalogueAttendees(input: {
   }
 
   const operationsRepository = createConfiguredEventOperationsRepository();
-  const operationsConfiguration = operationsRepository
-    ? await operationsRepository.getConfiguration(event.id)
-    : null;
-  if (operationsRepository && operationsConfiguration) {
-    const registrations = await operationsRepository.listCanonicalRegistrations(
-      event.id,
-    );
-    return {
-      attendees: registrations
-        .filter((item) => item.status === "rsvped")
-        .map((item) => ({
-          displayName:
-            item.participantProfile.displayName?.trim() || "Orbit attendee",
-          organization: null,
-          role: item.participantProfile.answers.positioning?.trim() || null,
-        })),
-      eventId: event.id,
-    };
-  }
-
+  if (!operationsRepository) return null;
+  const registrations = await operationsRepository.listCanonicalRegistrations(
+    eventId,
+  );
   return {
-    attendees: state.attendees
-      .filter((attendee) => attendee.eventId === event.id)
+    attendees: registrations
+      .filter((item) => item.status === "rsvped")
       .map((attendee) => ({
-        displayName: attendee.displayName,
-        organization: attendee.organization ?? null,
-        role: attendee.role ?? null,
+        displayName:
+          attendee.participantProfile.displayName?.trim() || "Orbit attendee",
+        organization: null,
+        role: attendee.participantProfile.answers.positioning?.trim() || null,
       })),
-    eventId: event.id,
+    eventId,
   };
 }

@@ -17,12 +17,13 @@ export interface EventRegistrationWindow {
 
 export type EventRegistrationWindowEnrollment =
   | { state: "legacy_unenrolled" }
+  | { state: "legacy_importing" }
   | {
       state: "enrolled";
       statementTimestamp: string;
       window: EventRegistrationWindow;
     }
-  | { state: "enrolled_misconfigured" };
+  | { state: "canonical_misconfigured" };
 
 export interface EventRegistrationWindowProvider {
   getEnrollment(eventId: string): Promise<EventRegistrationWindowEnrollment>;
@@ -161,7 +162,10 @@ export function createDeadlineGatedEventRegistrationService(input: {
       if (enrollment.state === "legacy_unenrolled") {
         return input.baseService.cancel(registration);
       }
-      if (enrollment.state === "enrolled_misconfigured") {
+      if (
+        enrollment.state === "legacy_importing" ||
+        enrollment.state === "canonical_misconfigured"
+      ) {
         throw new EventRegistrationWindowError(
           "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
           "The enrolled event registration window is not configured; registration writes are unavailable.",
@@ -176,18 +180,20 @@ export function createDeadlineGatedEventRegistrationService(input: {
       const enrollment = await input.windowProvider.getEnrollment(
         registration.eventId,
       );
-      return enrollment.state === "enrolled"
-        ? input.canonicalService.get(registration)
-        : input.baseService.get(registration);
+      return enrollment.state === "legacy_unenrolled" ||
+        enrollment.state === "legacy_importing"
+        ? input.baseService.get(registration)
+        : input.canonicalService.get(registration);
     },
     async list(registration) {
       if (!input.canonicalService) return input.baseService.list(registration);
       const enrollment = await input.windowProvider.getEnrollment(
         registration.eventId,
       );
-      return enrollment.state === "enrolled"
-        ? input.canonicalService.list(registration)
-        : input.baseService.list(registration);
+      return enrollment.state === "legacy_unenrolled" ||
+        enrollment.state === "legacy_importing"
+        ? input.baseService.list(registration)
+        : input.canonicalService.list(registration);
     },
     async register(registration) {
       const [enrollment, existing] = await Promise.all([
@@ -199,7 +205,10 @@ export function createDeadlineGatedEventRegistrationService(input: {
       if (enrollment.state === "legacy_unenrolled") {
         return input.baseService.register(registration);
       }
-      if (enrollment.state === "enrolled_misconfigured") {
+      if (
+        enrollment.state === "legacy_importing" ||
+        enrollment.state === "canonical_misconfigured"
+      ) {
         throw new EventRegistrationWindowError(
           "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
           "The enrolled event registration window is not configured; registration writes are unavailable.",

@@ -91,20 +91,24 @@ test("registered attendees can open the normal preparation workspace before the 
   assert.doesNotMatch(html, />未开始<|>Not started</);
 });
 
-test("/app/events/[id] serves public catalogue first and protects only private fallback", () => {
+test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
 
-  assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.match(pageSource, /if \(catalogueEvent\)/);
-  assert.match(pageSource, /attendees: registered \?/);
+  assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
+  assert.doesNotMatch(pageSource, /getOrbitLandingViewModel\(/);
+  assert.doesNotMatch(pageSource, /resolveCanonicalPublicEventView/);
+  assert.doesNotMatch(pageSource, /createEventCrudAndImportService/);
+  assert.doesNotMatch(pageSource, /loadAppEventDetailRoute/);
+  assert.doesNotMatch(pageSource, /loadAppEventsRouteViewModel/);
+  assert.match(pageSource, /resolution\.state === "success"/);
+  assert.match(pageSource, /attendees: resolution\.registered \?/);
   assert.match(
     pageSource,
     /const \[\{ id: routeId \}, query, session\] = await Promise\.all/,
   );
   assert.match(pageSource, /auth\(\)/);
-  assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
-  assert.match(pageSource, /actorId: session\.user\.id/);
-  assert.match(pageSource, /const routeMode = undefined/);
+  assert.match(pageSource, /resolution\.state === "authentication_required"/);
+  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(pageSource, /action: readSearchParam/);
   assert.doesNotMatch(pageSource, /targetContactId: readSearchParam/);

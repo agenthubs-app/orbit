@@ -51,7 +51,24 @@ test("an enrolled event without a configuration head fails closed", async () => 
     ]),
   );
   assert.deepEqual(await provider.getEnrollment("event:enrolled"), {
-    state: "enrolled_misconfigured",
+    state: "canonical_misconfigured",
+  });
+});
+
+test("an event still importing keeps legacy reads distinct from canonical misconfiguration", async () => {
+  const provider = createEventOperationsRegistrationWindowProvider(
+    runtimeWithRows([
+      {
+        event_id: "event:importing",
+        registration_migration_state: "importing",
+        profile_edit_deadline_at: null,
+        registration_cutoff_at: null,
+        statement_timestamp: "2026-08-03T09:00:00.000Z",
+      },
+    ]),
+  );
+  assert.deepEqual(await provider.getEnrollment("event:importing"), {
+    state: "legacy_importing",
   });
 });
 

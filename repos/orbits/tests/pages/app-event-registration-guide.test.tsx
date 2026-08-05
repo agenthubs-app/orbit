@@ -50,10 +50,11 @@ test("public event detail stays readable while registration itself requires auth
     "utf8",
   );
 
-  assert.match(pageSource, /getOrbitLandingViewModel/);
-  assert.match(pageSource, /if \(catalogueEvent\)/);
-  assert.match(pageSource, /const routeMode = undefined/);
-  assert.match(pageSource, /actorId: session\.user\.id/);
+  assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
+  assert.doesNotMatch(pageSource, /getOrbitLandingViewModel\(/);
+  assert.match(pageSource, /resolution\.state === "success"/);
+  assert.match(pageSource, /resolution\.state === "authentication_required"/);
+  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.match(registerSource, /actorContext\.requestScoped/);
   assert.match(registerSource, /loadEventForRegistration\(id, actor\?\.id\)/);

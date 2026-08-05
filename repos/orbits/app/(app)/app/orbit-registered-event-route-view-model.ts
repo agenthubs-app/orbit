@@ -1,10 +1,10 @@
 import {
   readRegisteredCatalogueAttendees,
   type RegisteredCatalogueAttendee,
+  type RegisteredCatalogueAttendeeContext,
 } from "../../../features/events/registered-catalogue-attendees";
 import { initialFor } from "./orbit-event-view-helpers";
 import {
-  getOrbitLandingViewModel,
   type OrbitEventAttendeeView,
   type OrbitLandingEventView,
 } from "./orbit-landing-route-view-model";
@@ -21,38 +21,29 @@ function registeredAttendeeViews(
 
 export async function getOrbitRegisteredEventViewModel(input: {
   actorId: string;
-  eventId: string;
+  event: OrbitLandingEventView;
+  registeredContext?: RegisteredCatalogueAttendeeContext | null;
 }): Promise<OrbitLandingEventView | null> {
   const actorId = input.actorId.trim();
-  const eventId = input.eventId.trim();
+  const eventId = input.event.id.trim();
 
   if (!actorId || !eventId) {
     return null;
   }
 
-  const event =
-    getOrbitLandingViewModel().events.find(
-      (item) => item.id === eventId || item.code === eventId,
-    ) ?? null;
+  const registeredContext = input.registeredContext === undefined
+    ? await readRegisteredCatalogueAttendees({ actorId, eventId })
+    : input.registeredContext;
 
-  if (!event) {
-    return null;
-  }
-
-  const registeredContext = await readRegisteredCatalogueAttendees({
-    actorId,
-    eventId: event.id,
-  });
-
-  if (!registeredContext || registeredContext.eventId !== event.id) {
+  if (!registeredContext || registeredContext.eventId !== eventId) {
     return null;
   }
 
   return {
-    ...event,
+    ...input.event,
     participantCount: registeredContext.attendees.length,
     stats: {
-      ...event.stats,
+      ...input.event.stats,
       attendees: registeredAttendeeViews(registeredContext.attendees),
       authed: true,
       count: registeredContext.attendees.length,

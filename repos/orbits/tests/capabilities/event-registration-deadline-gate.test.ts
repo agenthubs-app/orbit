@@ -44,7 +44,7 @@ function serviceAt(input: {
                 statementTimestamp: input.now,
                 window,
               }
-            : { state: "enrolled_misconfigured" as const };
+            : { state: "canonical_misconfigured" as const };
         },
       },
     }),
@@ -279,6 +279,67 @@ test("missing event operations configuration fails closed without a fallback win
         userId: "actor:unconfigured",
       }),
     "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+  );
+});
+
+test("canonical membership remains the read authority when only its write window is misconfigured", async () => {
+  const baseService = createEventRegistrationService({
+    now: () => "2026-08-03T09:00:00.000Z",
+    provider: createMemoryEventRegistrationProvider(),
+  });
+  const canonicalService = createEventRegistrationService({
+    now: () => "2026-08-03T09:00:00.000Z",
+    provider: createMemoryEventRegistrationProvider(),
+  });
+  await baseService.register({
+    displayName: "Stale legacy projection",
+    eventId: "event:canonical-without-window",
+    userId: "actor:member",
+  });
+  const canonical = await canonicalService.register({
+    answers: { positioning: "Canonical participant profile" },
+    displayName: "Canonical member",
+    eventId: "event:canonical-without-window",
+    userId: "actor:member",
+  });
+  let state: "canonical_misconfigured" | "legacy_importing" =
+    "canonical_misconfigured";
+  const service = createDeadlineGatedEventRegistrationService({
+    baseService,
+    canonicalService,
+    windowProvider: {
+      async getEnrollment() {
+        return { state };
+      },
+    },
+  });
+
+  assert.deepEqual(
+    await service.get({
+      eventId: "event:canonical-without-window",
+      userId: "actor:member",
+    }),
+    canonical,
+  );
+  assert.deepEqual(
+    await service.list({ eventId: "event:canonical-without-window" }),
+    [canonical],
+  );
+  await assertWindowError(
+    () => service.register({
+      eventId: "event:canonical-without-window",
+      userId: "actor:new-member",
+    }),
+    "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+  );
+
+  state = "legacy_importing";
+  assert.equal(
+    (await service.get({
+      eventId: "event:canonical-without-window",
+      userId: "actor:member",
+    }))?.participantProfile.displayName,
+    "Stale legacy projection",
   );
 });
 
