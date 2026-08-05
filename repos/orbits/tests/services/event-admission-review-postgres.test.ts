@@ -28,6 +28,45 @@ function schemaUrl(value: string, searchPath: string): string {
   return url.toString();
 }
 
+async function insertOperationsConfiguration(input: {
+  eventId: string;
+  pool: Pool;
+  profileEditDeadlineAt: string;
+  registrationCutoffAt: string;
+  workspaceId: string;
+}): Promise<void> {
+  const updatedAt = "2099-01-01T00:00:00.000Z";
+  await input.pool.query(
+    `insert into event_ops_configurations (
+       workspace_id, event_id, configuration_version,
+       check_in_opens_at, event_starts_at, event_ends_at,
+       profile_edit_deadline_at, registration_cutoff_at,
+       results_available_at, round_one_starts_at, round_two_starts_at,
+       recommendation_count, table_size, shard_size,
+       max_attempts_per_task, created_at, updated_at
+     ) values (
+       $1, $2, 1, '2027-09-01T08:00:00.000Z',
+       '2027-09-01T09:00:00.000Z', '2101-01-05T00:00:00.000Z',
+       $3, $4, '2100-01-02T09:30:00.000Z',
+       '2100-01-03T10:00:00.000Z', '2100-01-04T11:00:00.000Z',
+       3, 6, 24, 2, $5, $5
+     )`,
+    [
+      input.workspaceId,
+      input.eventId,
+      input.profileEditDeadlineAt,
+      input.registrationCutoffAt,
+      updatedAt,
+    ],
+  );
+  await input.pool.query(
+    `insert into event_ops_configuration_heads (
+       workspace_id, event_id, configuration_version, revision, updated_at
+     ) values ($1, $2, 1, 1, $3)`,
+    [input.workspaceId, input.eventId, updatedAt],
+  );
+}
+
 function profile(actorId: string) {
   const answers: Required<EventParticipantProfileAnswers> = {
     desiredOutcome: `为 ${actorId} 找到两位可以共同验证日本市场渠道假设的长期伙伴`,
@@ -167,6 +206,15 @@ test(
         registrationOpensAt: "2000-01-01T00:00:00.000Z",
         waitlistEnabled: true,
       };
+      for (const eventId of [eventA, eventB]) {
+        await insertOperationsConfiguration({
+          eventId,
+          pool,
+          profileEditDeadlineAt: openPolicy.profileEditDeadlineAt,
+          registrationCutoffAt: openPolicy.registrationClosesAt,
+          workspaceId,
+        });
+      }
       await admission.configurePolicy(ownerId, { ...openPolicy, eventId: eventA });
       await admission.configurePolicy(ownerId, { ...openPolicy, eventId: eventB });
 

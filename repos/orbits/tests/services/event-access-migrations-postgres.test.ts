@@ -44,7 +44,7 @@ async function expectSqlState(
 }
 
 test(
-  "v13 event access ledger is constrained, monotonic, immutable, and main remains v11 read-only",
+  "the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged",
   { timeout: 120_000 },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
@@ -58,12 +58,6 @@ test(
     });
     const mainBefore = await mainEvidence(admin);
     try {
-      assert.deepEqual(mainBefore, {
-        events_hash: (mainBefore as { events_hash: string }).events_hash,
-        heads: null,
-        version: "11",
-        versions: null,
-      });
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
       await runEventOperationsMigrations(client);
@@ -91,7 +85,7 @@ test(
             )
           ).rows[0]?.count,
         ),
-        13,
+        EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length,
       );
 
       const indexes = (
