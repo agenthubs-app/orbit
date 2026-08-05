@@ -93,10 +93,10 @@ test("recommendation adapter prompt contains only a bounded source and shortlist
                   rank: 1,
                   reasons: ["Bounded shortlist evidence"],
                   score: 90,
-                  targetParticipantId: candidateParticipants[0]!.participantId,
+                  targetCandidateKey: "S1C1",
                 },
               ],
-              sourceParticipantId: sourceParticipant.participantId,
+              sourceKey: "S1",
             },
           ],
         }),
@@ -111,8 +111,10 @@ test("recommendation adapter prompt contains only a bounded source and shortlist
   });
 
   assert.equal(result.success, true);
-  assert.match(prompt, new RegExp(sourceParticipant.participantId, "u"));
-  assert.match(prompt, new RegExp(candidateParticipants[15]!.participantId, "u"));
+  assert.match(prompt, new RegExp(sourceParticipant.displayName, "u"));
+  assert.match(prompt, new RegExp(candidateParticipants[15]!.displayName, "u"));
+  assert.doesNotMatch(prompt, new RegExp(sourceParticipant.participantId, "u"));
+  assert.doesNotMatch(prompt, new RegExp(candidateParticipants[15]!.participantId, "u"));
   assert.doesNotMatch(prompt, new RegExp(participants[999]!.participantId, "u"));
   assert.doesNotMatch(prompt, /full immutable snapshot/iu);
   assert.ok(prompt.length < 40_000, `bounded prompt was ${prompt.length} chars`);

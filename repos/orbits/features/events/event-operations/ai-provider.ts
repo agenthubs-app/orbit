@@ -26,6 +26,7 @@ export interface EventOperationsModelRunner {
 
 export interface EventOperationsAiProviderOptions {
   config?: GeminiOrbitAgentProviderConfig;
+  outputLanguage?: "en" | "zh-CN";
   recommendationPromptEncoding?: "expanded" | "deduplicated";
   retryableJsonFailureShapes?: readonly EventOperationsJsonFailureShape[];
   runModelText?: EventOperationsModelRunner;
@@ -371,14 +372,15 @@ Use only the supplied source, deterministic shortlist, validated recommendation,
 Never invent participant ids, never use hidden identities, and never substitute a deterministic content fallback.`;
 
 export const EVENT_OPERATIONS_AI_PROMPT_VERSION =
-  "event-operations-tokenized-recommendations-v4-full-profile";
+  "event-operations-tokenized-recommendations-v7-chinese-lexical-policy";
 const DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION =
-  "event-operations-tokenized-recommendations-v5-deduplicated-profile";
+  "event-operations-tokenized-recommendations-v8-chinese-lexical-policy";
 
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
   recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
   retryableJsonFailureShapes: readonly EventOperationsJsonFailureShape[] = [],
+  outputLanguage: "en" | "zh-CN" = "zh-CN",
 ): string {
   const configuredProvider = String(
     config?.provider ?? process.env.ORBIT_AGENT_PROVIDER ?? "gemini",
@@ -405,10 +407,11 @@ function requestFingerprint(
       ? config.temperature
       : null;
   const fingerprint = {
-    groupingPromptVersion: "event-operations-tokenized-grouping-v2-profile-lookup",
+    groupingPromptVersion: "event-operations-tokenized-grouping-v5-chinese-lexical-policy",
     jsonOutput: config?.jsonOutput === true,
     maxTokens: config?.maxTokens ?? null,
     model,
+    outputLanguage,
     promptVersion: recommendationPromptEncoding === "deduplicated"
       ? DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION
       : EVENT_OPERATIONS_AI_PROMPT_VERSION,
@@ -650,6 +653,7 @@ function mapTokenGroupingFeatures(
 
 export function createEventOperationsAiProvider({
   config,
+  outputLanguage = "zh-CN",
   recommendationPromptEncoding = "expanded",
   retryableJsonFailureShapes = [],
   runModelText = runOrbitAgentModelText,
@@ -659,17 +663,21 @@ export function createEventOperationsAiProvider({
   const retryableJsonFailureShapeSet = new Set(
     effectiveRetryableJsonFailureShapes,
   );
+  const effectiveSystemInstruction = `${systemInstruction}\n${outputLanguage === "zh-CN"
+    ? "Write every natural-language output value in idiomatic Simplified Chinese, including reasons, hints, topics, themes, rationales, icebreakers, member prompts, and no-match explanations. Translate ordinary source wording into natural Chinese instead of copying English fragments. Latin text is allowed only for participant names, organization or product proper names, ids, and this exact technical whitelist: AI, SaaS, KPI, API, B2B, LP, IP, CEO, Scope 3. Translate every other English common noun; for example, translate copilot as 智能助手 and investment-ready as 具备投资条件. Keep keys, numbers, and JSON syntax unchanged."
+    : "Write every natural-language output value in English. Keep ids, keys, numbers, and JSON syntax unchanged."}`;
   return {
     requestFingerprint: requestFingerprint(
       config,
       recommendationPromptEncoding,
       effectiveRetryableJsonFailureShapes,
+      outputLanguage,
     ),
     async generateRecommendations(input) {
       const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
       const response = await runModelText({
         config,
-        systemInstruction,
+        systemInstruction: effectiveSystemInstruction,
         userText: `Generate networking recommendations for this bounded source shard.
 
 Requirements:
@@ -710,7 +718,7 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       const tokenizedSources = compactGroupingSources(input.sources);
       const response = await runModelText({
         config,
-        systemInstruction,
+        systemInstruction: effectiveSystemInstruction,
         userText: `Extract bounded grouping features for this source shard.
 
 Requirements:
@@ -748,7 +756,7 @@ ${JSON.stringify(tokenizedSources.prompt)}`,
     async generateTableContent(input) {
       const response = await runModelText({
         config,
-        systemInstruction,
+        systemInstruction: effectiveSystemInstruction,
         userText: `Generate content for exactly one already-assigned event table.
 
 Requirements:
@@ -802,6 +810,7 @@ export function createConfiguredEventOperationsAiProvider({
       temperature: 0.2,
       ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
     },
+    outputLanguage: "zh-CN",
     recommendationPromptEncoding: "deduplicated",
     retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
   });

@@ -80,10 +80,15 @@ test("event operations request fingerprint versions provider behavior as well as
     },
   });
   assert.notEqual(baseline.requestFingerprint, json.requestFingerprint);
-  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v4-full-profile/u);
+  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v7-chinese-lexical-policy/u);
   assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v1/u);
   assert.match(json.requestFingerprint ?? "", /deepseek-test/u);
   assert.match(json.requestFingerprint ?? "", /"jsonOutput":true/u);
+  assert.match(json.requestFingerprint ?? "", /"outputLanguage":"zh-CN"/u);
+  assert.notEqual(
+    createEventOperationsAiProvider({ outputLanguage: "en" }).requestFingerprint,
+    createEventOperationsAiProvider({ outputLanguage: "zh-CN" }).requestFingerprint,
+  );
   assert.match(
     createConfiguredEventOperationsAiProvider().requestFingerprint ?? "",
     /"jsonOutput":true/u,
@@ -155,9 +160,11 @@ function successfulText(text: string) {
 
 test("event operations AI adapter accepts one strict recommendation JSON document", async () => {
   let prompt = "";
+  let instruction = "";
   const provider = createEventOperationsAiProvider({
     async runModelText(input) {
       prompt = input.userText;
+      instruction = input.systemInstruction;
       return successfulText(
         JSON.stringify({
         recommendations: [
@@ -191,6 +198,10 @@ test("event operations AI adapter accepts one strict recommendation JSON documen
     ],
   });
   assert.equal(result.success, true);
+  assert.match(instruction, /Simplified Chinese/u);
+  assert.match(instruction, /reasons, hints, topics, themes, rationales, icebreakers, member prompts/u);
+  assert.match(instruction, /Translate ordinary source wording into natural Chinese/u);
+  assert.match(instruction, /translate copilot as 智能助手 and investment-ready as 具备投资条件/u);
   assert.doesNotMatch(prompt, /actor:a|actor:b|evidence:a|evidence:b/u);
   assert.match(prompt, /Aster Labs|Beacon Health|S1|C1/u);
   assert.doesNotMatch(prompt, /participant:a|participant:b/u);
