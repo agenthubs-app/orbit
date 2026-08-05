@@ -285,8 +285,7 @@ test("/app/events renders the public event catalogue without requiring authentic
 });
 
 test("the public event catalogue keeps the full previously approved demo set", async () => {
-  const module =
-    await import("../../app/(app)/app/orbit-landing-route-view-model");
+  const module = await import("../support/legacy-orbit-landing-view");
   const catalogue = module.getOrbitLandingViewModel();
 
   assert.equal(catalogue.events.length, 13);
@@ -312,7 +311,7 @@ test("the public event catalogue keeps the full previously approved demo set", a
 
 test("public event presentation derives agenda clocks from canonical source ranges", async () => {
   const { getOrbitLandingViewModel } =
-    await import("../../app/(app)/app/orbit-landing-route-view-model");
+    await import("../support/legacy-orbit-landing-view");
   const { presentOrbitEvent } =
     await import("../../app/(app)/app/orbit-event-presentation");
   const catalogue = getOrbitLandingViewModel();

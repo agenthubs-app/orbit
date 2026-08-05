@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createCanonicalEventRecommendationReader,
+  type CanonicalEventRecommendationReader,
+} from "../../features/events/core/event-recommendation-reader";
+import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
+import {
   createLiveEventCrudAndImportService,
   type LiveEventStoreProvider,
   type LiveEventStoreRecord,
@@ -23,7 +28,6 @@ import {
   createMemoryLiveRecordStore,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
-import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
 const liveRecord: LiveEventStoreRecord = {
   id: "event:live:operator-dinner",
@@ -55,6 +59,77 @@ const liveRecord: LiveEventStoreRecord = {
   nextAction: "Open the event detail and prepare attendee context.",
 };
 const actorId = "account:event-live-test";
+
+function canonicalRecord(input: {
+  description: string;
+  endsAt: string;
+  id: string;
+  startsAt: string;
+  title: string;
+  venue: string;
+}): EventRecord {
+  const evidenceId = `evidence:event-core:${input.id}:v1`;
+  const sourceMetadata = {
+    calendarSyncRequested: false as const,
+    captureMethod: "organizer_feed" as const,
+    externalNetworkRequested: false as const,
+    id: `event-core-postgres:${input.id}:v1`,
+    importedAt: "2026-07-28T00:00:00.000Z",
+    label: "event-core-postgres",
+    liveDatabaseWriteExecuted: false,
+    organizerFeedRequested: false as const,
+    provider: "event-core-postgres",
+    providerRecordId: input.id,
+    type: "event_import" as const,
+  };
+  return {
+    ...input,
+    aiProviderRequested: false,
+    calendarProviderRequested: false,
+    calendarSyncRequested: false,
+    emailProviderRequested: false,
+    evidence: [
+      {
+        capturedAt: "2026-07-28T00:00:00.000Z",
+        createdBy: "event-core-postgres",
+        evidenceId,
+        excerpt: input.description,
+        source: sourceMetadata,
+      },
+    ],
+    externalNetworkRequested: false,
+    liveDatabaseWriteExecuted: false,
+    nextAction: "Register for the canonical event.",
+    notificationDelivered: false,
+    organizerFeedRequested: false,
+    recommendedPreparation: "Review the canonical event profile.",
+    relationshipContext: input.description,
+    sourceMetadata,
+    status: Date.parse(input.endsAt) <= Date.parse("2026-07-28T00:00:00.000Z")
+      ? "cancelled"
+      : "imported",
+  };
+}
+
+function canonicalReaderFor(
+  records: readonly EventRecord[],
+  onRead?: () => void,
+): CanonicalEventRecommendationReader {
+  return {
+    async read(now) {
+      onRead?.();
+      return {
+        collectedAt: now.toISOString(),
+        evidenceIds: records.flatMap((record) =>
+          record.evidence.map((evidence) => evidence.evidenceId),
+        ),
+        records,
+        source: "event-core-postgres",
+        sourceLabel: "Canonical Event Core",
+      };
+    },
+  };
+}
 
 function createFakeLiveProvider(): LiveEventStoreProvider {
   const records: LiveEventStoreRecord[] = [liveRecord];
@@ -206,7 +281,7 @@ test("events recommendation tool ranks live events from an async Events service"
         return eventService.getEvent({ ...input, actorId });
       },
     },
-    publicCatalogueRecords: [],
+    canonicalReader: canonicalReaderFor([]),
   });
 
   const result = await tool.recommend({
@@ -240,7 +315,7 @@ test("events recommendation tool forwards the server actor to live Events reads"
   const tool = createEventsRecommendationTool({
     actorId,
     eventService,
-    publicCatalogueRecords: [],
+    canonicalReader: canonicalReaderFor([]),
   });
 
   const result = await tool.recommend({
@@ -259,7 +334,7 @@ test("events recommendation tool shows closest real events when model hints have
     actorId,
     eventService,
     now: () => Date.parse("2026-07-01T00:00:00.000Z"),
-    publicCatalogueRecords: [],
+    canonicalReader: canonicalReaderFor([]),
   });
 
   const result = await tool.recommend({
@@ -279,9 +354,31 @@ test("events recommendation tool shows closest real events when model hints have
   assert.match(result.summary, /closest available event/);
 });
 
-test("events recommendation tool includes the approved public catalogue when actor-owned events are empty", async () => {
+test("events recommendation tool includes one canonical Event Core snapshot when actor-owned events are empty", async () => {
+  let canonicalReadCount = 0;
+  const canonicalEvents = [
+    canonicalRecord({
+      description: "AI partnership matchmaking for founders and enterprise operators.",
+      endsAt: "2026-08-01T12:00:00.000Z",
+      id: "event:canonical:ai-partners",
+      startsAt: "2026-08-01T10:00:00.000Z",
+      title: "Tokyo AI partnership forum",
+      venue: "Marunouchi",
+    }),
+    canonicalRecord({
+      description: "Cross-border market entry roundtable for Japan and China founders.",
+      endsAt: "2026-08-04T12:00:00.000Z",
+      id: "event:canonical:cross-border",
+      startsAt: "2026-08-04T10:00:00.000Z",
+      title: "Japan China founder roundtable",
+      venue: "Shibuya",
+    }),
+  ];
   const tool = createEventsRecommendationTool({
     actorId,
+    canonicalReader: canonicalReaderFor(canonicalEvents, () => {
+      canonicalReadCount += 1;
+    }),
     eventService: createLiveEventCrudAndImportService({
       provider: {
         source: "live-store:empty-actor-events",
@@ -305,17 +402,27 @@ test("events recommendation tool includes the approved public catalogue when act
   assert.ok(result.candidates.length >= 2);
   assert.equal(result.candidates[0]?.upcoming, true);
   assert.equal(result.candidates[1]?.upcoming, true);
-  assert.match(result.sourceLabel, /public event catalogue/i);
-  assert.ok(
-    result.candidates.some((candidate) =>
-      defaultMockFixtures.events.some((event) => event.name === candidate.title),
-    ),
+  assert.equal(result.sourceLabel, "Canonical Event Core and account events");
+  assert.equal(canonicalReadCount, 1);
+  assert.deepEqual(
+    new Set(result.candidates.map((candidate) => candidate.eventId)),
+    new Set(canonicalEvents.map((event) => event.id)),
   );
 });
 
-test("events recommendation tool returns a specifically referenced ended catalogue event", async () => {
+test("events recommendation tool returns a specifically referenced ended canonical event", async () => {
   const tool = createEventsRecommendationTool({
     actorId,
+    canonicalReader: canonicalReaderFor([
+      canonicalRecord({
+        description: "Restaurant inbound growth meeting for Tokyo operators.",
+        endsAt: "2026-06-10T12:00:00.000Z",
+        id: "event_01",
+        startsAt: "2026-06-10T10:00:00.000Z",
+        title: "东京餐饮入境客增长会",
+        venue: "Tokyo",
+      }),
+    ]),
     eventService: createLiveEventCrudAndImportService({
       provider: {
         source: "live-store:empty-actor-events",
@@ -346,6 +453,154 @@ test("events recommendation tool returns a specifically referenced ended catalog
   assert.equal(result.candidates[0]?.title, "东京餐饮入境客增长会");
   assert.equal(result.candidates[0]?.upcoming, false);
   assert.match(result.summary, /specifically referenced event/i);
+});
+
+test("events recommendation tool returns empty from an empty canonical and actor-owned snapshot", async () => {
+  let reads = 0;
+  const tool = createEventsRecommendationTool({
+    actorId,
+    canonicalReader: canonicalReaderFor([], () => {
+      reads += 1;
+    }),
+    eventService: createLiveEventCrudAndImportService({
+      provider: {
+        source: "live-store:empty-actor-events",
+        sourceLabel: "Empty actor event store",
+        listEvents: () => [],
+        getEvent: () => null,
+        createManualEvent: () => {
+          throw new Error("Recommendation reads must not create events.");
+        },
+      },
+    }),
+    now: () => Date.parse("2026-07-28T00:00:00.000Z"),
+  });
+
+  const result = await tool.recommend({ query: "近期活动" });
+
+  assert.equal(result.state, "empty");
+  assert.equal(result.candidates.length, 0);
+  assert.equal(reads, 1);
+  assert.equal(result.sourceLabel, "Canonical Event Core and account events");
+});
+
+test("events recommendation tool fails explicitly when canonical Event Core is unavailable", async () => {
+  let actorStoreRead = false;
+  const tool = createEventsRecommendationTool({
+    actorId,
+    canonicalReader: null,
+    eventService: {
+      listEvents() {
+        actorStoreRead = true;
+        throw new Error("Unavailable canonical reads must fail before actor reads.");
+      },
+      createEvent() {
+        throw new Error("Recommendation reads must not create events.");
+      },
+      getEvent() {
+        throw new Error("Recommendation reads must not read event detail records.");
+      },
+    },
+  });
+
+  const result = await tool.recommend({ query: "近期活动" });
+
+  assert.equal(result.state, "failure");
+  assert.equal(result.sourceLabel, "Canonical Event Core");
+  assert.equal(actorStoreRead, false);
+  assert.match(result.summary, /unavailable or returned invalid/i);
+});
+
+test("events recommendation tool does not mask actor-owned store failure with canonical events", async () => {
+  const tool = createEventsRecommendationTool({
+    actorId,
+    canonicalReader: canonicalReaderFor([
+      canonicalRecord({
+        description: "Canonical event that must not mask ownership failure.",
+        endsAt: "2026-08-01T12:00:00.000Z",
+        id: "event:canonical:fail-closed",
+        startsAt: "2026-08-01T10:00:00.000Z",
+        title: "Fail closed forum",
+        venue: "Tokyo",
+      }),
+    ]),
+    eventService: createLiveEventCrudAndImportService({ provider: null }),
+  });
+
+  const result = await tool.recommend({ query: "forum" });
+
+  assert.equal(result.state, "failure");
+  assert.equal(result.candidates.length, 0);
+  assert.match(result.summary, /not configured/i);
+});
+
+test("canonical event recommendation reader rejects invalid snapshots", async () => {
+  const reader = createCanonicalEventRecommendationReader({
+    catalogue: {
+      async read() {
+        return {
+          events: [
+            {
+              endsAt: "not-a-date",
+              evidenceIds: ["evidence:event-core:invalid"],
+              id: "event:canonical:invalid",
+              location: "Tokyo",
+              name: "Invalid canonical event",
+              source: {
+                id: "event-core-postgres:event:canonical:invalid:v1",
+                type: "event_import",
+              },
+              startsAt: "2026-08-01T10:00:00.000Z",
+            },
+          ],
+          evidenceSummaries: {},
+          generatedAt: "2026-07-28T00:00:00.000Z",
+          participantCounts: {},
+          publicCodes: {},
+        };
+      },
+      async readRecords() {
+        return {
+          generatedAt: "2026-07-28T00:00:00.000Z",
+          organizerIds: {
+            "event:canonical:invalid": "actor:canonical-organizer",
+          },
+          publicCodes: {
+            "event:canonical:invalid": "INVALID-CANONICAL-EVENT",
+          },
+          records: [
+            canonicalRecord({
+              description: "Invalid canonical event data.",
+              endsAt: "not-a-date",
+              id: "event:canonical:invalid",
+              startsAt: "2026-08-01T10:00:00.000Z",
+              title: "Invalid canonical event",
+              venue: "Tokyo",
+            }),
+          ],
+        };
+      },
+      async readRecordEntry() {
+        return null;
+      },
+      async readRecord() {
+        return null;
+      },
+    },
+  });
+  const tool = createEventsRecommendationTool({
+    actorId,
+    canonicalReader: reader,
+    eventService: createLiveEventCrudAndImportService({
+      provider: createFakeLiveProvider(),
+    }),
+  });
+
+  const result = await tool.recommend({ query: "invalid event" });
+
+  assert.equal(result.state, "failure");
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.sourceLabel, "Canonical Event Core");
 });
 
 test("live event list hides legacy fixture and diagnostic records by default", async () => {

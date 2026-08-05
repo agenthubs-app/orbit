@@ -19,6 +19,18 @@ export interface PublicEventCatalogueSnapshot {
   publicCodes: Readonly<Record<string, string>>;
 }
 
+export interface PublicEventRecordCatalogueSnapshot {
+  generatedAt: string;
+  organizerIds: Readonly<Record<string, string>>;
+  publicCodes: Readonly<Record<string, string>>;
+  records: readonly EventRecord[];
+}
+
+export interface PublicEventRecordEntry {
+  organizerId: string;
+  record: EventRecord;
+}
+
 export interface CanonicalPublicEventCatalogueDependencies {
   eventCoreService: EventCoreService;
   now: Date;
@@ -27,6 +39,8 @@ export interface CanonicalPublicEventCatalogueDependencies {
 
 export interface CanonicalPublicEventCatalogue {
   read(): Promise<PublicEventCatalogueSnapshot>;
+  readRecords(): Promise<PublicEventRecordCatalogueSnapshot>;
+  readRecordEntry(routeId: string): Promise<PublicEventRecordEntry | null>;
   readRecord(routeId: string): Promise<EventRecord | null>;
 }
 
@@ -220,11 +234,9 @@ interface CanonicalPublicEventCatalogueItem {
   publicCode: string;
 }
 
-async function itemsFor(
+function orderedPublicEvents(
   events: readonly PublishedCanonicalEvent[],
-  input: CanonicalPublicEventCatalogueDependencies,
-  generatedAt: string,
-): Promise<readonly CanonicalPublicEventCatalogueItem[]> {
+): readonly PublishedCanonicalEvent[] {
   const ordered = [...events].sort(
     (left, right) =>
       Date.parse(right.startsAt) - Date.parse(left.startsAt) ||
@@ -240,6 +252,15 @@ async function itemsFor(
     if (publicCodes.has(normalizedCode)) invalid(event.eventId, "duplicate publicCode");
     publicCodes.add(normalizedCode);
   }
+  return ordered;
+}
+
+async function itemsFor(
+  ordered: readonly PublishedCanonicalEvent[],
+  input: CanonicalPublicEventCatalogueDependencies,
+  generatedAt: string,
+): Promise<readonly CanonicalPublicEventCatalogueItem[]> {
+  const eventIds = new Set(ordered.map((event) => event.eventId));
   const summaries = await input.readParticipantSummaries([...eventIds]);
   const counts = new Map<string, number>();
   for (const summary of summaries) {
@@ -264,18 +285,7 @@ async function itemsFor(
 async function readCanonicalPublicEventCatalogue(
   input: CanonicalPublicEventCatalogueDependencies,
 ): Promise<PublicEventCatalogueSnapshot> {
-  const generatedAt = timestamp(input.now.toISOString(), "generatedAt", "catalogue");
-  const published = await input.eventCoreService.listPublishedEvents(input.now);
-  for (const event of published) {
-    if (event.lifecycleState !== "published") {
-      invalid(event.eventId, "lifecycleState");
-    }
-  }
-  const items = await itemsFor(
-    published.filter((event) => Boolean(event.publicCode?.trim())),
-    input,
-    generatedAt,
-  );
+  const { generatedAt, items } = await readCanonicalPublicItems(input);
   return {
     events: items.map((item) => item.event),
     evidenceSummaries: Object.fromEntries(
@@ -291,10 +301,74 @@ async function readCanonicalPublicEventCatalogue(
   };
 }
 
-async function readCanonicalPublicEventRecord(
+async function readCanonicalPublicItems(
+  input: CanonicalPublicEventCatalogueDependencies,
+): Promise<{
+  generatedAt: string;
+  items: readonly CanonicalPublicEventCatalogueItem[];
+}> {
+  const { events, generatedAt } = await readCanonicalPublicEvents(input);
+  const items = await itemsFor(
+    events,
+    input,
+    generatedAt,
+  );
+  return { generatedAt, items };
+}
+
+async function readCanonicalPublicEvents(
+  input: CanonicalPublicEventCatalogueDependencies,
+): Promise<{
+  events: readonly PublishedCanonicalEvent[];
+  generatedAt: string;
+}> {
+  const generatedAt = timestamp(
+    input.now.toISOString(),
+    "generatedAt",
+    "catalogue",
+  );
+  const published = await input.eventCoreService.listPublishedEvents(input.now);
+  for (const event of published) {
+    if (event.lifecycleState !== "published") {
+      invalid(event.eventId, "lifecycleState");
+    }
+  }
+  return {
+    events: orderedPublicEvents(
+      published.filter((event) => Boolean(event.publicCode?.trim())),
+    ),
+    generatedAt,
+  };
+}
+
+async function readCanonicalPublicEventRecords(
+  input: CanonicalPublicEventCatalogueDependencies,
+): Promise<PublicEventRecordCatalogueSnapshot> {
+  const { events, generatedAt } = await readCanonicalPublicEvents(input);
+  return {
+    generatedAt,
+    organizerIds: Object.fromEntries(
+      events.map((event) => [
+        event.eventId,
+        requiredText(event.organizerActorId, "organizerActorId", event.eventId),
+      ]),
+    ),
+    publicCodes: Object.fromEntries(
+      events.map((event) => [
+        event.eventId,
+        requiredText(event.publicCode, "publicCode", event.eventId),
+      ]),
+    ),
+    records: events.map((event) =>
+      publishedCanonicalEventToEventRecord(event, generatedAt),
+    ),
+  };
+}
+
+async function readCanonicalPublicEventRecordEntry(
   input: CanonicalPublicEventCatalogueDependencies,
   routeId: string,
-): Promise<EventRecord | null> {
+): Promise<PublicEventRecordEntry | null> {
   if (!routeId.trim()) return null;
   const event = await input.eventCoreService.getPublishedEvent(
     routeId,
@@ -305,14 +379,29 @@ async function readCanonicalPublicEventRecord(
     invalid(event.eventId, "lifecycleState");
   }
   if (!event.publicCode?.trim()) return null;
-  return publishedCanonicalEventToEventRecord(event, input.now.toISOString());
+  return {
+    organizerId: requiredText(
+      event.organizerActorId,
+      "organizerActorId",
+      event.eventId,
+    ),
+    record: publishedCanonicalEventToEventRecord(
+      event,
+      input.now.toISOString(),
+    ),
+  };
 }
 
 export function createCanonicalPublicEventCatalogue(
   input: CanonicalPublicEventCatalogueDependencies,
 ): CanonicalPublicEventCatalogue {
+  const readRecordEntry = (routeId: string) =>
+    readCanonicalPublicEventRecordEntry(input, routeId);
+
   return {
     read: () => readCanonicalPublicEventCatalogue(input),
-    readRecord: (routeId) => readCanonicalPublicEventRecord(input, routeId),
+    readRecords: () => readCanonicalPublicEventRecords(input),
+    readRecordEntry,
+    readRecord: async (routeId) => (await readRecordEntry(routeId))?.record ?? null,
   };
 }

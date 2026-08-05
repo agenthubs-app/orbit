@@ -187,7 +187,7 @@ test("app party route loader fails closed instead of inventing a mock party mode
 test("registered catalogue attendees do not receive catalogue rows as fake AI recommendations", async () => {
   await withMockParty(async () => {
     const { getOrbitLandingViewModel } = await import(
-      "../../app/(app)/app/orbit-landing-route-view-model"
+      "../support/legacy-orbit-landing-view"
     );
     const { eventRegistrationRuntimeService } = await import(
       "../../features/events/registration/runtime"
@@ -237,7 +237,7 @@ test("registered catalogue attendees do not receive catalogue rows as fake AI re
 test("unregistered catalogue viewers do not receive Party attendee context", async () => {
   await withMockParty(async () => {
     const { getOrbitLandingViewModel } = await import(
-      "../../app/(app)/app/orbit-landing-route-view-model"
+      "../support/legacy-orbit-landing-view"
     );
     const { loadAppPartyRouteViewModel } = await import(
       "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
+import { getOrbitLandingViewModel } from "../support/legacy-orbit-landing-view";
 import type { MockRuntimeFixtures } from "../../shared/mock/fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 
@@ -231,8 +231,8 @@ test("public landing catalogue does not expose hybrid account or contact identit
     assert.equal(landing.account.fullName, "Orbit");
     assert.deepEqual(landing.connections, []);
     assert.ok(hybridEvent);
-    assert.equal(hybridEvent.host, "Orbit");
-    assert.equal(hybridEvent.organizer, "Orbit");
+    assert.equal(hybridEvent.host, "Event organizer");
+    assert.equal(hybridEvent.organizer, "Event organizer");
     assert.deepEqual(hybridEvent.stats.attendees, []);
     assert.equal(hybridEvent.stats.authed, false);
     assert.equal(hybridEvent.stats.youRsvped, false);

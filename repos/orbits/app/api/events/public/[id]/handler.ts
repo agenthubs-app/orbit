@@ -6,6 +6,7 @@ import {
 import type {
   CanonicalPublicEventCatalogue,
 } from "../../../../../features/events/core/public-catalogue";
+import { canonicalPublicOrganizerLabel } from "../../../../../features/events/core/public-organizer-identity";
 import {
   failure,
   runtimeBoundaryHeaders,
@@ -13,8 +14,6 @@ import {
 } from "../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../shared/errors/app-error";
-
-const PUBLIC_ORGANIZER_NAME = "Orbit";
 
 export interface PublicEventDetailContext {
   params: Promise<{ id: string }>;
@@ -49,8 +48,9 @@ function unavailableResponse(mode: ReturnType<typeof resolveFeatureMode>, cause?
 }
 
 /**
- * `readRecord` resolves Event Core IDs, public codes, and registered aliases;
- * the route intentionally adds no legacy identifier lookup.
+ * `readRecordEntry` resolves Event Core IDs, public codes, registered aliases,
+ * and the canonical owner used for the opaque public organizer identity. The
+ * route intentionally adds no legacy identifier lookup.
  */
 export function createPublicEventDetailGetHandler(
   dependencies: PublicEventDetailRouteDependencies = {},
@@ -67,8 +67,8 @@ export function createPublicEventDetailGetHandler(
       if (!catalogue) return unavailableResponse(mode);
 
       const { id } = await context.params;
-      const record = await catalogue.readRecord(routeId(id));
-      if (!record) {
+      const entry = await catalogue.readRecordEntry(routeId(id));
+      if (!entry) {
         return NextResponse.json(
           failure(new AppError("NOT_FOUND", "Public event not found.")),
           {
@@ -81,8 +81,8 @@ export function createPublicEventDetailGetHandler(
       return NextResponse.json(
         success({
           event: {
-            ...record,
-            organizer: PUBLIC_ORGANIZER_NAME,
+            ...entry.record,
+            organizer: canonicalPublicOrganizerLabel(entry.organizerId),
           },
         }),
         {

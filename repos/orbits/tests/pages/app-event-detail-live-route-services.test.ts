@@ -256,7 +256,7 @@ test("/app/events/[id] serves public and authorized private detail from one cano
 
 test("public event presentation preserves aggregate count without attendee names", async () => {
   const { getOrbitLandingViewModel } =
-    await import("../../app/(app)/app/orbit-landing-route-view-model");
+    await import("../support/legacy-orbit-landing-view");
   const { presentOrbitEvent } =
     await import("../../app/(app)/app/orbit-event-presentation");
   const event = getOrbitLandingViewModel().events.find(
@@ -277,7 +277,7 @@ test("public event presentation preserves aggregate count without attendee names
 
 test("event detail presents invalid end times honestly instead of a zero-duration range", async () => {
   const { getOrbitLandingViewModel } =
-    await import("../../app/(app)/app/orbit-landing-route-view-model");
+    await import("../support/legacy-orbit-landing-view");
   const { presentOrbitEvent } =
     await import("../../app/(app)/app/orbit-event-presentation");
   const { sourceBoundedAgenda } =

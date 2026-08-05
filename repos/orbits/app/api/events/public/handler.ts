@@ -6,11 +6,10 @@ import {
 import type {
   CanonicalPublicEventCatalogue,
 } from "../../../../features/events/core/public-catalogue";
+import { canonicalPublicOrganizerLabel } from "../../../../features/events/core/public-organizer-identity";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
 import { AppError } from "../../../../shared/errors/app-error";
-
-const PUBLIC_ORGANIZER_NAME = "Orbit";
 
 export interface PublicEventsRouteDependencies {
   createCatalogue?: () => CanonicalPublicEventCatalogue | null;
@@ -32,11 +31,7 @@ function unavailableResponse(mode: ReturnType<typeof resolveFeatureMode>, cause?
   );
 }
 
-/**
- * The list deliberately materializes each record through `readRecord`, so
- * its event fields retain the existing public API shape while every value
- * remains sourced from the canonical Event Core catalogue.
- */
+/** Reads the API-compatible records in one canonical batch. */
 export function createPublicEventsGetHandler(
   dependencies: PublicEventsRouteDependencies = {},
 ) {
@@ -48,32 +43,32 @@ export function createPublicEventsGetHandler(
       )();
       if (!catalogue) return unavailableResponse(mode);
 
-      const snapshot = await catalogue.read();
-      const events = await Promise.all(
-        snapshot.events.map(async (event) => {
-          const record = await catalogue.readRecord(event.id);
-          const code = snapshot.publicCodes[event.id];
-          if (
-            !record ||
-            record.id !== event.id ||
-            typeof code !== "string" ||
-            !code.trim()
-          ) {
-            throw new Error("Canonical public catalogue snapshot is inconsistent.");
-          }
-          return Object.freeze({
-            ...record,
-            code,
-            organizer: PUBLIC_ORGANIZER_NAME,
-          });
-        }),
-      );
+      const snapshot = await catalogue.readRecords();
+      const events = snapshot.records.map((record) => {
+        const code = snapshot.publicCodes[record.id];
+        const organizerId = snapshot.organizerIds[record.id];
+        if (
+          typeof code !== "string" ||
+          !code.trim() ||
+          typeof organizerId !== "string" ||
+          !organizerId.trim()
+        ) {
+          throw new Error(
+            "Canonical public catalogue snapshot is inconsistent.",
+          );
+        }
+        return Object.freeze({
+          ...record,
+          code,
+          organizer: canonicalPublicOrganizerLabel(organizerId),
+        });
+      });
 
       return NextResponse.json(
         success({
           events,
           generatedAt: snapshot.generatedAt,
-          organizer: { name: PUBLIC_ORGANIZER_NAME },
+          organizer: null,
         }),
         {
           headers: runtimeBoundaryHeaders(mode),

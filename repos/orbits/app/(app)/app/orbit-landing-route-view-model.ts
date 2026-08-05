@@ -1,9 +1,6 @@
 import type { EventDTO } from "../../../shared/domain/contracts";
-import {
-  readPublicEventCatalogue,
-  type PublicEventCatalogueSnapshot,
-} from "../../../features/events/public-catalogue";
 import { eventCodeFor } from "../../../features/events/public-route-code";
+import { canonicalPublicOrganizerLabel } from "../../../features/events/core/public-organizer-identity";
 import { hashString } from "../../../shared/utils/stable-hash";
 import {
   eventIndustryFor,
@@ -87,7 +84,11 @@ export interface OrbitLandingViewModel {
   events: OrbitLandingEventView[];
 }
 
-type OrbitLandingCatalogueSnapshot = PublicEventCatalogueSnapshot & {
+type OrbitLandingCatalogueSnapshot = {
+  events: readonly EventDTO[];
+  evidenceSummaries: Readonly<Record<string, string>>;
+  generatedAt: string;
+  participantCounts: Readonly<Record<string, number>>;
   publicCodes?: Readonly<Record<string, string>>;
 };
 
@@ -164,6 +165,7 @@ function eventView(
   const description =
     catalogue.evidenceSummaries[event.id] ??
     "Source-backed event loaded from the approved public catalogue.";
+  const organizer = canonicalPublicOrganizerLabel(event.organizerId);
 
   return {
     address: event.location ?? "",
@@ -175,14 +177,14 @@ function eventView(
     detailLogoUrl: logoUrl,
     endsAt: event.endsAt ?? event.startsAt,
     feeLabel: "Source-backed",
-    host: "Orbit",
+    host: organizer,
     id: event.id,
     industry: eventIndustryFor(event),
     logoUrl,
     mapX,
     mapY,
     name: event.name,
-    organizer: "Orbit",
+    organizer,
     participantCount: attendeeCount,
     place: event.location ?? "Local remote database",
     startsAt: event.startsAt,
@@ -242,8 +244,4 @@ export function getOrbitLandingViewModelFromCatalogue(
       eventView(catalogue, event, index),
     ),
   };
-}
-
-export function getOrbitLandingViewModel(): OrbitLandingViewModel {
-  return getOrbitLandingViewModelFromCatalogue(readPublicEventCatalogue());
 }

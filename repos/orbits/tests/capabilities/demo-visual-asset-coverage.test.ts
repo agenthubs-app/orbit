@@ -16,7 +16,7 @@ import {
   eventDetailRouteToOrbitLandingEventView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
-import { getOrbitLandingViewModel } from "../../app/(app)/app/orbit-landing-route-view-model";
+import { getOrbitLandingViewModel } from "../support/legacy-orbit-landing-view";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 

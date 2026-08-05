@@ -6,10 +6,14 @@ import type {
 } from "./event-crud-and-import/contract";
 import type {
   EventCrudAndImportService,
-  EventCrudAndImportServiceResult,
 } from "./event-crud-and-import/service";
+import {
+  CANONICAL_EVENT_RECOMMENDATION_SOURCE_LABEL,
+  createConfiguredCanonicalEventRecommendationReader,
+  type CanonicalEventRecommendationReader,
+  type CanonicalEventRecommendationSnapshot,
+} from "./core/event-recommendation-reader";
 import { createEventCrudAndImportService } from "./service-factory";
-import { readPublicEventCatalogueRecords } from "./public-catalogue";
 
 export interface EventsRecommendationToolInput {
   query: string;
@@ -65,8 +69,8 @@ export interface EventsRecommendationTool {
 
 export interface EventsRecommendationToolOptions {
   actorId?: string | null;
+  canonicalReader?: CanonicalEventRecommendationReader | null;
   eventService?: EventCrudAndImportService;
-  publicCatalogueRecords?: readonly EventRecord[];
   // 可注入的时间源，便于测试固定"未来活动优先"的判定；默认取真实当前时间。
   now?: () => number;
 }
@@ -441,24 +445,17 @@ function resultForList(
   };
 }
 
-function isPromiseLike<TResult>(
-  result: EventCrudAndImportServiceResult<TResult>,
-): result is Promise<TResult> {
-  const maybePromise = result as { then?: unknown };
-
-  return typeof maybePromise.then === "function";
-}
-
-function catalogueBackedListResult(
+function canonicalBackedListResult(
   listResult: EventListResult,
-  catalogueRecords: readonly EventRecord[],
-  nowMs: number,
+  snapshot: CanonicalEventRecommendationSnapshot,
   statusFilter: EventStatus | null,
 ): EventListResult {
-  const publicEvents = catalogueRecords.filter(
+  if (listResult.success === false) return listResult;
+
+  const publicEvents = snapshot.records.filter(
     (event) => !statusFilter || event.status === statusFilter,
   );
-  const ownedEvents = listResult.success ? listResult.data.events : [];
+  const ownedEvents = listResult.data.events;
   const eventsById = new Map(
     publicEvents.map((event) => [event.id, event] as const),
   );
@@ -468,14 +465,7 @@ function catalogueBackedListResult(
   }
 
   const events = [...eventsById.values()];
-  if (events.length === 0) {
-    return listResult;
-  }
-
-  const ownedProvenance =
-    "error" in listResult
-      ? listResult.error.provenance
-      : listResult.data.provenance;
+  const ownedProvenance = listResult.data.provenance;
   const evidenceIds = events.flatMap((event) =>
     event.evidence.map((evidence) => evidence.evidenceId),
   );
@@ -483,24 +473,22 @@ function catalogueBackedListResult(
   return {
     success: true,
     data: {
-      state: "success",
+      state: events.length > 0 ? "success" : "empty",
       events,
-      importedRecords: listResult.success
-        ? listResult.data.importedRecords
-        : [],
-      summary: `${events.length} event(s) are available from the public catalogue and actor-owned Events records.`,
+      importedRecords: listResult.data.importedRecords,
+      summary: `${events.length} event(s) are available from canonical Event Core and actor-owned Events records.`,
       provenance: {
         ...ownedProvenance,
-        source: "orbit-public-event-catalogue+actor-events",
-        sourceLabel: "Orbit public event catalogue and account events",
+        source: "event-core-postgres+actor-events",
+        sourceLabel: "Canonical Event Core and account events",
         evidenceIds:
           evidenceIds.length > 0
             ? [...new Set(evidenceIds)]
-            : ["evidence:orbit-public-event-catalogue:empty"],
-        collectedAt: new Date(nowMs).toISOString(),
-        generationMethod: listResult.success
-          ? ownedProvenance.generationMethod
-          : "local-remote-store-query",
+            : snapshot.evidenceIds.length > 0
+              ? snapshot.evidenceIds
+              : ["evidence:event-core:catalogue:empty"],
+        collectedAt: snapshot.collectedAt,
+        generationMethod: ownedProvenance.generationMethod,
         liveDatabaseWriteExecuted: false,
       },
       nextAction:
@@ -509,52 +497,54 @@ function catalogueBackedListResult(
   };
 }
 
+function canonicalReadFailure(): EventsRecommendationToolResult {
+  return {
+    candidates: [],
+    databaseQueryExecuted: false,
+    evidenceIds: ["evidence:event-core:recommendation:read-failed"],
+    sourceLabel: CANONICAL_EVENT_RECOMMENDATION_SOURCE_LABEL,
+    state: "failure",
+    summary:
+      "Canonical Event Core is unavailable or returned invalid event recommendation data.",
+  };
+}
+
 export function createEventsRecommendationTool(
   options: EventsRecommendationToolOptions = {},
 ): EventsRecommendationTool {
   const actorId = options.actorId?.trim() || undefined;
   const eventService = options.eventService ?? createEventCrudAndImportService();
+  const canonicalReader =
+    options.canonicalReader === undefined
+      ? createConfiguredCanonicalEventRecommendationReader()
+      : options.canonicalReader;
   const now = options.now ?? (() => Date.now());
 
   return {
-    recommend(input): EventsRecommendationToolResultValue {
+    async recommend(input): Promise<EventsRecommendationToolResult> {
       const statusFilter = normalizedStatus(input.toolArguments?.statusFilter);
       const nowMs = now();
-      const publicCatalogueRecords =
-        options.publicCatalogueRecords ??
-        readPublicEventCatalogueRecords(nowMs);
-      const listResult = eventService.listEvents(
-        {
-          ...(actorId ? { actorId } : {}),
-          ...(statusFilter ? { statusFilter } : {}),
-        },
-      );
+      if (!canonicalReader) return canonicalReadFailure();
 
-      if (isPromiseLike(listResult)) {
-        return listResult.then((resolved) =>
-          resultForList(
-            catalogueBackedListResult(
-              resolved,
-              publicCatalogueRecords,
-              nowMs,
-              statusFilter,
-            ),
-            input,
-            nowMs,
+      try {
+        const [snapshot, listResult] = await Promise.all([
+          canonicalReader.read(new Date(nowMs)),
+          Promise.resolve().then(() =>
+            eventService.listEvents({
+              ...(actorId ? { actorId } : {}),
+              ...(statusFilter ? { statusFilter } : {}),
+            }),
           ),
-        );
-      }
+        ]);
 
-      return resultForList(
-        catalogueBackedListResult(
-          listResult,
-          publicCatalogueRecords,
+        return resultForList(
+          canonicalBackedListResult(listResult, snapshot, statusFilter),
+          input,
           nowMs,
-          statusFilter,
-        ),
-        input,
-        nowMs,
-      );
+        );
+      } catch {
+        return canonicalReadFailure();
+      }
     },
   };
 }

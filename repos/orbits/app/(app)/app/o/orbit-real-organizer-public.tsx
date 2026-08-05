@@ -112,7 +112,7 @@ export function OrbitRealOrganizerPublic({ language = "zh", viewModel }: { langu
               <h1 className="h-display" style={{ margin: 0 }}>{viewModel.name}</h1>
               <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 4 }}>{viewModel.handle}</div>
             </div>
-            <span className="badge badge-live" style={{ height: 26, marginBottom: 4 }}><Icon name="check" size={13} />{t({ en: "Verified host", zh: "已认证主办方" })}</span>
+            <span className="badge" style={{ height: 26, marginBottom: 4 }}>{t({ en: "Canonical organizer", zh: "已记录主办方" })}</span>
           </div>
           <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
             {stats.map((stat) => (

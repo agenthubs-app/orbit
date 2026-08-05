@@ -14,11 +14,13 @@ import type {
   CanonicalPublicEventCatalogue,
   PublicEventCatalogueSnapshot,
 } from "../../features/events/core/public-catalogue";
+import { canonicalPublicOrganizerLabel } from "../../features/events/core/public-organizer-identity";
 import { EventCoreDataError } from "../../features/events/core/contract";
 import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const EVENT_ID = "event:canonical-public";
+const ORGANIZER_ID = "actor:canonical-organizer";
 const PUBLIC_CODE = "TOKYO-BRIDGE-2026";
 const LEGACY_ALIAS = "legacy-tokyo-bridge";
 
@@ -73,7 +75,7 @@ const canonicalSnapshot: PublicEventCatalogueSnapshot = {
     id: EVENT_ID,
     location: canonicalRecord.venue,
     name: canonicalRecord.title,
-    organizerId: "actor:canonical-organizer",
+    organizerId: ORGANIZER_ID,
     source: {
       id: sourceMetadata.id,
       label: sourceMetadata.label,
@@ -96,6 +98,26 @@ function catalogue(input: {
     async read() {
       if (input.readError) throw input.readError;
       return input.snapshot ?? canonicalSnapshot;
+    },
+    async readRecords() {
+      if (input.readError) throw input.readError;
+      const snapshot = input.snapshot ?? canonicalSnapshot;
+      return {
+        generatedAt: snapshot.generatedAt,
+        organizerIds: Object.fromEntries(
+          snapshot.events.map((event) => [event.id, event.organizerId ?? ""]),
+        ),
+        publicCodes: snapshot.publicCodes,
+        records: [canonicalRecord],
+      };
+    },
+    async readRecordEntry(routeId) {
+      const record = input.readRecord
+        ? await input.readRecord(routeId)
+        : routeId === EVENT_ID
+          ? canonicalRecord
+          : null;
+      return record ? { organizerId: ORGANIZER_ID, record } : null;
     },
     async readRecord(routeId) {
       if (input.readRecord) return input.readRecord(routeId);
@@ -125,11 +147,11 @@ test("public events list keeps the envelope and event fields while using canonic
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
   assert.equal(body.data?.generatedAt, canonicalSnapshot.generatedAt);
-  assert.equal(body.data?.organizer?.name, "Orbit");
+  assert.equal(body.data?.organizer, null);
   assert.deepEqual(body.data?.events, [{
     ...canonicalRecord,
     code: PUBLIC_CODE,
-    organizer: "Orbit",
+    organizer: canonicalPublicOrganizerLabel(ORGANIZER_ID),
   }]);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
@@ -159,7 +181,10 @@ test("public event detail resolves canonical IDs, public codes, and registered a
     };
     assert.equal(response.status, 200);
     assert.equal(body.success, true);
-    assert.deepEqual(body.data?.event, { ...canonicalRecord, organizer: "Orbit" });
+    assert.deepEqual(body.data?.event, {
+      ...canonicalRecord,
+      organizer: canonicalPublicOrganizerLabel(ORGANIZER_ID),
+    });
   }
   assert.deepEqual(observed, [EVENT_ID, PUBLIC_CODE, LEGACY_ALIAS]);
 });
@@ -238,16 +263,19 @@ test("unconfigured or invalid canonical catalogue returns a safe 503 without a f
 });
 
 test("public event API routes have no legacy catalogue import path", () => {
-  const sources = [
+  const sourceByFile = Object.fromEntries([
     "app/api/events/public/route.ts",
     "app/api/events/public/handler.ts",
     "app/api/events/public/[id]/route.ts",
     "app/api/events/public/[id]/handler.ts",
-  ].map((file) => readFileSync(join(projectRoot, file), "utf8"));
-  const source = sources.join("\n");
+  ].map((file) => [file, readFileSync(join(projectRoot, file), "utf8")]));
+  const source = Object.values(sourceByFile).join("\n");
+  const listHandler = sourceByFile["app/api/events/public/handler.ts"] ?? "";
 
   assert.match(source, /createConfiguredCanonicalPublicEventCatalogue/u);
   assert.doesNotMatch(source, /readPublicEventCatalogue/u);
   assert.doesNotMatch(source, /publicEventCatalogueRecord/u);
-  assert.match(source, /\.readRecord\(/u);
+  assert.match(source, /\.readRecordEntry\(/u);
+  assert.match(listHandler, /\.readRecords\(\)/u);
+  assert.doesNotMatch(listHandler, /\.readRecord(?:Entry)?\(/u);
 });

@@ -11,6 +11,7 @@ import {
 } from "../../features/events/core/backfill";
 import { readEventCoreBackfillCandidates } from "../../features/events/core/backfill-sources";
 import { EventCoreDataError } from "../../features/events/core/contract";
+import { createCanonicalEventRecommendationReader } from "../../features/events/core/event-recommendation-reader";
 import { EVENT_CANONICAL_V1_MANIFEST } from "../../features/events/core/migration/manifests/event-canonical-v1";
 import {
   createCanonicalPublicEventCatalogue,
@@ -19,11 +20,17 @@ import {
 } from "../../features/events/core/public-catalogue";
 import { createEventCoreService } from "../../features/events/core/service";
 import { createPostgresEventCoreRepository } from "../../features/events/core/storage/postgres-repository";
+import { createLiveEventCrudAndImportService } from "../../features/events/event-crud-and-import/live-service";
+import { createStorageEventStoreProvider } from "../../features/events/event-crud-and-import/providers/storage-event-provider";
+import { createEventsRecommendationTool } from "../../features/events/event-recommendation-tool";
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
 import { eventCodeFor } from "../../features/events/public-route-code";
 import { readPublicEventCatalogue } from "../../features/events/public-catalogue";
+import { loadLocalEnv } from "../../scripts/load-local-env";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 
+loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 const privateEvents = [
   {
@@ -195,9 +202,17 @@ test(
         },
       });
       const snapshot = await catalogue.read();
+      const recordSnapshot = await catalogue.readRecords();
       const oracle = readPublicEventCatalogue();
 
       assert.equal(snapshot.events.length, 13);
+      assert.equal(recordSnapshot.records.length, 13);
+      assert.equal(recordSnapshot.generatedAt, snapshot.generatedAt);
+      assert.deepEqual(recordSnapshot.publicCodes, snapshot.publicCodes);
+      assert.deepEqual(
+        recordSnapshot.records.map((record) => record.id),
+        snapshot.events.map((event) => event.id),
+      );
       assert.equal(Object.keys(snapshot.publicCodes).length, 13);
       assert.deepEqual(
         new Set(snapshot.events.map((event) => event.id)),
@@ -262,6 +277,35 @@ test(
         true,
       );
       assert.equal(await catalogue.readRecord("   "), null);
+
+      const recommendationTool = createEventsRecommendationTool({
+        actorId: "account:public-owner",
+        canonicalReader: createCanonicalEventRecommendationReader({ catalogue }),
+        eventService: createLiveEventCrudAndImportService({
+          provider: createStorageEventStoreProvider({
+            store: createPostgresLiveRecordStore({ client: operationPool }),
+            workspaceId,
+          }),
+        }),
+        now: () => now.getTime(),
+      });
+      const recommendation = await recommendationTool.recommend({
+        query:
+          "请查看 event:orbit-only:climate-finance 并推荐这个账号拥有的私有活动",
+        toolArguments: { limit: 1 },
+      });
+
+      assert.equal(recommendation.state, "success");
+      assert.equal(recommendation.databaseQueryExecuted, true);
+      assert.equal(recommendation.candidates.length, 1);
+      assert.equal(
+        recommendation.candidates[0]?.eventId,
+        "event:orbit-only:climate-finance",
+      );
+      assert.equal(
+        recommendation.sourceLabel,
+        "Canonical Event Core and account events",
+      );
     } finally {
       await client.close();
       await adminPool.query(`drop schema if exists ${schema} cascade`);
