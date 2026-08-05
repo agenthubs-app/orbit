@@ -33,6 +33,7 @@ test("evaluation options default to read-only A/B settings", () => {
     concurrency: 1,
     execute: false,
     generationId: "generation:one",
+    requestTimeoutMs: 90_000,
     rounds: 3,
     temperatures: [1, 0.2],
   });

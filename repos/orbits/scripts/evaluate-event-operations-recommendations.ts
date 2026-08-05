@@ -21,6 +21,7 @@ export interface EvaluationOptions {
   concurrency: number;
   execute: boolean;
   generationId: string;
+  requestTimeoutMs: number;
   rounds: number;
   temperatures: readonly number[];
 }
@@ -85,6 +86,7 @@ export function parseEvaluationOptions(args: readonly string[]): EvaluationOptio
     concurrency: numberValue("concurrency", 1),
     execute: values.get("execute") === "true",
     generationId,
+    requestTimeoutMs: numberValue("request-timeout-ms", 90_000),
     rounds: numberValue("rounds", 3),
     temperatures,
   };
@@ -371,6 +373,7 @@ async function main(): Promise<void> {
           jsonOutput: true,
           maxTokens: 8192,
           provider: "deepseek",
+          requestTimeoutMs: options.requestTimeoutMs,
           temperature,
         },
       });
@@ -425,6 +428,7 @@ async function main(): Promise<void> {
         concurrency: options.concurrency,
         execute: options.execute,
         round: item.round,
+        requestTimeoutMs: options.requestTimeoutMs,
         overallBusinessValid: options.execute ? telemetry.overallBusinessValid : null,
         stateHashAfter,
         stateHashBefore,
