@@ -85,14 +85,14 @@ export default async function EventAdmissionReviewPage({
   try {
     await requireEventCapability({
       actorId: session.user.id,
-      capability: "operations.configure",
+      capability: "roles.manage",
       eventId: event.eventId,
       service: accessService,
     });
     canConfigurePolicy = true;
   } catch {
-    // Policy reads remain available to admission reviewers. Writes are
-    // additionally constrained to the event-scoped operations capability.
+    // Reviewers retain read/decision access. Policy writes are reserved for
+    // the Event Core owner through the owner-only roles.manage capability.
   }
 
   return (

@@ -94,3 +94,46 @@ test("appointment deep link fails closed when the actor-scoped contact does not 
     if (renderer) await act(async () => renderer.unmount());
   }
 });
+
+test("confirmed appointment renders the persisted provider state and Google Meet link", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({
+    data: {
+      ...appointment(),
+      confirmed: {
+        candidateId: "slot:1",
+        durationMinutes: 45,
+        medium: {
+          joinUrl: "https://meet.google.com/abc-defg-hij",
+          kind: "video",
+          provider: "google_meet",
+        },
+        proposalRevision: 2,
+        startsAtUtc: "2026-08-04T01:00:00.000Z",
+        timezone: "Asia/Tokyo",
+      },
+      pendingProposalRevision: null,
+      projection: { calendar: "synced", meeting: "synced", revision: 2 },
+      status: "confirmed",
+    },
+    success: true,
+  })) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => {
+      renderer = renderNegotiation({
+        appointmentId: "appointment:aiko-ren",
+        contactId: "contact:ren",
+        eventId: "event:launch",
+      });
+    });
+    const output = JSON.stringify(renderer.toJSON());
+    assert.match(output, /日历已同步/u);
+    assert.match(output, /会议已创建/u);
+    assert.match(output, /加入 Google Meet/u);
+    assert.match(output, /https:\/\/meet\.google\.com\/abc-defg-hij/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => renderer.unmount());
+  }
+});

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEventOperationsAdminGetHandler } from "../../app/api/events/[id]/operations/handlers";
+import {
+  createEventOperationsAdminGetHandler,
+  createEventOperationsExportGetHandler,
+} from "../../app/api/events/[id]/operations/handlers";
 import type {
   EventAccessAssignmentState,
   EventAccessRole,
@@ -67,6 +70,21 @@ function operationsService(calls: { adminWorkspace: number }): EventOperationsSe
     async adminWorkspace() {
       calls.adminWorkspace += 1;
       return { eventId } as never;
+    },
+  } as unknown as EventOperationsService;
+}
+
+function exportOperationsService(
+  calls: { adminWorkspace: number },
+): EventOperationsService {
+  return {
+    async adminWorkspace() {
+      calls.adminWorkspace += 1;
+      return {
+        checkIns: [],
+        participants: [],
+        publishedResult: null,
+      } as never;
     },
   } as unknown as EventOperationsService;
 }
@@ -276,6 +294,42 @@ test("admin route preserves canonical errors when the service rechecks access", 
 
       assert.equal(response.status, status);
       assert.equal(await responseCode(response), apiCode);
+    });
+  }
+});
+
+test("CSV export follows attendees.export capability for owner and delegated operations", async (t) => {
+  const cases: readonly [string, AccessFacts, number][] = [
+    ["owner", { owner: true, role: null, state: null }, 200],
+    [
+      "active operations",
+      { owner: false, role: "operations", state: "active" },
+      200,
+    ],
+    [
+      "check-in staff",
+      { owner: false, role: "check_in", state: "active" },
+      403,
+    ],
+  ];
+
+  for (const [name, facts, expectedStatus] of cases) {
+    await t.test(name, async () => {
+      const calls = { adminWorkspace: 0 };
+      const handler = createEventOperationsExportGetHandler({
+        createAccessService: () => accessService(facts),
+        createService: () => exportOperationsService(calls),
+        resolveActor: async () => ({ id: actorId }),
+      });
+
+      const response = await handler(new Request("http://test"), context);
+
+      assert.equal(response.status, expectedStatus);
+      assert.equal(calls.adminWorkspace, expectedStatus === 200 ? 1 : 0);
+      if (expectedStatus === 200) {
+        assert.match(response.headers.get("content-type") ?? "", /text\/csv/u);
+        assert.match(await response.text(), /^generationId,snapshotHash/u);
+      }
     });
   }
 });

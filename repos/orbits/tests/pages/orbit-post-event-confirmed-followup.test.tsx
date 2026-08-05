@@ -7,6 +7,8 @@ import { OrbitPostEventCenter } from "../../app/(app)/app/events/[id]/orbit-post
 
 const EVENT = "event:tokyo-ai-night";
 const candidate = {
+  contactDisplayName: "Ren Hayashi",
+  contactHref: "/app/contacts/contact%3Aren",
   contactId: "contact:ren",
   createdAt: null,
   dueAt: null,
@@ -56,6 +58,9 @@ test("post-event center requires a second confirmation and then renders persiste
     assert.equal(dueField.props.name, "followupDueAt");
     const evidenceCard = renderer.root.find((node) => typeof node.props["data-followup-evidence"] === "string");
     assert.equal(String(evidenceCard.props["data-followup-evidence"]).includes("\u0000"), false);
+    const contactLink = renderer.root.find((node) => node.props["data-followup-contact"] !== undefined);
+    assert.equal(contactLink.props.href, candidate.contactHref);
+    assert.equal(contactLink.children.join(""), candidate.contactDisplayName);
     const confirm = renderer.root.find((node) => node.props["data-followup-confirm"] !== undefined);
     await act(async () => { await (confirm.props.onClick() as Promise<void>); });
     assert.deepEqual(posted, {

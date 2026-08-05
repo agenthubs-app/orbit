@@ -180,6 +180,7 @@ test("reviewer clicks a real applicant, sees every profile answer and adaptive r
     ).length, 2);
     const rendered = JSON.stringify(renderer.toJSON());
     assert.match(rendered, /跨境产品负责人兼产业生态建设者/u);
+    assert.match(rendered, /只有 Event Core 中的当前活动负责人可以修改报名政策/u);
     assert.match(rendered, /你希望对方现在正在解决什么具体问题/u);
     assert.match(rendered, /什么时间和沟通方式最适合你/u);
 
@@ -459,7 +460,7 @@ test("review page is canonical-only and the workspace keeps responsive, authenti
   assert.match(page, /createConfiguredEventCoreService/u);
   assert.match(page, /getPublishedEvent/u);
   assert.match(page, /capability: "admission\.read"/u);
-  assert.match(page, /capability: "operations\.configure"/u);
+  assert.match(page, /capability: "roles\.manage"/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   assert.doesNotMatch(page, /mockEventRecords|readPublicEventCatalogue|legacyEvent/u);
   assert.match(workspace, /<PublicTopNav active="events" \/>/u);

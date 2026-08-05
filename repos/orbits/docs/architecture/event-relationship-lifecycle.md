@@ -11,7 +11,13 @@ Orbit uses one canonical aggregate for each kind of truth:
   and the event relationship graph. The attendee UI reads recommendations only
   from a published generation after `resultsAvailableAt`. A queued, running,
   failed, unpublished, or missing generation is rendered as an explicit state;
-  it is never replaced by locally ranked participants.
+  it is never replaced by locally ranked participants. When the strict Chinese
+  output policy is enabled, a violating model draft gets exactly one bounded
+  AI-only repair call that is told the exact offending Latin tokens; response
+  accounting (tokens, provider bytes) sums both model calls and keeps the final
+  finish reason, persisted task errors stay generic, and a stream-only stderr
+  diagnostic reports why a repair failed. There is no deterministic or local
+  string-replacement fallback.
 - `event contact request` is the only new contact-consent command. Acceptance
   creates actor-scoped relationship projections through the durable operations
   outbox. Legacy matchmaking requests remain readable for history, but cannot
@@ -26,10 +32,12 @@ Orbit uses one canonical aggregate for each kind of truth:
   an IANA timezone, duration, medium, and note. A pending reschedule does not
   replace the last mutually confirmed revision. Accept, counter, decline,
   cancel, complete, and repeated reschedule attempts are retained as history.
-- `appointment projection` creates a calendar/meeting record only for a
-  confirmed revision. Calendar and meeting-provider delivery are independent
-  outbox jobs. Missing provider configuration is reported as `not_synced`, not
-  as success.
+- `appointment projection` creates a calendar record only for the current
+  confirmed revision. A Google Meet conference is requested as part of that
+  same idempotent Calendar upsert, so rescheduling cannot split the calendar and
+  meeting into contradictory provider records. Stale-revision provider jobs are
+  acknowledged without making an external request. Missing provider
+  configuration is reported as `not_synced`, not as success.
 - `post-event review` is a retriable fail-closed state machine
   (`queued -> running -> ready | failed`). AI summaries are shown only after a
   real provider result is stored. Completion progress may use deterministic

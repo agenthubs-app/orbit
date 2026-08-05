@@ -16,10 +16,7 @@ import {
   AppError,
   getHttpStatusForAppErrorCode,
 } from "../../../../../shared/errors/app-error";
-import {
-  withOwnedEventAccess,
-  type OwnedEventAccessDependencies,
-} from "../owned-event-access";
+import type { OwnedEventAccessDependencies } from "../owned-event-access";
 import {
   withRegisteredEventAccess,
   type RegisteredEventAccessDependencies,
@@ -570,7 +567,7 @@ function csvCell(value: unknown): string {
 export function createEventOperationsExportGetHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
-  return withOwnedEventAccess(async function exportEventOperations(
+  return withEventCapabilityAccess("attendees.export", async function exportEventOperations(
     _request: Request,
     _context: EventOperationsRouteContext,
     access,
@@ -635,7 +632,11 @@ export function createEventOperationsExportGetHandler(
         },
       );
     } catch (error) {
+      if (isEventCapabilityAccessError(error)) throw error;
       return errorResponse(error, access.mode);
     }
-  }, dependencies.ownedAccess);
+  }, {
+    createAccessService: dependencies.createAccessService,
+    resolveActor: dependencies.resolveActor,
+  });
 }

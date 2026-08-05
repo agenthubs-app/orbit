@@ -148,7 +148,7 @@ test("appointment retains proposal history through counter, confirmation, and re
   assert.equal(replay.appointment.version, 6);
 
   const outbox = repository.outbox();
-  assert.equal(outbox.length, 16);
+  assert.equal(outbox.length, 14);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.proposed").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.countered").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reschedule.proposed").length, 1);
@@ -157,7 +157,7 @@ test("appointment retains proposal history through counter, confirmation, and re
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reminder.t24h").length, 2);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.memo.t15m").length, 2);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.calendar.requested").length, 2);
-  assert.equal(outbox.filter((event) => event.eventType === "appointment.meeting.requested").length, 2);
+  assert.equal(outbox.filter((event) => event.eventType === "appointment.meeting.requested").length, 0);
 });
 
 test("bilateral relationship uses distinct owner contacts while both actors share one aggregate", async () => {
@@ -253,7 +253,7 @@ test("appointment rejects past candidates and cancellation invalidates scheduled
   const types = repository.outbox().map((event) => event.eventType);
   assert.ok(types.includes("appointment.reminders.invalidate"));
   assert.ok(types.includes("appointment.calendar.cancel"));
-  assert.ok(types.includes("appointment.meeting.cancel"));
+  assert.equal(types.includes("appointment.meeting.cancel"), false);
 });
 
 test("appointment completion is time-gated and proposal timestamps require RFC3339 UTC Z", async () => {

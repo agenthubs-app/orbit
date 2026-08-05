@@ -8,6 +8,7 @@ import type {
 } from "../../shared/domain/contracts";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { createStorageBusinessCardContactWriteProvider } from "../../features/contacts/storage/contact-write-live-record-provider";
+import { createStorageEventContactRequestNotificationWriter } from "../../features/events/event-operations/contact-request-notification-writer";
 import type { EventOperationsEngine } from "../../features/events/event-operations/engine";
 import {
   createEventOperationsOutboxProjector,
@@ -92,6 +93,7 @@ function relationshipMessage(
 test("relationship projection can be replayed ten times without duplicate legacy records", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: null,
     registrationProvider: createEventRegistrationLiveRecordProvider({
       store,
       workspaceId: WORKSPACE_ID,
@@ -131,9 +133,13 @@ test("relationship projection can be replayed ten times without duplicate legacy
   );
 });
 
-test("unsupported outbox events fail terminally while contact-request lifecycle has an explicit canonical-only policy", async () => {
+test("contact-request lifecycle projects actor-scoped in-app notifications with internal deep links", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: createStorageEventContactRequestNotificationWriter({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
     registrationProvider: createEventRegistrationLiveRecordProvider({
       store,
       workspaceId: WORKSPACE_ID,
@@ -143,19 +149,76 @@ test("unsupported outbox events fail terminally while contact-request lifecycle 
       workspaceId: WORKSPACE_ID,
     }),
   });
-  const canonicalOnly = await projector.project(
-    relationshipMessage({ eventType: "event.contact_request.accepted" }),
-  );
-  assert.deepEqual(canonicalOnly, {
-    policy: "canonical_only",
-    projectedIds: [],
-    projection: "none",
+  const common = {
+    requestId: "request:owner-target",
+    requesterActorId: "actor:owner",
+    targetActorId: "actor:target",
+    updatedAt: "2026-08-03T10:00:00.000Z",
+  };
+  await store.upsertRecord({
+    collectionName: "contacts",
+    createdAt: common.updatedAt,
+    evidenceIds: ["evidence:event-consent:owner-target"],
+    lifecycleState: "active",
+    payload: { displayName: "Aiko Nakamura", id: "contact:target-owned-by-owner" },
+    recordId: "contact:target-owned-by-owner",
+    sourceId: common.requestId,
+    sourceType: "event_import",
+    updatedAt: common.updatedAt,
+    userId: common.requesterActorId,
+    workspaceId: WORKSPACE_ID,
   });
-  assert.deepEqual(
-    await projector.project(
-      relationshipMessage({ eventType: "event.contact_request.withdrawn" }),
-    ),
-    canonicalOnly,
+  const transitions = [
+    { eventType: "event.contact_request.created", payload: { ...common, revision: 1 } },
+    { eventType: "event.contact_request.declined", payload: { ...common, revision: 2 } },
+    { eventType: "event.contact_request.accepted", payload: { ...common, contactIdsByActor: { "actor:owner": "contact:target-owned-by-owner", "actor:target": "contact:owner-owned-by-target" }, revision: 3 } },
+    { eventType: "event.contact_request.withdrawn", payload: { ...common, revision: 4 } },
+  ] as const;
+  for (const transition of transitions) {
+    const result = await projector.project(relationshipMessage({
+      aggregateId: common.requestId,
+      aggregateType: "event_contact_request",
+      ...transition,
+    }));
+    assert.equal(result.policy, "in_app");
+    assert.equal(result.projection, "contact_request_notification");
+  }
+  const notifications = await store.listRecords({ collectionName: "notifications", workspaceId: WORKSPACE_ID });
+  assert.equal(notifications.length, 4);
+  assert.deepEqual(notifications.map((record) => record.userId), [
+    "actor:target",
+    "actor:owner",
+    "actor:owner",
+    "actor:target",
+  ]);
+  assert.equal(notifications[0]?.payload.actionHref, "/app/events/event%3Aoutbox-test#event-matchmaking-title");
+  assert.equal(notifications[2]?.payload.actionHref, "/app/contacts/contact%3Atarget-owned-by-owner?eventId=event%3Aoutbox-test");
+  assert.ok(notifications.every((record) => record.payload.channel === "in_app"));
+  await assert.rejects(
+    projector.project(relationshipMessage({
+      aggregateId: common.requestId,
+      aggregateType: "event_contact_request",
+      eventType: "event.contact_request.accepted",
+      payload: { ...common, revision: 5 },
+    })),
+    (error: unknown) => error instanceof EventOperationsOutboxProjectionError
+      && error.code === "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID"
+      && error.retryable === false,
+  );
+  await assert.rejects(
+    projector.project(relationshipMessage({
+      aggregateId: common.requestId,
+      aggregateType: "event_contact_request",
+      eventType: "event.contact_request.accepted",
+      payload: {
+        ...common,
+        contactIdsByActor: { "actor:owner": "contact:not-yet-projected" },
+        revision: 6,
+      },
+    })),
+    (error: unknown) => error instanceof EventOperationsOutboxProjectionError
+      && error.code === "EVENT_OPERATIONS_OUTBOX_PROVIDER_FAILED"
+      && error.retryable === true,
   );
   await assert.rejects(
     projector.project(relationshipMessage({ eventType: "event.unknown" })),
@@ -169,6 +232,7 @@ test("unsupported outbox events fail terminally while contact-request lifecycle 
 test("registration and check-in events follow explicit durable legacy projection policies", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: null,
     registrationProvider: createEventRegistrationLiveRecordProvider({
       store,
       workspaceId: WORKSPACE_ID,

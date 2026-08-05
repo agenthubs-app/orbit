@@ -38,6 +38,11 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /Retry failed shards/);
   assert.match(client, /Publish atomically/);
   assert.match(client, /completed shard outputs were retained/);
+  assert.match(
+    client,
+    /const actionError[\s\S]*await load\(\);[\s\S]*setError\(actionError\)/,
+    "generation failures must remain visible after the latest persisted state is reloaded",
+  );
   assert.match(client, /\/export/);
   assert.match(client, /REAL REGISTRATION DIRECTORY/);
   assert.match(client, /CONSENT AUDIT/);
@@ -51,6 +56,17 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /field === "eventStartsAt"\s*\? event\.startsAt/);
   assert.match(client, /field === "eventEndsAt"\s*\? event\.endsAt/);
   assert.match(client, /readOnly=\{canonicalScheduleFields\.includes/);
+  assert.equal(
+    (client.match(/onInput=\{\(input\) => \{/g) ?? []).length,
+    2,
+    "datetime and numeric policies must update on real input, paste, and autofill events",
+  );
+  assert.equal(
+    (client.match(/const nextValue = input\.currentTarget\.value/g) ?? []).length,
+    2,
+    "input values must be snapshotted before React releases the synthetic event",
+  );
+  assert.doesNotMatch(client, /onChange=\{\(input\) => setForm/);
   assert.match(client, /profileEditDeadlineAt/);
   assert.match(client, /roundOneStartsAt/);
   assert.match(client, /PUBLISHED SEATING PREVIEW/);
@@ -88,7 +104,10 @@ test("event operations routes bind organizer and attendee actions to server even
   for (const path of [...ownerRoutes, ...attendeeRoutes]) {
     assert.match(source(path), /createEventOperations/);
   }
-  assert.match(handlers, /withOwnedEventAccess/);
+  assert.match(
+    handlers,
+    /withEventCapabilityAccess\("attendees\.export"/u,
+  );
   assert.match(handlers, /withRegisteredEventAccess/);
   assert.match(handlers, /EVENT_OPERATIONS_DURABLE_WORKER_REQUIRED/);
   assert.doesNotMatch(handlers, /serviceFor\(dependencies\)\.runGeneration/);

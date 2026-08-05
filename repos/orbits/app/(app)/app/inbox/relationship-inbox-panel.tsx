@@ -378,7 +378,7 @@ function AlertsTab() {
 
       <div className="ri-boundary">
         <Icon name="lock" size={13} />
-        <span>{t({ en: "Nothing is delivered — no push, email, SMS, or notification was sent.", zh: "没有任何投递 — 未发送推送、邮件、短信或通知。" })}</span>
+        <span>{t({ en: "In-app reminders stay in Orbit. No external push, email, or SMS was sent.", zh: "站内提醒仅保留在 Orbit；未发送外部推送、邮件或短信。" })}</span>
       </div>
     </div>
   );

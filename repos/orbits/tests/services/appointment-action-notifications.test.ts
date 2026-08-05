@@ -79,3 +79,30 @@ test("cancelling an unconfirmed proposal still notifies the other participant", 
   assert.equal(event.payload.revision, 0);
   assert.deepEqual(event.payload.notificationRecipientActorIds, [ACTOR_B]);
 });
+
+test("declining an initial or reschedule proposal notifies the proposal author only", async () => {
+  const repository = createMemoryAppointmentRepository();
+  const service = createAppointmentService({
+    authorityVerifier: { async resolveAcceptedBilateralContact() { return { authorityRequestId: "request:accepted", contactIdsByActor: { [ACTOR_A]: CONTACT_A, [ACTOR_B]: CONTACT_B }, counterpartyActorId: ACTOR_B, relationshipPairId: "pair:a-b" }; } },
+    now: () => "2026-08-05T00:00:00.000Z",
+    repository,
+  });
+
+  const initialDraft = await service.createDraft({ actorId: ACTOR_A, appointmentId: "appointment:decline", authorityReference: "request:accepted", eventId: "event:launch", idempotencyKey: "create-decline" });
+  const initialProposal = await service.command({ actorId: ACTOR_A, appointmentId: initialDraft.appointment.appointmentId, command: "propose", expectedVersion: 1, idempotencyKey: "propose-decline", proposal: proposal("decline") });
+  await service.command({ actorId: ACTOR_B, appointmentId: initialDraft.appointment.appointmentId, command: "decline", expectedVersion: initialProposal.appointment.version, idempotencyKey: "decline-initial" });
+  const declined = repository.outbox().at(-1)!;
+  assert.equal(declined.eventType, "appointment.declined");
+  assert.deepEqual(declined.payload.notificationRecipientActorIds, [ACTOR_A]);
+
+  const confirmedDraft = await service.createDraft({ actorId: ACTOR_A, appointmentId: "appointment:reschedule-decline", authorityReference: "request:accepted", eventId: "event:launch", idempotencyKey: "create-reschedule-decline" });
+  const proposed = await service.command({ actorId: ACTOR_A, appointmentId: confirmedDraft.appointment.appointmentId, command: "propose", expectedVersion: 1, idempotencyKey: "propose-reschedule-decline", proposal: proposal("confirmed") });
+  const accepted = await service.command({ actorId: ACTOR_B, appointmentId: confirmedDraft.appointment.appointmentId, candidateId: "confirmed:1", command: "accept", expectedVersion: proposed.appointment.version, idempotencyKey: "accept-before-reschedule" });
+  const reschedule = await service.command({ actorId: ACTOR_B, appointmentId: confirmedDraft.appointment.appointmentId, command: "propose", expectedVersion: accepted.appointment.version, idempotencyKey: "propose-reschedule", proposal: proposal("reschedule") });
+  const result = await service.command({ actorId: ACTOR_A, appointmentId: confirmedDraft.appointment.appointmentId, command: "decline", expectedVersion: reschedule.appointment.version, idempotencyKey: "decline-reschedule" });
+  const rescheduleDeclined = repository.outbox().at(-1)!;
+  assert.equal(result.appointment.status, "confirmed");
+  assert.equal(result.appointment.confirmed?.proposalRevision, 1);
+  assert.equal(rescheduleDeclined.eventType, "appointment.reschedule.declined");
+  assert.deepEqual(rescheduleDeclined.payload.notificationRecipientActorIds, [ACTOR_B]);
+});

@@ -96,6 +96,7 @@ function projectorWithMemoryStore() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   return {
     projector: createEventOperationsOutboxProjector({
+      contactRequestNotifications: null,
       registrationProvider: createEventRegistrationLiveRecordProvider({
         store,
         workspaceId: WORKSPACE_ID,
@@ -356,6 +357,7 @@ test(
         workspaceId,
       });
       const projector = createEventOperationsOutboxProjector({
+        contactRequestNotifications: null,
         registrationProvider: createEventRegistrationLiveRecordProvider({
           store,
           workspaceId,

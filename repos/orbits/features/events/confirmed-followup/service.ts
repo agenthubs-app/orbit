@@ -9,6 +9,8 @@ import { AppError } from "../../../shared/errors/app-error";
 export type ConfirmedFollowupSourceKind = "commitment" | "next_step";
 
 export interface ConfirmedEventFollowupView {
+  contactDisplayName: string | null;
+  contactHref: string;
   contactId: string;
   createdAt: string | null;
   dueAt: string | null;
@@ -109,6 +111,23 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function ownedContactDisplayName(
+  record: LiveRecord<Record<string, unknown>> | null,
+  actorId: string,
+  contactId: string,
+): string | null {
+  if (
+    !record ||
+    record.lifecycleState !== "active" ||
+    record.userId !== actorId ||
+    record.recordId !== contactId ||
+    record.payload.id !== contactId
+  ) {
+    return null;
+  }
+  return stringValue(record.payload.displayName);
+}
+
 function matchesMarker(
   record: LiveRecord<Record<string, unknown>> | null,
   expected: Readonly<Record<string, unknown>>,
@@ -168,6 +187,7 @@ function followupState(
 }
 
 function view(input: {
+  contactDisplayName: string | null;
   encounter: HumanEncounterRecord;
   marker: LiveRecord<Record<string, unknown>> | null;
   reminder: LiveRecord<Record<string, unknown>> | null;
@@ -188,6 +208,8 @@ function view(input: {
   const resolvedTaskStatus = taskStatus(taskPresent ? input.task : null);
   const resolvedReminderStatus = reminderStatus(reminderPresent ? input.reminder : null);
   return {
+    contactDisplayName: input.contactDisplayName,
+    contactHref: `/app/contacts/${encodeURIComponent(input.encounter.contactId)}`,
     contactId: input.encounter.contactId,
     createdAt: input.marker?.createdAt ?? (taskPresent ? input.task!.createdAt : reminderPresent ? input.reminder!.createdAt : null),
     dueAt: stringValue(input.marker?.payload.dueAt)
@@ -272,8 +294,20 @@ export function createConfirmedEventFollowupService(input: {
     const tasksById = new Map(tasks.map((record) => [record.recordId, record]));
     const remindersById = new Map(reminders.map((record) => [record.recordId, record]));
     const markersById = new Map(markers.map((record) => [record.recordId, record]));
+    const eligible = eligibleEncounters(encounters, actorId, eventId);
+    const contactIds = [...new Set(eligible.map((encounter) => encounter.contactId))];
+    const contacts = contactIds.length
+      ? await input.store.listRecords({
+          collectionName: "contacts",
+          lifecycleState: "active",
+          recordIds: contactIds,
+          userId: actorId,
+          workspaceId: input.workspaceId,
+        })
+      : [];
+    const contactsById = new Map(contacts.map((record) => [record.recordId, record]));
 
-    return eligibleEncounters(encounters, actorId, eventId)
+    return eligible
       .flatMap((encounter) => {
         const sources: Array<{ sourceIndex: number; sourceKind: ConfirmedFollowupSourceKind; sourceText: string }> = [];
         if (encounter.nextStep.trim()) sources.push({ sourceIndex: 0, sourceKind: "next_step", sourceText: encounter.nextStep.trim() });
@@ -300,6 +334,11 @@ export function createConfirmedEventFollowupService(input: {
             throw new AppError("CONFLICT", "Stored follow-up records do not match their event evidence marker.");
           }
           return view({
+            contactDisplayName: ownedContactDisplayName(
+              contactsById.get(encounter.contactId) ?? null,
+              actorId,
+              encounter.contactId,
+            ),
             encounter,
             marker,
             reminder,
@@ -343,11 +382,13 @@ export function createConfirmedEventFollowupService(input: {
         sourceIndex: value.sourceIndex,
         sourceKind: value.sourceKind,
       } as const;
-      let [marker, task, reminder] = await Promise.all([
+      let [marker, task, reminder, contact] = await Promise.all([
         input.store.getRecord({ collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, recordId: identityIds.markerId, workspaceId: input.workspaceId }),
         input.store.getRecord({ collectionName: "tasks", recordId: identityIds.taskId, workspaceId: input.workspaceId }),
         input.store.getRecord({ collectionName: "notifications", recordId: identityIds.reminderId, workspaceId: input.workspaceId }),
+        input.store.getRecord({ collectionName: "contacts", recordId: encounter.contactId, workspaceId: input.workspaceId }),
       ]);
+      const contactDisplayName = ownedContactDisplayName(contact, actorId, encounter.contactId);
       if (!matchesMarker(marker, provenance)
         || !matchesActorEvidence(task, actorId, provenance.evidenceIds)
         || !matchesActorEvidence(reminder, actorId, provenance.evidenceIds)) {
@@ -396,7 +437,7 @@ export function createConfirmedEventFollowupService(input: {
           workspaceId: input.workspaceId,
         });
       }
-      const beforeRepair = view({ encounter, marker, reminder, sourceIndex: value.sourceIndex, sourceKind: value.sourceKind, sourceText, task });
+      const beforeRepair = view({ contactDisplayName, encounter, marker, reminder, sourceIndex: value.sourceIndex, sourceKind: value.sourceKind, sourceText, task });
       if (beforeRepair.state === "completed" || beforeRepair.state === "dismissed") return beforeRepair;
       if (beforeRepair.taskStatus === "missing") {
         await input.followups.createTask({
@@ -425,7 +466,7 @@ export function createConfirmedEventFollowupService(input: {
         input.store.getRecord({ collectionName: "notifications", recordId: identityIds.reminderId, workspaceId: input.workspaceId }),
       ]);
       if (!marker || !task || !reminder) throw new AppError("INTERNAL_ERROR", "The confirmed follow-up could not be read after persistence.");
-      return view({ encounter, marker, reminder, sourceIndex: value.sourceIndex, sourceKind: value.sourceKind, sourceText, task });
+      return view({ contactDisplayName, encounter, marker, reminder, sourceIndex: value.sourceIndex, sourceKind: value.sourceKind, sourceText, task });
     },
     list,
   };

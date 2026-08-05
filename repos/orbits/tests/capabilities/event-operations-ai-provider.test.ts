@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   __eventOperationsAiProviderTestExports,
+  collectChineseOutputPolicyViolations,
   createConfiguredEventOperationsAiProvider,
   createEventOperationsAiProvider,
 } from "../../features/events/event-operations/ai-provider";
@@ -80,7 +81,7 @@ test("event operations request fingerprint versions provider behavior as well as
     },
   });
   assert.notEqual(baseline.requestFingerprint, json.requestFingerprint);
-  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v7-chinese-lexical-policy/u);
+  assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v11-chinese-ai-repair/u);
   assert.match(json.requestFingerprint ?? "", /event-operations-tokenized-recommendations-v1/u);
   assert.match(json.requestFingerprint ?? "", /deepseek-test/u);
   assert.match(json.requestFingerprint ?? "", /"jsonOutput":true/u);
@@ -145,6 +146,318 @@ test("JSON failure classifier is envelope-aware without retaining response text"
   ] as const;
   for (const [text, expected] of cases) {
     assert.equal(classifyJsonFailureShape(text), expected);
+  }
+});
+
+test("strict Chinese output policy rejects untranslated common words across every AI artifact", async () => {
+  const { followsChineseOutputLanguagePolicy } =
+    __eventOperationsAiProviderTestExports;
+  assert.equal(
+    followsChineseOutputLanguagePolicy(
+      [
+        "Aiko 正在与 Beacon Health 推进 AI 和 B2B 试点。",
+        "围绕 Scope 3 数据核对 KPI。",
+      ],
+      participants,
+    ),
+    true,
+  );
+  for (const value of [
+    "Aiko 需要投资-ready 创始人。",
+    "讨论 AI copilot 的落地。",
+    "该开源项目已有 12k stars。",
+    "Compare pilot constraints",
+  ]) {
+    assert.equal(
+      followsChineseOutputLanguagePolicy([value], participants),
+      false,
+      value,
+    );
+  }
+
+  const recommendationProvider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    runModelText: successfulText(JSON.stringify({
+      recommendations: [{
+        noMatchReason: null,
+        recommendations: [{
+          icebreakers: ["您希望先验证哪个场景？", "谁负责确认试点指标？"],
+          memberHint: "Aiko 可以先与 Bo 核对采购责任。",
+          rank: 1,
+          reasons: ["Aiko 需要投资-ready 创始人。"],
+          score: 90,
+          targetCandidateKey: "S1C1",
+        }],
+        sourceKey: "S1",
+      }],
+    })),
+  });
+  const groupingProvider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    runModelText: successfulText(JSON.stringify({
+      features: [{
+        affinityCandidateKeys: ["S1C1"],
+        facilitationHint: "先核对共同的试点目标。",
+        primaryTopic: "AI copilot 落地",
+        secondaryTopic: "采购证据",
+        sourceKey: "S1",
+      }],
+    })),
+  });
+  const tableProvider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    runModelText: successfulText(JSON.stringify({
+      icebreakers: ["先分享一个具体目标。", "说明一项关键证据。", "确认下一步负责人。"],
+      memberPrompts: {
+        "participant:a": ["说明评估方法。", "确认试点边界。"],
+        "participant:b": ["说明采购流程。", "确认成功指标。"],
+      },
+      memberRationales: {
+        "participant:a": "Aiko 可以贡献模型评估经验。",
+        "participant:b": "Bo 可以贡献医院采购经验。",
+      },
+      members: [
+        { participantId: "participant:a", seat: "R1-T1-S1" },
+        { participantId: "participant:b", seat: "R1-T1-S2" },
+      ],
+      rationale: "该开源项目已有 12k stars，可作为讨论证据。",
+      tableNumber: 1,
+      theme: "AI 试点验证",
+    })),
+  });
+
+  const source = {
+    candidateParticipants: [participants[1]!],
+    sourceParticipant: participants[0]!,
+  };
+  const results = await Promise.all([
+    recommendationProvider.generateRecommendations({
+      eventId: "event:test",
+      recommendationCount: 1,
+      sources: [source],
+    }),
+    groupingProvider.generateGroupingFeatures({
+      eventId: "event:test",
+      maxAffinityCount: 1,
+      sources: [{
+        ...source,
+        recommendations: {
+          noMatchReason: null,
+          recommendations: [],
+          sourceParticipantId: participants[0]!.participantId,
+        },
+      }],
+    }),
+    tableProvider.generateTableContent({
+      eventId: "event:test",
+      features: [],
+      members: participants,
+      roundNumber: 1,
+      tableNumber: 1,
+    }),
+  ]);
+  for (const result of results) {
+    assert.equal(result.success, false);
+    if (result.success === false) {
+      assert.equal(result.error.code, "AI_SCHEMA_INVALID");
+      assert.equal(result.retryable, true);
+      assert.equal(
+        result.error.message,
+        "The model output violated the configured natural-language policy.",
+      );
+      assert.doesNotMatch(result.error.message, /ready|copilot|stars/u);
+    }
+  }
+});
+
+test("strict Chinese repair accumulates usage and bytes across both model calls and keeps the final finish reason", async () => {
+  let calls = 0;
+  const provider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    async runModelText() {
+      calls += 1;
+      return {
+        model: "test-model",
+        provider: "openai" as const,
+        responseMetadata: {
+          finishReason: calls === 1 ? "length" : "stop",
+          providerResponseBytes: calls === 1 ? 700 : 300,
+          usage: {
+            cacheHitTokens: null,
+            completionTokens: calls === 1 ? 200 : 40,
+            promptTokens: calls === 1 ? 1000 : 1100,
+            reasoningTokens: calls === 1 ? 50 : null,
+          },
+        },
+        source: "provider:openai-responses-api" as const,
+        success: true as const,
+        text: JSON.stringify({
+          recommendations: [{
+            noMatchReason: null,
+            recommendations: [{
+              icebreakers: ["您希望先验证哪个场景？", "谁负责确认试点指标？"],
+              memberHint: "Aiko 可以先与 Bo 核对采购责任。",
+              rank: 1,
+              reasons: [calls === 1 ? "Aiko 需要 investment-ready 创始人。" : "Aiko 需要具备投资条件的创始人。"],
+              score: 90,
+              targetCandidateKey: "S1C1",
+            }],
+            sourceKey: "S1",
+          }],
+        }),
+      };
+    },
+  });
+  const result = await provider.generateRecommendations({
+    eventId: "event:test",
+    recommendationCount: 1,
+    sources: [{
+      candidateParticipants: [participants[1]!],
+      sourceParticipant: participants[0]!,
+    }],
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.deepEqual(result.responseMetadata, {
+      finishReason: "stop",
+      providerResponseBytes: 1000,
+      usage: {
+        cacheHitTokens: null,
+        completionTokens: 240,
+        promptTokens: 2100,
+        reasoningTokens: 50,
+      },
+    });
+  }
+});
+
+test("failed strict Chinese repair still reports accounting for both model calls", async () => {
+  let calls = 0;
+  const provider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    async runModelText() {
+      calls += 1;
+      return {
+        model: "test-model",
+        provider: "openai" as const,
+        responseMetadata: {
+          finishReason: "stop",
+          providerResponseBytes: 500,
+          usage: {
+            cacheHitTokens: 10,
+            completionTokens: 100,
+            promptTokens: 900,
+            reasoningTokens: null,
+          },
+        },
+        source: "provider:openai-responses-api" as const,
+        success: true as const,
+        text: JSON.stringify({
+          recommendations: [{
+            noMatchReason: null,
+            recommendations: [{
+              icebreakers: ["您希望先验证哪个场景？", "谁负责确认试点指标？"],
+              memberHint: "Aiko 可以先与 Bo 核对采购责任。",
+              rank: 1,
+              reasons: ["Aiko 需要 investment-ready 创始人。"],
+              score: 90,
+              targetCandidateKey: "S1C1",
+            }],
+            sourceKey: "S1",
+          }],
+        }),
+      };
+    },
+  });
+  const result = await provider.generateRecommendations({
+    eventId: "event:test",
+    recommendationCount: 1,
+    sources: [{
+      candidateParticipants: [participants[1]!],
+      sourceParticipant: participants[0]!,
+    }],
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.success, false);
+  if (result.success === false) {
+    assert.equal(result.error.code, "AI_SCHEMA_INVALID");
+    assert.equal(result.retryable, true);
+    assert.deepEqual(result.responseMetadata, {
+      finishReason: "stop",
+      providerResponseBytes: 1000,
+      usage: {
+        cacheHitTokens: 20,
+        completionTokens: 200,
+        promptTokens: 1800,
+        reasoningTokens: null,
+      },
+    });
+  }
+});
+
+test("collectChineseOutputPolicyViolations reports disallowed tokens and untranslated values only", () => {
+  const violations = collectChineseOutputPolicyViolations(
+    [
+      "Aiko 需要 investment-ready 创始人。",
+      "该开源项目已有 12k stars。",
+      "Aiko can meet Bo",
+      "Aiko 与 Bo 的 AI 试点互补。",
+    ],
+    participants,
+  );
+  assert.deepEqual(violations.disallowedTokens, ["investment-ready", "k", "stars", "can", "meet"]);
+  assert.deepEqual(violations.untranslatedValues, ["Aiko can meet Bo"]);
+  const clean = collectChineseOutputPolicyViolations(
+    ["Aiko 与 Bo 的 AI 试点互补。"],
+    participants,
+  );
+  assert.deepEqual(clean, { disallowedTokens: [], untranslatedValues: [] });
+});
+
+test("strict Chinese output uses one bounded AI repair and revalidates the closed schema", async () => {
+  let calls = 0;
+  const provider = createEventOperationsAiProvider({
+    enforceOutputLanguage: true,
+    async runModelText(input) {
+      calls += 1;
+      if (calls === 2) {
+        assert.match(input.systemInstruction, /AI-only language repair/u);
+        assert.match(input.userText, /Preserve|Original closed JSON|allowed Latin tokens/u);
+        assert.match(input.userText, /NOT allowed and each one must be translated/u);
+        assert.match(input.userText, /"investment-ready"/u);
+      }
+      return successfulText(JSON.stringify({
+        recommendations: [{
+          noMatchReason: null,
+          recommendations: [{
+            icebreakers: ["您希望先验证哪个场景？", "谁负责确认试点指标？"],
+            memberHint: "Aiko 可以先与 Bo 核对采购责任。",
+            rank: 1,
+            reasons: [calls === 1 ? "Aiko 需要 investment-ready 创始人。" : "Aiko 需要具备投资条件的创始人。"],
+            score: 90,
+            targetCandidateKey: "S1C1",
+          }],
+          sourceKey: "S1",
+        }],
+      }))();
+    },
+  });
+  const result = await provider.generateRecommendations({
+    eventId: "event:test",
+    recommendationCount: 1,
+    sources: [{
+      candidateParticipants: [participants[1]!],
+      sourceParticipant: participants[0]!,
+    }],
+  });
+  assert.equal(calls, 2);
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.deepEqual(
+      result.data[0]?.recommendations[0]?.reasons,
+      ["Aiko 需要具备投资条件的创始人。"],
+    );
   }
 });
 

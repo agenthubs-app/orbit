@@ -35,7 +35,22 @@ function encounter(overrides: Partial<HumanEncounterRecord> = {}): HumanEncounte
 }
 
 function fixture(values: readonly HumanEncounterRecord[] = [encounter()]) {
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([{
+    collectionName: "contacts",
+    createdAt: NOW,
+    evidenceIds: ["evidence:contact:ren"],
+    lifecycleState: "active",
+    payload: {
+      displayName: "Ren Hayashi",
+      id: "contact:ren-owned-by-aiko",
+    },
+    recordId: "contact:ren-owned-by-aiko",
+    sourceId: "event-contact-request:ren",
+    sourceType: "event_import",
+    updatedAt: NOW,
+    userId: ACTOR,
+    workspaceId: WORKSPACE,
+  }]);
   const service = createConfirmedEventFollowupService({
     encounters: { async list() { return values; } },
     followups: createStorageFollowupActionWriter({ store, userId: ACTOR, workspaceId: WORKSPACE }),
@@ -63,6 +78,8 @@ test("lists only explicit actor-owned event evidence with next steps or commitme
     ["commitment", 1, "Introduce the retail operations lead"],
   ]);
   assert.ok(candidates.every((candidate) => candidate.state === "available"));
+  assert.ok(candidates.every((candidate) => candidate.contactDisplayName === "Ren Hayashi"));
+  assert.ok(candidates.every((candidate) => candidate.contactHref === "/app/contacts/contact%3Aren-owned-by-aiko"));
 });
 
 test("confirmation re-reads evidence and idempotently creates one real task and in-app reminder with provenance", async () => {

@@ -59,6 +59,24 @@ test("appointment action notifications are written only for the other actor and 
   assert.deepEqual(created, [{ actorId: "actor:ren", contactId: "contact:aiko" }]);
 });
 
+test("decline notifications retain the appointment/contact/event deep-link context", async () => {
+  const created: { actorId: string; contactId?: string; title: string }[] = [];
+  const projectedEvent = event("appointment.reschedule.declined", 4);
+  projectedEvent.payload = { ...projectedEvent.payload, notificationRecipientActorIds: ["actor:ren"] };
+  const projector = createAppointmentNotificationProjector({
+    writerForActor: (actorId) => ({
+      async createReminder(input) { created.push({ actorId, contactId: input.contactId, title: input.title }); return { recordId: input.reminderId }; },
+      async removeReminder() {},
+    }),
+  });
+  await projector.project(projectedEvent);
+  assert.deepEqual(created, [{
+    actorId: "actor:ren",
+    contactId: "contact:aiko",
+    title: "约谈改期提议未被接受 · 原确认时间保持不变",
+  }]);
+});
+
 test("T+15m postgres notification persists the ordinary actor-scoped appointment href", async () => {
   let insertedValues: readonly unknown[] | undefined;
   const transaction = {

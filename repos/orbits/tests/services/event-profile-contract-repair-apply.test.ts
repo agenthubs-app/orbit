@@ -64,6 +64,27 @@ async function restoreReviewedProfileRepairDefects(
       and current_profile.profile_version=item.target_profile_version`, [workspaceId]);
 }
 
+async function reviewedProfileRepairEventIds(
+  pool: Pool,
+  sourceSchema: string,
+  workspaceId: string,
+): Promise<readonly string[]> {
+  assert.match(sourceSchema, /^[A-Za-z_][A-Za-z0-9_]*$/u);
+  const result = await pool.query<{ event_id: string }>(`
+    select distinct item.event_id
+      from ${sourceSchema}.event_ops_data_repair_items item
+      join ${sourceSchema}.event_ops_data_repair_runs repair_run
+        on repair_run.workspace_id = item.workspace_id
+       and repair_run.repair_id = item.repair_id
+     where item.workspace_id = $1
+       and repair_run.repair_type = 'canonical_profile_empty_answer_v1'
+     order by item.event_id
+  `, [workspaceId]);
+  const eventIds = result.rows.map((row) => row.event_id);
+  assert.ok(eventIds.length > 0, "The reviewed profile-repair fixture has no source events.");
+  return eventIds;
+}
+
 async function cloneFixture(
   prefix: string,
   prepare?: (input: { pool: Pool; workspaceId: string }) => Promise<void>,
@@ -75,13 +96,14 @@ async function cloneFixture(
   const pool = new Pool({ connectionString: scopedUrl, max: 2 });
   const client = createEventOperationsPostgresClient({ connectionString: scopedUrl, pool });
   const sourceSchema = String((await admin.query(`select current_schema() as value`)).rows[0]?.value);
+  const reviewedEventIds = await reviewedProfileRepairEventIds(admin, sourceSchema, workspaceId);
   await admin.query(`create schema ${schema}`);
   await runEventOperationsMigrations(client);
   await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
   for (const table of ["event_ops_events","event_event_versions","event_ops_configurations",
     "event_ops_configuration_heads","event_ops_profile_versions","event_ops_profile_heads",
     "event_ops_profile_response_versions"]) {
-    await pool.query(`insert into ${table} select * from ${sourceSchema}.${table} where workspace_id=$1`, [workspaceId]);
+    await pool.query(`insert into ${table} select * from ${sourceSchema}.${table} where workspace_id=$1 and event_id = any($2::text[])`, [workspaceId, reviewedEventIds]);
   }
   await pool.query(`insert into event_ops_membership_versions (
     workspace_id,event_id,actor_id,membership_version,participant_id,profile_version,status,
@@ -90,7 +112,7 @@ async function cloneFixture(
     select workspace_id,event_id,actor_id,membership_version,participant_id,profile_version,status,
     registered_at,cancelled_at,reactivated_at,late_registration,source_registration_id,
     created_at,effective_at,'legacy_registration',null from ${sourceSchema}.event_ops_membership_versions
-    where workspace_id=$1`, [workspaceId]);
+    where workspace_id=$1 and event_id = any($2::text[])`, [workspaceId, reviewedEventIds]);
   const admission = (await pool.query(`select event_id,actor_id,membership_version,registered_at
     from event_ops_membership_versions where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId])).rows[0]!;
   await pool.query(`insert into event_ops_admission_policy_versions
@@ -106,9 +128,9 @@ async function cloneFixture(
   await pool.query(`update event_ops_membership_versions set origin='admission_application',admission_application_version=1
     where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
     [workspaceId,admission.event_id,admission.actor_id,admission.membership_version]);
-  await pool.query(`insert into event_ops_membership_heads select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1`, [workspaceId]);
+  await pool.query(`insert into event_ops_membership_heads select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1 and event_id = any($2::text[])`, [workspaceId, reviewedEventIds]);
   await pool.query(`insert into event_ops_audit_log select * from ${sourceSchema}.event_ops_audit_log
-    where workspace_id=$1 and action='registration_migration_activated'`, [workspaceId]);
+    where workspace_id=$1 and event_id = any($2::text[]) and action='registration_migration_activated'`, [workspaceId, reviewedEventIds]);
   await restoreReviewedProfileRepairDefects(pool, sourceSchema, workspaceId);
   await prepare?.({ pool, workspaceId });
   const reviewed = await withCanonicalMembershipMigrationSnapshot({ connectionString: scopedUrl,
@@ -117,7 +139,7 @@ async function cloneFixture(
       return { plan: buildProfileContractRepairPlan(source), source };
     } });
   const { plan, source } = reviewed;
-  assert.equal(plan.targetCount, 24, JSON.stringify(plan.blockers)); assert.ok(plan.applyPlanHash);
+  assert.equal(plan.targetCount, 24, JSON.stringify(plan.blockers)); assert.ok(plan.applyPlanHash, JSON.stringify(plan.blockers));
   return {
     admin, pool, schema, scopedUrl, plan, planHash: plan.applyPlanHash, source,
     command(repairId: string, applicationName?: string) {
@@ -155,6 +177,7 @@ test(
     try {
       const sourceSchema = String((await admin.query(`select current_schema() as value`)).rows[0]?.value);
       assert.match(sourceSchema, /^[A-Za-z_][A-Za-z0-9_]*$/u);
+      const reviewedEventIds = await reviewedProfileRepairEventIds(admin, sourceSchema, workspaceId);
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
       await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
@@ -164,7 +187,7 @@ test(
         "event_ops_profile_heads", "event_ops_profile_response_versions",
       ];
       for (const table of tables) {
-        await pool.query(`insert into ${table} select * from ${sourceSchema}.${table} where workspace_id=$1`, [workspaceId]);
+        await pool.query(`insert into ${table} select * from ${sourceSchema}.${table} where workspace_id=$1 and event_id = any($2::text[])`, [workspaceId, reviewedEventIds]);
       }
       await pool.query(
         `insert into event_ops_membership_versions (
@@ -176,17 +199,17 @@ test(
            profile_version,status,registered_at,cancelled_at,reactivated_at,
            late_registration,source_registration_id,created_at,effective_at,
            'legacy_registration',null
-         from ${sourceSchema}.event_ops_membership_versions where workspace_id=$1`,
-        [workspaceId],
+         from ${sourceSchema}.event_ops_membership_versions where workspace_id=$1 and event_id = any($2::text[])`,
+        [workspaceId, reviewedEventIds],
       );
       await pool.query(
         `insert into event_ops_membership_heads
-         select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1`,
-        [workspaceId],
+         select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1 and event_id = any($2::text[])`,
+        [workspaceId, reviewedEventIds],
       );
       await pool.query(
         `insert into event_ops_audit_log select * from ${sourceSchema}.event_ops_audit_log
-          where workspace_id=$1 and action='registration_migration_activated'`, [workspaceId],
+          where workspace_id=$1 and event_id = any($2::text[]) and action='registration_migration_activated'`, [workspaceId, reviewedEventIds],
       );
       await restoreReviewedProfileRepairDefects(pool, sourceSchema, workspaceId);
       await pool.query(
@@ -202,9 +225,9 @@ test(
           await readProfileContractRepairSource({ snapshot, workspaceId }),
         ),
       });
-      assert.equal(plan.applyEligible, true);
+      assert.equal(plan.applyEligible, true, JSON.stringify(plan.blockers));
       assert.equal(plan.targetCount, 24);
-      assert.ok(plan.applyPlanHash);
+      assert.ok(plan.applyPlanHash, JSON.stringify(plan.blockers));
       const command = {
         connectionString: scopedUrl, expectedCount: 24,
         expectedPlanHash: plan.applyPlanHash, repairId: "repair-run:test-clone-24", workspaceId,
@@ -265,6 +288,7 @@ test(
       )).rows[0]?.count), 24);
       const projectedStore = createMemoryLiveRecordStore<Record<string, unknown>>();
       const projector = createEventOperationsOutboxProjector({
+        contactRequestNotifications: null,
         registrationProvider: createEventRegistrationLiveRecordProvider({ store: projectedStore, workspaceId }),
         relationshipProvider: createStorageBusinessCardContactWriteProvider({ store: projectedStore, workspaceId }),
       });
@@ -398,6 +422,12 @@ test("reviewed hash fails closed before writes for configuration, audit, head, l
       join event_ops_events e using(workspace_id,event_id)
       where v.workspace_id=$1 and e.registration_migration_state='canonical'
         and v.origin='legacy_registration'
+        and not exists (
+          select 1 from event_ops_admission_application_versions application
+           where application.workspace_id=v.workspace_id
+             and application.event_id=v.event_id
+             and application.actor_id=v.actor_id
+        )
       order by v.event_id,v.actor_id limit 1`, [workspaceId])).rows[0]!;
     await fixture.pool.query(`update event_ops_membership_versions set late_registration=not late_registration
       where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`, [workspaceId,membership.event_id,membership.actor_id,membership.membership_version]);

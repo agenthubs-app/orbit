@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -613,6 +613,80 @@ test("calendar replay uses a deterministic provider id derived from the Action i
   }
 });
 
+test("Google calendar upsert carries attendees and requests one Meet conference", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "integration-calendar-meet";
+  const userId = "user:integration-calendar-meet";
+  const vault = createEncryptedIntegrationTokenVault({
+    encryptionKeyBase64: randomBytes(32).toString("base64"),
+    store,
+    workspaceId,
+    userId,
+  });
+  await vault.save("google_calendar", {
+    accessToken: "calendar-token",
+    expiresAt: "2099-01-01T00:00:00.000Z",
+    scopes: ["calendar.events"],
+    tokenType: "Bearer",
+  }, "2026-07-25T00:00:00.000Z");
+  const service = createOrbitIntegrationService({
+    oauthStates: createIntegrationOAuthStateStore({ store, workspaceId, userId }),
+    vault,
+    configs: {
+      google_calendar: {
+        authorizationEndpoint: "https://provider.example/authorize",
+        tokenEndpoint: "https://provider.example/token",
+        apiBaseUrl: "https://provider.example/api",
+        clientId: "client",
+        clientSecret: "client-secret",
+        redirectUri: "https://orbit.example/callback",
+        scopes: ["calendar.events"],
+      },
+    },
+  });
+  const requests: Array<{ body: Record<string, unknown>; method: string; url: string }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (request, init) => {
+    requests.push({ body: init?.body ? JSON.parse(String(init.body)) : {}, method: init?.method ?? "GET", url: String(request) });
+    if (requests.length === 1) return Response.json({}, { status: 409 });
+    return Response.json({ id: "orbit-provider-event", hangoutLink: "https://meet.google.com/abc-defg-hij" });
+  };
+  try {
+    const result = await service.createCalendarEvent({
+      provider: "google_calendar",
+      idempotencyKey: "appointment:meet:calendar",
+      payload: {
+        attendees: [
+          { displayName: "Aiko Mori", email: "aiko@example.test" },
+          { displayName: "Ren Ito", email: "ren@example.test" },
+        ],
+        conference: "google_meet",
+        description: "Orbit bilateral appointment",
+        endsAt: "2026-08-14T07:00:00.000Z",
+        startsAt: "2026-08-14T06:00:00.000Z",
+        title: "Orbit 约谈 · Aiko Mori × Ren Ito",
+      },
+    });
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0]?.method, "POST");
+    assert.equal(requests[1]?.method, "PATCH");
+    assert.match(requests[0]?.url ?? "", /conferenceDataVersion=1/u);
+    assert.deepEqual(requests[1]?.body.attendees, [
+      { displayName: "Aiko Mori", email: "aiko@example.test" },
+      { displayName: "Ren Ito", email: "ren@example.test" },
+    ]);
+    assert.deepEqual(requests[1]?.body.conferenceData, {
+      createRequest: {
+        conferenceSolutionKey: { type: "hangoutsMeet" },
+        requestId: createHash("sha256").update("appointment:meet:calendar").digest("hex"),
+      },
+    });
+    assert.equal(result.joinUrl, "https://meet.google.com/abc-defg-hij");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("confirmed external calendar action executes once through outbox and records a provider receipt", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "integration-calendar-runtime";
@@ -720,7 +794,7 @@ test("confirmed external calendar action executes once through outbox and record
     assert.equal(requests.length, 1);
     assert.equal(
       requests[0]?.url,
-      "https://provider.example/api/calendars/primary/events",
+      "https://provider.example/api/calendars/primary/events?sendUpdates=all",
     );
     assert.equal(requests[0]?.body.summary, "项目复盘会议");
     assert.deepEqual(requests[0]?.body.start, {

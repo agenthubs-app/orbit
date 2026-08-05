@@ -339,6 +339,79 @@ test("migration-pending cards do not render legacy metadata or operation links",
   }
 });
 
+test("event center gates onsite actions by lifecycle and explains delegated bootstrap", async () => {
+  const originalFetch = globalThis.fetch;
+  let renderer!: ReactTestRenderer;
+  globalThis.fetch = (async (url) => {
+    assert.equal(url, "/api/events/center");
+    return Response.json({
+      data: [
+        {
+          endsAt: null,
+          eventId: "event:draft-owner",
+          lifecycleState: "draft",
+          migrationPending: false,
+          owner: true,
+          revision: 1,
+          role: "owner",
+          startsAt: null,
+          title: "待发布活动",
+          venue: null,
+        },
+        {
+          endsAt: "2026-09-12T11:00:00.000Z",
+          eventId: "event:published-operator",
+          lifecycleState: "published",
+          migrationPending: false,
+          owner: false,
+          revision: 2,
+          role: "operations",
+          startsAt: "2026-09-12T09:00:00.000Z",
+          title: "已发布活动",
+          venue: "Tokyo",
+        },
+      ],
+      success: true,
+    });
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(<EventCenterWorkspace />);
+      await flush();
+    });
+    const draftCard = renderer.root.find(
+      (node) => node.props["data-event-center-card"] === "event:draft-owner",
+    );
+    const draftLinks = draftCard.findAllByType("a").map((node) => String(node.props.href));
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/check-in")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/admission")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/analytics")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/roles")), true);
+    assert.match(JSON.stringify(renderer.toJSON()), /活动发布前不开放运营台/u);
+
+    const operatorCard = renderer.root.find(
+      (node) => node.props["data-event-center-card"] === "event:published-operator",
+    );
+    assert.equal(
+      operatorCard.findAll(
+        (node) =>
+          node.props["data-event-center-bootstrap-limited"] ===
+          "event:published-operator",
+      ).length,
+      1,
+    );
+    assert.match(
+      JSON.stringify(renderer.toJSON()),
+      /首次运营配置必须由活动负责人初始化/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
 test("role manager uses auto-fit grids and the center reserves only policy-valid role entry points", () => {
   const manager = readFileSync(
     join(projectRoot, "app/(app)/app/events/[id]/operations/roles/event-role-management-workspace.tsx"),

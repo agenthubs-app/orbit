@@ -1253,7 +1253,11 @@ export function createPostgresOnsiteOperationsMethods({
               eventType: "event.contact_request.declined",
               executor: transaction,
               outboxId: `outbox:event-contact-request-declined:${digest(requestId)}`,
-              payload: value,
+              payload: {
+                ...value,
+                requesterActorId: text(request, "requester_actor_id"),
+                targetActorId,
+              },
               timestamp: respondedAt,
               workspaceId,
             });
@@ -1324,6 +1328,7 @@ export function createPostgresOnsiteOperationsMethods({
             { owner: requesterParticipant, other: targetParticipant },
             { owner: targetParticipant, other: requesterParticipant },
           ] as const;
+          const contactIdsByActor: Record<string, string> = {};
           const evidenceIds: string[] = [];
           for (const side of sides) {
             const evidenceId = `evidence:event-contact-consent:${digest(
@@ -1355,6 +1360,7 @@ export function createPostgresOnsiteOperationsMethods({
               participant: side.other,
               timestamp: respondedAt,
             });
+            contactIdsByActor[side.owner.actorId] = contact.id;
             await transaction.query(
               `
                 insert into event_ops_relationship_sides (
@@ -1457,9 +1463,14 @@ export function createPostgresOnsiteOperationsMethods({
             executor: transaction,
             outboxId: `outbox:event-contact-request-accepted:${digest(requestId)}`,
             payload: {
+              contactIdsByActor,
               relationshipPairId,
               requestId,
+              requesterActorId,
+              revision: revision + 1,
               status: "accepted",
+              targetActorId,
+              updatedAt: respondedAt,
             },
             timestamp: respondedAt,
             workspaceId,
@@ -1589,7 +1600,11 @@ export function createPostgresOnsiteOperationsMethods({
             eventType: "event.contact_request.withdrawn",
             executor: transaction,
             outboxId: `outbox:event-contact-request-withdrawn:${digest(requestId, String(revision + 1))}`,
-            payload: value,
+            payload: {
+              ...value,
+              requesterActorId,
+              targetActorId: text(request, "target_actor_id"),
+            },
             timestamp: withdrawnAt,
             workspaceId,
           });

@@ -52,6 +52,24 @@ function accessService(role: "operations" | "reviewer" | null): EventAccessServi
   };
 }
 
+function ownerAccessService(): EventAccessService {
+  return {
+    async get(input) {
+      const query = input as { eventId: string; subjectActorId: string };
+      return {
+        eventId: query.eventId,
+        owner: true,
+        revision: 1,
+        role: null,
+        state: null,
+        subjectActorId: query.subjectActorId,
+      };
+    },
+    async grant() { throw new Error("unused"); },
+    async revoke() { throw new Error("unused"); },
+  };
+}
+
 function admissionService(input: {
   configureError?: unknown;
   onConfigure?: (actorId: string, value: unknown) => void;
@@ -133,10 +151,10 @@ test("admission policy read requires admission.read and returns the current vers
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
-test("admission policy writes require operations.configure and preserve the exact versioned command", async () => {
+test("admission policy writes are owner-only and preserve the exact versioned command", async () => {
   let configureCalls = 0;
   const forbidden = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("reviewer"),
+    createAccessService: () => accessService("operations"),
     createService() { configureCalls += 1; return admissionService(); },
     resolveActor: async () => ({ id: ACTOR_ID }),
   });
@@ -152,7 +170,7 @@ test("admission policy writes require operations.configure and preserve the exac
 
   let observed: unknown;
   const put = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("operations"),
+    createAccessService: () => ownerAccessService(),
     createService: () => admissionService({
       onConfigure(actorId, value) {
         assert.equal(actorId, ACTOR_ID);
@@ -179,7 +197,7 @@ test("admission policy writes require operations.configure and preserve the exac
 test("policy route rejects invalid time ordering and reports canonical version conflicts safely", async () => {
   let configureCalls = 0;
   const validation = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("operations"),
+    createAccessService: () => ownerAccessService(),
     createService() { configureCalls += 1; return admissionService(); },
     resolveActor: async () => ({ id: ACTOR_ID }),
   });
@@ -197,7 +215,7 @@ test("policy route rejects invalid time ordering and reports canonical version c
   assert.equal(configureCalls, 0);
 
   const conflict = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("operations"),
+    createAccessService: () => ownerAccessService(),
     createService: () => admissionService({
       configureError: new EventAdmissionError(
         "VERSION_CONFLICT",
@@ -232,7 +250,7 @@ test("policy route rejects invalid time ordering and reports canonical version c
 
 test("policy route exposes activation prerequisites as safe configuration conflicts", async () => {
   const notConfigured = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("operations"),
+    createAccessService: () => ownerAccessService(),
     createService: () => admissionService({
       configureError: new EventAdmissionError(
         "NOT_CONFIGURED",
@@ -261,7 +279,7 @@ test("policy route exposes activation prerequisites as safe configuration confli
   );
 
   const blocked = createEventAdmissionPolicyPutHandler({
-    createAccessService: () => accessService("operations"),
+    createAccessService: () => ownerAccessService(),
     createService: () => admissionService({
       configureError: new EventAdmissionError(
         "ACTIVATION_BLOCKED",
@@ -296,7 +314,7 @@ test("admission policy API is canonical-capability scoped with no legacy fallbac
   const source = sources.join("\n");
 
   assert.match(source, /"admission\.read"/u);
-  assert.match(source, /"operations\.configure"/u);
+  assert.match(source, /"roles\.manage"/u);
   assert.match(source, /createConfiguredEventCoreService/u);
   assert.match(source, /expectedPolicyVersion/u);
   assert.doesNotMatch(source, /readPublicEventCatalogue|mockEventRecords|legacyEvent/u);

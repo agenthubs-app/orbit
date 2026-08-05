@@ -8,6 +8,8 @@ import { mockEventRecords } from "../../features/events/event-crud-and-import/fi
 const ACTOR = "actor:aiko";
 const EVENT = "demo-event-1";
 const view: ConfirmedEventFollowupView = {
+  contactDisplayName: "Ren Hayashi",
+  contactHref: "/app/contacts/contact%3Aren",
   contactId: "contact:ren",
   createdAt: null,
   dueAt: null,

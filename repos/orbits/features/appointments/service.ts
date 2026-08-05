@@ -171,7 +171,6 @@ function confirmationEvents(appointment: AppointmentAggregate, previousRevision:
     timestamp,
   }));
   events.push(outboxEvent({ appointment, eventType: "appointment.calendar.requested", revision: confirmed.proposalRevision, suffix: "calendar-requested", timestamp }));
-  events.push(outboxEvent({ appointment, eventType: "appointment.meeting.requested", revision: confirmed.proposalRevision, suffix: "meeting-requested", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(starts - 24 * 60 * 60_000).toISOString(), eventType: "appointment.reminder.t24h", revision: confirmed.proposalRevision, suffix: "t24h", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(starts - 60 * 60_000).toISOString(), eventType: "appointment.reminder.t1h", revision: confirmed.proposalRevision, suffix: "t1h", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(ends + 15 * 60_000).toISOString(), eventType: "appointment.memo.t15m", revision: confirmed.proposalRevision, suffix: "t15m", timestamp }));
@@ -319,7 +318,20 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
             updatedAt: timestamp,
             version: nextVersion,
           };
-          return { appointment, outbox: [] };
+          return {
+            appointment,
+            outbox: [outboxEvent({
+              appointment,
+              eventType: retainsConfirmation
+                ? "appointment.reschedule.declined"
+                : "appointment.declined",
+              initiatedByActorId: value.actorId,
+              notificationRecipientActorIds: [proposal.proposedByActorId],
+              revision: proposal.revision,
+              suffix: retainsConfirmation ? "reschedule-declined" : "declined",
+              timestamp,
+            })],
+          };
         }
 
         if (value.command === "cancel") {
@@ -338,7 +350,6 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
           if (revision !== null) outbox.unshift(
             outboxEvent({ appointment, eventType: "appointment.reminders.invalidate", revision, suffix: "invalidate-on-cancel", timestamp }),
             outboxEvent({ appointment, eventType: "appointment.calendar.cancel", revision, suffix: "calendar-cancel", timestamp }),
-            outboxEvent({ appointment, eventType: "appointment.meeting.cancel", revision, suffix: "meeting-cancel", timestamp }),
           );
           return { appointment, outbox };
         }

@@ -64,7 +64,12 @@ export interface OrbitIntegrationService {
     provider: "google_calendar" | "microsoft_graph";
     payload: Readonly<Record<string, unknown>>;
     idempotencyKey: string;
-  }) => Promise<{ providerRecordId: string }>;
+  }) => Promise<{ joinUrl?: string; providerRecordId: string }>;
+  deleteCalendarEvent: (input: {
+    provider: "google_calendar" | "microsoft_graph";
+    idempotencyKey: string;
+    providerRecordId?: string;
+  }) => Promise<void>;
   assertPermission: (input: {
     provider: OrbitIntegrationProvider;
     permission: string;
@@ -103,6 +108,14 @@ function emailDomain(value: unknown): string | undefined {
   return match?.[1]?.toLowerCase();
 }
 
+function googleMeetJoinUrl(value: unknown): string | undefined {
+  const body = object(value);
+  const entryPoint = array(object(body.conferenceData).entryPoints)
+    .map(object)
+    .find((item) => text(item.entryPointType) === "video");
+  return text(body.hangoutLink) ?? text(entryPoint?.uri);
+}
+
 function gmailMetadataHeader(
   item: Record<string, unknown>,
   name: string,
@@ -123,6 +136,16 @@ function normalizedScope(scope: string): string {
     .toLowerCase()
     .replace(/^https?:\/\/[^/]+\//, "")
     .replace(/^auth\//, "");
+}
+
+class IntegrationApiError extends Error {
+  constructor(
+    readonly provider: OrbitIntegrationProvider,
+    readonly status: number,
+  ) {
+    super(`${provider} API returned HTTP ${status}.`);
+    this.name = "IntegrationApiError";
+  }
 }
 
 export function integrationCapabilitiesFor(
@@ -247,7 +270,7 @@ export function createOrbitIntegrationService(input: {
     );
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(`${provider} API returned HTTP ${response.status}.`);
+      throw new IntegrationApiError(provider, response.status);
     }
     return body;
   }
@@ -524,6 +547,16 @@ export function createOrbitIntegrationService(input: {
         throw new Error("Calendar event endsAt must be after startsAt.");
       }
       const location = text(payload.location);
+      const description = text(payload.description);
+      const attendees = array(payload.attendees).flatMap((value) => {
+        const attendee = object(value);
+        const email = text(attendee.email);
+        if (!email) return [];
+        const displayName = text(attendee.displayName);
+        return [{ email, ...(displayName ? { displayName } : {}) }];
+      });
+      const requestsGoogleMeet =
+        provider === "google_calendar" && payload.conference === "google_meet";
       const idempotentPayload =
         provider === "google_calendar"
           ? {
@@ -532,6 +565,18 @@ export function createOrbitIntegrationService(input: {
               start: { dateTime: new Date(startsAt).toISOString() },
               end: { dateTime: new Date(endsAt).toISOString() },
               ...(location ? { location } : {}),
+              ...(description ? { description } : {}),
+              ...(attendees.length ? { attendees } : {}),
+              ...(requestsGoogleMeet
+                ? {
+                    conferenceData: {
+                      createRequest: {
+                        conferenceSolutionKey: { type: "hangoutsMeet" },
+                        requestId: providerKey,
+                      },
+                    },
+                  }
+                : {}),
             }
           : {
               subject: title,
@@ -546,24 +591,83 @@ export function createOrbitIntegrationService(input: {
               ...(location
                 ? { location: { displayName: location } }
                 : {}),
+              ...(description ? { body: { content: description, contentType: "text" } } : {}),
+              ...(attendees.length
+                ? {
+                    attendees: attendees.map((attendee) => ({
+                      emailAddress: {
+                        address: attendee.email,
+                        ...(attendee.displayName ? { name: attendee.displayName } : {}),
+                      },
+                      type: "required",
+                    })),
+                  }
+                : {}),
               transactionId: providerKey,
             };
-      const body = object(
-        await api(
+      const googleEventPath = `/calendars/primary/events/orbit${providerKey}`;
+      const googleQuery = requestsGoogleMeet
+        ? "?conferenceDataVersion=1&sendUpdates=all"
+        : "?sendUpdates=all";
+      let responseBody: unknown;
+      try {
+        responseBody = await api(
           provider,
           provider === "google_calendar"
-            ? "/calendars/primary/events"
+            ? `/calendars/primary/events${googleQuery}`
             : "/me/events",
           {
             method: "POST",
             body: JSON.stringify(idempotentPayload),
             headers: { "idempotency-key": idempotencyKey },
           },
-        ),
-      );
+        );
+      } catch (error) {
+        if (!(error instanceof IntegrationApiError) || error.status !== 409 || provider !== "google_calendar") {
+          throw error;
+        }
+        const updatePayload: Record<string, unknown> = { ...idempotentPayload };
+        delete updatePayload.id;
+        responseBody = await api(provider, `${googleEventPath}${googleQuery}`, {
+          method: "PATCH",
+          body: JSON.stringify(updatePayload),
+          headers: { "idempotency-key": idempotencyKey },
+        });
+      }
+      let body = object(responseBody);
       const id = text(body.id);
       if (!id) throw new Error(`${provider} returned no event id.`);
-      return { providerRecordId: id };
+      let joinUrl = googleMeetJoinUrl(body);
+      if (requestsGoogleMeet && !joinUrl) {
+        for (const delayMs of [250, 500, 1_000]) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          body = object(await api(provider, `${googleEventPath}?conferenceDataVersion=1`));
+          joinUrl = googleMeetJoinUrl(body);
+          if (joinUrl) break;
+        }
+        if (!joinUrl) {
+          throw new Error("Google Calendar did not finish creating the requested Meet conference.");
+        }
+      }
+      return { ...(joinUrl ? { joinUrl } : {}), providerRecordId: id };
+    },
+    async deleteCalendarEvent({ provider, idempotencyKey, providerRecordId }) {
+      await assertPermission({ provider, permission: "calendar.events.write" });
+      const providerKey = createHash("sha256").update(idempotencyKey).digest("hex");
+      const eventId = providerRecordId?.trim() || (provider === "google_calendar" ? `orbit${providerKey}` : "");
+      if (!eventId) throw new Error(`${provider} calendar cancellation requires a provider event id.`);
+      try {
+        await api(
+          provider,
+          provider === "google_calendar"
+            ? `/calendars/primary/events/${encodeURIComponent(eventId)}?sendUpdates=all`
+            : `/me/events/${encodeURIComponent(eventId)}`,
+          { method: "DELETE", headers: { "idempotency-key": idempotencyKey } },
+        );
+      } catch (error) {
+        if (error instanceof IntegrationApiError && error.status === 404) return;
+        throw error;
+      }
     },
     assertPermission,
     async checkHealth(provider, now = new Date().toISOString()) {

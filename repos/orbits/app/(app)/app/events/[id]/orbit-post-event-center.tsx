@@ -12,6 +12,8 @@ interface ReadyArtifact {
 }
 
 interface ConfirmedFollowupView {
+  contactDisplayName: string | null;
+  contactHref: string;
   contactId: string;
   createdAt: string | null;
   dueAt: string | null;
@@ -27,6 +29,12 @@ interface ConfirmedFollowupView {
   taskHref: "/app/followups";
   taskId: string;
   taskStatus: "completed" | "dismissed" | "missing" | "open" | "scheduled";
+}
+
+function confirmedFollowupContactHref(value: ConfirmedFollowupView): string {
+  return value.contactHref.startsWith("/app/contacts/")
+    ? value.contactHref
+    : `/app/contacts/${encodeURIComponent(value.contactId)}`;
 }
 
 type AiArtifactState =
@@ -215,7 +223,7 @@ export function OrbitPostEventCenter({ acceptedContacts, eventId }: { acceptedCo
         const reminderStatusLabel = followup.reminderStatus === "pending" ? t({ en: "pending", zh: "待触发" }) : followup.reminderStatus === "sent" ? t({ en: "sent", zh: "已发送" }) : followup.reminderStatus === "failed" ? t({ en: "failed", zh: "失败" }) : followup.reminderStatus === "dismissed" ? t({ en: "dismissed", zh: "已忽略" }) : t({ en: "missing", zh: "缺失" });
         return <div className="card-flat" data-followup-evidence={key} key={key} style={{ display: "grid", gap: 8, padding: 10 }}>
           <div style={{ alignItems: "start", display: "flex", gap: 10, justifyContent: "space-between" }}>
-            <div style={{ minWidth: 0 }}><span className="eyebrow">{followup.sourceKind === "next_step" ? t({ en: "NEXT STEP", zh: "下一步" }) : t({ en: "COMMITMENT", zh: "承诺" })}</span><p style={{ fontSize: 13, fontWeight: 600, margin: "3px 0 0" }}>{followup.sourceText}</p>{followup.noteExcerpt ? <p style={{ color: "var(--text-3)", fontSize: 11, margin: "4px 0 0" }}>{followup.noteExcerpt}</p> : null}</div>
+            <div style={{ minWidth: 0 }}><span className="eyebrow">{followup.sourceKind === "next_step" ? t({ en: "NEXT STEP", zh: "下一步" }) : t({ en: "COMMITMENT", zh: "承诺" })}</span><div style={{ marginTop: 3 }}><a data-followup-contact href={confirmedFollowupContactHref(followup)} style={{ fontSize: 12, fontWeight: 600 }}>{followup.contactDisplayName ?? followup.contactId}</a></div><p style={{ fontSize: 13, fontWeight: 600, margin: "3px 0 0" }}>{followup.sourceText}</p>{followup.noteExcerpt ? <p style={{ color: "var(--text-3)", fontSize: 11, margin: "4px 0 0" }}>{followup.noteExcerpt}</p> : null}</div>
             {followup.state === "created" ? <span className="badge badge-success" data-followup-created>{t({ en: "Created", zh: "已创建" })}</span> : terminal ? <span className="badge" data-followup-terminal={followup.state}>{followup.state === "completed" ? t({ en: "Completed", zh: "已完成" }) : t({ en: "Dismissed", zh: "已忽略" })}</span> : <button className="btn btn-ghost btn-sm" data-followup-review onClick={() => { setConfirmingFollowup(key); setFollowupDueAt(""); setFollowupError(null); }} type="button">{followup.state === "partial" ? t({ en: "Repair task or reminder", zh: "补全任务或提醒" }) : t({ en: "Create follow-up", zh: "创建跟进" })}</button>}
           </div>
           {followup.state !== "available" ? <div data-followup-real-state style={{ color: "var(--text-3)", fontSize: 11 }}>{t({ en: `Task ${taskStatusLabel} · in-app reminder ${reminderStatusLabel} · ${followup.dueAt ? new Date(followup.dueAt).toLocaleString() : "due time unavailable"}`, zh: `任务${taskStatusLabel} · 站内提醒${reminderStatusLabel} · ${followup.dueAt ? new Date(followup.dueAt).toLocaleString() : "到期时间不可用"}` })}{followup.taskStatus !== "missing" ? <> · <a href={followup.taskHref}>{t({ en: "Open task center", zh: "打开任务中心" })}</a></> : null}</div> : null}

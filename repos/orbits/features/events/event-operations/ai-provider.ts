@@ -26,6 +26,7 @@ export interface EventOperationsModelRunner {
 
 export interface EventOperationsAiProviderOptions {
   config?: GeminiOrbitAgentProviderConfig;
+  enforceOutputLanguage?: boolean;
   outputLanguage?: "en" | "zh-CN";
   recommendationPromptEncoding?: "expanded" | "deduplicated";
   retryableJsonFailureShapes?: readonly EventOperationsJsonFailureShape[];
@@ -334,6 +335,52 @@ function toEventOperationsMetadata(
   };
 }
 
+function addUsageComponent(
+  first: number | null,
+  second: number | null,
+): number | null {
+  return first === null && second === null ? null : (first ?? 0) + (second ?? 0);
+}
+
+/**
+ * Accounting for a repaired output must cover both model calls: the original
+ * generation call and the bounded language-repair call. Bytes and token usage
+ * are summed; the finish reason stays the final call's reason.
+ */
+function mergeEventOperationsResponseMetadata(
+  first: EventOperationsAiResponseMetadata | undefined,
+  second: EventOperationsAiResponseMetadata | undefined,
+): EventOperationsAiResponseMetadata | undefined {
+  if (!first) return second;
+  if (!second) return first;
+  return {
+    finishReason: second.finishReason ?? first.finishReason,
+    providerResponseBytes:
+      first.providerResponseBytes + second.providerResponseBytes,
+    usage:
+      first.usage === null && second.usage === null
+        ? null
+        : {
+            cacheHitTokens: addUsageComponent(
+              first.usage?.cacheHitTokens ?? null,
+              second.usage?.cacheHitTokens ?? null,
+            ),
+            completionTokens: addUsageComponent(
+              first.usage?.completionTokens ?? null,
+              second.usage?.completionTokens ?? null,
+            ),
+            promptTokens: addUsageComponent(
+              first.usage?.promptTokens ?? null,
+              second.usage?.promptTokens ?? null,
+            ),
+            reasoningTokens: addUsageComponent(
+              first.usage?.reasoningTokens ?? null,
+              second.usage?.reasoningTokens ?? null,
+            ),
+          },
+  };
+}
+
 function invalidJson<TValue>(
   jsonFailureShape: EventOperationsJsonFailureShape,
   responseMetadata?: EventOperationsAiResponseMetadata,
@@ -365,6 +412,246 @@ function invalidSchema<TValue>(
   };
 }
 
+const CHINESE_OUTPUT_TECHNICAL_TOKENS = new Set(
+  ["AI", "SaaS", "KPI", "API", "B2B", "LP", "IP", "CEO", "Scope"].map(
+    (token) => token.toLocaleLowerCase("en-US"),
+  ),
+);
+const LATIN_TOKEN_PATTERN =
+  /\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*(?:[-'’]\p{Script=Latin}[\p{Script=Latin}\p{Mark}\p{Number}]*)*/gu;
+const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
+
+function latinTokens(value: string): readonly string[] {
+  return value.match(LATIN_TOKEN_PATTERN) ?? [];
+}
+
+function allowedChineseOutputLatinTokens(
+  participants: readonly import("./contract").EventOperationsParticipant[],
+): ReadonlySet<string> {
+  const allowed = new Set(CHINESE_OUTPUT_TECHNICAL_TOKENS);
+  for (const participant of participants) {
+    for (const properName of [participant.displayName, participant.company]) {
+      if (typeof properName !== "string") continue;
+      for (const token of latinTokens(properName)) {
+        allowed.add(token.toLocaleLowerCase("en-US"));
+      }
+    }
+  }
+  return allowed;
+}
+
+export interface ChineseOutputPolicyViolations {
+  disallowedTokens: readonly string[];
+  untranslatedValues: readonly string[];
+}
+
+export function collectChineseOutputPolicyViolations(
+  values: readonly string[],
+  participants: readonly import("./contract").EventOperationsParticipant[],
+): ChineseOutputPolicyViolations {
+  const allowed = allowedChineseOutputLatinTokens(participants);
+  const disallowedTokens = new Set<string>();
+  const untranslatedValues: string[] = [];
+  for (const value of values) {
+    const tokens = latinTokens(value);
+    for (const token of tokens) {
+      if (!allowed.has(token.toLocaleLowerCase("en-US"))) {
+        disallowedTokens.add(token);
+      }
+    }
+    if (
+      !HAN_CHARACTER_PATTERN.test(value) &&
+      tokens.length > 0 &&
+      !tokens.every((token) =>
+        CHINESE_OUTPUT_TECHNICAL_TOKENS.has(token.toLocaleLowerCase("en-US")),
+      )
+    ) {
+      untranslatedValues.push(value);
+    }
+  }
+  return {
+    disallowedTokens: [...disallowedTokens],
+    untranslatedValues,
+  };
+}
+
+function followsChineseOutputLanguagePolicy(
+  values: readonly string[],
+  participants: readonly import("./contract").EventOperationsParticipant[],
+): boolean {
+  const violations = collectChineseOutputPolicyViolations(values, participants);
+  return (
+    violations.disallowedTokens.length === 0 &&
+    violations.untranslatedValues.length === 0
+  );
+}
+
+function invalidOutputLanguage<TValue>(
+  responseMetadata?: EventOperationsAiResponseMetadata,
+): EventOperationsAiResult<TValue> {
+  return {
+    error: {
+      code: "AI_SCHEMA_INVALID",
+      message:
+        "The model output violated the configured natural-language policy.",
+    },
+    ...(responseMetadata ? { responseMetadata } : {}),
+    retryable: true,
+    success: false,
+  };
+}
+
+function strictChineseOutputRequirement(
+  participants: readonly import("./contract").EventOperationsParticipant[],
+): string {
+  const allowedTokens = [...allowedChineseOutputLatinTokens(participants)].sort();
+  return `- Every natural-language value must be idiomatic Simplified Chinese. The only allowed Latin tokens are this exact case-insensitive list of participant/company proper-name tokens and technical terms: ${JSON.stringify(allowedTokens)}. Translate every other Latin word.`;
+}
+
+function describeChineseOutputPolicyViolations(
+  violations: ChineseOutputPolicyViolations,
+): string {
+  const tokens = violations.disallowedTokens.slice(0, 30);
+  const values = violations.untranslatedValues
+    .slice(0, 6)
+    .map((value) => (value.length > 160 ? `${value.slice(0, 160)}…` : value));
+  return [
+    ...(tokens.length > 0
+      ? [
+          `These exact Latin tokens in the original document are NOT allowed and each one must be translated into Chinese: ${JSON.stringify(tokens)}.`,
+        ]
+      : []),
+    ...(values.length > 0
+      ? [
+          `These string values contain no Chinese and must be rewritten as idiomatic Simplified Chinese: ${JSON.stringify(values)}.`,
+        ]
+      : []),
+  ].join("\n");
+}
+
+async function repairChineseNaturalLanguage<TValue>(input: {
+  config: GeminiOrbitAgentProviderConfig | undefined;
+  naturalLanguageFields: string;
+  originalJson: unknown;
+  originalResponseMetadata: EventOperationsAiResponseMetadata | undefined;
+  parseValue(value: unknown): TValue | null;
+  participants: readonly import("./contract").EventOperationsParticipant[];
+  runModelText: EventOperationsModelRunner;
+  values(value: TValue): readonly string[];
+  violations: ChineseOutputPolicyViolations;
+}): Promise<EventOperationsAiResult<TValue>> {
+  const allowedTokens = [...allowedChineseOutputLatinTokens(input.participants)].sort();
+  const violationSummary = describeChineseOutputPolicyViolations(input.violations);
+  const response = await input.runModelText({
+    config: input.config,
+    systemInstruction: `${systemInstruction}\nYou are performing one bounded AI-only language repair. Preserve every object key, array boundary, id, token key, number, boolean, and null exactly. Translate only the documented natural-language string values into idiomatic Simplified Chinese. Inside those string values, Latin numeric abbreviations must be rewritten as Chinese numerals with the exact same value (for example 80k becomes 8万 and 1.2M becomes 120万); that rewrite is required and does not count as changing a number. Never add, remove, reorder, summarize, or locally substitute data.`,
+    userText: `Repair only these natural-language fields: ${input.naturalLanguageFields}.
+The only allowed Latin tokens are this exact case-insensitive list of participant/company proper-name tokens and technical terms: ${JSON.stringify(allowedTokens)}.
+Translate every other Latin word. Return the same closed JSON document with no markdown or trailing text.
+${violationSummary ? `\n${violationSummary}\n` : ""}
+Original closed JSON:
+${JSON.stringify(input.originalJson)}`,
+  });
+  if (response.success === false) {
+    const failure = modelFailure<TValue>(response);
+    if (failure.success === false) {
+      const merged = mergeEventOperationsResponseMetadata(
+        input.originalResponseMetadata,
+        failure.responseMetadata,
+      );
+      return { ...failure, ...(merged ? { responseMetadata: merged } : {}) };
+    }
+    return failure;
+  }
+  const metadata = mergeEventOperationsResponseMetadata(
+    input.originalResponseMetadata,
+    response.responseMetadata
+      ? toEventOperationsMetadata(response.responseMetadata)
+      : undefined,
+  );
+  const json = parseJson(response.text);
+  const value = json === null ? null : input.parseValue(json);
+  if (!value) {
+    writeChineseRepairDiagnostic({
+      failureMode:
+        json === null ? "repair_output_not_json" : "repair_output_schema_mismatch",
+    });
+    return invalidOutputLanguage(metadata);
+  }
+  const repairedViolations = collectChineseOutputPolicyViolations(
+    input.values(value),
+    input.participants,
+  );
+  if (
+    repairedViolations.disallowedTokens.length > 0 ||
+    repairedViolations.untranslatedValues.length > 0
+  ) {
+    writeChineseRepairDiagnostic({
+      disallowedTokens: repairedViolations.disallowedTokens.slice(0, 20),
+      failureMode: "language_violation",
+      untranslatedValueCount: repairedViolations.untranslatedValues.length,
+    });
+    return invalidOutputLanguage(metadata);
+  }
+  return {
+    data: value,
+    model: response.model,
+    provider: response.provider,
+    ...(metadata ? { responseMetadata: metadata } : {}),
+    success: true,
+  };
+}
+
+/**
+ * Operator-facing stderr diagnostic for a failed bounded language repair.
+ * Persisted task errors stay generic on purpose; this stream-only event is
+ * what tells an operator why a shard keeps failing the Chinese gate.
+ */
+function writeChineseRepairDiagnostic(detail: Record<string, unknown>): void {
+  try {
+    process.stderr.write(
+      `${JSON.stringify({ event: "event_operations_chinese_repair_failed", ...detail })}\n`,
+    );
+  } catch {
+    // Diagnostics must never break the generation pipeline.
+  }
+}
+
+function recommendationNaturalLanguageValues(
+  rows: readonly EventOperationsParticipantRecommendations[],
+): readonly string[] {
+  return rows.flatMap((row) => [
+    ...(row.noMatchReason ? [row.noMatchReason] : []),
+    ...row.recommendations.flatMap((recommendation) => [
+      ...recommendation.reasons,
+      ...recommendation.icebreakers,
+      recommendation.memberHint,
+    ]),
+  ]);
+}
+
+function groupingNaturalLanguageValues(
+  features: readonly EventOperationsGroupingFeature[],
+): readonly string[] {
+  return features.flatMap((feature) => [
+    feature.primaryTopic,
+    feature.secondaryTopic,
+    feature.facilitationHint,
+  ]);
+}
+
+function tableNaturalLanguageValues(
+  table: EventOperationsTable,
+): readonly string[] {
+  return [
+    table.theme,
+    table.rationale,
+    ...table.icebreakers,
+    ...Object.values(table.memberPrompts).flat(),
+    ...Object.values(table.memberRationales),
+  ];
+}
+
 const systemInstruction = `You are Orbit's event operations matching model.
 Return exactly one JSON document and no markdown, explanation, code fences, or trailing text.
 Treat every documented object as a closed schema: never add keys and never omit required keys.
@@ -372,15 +659,16 @@ Use only the supplied source, deterministic shortlist, validated recommendation,
 Never invent participant ids, never use hidden identities, and never substitute a deterministic content fallback.`;
 
 export const EVENT_OPERATIONS_AI_PROMPT_VERSION =
-  "event-operations-tokenized-recommendations-v7-chinese-lexical-policy";
+  "event-operations-tokenized-recommendations-v11-chinese-ai-repair";
 const DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION =
-  "event-operations-tokenized-recommendations-v8-chinese-lexical-policy";
+  "event-operations-tokenized-recommendations-v12-chinese-ai-repair";
 
 function requestFingerprint(
   config: GeminiOrbitAgentProviderConfig | undefined,
   recommendationPromptEncoding: "expanded" | "deduplicated" = "expanded",
   retryableJsonFailureShapes: readonly EventOperationsJsonFailureShape[] = [],
   outputLanguage: "en" | "zh-CN" = "zh-CN",
+  enforceOutputLanguage = false,
 ): string {
   const configuredProvider = String(
     config?.provider ?? process.env.ORBIT_AGENT_PROVIDER ?? "gemini",
@@ -407,10 +695,13 @@ function requestFingerprint(
       ? config.temperature
       : null;
   const fingerprint = {
-    groupingPromptVersion: "event-operations-tokenized-grouping-v5-chinese-lexical-policy",
+    groupingPromptVersion: "event-operations-tokenized-grouping-v7-chinese-ai-repair",
     jsonOutput: config?.jsonOutput === true,
     maxTokens: config?.maxTokens ?? null,
     model,
+    naturalLanguagePolicy: enforceOutputLanguage
+      ? "strict-zh-latin-ai-repair-v2"
+      : "prompt-only",
     outputLanguage,
     promptVersion: recommendationPromptEncoding === "deduplicated"
       ? DEDUPLICATED_RECOMMENDATION_PROMPT_VERSION
@@ -653,6 +944,7 @@ function mapTokenGroupingFeatures(
 
 export function createEventOperationsAiProvider({
   config,
+  enforceOutputLanguage = false,
   outputLanguage = "zh-CN",
   recommendationPromptEncoding = "expanded",
   retryableJsonFailureShapes = [],
@@ -672,9 +964,14 @@ export function createEventOperationsAiProvider({
       recommendationPromptEncoding,
       effectiveRetryableJsonFailureShapes,
       outputLanguage,
+      enforceOutputLanguage,
     ),
     async generateRecommendations(input) {
       const tokenizedSources = compactRecommendationSources(input.sources, recommendationPromptEncoding);
+      const participants = input.sources.flatMap((source) => [
+        source.sourceParticipant,
+        ...source.candidateParticipants,
+      ]);
       const response = await runModelText({
         config,
         systemInstruction: effectiveSystemInstruction,
@@ -687,6 +984,7 @@ Requirements:
 - score is 0..100; reasons is non-empty; icebreakers has exactly 2 strings; memberHint is specific.
 - noMatchReason is required: use null when recommendations is non-empty, otherwise a concrete non-empty reason.
 - Every object must contain exactly the documented keys.
+${enforceOutputLanguage && outputLanguage === "zh-CN" ? `${strictChineseOutputRequirement(participants)}\n` : ""}
 ${recommendationPromptEncoding === "deduplicated" ? "- Resolve sourceProfileKey and each candidate profileKey from the supplied profiles lookup before making a recommendation.\n" : ""}
 
 JSON shape:
@@ -703,6 +1001,41 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
       if (!tokenRows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const rows = mapTokenRecommendationRows(tokenRows, tokenizedSources.tokenSources);
       if (!rows) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const recommendationViolations =
+        enforceOutputLanguage && outputLanguage === "zh-CN"
+          ? collectChineseOutputPolicyViolations(
+              recommendationNaturalLanguageValues(rows),
+              participants,
+            )
+          : null;
+      if (
+        recommendationViolations &&
+        (recommendationViolations.disallowedTokens.length > 0 ||
+          recommendationViolations.untranslatedValues.length > 0)
+      ) {
+        return repairChineseNaturalLanguage({
+          config,
+          naturalLanguageFields:
+            "noMatchReason, reasons, icebreakers, and memberHint",
+          originalJson: json,
+          originalResponseMetadata: response.responseMetadata
+            ? toEventOperationsMetadata(response.responseMetadata)
+            : undefined,
+          participants,
+          parseValue(value) {
+            const repairedRows = parseTokenRecommendationRows(value);
+            return repairedRows
+              ? mapTokenRecommendationRows(
+                  repairedRows,
+                  tokenizedSources.tokenSources,
+                )
+              : null;
+          },
+          runModelText,
+          values: recommendationNaturalLanguageValues,
+          violations: recommendationViolations,
+        });
+      }
       return {
         data: rows,
         model: response.model,
@@ -716,6 +1049,10 @@ ${JSON.stringify(tokenizedSources.promptSources)}`,
 
     async generateGroupingFeatures(input) {
       const tokenizedSources = compactGroupingSources(input.sources);
+      const participants = input.sources.flatMap((source) => [
+        source.sourceParticipant,
+        ...source.candidateParticipants,
+      ]);
       const response = await runModelText({
         config,
         systemInstruction: effectiveSystemInstruction,
@@ -727,6 +1064,7 @@ Requirements:
 - Resolve sourceProfileKey and candidate profileKey from the profiles lookup; never output participant ids.
 - primaryTopic, secondaryTopic, and facilitationHint must be concrete and evidence-backed.
 - Every object must contain exactly the documented keys.
+${enforceOutputLanguage && outputLanguage === "zh-CN" ? `${strictChineseOutputRequirement(participants)}\n` : ""}
 
 JSON shape:
 {"features":[{"sourceKey":"S1","primaryTopic":"specific topic","secondaryTopic":"specific topic","affinityCandidateKeys":["S1C1"],"facilitationHint":"specific facilitation hint"}]}
@@ -742,6 +1080,42 @@ ${JSON.stringify(tokenizedSources.prompt)}`,
       if (!tokenFeatures) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
       const features = mapTokenGroupingFeatures(tokenFeatures, tokenizedSources.tokenSources, input.maxAffinityCount);
       if (!features) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const groupingViolations =
+        enforceOutputLanguage && outputLanguage === "zh-CN"
+          ? collectChineseOutputPolicyViolations(
+              groupingNaturalLanguageValues(features),
+              participants,
+            )
+          : null;
+      if (
+        groupingViolations &&
+        (groupingViolations.disallowedTokens.length > 0 ||
+          groupingViolations.untranslatedValues.length > 0)
+      ) {
+        return repairChineseNaturalLanguage({
+          config,
+          naturalLanguageFields:
+            "primaryTopic, secondaryTopic, and facilitationHint",
+          originalJson: json,
+          originalResponseMetadata: response.responseMetadata
+            ? toEventOperationsMetadata(response.responseMetadata)
+            : undefined,
+          participants,
+          parseValue(value) {
+            const repairedFeatures = parseTokenGroupingFeatures(value);
+            return repairedFeatures
+              ? mapTokenGroupingFeatures(
+                  repairedFeatures,
+                  tokenizedSources.tokenSources,
+                  input.maxAffinityCount,
+                )
+              : null;
+          },
+          runModelText,
+          values: groupingNaturalLanguageValues,
+          violations: groupingViolations,
+        });
+      }
       return {
         data: features,
         model: response.model,
@@ -765,6 +1139,7 @@ Requirements:
 - Return a concrete theme, evidence-based table rationale, exactly 3 icebreakers, one unique seat per member, exactly 2 memberPrompts under every member id, and one specific memberRationale under every member id explaining why that person belongs at this table.
 - members, memberPrompts, and memberRationales must each cover exactly the supplied member ids: no missing, duplicate, unknown, or extra member id.
 - Do not change membership. Every object must contain exactly the documented keys.
+${enforceOutputLanguage && outputLanguage === "zh-CN" ? `${strictChineseOutputRequirement(input.members)}\n` : ""}
 
 JSON shape:
 {"tableNumber":${input.tableNumber},"theme":"specific theme","rationale":"why these assigned members work as a table","icebreakers":["one","two","three"],"members":[{"participantId":"id","seat":"R${input.roundNumber}-T${input.tableNumber}-S1"}],"memberPrompts":{"id":["prompt one","prompt two"]},"memberRationales":{"id":"why this specific member belongs at this table, grounded in supplied profile and grouping features"}}
@@ -784,6 +1159,38 @@ ${JSON.stringify(input.features)}`,
         new Set(input.members.map((member) => member.participantId)),
       );
       if (!table) return invalidSchema(response.responseMetadata ? toEventOperationsMetadata(response.responseMetadata) : undefined);
+      const tableViolations =
+        enforceOutputLanguage && outputLanguage === "zh-CN"
+          ? collectChineseOutputPolicyViolations(
+              tableNaturalLanguageValues(table),
+              input.members,
+            )
+          : null;
+      if (
+        tableViolations &&
+        (tableViolations.disallowedTokens.length > 0 ||
+          tableViolations.untranslatedValues.length > 0)
+      ) {
+        return repairChineseNaturalLanguage({
+          config,
+          naturalLanguageFields:
+            "theme, rationale, icebreakers, memberPrompts, and memberRationales",
+          originalJson: json,
+          originalResponseMetadata: response.responseMetadata
+            ? toEventOperationsMetadata(response.responseMetadata)
+            : undefined,
+          participants: input.members,
+          parseValue(value) {
+            return parseTable(
+              value,
+              new Set(input.members.map((member) => member.participantId)),
+            );
+          },
+          runModelText,
+          values: tableNaturalLanguageValues,
+          violations: tableViolations,
+        });
+      }
       return {
         data: table,
         model: response.model,
@@ -810,6 +1217,7 @@ export function createConfiguredEventOperationsAiProvider({
       temperature: 0.2,
       ...(requestTimeoutMs === undefined ? {} : { requestTimeoutMs }),
     },
+    enforceOutputLanguage: true,
     outputLanguage: "zh-CN",
     recommendationPromptEncoding: "deduplicated",
     retryableJsonFailureShapes: ["empty", "parse_syntax", "unterminated_envelope"],
@@ -821,4 +1229,5 @@ export const __eventOperationsAiProviderTestExports = {
   classifyJsonFailureShape,
   parseTokenRecommendationRows,
   parseTable,
+  followsChineseOutputLanguagePolicy,
 };

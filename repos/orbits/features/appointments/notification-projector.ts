@@ -1,10 +1,16 @@
 import type { ReminderActionWriter } from "../notifications/action-writer";
 import type { AppointmentOutboxEvent } from "./contract";
+import {
+  createConfiguredAppointmentCalendarProjector,
+  type AppointmentCalendarProjector,
+} from "./calendar-projector";
 import { createConfiguredEventOperationsPostgresRuntime, type EventOperationsPostgresRuntime, type EventOperationsSqlExecutor } from "../events/event-operations/storage/postgres-client";
 
 export interface AppointmentNotificationProjection {
   notificationIds: readonly string[];
-  policy: "in_app" | "provider_not_configured" | "reminders_invalidated" | "superseded";
+  policy: "in_app" | "provider_cancelled" | "provider_not_configured" | "provider_synced" | "reminders_invalidated" | "superseded";
+  providerRecordId?: string;
+  meetingJoinUrl?: string | null;
 }
 
 export interface AppointmentNotificationProjector {
@@ -52,6 +58,8 @@ function titleFor(event: AppointmentOutboxEvent, now: string): string | null {
     case "appointment.proposed": return "收到新的约谈时间提议";
     case "appointment.countered": return "约谈时间有新的反提议";
     case "appointment.reschedule.proposed": return "收到约谈改期提议";
+    case "appointment.declined": return "约谈时间提议未被接受";
+    case "appointment.reschedule.declined": return "约谈改期提议未被接受 · 原确认时间保持不变";
     case "appointment.confirmed": return "约谈已确认 · Calendar/Meet 未配置时不会自动同步";
     case "appointment.rescheduled": return "约谈改期已确认 · 旧提醒已失效";
     case "appointment.cancelled": return "约谈已取消";
@@ -71,6 +79,7 @@ function titleFor(event: AppointmentOutboxEvent, now: string): string | null {
 }
 
 export function createAppointmentNotificationProjector(input: {
+  calendarProjector?: AppointmentCalendarProjector | null;
   now?: () => string;
   writerForActor(actorId: string): ReminderActionWriter;
 }): AppointmentNotificationProjector {
@@ -92,8 +101,20 @@ export function createAppointmentNotificationProjector(input: {
         }
         return { notificationIds: removed, policy: "reminders_invalidated" };
       }
-      if (event.eventType === "appointment.calendar.cancel" || event.eventType === "appointment.meeting.cancel" || event.eventType === "appointment.calendar.requested" || event.eventType === "appointment.meeting.requested") {
-        return { notificationIds: [], policy: "provider_not_configured" };
+      if (event.eventType === "appointment.calendar.cancel" || event.eventType === "appointment.meeting.cancel") {
+        if (!input.calendarProjector) return { notificationIds: [], policy: "provider_not_configured" };
+        await input.calendarProjector.cancel(event);
+        return { notificationIds: [], policy: "provider_cancelled" };
+      }
+      if (event.eventType === "appointment.calendar.requested" || event.eventType === "appointment.meeting.requested") {
+        if (!input.calendarProjector) return { notificationIds: [], policy: "provider_not_configured" };
+        const projection = await input.calendarProjector.upsert(event);
+        return {
+          meetingJoinUrl: projection.joinUrl,
+          notificationIds: [],
+          policy: "provider_synced",
+          providerRecordId: projection.providerRecordId,
+        };
       }
       const title = titleFor(event, input.now?.() ?? new Date().toISOString());
       if (!title) throw new Error(`Unsupported appointment outbox event type: ${String(event.eventType)}`);
@@ -200,7 +221,11 @@ async function upsertNotification(input: {
   ]);
 }
 
-export function createPostgresAppointmentNotificationProjector(runtime: EventOperationsPostgresRuntime): AppointmentNotificationProjector {
+export function createPostgresAppointmentNotificationProjector(
+  runtime: EventOperationsPostgresRuntime,
+  calendarProjector: AppointmentCalendarProjector | null =
+    createConfiguredAppointmentCalendarProjector(runtime),
+): AppointmentNotificationProjector {
   return {
     async project(event) {
       const participantActorIds = stringArray(event.payload.participantActorIds);
@@ -217,7 +242,21 @@ export function createPostgresAppointmentNotificationProjector(runtime: EventOpe
         }, { isolation: "read committed" });
         return { notificationIds, policy: "reminders_invalidated" };
       }
-      if (event.eventType === "appointment.calendar.cancel" || event.eventType === "appointment.meeting.cancel" || event.eventType === "appointment.calendar.requested" || event.eventType === "appointment.meeting.requested") return { notificationIds: [], policy: "provider_not_configured" };
+      if (event.eventType === "appointment.calendar.cancel" || event.eventType === "appointment.meeting.cancel") {
+        if (!calendarProjector) return { notificationIds: [], policy: "provider_not_configured" };
+        await calendarProjector.cancel(event);
+        return { notificationIds: [], policy: "provider_cancelled" };
+      }
+      if (event.eventType === "appointment.calendar.requested" || event.eventType === "appointment.meeting.requested") {
+        if (!calendarProjector) return { notificationIds: [], policy: "provider_not_configured" };
+        const projection = await calendarProjector.upsert(event);
+        return {
+          meetingJoinUrl: projection.joinUrl,
+          notificationIds: [],
+          policy: "provider_synced",
+          providerRecordId: projection.providerRecordId,
+        };
+      }
       const title = titleFor(event, new Date().toISOString());
       if (!title) throw new Error(`Unsupported appointment outbox event type: ${String(event.eventType)}`);
       const suffix = event.eventType === "appointment.reminder.t24h" ? "t24h" : event.eventType === "appointment.reminder.t1h" ? "t1h" : event.eventType === "appointment.memo.t15m" ? "t15m" : event.eventType.split(".").at(-1)!;

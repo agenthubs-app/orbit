@@ -104,6 +104,30 @@ function canReviewAdmission(item: EventCenterItem): boolean {
   return item.owner || item.role === "reviewer";
 }
 
+function onsiteOperationsAvailable(item: EventCenterItem): boolean {
+  return !item.migrationPending && item.lifecycleState === "published";
+}
+
+function analyticsAvailable(item: EventCenterItem): boolean {
+  return (
+    !item.migrationPending &&
+    (item.lifecycleState === "published" || item.lifecycleState === "archived")
+  );
+}
+
+function lifecycleRestrictionCopy(item: EventCenterItem): string {
+  if (item.lifecycleState === "draft") {
+    return "活动发布前不开放运营台、签到台与报名审核；负责人仍可管理活动角色。";
+  }
+  if (item.lifecycleState === "cancelled") {
+    return "活动已取消，运营台、签到台与报名审核均已关闭。";
+  }
+  if (item.lifecycleState === "archived") {
+    return "活动已归档，现场运营、签到与报名审核已关闭；有权限的成员仍可查看历史分析。";
+  }
+  return "当前生命周期不开放运营台、签到台与报名审核。";
+}
+
 async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
@@ -174,6 +198,8 @@ export function EventCenterWorkspace() {
             const checkInHref = `${operationsHref}/check-in`;
             const admissionHref = `${operationsHref}/admission`;
             const analyticsHref = `/app/events/${encodeURIComponent(event.eventId)}/analytics`;
+            const onsiteAvailable = onsiteOperationsAvailable(event);
+            const reportAvailable = analyticsAvailable(event);
             return (
               <article className="card" data-event-center-card={event.eventId} key={event.eventId} style={{ display: "grid", gap: 16, padding: 20 }}>
                 <div style={{ alignItems: "start", display: "flex", gap: 12, justifyContent: "space-between" }}>
@@ -196,12 +222,28 @@ export function EventCenterWorkspace() {
                       <div>{formatDate(event.startsAt)} — {formatDate(event.endsAt)}</div>
                       <div>{role.detail}</div>
                     </div>
+                    {!onsiteAvailable ? (
+                      <div
+                        data-event-center-lifecycle-restricted={event.eventId}
+                        style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}
+                      >
+                        {lifecycleRestrictionCopy(event)}
+                      </div>
+                    ) : null}
+                    {onsiteAvailable && event.role === "operations" ? (
+                      <div
+                        data-event-center-bootstrap-limited={event.eventId}
+                        style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}
+                      >
+                        首次运营配置必须由活动负责人初始化；初始化完成后，运营角色才能继续调整配置并执行现场流程。
+                      </div>
+                    ) : null}
                     <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 14 }}>
                       <a className="btn btn-ghost btn-sm" href={`/app/events/${encodeURIComponent(event.eventId)}`}>查看活动</a>
-                      {canOpenOperations(event) ? <a className="btn btn-primary btn-sm" href={operationsHref}>打开运营台</a> : null}
-                      {canOpenCheckIn(event) ? <a className="btn btn-ghost btn-sm" href={checkInHref}>签到台</a> : null}
-                      {canReviewAdmission(event) ? <a className="btn btn-ghost btn-sm" data-event-center-admission={event.eventId} href={admissionHref}>报名审核</a> : null}
-                      {canOpenAnalytics(event) ? <a className="btn btn-ghost btn-sm" data-event-center-analytics={event.eventId} href={analyticsHref}>查看活动分析</a> : null}
+                      {onsiteAvailable && canOpenOperations(event) ? <a className="btn btn-primary btn-sm" href={operationsHref}>打开运营台</a> : null}
+                      {onsiteAvailable && canOpenCheckIn(event) ? <a className="btn btn-ghost btn-sm" href={checkInHref}>签到台</a> : null}
+                      {onsiteAvailable && canReviewAdmission(event) ? <a className="btn btn-ghost btn-sm" data-event-center-admission={event.eventId} href={admissionHref}>报名审核</a> : null}
+                      {reportAvailable && canOpenAnalytics(event) ? <a className="btn btn-ghost btn-sm" data-event-center-analytics={event.eventId} href={analyticsHref}>查看活动分析</a> : null}
                       {event.owner ? <a className="btn btn-ghost btn-sm" data-event-center-manage-roles={event.eventId} href={rolesHref}>管理角色</a> : null}
                     </div>
                   </>

@@ -11,12 +11,13 @@ import {
 } from "../registration/profile-contract-repair/audit-outbox-contract";
 import type { EventRegistrationProvider } from "../registration/service";
 import type { EventOperationsCheckIn } from "./contract";
+import type { EventContactRequestNotificationWriter } from "./contact-request-notification-writer";
 import type { EventOperationsOutboxMessage } from "./storage/postgres-outbox-repository";
 
 export interface EventOperationsProjectionResult {
-  policy: "canonical_only" | "legacy_projection";
+  policy: "canonical_only" | "in_app" | "legacy_projection";
   projectedIds: readonly string[];
-  projection: "checkin_evidence" | "contact_relationship" | "registration" | "none";
+  projection: "checkin_evidence" | "contact_relationship" | "contact_request_notification" | "registration" | "none";
 }
 
 export interface EventOperationsOutboxProjector {
@@ -24,6 +25,7 @@ export interface EventOperationsOutboxProjector {
 }
 
 export interface CreateEventOperationsOutboxProjectorOptions {
+  contactRequestNotifications: EventContactRequestNotificationWriter | null;
   registrationProvider: EventRegistrationProvider;
   relationshipProvider: RelationshipRecordWriteProvider;
 }
@@ -107,6 +109,83 @@ function checkInPayload(message: EventOperationsOutboxMessage): EventOperationsC
   return payload as unknown as EventOperationsCheckIn;
 }
 
+function requiredRevision(value: Readonly<Record<string, unknown>>): number {
+  const revision = Number(value.revision);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new EventOperationsOutboxProjectionError(
+      "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID",
+      "The contact-request outbox payload has an invalid revision.",
+      false,
+    );
+  }
+  return revision;
+}
+
+async function projectContactRequestNotification(input: {
+  message: EventOperationsOutboxMessage;
+  writer: EventContactRequestNotificationWriter;
+}): Promise<EventOperationsProjectionResult> {
+  const payload = record(input.message.payload, "contact request");
+  const requesterActorId = requiredString(payload, "requesterActorId");
+  const targetActorId = requiredString(payload, "targetActorId");
+  const requestId = requiredString(payload, "requestId");
+  const occurredAt = requiredString(payload, "updatedAt");
+  const revision = requiredRevision(payload);
+  if (
+    input.message.aggregateType !== "event_contact_request" ||
+    input.message.aggregateId !== requestId ||
+    !Number.isFinite(Date.parse(occurredAt))
+  ) {
+    throw new EventOperationsOutboxProjectionError(
+      "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID",
+      "The contact-request outbox identity or timestamp is invalid.",
+      false,
+    );
+  }
+  const contactIdsByActor = payload.contactIdsByActor;
+  const requesterContactId = contactIdsByActor && typeof contactIdsByActor === "object" && !Array.isArray(contactIdsByActor)
+    ? (contactIdsByActor as Readonly<Record<string, unknown>>)[requesterActorId]
+    : null;
+  const transition = input.message.eventType.split(".").at(-1);
+  const notification = input.message.eventType === "event.contact_request.created"
+    ? { actorId: targetActorId, contactId: null, title: "收到新的名片交换申请" }
+    : input.message.eventType === "event.contact_request.accepted"
+      ? {
+          actorId: requesterActorId,
+          contactId: typeof requesterContactId === "string" && requesterContactId.trim() ? requesterContactId : null,
+          title: "名片交换申请已接受",
+        }
+      : input.message.eventType === "event.contact_request.declined"
+        ? { actorId: requesterActorId, contactId: null, title: "名片交换申请未被接受" }
+        : { actorId: targetActorId, contactId: null, title: "名片交换申请已被撤回" };
+  if (input.message.eventType === "event.contact_request.accepted" && !notification.contactId) {
+    throw new EventOperationsOutboxProjectionError(
+      "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID",
+      "An accepted contact-request notification requires the requester's contact side.",
+      false,
+    );
+  }
+  const actionHref = notification.contactId
+    ? `/app/contacts/${encodeURIComponent(notification.contactId)}?eventId=${encodeURIComponent(input.message.eventId)}`
+    : `/app/events/${encodeURIComponent(input.message.eventId)}#event-matchmaking-title`;
+  const notificationId = `notification:event-contact-request:${encodeURIComponent(requestId)}:${revision}:${transition}:${encodeURIComponent(notification.actorId)}`;
+  await input.writer.createNotification({
+    actionHref,
+    actorId: notification.actorId,
+    contactId: notification.contactId,
+    eventId: input.message.eventId,
+    evidenceIds: [`event-contact-request:${requestId}:revision:${revision}`],
+    notificationId,
+    occurredAt,
+    title: notification.title,
+  });
+  return {
+    policy: "in_app",
+    projectedIds: [notificationId],
+    projection: "contact_request_notification",
+  };
+}
+
 function retryableProviderError(error: unknown): EventOperationsOutboxProjectionError {
   if (error instanceof EventOperationsOutboxProjectionError) return error;
   return new EventOperationsOutboxProjectionError(
@@ -118,6 +197,7 @@ function retryableProviderError(error: unknown): EventOperationsOutboxProjection
 }
 
 export function createEventOperationsOutboxProjector({
+  contactRequestNotifications,
   registrationProvider,
   relationshipProvider,
 }: CreateEventOperationsOutboxProjectorOptions): EventOperationsOutboxProjector {
@@ -187,6 +267,12 @@ export function createEventOperationsOutboxProjector({
           message.eventType === "event.contact_request.declined" ||
           message.eventType === "event.contact_request.withdrawn"
         ) {
+          if (contactRequestNotifications) {
+            return await projectContactRequestNotification({
+              message,
+              writer: contactRequestNotifications,
+            });
+          }
           return {
             policy: "canonical_only",
             projectedIds: [],

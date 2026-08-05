@@ -12,6 +12,7 @@ import { resolveAttendeePostEventAiProviderConfiguration } from "../features/eve
 import { createAttendeePostEventAiTaskRepository } from "../features/events/post-event-artifact/task-repository";
 import { createConfiguredEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
 import { createEventOperationsEngine } from "../features/events/event-operations/engine";
+import { createStorageEventContactRequestNotificationWriter } from "../features/events/event-operations/contact-request-notification-writer";
 import { createEventOperationsOutboxProjector } from "../features/events/event-operations/outbox-projector";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { createPostgresEventOperationsOutboxRepository } from "../features/events/event-operations/storage/postgres-outbox-repository";
@@ -21,6 +22,7 @@ import { createEventOperationsWorker } from "../features/events/event-operations
 import { createEventRegistrationLiveRecordProvider } from "../features/events/registration/storage/live-record-provider";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import { abortableWait } from "./abortable-wait";
+import { loadLocalEnv } from "./load-local-env";
 
 function positiveInteger(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -33,6 +35,7 @@ function positiveInteger(name: string, fallback: number): number {
 }
 
 async function main(): Promise<void> {
+  loadLocalEnv();
   const runtime = createConfiguredEventOperationsPostgresRuntime({
     max: positiveInteger("ORBIT_EVENT_OPERATIONS_DB_POOL_MAX", 12),
   });
@@ -115,6 +118,10 @@ async function main(): Promise<void> {
       60_000,
     ),
     outboxProjector: createEventOperationsOutboxProjector({
+      contactRequestNotifications: createStorageEventContactRequestNotificationWriter({
+        store: liveRecords.store,
+        workspaceId: liveRecords.workspaceId,
+      }),
       registrationProvider,
       relationshipProvider,
     }),

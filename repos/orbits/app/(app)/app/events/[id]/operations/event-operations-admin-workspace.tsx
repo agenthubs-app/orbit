@@ -278,8 +278,11 @@ export function EventOperationsAdminWorkspace({
       );
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : `Could not ${action} generation.`);
+      const actionError = cause instanceof Error
+        ? cause.message
+        : `Could not ${action} generation.`;
       await load();
+      setError(actionError);
     } finally {
       setBusy(null);
     }
@@ -395,7 +398,10 @@ export function EventOperationsAdminWorkspace({
                 <span className="mono">{field}</span>
                 <input
                   className="field"
-                  onChange={(input) => setForm((value) => ({ ...value, [field]: input.target.value }))}
+                  onInput={(input) => {
+                    const nextValue = input.currentTarget.value;
+                    setForm((value) => ({ ...value, [field]: nextValue }));
+                  }}
                   readOnly={canonicalScheduleFields.includes(field as (typeof canonicalScheduleFields)[number])}
                   type="datetime-local"
                   value={form[field]}
@@ -405,7 +411,10 @@ export function EventOperationsAdminWorkspace({
             {numberFields.map((field) => (
               <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
                 <span className="mono">{field}</span>
-                <input className="field" min={1} onChange={(input) => setForm((value) => ({ ...value, [field]: input.target.value }))} type="number" value={form[field]} />
+                <input className="field" min={1} onInput={(input) => {
+                  const nextValue = input.currentTarget.value;
+                  setForm((value) => ({ ...value, [field]: nextValue }));
+                }} type="number" value={form[field]} />
               </label>
             ))}
           </div>

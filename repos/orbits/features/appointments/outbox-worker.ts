@@ -29,6 +29,29 @@ function message(row: Row): AppointmentOutboxEvent & { attemptCount: number; lea
   };
 }
 
+function isProviderRequest(eventType: AppointmentOutboxEvent["eventType"]): boolean {
+  return eventType === "appointment.calendar.requested" || eventType === "appointment.meeting.requested";
+}
+
+function isProviderCancellation(eventType: AppointmentOutboxEvent["eventType"]): boolean {
+  return eventType === "appointment.calendar.cancel" || eventType === "appointment.meeting.cancel";
+}
+
+async function providerRevisionIsCurrent(
+  runtime: EventOperationsPostgresRuntime,
+  event: AppointmentOutboxEvent,
+): Promise<boolean> {
+  if (!isProviderRequest(event.eventType) && !isProviderCancellation(event.eventType)) return true;
+  const result = await runtime.client.query<{ projection_revision: string | null }>(`
+    select payload #>> '{projection,revision}' as projection_revision
+      from appointment_aggregates
+     where workspace_id = $1 and appointment_id = $2
+  `, [runtime.workspaceId, event.appointmentId]);
+  const row = result.rows[0];
+  if (!row) throw new Error("Appointment aggregate is missing for provider projection.");
+  return Number(row.projection_revision) === Number(event.payload.revision);
+}
+
 export async function runAppointmentOutboxBatch(input: {
   limit?: number;
   projector: AppointmentNotificationProjector;
@@ -61,15 +84,63 @@ export async function runAppointmentOutboxBatch(input: {
   await Promise.all(claimed.rows.map(async (row) => {
     const item = message(row);
     try {
-      const projection = await input.projector.project(item);
+      const projection = await providerRevisionIsCurrent(input.runtime, item)
+        ? await input.projector.project(item)
+        : { notificationIds: [], policy: "superseded" as const };
       const result = await input.runtime.client.transaction(async (transaction) => {
-        if ((item.eventType === "appointment.calendar.requested" || item.eventType === "appointment.meeting.requested") && projection.policy === "provider_not_configured") {
-          const field = item.eventType === "appointment.calendar.requested" ? "calendar" : "meeting";
+        if ((isProviderRequest(item.eventType) || isProviderCancellation(item.eventType)) && projection.policy === "provider_not_configured") {
           await transaction.query(`update appointment_aggregates set payload = jsonb_set(
-              payload, $3::text[], '"not_synced"'::jsonb, true
+              payload, '{projection}', coalesce(payload -> 'projection', '{}'::jsonb) || $3::jsonb, true
             ), updated_at = greatest(updated_at, $4::timestamptz)
             where workspace_id = $1 and appointment_id = $2
-              and (payload #>> '{projection,revision}')::bigint = $5`, [input.runtime.workspaceId, item.appointmentId, ["projection", field], item.createdAt, String(item.payload.revision)]);
+              and (payload #>> '{projection,revision}')::bigint = $5`, [
+            input.runtime.workspaceId,
+            item.appointmentId,
+            JSON.stringify({ calendar: "not_synced", meeting: "not_synced", updatedAt: item.createdAt }),
+            item.createdAt,
+            String(item.payload.revision),
+          ]);
+        }
+        if (isProviderRequest(item.eventType) && projection.policy === "provider_synced") {
+          const projectionPatch = {
+            calendar: "synced",
+            meeting: projection.meetingJoinUrl ? "synced" : "not_synced",
+            provider: "google_calendar",
+            providerRecordId: projection.providerRecordId,
+            updatedAt: item.createdAt,
+          };
+          await transaction.query(`update appointment_aggregates set payload =
+              case when $4::text is null then
+                jsonb_set(payload, '{projection}', coalesce(payload -> 'projection', '{}'::jsonb) || $3::jsonb, true)
+              else
+                jsonb_set(
+                  jsonb_set(payload, '{projection}', coalesce(payload -> 'projection', '{}'::jsonb) || $3::jsonb, true),
+                  '{confirmed,medium,joinUrl}', to_jsonb($4::text), true
+                )
+              end,
+              updated_at = greatest(updated_at, $5::timestamptz)
+            where workspace_id = $1 and appointment_id = $2
+              and (payload #>> '{projection,revision}')::bigint = $6`, [
+            input.runtime.workspaceId,
+            item.appointmentId,
+            JSON.stringify(projectionPatch),
+            projection.meetingJoinUrl ?? null,
+            item.createdAt,
+            String(item.payload.revision),
+          ]);
+        }
+        if (isProviderCancellation(item.eventType) && projection.policy === "provider_cancelled") {
+          await transaction.query(`update appointment_aggregates set payload = jsonb_set(
+              payload, '{projection}', coalesce(payload -> 'projection', '{}'::jsonb) || $3::jsonb, true
+            ), updated_at = greatest(updated_at, $4::timestamptz)
+            where workspace_id = $1 and appointment_id = $2
+              and (payload #>> '{projection,revision}')::bigint = $5`, [
+            input.runtime.workspaceId,
+            item.appointmentId,
+            JSON.stringify({ calendar: "not_synced", meeting: "not_synced", updatedAt: item.createdAt }),
+            item.createdAt,
+            String(item.payload.revision),
+          ]);
         }
         return transaction.query(`update appointment_outbox set
           status = 'completed', lease_token = null, lease_expires_at = null,
@@ -80,10 +151,24 @@ export async function runAppointmentOutboxBatch(input: {
       completed += 1;
     } catch (error) {
       const terminal = item.attemptCount >= 10;
-      await input.runtime.client.query(`update appointment_outbox set
-        status = $4, available_at = case when $4 = 'retry' then now() + ($5 || ' seconds')::interval else available_at end,
-        lease_token = null, lease_expires_at = null, last_error = $6, updated_at = now()
-        where workspace_id = $1 and outbox_event_id = $2 and lease_token = $3`, [input.runtime.workspaceId, item.eventId, item.leaseToken, terminal ? "failed" : "retry", String(Math.min(300, 2 ** item.attemptCount)), error instanceof Error ? error.message : "Appointment projection failed."]);
+      await input.runtime.client.transaction(async (transaction) => {
+        if (terminal && (isProviderRequest(item.eventType) || isProviderCancellation(item.eventType))) {
+          await transaction.query(`update appointment_aggregates set payload = jsonb_set(
+              payload, '{projection}', coalesce(payload -> 'projection', '{}'::jsonb) || $3::jsonb, true
+            ), updated_at = now()
+            where workspace_id = $1 and appointment_id = $2
+              and (payload #>> '{projection,revision}')::bigint = $4`, [
+            input.runtime.workspaceId,
+            item.appointmentId,
+            JSON.stringify({ calendar: "failed", meeting: "failed", updatedAt: item.createdAt }),
+            String(item.payload.revision),
+          ]);
+        }
+        await transaction.query(`update appointment_outbox set
+          status = $4, available_at = case when $4 = 'retry' then now() + ($5 || ' seconds')::interval else available_at end,
+          lease_token = null, lease_expires_at = null, last_error = $6, updated_at = now()
+          where workspace_id = $1 and outbox_event_id = $2 and lease_token = $3`, [input.runtime.workspaceId, item.eventId, item.leaseToken, terminal ? "failed" : "retry", String(Math.min(300, 2 ** item.attemptCount)), error instanceof Error ? error.message : "Appointment projection failed."]);
+      }, { isolation: "read committed" });
       if (terminal) failed += 1; else retried += 1;
     }
   }));

@@ -240,6 +240,8 @@ test("relationship inbox labels AI drafting and local staging honestly", async (
   assert.match(source, /Rule-based rewrite|规则改写/);
   assert.match(source, /Stage for review|暂存待复核/);
   assert.doesNotMatch(source, /fetchProactiveAlerts|From Orbit AI/);
+  assert.match(source, /站内提醒仅保留在 Orbit；未发送外部推送、邮件或短信。/);
+  assert.doesNotMatch(source, /没有任何投递 — 未发送推送、邮件、短信或通知。/);
 });
 
 test("relationship inbox provides a three-pane conversation workspace with persistent edge resizing", async () => {

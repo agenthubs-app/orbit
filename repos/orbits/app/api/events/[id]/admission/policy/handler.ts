@@ -257,7 +257,7 @@ export function createEventAdmissionPolicyPutHandler(
   dependencies: EventAdmissionPolicyHandlerDependencies = {},
 ) {
   return withEventCapabilityAccess<EventAdmissionPolicyRouteContext>(
-    "operations.configure",
+    "roles.manage",
     async function putAdmissionPolicy(request, _context, access) {
       try {
         const input = await exactPolicyBody(request);

@@ -59,7 +59,10 @@ export interface AppointmentHistoryEntry {
 export interface AppointmentProjectionState {
   calendar: "pending" | "not_synced" | "synced" | "failed";
   meeting: "pending" | "not_synced" | "synced" | "failed";
+  provider?: "google_calendar";
+  providerRecordId?: string;
   revision: number | null;
+  updatedAt?: string;
 }
 
 export interface AppointmentAggregate {
@@ -102,6 +105,8 @@ export interface AppointmentOutboxEvent {
     | "appointment.proposed"
     | "appointment.countered"
     | "appointment.reschedule.proposed"
+    | "appointment.declined"
+    | "appointment.reschedule.declined"
     | "appointment.confirmed"
     | "appointment.rescheduled"
     | "appointment.reminders.invalidate"

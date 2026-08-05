@@ -266,7 +266,17 @@ export function EventAdmissionPolicyPanel({
       ) : null}
       {notice ? <p data-admission-policy-status={saveState} role="status" style={{ color: "var(--success, #147d64)", margin: 0 }}>{notice}</p> : null}
 
-      {!loading && view && !canConfigurePolicy ? <ReadOnlyPolicy policy={view.policy} /> : null}
+      {!loading && view && !canConfigurePolicy ? (
+        <div style={{ display: "grid", gap: 10 }}>
+          <p
+            data-admission-policy-owner-only
+            style={{ color: "var(--text-3)", fontSize: 12, margin: 0 }}
+          >
+            当前政策为只读；只有 Event Core 中的当前活动负责人可以修改报名政策。
+          </p>
+          <ReadOnlyPolicy policy={view.policy} />
+        </div>
+      ) : null}
 
       {!loading && view && canConfigurePolicy ? (
         <form data-admission-policy-form onSubmit={(event) => void savePolicy(event)} style={{ display: "grid", gap: 14 }}>
