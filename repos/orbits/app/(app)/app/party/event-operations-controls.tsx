@@ -10,6 +10,7 @@ type Translate = (copy: { en: string; zh: string }) => string;
 
 interface ContactRequestStateDetail {
   contactId: string | null;
+  direction: OrbitPartyPersonView["contactRequestDirection"];
   eventId: string;
   participantId: string;
   requestId: string | null;
@@ -20,8 +21,16 @@ interface ContactRequestStateDetail {
 const contactRequestStateListeners = new Set<
   (detail: ContactRequestStateDetail) => void
 >();
+const contactRequestStateByPerson = new WeakMap<
+  OrbitPartyPersonView,
+  ContactRequestStateDetail
+>();
 
-function publishContactRequestState(detail: ContactRequestStateDetail) {
+function publishContactRequestState(
+  person: OrbitPartyPersonView,
+  detail: ContactRequestStateDetail,
+) {
+  contactRequestStateByPerson.set(person, detail);
   for (const listener of contactRequestStateListeners) {
     listener(detail);
   }
@@ -57,17 +66,28 @@ export function EventContactRequestControl({
   person: OrbitPartyPersonView;
   t: Translate;
 }) {
-  const [localRequestId, setLocalRequestId] = useState<string | null>(null);
-  const [localContactId, setLocalContactId] = useState<string | null>(null);
-  const [localRevision, setLocalRevision] = useState<number | null>(null);
+  const cachedState = contactRequestStateByPerson.get(person);
+  const [localRequestId, setLocalRequestId] = useState<string | null>(
+    cachedState?.requestId ?? null,
+  );
+  const [localContactId, setLocalContactId] = useState<string | null>(
+    cachedState?.contactId ?? null,
+  );
+  const [localDirection, setLocalDirection] = useState<
+    OrbitPartyPersonView["contactRequestDirection"] | null
+  >(cachedState?.direction ?? null);
+  const [localRevision, setLocalRevision] = useState<number | null>(
+    cachedState?.revision ?? null,
+  );
   const [localStatus, setLocalStatus] = useState<
     OrbitPartyPersonView["contactRequestStatus"] | null
-  >(null);
+  >(cachedState?.status ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = localRequestId ?? person.contactRequestId;
   const revision = localRevision ?? person.contactRequestRevision;
   const contactId = localContactId ?? person.contactId;
+  const direction = localDirection ?? person.contactRequestDirection;
   // A contact id is the canonical, owner-scoped outcome of an accepted
   // exchange. It must win over a stale request projection so every Party
   // surface renders the same state after publication or refresh.
@@ -76,10 +96,12 @@ export function EventContactRequestControl({
     : (localStatus ?? person.contactRequestStatus);
 
   useEffect(() => {
-    setLocalRequestId(null);
-    setLocalContactId(null);
-    setLocalRevision(null);
-    setLocalStatus(null);
+    const latest = contactRequestStateByPerson.get(person);
+    setLocalRequestId(latest?.requestId ?? null);
+    setLocalContactId(latest?.contactId ?? null);
+    setLocalDirection(latest?.direction ?? null);
+    setLocalRevision(latest?.revision ?? null);
+    setLocalStatus(latest?.status ?? null);
     setBusy(false);
     setError(null);
   }, [person.contactId, person.contactRequestId, person.contactRequestRevision, person.contactRequestStatus, person.id]);
@@ -94,6 +116,7 @@ export function EventContactRequestControl({
       }
       setLocalRequestId(detail.requestId);
       setLocalContactId(detail.contactId);
+      setLocalDirection(detail.direction);
       setLocalRevision(detail.revision);
       setLocalStatus(detail.status);
     };
@@ -112,10 +135,12 @@ export function EventContactRequestControl({
         { expectedRevision: revision, targetParticipantId: person.id },
       );
       setLocalRequestId(request.requestId);
+      setLocalDirection("outgoing");
       setLocalRevision(request.revision);
       setLocalStatus("awaiting_target_consent");
-      publishContactRequestState({
+      publishContactRequestState(person, {
         contactId: null,
+        direction: "outgoing",
         eventId,
         participantId: person.id,
         requestId: request.requestId,
@@ -158,8 +183,9 @@ export function EventContactRequestControl({
       setLocalStatus(request.status);
       setLocalContactId(request.contactId);
       setLocalRevision(request.revision);
-      publishContactRequestState({
+      publishContactRequestState(person, {
         contactId: request.contactId,
+        direction: person.contactRequestDirection,
         eventId,
         participantId: person.id,
         requestId: responseRequestId,
@@ -201,8 +227,9 @@ export function EventContactRequestControl({
       setLocalContactId(request.contactId);
       setLocalRevision(request.revision);
       setLocalStatus(request.status);
-      publishContactRequestState({
+      publishContactRequestState(person, {
         contactId: request.contactId,
+        direction: "outgoing",
         eventId,
         participantId: person.id,
         requestId,
@@ -217,10 +244,10 @@ export function EventContactRequestControl({
   }
 
   const canRespond =
-    person.contactRequestDirection === "incoming" &&
+    direction === "incoming" &&
     (status === "incoming" || status === "awaiting_target_consent");
   const canWithdraw =
-    person.contactRequestDirection === "outgoing" &&
+    direction === "outgoing" &&
     status === "awaiting_target_consent";
 
   return (
@@ -272,7 +299,7 @@ export function EventContactRequestControl({
       {status === "withdrawn" ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <span className="chip">{t({ en: "Contact request withdrawn", zh: "联系申请已撤回" })}</span>
-          {person.contactRequestDirection === "outgoing" ? <button className="btn btn-primary btn-sm" data-event-contact-action="request-again" disabled={busy} onClick={() => void createRequest()} type="button">{t({ en: "Request contact again", zh: "再次申请交换联系信息" })}</button> : null}
+          {direction === "outgoing" ? <button className="btn btn-primary btn-sm" data-event-contact-action="request-again" disabled={busy} onClick={() => void createRequest()} type="button">{t({ en: "Request contact again", zh: "再次申请交换联系信息" })}</button> : null}
         </div>
       ) : null}
       {error ? <span role="alert" style={{ color: "var(--rose)", fontSize: 12 }}>{error}</span> : null}

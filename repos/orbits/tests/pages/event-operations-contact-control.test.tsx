@@ -245,6 +245,73 @@ test("an outgoing pending request can be withdrawn, then requested again", async
   }
 });
 
+test("a newly created request can be withdrawn immediately without refreshing", async () => {
+  const originalFetch = globalThis.fetch;
+  let renderer!: ReactTestRenderer;
+  let laterSurface!: ReactTestRenderer;
+  const sharedPerson = person({
+    contactRequestDirection: null,
+    contactRequestId: null,
+    contactRequestRevision: null,
+    contactRequestStatus: "none",
+  });
+  globalThis.fetch = (async (url) => {
+    if (String(url).endsWith("/withdraw")) {
+      return Response.json({
+        data: { contactId: null, revision: 2, status: "withdrawn" },
+        success: true,
+      });
+    }
+    return Response.json({
+      data: { requestId: REQUEST_ID, revision: 1 },
+      success: true,
+    });
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventContactRequestControl
+          eventId={EVENT_ID}
+          person={sharedPerson}
+          t={(copy) => copy.en}
+        />,
+      );
+    });
+    const request = renderer.root.find(
+      (node) => node.props["data-event-contact-action"] === "request",
+    );
+    await act(async () => {
+      await (request.props.onClick() as Promise<void>);
+    });
+    const withdraw = renderer.root.find(
+      (node) => node.props["data-event-contact-action"] === "withdraw",
+    );
+    await act(async () => {
+      await (withdraw.props.onClick() as Promise<void>);
+    });
+    assert.match(JSON.stringify(renderer.toJSON()), /Contact request withdrawn/u);
+    await act(async () => {
+      laterSurface = create(
+        <EventContactRequestControl
+          eventId={EVENT_ID}
+          person={sharedPerson}
+          t={(copy) => copy.en}
+        />,
+      );
+    });
+    assert.match(
+      JSON.stringify(laterSurface.toJSON()),
+      /Contact request withdrawn/u,
+      "a newly mounted Party surface reads the latest lifecycle instead of stale route props",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+    laterSurface?.unmount();
+  }
+});
+
 test("an owner-scoped contact id wins over a stale request projection", async () => {
   let renderer!: ReactTestRenderer;
   await act(async () => {
