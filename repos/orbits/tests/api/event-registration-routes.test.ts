@@ -11,8 +11,12 @@ import {
 } from "../../features/events/registration/service";
 import { signAdaptiveInterviewQuestion } from "../../features/events/registration/interview-question-token.server";
 import type { EventParticipantProfileField } from "../../features/events/registration/contract";
+import { loadLocalEnv } from "../../scripts/load-local-env";
+
+loadLocalEnv();
 
 const actor = { id: "user:registration-route-test", name: "Route Tester" };
+const eventId = "event_signup_02";
 const registrationService = createEventRegistrationService({
   provider: createMemoryEventRegistrationProvider(),
 });
@@ -27,12 +31,12 @@ const cancelRegistration = createEventRegistrationCancelRouteHandler({
 });
 
 const context = {
-  params: Promise.resolve({ id: "demo-event-1" }),
+  params: Promise.resolve({ id: eventId }),
 };
 
 test("event registration routes create cancel and reactivate the same record", async () => {
   const firstResponse = await register(
-    new Request("http://orbit.local/api/events/demo-event-1/registration", {
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
       body: JSON.stringify({
         answers: {
           desiredOutcome: "Meet a climate operator",
@@ -52,7 +56,7 @@ test("event registration routes create cancel and reactivate the same record", a
 
   const cancelResponse = await cancelRegistration(
     new Request(
-      "http://orbit.local/api/events/demo-event-1/registration/cancel",
+      `http://orbit.local/api/events/${eventId}/registration/cancel`,
       { method: "POST" },
     ),
     context,
@@ -64,7 +68,7 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(cancelBody.data.status, "cancelled");
 
   const reactivatedResponse = await register(
-    new Request("http://orbit.local/api/events/demo-event-1/registration", {
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
       body: JSON.stringify({
         answers: { desiredOutcome: "Meet two climate operators" },
       }),
@@ -82,7 +86,7 @@ test("event registration routes create cancel and reactivate the same record", a
 
   const stateResponse = await getRegistration(
     new Request(
-      "http://orbit.local/api/events/demo-event-1/registration?language=en&questions=false",
+      `http://orbit.local/api/events/${eventId}/registration?language=en&questions=false`,
     ),
     context,
   );
@@ -125,6 +129,68 @@ test("event registration route rejects requests without an authenticated actor",
   assert.equal(response.status, 401);
 });
 
+test("legacy registration writes cannot bypass an admission-controlled event", async () => {
+  let registrationWrites = 0;
+  const guardedService = {
+    ...registrationService,
+    async cancel(input: { eventId: string; userId: string }) {
+      registrationWrites += 1;
+      return registrationService.cancel(input);
+    },
+    async register(input: Parameters<typeof registrationService.register>[0]) {
+      registrationWrites += 1;
+      return registrationService.register(input);
+    },
+  };
+  const guarded = createEventRegistrationRouteHandlers({
+    registrationService: guardedService,
+    resolveActor: async () => actor,
+    resolveAdmissionControl: async () => "admission",
+  });
+  const post = await guarded.POST(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({ answers: { positioning: "must not persist" } }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  assert.equal(post.status, 409);
+
+  const cancel = createEventRegistrationCancelRouteHandler({
+    registrationService: guardedService,
+    resolveActor: async () => actor,
+    resolveAdmissionControl: async () => "admission",
+  });
+  const cancelled = await cancel(
+    new Request(`http://orbit.local/api/events/${eventId}/registration/cancel`, {
+      method: "POST",
+    }),
+    context,
+  );
+  assert.equal(cancelled.status, 409);
+  assert.equal(registrationWrites, 0);
+});
+
+test("legacy registration writes fail closed when admission control cannot be read", async () => {
+  const guarded = createEventRegistrationRouteHandlers({
+    registrationService,
+    resolveActor: async () => actor,
+    resolveAdmissionControl: async () => "unavailable",
+  });
+  const response = await guarded.POST(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({ answers: { positioning: "must not persist" } }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
+});
+
 test("registration accepts only a complete set of actor-bound AI interview responses", async () => {
   const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
   process.env.ORBIT_INTERVIEW_SIGNING_SECRET =
@@ -147,7 +213,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     answer: `${field} option A`,
     questionToken: signAdaptiveInterviewQuestion({
       actorId: tokenActor.id,
-      eventId: "demo-event-1",
+      eventId,
       language: "en",
       question: {
         acknowledgment: "",
@@ -167,7 +233,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
 
   try {
     const incomplete = await POST(
-      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
         body: JSON.stringify({ responses: responses.slice(0, 1) }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -177,7 +243,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     assert.equal(incomplete.status, 422);
 
     const accepted = await POST(
-      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
         body: JSON.stringify({ responses }),
         headers: { "content-type": "application/json" },
         method: "POST",
@@ -211,7 +277,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
       resolveActor: async () => ({ id: "user:token-replay" }),
     }).POST;
     const replay = await replayedByAnotherActor(
-      new Request("http://orbit.local/api/events/demo-event-1/registration", {
+      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
         body: JSON.stringify({ responses }),
         headers: { "content-type": "application/json" },
         method: "POST",

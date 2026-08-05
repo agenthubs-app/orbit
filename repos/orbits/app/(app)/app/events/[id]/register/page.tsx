@@ -15,6 +15,7 @@ import {
 import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import { createConfiguredEventAdmissionJourneyService } from "../../../../../../features/events/admission/journey-runtime";
 import { signAdaptiveInterviewQuestion } from "../../../../../../features/events/registration/interview-question-token.server";
 import { createProfileService } from "../../../../../../features/profile/service-factory";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
@@ -128,11 +129,61 @@ export default async function AppEventRegistrationGuidePage({
       },
       eventLanguage,
     );
+    const admissionJourney = actor?.id
+      ? createConfiguredEventAdmissionJourneyService()
+      : null;
+    if (actor?.id && !admissionJourney) {
+      return (
+        <>
+          <OrbitReferenceStyles />
+          <main className="orbit-page" style={{ minHeight: "100dvh", padding: 24 }}>
+            <StateView
+              description={language === "en"
+                ? "The canonical admission state could not be loaded, so Orbit stopped before creating or changing a registration."
+                : "系统暂时无法读取 canonical 准入状态，因此已在创建或变更报名之前停止。"}
+              emptyState={language === "en" ? "No registration was changed." : "没有变更任何报名记录。"}
+              evidence={[`event:${event.id}:admission-runtime-unavailable`]}
+              eyebrow={language === "en" ? "Event admission" : "活动准入"}
+              guardrail={language === "en"
+                ? "The page does not fall back to direct canonical registration when admission control is unavailable."
+                : "准入服务不可用时，页面不会回退为直接写入 canonical 报名。"}
+              nextStep={language === "en" ? "Retry after the admission service is available." : "请在准入服务恢复后重试。"}
+              recoveryActions={[{
+                href: eventRegistrationReturnPath(event.id, preferredLanguage),
+                id: "event-admission-retry",
+                label: language === "en" ? "Retry" : "重试",
+                recoveryCopy: language === "en" ? "Reload the admission workspace." : "重新加载准入工作区。",
+              }]}
+              title={language === "en" ? "Admission temporarily unavailable" : "准入服务暂不可用"}
+            />
+          </main>
+          <OrbitVisualFreezeRuntime />
+        </>
+      );
+    }
+    const admissionState = actor?.id && admissionJourney
+      ? await admissionJourney.getState({
+          actorId: actor.id,
+          eventReference: event.id,
+        })
+      : null;
     const [questionSet, registration, profileResult] = await Promise.all([
-      generateEventRegistrationQuestions({
-        event: localizedEvent,
-        language,
-      }),
+      admissionState?.application
+        ? Promise.resolve({
+            provenance: {
+              aiProviderRequested: false,
+              externalNetworkRequested: false,
+              fallbackReason: "QUESTIONS_NOT_REQUESTED",
+              generationMethod: "deterministic-not-requested" as const,
+              model: null,
+              provider: null,
+            },
+            questions: [],
+          })
+        : generateEventRegistrationQuestions({
+            event: localizedEvent,
+            language,
+          }),
       actor?.id
         ? eventRegistrationRuntimeService.get({
             eventId: event.id,
@@ -196,6 +247,8 @@ export default async function AppEventRegistrationGuidePage({
             venue: localizedEvent.venue,
           }}
           initialRegistration={registration}
+          admissionControlled={admissionState?.admissionControlled ?? false}
+          initialAdmissionApplication={admissionState?.application ?? null}
           initialSignedQuestion={initialSignedQuestion}
           language={language}
           profile={{ displayName }}

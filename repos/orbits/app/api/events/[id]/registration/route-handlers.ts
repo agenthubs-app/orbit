@@ -23,6 +23,7 @@ import { loadEventForRegistration } from "../../../../../features/events/registr
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
 import type { EventRegistrationService } from "../../../../../features/events/registration/service";
+import type { ResolveEventAdmissionRegistrationControl } from "../../../../../features/events/admission/registration-control";
 
 interface EventRegistrationRouteContext {
   params: Promise<{ id: string }>;
@@ -109,6 +110,7 @@ function errorResponse(error: AppError, status: number): Response {
 
 export function createEventRegistrationRouteHandlers(input: {
   registrationService?: EventRegistrationService;
+  resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveActor: () => Promise<RegistrationActor | null>;
 }) {
   const registrationService =
@@ -189,6 +191,28 @@ export function createEventRegistrationRouteHandlers(input: {
       return errorResponse(
         new AppError("CONFLICT", "This event is not open for registration."),
         409,
+      );
+    }
+
+    const admissionControl = input.resolveAdmissionControl
+      ? await input.resolveAdmissionControl(actor.id, event.id)
+      : "legacy";
+    if (admissionControl === "admission") {
+      return errorResponse(
+        new AppError(
+          "CONFLICT",
+          "This event uses the admission application flow; direct registration is disabled.",
+        ),
+        409,
+      );
+    }
+    if (admissionControl === "unavailable") {
+      return errorResponse(
+        new AppError(
+          "SERVICE_UNAVAILABLE",
+          "The event admission state is temporarily unavailable; no registration was changed.",
+        ),
+        503,
       );
     }
 

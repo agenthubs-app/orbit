@@ -40,6 +40,7 @@ export interface EventAdmissionService {
   withdrawApplication(
     actingActorId: string,
     eventId: string,
+    expectedApplicationVersion: number,
   ): Promise<EventAdmissionApplication>;
 }
 
@@ -100,10 +101,11 @@ export function createEventAdmissionService(input: {
         actorId: actingActorId,
       });
     },
-    withdrawApplication(actingActorId, eventId) {
+    withdrawApplication(actingActorId, eventId, expectedApplicationVersion) {
       return input.repository.withdrawApplication({
         actorId: actingActorId,
         eventId,
+        expectedApplicationVersion,
       });
     },
   };

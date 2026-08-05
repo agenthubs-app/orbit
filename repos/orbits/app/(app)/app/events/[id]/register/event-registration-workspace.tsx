@@ -26,6 +26,7 @@ import type {
   EventParticipantProfileAnswers,
   EventRegistration,
 } from "../../../../../../features/events/registration/contract";
+import type { EventAdmissionApplication } from "../../../../../../features/events/admission/contract";
 import {
   EVENT_PROFILE_CORE_FIELDS,
   type EventInterviewResponseSubmission,
@@ -33,16 +34,19 @@ import {
   type SignedAdaptiveInterviewStep,
 } from "../../../../../../features/events/registration/interview-response-contract";
 import { Icon } from "../../../orbit-reference-primitives";
+import { EventAdmissionStatusCard } from "./event-admission-status-card";
 
 type Language = "en" | "zh";
 
 interface RegistrationWorkspaceProps {
+  admissionControlled: boolean;
   event: {
     id: string;
     title: string;
     venue: string;
   };
   initialRegistration: EventRegistration | null;
+  initialAdmissionApplication: EventAdmissionApplication | null;
   initialSignedQuestion: SignedAdaptiveInterviewQuestion | null;
   language: Language;
   profile: {
@@ -56,12 +60,22 @@ type RegistrationEnvelope = {
   success: boolean;
 };
 
+type AdmissionEnvelope = {
+  data?: EventAdmissionApplication;
+  error?: { message?: string };
+  success: boolean;
+};
+
 type Stage =
   | "cancelled"
   | "generating"
   | "interview"
+  | "pending_review"
   | "persona"
-  | "registered";
+  | "rejected"
+  | "registered"
+  | "waitlisted"
+  | "withdrawn";
 
 const TOTAL_STEPS = ADAPTIVE_INTERVIEW_MAX_TURNS;
 const GENERATING_MIN_MS = 2700;
@@ -109,22 +123,47 @@ function transcriptFromAnswers(
     .map(([field, answer]) => ({ answer, field, prompt: field }));
 }
 
+type StatusCardApplication = EventAdmissionApplication & {
+  status: "pending_review" | "rejected" | "waitlisted" | "withdrawn";
+};
+
+function isStatusCardApplication(
+  application: EventAdmissionApplication | null,
+): application is StatusCardApplication {
+  return Boolean(
+    application &&
+      ["pending_review", "rejected", "waitlisted", "withdrawn"].includes(
+        application.status,
+      ),
+  );
+}
+
 export function EventRegistrationWorkspace({
+  admissionControlled,
   event,
+  initialAdmissionApplication,
   initialRegistration,
   initialSignedQuestion,
   language,
   profile,
 }: RegistrationWorkspaceProps) {
   const storedTranscript = transcriptFromAnswers(
-    initialRegistration?.participantProfile.answers ?? {},
+    initialAdmissionApplication?.profilePayload.answers ??
+      initialRegistration?.participantProfile.answers ??
+      {},
   );
   const [stage, setStage] = useState<Stage>(
-    initialRegistration?.status === "rsvped"
+    initialAdmissionApplication?.status === "admitted"
       ? "registered"
-      : initialRegistration?.status === "cancelled"
-        ? "cancelled"
-        : "interview",
+      : initialAdmissionApplication?.status ??
+        (initialRegistration?.status === "rsvped"
+          ? "registered"
+          : initialRegistration?.status === "cancelled"
+            ? "cancelled"
+            : "interview"),
+  );
+  const [admissionApplication, setAdmissionApplication] = useState(
+    initialAdmissionApplication,
   );
   const [registration, setRegistration] = useState(initialRegistration);
   const [transcript, setTranscript] = useState<AdaptiveInterviewTurn[]>(storedTranscript);
@@ -144,7 +183,7 @@ export function EventRegistrationWorkspace({
   const [generatingStep, setGeneratingStep] = useState(0);
   const [persona, setPersona] = useState<EventPersona | null>(null);
   const [error, setError] = useState<string | null>(
-    initialRegistration || initialSignedQuestion
+    initialRegistration || initialAdmissionApplication || initialSignedQuestion
       ? null
       : copy(language, {
           en: "The AI interview could not start. Retry when the model is available.",
@@ -161,7 +200,16 @@ export function EventRegistrationWorkspace({
   >(new Map());
   const prefetchAbortRef = useRef<AbortController | null>(null);
 
-  const status = registration?.status ?? "unregistered";
+  const status =
+    admissionApplication?.status ?? registration?.status ?? "unregistered";
+  const canWithdrawAdmission = Boolean(
+    admissionControlled &&
+      admissionApplication &&
+      ["admitted", "pending_review", "waitlisted"].includes(
+        admissionApplication.status,
+      ),
+  );
+  const canCancelEnrollment = canWithdrawAdmission || status === "rsvped";
   const eventHref = `/app/events/${encodeURIComponent(event.id)}?language=${language}`;
   const stepIndex = Math.min(transcript.length, TOTAL_STEPS - 1);
   const missingCoreFields = EVENT_PROFILE_CORE_FIELDS.filter(
@@ -244,6 +292,7 @@ export function EventRegistrationWorkspace({
     ) => {
       const runId = ++generationRunId.current;
       let savedRegistration: EventRegistration | null = null;
+      let savedApplication: EventAdmissionApplication | null = null;
 
       setStage("generating");
       setGeneratingStep(0);
@@ -255,38 +304,51 @@ export function EventRegistrationWorkspace({
       }, GENERATING_STAGE_MS);
 
       try {
-        const registrationResponse = await fetch(
-          `/api/events/${encodeURIComponent(event.id)}/registration`,
-          {
-            body: JSON.stringify(
-              finalResponses.length > 0
-                ? { responses: finalResponses }
-                : { answers: answersFrom(finalTranscript) },
-            ),
-            headers: { "content-type": "application/json" },
-            method: "POST",
-          },
-        );
-        const registrationBody = (await registrationResponse
-          .json()
-          .catch(() => null)) as RegistrationEnvelope | null;
-
-        if (
-          !registrationResponse.ok ||
-          registrationBody?.success !== true ||
-          !registrationBody.data
-        ) {
-          throw new Error(
-            registrationBody?.error?.message ??
-              copy(language, {
-                en: "Your registration answers could not be saved.",
-                zh: "报名回答未能保存，请重试。",
-              }),
+        if (admissionControlled && admissionApplication && finalResponses.length === 0) {
+          // The application is already immutable and persisted. Regenerating
+          // its derived persona must not create another application version.
+          savedApplication = admissionApplication;
+        } else {
+          const registrationResponse = await fetch(
+            admissionControlled
+              ? `/api/events/${encodeURIComponent(event.id)}/admission/application`
+              : `/api/events/${encodeURIComponent(event.id)}/registration`,
+            {
+              body: JSON.stringify(
+                finalResponses.length > 0
+                  ? { responses: finalResponses }
+                  : { answers: answersFrom(finalTranscript) },
+              ),
+              headers: { "content-type": "application/json" },
+              method: "POST",
+            },
           );
-        }
+          const registrationBody = (await registrationResponse
+            .json()
+            .catch(() => null)) as RegistrationEnvelope | AdmissionEnvelope | null;
 
-        savedRegistration = registrationBody.data;
-        setRegistration(savedRegistration);
+          if (
+            !registrationResponse.ok ||
+            registrationBody?.success !== true ||
+            !registrationBody.data
+          ) {
+            throw new Error(
+              registrationBody?.error?.message ??
+                copy(language, {
+                  en: "Your registration answers could not be saved.",
+                  zh: "报名回答未能保存，请重试。",
+                }),
+            );
+          }
+
+          if (admissionControlled) {
+            savedApplication = registrationBody.data as EventAdmissionApplication;
+            setAdmissionApplication(savedApplication);
+          } else {
+            savedRegistration = registrationBody.data as EventRegistration;
+            setRegistration(savedRegistration);
+          }
+        }
 
         const personaResponse = await fetch(
           `/api/events/${encodeURIComponent(event.id)}/registration/persona`,
@@ -333,17 +395,20 @@ export function EventRegistrationWorkspace({
               ? caught.message
               : copy(language, { en: "Something went wrong.", zh: "出错了,请重试。" }),
           );
-          setStage(
-            (savedRegistration ?? registration)?.status === "rsvped"
+          const application = savedApplication ?? admissionApplication;
+          setStage(application
+            ? application.status === "admitted"
               ? "registered"
-              : "interview",
-          );
+              : application.status
+            : (savedRegistration ?? registration)?.status === "rsvped"
+              ? "registered"
+              : "interview");
         }
       } finally {
         window.clearInterval(stageTimer);
       }
     },
-    [event.id, language, registration],
+    [admissionApplication, admissionControlled, event.id, language, registration],
   );
 
   async function submitAnswer(answer: string) {
@@ -543,10 +608,23 @@ export function EventRegistrationWorkspace({
 
     try {
       const response = await fetch(
-        `/api/events/${encodeURIComponent(event.id)}/registration/cancel`,
-        { method: "POST" },
+        admissionControlled
+          ? `/api/events/${encodeURIComponent(event.id)}/admission/application`
+          : `/api/events/${encodeURIComponent(event.id)}/registration/cancel`,
+        admissionControlled
+          ? {
+              body: JSON.stringify({
+                expectedApplicationVersion:
+                  admissionApplication?.applicationVersion,
+              }),
+              headers: { "content-type": "application/json" },
+              method: "DELETE",
+            }
+          : { method: "POST" },
       );
-      const body = (await response.json()) as RegistrationEnvelope;
+      const body = (await response.json()) as
+        | AdmissionEnvelope
+        | RegistrationEnvelope;
 
       if (!response.ok || body.success !== true || !body.data) {
         throw new Error(
@@ -555,10 +633,14 @@ export function EventRegistrationWorkspace({
         );
       }
 
-      setRegistration(body.data);
+      if (admissionControlled) {
+        setAdmissionApplication(body.data as EventAdmissionApplication);
+      } else {
+        setRegistration(body.data as EventRegistration);
+      }
       setPersona(null);
       setConfirmingCancel(false);
-      setStage("cancelled");
+      setStage(admissionControlled ? "withdrawn" : "cancelled");
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -647,17 +729,41 @@ export function EventRegistrationWorkspace({
               {profile.displayName}
             </p>
           </div>
-          {status === "rsvped" ? (
+          {status === "rsvped" || status === "admitted" ? (
             <span style={{ alignItems: "center", background: "var(--live-soft, var(--accent-soft))", borderRadius: "var(--r-pill)", color: "var(--live, var(--accent))", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
               <span style={{ background: "currentcolor", borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
               {copy(language, { en: "Registered", zh: "已报名" })}
             </span>
-          ) : status === "cancelled" ? (
+          ) : status === "cancelled" || status === "withdrawn" ? (
             <span style={{ alignItems: "center", background: "var(--surface-3)", border: "1px solid var(--border)", borderRadius: "var(--r-pill)", color: "var(--text-3)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
-              {copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
+              {status === "withdrawn"
+                ? copy(language, { en: "Application withdrawn", zh: "申请已撤回" })
+                : copy(language, { en: "Registration cancelled", zh: "报名已取消" })}
+            </span>
+          ) : status === "pending_review" || status === "waitlisted" || status === "rejected" ? (
+            <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", flexShrink: 0, fontSize: 12, fontWeight: 700, gap: 6, padding: "6px 13px" }}>
+              {status === "pending_review"
+                ? copy(language, { en: "Pending review", zh: "待审核" })
+                : status === "waitlisted"
+                  ? copy(language, { en: "Waitlisted", zh: "候补中" })
+                  : copy(language, { en: "Not admitted", zh: "未通过" })}
             </span>
           ) : null}
         </header>
+
+        {isStatusCardApplication(admissionApplication) &&
+        stage === admissionApplication.status ? (
+          <EventAdmissionStatusCard
+            application={admissionApplication}
+            eventHref={eventHref}
+            language={language}
+            onWithdraw={() => {
+              setError(null);
+              setConfirmingCancel(true);
+            }}
+            pendingWithdraw={pendingCancel}
+          />
+        ) : null}
 
         {stage === "interview" && question ? (
           <div
@@ -955,14 +1061,16 @@ export function EventRegistrationWorkspace({
                 >
                   {copy(language, { en: "Generate event persona", zh: "生成活动画像" })}
                 </button>
-                <button
-                  className="reg-ghost-btn"
-                  onClick={restartInterview}
-                  type="button"
-                  style={{ background: "transparent", border: 0, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
-                >
-                  {copy(language, { en: "Edit answers", zh: "修改回答" })}
-                </button>
+                {!admissionControlled ? (
+                  <button
+                    className="reg-ghost-btn"
+                    onClick={restartInterview}
+                    type="button"
+                    style={{ background: "transparent", border: 0, color: "var(--text-2)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
+                  >
+                    {copy(language, { en: "Edit answers", zh: "修改回答" })}
+                  </button>
+                ) : null}
                 <button
                   className="reg-ghost-btn"
                   onClick={() => {
@@ -972,7 +1080,9 @@ export function EventRegistrationWorkspace({
                   type="button"
                   style={{ background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
                 >
-                  {copy(language, { en: "Cancel registration", zh: "取消报名" })}
+                  {admissionControlled
+                    ? copy(language, { en: "Withdraw from event", zh: "撤回参会资格" })
+                    : copy(language, { en: "Cancel registration", zh: "取消报名" })}
                 </button>
               </div>
               <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
@@ -1155,6 +1265,17 @@ export function EventRegistrationWorkspace({
                 <Icon name="sparkle" size={13} />
                 {copy(language, { en: "Your persona for this event", zh: "你的本场活动画像" })}
               </span>
+              {admissionApplication ? (
+                <p data-persona-admission-status={admissionApplication.status} style={{ color: "var(--text-2)", fontSize: 13, fontWeight: 650, margin: "10px 0 0" }}>
+                  {admissionApplication.status === "admitted"
+                    ? copy(language, { en: "Admission confirmed", zh: "参会资格已确认" })
+                    : admissionApplication.status === "pending_review"
+                      ? copy(language, { en: "Application saved · pending organizer review", zh: "申请已保存 · 等待主办方审核" })
+                      : admissionApplication.status === "waitlisted"
+                        ? copy(language, { en: "Application saved · waitlisted", zh: "申请已保存 · 当前候补中" })
+                        : copy(language, { en: "Application state updated", zh: "申请状态已更新" })}
+                </p>
+              ) : null}
               <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: "clamp(1.4rem, 3.2vw, 1.9rem)", fontWeight: 720, lineHeight: 1.3, margin: "12px 0 16px", maxWidth: "86%" }}>
                 {persona.tagline}
               </h2>
@@ -1255,16 +1376,18 @@ export function EventRegistrationWorkspace({
 
             <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", padding: "14px 22px" }}>
               <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  className="reg-ghost-btn"
-                  onClick={restartInterview}
-                  type="button"
-                  style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
-                >
-                  <Icon name="edit" size={13} />
-                  {copy(language, { en: "Redo the interview", zh: "重新回答" })}
-                </button>
-                {status === "rsvped" ? (
+                {!admissionControlled ? (
+                  <button
+                    className="reg-ghost-btn"
+                    onClick={restartInterview}
+                    type="button"
+                    style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
+                  >
+                    <Icon name="edit" size={13} />
+                    {copy(language, { en: "Redo the interview", zh: "重新回答" })}
+                  </button>
+                ) : null}
+                {canCancelEnrollment ? (
                   <button
                     className="reg-ghost-btn"
                     onClick={() => {
@@ -1274,7 +1397,9 @@ export function EventRegistrationWorkspace({
                     type="button"
                     style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
                   >
-                    {copy(language, { en: "Cancel registration", zh: "取消报名" })}
+                    {admissionControlled
+                      ? copy(language, { en: "Withdraw from event", zh: "撤回参会资格" })
+                      : copy(language, { en: "Cancel registration", zh: "取消报名" })}
                   </button>
                 ) : null}
               </div>
@@ -1291,7 +1416,7 @@ export function EventRegistrationWorkspace({
           </div>
         ) : null}
 
-        {confirmingCancel && status === "rsvped" ? (
+        {confirmingCancel && canCancelEnrollment ? (
           <div
             role="presentation"
             style={{
@@ -1325,16 +1450,26 @@ export function EventRegistrationWorkspace({
                 id="event-registration-cancel-title"
                 style={{ color: "var(--ink)", fontSize: 21, margin: 0 }}
               >
-                {copy(language, {
-                  en: "Cancel this event registration?",
-                  zh: "确认取消这次活动报名？",
-                })}
+                {admissionControlled
+                  ? copy(language, {
+                      en: "Withdraw from this event?",
+                      zh: "确认撤回本次活动申请？",
+                    })
+                  : copy(language, {
+                      en: "Cancel this event registration?",
+                      zh: "确认取消这次活动报名？",
+                    })}
               </h2>
               <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
-                {copy(language, {
-                  en: "You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later.",
-                  zh: "取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。",
-                })}
+                {admissionControlled
+                  ? copy(language, {
+                      en: "The application becomes final and you will leave attendee matching. If already admitted, your attendee membership is cancelled atomically and the next waitlisted person may be promoted.",
+                      zh: "撤回后申请将进入最终状态，并退出本场活动撮合；若此前已通过，参会资格会原子取消，并可能自动递补下一位候补者。",
+                    })
+                  : copy(language, {
+                      en: "You will leave attendee matching. Your saved answers remain attached to this registration so you can reactivate the same record later.",
+                      zh: "取消后你将退出本场活动撮合。已保存的回答仍归属于这条报名记录，之后可重新激活同一记录。",
+                    })}
               </p>
               {error ? (
                 <div className="orbit-alert error" role="alert">
@@ -1352,7 +1487,9 @@ export function EventRegistrationWorkspace({
                   }}
                   type="button"
                 >
-                  {copy(language, { en: "Keep registration", zh: "保留报名" })}
+                  {admissionControlled
+                    ? copy(language, { en: "Keep application", zh: "保留申请" })
+                    : copy(language, { en: "Keep registration", zh: "保留报名" })}
                 </button>
                 <button
                   className="btn"
@@ -1363,10 +1500,15 @@ export function EventRegistrationWorkspace({
                 >
                   {pendingCancel
                     ? copy(language, { en: "Cancelling…", zh: "取消中…" })
-                    : copy(language, {
-                        en: "Confirm cancellation",
-                        zh: "确认取消报名",
-                      })}
+                    : admissionControlled
+                      ? copy(language, {
+                          en: "Confirm withdrawal",
+                          zh: "确认撤回申请",
+                        })
+                      : copy(language, {
+                          en: "Confirm cancellation",
+                          zh: "确认取消报名",
+                        })}
                 </button>
               </div>
             </section>

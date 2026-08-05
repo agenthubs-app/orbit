@@ -43,7 +43,9 @@ test("an initial AI failure offers an in-place real-model retry without a fallba
     await act(async () => {
       renderer = create(
         <EventRegistrationWorkspace
+          admissionControlled={false}
           event={{ id: "event-retry", title: "Retry Night", venue: "Tokyo" }}
+          initialAdmissionApplication={null}
           initialRegistration={null}
           initialSignedQuestion={null}
           language="en"

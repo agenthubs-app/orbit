@@ -67,7 +67,9 @@ function admissionErrorToAppError(error: unknown): AppError {
         cause: error,
       });
     case "CAPACITY_FULL":
+    case "ACTIVATION_BLOCKED":
     case "INVALID_TRANSITION":
+    case "VERSION_CONFLICT":
     case "WINDOW_CLOSED":
       return new AppError("CONFLICT", error.message, { cause: error });
     case "DATA_INVALID":

@@ -7,7 +7,10 @@ import { fileURLToPath } from "node:url";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { EventAdmissionReviewWorkspace } from "../../app/(app)/app/events/[id]/operations/admission/event-admission-review-workspace";
-import type { EventAdmissionApplication } from "../../features/events/admission/contract";
+import type {
+  EventAdmissionApplication,
+  EventAdmissionPolicy,
+} from "../../features/events/admission/contract";
 
 const EVENT_ID = "event:review-ui";
 const APPLICANT_ID = "actor:review-ui-applicant";
@@ -96,6 +99,22 @@ function listData(items = [completeApplication()]) {
   };
 }
 
+function policyData(overrides: Partial<EventAdmissionPolicy> = {}) {
+  const policy: EventAdmissionPolicy = {
+    admissionMode: "approval_required",
+    capacity: 36,
+    eventId: EVENT_ID,
+    policyVersion: 3,
+    profileEditDeadlineAt: "2026-09-02T10:00:00.000Z",
+    registrationClosesAt: "2026-09-03T10:00:00.000Z",
+    registrationOpensAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-08-05T10:00:00.000Z",
+    waitlistEnabled: true,
+    ...overrides,
+  };
+  return { policy, policyVersion: policy.policyVersion };
+}
+
 async function flush(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
@@ -107,12 +126,16 @@ async function flush(): Promise<void> {
 test("reviewer clicks a real applicant, sees every profile answer and adaptive response, then sends a versioned decision", async () => {
   const originalFetch = globalThis.fetch;
   const baseUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/reviews`;
+  const policyUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/policy`;
   const writes: RequestInit[] = [];
   let decided = false;
   let renderer!: ReactTestRenderer;
 
   globalThis.fetch = (async (url, init) => {
     const target = String(url);
+    if (target === policyUrl) {
+      return Response.json({ data: policyData(), success: true });
+    }
     if (target.startsWith(`${baseUrl}?`)) {
       return Response.json({ data: listData(decided ? [] : [completeApplication()]), success: true });
     }
@@ -187,7 +210,11 @@ test("review queue exposes retry and both empty states without stale applicant d
   const originalFetch = globalThis.fetch;
   let fail = true;
   let renderer!: ReactTestRenderer;
-  globalThis.fetch = (async () => {
+  const policyUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/policy`;
+  globalThis.fetch = (async (url) => {
+    if (String(url) === policyUrl) {
+      return Response.json({ data: policyData(), success: true });
+    }
     if (fail) {
       fail = false;
       return Response.json({ error: { message: "审核服务暂时不可用" }, success: false }, { status: 503 });
@@ -232,6 +259,194 @@ test("review queue exposes retry and both empty states without stale applicant d
   }
 });
 
+test("organizer policy panel shows the current version and saves only the versioned canonical fields", async () => {
+  const originalFetch = globalThis.fetch;
+  const baseUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/reviews`;
+  const policyUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/policy`;
+  const writes: RequestInit[] = [];
+  let renderer!: ReactTestRenderer;
+
+  globalThis.fetch = (async (url, init) => {
+    const target = String(url);
+    if (target === policyUrl && init?.method === "PUT") {
+      writes.push(init);
+      return Response.json({
+        data: policyData({ policyVersion: 4, updatedAt: "2026-08-06T10:00:00.000Z" }),
+        success: true,
+      });
+    }
+    if (target === policyUrl) {
+      return Response.json({ data: policyData(), success: true });
+    }
+    if (target.startsWith(`${baseUrl}?`)) {
+      return Response.json({ data: listData([]), success: true });
+    }
+    throw new Error(`Unexpected request ${init?.method ?? "GET"} ${target}`);
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventAdmissionReviewWorkspace
+          canConfigurePolicy
+          eventId={EVENT_ID}
+          eventTitle="政策配置活动"
+        />,
+      );
+      await flush();
+    });
+    assert.equal(
+      renderer.root.find(
+        (node) => node.props["data-admission-policy-version"] === true,
+      ).children.join(""),
+      "当前版本 v3",
+    );
+    const form = renderer.root.find(
+      (node) => node.props["data-admission-policy-form"] === true,
+    );
+    await act(async () => {
+      form.props.onSubmit({ preventDefault() {} });
+      await flush();
+    });
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0]?.method, "PUT");
+    assert.equal(writes[0]?.body, JSON.stringify({
+      admissionMode: "approval_required",
+      capacity: 36,
+      expectedPolicyVersion: 3,
+      profileEditDeadlineAt: "2026-09-02T10:00:00.000Z",
+      registrationClosesAt: "2026-09-03T10:00:00.000Z",
+      registrationOpensAt: "2026-09-01T10:00:00.000Z",
+      waitlistEnabled: true,
+    }));
+    assert.match(JSON.stringify(renderer.toJSON()), /报名政策已保存为 v4/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
+test("organizer policy panel makes conflict and unavailable states visible", async () => {
+  const originalFetch = globalThis.fetch;
+  const baseUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/reviews`;
+  const policyUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/policy`;
+  let policyReads = 0;
+  let renderer!: ReactTestRenderer;
+
+  globalThis.fetch = (async (url, init) => {
+    const target = String(url);
+    if (target === policyUrl && init?.method === "PUT") {
+      return Response.json({ error: { message: "Admission policy changed. Refresh and try again." }, success: false }, { status: 409 });
+    }
+    if (target === policyUrl) {
+      policyReads += 1;
+      return Response.json({ data: policyData({ policyVersion: policyReads > 1 ? 4 : 3 }), success: true });
+    }
+    if (target.startsWith(`${baseUrl}?`)) {
+      return Response.json({ data: listData([]), success: true });
+    }
+    throw new Error(`Unexpected request ${init?.method ?? "GET"} ${target}`);
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(<EventAdmissionReviewWorkspace canConfigurePolicy eventId={EVENT_ID} eventTitle="冲突活动" />);
+      await flush();
+    });
+    const form = renderer.root.find(
+      (node) => node.props["data-admission-policy-form"] === true,
+    );
+    await act(async () => {
+      form.props.onSubmit({ preventDefault() {} });
+      await flush();
+    });
+    assert.equal(renderer.root.findAll(
+      (node) => node.props["data-admission-policy-status"] === "conflict",
+    ).length, 1);
+    assert.match(JSON.stringify(renderer.toJSON()), /其他负责人更新/u);
+    assert.equal(
+      renderer.root.find(
+        (node) => node.props["data-admission-policy-version"] === true,
+      ).children.join(""),
+      "当前版本 v4",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+
+  globalThis.fetch = (async () => Response.json(
+    { error: { message: "政策服务暂时不可用" }, success: false },
+    { status: 503 },
+  )) as typeof fetch;
+  try {
+    await act(async () => {
+      renderer = create(<EventAdmissionReviewWorkspace eventId={EVENT_ID} eventTitle="不可用活动" />);
+      await flush();
+    });
+    assert.equal(renderer.root.findAll(
+      (node) => node.props["data-admission-policy-status"] === "unavailable",
+    ).length, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
+test("organizer policy panel explains Event Operations activation prerequisites", async () => {
+  const originalFetch = globalThis.fetch;
+  const baseUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/reviews`;
+  const policyUrl = `/api/events/${encodeURIComponent(EVENT_ID)}/admission/policy`;
+  let renderer!: ReactTestRenderer;
+
+  globalThis.fetch = (async (url, init) => {
+    const target = String(url);
+    if (target === policyUrl && init?.method === "PUT") {
+      return Response.json({
+        error: {
+          message: "Configure the event operations schedule before activating admission policy.",
+        },
+        success: false,
+      }, { status: 409 });
+    }
+    if (target === policyUrl) {
+      return Response.json({ data: policyData(), success: true });
+    }
+    if (target.startsWith(`${baseUrl}?`)) {
+      return Response.json({ data: listData([]), success: true });
+    }
+    throw new Error(`Unexpected request ${init?.method ?? "GET"} ${target}`);
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventAdmissionReviewWorkspace
+          canConfigurePolicy
+          eventId={EVENT_ID}
+          eventTitle="运营时间前置活动"
+        />,
+      );
+      await flush();
+    });
+    const form = renderer.root.find(
+      (node) => node.props["data-admission-policy-form"] === true,
+    );
+    await act(async () => {
+      form.props.onSubmit({ preventDefault() {} });
+      await flush();
+    });
+    assert.equal(renderer.root.findAll(
+      (node) => node.props["data-admission-policy-status"] === "conflict",
+    ).length, 1);
+    assert.match(JSON.stringify(renderer.toJSON()), /先配置活动运营时间/u);
+    assert.match(JSON.stringify(renderer.toJSON()), /完成迁移/u);
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
 test("review page is canonical-only and the workspace keeps responsive, authenticated product navigation", () => {
   const page = readFileSync(
     join(projectRoot, "app/(app)/app/events/[id]/operations/admission/page.tsx"),
@@ -244,10 +459,13 @@ test("review page is canonical-only and the workspace keeps responsive, authenti
   assert.match(page, /createConfiguredEventCoreService/u);
   assert.match(page, /getPublishedEvent/u);
   assert.match(page, /capability: "admission\.read"/u);
+  assert.match(page, /capability: "operations\.configure"/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   assert.doesNotMatch(page, /mockEventRecords|readPublicEventCatalogue|legacyEvent/u);
   assert.match(workspace, /<PublicTopNav active="events" \/>/u);
   assert.match(workspace, /repeat\(auto-fit, minmax\(min\(100%, 390px\), 1fr\)\)/u);
   assert.match(workspace, /EVENT_PARTICIPANT_PROFILE_FIELDS\.map/u);
   assert.match(workspace, /interviewResponses \?\? \[\]/u);
+  assert.match(workspace, /EventAdmissionPolicyPanel/u);
+  assert.match(workspace, /canConfigurePolicy/u);
 });

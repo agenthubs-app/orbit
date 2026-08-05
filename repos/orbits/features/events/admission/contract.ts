@@ -13,8 +13,10 @@ export type EventAdmissionApplicationStatus =
 
 export type EventAdmissionErrorCode =
   | "NOT_CONFIGURED"
+  | "ACTIVATION_BLOCKED"
   | "WINDOW_CLOSED"
   | "CAPACITY_FULL"
+  | "VERSION_CONFLICT"
   | "INVALID_TRANSITION"
   | "FORBIDDEN"
   | "DATA_INVALID";
@@ -58,6 +60,12 @@ export interface ConfigureEventAdmissionPolicyInput {
   admissionMode: EventAdmissionMode;
   capacity: number | null;
   eventId: string;
+  /**
+   * The policy version the editor read. It is a concurrency precondition,
+   * not persisted policy content; callers without it retain the existing
+   * service-level behavior for non-interactive administrative workflows.
+   */
+  expectedPolicyVersion?: number;
   profileEditDeadlineAt: string;
   registrationClosesAt: string;
   registrationOpensAt: string;
@@ -87,6 +95,7 @@ export interface DecideEventAdmissionApplicationInput {
 export interface WithdrawEventAdmissionApplicationInput {
   actorId: string;
   eventId: string;
+  expectedApplicationVersion: number;
 }
 
 export const EVENT_ADMISSION_REVIEW_BUCKETS = ["pending", "processed"] as const;

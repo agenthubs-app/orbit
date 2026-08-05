@@ -9,6 +9,7 @@ import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode
 import { AppError } from "../../../../../../shared/errors/app-error";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
 import type { EventRegistrationService } from "../../../../../../features/events/registration/service";
+import type { ResolveEventAdmissionRegistrationControl } from "../../../../../../features/events/admission/registration-control";
 
 interface EventRegistrationCancelRouteContext {
   params: Promise<{ id: string }>;
@@ -16,6 +17,7 @@ interface EventRegistrationCancelRouteContext {
 
 export function createEventRegistrationCancelRouteHandler(input: {
   registrationService?: EventRegistrationService;
+  resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveActor: () => Promise<{ id: string } | null>;
 }) {
   const registrationService =
@@ -34,6 +36,25 @@ export function createEventRegistrationCancelRouteHandler(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
+    const admissionControl = input.resolveAdmissionControl
+      ? await input.resolveAdmissionControl(actor.id, id)
+      : "legacy";
+    if (admissionControl !== "legacy") {
+      return NextResponse.json(
+        failure(
+          new AppError(
+            admissionControl === "admission" ? "CONFLICT" : "SERVICE_UNAVAILABLE",
+            admissionControl === "admission"
+              ? "This event uses admission withdrawal; direct registration cancellation is disabled."
+              : "The event admission state is temporarily unavailable; no registration was changed.",
+          ),
+        ),
+        {
+          headers: runtimeBoundaryHeaders(mode),
+          status: admissionControl === "admission" ? 409 : 503,
+        },
+      );
+    }
     const registration = await registrationService.cancel({
       eventId: id,
       userId: actor.id,

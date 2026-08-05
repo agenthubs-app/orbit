@@ -81,10 +81,28 @@ export default async function EventAdmissionReviewPage({
     return <Boundary description="只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。" eventId={event.eventId} title="没有报名审核权限" />;
   }
 
+  let canConfigurePolicy = false;
+  try {
+    await requireEventCapability({
+      actorId: session.user.id,
+      capability: "operations.configure",
+      eventId: event.eventId,
+      service: accessService,
+    });
+    canConfigurePolicy = true;
+  } catch {
+    // Policy reads remain available to admission reviewers. Writes are
+    // additionally constrained to the event-scoped operations capability.
+  }
+
   return (
     <>
       <OrbitReferenceStyles />
-      <EventAdmissionReviewWorkspace eventId={event.eventId} eventTitle={event.title} />
+      <EventAdmissionReviewWorkspace
+        canConfigurePolicy={canConfigurePolicy}
+        eventId={event.eventId}
+        eventTitle={event.title}
+      />
     </>
   );
 }

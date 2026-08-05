@@ -10,6 +10,7 @@ import type {
 import { EVENT_PARTICIPANT_PROFILE_FIELDS } from "../../../../../../../features/events/registration/contract";
 import { EVENT_PROFILE_FIELD_LABELS } from "../../../../../../../features/events/registration/interview-response-contract";
 import { PublicTopNav } from "../../../../orbit-public-shell";
+import { EventAdmissionPolicyPanel } from "./event-admission-policy-panel";
 
 type ReviewView = "pending" | "processed";
 
@@ -212,9 +213,11 @@ function ApplicationDetail({
 }
 
 export function EventAdmissionReviewWorkspace({
+  canConfigurePolicy = false,
   eventId,
   eventTitle,
 }: {
+  canConfigurePolicy?: boolean;
   eventId: string;
   eventTitle: string;
 }) {
@@ -325,6 +328,11 @@ export function EventAdmissionReviewWorkspace({
             <a className="btn btn-ghost btn-sm" href={`/app/events/${encodeURIComponent(eventId)}`}>活动详情</a>
           </div>
         </header>
+
+        <EventAdmissionPolicyPanel
+          canConfigurePolicy={canConfigurePolicy}
+          eventId={eventId}
+        />
 
         <div aria-label="报名审核视图" role="tablist" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button aria-selected={!processed} className={!processed ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setView("pending")} role="tab" type="button">待审核</button>

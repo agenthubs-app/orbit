@@ -53,6 +53,18 @@ function positiveVersion(value: unknown, field: string): number {
   return version;
 }
 
+function expectedPolicyVersion(value: unknown): number | null {
+  if (value === undefined) return null;
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    invalid("Admission expectedPolicyVersion is invalid.");
+  }
+  return value;
+}
+
 function jsonObject(value: unknown, field: string): Readonly<Record<string, unknown>> {
   const parsed = typeof value === "string" ? JSON.parse(value) : value;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -383,6 +395,114 @@ async function currentPolicyVersion(
     : 0;
 }
 
+interface CurrentEventOperationsConfiguration {
+  profileEditDeadlineAt: string;
+  registrationCutoffAt: string;
+}
+
+async function currentEventOperationsConfiguration(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<CurrentEventOperationsConfiguration | null> {
+  const result = await executor.query<SqlRow>(
+    `select configuration.profile_edit_deadline_at,
+            configuration.registration_cutoff_at
+       from event_ops_configuration_heads head
+       join event_ops_configurations configuration
+         on configuration.workspace_id = head.workspace_id
+        and configuration.event_id = head.event_id
+        and configuration.configuration_version = head.configuration_version
+      where head.workspace_id = $1 and head.event_id = $2`,
+    [workspaceId, eventId],
+  );
+  if (!result.rows[0]) return null;
+  return {
+    profileEditDeadlineAt: isoTimestamp(
+      result.rows[0].profile_edit_deadline_at,
+      "Event Operations profileEditDeadlineAt",
+    ),
+    registrationCutoffAt: isoTimestamp(
+      result.rows[0].registration_cutoff_at,
+      "Event Operations registrationCutoffAt",
+    ),
+  };
+}
+
+async function hasLegacyRegistrationMembershipHistory(
+  executor: EventOperationsSqlExecutor,
+  workspaceId: string,
+  eventId: string,
+): Promise<boolean> {
+  const result = await executor.query<{ legacy_history: unknown }>(
+    `select exists(
+       select 1
+         from event_ops_membership_versions
+        where workspace_id = $1
+          and event_id = $2
+          and origin = 'legacy_registration'
+     ) as legacy_history`,
+    [workspaceId, eventId],
+  );
+  const legacyHistory = result.rows[0]?.legacy_history;
+  if (typeof legacyHistory !== "boolean") {
+    invalid("Admission legacy membership history is invalid.");
+  }
+  return legacyHistory;
+}
+
+async function assertPolicyActivationPrerequisites(
+  executor: EventOperationsSqlExecutor,
+  input: {
+    eventId: string;
+    isFirstPolicyVersion: boolean;
+    policy: Pick<
+      EventAdmissionPolicy,
+      "profileEditDeadlineAt" | "registrationClosesAt"
+    >;
+    workspaceId: string;
+  },
+): Promise<void> {
+  // The event row is locked by configurePolicy before this read. Event
+  // Operations configuration writes lock that same row, so this is the
+  // authoritative configuration snapshot for this policy transaction.
+  const configuration = await currentEventOperationsConfiguration(
+    executor,
+    input.workspaceId,
+    input.eventId,
+  );
+  if (!configuration) {
+    throw new EventAdmissionError(
+      "NOT_CONFIGURED",
+      "Admission policy requires a current Event Operations configuration.",
+    );
+  }
+  if (
+    Date.parse(input.policy.registrationClosesAt) !==
+      Date.parse(configuration.registrationCutoffAt) ||
+    Date.parse(input.policy.profileEditDeadlineAt) !==
+      Date.parse(configuration.profileEditDeadlineAt)
+  ) {
+    throw new EventAdmissionError(
+      "ACTIVATION_BLOCKED",
+      "Admission policy deadlines must match the current Event Operations configuration.",
+    );
+  }
+  if (
+    input.isFirstPolicyVersion &&
+    await hasLegacyRegistrationMembershipHistory(
+      executor,
+      input.workspaceId,
+      input.eventId,
+    )
+  ) {
+    throw new EventAdmissionError(
+      "ACTIVATION_BLOCKED",
+      "Admission policy cannot be enabled until legacy registrations are migrated.",
+    );
+  }
+}
+
 async function admittedCount(
   executor: EventOperationsSqlExecutor,
   workspaceId: string,
@@ -627,6 +747,7 @@ export function createPostgresEventAdmissionRepository(input: {
     async configurePolicy(raw) {
       const policy = normalizedPolicy(raw);
       const updatedByActorId = normalizedText(raw.updatedByActorId, "updatedByActorId");
+      const expectedVersion = expectedPolicyVersion(raw.expectedPolicyVersion);
       return runTransaction(client, async (executor) => {
         await lockEvent(executor, workspaceId, policy.eventId);
         const previousVersion = await currentPolicyVersion(
@@ -634,6 +755,21 @@ export function createPostgresEventAdmissionRepository(input: {
           workspaceId,
           policy.eventId,
         );
+        if (
+          expectedVersion !== null &&
+          expectedVersion !== previousVersion
+        ) {
+          throw new EventAdmissionError(
+            "VERSION_CONFLICT",
+            "Admission policy changed before this update could commit.",
+          );
+        }
+        await assertPolicyActivationPrerequisites(executor, {
+          eventId: policy.eventId,
+          isFirstPolicyVersion: previousVersion === 0,
+          policy,
+          workspaceId,
+        });
         let previous: EventAdmissionPolicy | null = null;
         try {
           previous = await currentPolicy(executor, workspaceId, policy.eventId);
@@ -956,6 +1092,10 @@ export function createPostgresEventAdmissionRepository(input: {
     async withdrawApplication(raw) {
       const eventId = normalizedText(raw.eventId, "eventId");
       const actorId = normalizedText(raw.actorId, "actorId");
+      const expectedApplicationVersion = positiveVersion(
+        raw.expectedApplicationVersion,
+        "expectedApplicationVersion",
+      );
       return runTransaction(client, async (executor) => {
         await lockEvent(executor, workspaceId, eventId);
         const currentResult = await executor.query<SqlRow>(
@@ -965,6 +1105,18 @@ export function createPostgresEventAdmissionRepository(input: {
           [workspaceId, eventId, actorId],
         );
         const current = currentResult.rows[0] ? applicationFromRow(currentResult.rows[0]) : null;
+        if (
+          current?.status === "withdrawn" &&
+          current.applicationVersion === expectedApplicationVersion + 1
+        ) {
+          return current;
+        }
+        if (current?.applicationVersion !== expectedApplicationVersion) {
+          throw new EventAdmissionError(
+            "VERSION_CONFLICT",
+            `Admission application ${eventId}/${actorId} changed before withdrawal could commit.`,
+          );
+        }
         if (!current || !["pending_review", "waitlisted", "admitted"].includes(current.status)) {
           throw new EventAdmissionError("INVALID_TRANSITION", `Admission application ${eventId}/${actorId} cannot be withdrawn.`);
         }

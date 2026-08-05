@@ -117,6 +117,9 @@ test(
       for (const eventId of [
         "event:instant", "event:approval", "event:no-waitlist",
         "event:rollback", "event:legacy-policy",
+        "event:activation-no-configuration",
+        "event:activation-window-mismatch",
+        "event:activation-legacy-history",
       ]) {
         await operationPool.query(
           `insert into event_ops_events (
@@ -143,6 +146,158 @@ test(
         registrationClosesAt: "2100-01-01T00:00:00.000Z",
         registrationOpensAt: "2000-01-01T00:00:00.000Z",
       };
+      async function setOperationsConfiguration(input: {
+        eventId: string;
+        profileEditDeadlineAt: string;
+        registrationCutoffAt: string;
+      }) {
+        const head = await operationPool.query<{ configuration_version: string }>(
+          `select configuration_version::text
+             from event_ops_configuration_heads
+            where workspace_id = $1 and event_id = $2`,
+          [workspaceId, input.eventId],
+        );
+        const configurationVersion = Number(
+          head.rows[0]?.configuration_version ?? 0,
+        ) + 1;
+        const updatedAt = "2099-01-01T00:00:00.000Z";
+        await operationPool.query(
+          `insert into event_ops_configurations (
+             workspace_id, event_id, configuration_version,
+             check_in_opens_at, event_starts_at, event_ends_at,
+             profile_edit_deadline_at, registration_cutoff_at,
+             results_available_at, round_one_starts_at, round_two_starts_at,
+             recommendation_count, table_size, shard_size,
+             max_attempts_per_task, created_at, updated_at
+           ) values (
+             $1, $2, $3, '1999-12-01T00:00:00.000Z',
+             '1999-12-10T00:00:00.000Z', '2101-01-05T00:00:00.000Z',
+             $4, $5, '2101-01-01T00:00:00.000Z',
+             '2101-01-02T00:00:00.000Z', '2101-01-03T00:00:00.000Z',
+             1, 2, 1, 1, $6, $6
+           )`,
+          [
+            workspaceId,
+            input.eventId,
+            configurationVersion,
+            input.profileEditDeadlineAt,
+            input.registrationCutoffAt,
+            updatedAt,
+          ],
+        );
+        await operationPool.query(
+          `insert into event_ops_configuration_heads (
+             workspace_id, event_id, configuration_version, revision, updated_at
+           ) values ($1, $2, $3, 1, $4)
+           on conflict (workspace_id, event_id) do update set
+             configuration_version = excluded.configuration_version,
+             revision = event_ops_configuration_heads.revision + 1,
+             updated_at = excluded.updated_at`,
+          [workspaceId, input.eventId, configurationVersion, updatedAt],
+        );
+      }
+      for (const eventId of [
+        "event:instant",
+        "event:approval",
+        "event:no-waitlist",
+        "event:rollback",
+        "event:legacy-policy",
+        "event:activation-legacy-history",
+      ]) {
+        await setOperationsConfiguration({
+          eventId,
+          profileEditDeadlineAt: openWindow.profileEditDeadlineAt,
+          registrationCutoffAt: openWindow.registrationClosesAt,
+        });
+      }
+      await setOperationsConfiguration({
+        eventId: "event:activation-window-mismatch",
+        profileEditDeadlineAt: openWindow.profileEditDeadlineAt,
+        registrationCutoffAt: "2100-01-01T00:00:01.000Z",
+      });
+
+      await assert.rejects(
+        service.configurePolicy(managerId, {
+          ...openWindow,
+          admissionMode: "instant",
+          capacity: 1,
+          eventId: "event:activation-no-configuration",
+          waitlistEnabled: false,
+        }),
+        (error: unknown) =>
+          error instanceof EventAdmissionError && error.code === "NOT_CONFIGURED",
+      );
+      assert.equal(
+        await service.getPolicy("event:activation-no-configuration"),
+        null,
+      );
+
+      await assert.rejects(
+        service.configurePolicy(managerId, {
+          ...openWindow,
+          admissionMode: "instant",
+          capacity: 1,
+          eventId: "event:activation-window-mismatch",
+          waitlistEnabled: false,
+        }),
+        (error: unknown) =>
+          error instanceof EventAdmissionError &&
+          error.code === "ACTIVATION_BLOCKED",
+      );
+      assert.equal(
+        await service.getPolicy("event:activation-window-mismatch"),
+        null,
+      );
+
+      await operationPool.query(
+        `insert into event_ops_profile_versions (
+           workspace_id, event_id, participant_id, profile_version, actor_id,
+           profile_payload, profile_hash, source_registration_id,
+           effective_at, created_at
+         ) values ($1, $2, $3, 1, $4, $5::jsonb, $6, $7, now(), now())`,
+        [
+          workspaceId,
+          "event:activation-legacy-history",
+          "profile:legacy-registration-history",
+          "actor:legacy-registration-history",
+          JSON.stringify({}),
+          "legacy-registration-history-profile-hash",
+          "registration:legacy-registration-history",
+        ],
+      );
+      await operationPool.query(
+        `insert into event_ops_membership_versions (
+           workspace_id, event_id, actor_id, membership_version, participant_id,
+           profile_version, status, registered_at, cancelled_at, reactivated_at,
+           late_registration, source_registration_id, created_at, effective_at,
+           origin, admission_application_version
+         ) values ($1, $2, $3, 1, $4, 1, 'rsvped', now(), null, null,
+                   false, $5, now(), now(), 'legacy_registration', null)`,
+        [
+          workspaceId,
+          "event:activation-legacy-history",
+          "actor:legacy-registration-history",
+          "profile:legacy-registration-history",
+          "registration:legacy-registration-history",
+        ],
+      );
+      await assert.rejects(
+        service.configurePolicy(managerId, {
+          ...openWindow,
+          admissionMode: "instant",
+          capacity: 1,
+          eventId: "event:activation-legacy-history",
+          waitlistEnabled: false,
+        }),
+        (error: unknown) =>
+          error instanceof EventAdmissionError &&
+          error.code === "ACTIVATION_BLOCKED",
+      );
+      assert.equal(
+        await service.getPolicy("event:activation-legacy-history"),
+        null,
+      );
+
       const instantPolicy = {
         ...openWindow,
         admissionMode: "instant" as const,
@@ -188,12 +343,17 @@ test(
       );
       assert.deepEqual(beforePromotionMembership.rows.map((item) => item.actor_id), ["actor:A", "actor:B"]);
       await Promise.all([
-        service.withdrawApplication("actor:A", "event:instant"),
+        service.withdrawApplication("actor:A", "event:instant", 1),
         service.submitApplication("actor:E", {
           eventId: "event:instant", profilePayload: profile("actor:E"),
         }),
       ]);
       assert.equal((await service.getApplication("actor:C", "event:instant"))?.status, "admitted");
+      await assert.rejects(
+        service.withdrawApplication("actor:B", "event:instant", 99),
+        (error: unknown) =>
+          error instanceof EventAdmissionError && error.code === "VERSION_CONFLICT",
+      );
       const instantHeads = await operationPool.query<{ status: string }>(
         `select status from event_ops_admission_application_heads
          where workspace_id = $1 and event_id = 'event:instant'`,
@@ -285,7 +445,7 @@ test(
         actorId: "actor:P3", decision: "reject", eventId: "event:approval",
         expectedApplicationVersion: 1,
       })).status, "rejected");
-      await service.withdrawApplication("actor:P1", "event:approval");
+      await service.withdrawApplication("actor:P1", "event:approval", 2);
       assert.equal((await service.getApplication("actor:P2", "event:approval"))?.status, "admitted");
       const approvalMembership = await operationPool.query<{ actor_id: string; status: string }>(
         `select actor_id, status from event_ops_membership_heads
@@ -317,6 +477,11 @@ test(
         }),
         (error: unknown) => error instanceof EventAdmissionError && error.code === "DATA_INVALID",
       );
+      await setOperationsConfiguration({
+        eventId: "event:no-waitlist",
+        profileEditDeadlineAt: "2000-06-01T00:00:00.000Z",
+        registrationCutoffAt: "2001-01-01T00:00:00.000Z",
+      });
       await service.configurePolicy(managerId, {
         admissionMode: "instant", capacity: 1, eventId: "event:no-waitlist",
         profileEditDeadlineAt: "2000-06-01T00:00:00.000Z",
