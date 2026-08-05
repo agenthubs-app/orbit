@@ -154,6 +154,7 @@ export interface ScheduledReminder {
   contactName: string;
   organization: string;
   title: string;
+  href?: string;
   dueAt: string;
   dueInDays: number;
   frequency: ReminderFrequency;

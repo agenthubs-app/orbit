@@ -16,7 +16,6 @@ import { EventCapabilityDeniedError } from "../../features/events/event-access/g
 import type { EventAccessService } from "../../features/events/event-access/service";
 import type { EventOperationsService } from "../../features/events/event-operations/service";
 import {
-  buildEventDetailPayload,
   mockEventRecords,
 } from "../../features/events/event-crud-and-import/fixtures";
 import type { EventRegistration } from "../../features/events/registration/contract";
@@ -205,18 +204,13 @@ test("registered access rejects metadata for a different event before operations
 test("public generation run route rejects HTTP execution and never constructs the AI service", async () => {
   let serviceConstructed = false;
   const handler = createEventOperationsGenerationRunPostHandler({
+    createAccessService: () =>
+      manualAccessService({ owner: true, role: null, state: null }),
     createService: () => {
       serviceConstructed = true;
       throw new Error("HTTP run must not construct the event operations service");
     },
-    ownedAccess: {
-      createEventService: () => ({
-        async getEvent() {
-          return { data: buildEventDetailPayload(dynamicEvent), success: true } as const;
-        },
-      }),
-      resolveActor: async () => ({ id: "actor:organizer", name: "Organizer" }),
-    },
+    resolveActor: async () => ({ id: "actor:organizer", name: "Organizer" }),
   });
 
   const response = await handler(

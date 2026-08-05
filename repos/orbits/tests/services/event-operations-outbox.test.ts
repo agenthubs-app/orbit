@@ -151,6 +151,12 @@ test("unsupported outbox events fail terminally while contact-request lifecycle 
     projectedIds: [],
     projection: "none",
   });
+  assert.deepEqual(
+    await projector.project(
+      relationshipMessage({ eventType: "event.contact_request.withdrawn" }),
+    ),
+    canonicalOnly,
+  );
   await assert.rejects(
     projector.project(relationshipMessage({ eventType: "event.unknown" })),
     (error: unknown) =>

@@ -384,6 +384,7 @@ function personFromOperations(input: {
         : "incoming"
       : null,
     contactRequestId: request?.requestId ?? null,
+    contactRequestRevision: request?.revision ?? null,
     contactRequestStatus: incoming
       ? "incoming"
       : request?.status ?? "none",
@@ -476,6 +477,7 @@ function contactRequestViews(
         ? request.targetParticipantId
         : request.requesterParticipantId,
     requestId: request.requestId,
+    revision: request.revision,
     status: request.status,
   }));
 }

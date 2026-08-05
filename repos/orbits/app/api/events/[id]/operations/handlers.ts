@@ -160,6 +160,23 @@ function requiredPositiveInteger(
   return value;
 }
 
+function expectedRevision(
+  body: Record<string, unknown>,
+  options: { allowNull: boolean },
+): number | null {
+  const value = body.expectedRevision;
+  if (options.allowNull && value === null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      options.allowNull
+        ? "expectedRevision must be a positive integer or null."
+        : "expectedRevision must be a positive integer.",
+    );
+  }
+  return value;
+}
+
 export function createEventOperationsGetHandler(
   dependencies: EventOperationsHandlerDependencies = {},
 ) {
@@ -217,6 +234,7 @@ export function createEventOperationsContactRequestPostHandler(
       const body = await jsonBody(request);
       const result = await serviceFor(dependencies).createContactRequest({
         actorId: access.actor.id,
+        expectedRevision: expectedRevision(body, { allowNull: true }),
         eventId: access.eventId,
         targetParticipantId: requiredText(body, "targetParticipantId"),
       });
@@ -247,6 +265,33 @@ export function createEventOperationsContactRequestResponsePostHandler(
       const result = await serviceFor(dependencies).respondToContactRequest({
         accept: body.accept,
         actorId: access.actor.id,
+        expectedRevision: expectedRevision(body, { allowNull: false })!,
+        eventId: access.eventId,
+        requestId: params.requestId,
+      });
+      return NextResponse.json(success(result), {
+        headers: runtimeBoundaryHeaders(access.mode),
+      });
+    } catch (error) {
+      return errorResponse(error, access.mode);
+    }
+  }, dependencies.registeredAccess);
+}
+
+export function createEventOperationsContactRequestWithdrawPostHandler(
+  dependencies: EventOperationsHandlerDependencies = {},
+) {
+  return withRegisteredEventAccess(async function withdrawContactRequest(
+    request: Request,
+    context: EventOperationsContactRequestRouteContext,
+    access,
+  ) {
+    try {
+      const body = await jsonBody(request);
+      const params = await context.params;
+      const result = await serviceFor(dependencies).withdrawContactRequest({
+        actorId: access.actor.id,
+        expectedRevision: expectedRevision(body, { allowNull: false })!,
         eventId: access.eventId,
         requestId: params.requestId,
       });

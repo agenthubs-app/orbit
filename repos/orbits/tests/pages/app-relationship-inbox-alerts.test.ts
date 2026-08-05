@@ -76,6 +76,22 @@ test("reminder alerts show contact names instead of internal contact ids", () =>
   assert.doesNotMatch(alerts[0]?.title ?? "", /contact_\d+/);
 });
 
+test("reminder alerts preserve a validated appointment action href", () => {
+  const alerts = toReminderAlerts({
+    reminders: [{
+      reminderId: "notification:appointment:1:t15m:actor:a",
+      title: "约谈已经结束：记录会后纪要与下一步",
+      contactName: "Ren",
+      organization: "Orbit",
+      recommendedWindow: "now",
+      dueAt: "2026-08-05T01:45:00.000Z",
+      priority: "high",
+      href: "/app/contacts/contact%3Aren?capture=meeting-memo&appointmentId=appointment%3A1&eventId=event%3Alaunch",
+    }],
+  } as unknown as ReminderScheduleNotificationPayload);
+  assert.equal(alerts[0]?.href, "/app/contacts/contact%3Aren?capture=meeting-memo&appointmentId=appointment%3A1&eventId=event%3Alaunch");
+});
+
 test("proactive-turns API does not expose a fixture-backed production GET", async () => {
   const route = await import("../../app/api/ai/proactive-turns/route");
   const routeSource = await import("node:fs").then((fs) =>

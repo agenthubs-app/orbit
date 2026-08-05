@@ -13,6 +13,7 @@ interface ContactRequestStateDetail {
   eventId: string;
   participantId: string;
   requestId: string | null;
+  revision: number | null;
   status: OrbitPartyPersonView["contactRequestStatus"];
 }
 
@@ -58,12 +59,14 @@ export function EventContactRequestControl({
 }) {
   const [localRequestId, setLocalRequestId] = useState<string | null>(null);
   const [localContactId, setLocalContactId] = useState<string | null>(null);
+  const [localRevision, setLocalRevision] = useState<number | null>(null);
   const [localStatus, setLocalStatus] = useState<
     OrbitPartyPersonView["contactRequestStatus"] | null
   >(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = localRequestId ?? person.contactRequestId;
+  const revision = localRevision ?? person.contactRequestRevision;
   const contactId = localContactId ?? person.contactId;
   // A contact id is the canonical, owner-scoped outcome of an accepted
   // exchange. It must win over a stale request projection so every Party
@@ -75,10 +78,11 @@ export function EventContactRequestControl({
   useEffect(() => {
     setLocalRequestId(null);
     setLocalContactId(null);
+    setLocalRevision(null);
     setLocalStatus(null);
     setBusy(false);
     setError(null);
-  }, [person.contactId, person.contactRequestId, person.contactRequestStatus, person.id]);
+  }, [person.contactId, person.contactRequestId, person.contactRequestRevision, person.contactRequestStatus, person.id]);
 
   useEffect(() => {
     const synchronize = (detail: ContactRequestStateDetail) => {
@@ -90,6 +94,7 @@ export function EventContactRequestControl({
       }
       setLocalRequestId(detail.requestId);
       setLocalContactId(detail.contactId);
+      setLocalRevision(detail.revision);
       setLocalStatus(detail.status);
     };
     contactRequestStateListeners.add(synchronize);
@@ -102,17 +107,19 @@ export function EventContactRequestControl({
     setBusy(true);
     setError(null);
     try {
-      const request = await postJson<{ requestId: string }>(
+      const request = await postJson<{ requestId: string; revision: number }>(
         `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests`,
-        { targetParticipantId: person.id },
+        { expectedRevision: revision, targetParticipantId: person.id },
       );
       setLocalRequestId(request.requestId);
+      setLocalRevision(request.revision);
       setLocalStatus("awaiting_target_consent");
       publishContactRequestState({
         contactId: null,
         eventId,
         participantId: person.id,
         requestId: request.requestId,
+        revision: request.revision,
         status: "awaiting_target_consent",
       });
     } catch (cause) {
@@ -137,20 +144,26 @@ export function EventContactRequestControl({
       return;
     }
     try {
+      if (revision === null) {
+        throw new Error("This contact request is missing its lifecycle revision. Refresh Party before retrying.");
+      }
       const request = await postJson<{
         contactId: string | null;
+        revision: number;
         status: OrbitPartyPersonView["contactRequestStatus"];
       }>(
         `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(responseRequestId)}/respond`,
-        { accept },
+        { accept, expectedRevision: revision },
       );
       setLocalStatus(request.status);
       setLocalContactId(request.contactId);
+      setLocalRevision(request.revision);
       publishContactRequestState({
         contactId: request.contactId,
         eventId,
         participantId: person.id,
         requestId: responseRequestId,
+        revision: request.revision,
         status: request.status,
       });
     } catch (cause) {
@@ -160,9 +173,55 @@ export function EventContactRequestControl({
     }
   }
 
+  async function withdraw() {
+    setBusy(true);
+    setError(null);
+    if (!requestId) {
+      setError(
+        t({
+          en: "This contact request is missing its persisted request id. Refresh Party before retrying.",
+          zh: "此联系申请缺少已持久化的申请 ID，请刷新 Party 后重试。",
+        }),
+      );
+      setBusy(false);
+      return;
+    }
+    try {
+      if (revision === null) {
+        throw new Error("This contact request is missing its lifecycle revision. Refresh Party before retrying.");
+      }
+      const request = await postJson<{
+        contactId: string | null;
+        revision: number;
+        status: OrbitPartyPersonView["contactRequestStatus"];
+      }>(
+        `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(requestId)}/withdraw`,
+        { expectedRevision: revision },
+      );
+      setLocalContactId(request.contactId);
+      setLocalRevision(request.revision);
+      setLocalStatus(request.status);
+      publishContactRequestState({
+        contactId: request.contactId,
+        eventId,
+        participantId: person.id,
+        requestId,
+        revision: request.revision,
+        status: request.status,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Withdrawal failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const canRespond =
     person.contactRequestDirection === "incoming" &&
     (status === "incoming" || status === "awaiting_target_consent");
+  const canWithdraw =
+    person.contactRequestDirection === "outgoing" &&
+    status === "awaiting_target_consent";
 
   return (
     <div
@@ -192,7 +251,10 @@ export function EventContactRequestControl({
         </div>
       ) : null}
       {status === "awaiting_target_consent" ? (
-        <span className="chip">{t({ en: "Waiting for their consent", zh: "等待对方授权" })}</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span className="chip">{t({ en: "Waiting for their consent", zh: "等待对方授权" })}</span>
+          {canWithdraw ? <button className="btn btn-ghost btn-sm" data-event-contact-action="withdraw" disabled={busy} onClick={() => void withdraw()} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
+        </div>
       ) : null}
       {status === "accepted" ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -206,6 +268,12 @@ export function EventContactRequestControl({
       ) : null}
       {status === "declined" ? (
         <span className="chip">{t({ en: "Contact request declined", zh: "联系申请已拒绝" })}</span>
+      ) : null}
+      {status === "withdrawn" ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span className="chip">{t({ en: "Contact request withdrawn", zh: "联系申请已撤回" })}</span>
+          {person.contactRequestDirection === "outgoing" ? <button className="btn btn-primary btn-sm" data-event-contact-action="request-again" disabled={busy} onClick={() => void createRequest()} type="button">{t({ en: "Request contact again", zh: "再次申请交换联系信息" })}</button> : null}
+        </div>
       ) : null}
       {error ? <span role="alert" style={{ color: "var(--rose)", fontSize: 12 }}>{error}</span> : null}
     </div>

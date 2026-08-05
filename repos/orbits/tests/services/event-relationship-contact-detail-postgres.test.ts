@@ -151,12 +151,14 @@ test(
       await repository.saveConfiguration(configuration(eventId));
       await repository.activateCanonicalRegistrations(eventId, participants);
       const request = await repository.createContactRequestAtomically({
+        expectedRevision: null,
         eventId,
         requesterActorId: "actor:aiko",
         targetParticipantId: participants[1]!.participantProfileId,
       });
       const acceptedForRen = await repository.respondToContactRequestAtomically({
         accept: true,
+        expectedRevision: request.revision,
         eventId,
         requestId: request.requestId,
         targetActorId: "actor:ren",

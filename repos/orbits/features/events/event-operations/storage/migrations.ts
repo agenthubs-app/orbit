@@ -1560,6 +1560,20 @@ alter table event_ops_task_attempts
   add column cache_hit_tokens integer check (cache_hit_tokens is null or cache_hit_tokens >= 0);
 `,
   },
+  {
+    name: "event-operations-v15-contact-request-withdrawal",
+    version: 15,
+    sql: `
+alter table event_ops_contact_requests
+  add column withdrawn_at timestamptz;
+
+alter table event_ops_contact_requests
+  drop constraint event_ops_contact_requests_status_check,
+  add constraint event_ops_contact_requests_status_check check (
+    status in ('awaiting_target_consent', 'accepted', 'declined', 'withdrawn')
+  );
+`,
+  },
 ];
 
 function checksum(sql: string): string {

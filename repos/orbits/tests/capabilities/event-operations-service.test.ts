@@ -179,6 +179,16 @@ async function createHarness() {
       },
     },
     engine,
+    eventSchedule: {
+      async getCanonicalSchedule({ eventId: requestedEventId }) {
+        return requestedEventId === eventId
+          ? {
+              endsAt: "2026-08-02T12:00:00.000Z",
+              startsAt: "2026-08-02T09:30:00.000Z",
+            }
+          : null;
+      },
+    },
     now: () => timestamp,
     registrationService,
     repository: observedRepository,
@@ -299,6 +309,26 @@ test("event configuration preserves the owner and fails closed when delegated ca
         configuration,
       }),
     /configuration access is denied/u,
+  );
+});
+
+test("event operations reject a schedule that diverges from the canonical published event", async () => {
+  const harness = await createHarness();
+  const current = await harness.repository.getConfiguration(eventId);
+  assert.ok(current);
+  const { organizerActorId: _owner, updatedAt: _updatedAt, ...configuration } =
+    current;
+
+  await assert.rejects(
+    () =>
+      harness.service.configure({
+        actorId: organizerActorId,
+        configuration: {
+          ...configuration,
+          eventStartsAt: "2026-08-02T09:31:00.000Z",
+        },
+      }),
+    /canonical published event schedule/u,
   );
 });
 
@@ -490,6 +520,7 @@ test("business-card requests are individual and create bilateral records only af
 
   const request = await harness.service.createContactRequest({
     actorId: "actor:akira",
+    expectedRevision: null,
     eventId,
     targetParticipantId: mei.participantId,
   });
@@ -501,6 +532,7 @@ test("business-card requests are individual and create bilateral records only af
       harness.service.respondToContactRequest({
         accept: true,
         actorId: "actor:akira",
+        expectedRevision: request.revision,
         eventId,
         requestId: request.requestId,
       }),
@@ -509,6 +541,7 @@ test("business-card requests are individual and create bilateral records only af
   const accepted = await harness.service.respondToContactRequest({
     accept: true,
     actorId: "actor:mei",
+    expectedRevision: request.revision,
     eventId,
     requestId: request.requestId,
   });
@@ -531,10 +564,96 @@ test("business-card requests are individual and create bilateral records only af
     "eventId",
     "requestId",
     "requesterParticipantId",
+    "revision",
     "status",
     "targetParticipantId",
     "updatedAt",
+    "withdrawnAt",
   ]);
+});
+
+test("requesters can idempotently withdraw a pending business-card request and request again", async () => {
+  const harness = await createHarness();
+  const mei = (
+    await harness.service.attendeeWorkspace({ actorId: "actor:akira", eventId })
+  ).directory.find((participant) => participant.actorId === "actor:mei");
+  assert.ok(mei);
+  const request = await harness.service.createContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: null,
+    eventId,
+    targetParticipantId: mei.participantId,
+  });
+
+  await assert.rejects(
+    () =>
+      harness.service.withdrawContactRequest({
+        actorId: "actor:mei",
+        expectedRevision: request.revision,
+        eventId,
+        requestId: request.requestId,
+      }),
+    /Only the requester/u,
+  );
+  const withdrawn = await harness.service.withdrawContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: request.revision,
+    eventId,
+    requestId: request.requestId,
+  });
+  assert.equal(withdrawn.status, "withdrawn");
+  assert.ok(withdrawn.withdrawnAt);
+  const repeated = await harness.service.withdrawContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: request.revision,
+    eventId,
+    requestId: request.requestId,
+  });
+  assert.deepEqual(repeated, withdrawn);
+
+  await assert.rejects(
+    () =>
+      harness.service.createContactRequest({
+        actorId: "actor:akira",
+        expectedRevision: null,
+        eventId,
+        targetParticipantId: mei.participantId,
+      }),
+    /pending business-card request|lifecycle changed/u,
+    "an original create command must not reopen a withdrawn lifecycle",
+  );
+
+  const reopened = await harness.service.createContactRequest({
+    actorId: "actor:akira",
+    expectedRevision: withdrawn.revision,
+    eventId,
+    targetParticipantId: mei.participantId,
+  });
+  assert.equal(reopened.requestId, request.requestId);
+  assert.equal(reopened.status, "awaiting_target_consent");
+  assert.equal(reopened.withdrawnAt, null);
+  assert.deepEqual(
+    await harness.service.createContactRequest({
+      actorId: "actor:akira",
+      expectedRevision: withdrawn.revision,
+      eventId,
+      targetParticipantId: mei.participantId,
+    }),
+    reopened,
+    "retrying the same reopen command is idempotent",
+  );
+
+  await assert.rejects(
+    () =>
+      harness.service.withdrawContactRequest({
+        actorId: "actor:akira",
+        expectedRevision: request.revision,
+        eventId,
+        requestId: request.requestId,
+      }),
+    /pending business-card request|lifecycle changed/u,
+    "a delayed withdrawal from the earlier lifecycle must not withdraw the reopened request",
+  );
 });
 
 test("declined business-card requests never create contacts or evidence", async () => {
@@ -545,12 +664,14 @@ test("declined business-card requests never create contacts or evidence", async 
   assert.ok(sora);
   const request = await harness.service.createContactRequest({
     actorId: "actor:akira",
+    expectedRevision: null,
     eventId,
     targetParticipantId: sora.participantId,
   });
   const declined = await harness.service.respondToContactRequest({
     accept: false,
     actorId: "actor:sora",
+    expectedRevision: request.revision,
     eventId,
     requestId: request.requestId,
   });
@@ -640,6 +761,7 @@ test("a published attendee directory, me profile, and contact targets stay on th
   await assert.rejects(
     harness.service.createContactRequest({
       actorId: "actor:akira",
+      expectedRevision: null,
       eventId,
       targetParticipantId: addedAfterPublication.participantProfileId,
     }),

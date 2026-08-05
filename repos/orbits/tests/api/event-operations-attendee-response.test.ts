@@ -64,10 +64,12 @@ test("participant operations GET emits an attendee field allow-list", async () =
       declinedAt: null,
       eventId: EVENT_ID,
       requestId: "request:1",
+      revision: 1,
       requesterParticipantId: me.participantId,
       status: "awaiting_target_consent" as const,
       targetParticipantId: peer.participantId,
       updatedAt: "2026-08-03T09:05:00.000Z",
+      withdrawnAt: null,
     }],
     directory: [me, peer],
     eventId: EVENT_ID,
@@ -189,8 +191,10 @@ test("participant operations GET emits an attendee field allow-list", async () =
     "contactId",
     "requestId",
     "requesterParticipantId",
+    "revision",
     "status",
     "targetParticipantId",
+    "withdrawnAt",
   ]);
   assert.deepEqual(body.data.roundOneTable.memberRationales, {
     [me.participantId]: "Aiko brings the community design evidence this table needs.",

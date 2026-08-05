@@ -44,7 +44,13 @@ export interface EventParticipantDetailView {
     contactId: string | null;
     direction: "incoming" | "outgoing" | null;
     requestId: string | null;
-    status: "none" | "awaiting_target_consent" | "accepted" | "declined";
+    revision: number | null;
+    status:
+      | "none"
+      | "awaiting_target_consent"
+      | "accepted"
+      | "declined"
+      | "withdrawn";
   };
   displayName: string;
   industry: string | null;
@@ -169,12 +175,14 @@ function contactView(
             ? "outgoing"
             : "incoming",
         requestId: request.requestId,
+        revision: request.revision,
         status: request.status,
       }
     : {
         contactId: null,
         direction: null,
         requestId: null,
+        revision: null,
         status: "none",
       };
 }

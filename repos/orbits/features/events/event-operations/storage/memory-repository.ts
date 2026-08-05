@@ -30,6 +30,7 @@ import type {
   ListEventOperationsLimitedCheckInRosterInput,
   RespondToEventContactRequestInput,
   SaveEventOperationsConfigurationAsOperatorInput,
+  WithdrawEventContactRequestInput,
 } from "../repository";
 
 interface MemoryContactRequestRecord
@@ -75,10 +76,12 @@ function contactRequestForViewer(
     declinedAt: value.declinedAt,
     eventId: value.eventId,
     requestId: value.requestId,
+    revision: value.revision,
     requesterParticipantId: value.requesterParticipantId,
     status: value.status,
     targetParticipantId: value.targetParticipantId,
     updatedAt: value.updatedAt,
+    withdrawnAt: value.withdrawnAt,
   });
 }
 
@@ -723,8 +726,35 @@ export function createMemoryEventOperationsRepository(
             ].sort(),
           ) === participantPairKey,
       );
-      if (existing) {
-        return contactRequestForViewer(existing, input.requesterActorId);
+      if (!existing && input.expectedRevision !== null) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The contact request lifecycle changed before it could be created.",
+        );
+      }
+      if (existing && existing.status !== "withdrawn") {
+        const isInitialRetry =
+          input.expectedRevision === null && existing.revision === 1;
+        const isReopenRetry =
+          input.expectedRevision !== null &&
+          existing.status === "awaiting_target_consent" &&
+          existing.revision === input.expectedRevision + 1;
+        if (isInitialRetry || isReopenRetry) {
+          return contactRequestForViewer(existing, input.requesterActorId);
+        }
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The contact request lifecycle changed before it could be created.",
+        );
+      }
+      if (
+        existing &&
+        input.expectedRevision !== existing.revision
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The contact request lifecycle changed before it could be reopened.",
+        );
       }
       const createdAt = options.now?.() ?? new Date().toISOString();
       const requestId = `event-contact-request:${digest(
@@ -738,12 +768,14 @@ export function createMemoryEventOperationsRepository(
         declinedAt: null,
         eventId: input.eventId,
         requestId,
+        revision: existing ? existing.revision + 1 : 1,
         requesterActorId: requester.userId,
         requesterParticipantId: requester.participantProfileId,
         status: "awaiting_target_consent",
         targetActorId: target.userId,
         targetParticipantId: target.participantProfileId,
         updatedAt: createdAt,
+        withdrawnAt: null,
       };
       contactRequests.set(requestId, clone(value));
       return contactRequestForViewer(value, input.requesterActorId);
@@ -1276,8 +1308,26 @@ export function createMemoryEventOperationsRepository(
           "Only the target participant can respond to this business-card request.",
         );
       }
-      if (current.status === "accepted" || current.status === "declined") {
+      if (
+        (current.status === "accepted" && input.accept) ||
+        (current.status === "declined" && !input.accept)
+      ) {
+        if (current.revision !== input.expectedRevision + 1) {
+          throw new EventOperationsError(
+            "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+            "The contact request lifecycle changed before this response could be applied.",
+          );
+        }
         return contactRequestForViewer(current, input.targetActorId);
+      }
+      if (
+        current.status !== "awaiting_target_consent" ||
+        current.revision !== input.expectedRevision
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The contact request lifecycle changed before this response could be applied.",
+        );
       }
       const active = (await canonicalRegistrationService.list({
         eventId: input.eventId,
@@ -1301,8 +1351,14 @@ export function createMemoryEventOperationsRepository(
       }
       const respondedAt = options.now?.() ?? new Date().toISOString();
       const latest = contactRequests.get(input.requestId)!;
-      if (latest.status === "accepted" || latest.status === "declined") {
-        return contactRequestForViewer(latest, input.targetActorId);
+      if (
+        latest.status !== "awaiting_target_consent" ||
+        latest.revision !== input.expectedRevision
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The contact request lifecycle changed before this response could be applied.",
+        );
       }
       const next: MemoryContactRequestRecord = input.accept
         ? {
@@ -1321,16 +1377,69 @@ export function createMemoryEventOperationsRepository(
               )}`,
             },
             status: "accepted",
+            revision: latest.revision + 1,
             updatedAt: respondedAt,
           }
         : {
             ...latest,
             declinedAt: respondedAt,
             status: "declined",
+            revision: latest.revision + 1,
             updatedAt: respondedAt,
           };
       contactRequests.set(input.requestId, clone(next));
       return contactRequestForViewer(next, input.targetActorId);
+    },
+
+    async withdrawContactRequestAtomically(
+      input: WithdrawEventContactRequestInput,
+    ) {
+      const current = contactRequests.get(input.requestId);
+      if (
+        !current ||
+        current.eventId !== input.eventId ||
+        current.requesterActorId !== input.requesterActorId
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_FORBIDDEN",
+          "Only the requester can withdraw this business-card request.",
+        );
+      }
+      if (
+        current.status === "withdrawn" &&
+        current.revision === input.expectedRevision + 1
+      ) {
+        return contactRequestForViewer(current, input.requesterActorId);
+      }
+      if (
+        current.status !== "awaiting_target_consent" ||
+        current.revision !== input.expectedRevision
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "Only a pending business-card request can be withdrawn.",
+        );
+      }
+      const withdrawnAt = options.now?.() ?? new Date().toISOString();
+      const latest = contactRequests.get(input.requestId)!;
+      if (
+        latest.status !== "awaiting_target_consent" ||
+        latest.revision !== input.expectedRevision
+      ) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "The business-card request changed before it could be withdrawn.",
+        );
+      }
+      const next: MemoryContactRequestRecord = {
+        ...latest,
+        status: "withdrawn",
+        revision: latest.revision + 1,
+        updatedAt: withdrawnAt,
+        withdrawnAt,
+      };
+      contactRequests.set(input.requestId, clone(next));
+      return contactRequestForViewer(next, input.requesterActorId);
     },
 
     async retryFailedGeneration(generationId, retriedAt, authorization) {

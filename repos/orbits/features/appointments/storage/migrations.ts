@@ -121,6 +121,26 @@ alter table appointment_command_receipts
   alter column response_snapshot set not null;
 `;
 
+const APPOINTMENT_V4_SQL = `
+update appointment_outbox set
+  status = 'retry',
+  available_at = now(),
+  attempt_count = 0,
+  lease_token = null,
+  lease_expires_at = null,
+  last_error = 'Requeued after appointment action notification projector repair.',
+  updated_at = now()
+where status = 'completed'
+  and event_type in (
+    'appointment.proposed',
+    'appointment.countered',
+    'appointment.reschedule.proposed'
+  )
+  and payload #>> '{projection,policy}' = 'provider_not_configured'
+  and jsonb_typeof(payload #> '{projection,notificationIds}') = 'array'
+  and jsonb_array_length(payload #> '{projection,notificationIds}') = 0;
+`;
+
 export const APPOINTMENT_MIGRATIONS: readonly AppointmentMigration[] = [
   {
     acceptedLegacyChecksums: ["6017beac4ad0c360264be4f86301c34c3b401c5b8d5c84469875a2b852a6b70f"],
@@ -130,6 +150,7 @@ export const APPOINTMENT_MIGRATIONS: readonly AppointmentMigration[] = [
   },
   { name: "appointment-v2-bilateral-relationship-identity", sql: APPOINTMENT_V2_SQL, version: 2 },
   { name: "appointment-v3-idempotency-request-snapshot", sql: APPOINTMENT_V3_SQL, version: 3 },
+  { name: "appointment-v4-requeue-missed-action-notifications", sql: APPOINTMENT_V4_SQL, version: 4 },
 ];
 
 export const APPOINTMENT_SCHEMA_VERSION = APPOINTMENT_MIGRATIONS.at(-1)!.version;

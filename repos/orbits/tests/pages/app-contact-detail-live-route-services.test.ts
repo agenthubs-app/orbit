@@ -592,7 +592,9 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /const session = await auth\(\)/);
   assert.match(pageSource, /actorId,/);
   assert.match(pageSource, /redirect\(/);
-  assert.doesNotMatch(pageSource, /searchParams|readSearchParam/);
+  assert.match(pageSource, /searchParams/);
+  assert.match(pageSource, /capture === "meeting-memo"/);
+  assert.match(pageSource, /AppointmentMemoCapture/);
   assert.doesNotMatch(pageSource, /action:|mode:|scenario:/);
   assert.doesNotMatch(
     source(

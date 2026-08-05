@@ -213,7 +213,7 @@ function evidenceFromRecord(
 
 function notificationFromRecord(
   record: LiveRecord<Record<string, unknown>>,
-): NotificationDTO | null {
+): (NotificationDTO & { actionHref?: string }) | null {
   const payload = record.payload;
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
@@ -248,6 +248,9 @@ function notificationFromRecord(
     body: payload.body,
     status: payload.status,
     scheduledFor: optionalString(payload.scheduledFor),
+    actionHref: typeof payload.actionHref === "string" && payload.actionHref.startsWith("/app/")
+      ? payload.actionHref
+      : undefined,
     source,
     evidenceIds: ids,
     createdAt: payload.createdAt,

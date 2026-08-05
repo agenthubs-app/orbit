@@ -30,7 +30,7 @@ export interface LiveReminderNotificationGraph {
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
   generatedAt: string;
-  notifications: readonly NotificationDTO[];
+  notifications: readonly (NotificationDTO & { actionHref?: string })[];
   tasks: readonly TaskDTO[];
 }
 
@@ -317,7 +317,7 @@ function evidenceIdsForReminder(
 }
 
 function toReminder(
-  notification: NotificationDTO,
+  notification: NotificationDTO & { actionHref?: string },
   graph: LiveReminderNotificationGraph,
 ): ScheduledReminder {
   const task = taskForNotification(notification, graph);
@@ -335,6 +335,7 @@ function toReminder(
     contactName: contact?.displayName ?? "Live generated relationship contact",
     organization: contact?.organization ?? "",
     title: notification.title,
+    href: notification.actionHref,
     dueAt,
     dueInDays,
     frequency: frequencyFor(dueInDays),

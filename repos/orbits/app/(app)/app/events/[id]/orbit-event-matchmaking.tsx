@@ -24,8 +24,9 @@ type Participant = {
 type ContactRequest = {
   contactId: string | null;
   requestId: string;
+  revision: number;
   requesterParticipantId: string;
-  status: "awaiting_target_consent" | "accepted" | "declined";
+  status: "awaiting_target_consent" | "accepted" | "declined" | "withdrawn";
   targetParticipantId: string;
 };
 
@@ -68,14 +69,18 @@ type OperationsWorkspace = {
 
 function CandidateContactAction({
   busy,
+  canWithdraw,
   participantId,
   request,
   onRequest,
+  onWithdraw,
 }: {
   busy: boolean;
+  canWithdraw: boolean;
   participantId: string;
   request: ContactRequest | null;
-  onRequest: (participantId: string) => Promise<void>;
+  onRequest: (participantId: string, expectedRevision: number | null) => Promise<void>;
+  onWithdraw: (requestId: string, expectedRevision: number) => Promise<void>;
 }) {
   const { t } = useOrbitLanguage();
 
@@ -85,7 +90,7 @@ function CandidateContactAction({
         className="btn btn-primary btn-sm"
         data-contact-request-state="none"
         disabled={busy}
-        onClick={() => void onRequest(participantId)}
+        onClick={() => void onRequest(participantId, null)}
         type="button"
       >
         {t({ en: "Request business card", zh: "申请交换名片" })}
@@ -95,15 +100,10 @@ function CandidateContactAction({
 
   if (request.status === "awaiting_target_consent") {
     return (
-      <button
-        aria-live="polite"
-        className="btn btn-ghost btn-sm"
-        data-contact-request-state="awaiting_target_consent"
-        disabled
-        type="button"
-      >
-        {t({ en: "Waiting for their consent", zh: "等待对方同意" })}
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <button aria-live="polite" className="btn btn-ghost btn-sm" data-contact-request-state="awaiting_target_consent" disabled type="button">{t({ en: "Waiting for their consent", zh: "等待对方同意" })}</button>
+        {canWithdraw ? <button className="btn btn-ghost btn-sm" data-contact-request-action="withdraw" disabled={busy} onClick={() => void onWithdraw(request.requestId, request.revision)} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
+      </div>
     );
   }
 
@@ -118,6 +118,15 @@ function CandidateContactAction({
       >
         {t({ en: "Open contact", zh: "打开联系人" })}
       </a>
+    );
+  }
+
+  if (request.status === "withdrawn") {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <span className="chip" data-contact-request-state="withdrawn">{t({ en: "Request withdrawn", zh: "申请已撤回" })}</span>
+        {canWithdraw ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(participantId, request.revision)} type="button">{t({ en: "Request again", zh: "再次申请" })}</button> : null}
+      </div>
     );
   }
 
@@ -139,7 +148,8 @@ type ParticipantDetail = {
     contactId: string | null;
     direction: "incoming" | "outgoing" | null;
     requestId: string | null;
-    status: "none" | "awaiting_target_consent" | "accepted" | "declined";
+    revision: number | null;
+    status: "none" | "awaiting_target_consent" | "accepted" | "declined" | "withdrawn";
   };
   displayName: string;
   industry: string | null;
@@ -200,13 +210,15 @@ function ParticipantDetailPanel({
   onClose,
   onRequest,
   onRespond,
+  onWithdraw,
   eventId,
 }: {
   busy: boolean;
   detail: ParticipantDetail;
   onClose: () => void;
-  onRequest: (participantId: string) => Promise<void>;
-  onRespond: (requestId: string, accept: boolean) => Promise<void>;
+  onRequest: (participantId: string, expectedRevision: number | null) => Promise<void>;
+  onRespond: (requestId: string, accept: boolean, expectedRevision: number) => Promise<void>;
+  onWithdraw: (requestId: string, expectedRevision: number) => Promise<void>;
   eventId: string;
 }) {
   const { language, t } = useOrbitLanguage();
@@ -310,23 +322,25 @@ function ParticipantDetailPanel({
 
         <footer style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {contact.status === "none" ? (
-            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId)} type="button">
+            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId, null)} type="button">
               {t({ en: "Request business card", zh: "申请交换名片" })}
             </button>
           ) : null}
           {contact.status === "awaiting_target_consent" && contact.direction === "incoming" && contact.requestId ? (
             <>
-              <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, true)} type="button">
+              <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, true, contact.revision!)} type="button">
                 {t({ en: "Accept", zh: "同意交换" })}
               </button>
-              <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, false)} type="button">
+              <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onRespond(contact.requestId!, false, contact.revision!)} type="button">
                 {t({ en: "Decline", zh: "暂不交换" })}
               </button>
             </>
           ) : null}
           {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" ? <span style={{ color: "var(--text-2)", fontSize: 13 }}>{t({ en: "Waiting for consent. Contact details remain hidden.", zh: "等待对方同意，联系方式仍保持隐藏。" })}</span> : null}
+          {contact.status === "awaiting_target_consent" && contact.direction === "outgoing" && contact.requestId && contact.revision ? <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void onWithdraw(contact.requestId!, contact.revision!)} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
           {contact.status === "accepted" ? <a className="btn btn-primary btn-sm" href={contact.contactId ? `/app/contacts/${encodeURIComponent(contact.contactId)}` : "/app/contacts"}>{t({ en: "Open contact", zh: "打开联系人" })}</a> : null}
           {contact.status === "declined" ? <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was declined.", zh: "这次名片申请已被婉拒。" })}</span> : null}
+          {contact.status === "withdrawn" ? <><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "This request was withdrawn.", zh: "这次名片申请已撤回。" })}</span>{contact.direction === "outgoing" && contact.revision ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void onRequest(detail.participantId, contact.revision)} type="button">{t({ en: "Request again", zh: "再次申请" })}</button> : null}</> : null}
         </footer>
         {contact.status === "accepted" && contact.contactId && contact.requestId ? (
           <>
@@ -440,15 +454,20 @@ export function OrbitEventMatchmaking({
     }
   }
 
-  const requestContact = (participantId: string) => mutateContact(
+  const requestContact = (participantId: string, expectedRevision: number | null) => mutateContact(
     `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests`,
-    { targetParticipantId: participantId },
+    { expectedRevision, targetParticipantId: participantId },
     `request:${participantId}`,
   );
-  const respondContact = (requestId: string, accept: boolean) => mutateContact(
+  const respondContact = (requestId: string, accept: boolean, expectedRevision: number) => mutateContact(
     `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(requestId)}/respond`,
-    { accept },
+    { accept, expectedRevision },
     `respond:${requestId}`,
+  );
+  const withdrawContact = (requestId: string, expectedRevision: number) => mutateContact(
+    `/api/events/${encodeURIComponent(eventId)}/operations/contact-requests/${encodeURIComponent(requestId)}/withdraw`,
+    { expectedRevision },
+    `withdraw:${requestId}`,
   );
 
   return (
@@ -494,7 +513,9 @@ export function OrbitEventMatchmaking({
                 <button className="btn btn-ghost btn-sm" disabled={working === `detail:${participant.participantId}`} onClick={() => void openParticipant(participant.participantId)} type="button">{t({ en: "View evidence and profile", zh: "查看依据与画像" })}</button>
                 <CandidateContactAction
                   busy={working === `request:${participant.participantId}`}
+                  canWithdraw={contactRequest?.requesterParticipantId === workspace.me.participantId}
                   onRequest={requestContact}
+                  onWithdraw={withdrawContact}
                   participantId={participant.participantId}
                   request={contactRequest}
                 />
@@ -517,7 +538,7 @@ export function OrbitEventMatchmaking({
       {workspace && !registrationOpen ? <OrbitPostEventCenter acceptedContacts={workspace.contactRequests.filter((request) => request.status === "accepted").length} eventId={eventId} /> : null}
 
       {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
-      {detail ? <ParticipantDetailPanel busy={working !== null} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} /> : null}
+      {detail ? <ParticipantDetailPanel busy={working !== null} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} /> : null}
     </section>
   );
 }

@@ -25,9 +25,11 @@ function publicContactRequest(request: EventContactRequest) {
   return {
     contactId: request.contactId,
     requestId: request.requestId,
+    revision: request.revision,
     requesterParticipantId: request.requesterParticipantId,
     status: request.status,
     targetParticipantId: request.targetParticipantId,
+    withdrawnAt: request.withdrawnAt,
   };
 }
 

@@ -101,9 +101,20 @@ function ProposalForm({ busy, counter, onSubmit }: { busy: boolean; counter: boo
   );
 }
 
-export function OrbitAppointmentNegotiation({ contactId, eventContactRequestId, eventId }: { contactId: string; eventContactRequestId: string; eventId: string }) {
+export function OrbitAppointmentNegotiation({
+  appointmentId,
+  contactId,
+  eventContactRequestId,
+  eventId,
+}: {
+  appointmentId?: string;
+  contactId: string;
+  eventContactRequestId?: string;
+  eventId: string;
+}) {
   const { t } = useOrbitLanguage();
   const [appointment, setAppointment] = useState<AppointmentView | null>(null);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showProposal, setShowProposal] = useState(false);
@@ -123,13 +134,31 @@ export function OrbitAppointmentNegotiation({ contactId, eventContactRequestId, 
   }, [completionGate.availableAtMs, completionGate.enabled]);
 
   const load = useCallback(async () => {
+    if (appointmentId) {
+      const response = await fetch(`/api/appointments/${encodeURIComponent(appointmentId)}`, { cache: "no-store" });
+      const body = (await response.json().catch(() => ({}))) as { data?: AppointmentView };
+      if (!response.ok || !body.data) throw new AppointmentUiError(safeErrorCode(body, response.status));
+      if (body.data.appointmentId !== appointmentId || body.data.contactId !== contactId || body.data.eventId !== eventId) {
+        throw new AppointmentUiError("APPOINTMENT_FORBIDDEN");
+      }
+      setAppointment(body.data);
+      return;
+    }
+    if (!eventContactRequestId) throw new AppointmentUiError("APPOINTMENT_INVALID_INPUT");
     const response = await fetch("/api/appointments", { cache: "no-store" });
     const body = (await response.json().catch(() => ({}))) as { data?: AppointmentView[] };
     if (!response.ok || !body.data) throw new Error(messageFrom(body));
     setAppointment(body.data.find((value) => value.authorityRequestId === eventContactRequestId && value.eventId === eventId && value.status !== "cancelled") ?? null);
-  }, [eventContactRequestId, eventId]);
+  }, [appointmentId, contactId, eventContactRequestId, eventId]);
 
-  useEffect(() => { void load().catch(() => setError(t({ en: "Appointments are temporarily unavailable.", zh: "约谈功能暂时不可用。" }))); }, [load, t]);
+  useEffect(() => {
+    setLoading(true);
+    void load()
+      .catch((loadError) => setError(loadError instanceof AppointmentUiError && loadError.code === "APPOINTMENT_FORBIDDEN"
+        ? t({ en: "This appointment does not belong to this contact and event.", zh: "该约谈不属于当前联系人和活动。" })
+        : t({ en: "Appointments are temporarily unavailable.", zh: "约谈功能暂时不可用。" })))
+      .finally(() => setLoading(false));
+  }, [load, t]);
 
   async function createDraft() {
     setBusy(true); setError("");
@@ -170,15 +199,16 @@ export function OrbitAppointmentNegotiation({ contactId, eventContactRequestId, 
   }
 
   return (
-    <section className="card-flat" data-appointment-negotiation style={{ display: "grid", gap: 11, padding: 14 }}>
+    <section className="card-flat" data-appointment-deep-link={appointmentId || undefined} data-appointment-negotiation style={{ display: "grid", gap: 11, padding: 14 }}>
       <div><strong>{t({ en: "Appointment", zh: "约谈" })}</strong><p style={{ color: "var(--text-3)", fontSize: 12, margin: "3px 0 0" }}>{t({ en: "Versioned negotiation with mutual confirmation", zh: "带版本记录的双方确认流程" })}</p></div>
-      {!appointment ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void createDraft()} style={{ justifySelf: "start" }} type="button">{t({ en: "Start scheduling", zh: "开始约时间" })}</button> : null}
+      {loading ? <p aria-live="polite" style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "Loading appointment…", zh: "正在读取约谈…" })}</p> : null}
+      {!loading && !appointment && !appointmentId ? <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void createDraft()} style={{ justifySelf: "start" }} type="button">{t({ en: "Start scheduling", zh: "开始约时间" })}</button> : null}
       {appointment ? <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}><span className="chip">{appointment.status}</span><span className="chip">v{appointment.version}</span>{appointment.projection.calendar === "not_synced" ? <span className="chip">{t({ en: "Calendar not synced", zh: "日历未同步" })}</span> : null}{appointment.projection.meeting === "not_synced" ? <span className="chip">{t({ en: "Meet not synced", zh: "会议未同步" })}</span> : null}</div> : null}
       {appointment?.status === "draft" || showProposal ? <ProposalForm busy={busy} counter={Boolean(pendingProposal)} onSubmit={(proposal) => command(pendingProposal ? "counter" : "propose", { proposal })} /> : null}
       {pendingProposal ? <div style={{ display: "grid", gap: 8 }}><p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>{pendingProposal.note || t({ en: "No additional note", zh: "无额外备注" })}</p>{pendingProposal.proposedBy === "other" ? <>{pendingProposal.candidateTimes.map((candidate) => <button className="btn btn-ghost btn-sm" disabled={busy} key={candidate.candidateId} onClick={() => void command("accept", { candidateId: candidate.candidateId })} type="button">{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: pendingProposal.timezone }).format(new Date(candidate.startsAtUtc))}</button>)}{!showProposal ? <button className="btn btn-ghost btn-sm" onClick={() => setShowProposal(true)} style={{ justifySelf: "start" }} type="button">{t({ en: "Counter", zh: "反提时间" })}</button> : null}<button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void command("decline")} style={{ justifySelf: "start" }} type="button">{t({ en: "Decline", zh: "拒绝" })}</button></> : <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{t({ en: "Waiting for the other person to respond.", zh: "等待对方回应。" })}</p>}</div> : null}
       {appointment?.confirmed ? <div className="card-flat" style={{ display: "grid", gap: 7, padding: 11 }}><strong>{new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short", timeZone: appointment.confirmed.timezone }).format(new Date(appointment.confirmed.startsAtUtc))}</strong><span style={{ color: "var(--text-2)", fontSize: 13 }}>{appointment.confirmed.durationMinutes} min · {appointment.confirmed.timezone}</span><span style={{ color: "var(--text-3)", fontSize: 12 }}>{t({ en: "In-app reminders: T−24h, T−1h; memo prompt: T+15m", zh: "站内提醒：提前 24 小时、提前 1 小时；会后 15 分钟提醒记录" })}</span></div> : null}
       {appointment?.status === "confirmed" && !showProposal ? <div style={{ display: "grid", gap: 6 }}><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => setShowProposal(true)} type="button">{t({ en: "Request reschedule", zh: "申请改期" })}</button><button className="btn btn-primary btn-sm" disabled={busy || !completionGate.enabled} onClick={() => void command("complete")} type="button">{t({ en: "Mark completed", zh: "标记已完成" })}</button><button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void command("cancel")} type="button">{t({ en: "Cancel", zh: "取消约谈" })}</button></div>{!completionGate.enabled && completionGate.availableAtMs ? <small style={{ color: "var(--text-3)" }}>{t({ en: "Available after", zh: "可标记时间" })} {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: appointment.confirmed.timezone }).format(new Date(completionGate.availableAtMs))}</small> : null}</div> : null}
-      {appointment?.status === "completed" ? <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(contactId)}?capture=meeting-memo&appointmentId=${encodeURIComponent(appointment.appointmentId)}`} style={{ justifySelf: "start" }}>{t({ en: "Record post-meeting memo", zh: "记录会后纪要" })}</a> : null}
+      {appointment?.status === "completed" ? <a className="btn btn-primary btn-sm" href={`/app/contacts/${encodeURIComponent(contactId)}?capture=meeting-memo&appointmentId=${encodeURIComponent(appointment.appointmentId)}&eventId=${encodeURIComponent(eventId)}`} style={{ justifySelf: "start" }}>{t({ en: "Record post-meeting memo", zh: "记录会后纪要" })}</a> : null}
       {error ? <p role="alert" style={{ color: "var(--danger)", fontSize: 12, margin: 0 }}>{error}</p> : null}
     </section>
   );

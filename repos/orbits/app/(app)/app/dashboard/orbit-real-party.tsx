@@ -985,6 +985,7 @@ function PersonDetailOverlay({ eventId, onClose, person, t }: { eventId: string;
         contactId: detail.contactRequest.contactId,
         contactRequestDirection: detail.contactRequest.direction,
         contactRequestId: detail.contactRequest.requestId,
+        contactRequestRevision: detail.contactRequest.revision,
         contactRequestStatus: detail.contactRequest.status,
       }
     : person;

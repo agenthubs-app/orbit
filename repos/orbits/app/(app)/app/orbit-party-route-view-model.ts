@@ -2,13 +2,15 @@ export interface OrbitPartyPersonView {
   company: string;
   contactId: string | null;
   contactRequestId: string | null;
+  contactRequestRevision: number | null;
   contactRequestDirection: "incoming" | "outgoing" | null;
   contactRequestStatus:
     | "none"
     | "awaiting_target_consent"
     | "incoming"
     | "accepted"
-    | "declined";
+    | "declined"
+    | "withdrawn";
   g: string;
   groupNumber: number | null;
   icebreakers: string[];
@@ -82,10 +84,12 @@ export interface OrbitPartyContactRequestView {
   direction: "incoming" | "outgoing";
   otherParticipantId: string;
   requestId: string;
+  revision: number;
   status:
     | "awaiting_target_consent"
     | "accepted"
-    | "declined";
+    | "declined"
+    | "withdrawn";
 }
 
 export interface OrbitPartyViewModel {

@@ -1,6 +1,7 @@
 import { createEventCrudAndImportService } from "../service-factory";
 import { requireEventCapability } from "../event-access/guard";
 import { createConfiguredEventAccessService } from "../event-access/runtime";
+import { loadEventForRegistration } from "../registration/event-loader";
 import { eventRegistrationRuntimeService } from "../registration/runtime";
 import { createConfiguredEventOperationsAiProvider } from "./ai-provider";
 import { createEventOperationsEngine } from "./engine";
@@ -36,14 +37,22 @@ export function createConfiguredEventOperationsService(): EventOperationsService
         return result.success === true;
       },
       async isRegistered({ actorId, eventId }) {
-        const registration = await eventRegistrationRuntimeService.get({
+        const registration = await repository.getCanonicalRegistration(
           eventId,
-          userId: actorId,
-        });
+          actorId,
+        );
         return registration?.status === "rsvped";
       },
     },
     engine,
+    eventSchedule: {
+      async getCanonicalSchedule({ actorId, eventId }) {
+        const event = await loadEventForRegistration(eventId, actorId);
+        return event
+          ? { endsAt: event.endsAt ?? event.startsAt, startsAt: event.startsAt }
+          : null;
+      },
+    },
     registrationService: eventRegistrationRuntimeService,
     repository,
   });

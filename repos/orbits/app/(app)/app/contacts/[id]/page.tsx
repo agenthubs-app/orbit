@@ -22,6 +22,8 @@ import {
 import { OrbitRealCardConnection } from "../orbit-real-card-connection";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
+import { AppointmentMemoCapture } from "./appointment-memo-capture";
+import { OrbitAppointmentNegotiation } from "../../events/[id]/orbit-appointment-negotiation";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -76,11 +78,25 @@ function ContactDetailRouteStateView({
 
 export default async function AppContactDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
+  const [{ id }, query]: [{ id: string }, Record<string, string | string[] | undefined>] = await Promise.all([
+    params,
+    searchParams ?? Promise.resolve({}),
+  ]);
   const contactId = decodeContactRouteId(id);
+  const capture = typeof query.capture === "string" ? query.capture : null;
+  const appointmentId = typeof query.appointmentId === "string" && query.appointmentId.trim() && query.appointmentId.length <= 256 ? query.appointmentId.trim() : null;
+  const eventId = typeof query.eventId === "string" && query.eventId.trim() && query.eventId.length <= 256 ? query.eventId.trim() : null;
+  const memoRequested = capture === "meeting-memo";
+  const memoQueryPresent = query.capture !== undefined;
+  const invalidMemoRequest = memoQueryPresent && (!memoRequested || !appointmentId || !eventId);
+  const appointmentQueryPresent = !memoQueryPresent && query.appointmentId !== undefined;
+  const appointmentRequested = appointmentQueryPresent && Boolean(appointmentId && eventId);
+  const invalidAppointmentRequest = appointmentQueryPresent && !appointmentRequested;
   const session = await auth();
   const actorId = session?.user?.id;
   if (!actorId) {
@@ -113,6 +129,26 @@ export default async function AppContactDetailPage({
       ) : (
         <ContactDetailRouteStateView routeModel={routeModel} />
       )}
+      {routeModel.routeState === "success" && memoQueryPresent ? (
+        <AppointmentMemoCapture
+          appointmentId={memoRequested ? appointmentId : null}
+          contactId={contactId}
+          eventId={memoRequested ? eventId : null}
+          invalidRequest={invalidMemoRequest}
+        />
+      ) : null}
+      {routeModel.routeState === "success" && appointmentRequested && appointmentId && eventId ? (
+        <div style={{ margin: 16 }}>
+          <OrbitAppointmentNegotiation
+            appointmentId={appointmentId}
+            contactId={contactId}
+            eventId={eventId}
+          />
+        </div>
+      ) : null}
+      {routeModel.routeState === "success" && invalidAppointmentRequest ? (
+        <p role="alert" style={{ color: "var(--danger)", margin: 16 }}>约谈链接无效：需要唯一的 appointmentId 和 eventId。</p>
+      ) : null}
     </>
   );
 }

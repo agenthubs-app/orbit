@@ -148,7 +148,10 @@ test("appointment retains proposal history through counter, confirmation, and re
   assert.equal(replay.appointment.version, 6);
 
   const outbox = repository.outbox();
-  assert.equal(outbox.length, 13);
+  assert.equal(outbox.length, 16);
+  assert.equal(outbox.filter((event) => event.eventType === "appointment.proposed").length, 1);
+  assert.equal(outbox.filter((event) => event.eventType === "appointment.countered").length, 1);
+  assert.equal(outbox.filter((event) => event.eventType === "appointment.reschedule.proposed").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reminders.invalidate").length, 1);
   assert.equal(new Set(outbox.map((event) => event.dedupeKey)).size, outbox.length);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reminder.t24h").length, 2);

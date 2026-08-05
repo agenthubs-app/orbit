@@ -22,6 +22,7 @@ test("event matching reads only published operations and uses canonical consent"
   assert.match(source, /\/operations`/);
   assert.match(source, /\/operations\/participants\//);
   assert.match(source, /\/operations\/contact-requests/);
+  assert.match(source, /\/withdraw/);
   assert.match(source, /这里只展示主办方已发布的 AI 结果/);
   assert.match(source, /等待对方同意，联系方式仍保持隐藏/);
   assert.match(source, /data-operations-state="locked"/);
@@ -33,6 +34,49 @@ test("event matching reads only published operations and uses canonical consent"
   assert.doesNotMatch(source, /type="datetime-local"/);
   assert.doesNotMatch(source, /candidate\.evidenceIds/);
   assert.doesNotMatch(source, /otherParticipant\.(email|phone)/);
+});
+
+test("a withdrawn outgoing request stays visible and can be requested again", async () => {
+  const originalFetch = globalThis.fetch;
+  const withdrawnRequest = {
+    contactId: null,
+    requestId: "request:maya-julia",
+    revision: 2,
+    requesterParticipantId: "participant:maya",
+    status: "withdrawn",
+    targetParticipantId: "participant:julia",
+  };
+  const observedUrls: string[] = [];
+  globalThis.fetch = (async (url, init) => {
+    if (init?.method === "POST") {
+      observedUrls.push(String(url));
+      return Response.json({ data: withdrawnRequest, success: true });
+    }
+    return Response.json({ data: operations([withdrawnRequest]), success: true });
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+
+  try {
+    await act(async () => {
+      renderer = create(createElement(OrbitEventMatchmaking, {
+        eventId: "event:tokyo-ai-night",
+      }));
+    });
+    assert.match(JSON.stringify(renderer.toJSON()), /申请已撤回/u);
+    const requestAgain = renderer.root.find(
+      (node) => node.type === "button" && node.props.children === "再次申请",
+    );
+    await act(async () => {
+      requestAgain.props.onClick();
+    });
+    assert.equal(
+      observedUrls[0],
+      "/api/events/event%3Atokyo-ai-night/operations/contact-requests",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => renderer.unmount());
+  }
 });
 
 function operations(contactRequests: readonly Record<string, unknown>[] = []) {
@@ -103,6 +147,7 @@ test("recommendation card keeps a visible state action after business-card reque
   const pendingRequest = {
     contactId: null,
     requestId: "request:maya-julia",
+    revision: 1,
     requesterParticipantId: "participant:maya",
     status: "awaiting_target_consent",
     targetParticipantId: "participant:julia",
@@ -195,6 +240,7 @@ test("failed requests remain retryable while declined requests stay visible and 
       data: operations(declined ? [{
         contactId: null,
         requestId: "request:maya-julia",
+        revision: 2,
         requesterParticipantId: "participant:maya",
         status: "declined",
         targetParticipantId: "participant:julia",

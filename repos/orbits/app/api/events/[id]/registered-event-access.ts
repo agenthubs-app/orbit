@@ -9,7 +9,6 @@ import {
 import type { EventRecord } from "../../../../features/events/event-crud-and-import/contract";
 import { createConfiguredEventOperationsRepository } from "../../../../features/events/event-operations/repository";
 import { loadEventForRegistration } from "../../../../features/events/registration/event-loader";
-import { eventRegistrationRuntimeService } from "../../../../features/events/registration/runtime";
 import type { EventRegistrationService } from "../../../../features/events/registration/service";
 import {
   failure,
@@ -69,6 +68,16 @@ async function loadRegisteredEventMetadata(
   }
 }
 
+async function getCanonicalRegistration(input: {
+  eventId: string;
+  userId: string;
+}) {
+  const repository = createConfiguredEventOperationsRepository();
+  return repository
+    ? repository.getCanonicalRegistration(input.eventId, input.userId)
+    : null;
+}
+
 function accessFailure(
   mode: FeatureMode,
   error: AppError,
@@ -121,7 +130,7 @@ export function withRegisteredEventAccess<TParams extends { id: string }>(
     const requestedEventId = params.id.trim();
     const registration = await (
       dependencies.getRegistration ??
-      eventRegistrationRuntimeService.get.bind(eventRegistrationRuntimeService)
+      getCanonicalRegistration
     )({
       eventId: requestedEventId,
       userId: actor.id,

@@ -255,7 +255,8 @@ export interface EventOperationsCheckIn {
 export type EventContactRequestStatus =
   | "awaiting_target_consent"
   | "accepted"
-  | "declined";
+  | "declined"
+  | "withdrawn";
 
 export interface EventContactRequest {
   acceptedAt: string | null;
@@ -268,10 +269,12 @@ export interface EventContactRequest {
   declinedAt: string | null;
   eventId: string;
   requestId: string;
+  revision: number;
   requesterParticipantId: string;
   status: EventContactRequestStatus;
   targetParticipantId: string;
   updatedAt: string;
+  withdrawnAt: string | null;
 }
 
 export const EVENT_OPERATIONS_FAILURE_CODES = [

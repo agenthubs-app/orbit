@@ -25,6 +25,7 @@ function attendee(
     contactId: null,
     contactRequestDirection: null,
     contactRequestId: null,
+    contactRequestRevision: null,
     contactRequestStatus: "none",
     g: "g-indigo",
     groupNumber: 2,
@@ -118,6 +119,7 @@ function participantDetail(person = attendee()): EventParticipantDetailView {
       contactId: person.contactId,
       direction: person.contactRequestDirection,
       requestId: person.contactRequestId,
+      revision: person.contactRequestRevision,
       status:
         person.contactRequestStatus === "incoming"
           ? "awaiting_target_consent"
@@ -295,7 +297,10 @@ test("a graph node opens the same one-person consent control and sends only that
     );
     assert.equal(
       requestBody,
-      JSON.stringify({ targetParticipantId: "participant:aiko" }),
+      JSON.stringify({
+        expectedRevision: null,
+        targetParticipantId: "participant:aiko",
+      }),
     );
     assert.match(JSON.stringify(renderer.toJSON()), /等待对方授权/u);
   } finally {

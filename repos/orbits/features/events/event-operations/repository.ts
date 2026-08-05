@@ -173,6 +173,7 @@ export interface SaveEventOperationsConfigurationAsOperatorInput {
 }
 
 export interface CreateEventContactRequestInput {
+  expectedRevision: number | null;
   eventId: string;
   requesterActorId: string;
   targetParticipantId: string;
@@ -180,9 +181,17 @@ export interface CreateEventContactRequestInput {
 
 export interface RespondToEventContactRequestInput {
   accept: boolean;
+  expectedRevision: number;
   eventId: string;
   requestId: string;
   targetActorId: string;
+}
+
+export interface WithdrawEventContactRequestInput {
+  expectedRevision: number;
+  eventId: string;
+  requestId: string;
+  requesterActorId: string;
 }
 
 export interface CanonicalRegistrationMigrationOptions {
@@ -302,6 +311,9 @@ export interface EventOperationsRepository {
     input: SaveEventOperationsConfigurationAsOperatorInput,
   ): Promise<EventOperationsConfiguration>;
   seedCanonicalRegistration(value: EventRegistration): Promise<EventRegistration>;
+  withdrawContactRequestAtomically(
+    input: WithdrawEventContactRequestInput,
+  ): Promise<EventContactRequest>;
 }
 
 export interface ConfiguredEventOperationsRepositoryOptions {

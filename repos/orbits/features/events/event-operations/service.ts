@@ -90,6 +90,7 @@ export interface EventOperationsService {
   }): Promise<EventOperationsConfiguration>;
   createContactRequest(input: {
     actorId: string;
+    expectedRevision: number | null;
     eventId: string;
     targetParticipantId: string;
   }): Promise<EventContactRequest>;
@@ -105,6 +106,13 @@ export interface EventOperationsService {
   respondToContactRequest(input: {
     accept: boolean;
     actorId: string;
+    expectedRevision: number;
+    eventId: string;
+    requestId: string;
+  }): Promise<EventContactRequest>;
+  withdrawContactRequest(input: {
+    actorId: string;
+    expectedRevision: number;
     eventId: string;
     requestId: string;
   }): Promise<EventContactRequest>;
@@ -130,6 +138,15 @@ export interface EventOperationsService {
 export interface EventOperationsServiceOptions {
   access: EventOperationsAccessPolicy;
   engine: EventOperationsEngine;
+  eventSchedule: {
+    getCanonicalSchedule(input: {
+      actorId: string;
+      eventId: string;
+    }): Promise<{
+      endsAt: string;
+      startsAt: string;
+    } | null>;
+  };
   now?: () => string;
   registrationService: Pick<EventRegistrationService, "list">;
   repository: EventOperationsRepository;
@@ -203,10 +220,34 @@ function validateConfiguration(
 export function createEventOperationsService({
   access,
   engine,
+  eventSchedule,
   now = () => new Date().toISOString(),
   registrationService,
   repository,
 }: EventOperationsServiceOptions): EventOperationsService {
+  async function requireCanonicalScheduleAlignment(
+    configuration: Pick<
+      EventOperationsConfiguration,
+      "eventEndsAt" | "eventId" | "eventStartsAt"
+    >,
+    actorId: string,
+  ) {
+    const canonical = await eventSchedule.getCanonicalSchedule({
+      actorId,
+      eventId: configuration.eventId,
+    });
+    if (
+      !canonical ||
+      Date.parse(canonical.startsAt) !== Date.parse(configuration.eventStartsAt) ||
+      Date.parse(canonical.endsAt) !== Date.parse(configuration.eventEndsAt)
+    ) {
+      throw new EventOperationsError(
+        "EVENT_OPERATIONS_CONFIGURATION_INVALID",
+        "Event operations must use the canonical published event schedule.",
+      );
+    }
+  }
+
   async function requireOrganizer(eventId: string, actorId: string) {
     const configuration = await repository.getConfiguration(eventId);
     const authorized = await access.isOrganizer({ actorId, eventId });
@@ -268,6 +309,7 @@ export function createEventOperationsService({
     const currentConfiguration = requireConfiguration(
       await repository.getConfiguration(eventId),
     );
+    await requireCanonicalScheduleAlignment(currentConfiguration, actorId);
     const configuration = published
       ? {
           ...currentConfiguration,
@@ -317,6 +359,7 @@ export function createEventOperationsService({
     const configuration = requireConfiguration(
       await repository.getGenerationConfiguration(input.generationId),
     );
+    await requireCanonicalScheduleAlignment(configuration, input.actorId);
     if (
       configuration.eventId !== input.eventId ||
       configuration.organizerActorId !== generation.organizerActorId
@@ -403,6 +446,10 @@ export function createEventOperationsService({
 
     async checkIn({ actorId, eventId }) {
       await requireRegistered(eventId, actorId);
+      await requireCanonicalScheduleAlignment(
+        requireConfiguration(await repository.getConfiguration(eventId)),
+        actorId,
+      );
       return repository.checkInAtomically({ actorId, eventId, kind: "self" });
     },
 
@@ -438,6 +485,10 @@ export function createEventOperationsService({
         capability: "check_in.roster.write",
         eventId,
       });
+      await requireCanonicalScheduleAlignment(
+        requireConfiguration(await repository.getConfiguration(eventId)),
+        actorId,
+      );
       return repository.checkInAtomically({
         actorId,
         capability: "check_in.roster.write",
@@ -458,6 +509,7 @@ export function createEventOperationsService({
         actorId,
       );
       validateConfiguration(configuration);
+      await requireCanonicalScheduleAlignment(configuration, actorId);
       const timestamp = now();
       const value = {
         ...configuration,
@@ -480,7 +532,12 @@ export function createEventOperationsService({
       return saved;
     },
 
-    async createContactRequest({ actorId, eventId, targetParticipantId }) {
+    async createContactRequest({
+      actorId,
+      expectedRevision,
+      eventId,
+      targetParticipantId,
+    }) {
       await requireRegistered(eventId, actorId);
       const published = await repository.getPublishedResult(eventId);
       const { participants } = await participantContext(
@@ -498,6 +555,7 @@ export function createEventOperationsService({
         );
       }
       return repository.createContactRequestAtomically({
+        expectedRevision,
         eventId,
         requesterActorId: actorId,
         targetParticipantId: target.participantId,
@@ -557,13 +615,35 @@ export function createEventOperationsService({
       return engine.publishGeneration({ actorId, generationId });
     },
 
-    async respondToContactRequest({ accept, actorId, eventId, requestId }) {
+    async respondToContactRequest({
+      accept,
+      actorId,
+      expectedRevision,
+      eventId,
+      requestId,
+    }) {
       await requireRegistered(eventId, actorId);
       return repository.respondToContactRequestAtomically({
         accept,
+        expectedRevision,
         eventId,
         requestId,
         targetActorId: actorId,
+      });
+    },
+
+    async withdrawContactRequest({
+      actorId,
+      expectedRevision,
+      eventId,
+      requestId,
+    }) {
+      await requireRegistered(eventId, actorId);
+      return repository.withdrawContactRequestAtomically({
+        eventId,
+        expectedRevision,
+        requestId,
+        requesterActorId: actorId,
       });
     },
 
@@ -607,6 +687,7 @@ export function createEventOperationsService({
       const configuration = requireConfiguration(
         await repository.getConfiguration(eventId),
       );
+      await requireCanonicalScheduleAlignment(configuration, actorId);
       const capturedSnapshot =
         await repository.captureGenerationSnapshotAsOperator({
           actingActorId: actorId.trim(),

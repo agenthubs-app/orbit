@@ -17,6 +17,7 @@ function person(
     contactId: null,
     contactRequestDirection: "incoming",
     contactRequestId: REQUEST_ID,
+    contactRequestRevision: 1,
     contactRequestStatus: "incoming",
     g: "g-indigo",
     groupNumber: null,
@@ -91,12 +92,15 @@ test("incoming contact accept immediately enters busy state and posts the exact 
       `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests/${encodeURIComponent(REQUEST_ID)}/respond`,
     );
     assert.equal(observedInit?.method, "POST");
-    assert.equal(observedInit?.body, JSON.stringify({ accept: true }));
+    assert.equal(
+      observedInit?.body,
+      JSON.stringify({ accept: true, expectedRevision: 1 }),
+    );
 
     await act(async () => {
       resolveResponse(
         Response.json({
-          data: { contactId: "contact:owner:aiko", status: "accepted" },
+          data: { contactId: "contact:owner:aiko", revision: 2, status: "accepted" },
           success: true,
         }),
       );
@@ -130,7 +134,7 @@ test("a reused control reads a newly arrived request id from props instead of st
   globalThis.fetch = (async (url) => {
     observedUrl = String(url);
     return Response.json({
-      data: { contactId: null, status: "declined" },
+      data: { contactId: null, revision: 2, status: "declined" },
       success: true,
     });
   }) as typeof fetch;
@@ -173,6 +177,68 @@ test("a reused control reads a newly arrived request id from props instead of st
       observedUrl,
       `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests/${encodeURIComponent(REQUEST_ID)}/respond`,
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
+test("an outgoing pending request can be withdrawn, then requested again", async () => {
+  const originalFetch = globalThis.fetch;
+  const observedUrls: string[] = [];
+  const observedBodies: unknown[] = [];
+  let renderer!: ReactTestRenderer;
+  globalThis.fetch = (async (url, init) => {
+    observedUrls.push(String(url));
+    observedBodies.push(init?.body);
+    if (String(url).endsWith("/withdraw")) {
+      return Response.json({
+        data: { contactId: null, revision: 2, status: "withdrawn" },
+        success: true,
+      });
+    }
+    return Response.json({
+      data: { requestId: REQUEST_ID, revision: 3, status: "awaiting_target_consent" },
+      success: true,
+    });
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventContactRequestControl
+          eventId={EVENT_ID}
+          person={person({
+            contactRequestDirection: "outgoing",
+            contactRequestStatus: "awaiting_target_consent",
+          })}
+          t={(copy) => copy.en}
+        />,
+      );
+    });
+    const withdraw = renderer.root.find(
+      (node) => node.props["data-event-contact-action"] === "withdraw",
+    );
+    await act(async () => {
+      await (withdraw.props.onClick() as Promise<void>);
+    });
+    assert.equal(
+      observedUrls[0],
+      `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests/${encodeURIComponent(REQUEST_ID)}/withdraw`,
+    );
+    assert.equal(observedBodies[0], JSON.stringify({ expectedRevision: 1 }));
+    const requestAgain = renderer.root.find(
+      (node) => node.props["data-event-contact-action"] === "request-again",
+    );
+    await act(async () => {
+      await (requestAgain.props.onClick() as Promise<void>);
+    });
+    assert.equal(
+      observedUrls[1],
+      `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests`,
+    );
+    assert.equal(observedBodies[1], JSON.stringify({ expectedRevision: 2, targetParticipantId: "participant:aiko" }));
+    assert.match(JSON.stringify(renderer.toJSON()), /Waiting for their consent/u);
   } finally {
     globalThis.fetch = originalFetch;
     renderer?.unmount();

@@ -557,6 +557,7 @@ test(
       const concurrentRequests = await Promise.all(
         Array.from({ length: 100 }, () =>
           repository.createContactRequestAtomically({
+            expectedRevision: null,
             eventId,
             requesterActorId: "actor:a",
             targetParticipantId: participantB,
@@ -597,12 +598,14 @@ test(
       const terminalResponses = await Promise.all([
         repository.respondToContactRequestAtomically({
           accept: true,
+          expectedRevision: contestedRequest.revision,
           eventId,
           requestId: contestedRequest.requestId,
           targetActorId: "actor:b",
         }),
         repository.respondToContactRequestAtomically({
-          accept: false,
+          accept: true,
+          expectedRevision: contestedRequest.revision,
           eventId,
           requestId: contestedRequest.requestId,
           targetActorId: "actor:b",
@@ -642,13 +645,99 @@ test(
         contestedStatus === "accepted" ? "1" : "0",
       );
 
+      const withdrawableRequest = await repository.createContactRequestAtomically({
+        expectedRevision: null,
+        eventId,
+        requesterActorId: "actor:a",
+        targetParticipantId: people[3]!.participantProfileId,
+      });
+      await assert.rejects(
+        repository.withdrawContactRequestAtomically({
+          expectedRevision: withdrawableRequest.revision,
+          eventId,
+          requestId: withdrawableRequest.requestId,
+          requesterActorId: "actor:d",
+        }),
+        /Only the requester/u,
+      );
+      const withdrawals = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          repository.withdrawContactRequestAtomically({
+            expectedRevision: withdrawableRequest.revision,
+            eventId,
+            requestId: withdrawableRequest.requestId,
+            requesterActorId: "actor:a",
+          }),
+        ),
+      );
+      assert.ok(withdrawals.every((request) => request.status === "withdrawn"));
+      assert.ok(withdrawals.every((request) => request.withdrawnAt !== null));
+      await assert.rejects(
+        repository.createContactRequestAtomically({
+          eventId,
+          expectedRevision: null,
+          requesterActorId: "actor:a",
+          targetParticipantId: people[3]!.participantProfileId,
+        }),
+        /unsupported state|lifecycle changed/u,
+        "a delayed create from the original lifecycle cannot reopen a withdrawn request",
+      );
+      const reopenedRequest = await repository.createContactRequestAtomically({
+        expectedRevision: withdrawals[0]!.revision,
+        eventId,
+        requesterActorId: "actor:a",
+        targetParticipantId: people[3]!.participantProfileId,
+      });
+      assert.equal(reopenedRequest.requestId, withdrawableRequest.requestId);
+      assert.equal(reopenedRequest.status, "awaiting_target_consent");
+      assert.equal(reopenedRequest.withdrawnAt, null);
+      await assert.rejects(
+        repository.withdrawContactRequestAtomically({
+          eventId,
+          expectedRevision: withdrawableRequest.revision,
+          requestId: withdrawableRequest.requestId,
+          requesterActorId: "actor:a",
+        }),
+        /pending business-card request|lifecycle changed/u,
+        "a delayed withdrawal cannot affect a reopened lifecycle",
+      );
+      await assert.rejects(
+        repository.respondToContactRequestAtomically({
+          accept: true,
+          eventId,
+          expectedRevision: withdrawableRequest.revision,
+          requestId: withdrawableRequest.requestId,
+          targetActorId: "actor:d",
+        }),
+        /unsupported state|lifecycle changed/u,
+        "a delayed target response cannot affect a reopened lifecycle",
+      );
+      const withdrawalArtifacts = await scopedPool.query<{
+        audit_count: string;
+        outbox_count: string;
+      }>(`
+        select
+          (select count(*) from event_ops_audit_log
+            where aggregate_id = '${withdrawableRequest.requestId}'
+              and action = 'event_contact_request_withdrawn')::text as audit_count,
+          (select count(*) from event_ops_outbox
+            where aggregate_id = '${withdrawableRequest.requestId}'
+              and event_type = 'event.contact_request.withdrawn')::text as outbox_count
+      `);
+      assert.deepEqual(withdrawalArtifacts.rows[0], {
+        audit_count: "1",
+        outbox_count: "1",
+      });
+
       const acceptedRequest = await repository.createContactRequestAtomically({
+        expectedRevision: null,
         eventId,
         requesterActorId: "actor:a",
         targetParticipantId: people[2]!.participantProfileId,
       });
       const targetAccepted = await repository.respondToContactRequestAtomically({
         accept: true,
+        expectedRevision: acceptedRequest.revision,
         eventId,
         requestId: acceptedRequest.requestId,
         targetActorId: "actor:c",
@@ -669,8 +758,10 @@ test(
       assert.notEqual(requesterAccepted.contactId, targetAccepted.contactId);
       assert.equal(adminAccepted?.contactId, null);
       assert.equal(
-        (await repository.listContactRequests(eventId, "actor:d")).length,
-        0,
+        (await repository.listContactRequests(eventId, "actor:d")).some(
+          (request) => request.requestId === acceptedRequest.requestId,
+        ),
+        false,
       );
       const safeKeys = [
         "acceptedAt",
@@ -680,9 +771,11 @@ test(
         "eventId",
         "requestId",
         "requesterParticipantId",
+        "revision",
         "status",
         "targetParticipantId",
         "updatedAt",
+        "withdrawnAt",
       ];
       assert.deepEqual(Object.keys(targetAccepted).sort(), safeKeys);
       for (const forbidden of [
@@ -731,6 +824,7 @@ test(
       });
 
       const rollbackRequest = await repository.createContactRequestAtomically({
+        expectedRevision: null,
         eventId,
         requesterActorId: "actor:c",
         targetParticipantId: people[3]!.participantProfileId,
@@ -752,6 +846,7 @@ test(
       await assert.rejects(
         repository.respondToContactRequestAtomically({
           accept: true,
+          expectedRevision: rollbackRequest.revision,
           eventId,
           requestId: rollbackRequest.requestId,
           targetActorId: "actor:d",

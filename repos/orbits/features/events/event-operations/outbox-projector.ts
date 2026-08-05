@@ -184,7 +184,8 @@ export function createEventOperationsOutboxProjector({
         if (
           message.eventType === "event.contact_request.created" ||
           message.eventType === "event.contact_request.accepted" ||
-          message.eventType === "event.contact_request.declined"
+          message.eventType === "event.contact_request.declined" ||
+          message.eventType === "event.contact_request.withdrawn"
         ) {
           return {
             policy: "canonical_only",

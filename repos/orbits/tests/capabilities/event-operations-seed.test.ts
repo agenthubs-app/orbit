@@ -254,7 +254,8 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
       async requireCapability({ actorId, capability, eventId }) {
         if (
           actorId !== organizerActorId ||
-          capability !== "operations.read_sensitive" ||
+          (capability !== "operations.read_sensitive" &&
+            capability !== "generation.run") ||
           eventId !== EVENT_OPERATIONS_E2E_EVENT_ID
         ) {
           throw new Error("Event access denied.");
@@ -268,6 +269,17 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
       },
     },
     engine,
+    eventSchedule: {
+      async getCanonicalSchedule({ eventId }) {
+        const configuration = await repository.getConfiguration(eventId);
+        return configuration
+          ? {
+              endsAt: configuration.eventEndsAt,
+              startsAt: configuration.eventStartsAt,
+            }
+          : null;
+      },
+    },
     now: () => timestamp,
     registrationService,
     repository,

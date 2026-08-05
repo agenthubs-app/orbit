@@ -99,6 +99,9 @@ export interface AppointmentOutboxEvent {
   dedupeKey: string;
   eventId: string;
   eventType:
+    | "appointment.proposed"
+    | "appointment.countered"
+    | "appointment.reschedule.proposed"
     | "appointment.confirmed"
     | "appointment.rescheduled"
     | "appointment.reminders.invalidate"

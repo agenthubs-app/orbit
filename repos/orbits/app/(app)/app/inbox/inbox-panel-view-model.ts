@@ -243,7 +243,7 @@ export function toReminderAlerts(
       language,
     ),
     priority: reminder.priority,
-    href: "/app/followups",
+    href: reminder.href?.startsWith("/app/") ? reminder.href : "/app/followups",
   }));
 }
 

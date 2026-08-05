@@ -19,6 +19,7 @@ import type {
   EventOperationsRepository,
   ListEventOperationsLimitedCheckInRosterInput,
   RespondToEventContactRequestInput,
+  WithdrawEventContactRequestInput,
 } from "../repository";
 import { canAccessEventCapability } from "../../event-access/capability-policy";
 import type {
@@ -40,6 +41,7 @@ type OnsiteOperationsMethods = Pick<
   | "listContactRequests"
   | "listLimitedCheckInRoster"
   | "respondToContactRequestAtomically"
+  | "withdrawContactRequestAtomically"
 >;
 
 interface ContactParticipantRow extends SqlRow {
@@ -112,6 +114,14 @@ function optionalTimestamp(row: SqlRow, key: string): string | null {
     : timestamp(row, key);
 }
 
+function positiveRevision(row: SqlRow): number {
+  const revision = Number(row.revision);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new Error("Contact request revision is invalid.");
+  }
+  return revision;
+}
+
 function jsonValue<TValue>(value: unknown, field: string): TValue {
   const parsed = typeof value === "string" ? JSON.parse(value) : value;
   if (!parsed || typeof parsed !== "object") {
@@ -135,7 +145,8 @@ function contactRequestFromSafeRow(row: SqlRow): EventContactRequest {
   if (
     status !== "awaiting_target_consent" &&
     status !== "accepted" &&
-    status !== "declined"
+    status !== "declined" &&
+    status !== "withdrawn"
   ) {
     throw new Error(`Event onsite SQL row has an invalid status ${status}.`);
   }
@@ -146,10 +157,12 @@ function contactRequestFromSafeRow(row: SqlRow): EventContactRequest {
     declinedAt: optionalTimestamp(row, "declined_at"),
     eventId: text(row, "event_id"),
     requestId: text(row, "request_id"),
+    revision: positiveRevision(row),
     requesterParticipantId: text(row, "requester_participant_id"),
     status,
     targetParticipantId: text(row, "target_participant_id"),
     updatedAt: timestamp(row, "updated_at"),
+    withdrawnAt: optionalTimestamp(row, "withdrawn_at"),
   };
 }
 
@@ -170,6 +183,8 @@ async function readContactRequestForViewer(input: {
         request.status,
         request.accepted_at,
         request.declined_at,
+        request.withdrawn_at,
+        request.revision,
         request.created_at,
         request.updated_at,
         viewer_side.contact_id
@@ -942,7 +957,7 @@ export function createPostgresOnsiteOperationsMethods({
           }
           const existing = await transaction.query<SqlRow>(
             `
-              select request_id
+              select request_id, revision, status
               from event_ops_contact_requests
               where workspace_id = $1 and event_id = $2
                 and participant_pair_key = $3
@@ -950,11 +965,31 @@ export function createPostgresOnsiteOperationsMethods({
             `,
             [workspaceId, eventId, participantPairKey],
           );
-          if (existing.rows[0]) {
+          const clock = await transaction.query<SqlRow>(
+            `select statement_timestamp() as db_now`,
+          );
+          const createdAt = timestamp(clock.rows[0] ?? {}, "db_now");
+          const existingRequest = existing.rows[0];
+          if (!existingRequest && input.expectedRevision !== null) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+              "The contact request lifecycle changed before it could be created.",
+            );
+          }
+          if (existingRequest && text(existingRequest, "status") !== "withdrawn") {
+            if (input.expectedRevision !== null && (
+              text(existingRequest, "status") !== "awaiting_target_consent" ||
+              positiveRevision(existingRequest) !== input.expectedRevision + 1
+            )) {
+              throw new EventOperationsError(
+                "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+                "The contact request lifecycle changed before it could be created.",
+              );
+            }
             const value = await readContactRequestForViewer({
               eventId,
               executor: transaction,
-              requestId: text(existing.rows[0], "request_id"),
+              requestId: text(existingRequest, "request_id"),
               viewerActorId: requesterActorId,
               workspaceId,
             });
@@ -964,20 +999,65 @@ export function createPostgresOnsiteOperationsMethods({
               "The existing contact request is not visible to this participant.",
             );
           }
-          const clock = await transaction.query<SqlRow>(
-            `select statement_timestamp() as db_now`,
+          const persistedRequestId = existingRequest
+            ? text(existingRequest, "request_id")
+            : requestId;
+          if (
+            existingRequest &&
+            input.expectedRevision !== positiveRevision(existingRequest)
+          ) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+              "The contact request lifecycle changed before it could be reopened.",
+            );
+          }
+          const creationOperationId = digest(
+            persistedRequestId,
+            ...(existingRequest ? [createdAt] : []),
           );
-          const createdAt = timestamp(clock.rows[0] ?? {}, "db_now");
-          await transaction.query(
+          if (existingRequest) {
+            const reopened = await transaction.query(
+              `
+                update event_ops_contact_requests
+                set requester_actor_id = $5, requester_participant_id = $6,
+                  target_actor_id = $7, target_participant_id = $8,
+                  status = 'awaiting_target_consent', accepted_at = null,
+                  declined_at = null, withdrawn_at = null,
+                  relationship_pair_id = null, revision = revision + 1,
+                  created_at = $9, updated_at = $9
+                where workspace_id = $1 and event_id = $2 and request_id = $3
+                  and participant_pair_key = $4 and status = 'withdrawn'
+                  and revision = $10
+              `,
+              [
+                workspaceId,
+                eventId,
+                persistedRequestId,
+                participantPairKey,
+                requester.actor_id,
+                requester.participant_id,
+                target.actor_id,
+                target.participant_id,
+                createdAt,
+                input.expectedRevision,
+              ],
+            );
+            if (reopened.rowCount !== 1) {
+              throw new EventOperationsError(
+                "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+                "The withdrawn contact request changed before it could be reopened.",
+              );
+            }
+          } else await transaction.query(
             `
               insert into event_ops_contact_requests (
                 workspace_id, request_id, event_id, participant_pair_key,
                 requester_actor_id, requester_participant_id, target_actor_id,
                 target_participant_id, status, accepted_at, declined_at,
-                relationship_pair_id, revision, created_at, updated_at
+                withdrawn_at, relationship_pair_id, revision, created_at, updated_at
               ) values (
                 $1, $2, $3, $4, $5, $6, $7, $8,
-                'awaiting_target_consent', null, null, null, 1, $9, $9
+                'awaiting_target_consent', null, null, null, null, 1, $9, $9
               )
             `,
             [
@@ -995,18 +1075,18 @@ export function createPostgresOnsiteOperationsMethods({
           const value = await readContactRequestForViewer({
             eventId,
             executor: transaction,
-            requestId,
+            requestId: persistedRequestId,
             viewerActorId: requesterActorId,
             workspaceId,
           });
           if (!value) throw new Error("Created contact request could not be read.");
           await insertOutbox({
-            aggregateId: requestId,
+            aggregateId: persistedRequestId,
             aggregateType: "event_contact_request",
             eventId,
             eventType: "event.contact_request.created",
             executor: transaction,
-            outboxId: `outbox:event-contact-request-created:${digest(requestId)}`,
+            outboxId: `outbox:event-contact-request-created:${creationOperationId}`,
             payload: {
               ...value,
               requesterActorId: requester.actor_id,
@@ -1028,10 +1108,10 @@ export function createPostgresOnsiteOperationsMethods({
             `,
             [
               workspaceId,
-              `audit:event-contact-request-created:${digest(requestId)}`,
+              `audit:event-contact-request-created:${creationOperationId}`,
               eventId,
               requesterActorId,
-              requestId,
+              persistedRequestId,
               JSON.stringify(value),
               createdAt,
             ],
@@ -1053,6 +1133,8 @@ export function createPostgresOnsiteOperationsMethods({
             request.status,
             request.accepted_at,
             request.declined_at,
+            request.withdrawn_at,
+            request.revision,
             request.created_at,
             request.updated_at,
             viewer_side.contact_id
@@ -1113,7 +1195,12 @@ export function createPostgresOnsiteOperationsMethods({
             );
           }
           const status = text(request, "status");
-          if (status === "accepted" || status === "declined") {
+          const revision = positiveRevision(request);
+          if (
+            ((status === "accepted" && input.accept) ||
+              (status === "declined" && !input.accept)) &&
+            revision === input.expectedRevision + 1
+          ) {
             const value = await readContactRequestForViewer({
               eventId,
               executor: transaction,
@@ -1124,17 +1211,16 @@ export function createPostgresOnsiteOperationsMethods({
             if (value) return value;
             throw new Error("Final contact request could not be read.");
           }
-          if (status !== "awaiting_target_consent") {
+          if (
+            status !== "awaiting_target_consent" ||
+            revision !== input.expectedRevision
+          ) {
             throw new EventOperationsError(
               "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
               "The contact request has an unsupported state.",
             );
           }
           const respondedAt = timestamp(request, "db_now");
-          const revision = Number(request.revision);
-          if (!Number.isSafeInteger(revision) || revision < 1) {
-            throw new Error("Contact request revision is invalid.");
-          }
           if (!input.accept) {
             const updated = await transaction.query(
               `
@@ -1400,6 +1486,133 @@ export function createPostgresOnsiteOperationsMethods({
               JSON.stringify({ relationshipPairId, status: "accepted" }),
               evidenceIds,
               respondedAt,
+            ],
+          );
+          return value;
+        },
+        { isolation: "read committed" },
+      );
+    },
+
+    async withdrawContactRequestAtomically(
+      input: WithdrawEventContactRequestInput,
+    ) {
+      const eventId = input.eventId.trim();
+      const requestId = input.requestId.trim();
+      const requesterActorId = input.requesterActorId.trim();
+      if (!eventId || !requestId || !requesterActorId) {
+        throw new EventOperationsError(
+          "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+          "Event, request, and requester identities are required.",
+        );
+      }
+      return client.transaction(
+        async (transaction) => {
+          await transaction.query(
+            `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
+            [`event-onsite-contact-request:${workspaceId}:${requestId}`],
+          );
+          const locked = await transaction.query<SqlRow>(
+            `
+              select request.*, statement_timestamp() as db_now
+              from event_ops_contact_requests request
+              where request.workspace_id = $1 and request.request_id = $2
+              for update
+            `,
+            [workspaceId, requestId],
+          );
+          const request = locked.rows[0];
+          if (
+            !request ||
+            request.event_id !== eventId ||
+            request.requester_actor_id !== requesterActorId
+          ) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_FORBIDDEN",
+              "Only the requester can withdraw this business-card request.",
+            );
+          }
+          const status = text(request, "status");
+          const revision = positiveRevision(request);
+          if (
+            status === "withdrawn" &&
+            revision === input.expectedRevision + 1
+          ) {
+            const value = await readContactRequestForViewer({
+              eventId,
+              executor: transaction,
+              requestId,
+              viewerActorId: requesterActorId,
+              workspaceId,
+            });
+            if (value) return value;
+            throw new Error("Withdrawn contact request could not be read.");
+          }
+          if (
+            status !== "awaiting_target_consent" ||
+            revision !== input.expectedRevision
+          ) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+              "Only a pending business-card request can be withdrawn.",
+            );
+          }
+          const withdrawnAt = timestamp(request, "db_now");
+          const updated = await transaction.query(
+            `
+              update event_ops_contact_requests
+              set status = 'withdrawn', withdrawn_at = $5,
+                revision = revision + 1, updated_at = $5
+              where workspace_id = $1 and event_id = $2 and request_id = $3
+                and status = 'awaiting_target_consent' and revision = $4
+            `,
+            [workspaceId, eventId, requestId, revision, withdrawnAt],
+          );
+          if (updated.rowCount !== 1) {
+            throw new EventOperationsError(
+              "EVENT_OPERATIONS_CONTACT_REQUEST_INVALID",
+              "The contact request changed before withdrawal could commit.",
+            );
+          }
+          const value = await readContactRequestForViewer({
+            eventId,
+            executor: transaction,
+            requestId,
+            viewerActorId: requesterActorId,
+            workspaceId,
+          });
+          if (!value) throw new Error("Withdrawn contact request could not be read.");
+          await insertOutbox({
+            aggregateId: requestId,
+            aggregateType: "event_contact_request",
+            eventId,
+            eventType: "event.contact_request.withdrawn",
+            executor: transaction,
+            outboxId: `outbox:event-contact-request-withdrawn:${digest(requestId, String(revision + 1))}`,
+            payload: value,
+            timestamp: withdrawnAt,
+            workspaceId,
+          });
+          await transaction.query(
+            `
+              insert into event_ops_audit_log (
+                workspace_id, audit_id, event_id, actor_id, action,
+                aggregate_type, aggregate_id, before_payload, after_payload,
+                evidence_ids, occurred_at
+              ) values (
+                $1, $2, $3, $4, 'event_contact_request_withdrawn',
+                'event_contact_request', $5, $6::jsonb, $7::jsonb, '{}', $8
+              )
+            `,
+            [
+              workspaceId,
+              `audit:event-contact-request-withdrawn:${digest(requestId, String(revision + 1))}`,
+              eventId,
+              requesterActorId,
+              requestId,
+              JSON.stringify({ status: "awaiting_target_consent", revision }),
+              JSON.stringify(value),
+              withdrawnAt,
             ],
           );
           return value;

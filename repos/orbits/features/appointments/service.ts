@@ -122,7 +122,16 @@ function history(current: AppointmentAggregate, actorId: string, command: Appoin
   return [...current.history, { actorId, at: timestamp, command, detail, proposalRevision, version: current.version + 1 }];
 }
 
-function outboxEvent(input: { appointment: AppointmentAggregate; eventType: AppointmentOutboxEvent["eventType"]; revision: number; timestamp: string; availableAt?: string; suffix?: string }): AppointmentOutboxEvent {
+function outboxEvent(input: {
+  appointment: AppointmentAggregate;
+  eventType: AppointmentOutboxEvent["eventType"];
+  revision: number;
+  timestamp: string;
+  availableAt?: string;
+  initiatedByActorId?: string;
+  notificationRecipientActorIds?: readonly string[];
+  suffix?: string;
+}): AppointmentOutboxEvent {
   const suffix = input.suffix ?? input.eventType;
   return {
     aggregateVersion: input.appointment.version,
@@ -135,13 +144,17 @@ function outboxEvent(input: { appointment: AppointmentAggregate; eventType: Appo
     payload: {
       appointmentId: input.appointment.appointmentId,
       confirmed: input.appointment.confirmed,
+      contactIdsByActor: input.appointment.contactIdsByActor,
+      eventId: input.appointment.eventId,
+      initiatedByActorId: input.initiatedByActorId ?? null,
+      notificationRecipientActorIds: input.notificationRecipientActorIds ?? null,
       participantActorIds: [input.appointment.ownerActorId, input.appointment.inviteeActorId],
       revision: input.revision,
     },
   };
 }
 
-function confirmationEvents(appointment: AppointmentAggregate, previousRevision: number | null, timestamp: string): AppointmentOutboxEvent[] {
+function confirmationEvents(appointment: AppointmentAggregate, previousRevision: number | null, timestamp: string, initiatedByActorId: string): AppointmentOutboxEvent[] {
   const confirmed = appointment.confirmed!;
   const starts = Date.parse(confirmed.startsAtUtc);
   const ends = starts + confirmed.durationMinutes * 60_000;
@@ -149,7 +162,14 @@ function confirmationEvents(appointment: AppointmentAggregate, previousRevision:
   if (previousRevision !== null) {
     events.push(outboxEvent({ appointment, eventType: "appointment.reminders.invalidate", revision: previousRevision, suffix: "invalidate", timestamp }));
   }
-  events.push(outboxEvent({ appointment, eventType: previousRevision === null ? "appointment.confirmed" : "appointment.rescheduled", revision: confirmed.proposalRevision, timestamp }));
+  events.push(outboxEvent({
+    appointment,
+    eventType: previousRevision === null ? "appointment.confirmed" : "appointment.rescheduled",
+    initiatedByActorId,
+    notificationRecipientActorIds: [appointment.ownerActorId, appointment.inviteeActorId].filter((actorId) => actorId !== initiatedByActorId),
+    revision: confirmed.proposalRevision,
+    timestamp,
+  }));
   events.push(outboxEvent({ appointment, eventType: "appointment.calendar.requested", revision: confirmed.proposalRevision, suffix: "calendar-requested", timestamp }));
   events.push(outboxEvent({ appointment, eventType: "appointment.meeting.requested", revision: confirmed.proposalRevision, suffix: "meeting-requested", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(starts - 24 * 60 * 60_000).toISOString(), eventType: "appointment.reminder.t24h", revision: confirmed.proposalRevision, suffix: "t24h", timestamp }));
@@ -249,7 +269,22 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
             updatedAt: timestamp,
             version: nextVersion,
           };
-          return { appointment, outbox: [] };
+          const eventType = value.command === "counter"
+            ? "appointment.countered" as const
+            : current.confirmed
+              ? "appointment.reschedule.proposed" as const
+              : "appointment.proposed" as const;
+          return {
+            appointment,
+            outbox: [outboxEvent({
+              appointment,
+              eventType,
+              initiatedByActorId: value.actorId,
+              notificationRecipientActorIds: [current.ownerActorId, current.inviteeActorId].filter((actorId) => actorId !== value.actorId),
+              revision,
+              timestamp,
+            })],
+          };
         }
 
         if (value.command === "accept") {
@@ -269,7 +304,7 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
             updatedAt: timestamp,
             version: nextVersion,
           };
-          return { appointment, outbox: confirmationEvents(appointment, previousRevision, timestamp) };
+          return { appointment, outbox: confirmationEvents(appointment, previousRevision, timestamp, value.actorId) };
         }
 
         if (value.command === "decline") {
@@ -290,12 +325,21 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
         if (value.command === "cancel") {
           const revision = current.confirmed?.proposalRevision ?? null;
           const appointment: AppointmentAggregate = { ...current, history: history(current, value.actorId, "cancel", timestamp, "Appointment cancelled; pending reminders and provider projections must be cancelled.", revision), pendingProposalRevision: null, projection: revision === null ? current.projection : { calendar: current.projection.calendar === "not_synced" ? "not_synced" : "pending", meeting: current.projection.meeting === "not_synced" ? "not_synced" : "pending", revision }, reminders: { cancelled: true, currentRevision: revision }, status: "cancelled", updatedAt: timestamp, version: nextVersion };
-          const outbox = revision === null ? [] : [
+          const notificationRevision = revision ?? current.proposals.at(-1)?.revision ?? 0;
+          const outbox = [outboxEvent({
+            appointment,
+            eventType: "appointment.cancelled",
+            initiatedByActorId: value.actorId,
+            notificationRecipientActorIds: [current.ownerActorId, current.inviteeActorId].filter((actorId) => actorId !== value.actorId),
+            revision: notificationRevision,
+            suffix: "cancelled",
+            timestamp,
+          })];
+          if (revision !== null) outbox.unshift(
             outboxEvent({ appointment, eventType: "appointment.reminders.invalidate", revision, suffix: "invalidate-on-cancel", timestamp }),
-            outboxEvent({ appointment, eventType: "appointment.cancelled", revision, suffix: "cancelled", timestamp }),
             outboxEvent({ appointment, eventType: "appointment.calendar.cancel", revision, suffix: "calendar-cancel", timestamp }),
             outboxEvent({ appointment, eventType: "appointment.meeting.cancel", revision, suffix: "meeting-cancel", timestamp }),
-          ];
+          );
           return { appointment, outbox };
         }
         if (value.command === "complete") {

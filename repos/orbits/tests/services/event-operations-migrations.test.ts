@@ -89,6 +89,9 @@ test("event operations migrations use one implicit transaction per statement", a
     /event_ops_event_role_assignment_heads/i,
   );
   assert.doesNotMatch(calls[13] ?? "", /\bowner\b[^\n]*role/i);
+  assert.match(calls[14] ?? "", /task_attempts/i);
+  assert.match(calls[15] ?? "", /withdrawn_at/i);
+  assert.match(calls[15] ?? "", /'withdrawn'/i);
 });
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -180,7 +183,7 @@ test(
       const applied = await migrationPool.query<{ count: string }>(`
         select count(*)::text as count from event_ops_schema_migrations
       `);
-      assert.equal(applied.rows[0]?.count, "14");
+      assert.equal(applied.rows[0]?.count, "15");
 
       await migrationPool.query(`
         insert into event_ops_events (
