@@ -6,6 +6,7 @@ import { resetSharedMockAgentLedgerServiceForTests } from "../../features/agent/
 import { resetOrbitAgentRuntimeServicesForTests } from "../../features/agent/runtime/service-factory";
 import type { ContactListItem } from "../../features/contacts/contract";
 import { mockContactsListFixture } from "../../features/contacts/fixtures";
+import { createMockContactsListSearchAndFilterService } from "../../features/contacts/mock-service";
 import { mockEventRecords } from "../../features/events/event-crud-and-import/fixtures";
 import type { EventRegistration } from "../../features/events/registration/contract";
 
@@ -67,34 +68,22 @@ test.afterEach(() => {
   resetOrbitAgentRuntimeServicesForTests();
 });
 
-test("registered public catalogue attendees can start follow-up", async () => {
+test("registered mock catalogue attendees can start follow-up", async () => {
   let observedContactsActorId: string | null = null;
+  const contactsService = createMockContactsListSearchAndFilterService();
   const handler = createPostEventFollowupPostHandler({
     getRegistration: async ({ eventId }) => registrationFor(eventId),
+    loadEvent: async (eventId) =>
+      mockEventRecords.find((event) => event.id === eventId) ?? null,
     listContacts: (input) => {
       observedContactsActorId = input?.actorId?.trim() || null;
-      return {
-        data: {
-          contacts: mockContactsListFixture.contacts,
-          filters: {
-            sourceFilters: [],
-            statusFilters: [],
-            tagFilters: [],
-            valueFilters: [],
-          },
-          provenance: mockContactsListFixture.provenance,
-          query: "",
-          state: "success",
-          summary: mockContactsListFixture.summary,
-        },
-        success: true,
-      };
+      return contactsService.listContacts(input);
     },
     resolveActor: async () => registeredActor,
   });
   const response = await handler(
     new Request(
-      "http://localhost/api/events/event_01/post-event/followup",
+      "http://localhost/api/events/demo-event-1/post-event/followup",
       {
         body: JSON.stringify({
           contactId: "demo-contact-1",
@@ -105,13 +94,13 @@ test("registered public catalogue attendees can start follow-up", async () => {
         method: "POST",
       },
     ),
-    { params: Promise.resolve({ id: "event_01" }) },
+    { params: Promise.resolve({ id: "demo-event-1" }) },
   );
 
   assert.equal(response.status, 201);
   assert.equal(observedContactsActorId, registeredActor.id);
   const body = await response.json();
-  assert.equal(body.data.artifact.eventId, "event_01");
+  assert.equal(body.data.artifact.eventId, "demo-event-1");
   assert.ok(body.data.actions.length > 0);
 });
 
