@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  EventOperationsError,
   type EventOperationsAiProvider,
   type EventOperationsCandidate,
   type EventOperationsConfiguration,
@@ -12,7 +11,11 @@ import {
   type EventOperationsParticipant,
 } from "../features/events/event-operations/contract";
 import { createEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
-import { validateRecommendations } from "../features/events/event-operations/recommendation-validation";
+import {
+  RecommendationValidationError,
+  type RecommendationValidationReason,
+  validateRecommendations,
+} from "../features/events/event-operations/recommendation-validation";
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { loadLocalEnv } from "./load-local-env";
@@ -50,6 +53,7 @@ export interface EvaluationExecutionResult {
   providerResponseBytes: number | null;
   reasoningTokens: number | null;
   totalDurationMs: number;
+  validationReason: RecommendationValidationReason | null;
 }
 
 interface BuiltRecommendationTask {
@@ -192,6 +196,7 @@ function emptyTelemetry(): EvaluationExecutionResult {
     providerResponseBytes: null,
     reasoningTokens: null,
     totalDurationMs: 0,
+    validationReason: null,
   };
 }
 
@@ -265,9 +270,10 @@ export async function evaluateRecommendationTask(input: {
       adapterOutcome: "succeeded",
       domainValidation: "failed",
       domainValidationDurationMs: performance.now() - validationStartedAt,
-      errorCode: error instanceof EventOperationsError ? error.code : "DOMAIN_VALIDATION_EXCEPTION",
-      messageCategory: error instanceof EventOperationsError ? "domain-schema-invalid" : "domain-validation-exception",
+      errorCode: error instanceof RecommendationValidationError ? error.code : "DOMAIN_VALIDATION_EXCEPTION",
+      messageCategory: error instanceof RecommendationValidationError ? "domain-validation" : "domain-validation-exception",
       totalDurationMs: performance.now() - startedAt,
+      validationReason: error instanceof RecommendationValidationError ? error.reason : null,
     };
   }
 }

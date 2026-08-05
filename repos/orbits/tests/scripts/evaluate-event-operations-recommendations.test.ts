@@ -199,6 +199,7 @@ test("evaluation distinguishes domain validation failure from adapter success", 
   assert.equal(result.adapterOutcome, "succeeded");
   assert.equal(result.domainValidation, "failed");
   assert.equal(result.errorCode, "EVENT_OPERATIONS_AI_SCHEMA_INVALID");
+  assert.equal(result.validationReason, "invalid_no_match_reason");
   assert.equal(result.overallBusinessValid, false);
 });
 
