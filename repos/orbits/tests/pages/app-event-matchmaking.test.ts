@@ -36,6 +36,20 @@ test("event matching reads only published operations and uses canonical consent"
   assert.doesNotMatch(source, /otherParticipant\.(email|phone)/);
 });
 
+test("the post-event center exposes the attendee report through the normal event journey", () => {
+  const source = readFileSync(
+    join(
+      projectRoot,
+      "app/(app)/app/events/[id]/orbit-post-event-center.tsx",
+    ),
+    "utf8",
+  );
+
+  assert.match(source, /data-post-event-report-link/);
+  assert.match(source, /查看完整活动报告/);
+  assert.match(source, /\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/analytics/);
+});
+
 test("a withdrawn outgoing request stays visible and can be requested again", async () => {
   const originalFetch = globalThis.fetch;
   const withdrawnRequest = {
