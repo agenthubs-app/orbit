@@ -76,7 +76,7 @@ export interface EvaluationExecutionResult {
   validationReason: RecommendationValidationReason | null;
 }
 
-interface BuiltRecommendationTask {
+export interface BuiltRecommendationTask {
   allowedTargetIdsBySource: ReadonlyMap<string, ReadonlySet<string>>;
   participantIds: readonly string[];
   record: EvaluationTaskRecord;
@@ -206,7 +206,7 @@ export function createPairedShardSchedule<TSource>(
   return scheduled;
 }
 
-function buildRecommendationTasks(input: {
+export function buildRecommendationTasks(input: {
   aiRequestFingerprint: string;
   candidates: readonly EventOperationsCandidate[];
   configuration: Pick<EventOperationsConfiguration, "recommendationCount">;
