@@ -147,8 +147,10 @@ function PublishedRoundPreview({
 }
 
 export function EventOperationsAdminWorkspace({
+  canManageRoles = false,
   event,
 }: {
+  canManageRoles?: boolean;
   event: { endsAt: string; id: string; startsAt: string; title: string };
 }) {
   const baseUrl = `/api/events/${encodeURIComponent(event.id)}/operations/admin`;
@@ -352,9 +354,20 @@ export function EventOperationsAdminWorkspace({
           </div>
           {workspace ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <a className="btn btn-ghost" href="/app/events/center">
+                <Icon name="grid" size={16} />运营活动中心
+              </a>
               <a className="btn btn-ghost" href={operationsCheckInHref}>
                 <Icon name="check" size={16} />打开签到台
               </a>
+              <a className="btn btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/analytics`}>
+                <Icon name="target" size={16} />查看活动分析
+              </a>
+              {canManageRoles ? (
+                <a className="btn btn-ghost" data-event-roles-entry href={`/app/events/${encodeURIComponent(event.id)}/operations/roles`}>
+                  <Icon name="users" size={16} />管理角色
+                </a>
+              ) : null}
               <a className="btn btn-ghost" href={`${baseUrl}/export`}>
                 <Icon name="download" size={16} />Export CSV
               </a>

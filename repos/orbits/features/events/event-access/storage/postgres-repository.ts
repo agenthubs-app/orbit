@@ -194,6 +194,10 @@ async function loadAssignment(
        from event_ops_events
       where workspace_id = $1
         and event_id = $2
+        -- Role authority is defined only after the event has crossed the
+        -- Event Core cutover. A legacy operations row may retain an
+        -- organizer-shaped value, but it is not canonical authorization.
+        and lifecycle_state_v2 is not null
       ${lock ? "for update" : ""}`,
     [workspaceId, query.eventId],
   );

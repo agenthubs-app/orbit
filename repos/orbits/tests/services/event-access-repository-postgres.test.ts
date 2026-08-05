@@ -98,7 +98,7 @@ async function expectNoMutation(
 }
 
 test(
-  "main v11 event access get, grant, and revoke fail closed without any schema or domain write",
+  "main event access schema is cut over and missing-event reads stay non-mutating",
   { timeout: 120_000 },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
@@ -113,14 +113,17 @@ test(
     );
     try {
       const before = await mainEvidence(pool, workspaceId);
-      assert.equal(
-        (before as { migration_version: string }).migration_version,
-        "11",
+      assert.ok(
+        Number((before as { migration_version: string }).migration_version) >= 15,
+        "the live schema must include the reviewed event-access migrations",
       );
-      assert.equal((before as { role_heads: string | null }).role_heads, null);
+      assert.equal(
+        (before as { role_heads: string | null }).role_heads,
+        "event_ops_event_role_assignment_heads",
+      );
       assert.equal(
         (before as { role_versions: string | null }).role_versions,
-        null,
+        "event_ops_event_role_assignment_versions",
       );
       await assert.rejects(
         service.get({
@@ -129,32 +132,7 @@ test(
         }),
         (error: unknown) =>
           error instanceof EventAccessRepositoryError &&
-          error.code === "EVENT_ACCESS_NOT_READY",
-      );
-      await assert.rejects(
-        service.grant({
-          actingActorId: "actor:not-ready-owner",
-          eventId: "event:not-ready",
-          expectedRevision: 0,
-          reason: "Main must remain read only before approved cutover",
-          role: "operations",
-          subjectActorId: "actor:not-ready-operator",
-        }),
-        (error: unknown) =>
-          error instanceof EventAccessRepositoryError &&
-          error.code === "EVENT_ACCESS_NOT_READY",
-      );
-      await assert.rejects(
-        service.revoke({
-          actingActorId: "actor:not-ready-owner",
-          eventId: "event:not-ready",
-          expectedRevision: 1,
-          reason: "Main must remain read only before approved cutover",
-          subjectActorId: "actor:not-ready-operator",
-        }),
-        (error: unknown) =>
-          error instanceof EventAccessRepositoryError &&
-          error.code === "EVENT_ACCESS_NOT_READY",
+          error.code === "EVENT_ACCESS_NOT_FOUND",
       );
       assert.deepEqual(await mainEvidence(pool, workspaceId), before);
     } finally {
@@ -184,10 +162,11 @@ test(
       await pool.query(
         `insert into event_ops_events (
            workspace_id,event_id,organizer_actor_id,lifecycle_state,
-           revision,created_at,updated_at
+           revision,created_at,updated_at,lifecycle_state_v2
          ) values
-           ('workspace:a','event:shared','actor:owner-a','active',1,now(),now()),
-           ('workspace:b','event:shared','actor:owner-b','active',1,now(),now())`,
+           ('workspace:a','event:shared','actor:owner-a','active',1,now(),now(),'published'),
+           ('workspace:b','event:shared','actor:owner-b','active',1,now(),now(),'published'),
+           ('workspace:a','event:legacy','actor:legacy-owner','active',1,now(),now(),null)`,
       );
       const repositoryA = createPostgresEventAccessRepository({
         client,
@@ -199,6 +178,31 @@ test(
       });
       const serviceA = createEventAccessService(repositoryA);
       const serviceB = createEventAccessService(repositoryB);
+
+      // A pre-cutover event_ops row must not lend its organizer-shaped field
+      // to the canonical access boundary. The operator migration must create
+      // Event Core v2 metadata before any role read or write becomes valid.
+      await assert.rejects(
+        serviceA.get({
+          eventId: "event:legacy",
+          subjectActorId: "actor:legacy-owner",
+        }),
+        (error: unknown) =>
+          error instanceof EventAccessRepositoryError &&
+          error.code === "EVENT_ACCESS_NOT_FOUND",
+      );
+      await expectNoMutation(
+        pool,
+        () => serviceA.grant({
+          actingActorId: "actor:legacy-owner",
+          eventId: "event:legacy",
+          expectedRevision: 0,
+          reason: "Legacy rows must not establish role authority",
+          role: "operations",
+          subjectActorId: "actor:legacy-operator",
+        }),
+        "EVENT_ACCESS_NOT_FOUND",
+      );
 
       assert.deepEqual(
         await serviceA.get({

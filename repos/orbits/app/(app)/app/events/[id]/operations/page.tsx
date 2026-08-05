@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { auth } from "../../../../../../auth";
 import { requireEventCapability } from "../../../../../../features/events/event-access/guard";
 import { createConfiguredEventAccessService } from "../../../../../../features/events/event-access/runtime";
-import { createEventCrudAndImportService } from "../../../../../../features/events/service-factory";
+import { createConfiguredEventCoreService } from "../../../../../../features/events/core/runtime";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { EventOperationsAdminWorkspace } from "./event-operations-admin-workspace";
+import { loadEventOperationsPageEvent } from "./event-operations-page-event";
 
 function routeEventId(value: string): string {
   try {
@@ -41,11 +42,25 @@ export default async function AppEventOperationsAdminPage({
       accessGranted = false;
     }
   }
-  const ownedEvent = accessGranted
-    ? await createEventCrudAndImportService().getEvent({
+  let canManageRoles = false;
+  if (accessGranted && accessService) {
+    try {
+      await requireEventCapability({
         actorId: session.user.id,
+        capability: "roles.manage",
         eventId,
-      })
+        service: accessService,
+      });
+      canManageRoles = true;
+    } catch {
+      canManageRoles = false;
+    }
+  }
+  const pageEvent = accessGranted
+    ? await loadEventOperationsPageEvent(
+        eventId,
+        createConfiguredEventCoreService(),
+      )
     : null;
 
   if (!accessGranted) {
@@ -66,14 +81,12 @@ export default async function AppEventOperationsAdminPage({
     <>
       <OrbitReferenceStyles />
       <EventOperationsAdminWorkspace
-        event={{
-          endsAt:
-            ownedEvent?.success === true ? ownedEvent.data.event.endsAt : "",
+        canManageRoles={canManageRoles}
+        event={pageEvent ?? {
+          endsAt: "",
           id: eventId,
-          startsAt:
-            ownedEvent?.success === true ? ownedEvent.data.event.startsAt : "",
-          title:
-            ownedEvent?.success === true ? ownedEvent.data.event.title : eventId,
+          startsAt: "",
+          title: eventId,
         }}
       />
     </>
