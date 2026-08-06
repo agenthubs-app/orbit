@@ -30,14 +30,14 @@ test("organizer workspace exposes the complete strict generation and audit workf
   );
 
   assert.match(client, /method: "PUT"/);
-  assert.match(client, /Capture snapshot/);
-  assert.match(client, /Worker processing/);
+  assert.match(client, /创建生成快照/);
+  assert.match(client, /Worker 处理中/);
   assert.match(client, /setInterval/);
-  assert.match(client, /durable worker has been queued/);
+  assert.match(client, /持久 worker 已排队执行/);
   assert.doesNotMatch(client, /maxConcurrency|event-operations-admin-ui/);
-  assert.match(client, /Retry failed shards/);
-  assert.match(client, /Publish atomically/);
-  assert.match(client, /completed shard outputs were retained/);
+  assert.match(client, /重试失败分片/);
+  assert.match(client, /原子发布/);
+  assert.match(client, /已完成分片的输出全部保留/);
   assert.match(
     client,
     /const actionError[\s\S]*await load\(\);[\s\S]*setError\(actionError\)/,
@@ -47,9 +47,9 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /REAL REGISTRATION DIRECTORY/);
   assert.match(client, /CONSENT AUDIT/);
   assert.match(client, /\/check-ins/);
-  assert.match(client, /Mark arrived/);
+  assert.match(client, /标记到场/);
   assert.match(client, /VENUE CHECK-IN ENTRY/);
-  assert.match(client, /No QR image is generated/);
+  assert.match(client, /不会生成二维码图片/);
   assert.match(client, /party\/checkin\?eventId=/);
   assert.match(client, /CONFIGURED TIMELINE/);
   assert.match(client, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
@@ -58,12 +58,12 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /readOnly=\{canonicalScheduleFields\.includes/);
   assert.equal(
     (client.match(/onInput=\{\(input\) => \{/g) ?? []).length,
-    2,
+    3,
     "datetime and numeric policies must update on real input, paste, and autofill events",
   );
   assert.equal(
     (client.match(/const nextValue = input\.currentTarget\.value/g) ?? []).length,
-    2,
+    3,
     "input values must be snapshotted before React releases the synthetic event",
   );
   assert.doesNotMatch(client, /onChange=\{\(input\) => setForm/);
@@ -75,7 +75,7 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /table\.rationale/);
   assert.match(client, /table\.icebreakers/);
   assert.match(client, /member\.seat/);
-  assert.match(client, /No recommendation, table|never visible to attendees/);
+  assert.match(client, /所有任务完成并由你发布后，参会者才能看到生成结果/);
   assert.doesNotMatch(client, /mock recommendation|fallback table|first four/i);
 });
 

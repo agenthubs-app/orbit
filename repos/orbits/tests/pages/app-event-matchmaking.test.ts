@@ -23,7 +23,7 @@ test("event matching reads only published operations and uses canonical consent"
   assert.match(source, /\/operations\/participants\//);
   assert.match(source, /\/operations\/contact-requests/);
   assert.match(source, /\/withdraw/);
-  assert.match(source, /这里只展示主办方已发布的 AI 结果/);
+  assert.match(source, /根据双方报名画像匹配，每条推荐都能查看依据/);
   assert.match(source, /等待对方同意，联系方式仍保持隐藏/);
   assert.match(source, /data-operations-state="locked"/);
   assert.match(source, /data-operations-state="processing"/);

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { OrbitAppointmentNegotiation } from "./orbit-appointment-negotiation";
 import { OrbitEncounterCapture } from "./orbit-encounter-capture";
-import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
 type Participant = {
   company: string | null;
@@ -364,15 +363,42 @@ function ParticipantDetailPanel({
   );
 }
 
+/**
+ * Render-neutral digest of the published AI result, reported upward so the
+ * event detail page can surface recommendations and my table placement near
+ * the hero instead of only below the fold.
+ */
+export interface EventMatchmakingSummary {
+  acceptedContacts: number;
+  recommendationCount: number;
+  resultsState: OperationsWorkspace["resultsState"];
+  roundOneTable: { seat: string | null; tableNumber: number; theme: string } | null;
+  roundTwoTable: { seat: string | null; tableNumber: number; theme: string } | null;
+}
+
+function tableSummaryFor(
+  table: Table | null,
+  meParticipantId: string,
+): EventMatchmakingSummary["roundOneTable"] {
+  if (!table) return null;
+  return {
+    seat: table.members.find((member) => member.participantId === meParticipantId)?.seat ?? null,
+    tableNumber: table.tableNumber,
+    theme: table.theme,
+  };
+}
+
 export function OrbitEventMatchmaking({
   authenticated = true,
   contactRequestsOpen = true,
   eventId,
+  onWorkspaceSummary,
   registrationOpen = true,
 }: {
   authenticated?: boolean;
   contactRequestsOpen?: boolean;
   eventId: string;
+  onWorkspaceSummary?: (summary: EventMatchmakingSummary | null) => void;
   registrationOpen?: boolean;
 }) {
   const { t } = useOrbitLanguage();
@@ -428,6 +454,21 @@ export function OrbitEventMatchmaking({
     })) ?? [];
   }, [workspace]);
 
+  useEffect(() => {
+    if (!onWorkspaceSummary) return;
+    if (!workspace) {
+      onWorkspaceSummary(null);
+      return;
+    }
+    onWorkspaceSummary({
+      acceptedContacts: workspace.contactRequests.filter((request) => request.status === "accepted").length,
+      recommendationCount: workspace.recommendations?.recommendations.length ?? 0,
+      resultsState: workspace.resultsState,
+      roundOneTable: tableSummaryFor(workspace.roundOneTable, workspace.me.participantId),
+      roundTwoTable: tableSummaryFor(workspace.roundTwoTable, workspace.me.participantId),
+    });
+  }, [onWorkspaceSummary, workspace]);
+
   async function openParticipant(participantId: string) {
     setWorking(`detail:${participantId}`);
     setError("");
@@ -482,9 +523,9 @@ export function OrbitEventMatchmaking({
   return (
     <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden", padding: 16 }}>
       <div style={{ display: "grid", gap: 4 }}>
-        <span className="eyebrow">ORBIT MATCH · PUBLISHED</span>
+        <span className="eyebrow">ORBIT MATCH</span>
         <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>{t({ en: "People worth meeting", zh: "值得认识的人" })}</h3>
-        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only the organizer-published AI result appears here. Orbit does not locally rank or pad the list.", zh: "这里只展示主办方已发布的 AI 结果；Orbit 不在本地排序，也不会用候选名单补位。" })}</p>
+        <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Matched from both sides' registration profiles, with the evidence behind every suggestion.", zh: "根据双方报名画像匹配，每条推荐都能查看依据。" })}</p>
       </div>
 
       {loading ? <p style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{t({ en: "Loading the published result…", zh: "正在读取已发布结果…" })}</p> : null}
@@ -596,9 +637,12 @@ export function OrbitEventMatchmaking({
               <button aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })} onClick={() => void openParticipant(participant.participantId)} style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }} type="button">
                 <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
                   <div><strong style={{ color: "var(--ink)", fontSize: 15 }}>{participant.displayName}</strong><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{[participant.role, participant.company].filter(Boolean).join(" · ")}</div></div>
-                  <span className="chip">{recommendation.score}</span>
+                  <span className="chip">{t({ en: `Match ${recommendation.score}`, zh: `匹配 ${recommendation.score}` })}</span>
                 </div>
-                <ul style={{ color: "var(--text-2)", fontSize: 13, margin: "9px 0 0", paddingLeft: 18 }}>{recommendation.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                <ul style={{ color: "var(--text-2)", fontSize: 13, margin: "9px 0 0", paddingLeft: 18 }}>{recommendation.reasons.slice(0, 2).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                {recommendation.reasons.length > 2 ? (
+                  <p style={{ color: "var(--text-3)", fontSize: 12, margin: "6px 0 0" }}>{t({ en: `+ ${recommendation.reasons.length - 2} more reasons — open the profile for full evidence`, zh: `还有 ${recommendation.reasons.length - 2} 条匹配依据，点击查看完整画像` })}</p>
+                ) : null}
                 <p style={{ color: "var(--text-3)", fontSize: 12, margin: "8px 0 0" }}>{recommendation.memberHint}</p>
               </button>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -619,8 +663,6 @@ export function OrbitEventMatchmaking({
           {!participants.length ? <p data-operations-state="ready-empty" style={{ color: "var(--text-3)", fontSize: 14, margin: 0 }}>{workspace.recommendations?.noMatchReason ?? t({ en: "The published result contains no recommendation for you.", zh: "已发布结果中没有适合你的推荐。" })}</p> : null}
         </>
       ) : null}
-
-      {workspace && !registrationOpen ? <OrbitPostEventCenter acceptedContacts={workspace.contactRequests.filter((request) => request.status === "accepted").length} eventId={eventId} /> : null}
 
       {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
       {detail ? <ParticipantDetailPanel busy={working !== null} contactRequestsOpen={contactRequestsOpen} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} /> : null}

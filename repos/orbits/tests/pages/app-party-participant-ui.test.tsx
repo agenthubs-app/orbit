@@ -56,8 +56,8 @@ function partyViewModel(
   return {
     accessCode: "TOKYO-8431",
     agenda: [
-      { description: "Doors open", label: "Check-in", time: "18:00" },
-      { description: "Curated introductions", label: "Round one", time: "18:30" },
+      { description: { en: "Doors open", zh: "开放入场" }, label: { en: "Check-in", zh: "签到" }, time: "18:00" },
+      { description: { en: "Curated introductions", zh: "定向介绍" }, label: { en: "Round one", zh: "第一轮" }, time: "18:30" },
     ],
     attendees: [person],
     checkedInAt: null,

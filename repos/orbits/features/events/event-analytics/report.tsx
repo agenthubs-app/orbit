@@ -191,7 +191,15 @@ function AttendeeReport({ value }: { value: EventAnalyticsAttendeeReport }) {
       </Section>
       <Section title="AI 会后产物（只读）">
         <div data-event-analytics-ai-status={aiStatus} style={{ color: "var(--text-2)", fontSize: 13 }}>
-          状态：{aiStatus}
+          状态：{aiStatus === "queued"
+            ? "排队中"
+            : aiStatus === "running"
+              ? "生成中"
+              : aiStatus === "failed"
+                ? "生成失败"
+                : aiStatus === "unconfigured"
+                  ? "未启用"
+                  : "已生成"}
         </div>
         <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>{aiDescription}</p>
         {aiStatus === "failed" && value.aiArtifact.failureCode ? (

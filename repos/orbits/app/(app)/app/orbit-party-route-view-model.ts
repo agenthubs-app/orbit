@@ -32,8 +32,8 @@ export interface OrbitPartyPersonView {
 }
 
 export interface OrbitPartyAgendaItemView {
-  description: string;
-  label: string;
+  description: { en: string; zh: string };
+  label: { en: string; zh: string };
   time: string;
 }
 

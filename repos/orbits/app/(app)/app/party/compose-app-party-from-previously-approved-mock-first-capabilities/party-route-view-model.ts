@@ -300,18 +300,27 @@ function agendaForOperations(
 ): OrbitPartyAgendaItemView[] {
   return [
     {
-      description: "A persisted, actor-scoped arrival record opens during this window.",
-      label: "Check-in opens",
+      description: {
+        en: "Check in at the venue to unlock tonight's matches.",
+        zh: "到场签到后即可解锁今晚的匹配结果。",
+      },
+      label: { en: "Check-in opens", zh: "开始签到" },
       time: timeLabel(workspace.configuration.checkInOpensAt),
     },
     {
-      description: "AI complementary tables with a real table number and seat.",
-      label: "Round one tables",
+      description: {
+        en: "Find your table and seat; tablemates are matched to complement each other.",
+        zh: "按桌号入座，同桌伙伴经过互补匹配，附开场建议。",
+      },
+      label: { en: "Round one tables", zh: "第一轮分桌" },
       time: timeLabel(workspace.configuration.roundOneStartsAt),
     },
     {
-      description: "AI topic-led tables remix the complete participant snapshot.",
-      label: "Round two topic tables",
+      description: {
+        en: "Tables remix around shared topics for a second round of conversations.",
+        zh: "围绕共同话题重新组桌，开启第二轮交流。",
+      },
+      label: { en: "Round two topic tables", zh: "第二轮话题桌" },
       time: timeLabel(workspace.configuration.roundTwoStartsAt),
     },
   ];

@@ -496,7 +496,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
                 <span className="mono" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600 }}>
                   {item.time}
                 </span>
-                <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{item.label}</span>
+                <span style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{t(item.label)}</span>
                 {/* UI-audit fix C10 (second source). The agenda marked its third
                     row "进行中" purely by array index, with no reference to the
                     clock or the event state — so an event that had already
@@ -510,7 +510,7 @@ function PartyHome({ go, t, viewModel }: { go: (tab: PartyTab) => void; t: Trans
                   </span>
                 ) : null}
               </div>
-              <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>{item.description}</div>
+              <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>{t(item.description)}</div>
             </div>
           </div>
         ))}
@@ -797,8 +797,8 @@ function PartyAgenda({ t, viewModel }: { t: Translate; viewModel: OrbitPartyView
               {index < viewModel.agenda.length - 1 ? <i /> : null}
             </div>
             <div className="orbit-party-agenda-main">
-              <strong>{item.label}</strong>
-              <p>{item.description}</p>
+              <strong>{t(item.label)}</strong>
+              <p>{t(item.description)}</p>
             </div>
             <span className="orbit-party-agenda-status">{phaseLabel}</span>
           </div>

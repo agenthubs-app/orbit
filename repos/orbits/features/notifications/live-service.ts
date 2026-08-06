@@ -332,7 +332,7 @@ function toReminder(
     reminderId: notification.id,
     followupTaskId: task?.id ?? notification.id,
     connectionId: task?.connectionId ?? connection?.id ?? "",
-    contactName: contact?.displayName ?? "Live generated relationship contact",
+    contactName: contact?.displayName ?? "",
     organization: contact?.organization ?? "",
     title: notification.title,
     href: notification.actionHref,

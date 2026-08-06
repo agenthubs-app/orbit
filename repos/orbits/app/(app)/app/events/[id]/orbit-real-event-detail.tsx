@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import { useOrbitLanguage, type OrbitLanguage } from "../../orbit-language-context";
@@ -12,7 +12,8 @@ import { Avatar, gradientFromString, Icon, StatusBadge } from "../../orbit-refer
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../../orbit-z";
 import { EventCover } from "../orbit-event-cover";
-import { OrbitEventMatchmaking } from "./orbit-event-matchmaking";
+import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-event-matchmaking";
+import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -243,6 +244,10 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
   const [showAllAttendees, setShowAllAttendees] = useState(false);
   const [registrationStatus, setRegistrationStatus] =
     useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
+  const [aiSummary, setAiSummary] = useState<EventMatchmakingSummary | null>(null);
+  const onWorkspaceSummary = useCallback((summary: EventMatchmakingSummary | null) => {
+    setAiSummary(summary);
+  }, []);
   const youRsvped = registrationStatus === "rsvped";
   const canSeeAttendees = youRsvped;
   const allAttendees = event.stats.attendees;
@@ -282,18 +287,49 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
     return () => controller.abort();
   }, [event.id, event.stats.authed]);
 
-  return (
-    <>
-      <section className="card orbit-desktop-only" style={{ padding: 18, display: "block" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)", whiteSpace: "nowrap" }}>{event.feeLabel}</h3></div>
-          <StatusBadge language={language} status={event.status} />
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
-        {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
-      </section>
+  const ended = event.status === "ended";
+  const aiReady = aiSummary?.resultsState === "ready";
+  const myTables = aiSummary
+    ? [
+        aiSummary.roundOneTable ? { label: t({ en: "Round 1", zh: "第一轮" }), placement: aiSummary.roundOneTable } : null,
+        aiSummary.roundTwoTable ? { label: t({ en: "Round 2", zh: "第二轮" }), placement: aiSummary.roundTwoTable } : null,
+      ].filter((entry): entry is { label: string; placement: NonNullable<EventMatchmakingSummary["roundOneTable"]> } => entry !== null)
+    : [];
 
-      {event.about && event.about.length ? (
+  const registrationSection = (
+    <section className="card orbit-desktop-only" style={{ padding: 18, display: "block" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)", whiteSpace: "nowrap" }}>{event.feeLabel}</h3></div>
+        <StatusBadge language={language} status={event.status} />
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
+      {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
+    </section>
+  );
+
+  const aiSummaryStrip = !ended && youRsvped && aiReady && aiSummary ? (
+    <section className="card" data-event-ai-summary style={{ borderLeft: "3px solid var(--accent)", display: "grid", gap: 8, padding: 16 }}>
+      <span className="eyebrow">ORBIT MATCH</span>
+      <strong style={{ color: "var(--ink)", fontSize: 15 }}>
+        {aiSummary.recommendationCount > 0
+          ? t({ en: `${aiSummary.recommendationCount} people worth meeting have been matched for you`, zh: `已为你匹配 ${aiSummary.recommendationCount} 位值得认识的人` })
+          : t({ en: "Your matching result is published", zh: "你的匹配结果已发布" })}
+      </strong>
+      {myTables.length ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {myTables.map(({ label, placement }) => (
+            <span className="chip" key={label} title={placement.theme}>
+              {label} · {t({ en: `Table ${placement.tableNumber}`, zh: `${placement.tableNumber} 号桌` })}
+              {placement.seat ? ` · ${t({ en: `Seat ${placement.seat}`, zh: `座位 ${placement.seat}` })}` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "Recommendations and table details are right below.", zh: "推荐与分桌详情就在下方。" })}</span>
+    </section>
+  ) : null;
+
+  const aboutSection = event.about && event.about.length ? (
         <section>
           <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -310,9 +346,9 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
         </section>
       ) : event.descriptionZh ? (
         <section><h3 className="h-section" style={{ margin: "0 0 10px" }}>{t({ en: "About this event", zh: "关于活动" })}</h3><p style={{ fontSize: 15, lineHeight: 1.7, color: "var(--text-2)", margin: 0, whiteSpace: "pre-line" }}>{event.descriptionZh}</p></section>
-      ) : null}
+      ) : null;
 
-      {event.agenda.length ? (
+  const agendaSection = event.agenda.length ? (
         <section>
           <h3 className="h-section" style={{ margin: "0 0 14px" }}>{t({ en: "Agenda", zh: "活动议程" })}</h3>
           <div style={{ position: "relative", paddingLeft: 4 }}>
@@ -330,8 +366,9 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
             ))}
           </div>
         </section>
-      ) : null}
+      ) : null;
 
+  const attendeesSection = (
       <section>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
           <h3 className="h-section" style={{ margin: 0 }}>{t({ en: "Attendees", zh: "参会者" })} <span style={{ color: "var(--text-3)", fontWeight: 500 }}>{event.stats.count}</span></h3>
@@ -368,13 +405,55 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
           ) : null}
         </div>
       </section>
+  );
 
-      <OrbitEventMatchmaking
-        authenticated={event.stats.authed}
-        contactRequestsOpen={event.status !== "upcoming"}
-        eventId={event.id}
-        registrationOpen={event.status !== "ended"}
-      />
+  const matchmakingSection = (
+    <OrbitEventMatchmaking
+      authenticated={event.stats.authed}
+      contactRequestsOpen={event.status !== "upcoming"}
+      eventId={event.id}
+      onWorkspaceSummary={onWorkspaceSummary}
+      registrationOpen={event.status !== "ended"}
+    />
+  );
+
+  const postEventSection = ended && aiSummary ? (
+    <OrbitPostEventCenter acceptedContacts={aiSummary.acceptedContacts} eventId={event.id} />
+  ) : null;
+
+  // Lifecycle-aware ordering: a registered attendee opens this page for their
+  // matches (or the gate telling them when matches open), and after the event
+  // ends the job is follow-up — so the AI surfaces lead in those states
+  // instead of trailing the static description, agenda, and 64-person
+  // directory. Ordering keys off server-known registration state so the layout
+  // is stable from first paint instead of reshuffling when data arrives.
+  return (
+    <>
+      {registrationSection}
+      {ended && youRsvped ? (
+        <>
+          {postEventSection}
+          {matchmakingSection}
+          {attendeesSection}
+          {aboutSection}
+          {agendaSection}
+        </>
+      ) : youRsvped ? (
+        <>
+          {aiSummaryStrip}
+          {matchmakingSection}
+          {attendeesSection}
+          {aboutSection}
+          {agendaSection}
+        </>
+      ) : (
+        <>
+          {aboutSection}
+          {agendaSection}
+          {attendeesSection}
+          {matchmakingSection}
+        </>
+      )}
 
       <div className="orbit-mobile-only orbit-sticky-cta" style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "var(--glass-chip)", backdropFilter: "blur(14px)", borderTop: "1px solid var(--border)", gap: 10, zIndex: ORBIT_Z.sticky }}>
         {primaryAction(event, t, registrationStatus, 1.2)}{enterAction(event, t, youRsvped, workspaceAvailable)}

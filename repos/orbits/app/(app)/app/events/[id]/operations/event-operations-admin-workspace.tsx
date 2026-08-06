@@ -53,6 +53,48 @@ const numberFields = [
   "maxAttemptsPerTask",
 ] as const;
 
+// Engine tuning knobs live behind an "advanced" fold; organizers normally only
+// touch the schedule gates and the two matching-shape numbers.
+const advancedNumberFields = ["shardSize", "maxAttemptsPerTask"] as const;
+const basicNumberFields = ["recommendationCount", "tableSize"] as const;
+
+const fieldLabels: Record<(typeof dateFields)[number] | (typeof numberFields)[number], string> = {
+  checkInOpensAt: "签到开放时间",
+  eventEndsAt: "活动结束（锁定）",
+  eventStartsAt: "活动开始（锁定）",
+  maxAttemptsPerTask: "单任务重试上限",
+  profileEditDeadlineAt: "画像编辑截止",
+  recommendationCount: "每人推荐数",
+  registrationCutoffAt: "报名截止",
+  resultsAvailableAt: "结果开放时间",
+  roundOneStartsAt: "第一轮开始",
+  roundTwoStartsAt: "第二轮开始",
+  shardSize: "AI 分片大小",
+  tableSize: "每桌人数",
+};
+
+const generationStatusLabels: Record<string, string> = {
+  completed: "已完成",
+  failed: "失败",
+  published: "已发布",
+  queued: "排队中",
+  running: "运行中",
+  superseded: "已被取代",
+};
+
+function generationErrorLabel(code: string): string {
+  if (code.includes("SCHEMA_INVALID")) return "AI 输出未通过严格校验";
+  if (code.includes("SHARD_FAILED")) return "分片执行失败";
+  if (code.includes("LEASE_LOST")) return "任务租约过期";
+  if (code.includes("TIMEOUT")) return "AI 请求超时";
+  return "生成失败";
+}
+
+function shortGenerationId(generationId: string): string {
+  const hash = generationId.split(":").pop() ?? generationId;
+  return `生成 #${hash.slice(0, 8)}`;
+}
+
 function localDateTime(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
@@ -93,10 +135,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 function generationActionLabel(generation: EventOperationsGeneration): string {
-  if (generation.status === "failed") return "Retry failed shards";
-  if (generation.status === "completed") return "Publish atomically";
-  if (generation.status === "published") return "Published";
-  return "Worker processing…";
+  if (generation.status === "failed") return "重试失败分片";
+  if (generation.status === "completed") return "原子发布";
+  if (generation.status === "published") return "已发布";
+  return "Worker 处理中…";
 }
 
 function formatTimestamp(value: string): string {
@@ -121,12 +163,12 @@ function PublishedRoundPreview({
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <h3 style={{ fontSize: 16, margin: 0 }}>{title}</h3>
-      {tables.length === 0 ? <div style={{ color: "var(--text-3)" }}>No published tables.</div> : null}
+      {tables.length === 0 ? <div style={{ color: "var(--text-3)" }}>尚无已发布的分桌。</div> : null}
       {tables.map((table) => (
         <article key={table.tableNumber} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14 }}>
           <div style={{ alignItems: "start", display: "flex", gap: 10, justifyContent: "space-between" }}>
-            <div><strong>Table {table.tableNumber} · {table.theme}</strong><div style={{ color: "var(--text-3)", fontSize: 12, lineHeight: 1.5, marginTop: 5 }}>{table.rationale}</div></div>
-            <span className="badge">{table.members.length} seats</span>
+            <div><strong>{table.tableNumber} 号桌 · {table.theme}</strong><div style={{ color: "var(--text-3)", fontSize: 12, lineHeight: 1.5, marginTop: 5 }}>{table.rationale}</div></div>
+            <span className="badge">{table.members.length} 席</span>
           </div>
           <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
             {table.members.map((member) => (
@@ -224,7 +266,7 @@ export function EventOperationsAdminWorkspace({
         body: JSON.stringify(payload),
         method: "PUT",
       });
-      setNotice("Configuration saved from explicit organizer inputs.");
+      setNotice("配置已按主办方的显式输入保存。");
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not save configuration.");
@@ -242,7 +284,7 @@ export function EventOperationsAdminWorkspace({
         body: JSON.stringify({}),
         method: "POST",
       });
-      setNotice(`Captured immutable registration snapshot ${generation.snapshot.hash}; the durable worker has been queued.`);
+      setNotice(`已捕获不可变报名快照 ${generation.snapshot.hash}，持久 worker 已排队执行。`);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start generation.");
@@ -271,10 +313,10 @@ export function EventOperationsAdminWorkspace({
       );
       setNotice(
         action === "publish"
-          ? "The complete generation was published with one atomic pointer update."
+          ? "整份生成结果已通过一次原子指针更新发布。"
           : action === "retry"
-            ? "Only failed shards were reset; completed shard outputs were retained."
-            : "The durable worker will reclaim only retryable failed shards.",
+            ? "仅重置了失败分片；已完成分片的输出全部保留。"
+            : "持久 worker 只会回收可重试的失败分片。",
       );
       await load();
     } catch (cause) {
@@ -297,7 +339,7 @@ export function EventOperationsAdminWorkspace({
         body: JSON.stringify({ participantId }),
         method: "POST",
       });
-      setNotice(`Arrival recorded at ${formatTimestamp(checkIn.checkedInAt)}. Repeating this action preserves the original time.`);
+      setNotice(`已记录到场时间 ${formatTimestamp(checkIn.checkedInAt)}；重复操作会保留最初的签到时间。`);
       await load(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not mark this participant as arrived.");
@@ -353,13 +395,13 @@ export function EventOperationsAdminWorkspace({
       <PublicTopNav active="events" />
       <main style={{ margin: "0 auto", maxWidth: 1180, padding: "28px clamp(16px,4vw,42px) 80px" }}>
         <a href={`/app/events/${encodeURIComponent(event.id)}`} style={{ alignItems: "center", color: "var(--text-2)", display: "inline-flex", gap: 6, textDecoration: "none" }}>
-          <Icon name="chevL" size={16} /> Back to event
+          <Icon name="chevL" size={16} /> 返回活动
         </a>
         <div style={{ alignItems: "end", display: "flex", flexWrap: "wrap", gap: 18, justifyContent: "space-between", marginTop: 18 }}>
           <div>
             <div className="eyebrow">ORGANIZER · EVENT OPERATIONS</div>
             <h1 className="h-display" style={{ margin: "8px 0 0" }}>{event.title}</h1>
-            <p style={{ color: "var(--text-2)", margin: "8px 0 0" }}>Configure time gates, inspect real registrations, run strict AI shards, and publish complete results.</p>
+            <p style={{ color: "var(--text-2)", margin: "8px 0 0" }}>配置时间门禁、查看真实报名、运行严格 AI 分片，并发布完整结果。</p>
           </div>
           {workspace ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -378,7 +420,7 @@ export function EventOperationsAdminWorkspace({
                 </a>
               ) : null}
               <a className="btn btn-ghost" href={`${baseUrl}/export`}>
-                <Icon name="download" size={16} />Export CSV
+                <Icon name="download" size={16} />导出 CSV
               </a>
             </div>
           ) : null}
@@ -386,16 +428,67 @@ export function EventOperationsAdminWorkspace({
 
         {error ? <div className="card" role="alert" style={{ borderColor: "var(--rose)", color: "var(--rose)", marginTop: 18, padding: 14 }}>{error}</div> : null}
         {notice ? <div className="card" role="status" style={{ color: "var(--accent)", marginTop: 18, padding: 14 }}>{notice}</div> : null}
-        {loading ? <div className="card" style={{ marginTop: 18, padding: 18 }}>Loading persisted operations state…</div> : null}
+        {loading ? <div className="card" style={{ marginTop: 18, padding: 18 }}>正在读取运营状态…</div> : null}
+
+        {workspace ? (
+          <>
+            <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", marginTop: 18 }}>
+              {[
+                ["已报名", workspace.metrics.participantCount],
+                ["已签到", workspace.metrics.checkedIn],
+                ["名片申请", workspace.metrics.contactRequests],
+                ["已同意", workspace.metrics.acceptedContactRequests],
+              ].map(([label, value]) => <div className="card" key={label} style={{ padding: 18 }}><div className="h-title">{value}</div><div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>{label}</div></div>)}
+            </section>
+
+            <section className="card" style={{ marginTop: 18, padding: 20 }}>
+              <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+                <div><div className="eyebrow">STRICT AI PIPELINE</div><h2 className="h-title" style={{ margin: "8px 0 0" }}>AI 生成与发布</h2></div>
+                <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
+                  <button className="btn btn-primary" disabled={busy === "start"} onClick={startGeneration} type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />创建生成快照</button>
+                </div>
+              </div>
+              <p style={{ color: "var(--text-3)", fontSize: 13 }}>所有任务完成并由你发布后，参会者才能看到生成结果；无效、缺失或超时的 AI 输出会保持失败状态，不会被替代内容掩盖。</p>
+              <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+                {workspace.generations.length === 0 ? <div>尚未创建任何生成。</div> : null}
+                {workspace.generations.map(({ generation, progress }) => (
+                  <article key={generation.generationId} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+                    <div style={{ alignItems: "start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+                      <div><strong title={generation.generationId}>{shortGenerationId(generation.generationId)}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 11, marginTop: 5 }}>快照 {generation.snapshot.hash.slice(0, 12)}… · {generation.snapshot.participants.length} 位参会者</div></div>
+                      <span className={generation.status === "failed" ? "badge badge-ended" : generation.status === "published" ? "badge badge-live" : "badge"}>{generationStatusLabels[generation.status] ?? generation.status}</span>
+                    </div>
+                    <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 12 }}>{progress.completedTasks}/{progress.totalTasks} 已完成 · {progress.failedTasks} 失败 · {progress.percent}%</div>
+                    {generation.errorMessage ? <div style={{ color: "var(--rose)", fontSize: 12, marginTop: 8 }}>{generationErrorLabel(generation.errorCode ?? "")}<span className="mono" style={{ marginLeft: 6 }}>{generation.errorCode}</span><div style={{ color: "var(--text-3)", marginTop: 3 }}>{generation.errorMessage}</div></div> : null}
+                    <button className="btn btn-ghost btn-sm" disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} style={{ marginTop: 12 }} type="button">{generationActionLabel(generation)}</button>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="card" style={{ marginTop: 18, padding: 20 }}>
+              <div className="eyebrow">PUBLISHED SEATING PREVIEW</div>
+              <h2 className="h-title" style={{ margin: "8px 0 0" }}>两轮分桌预览</h2>
+              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>此预览只读取已原子发布的结果：真实桌号、座位、话题、桌级归因与桌级破冰问题。</p>
+              {workspace.publishedResult ? (
+                <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", marginTop: 16 }}>
+                  <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundOne} title="第一轮 · 互补分桌" />
+                  <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundTwo} title="第二轮 · 话题桌" />
+                </div>
+              ) : (
+                <div style={{ border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-3)", marginTop: 14, padding: 16 }}>尚无已发布的分桌结果；已完成的生成在主办方原子发布前不会出现在这里。</div>
+              )}
+            </section>
+          </>
+        ) : null}
 
         <section className="card" style={{ marginTop: 18, padding: 20 }}>
           <div className="eyebrow">TIME GATES & SHARD POLICY</div>
-          <h2 className="h-title" style={{ margin: "8px 0 0" }}>Operations configuration</h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>Event start/end are locked to the canonical event schedule. Every other rule requires an explicit organizer value.</p>
+          <h2 className="h-title" style={{ margin: "8px 0 0" }}>运营配置</h2>
+          <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>活动开始与结束时间锁定为主活动档期；其余规则均需主办方显式设定。</p>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", marginTop: 18 }}>
             {dateFields.map((field) => (
               <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                <span className="mono">{field}</span>
+                <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
                 <input
                   className="field"
                   onInput={(input) => {
@@ -408,9 +501,9 @@ export function EventOperationsAdminWorkspace({
                 />
               </label>
             ))}
-            {numberFields.map((field) => (
+            {basicNumberFields.map((field) => (
               <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                <span className="mono">{field}</span>
+                <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
                 <input className="field" min={1} onInput={(input) => {
                   const nextValue = input.currentTarget.value;
                   setForm((value) => ({ ...value, [field]: nextValue }));
@@ -418,8 +511,22 @@ export function EventOperationsAdminWorkspace({
               </label>
             ))}
           </div>
+          <details style={{ marginTop: 14 }}>
+            <summary style={{ color: "var(--text-3)", cursor: "pointer", fontSize: 13 }}>高级引擎参数（一般无需调整）</summary>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", marginTop: 12 }}>
+              {advancedNumberFields.map((field) => (
+                <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                  <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
+                  <input className="field" min={1} onInput={(input) => {
+                    const nextValue = input.currentTarget.value;
+                    setForm((value) => ({ ...value, [field]: nextValue }));
+                  }} type="number" value={form[field]} />
+                </label>
+              ))}
+            </div>
+          </details>
           <button className="btn btn-primary" disabled={busy === "configuration"} onClick={saveConfiguration} style={{ marginTop: 18 }} type="button">
-            <Icon color="var(--on-dark)" name="check" size={16} />{busy === "configuration" ? "Saving…" : "Save configuration"}
+            <Icon color="var(--on-dark)" name="check" size={16} />{busy === "configuration" ? "保存中…" : "保存配置"}
           </button>
           {timeline.length > 0 ? (
             <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 18 }}>
@@ -438,81 +545,34 @@ export function EventOperationsAdminWorkspace({
 
         {workspace ? (
           <>
-            <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", marginTop: 18 }}>
-              {[
-                ["Registered", workspace.metrics.participantCount],
-                ["Checked in", workspace.metrics.checkedIn],
-                ["Card requests", workspace.metrics.contactRequests],
-                ["Accepted", workspace.metrics.acceptedContactRequests],
-              ].map(([label, value]) => <div className="card" key={label} style={{ padding: 18 }}><div className="h-title">{value}</div><div className="mono" style={{ color: "var(--text-3)", marginTop: 6 }}>{label}</div></div>)}
-            </section>
-
             <section className="card" style={{ marginTop: 18, padding: 20 }}>
               <div className="eyebrow">VENUE CHECK-IN ENTRY</div>
-              <h2 className="h-title" style={{ margin: "8px 0 0" }}>Display or share the attendee check-in link</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>This is the real registered-attendee route. No QR image is generated without a verified local QR encoder; copy or project this link instead.</p>
+              <h2 className="h-title" style={{ margin: "8px 0 0" }}>展示或分享参会者签到链接</h2>
+              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>这是真实的已报名参会者签到路由。没有经过验证的本地二维码编码器时不会生成二维码图片；请直接复制或投屏此链接。</p>
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
-                <a className="btn btn-ghost" href={checkInHref} rel="noreferrer" target="_blank"><Icon name="arrowUR" size={16} />Open check-in page</a>
-                <button className="btn btn-primary" onClick={copyCheckInLink} type="button"><Icon color="var(--on-dark)" name="copy" size={16} />Copy link</button>
+                <a className="btn btn-ghost" href={checkInHref} rel="noreferrer" target="_blank"><Icon name="arrowUR" size={16} />打开签到页</a>
+                <button className="btn btn-primary" onClick={copyCheckInLink} type="button"><Icon color="var(--on-dark)" name="copy" size={16} />复制链接</button>
                 <code style={{ background: "var(--surface-2)", borderRadius: 8, flex: "1 1 360px", overflowWrap: "anywhere", padding: "10px 12px" }}>{checkInHref}</code>
               </div>
-              <div style={{ color: checkInOpen ? "var(--accent)" : "var(--text-3)", fontSize: 12, marginTop: 10 }}>Check-in window: {checkInOpen ? "open now" : "closed or not yet open"}</div>
-            </section>
-
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                <div><div className="eyebrow">STRICT AI PIPELINE</div><h2 className="h-title" style={{ margin: "8px 0 0" }}>Generations</h2></div>
-                <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                  <button className="btn btn-primary" disabled={busy === "start"} onClick={startGeneration} type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />Capture snapshot</button>
-                </div>
-              </div>
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>A generation is never visible to attendees until every task completes and you publish it. Invalid/missing/timeout AI output stays failed.</p>
-              <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-                {workspace.generations.length === 0 ? <div>No generation has been started.</div> : null}
-                {workspace.generations.map(({ generation, progress }) => (
-                  <article key={generation.generationId} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                    <div style={{ alignItems: "start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                      <div><strong>{generation.generationId}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 11, marginTop: 5 }}>snapshot {generation.snapshot.hash} · {generation.snapshot.participants.length} participants</div></div>
-                      <span className={generation.status === "failed" ? "badge badge-ended" : generation.status === "published" ? "badge badge-live" : "badge"}>{generation.status}</span>
-                    </div>
-                    <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 12 }}>{progress.completedTasks}/{progress.totalTasks} complete · {progress.failedTasks} failed · {progress.percent}%</div>
-                    {generation.errorMessage ? <div style={{ color: "var(--rose)", fontSize: 12, marginTop: 8 }}>{generation.errorCode}: {generation.errorMessage}</div> : null}
-                    <button className="btn btn-ghost btn-sm" disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} style={{ marginTop: 12 }} type="button">{generationActionLabel(generation)}</button>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div className="eyebrow">PUBLISHED SEATING PREVIEW</div>
-              <h2 className="h-title" style={{ margin: "8px 0 0" }}>Round one and round two tables</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>This preview reads only the atomically published result: real table numbers, seats, topics, table rationale, and table-level icebreakers.</p>
-              {workspace.publishedResult ? (
-                <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", marginTop: 16 }}>
-                  <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundOne} title="Round one · assigned tables" />
-                  <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundTwo} title="Round two · topic tables" />
-                </div>
-              ) : (
-                <div style={{ border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-3)", marginTop: 14, padding: 16 }}>No published seating result yet. Completed generations remain invisible here until the organizer publishes atomically.</div>
-              )}
+              <div style={{ color: checkInOpen ? "var(--accent)" : "var(--text-3)", fontSize: 12, marginTop: 10 }}>签到窗口：{checkInOpen ? "当前开放" : "已关闭或尚未开放"}</div>
             </section>
 
             <section className="card" style={{ marginTop: 18, overflowX: "auto", padding: 20 }}>
               <div className="eyebrow">REAL REGISTRATION DIRECTORY</div>
-              <h2 className="h-title" style={{ margin: "8px 0 4px" }}>Participants and arrival state</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{workspace.participants.length - workspace.checkIns.length} not arrived · mark each person individually through the organizer-only API.</p>
+              <h2 className="h-title" style={{ margin: "8px 0 4px" }}>参会者与到场状态</h2>
+              <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{workspace.participants.length - workspace.checkIns.length} 人未到场 · 通过主办方专用接口逐一标记到场。</p>
               <table style={{ borderCollapse: "collapse", minWidth: 820, width: "100%" }}>
-                <thead><tr>{["Participant", "Company / role", "Industry", "Profile", "Late", "Check-in"].map((label) => <th key={label} style={{ borderBottom: "1px solid var(--border)", padding: 10, textAlign: "left" }}>{label}</th>)}</tr></thead>
+                <thead><tr>{["参会者", "公司 / 角色", "行业", "画像", "迟到报名", "签到"].map((label) => <th key={label} style={{ borderBottom: "1px solid var(--border)", padding: 10, textAlign: "left" }}>{label}</th>)}</tr></thead>
                 <tbody>{workspace.participants.map((participant) => {
                   const checkIn = checkInsByParticipant.get(participant.participantId);
-                  return <tr key={participant.participantId}><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}><strong>{participant.displayName}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>{participant.participantId}</div></td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{[participant.role, participant.company].filter(Boolean).join(" · ") || "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.industry ?? "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.profileCompleteness}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.lateRegistration ? "yes" : "no"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{checkIn ? <div><span className="badge badge-live">checked in</span><div style={{ color: "var(--text-3)", fontSize: 10, marginTop: 4 }}>{formatTimestamp(checkIn.checkedInAt)}</div></div> : <button className="btn btn-ghost btn-sm" disabled={!checkInOpen || busy !== null} onClick={() => markParticipantArrived(participant.participantId)} type="button">{busy === `checkin:${participant.participantId}` ? "Recording…" : checkInOpen ? "Mark arrived" : "Check-in closed"}</button>}</td></tr>;
+                  return <tr key={participant.participantId}><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}><strong>{participant.displayName}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>{participant.participantId}</div></td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{[participant.role, participant.company].filter(Boolean).join(" · ") || "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.industry ?? "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.profileCompleteness}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.lateRegistration ? "是" : "否"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{checkIn ? <div><span className="badge badge-live">已签到</span><div style={{ color: "var(--text-3)", fontSize: 10, marginTop: 4 }}>{formatTimestamp(checkIn.checkedInAt)}</div></div> : <button className="btn btn-ghost btn-sm" disabled={!checkInOpen || busy !== null} onClick={() => markParticipantArrived(participant.participantId)} type="button">{busy === `checkin:${participant.participantId}` ? "记录中…" : checkInOpen ? "标记到场" : "签到未开放"}</button>}</td></tr>;
                 })}</tbody>
               </table>
             </section>
 
             <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div className="eyebrow">CONSENT AUDIT</div><h2 className="h-title" style={{ margin: "8px 0 14px" }}>Business-card requests</h2>
-              {workspace.contactRequests.length === 0 ? <div>No contact request has been made.</div> : workspace.contactRequests.map((request) => <div key={request.requestId} style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 5, padding: "12px 0" }}><strong>{request.requesterParticipantId} → {request.targetParticipantId}</strong><span>{request.status}</span></div>)}
+              <div className="eyebrow">CONSENT AUDIT</div><h2 className="h-title" style={{ margin: "8px 0 14px" }}>名片交换审计</h2>
+              {workspace.contactRequests.length === 0 ? <div>尚无名片交换申请。</div> : workspace.contactRequests.map((request) => <div key={request.requestId} style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 5, padding: "12px 0" }}><strong>{request.requesterParticipantId} → {request.targetParticipantId}</strong><span>{request.status}</span></div>)}
             </section>
           </>
         ) : null}
