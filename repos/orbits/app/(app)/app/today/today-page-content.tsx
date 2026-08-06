@@ -237,7 +237,7 @@ export default async function AppTodayPageContent({
               <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
                 {merged.today.state === "failure"
                   ? "决策账本暂时不可用，日程和可复核安排仍可使用。"
-                  : "其余的 Orbit 已经准备好了 —— 确认后执行；支持补偿的操作可撤销。"}
+                  : "其余的 Orbit 都盯着——需要你确认的会先问你，做过的操作大多可以撤销。"}
               </p>
             </div>
             <OrbitTodayHeaderActions connections={headerConnections} />

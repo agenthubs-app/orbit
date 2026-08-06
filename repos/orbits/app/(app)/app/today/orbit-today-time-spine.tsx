@@ -132,7 +132,7 @@ export function SchedRow({
               <span className="text-caption">
                 {t({
                   en: "No contact is linked to this item.",
-                  zh: "此事项未关联联系人，无法查看名片或起草邮件。",
+                  zh: "这条安排还没关联联系人；在活动里交换名片后，这里就能直接查看名片、起草邮件。",
                 })}
               </span>
             )}

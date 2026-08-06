@@ -249,7 +249,7 @@ test("a degraded arrangements card shows the guardrail and a recovery link", asy
   assert.ok(cardMatch, "expected the arrangements error card to render");
   const card = cardMatch![0];
 
-  assert.match(card, /不可用期间，Orbit 只显示恢复入口，不会写入日历、提醒、消息或外部系统。/);
+  assert.match(card, /服务恢复前，Orbit 不会自动改动你的日历，也不会替你发出任何消息。/);
   assert.match(card, /href="\/app\/today#arrangements"/);
 });
 
@@ -301,7 +301,7 @@ test("/app/today renders the merged workspace shell", async () => {
   assert.match(html, /添加来源/);
 
   // 可复核安排卡的护栏文案（不依赖决策卡是否展开——见 arrangement targetNote）
-  assert.match(html, /不会写入日历/);
+  assert.match(html, /不会自动改动你的日历/);
 
   // mobile single-column breakpoint stays intact (existing structural gate)
   assert.match(html, /data-orbit-real-page="today"/);
@@ -484,7 +484,7 @@ test("timeline items without a canonical contact render no contact or compose ac
     }),
   );
 
-  assert.match(html, /此事项未关联联系人，无法查看名片或起草邮件/);
+  assert.match(html, /这条安排还没关联联系人/);
   assert.doesNotMatch(html, /href="\/app\/contacts\//);
   assert.doesNotMatch(html, /data-inbox-compose/);
 });
@@ -529,7 +529,7 @@ test("?entry= expands exactly that card, with exactly one 确认执行 in it and
   assert.equal((html.match(/建议基于什么信息/g) ?? []).length, 1);
   assert.equal((html.match(/确认后将会/g) ?? []).length, 1);
   assert.equal(
-    (html.match(/只保存为草稿，不会自动发送。支持补偿的写操作可在 All actions 中撤销。/g) ?? [])
+    (html.match(/只保存为草稿，不会自动发送；已执行的操作可在「操作记录」里撤销。/g) ?? [])
       .length,
     1,
   );

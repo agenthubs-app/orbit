@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 
@@ -38,7 +40,7 @@ const WALLET_ITEMS: Item[] = [
   { key: "graph", icon: "share", href: "/app/contacts/graph", label: { en: "Network graph", zh: "人脉图谱" } },
   { key: "intros", icon: "users", href: "/app/contacts/intros", label: { en: "Introductions", zh: "引荐记录" } },
   { key: "dashboard", icon: "grid", href: "/app/contacts/dashboard", label: { en: "Dashboard", zh: "人脉表盘" } },
-  { key: "allActions", icon: "list", href: "/app/contacts/all-actions", label: { en: "All actions", zh: "操作账本" } },
+  { key: "allActions", icon: "list", href: "/app/contacts/all-actions", label: { en: "All actions", zh: "操作记录" } },
 ];
 
 const CAPTURE_ITEMS: Item[] = [
@@ -104,10 +106,29 @@ export function CrmSidebar({
   counts?: CrmSidebarCounts;
 }) {
   const { t } = useOrbitLanguage();
+  // 还没有任何联系人时，管线/图谱/表盘这些高级视图都是空的，八个入口只会
+  // 加重上手负担——默认只留「全部人脉」，其余折叠到「更多功能」。当前页
+  // 恰好是高级视图时保持可见，避免导航高亮凭空消失。
+  const [expanded, setExpanded] = useState(false);
+  const collapse = counts.list === 0 && !expanded;
+  const walletItems = collapse
+    ? WALLET_ITEMS.filter((item) => item.key === "list" || item.key === active)
+    : WALLET_ITEMS;
   return (
     <aside style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", overflowY: "auto", padding: "22px 14px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <NavGroup active={active} counts={counts} items={WALLET_ITEMS} label={{ en: "Wallet", zh: "名片夹" }} t={t} />
+        <NavGroup active={active} counts={counts} items={walletItems} label={{ en: "Wallet", zh: "名片夹" }} t={t} />
+        {collapse ? (
+          <button
+            data-crm-sidebar-more
+            onClick={() => setExpanded(true)}
+            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 11, color: "var(--text-3)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13, gap: 12, padding: "10px 12px", textAlign: "left" }}
+            type="button"
+          >
+            <Icon name="chevR" size={17} />
+            <span style={{ flex: 1 }}>{t({ en: "More views", zh: "更多功能" })}</span>
+          </button>
+        ) : null}
         <div style={{ height: 18 }} />
         <NavGroup active={active} counts={counts} items={CAPTURE_ITEMS} label={{ en: "Capture", zh: "采集" }} t={t} />
       </div>

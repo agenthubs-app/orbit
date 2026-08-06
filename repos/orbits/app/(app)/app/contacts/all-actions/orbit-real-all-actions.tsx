@@ -228,7 +228,7 @@ export function OrbitRealAllActions({
   if (viewModel.state === "failure") {
     return (
       <div data-orbit-route="app-all-actions-route-state">
-        <div className="eyebrow">操作账本</div>
+        <div className="eyebrow">操作记录</div>
         <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14 }}>{viewModel.failureMessage}</p>
       </div>
@@ -239,7 +239,7 @@ export function OrbitRealAllActions({
     return (
       <div data-orbit-route="app-all-actions-route-empty">
         <div className="eyebrow">人脉</div>
-        <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作账本</h1>
+        <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作记录</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           账本还没有任何操作记录。Orbit 执行的每一次写操作都会出现在这里。
         </p>
@@ -250,7 +250,7 @@ export function OrbitRealAllActions({
   return (
     <div data-orbit-all-actions>
       <div className="eyebrow">人脉</div>
-      <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作账本</h1>
+      <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作记录</h1>
       <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 20px" }}>
         每一次写操作都记录在这里，可追溯、可撤销。
       </p>

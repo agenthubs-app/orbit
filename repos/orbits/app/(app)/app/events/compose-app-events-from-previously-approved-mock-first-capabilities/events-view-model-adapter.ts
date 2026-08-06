@@ -78,7 +78,7 @@ export function eventChoiceToLandingEvent(
     descriptionZh: description,
     detailLogoUrl: sceneAsset?.src ?? "",
     endsAt: event.endsAt,
-    feeLabel: "Source-backed",
+    feeLabel: "费用以主办方说明为准",
     host: "",
     id: event.id,
     industry: "Relationship",

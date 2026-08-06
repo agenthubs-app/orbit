@@ -176,7 +176,7 @@ function eventView(
     descriptionZh: description,
     detailLogoUrl: logoUrl,
     endsAt: event.endsAt ?? event.startsAt,
-    feeLabel: "Source-backed",
+    feeLabel: "费用以主办方说明为准",
     host: organizer,
     id: event.id,
     industry: eventIndustryFor(event),

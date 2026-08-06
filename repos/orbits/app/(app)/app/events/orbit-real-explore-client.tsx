@@ -82,8 +82,53 @@ function formatEventDate(event: OrbitLandingEventView, language: "en" | "zh") {
   };
 }
 
+// 话题标签中文词典：数据层保留英文/slug 原值（筛选与搜索用），仅展示层翻译；
+// 未收录的词原样显示，避免翻译缺失时丢信息。
+const TOPIC_LABELS_ZH: Record<string, string> = {
+  "AI": "AI",
+  "AI / automation": "AI / 自动化",
+  "Brand": "品牌",
+  "Community": "社群",
+  "Consumer": "消费",
+  "Cross-border": "跨境",
+  "Cross-border commerce": "跨境商务",
+  "D2C": "D2C",
+  "Design": "设计",
+  "Ecommerce": "电商",
+  "F&B": "餐饮",
+  "Fashion": "时尚",
+  "Finance": "金融",
+  "Finance / investment": "金融投资",
+  "FinTech": "金融科技",
+  "Hardware": "硬件",
+  "Hospitality": "餐饮酒店",
+  "Inbound": "入境消费",
+  "Investors": "投资人",
+  "Kansai": "关西",
+  "Manufacturing": "制造",
+  "Partners": "合作伙伴",
+  "PoC": "PoC",
+  "Relationship building": "人脉拓展",
+  "Retail / consumer": "零售消费",
+  "Salon": "沙龙",
+  "Seed": "种子轮",
+  "Semiconductor": "半导体",
+  "Sponsorship": "赞助合作",
+  "Startup": "创业",
+  "Venture": "创投",
+};
+// 内部来源名不是用户话题，不进标签与筛选。
+const INTERNAL_TOPIC = /^(event[ _]import|manual[ _]event.*|organizer[ _]feed|calendar[ _]sync.*)$/iu;
+
+function topicLabel(topic: string, language: "en" | "ja" | "zh") {
+  return language === "en" ? topic : TOPIC_LABELS_ZH[topic] ?? topic;
+}
+
 function eventTopics(event: OrbitLandingEventView) {
-  return [...new Set([event.industry, ...event.tags].map((item) => item.trim()).filter(Boolean))];
+  return [...new Set([event.industry, ...event.tags].map((item) => item.trim()).filter(Boolean))]
+    .filter((item) => !INTERNAL_TOPIC.test(item))
+    // 地点已在卡片 meta 行展示，不再作为话题重复出现。
+    .filter((item) => item !== event.address && item !== event.place);
 }
 
 function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEvent {
@@ -103,7 +148,8 @@ function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEv
     pos: { x: event.mapX, y: event.mapY },
     status: event.status,
     registered: Boolean(event.stats.youRsvped),
-    sub: [event.theme, event.host, event.code].filter(Boolean).join(" · "),
+    // 行业（词典化）+ 编号；主办方代号与封面主题 slug 不进用户可见的副标题。
+    sub: [topicLabel(event.industry, language), event.code].filter(Boolean).join(" · "),
     time: date.time,
   };
 }
@@ -167,7 +213,10 @@ function EventModuleCard({
   const action = eventCardAction(event, t);
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
   const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
-  const topics = eventTopics(event).slice(0, 3);
+  // 行业已作为卡片眉行展示，标签行不再重复同一个词。
+  const topics = eventTopics(event)
+    .filter((item) => item !== event.industry)
+    .slice(0, 3);
   return (
     <div className="orbit-card-link">
       <article
@@ -202,20 +251,22 @@ function EventModuleCard({
         </EventCover>
         <div className="orbit-event-module-body">
           <div className="orbit-event-module-copy">
-            <span>{[event.theme, event.host].filter(Boolean).join(" · ")}</span>
+            <span>{topicLabel(event.industry, language)}</span>
             <h2>{mapped.name}</h2>
           </div>
           {topics.length > 0 ? (
             <div className="orbit-event-module-topic-row">
               {topics.map((topicItem) => (
-                <span key={topicItem}>{topicItem}</span>
+                <span key={topicItem}>{topicLabel(topicItem, language)}</span>
               ))}
             </div>
           ) : null}
           <div className="orbit-event-module-meta">
             <span><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</span>
             <span><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</span>
-            <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
+            {mapped.people >= 5 ? (
+              <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
+            ) : null}
           </div>
           <div className="orbit-event-module-foot">
             <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
@@ -293,8 +344,12 @@ function MapEventCard({
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`} · ${item.time}` : item.time}</div>
         <div style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 12, gap: 8, marginTop: 6 }}>
           <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{item.place}</span>
-          <span style={{ background: "var(--border-strong)", borderRadius: "var(--r-pill)", height: 3, width: 3 }} />
-          <span>{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
+          {item.people >= 5 ? (
+            <>
+              <span style={{ background: "var(--border-strong)", borderRadius: "var(--r-pill)", height: 3, width: 3 }} />
+              <span>{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
+            </>
+          ) : null}
         </div>
       </div>
       <a className="btn btn-primary btn-sm" href={preserveHref(action.href)} style={{ flexShrink: 0, justifyContent: "center", textDecoration: "none", width: compact ? "100%" : undefined }}>{action.badgeLabel ? `${action.badgeLabel} · ` : ""}{action.label}<Icon color="var(--on-dark)" name="chevR" size={15} /></a>
@@ -521,7 +576,7 @@ export function OrbitRealExploreClient({
           </div>
           <div className="orbit-filters">
             <div style={{ display: "flex", gap: 8 }}>{statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}</div>
-            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{item}</button>)}</div></> : null}
+            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
           {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
@@ -574,7 +629,7 @@ export function OrbitRealExploreClient({
           <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "14px 18px 4px" }}>
             {statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0 }} type="button">{statusLabels[key]}</button>)}
             {topicFilters.length ? <span style={{ background: "var(--border-2)", flexShrink: 0, margin: "4px 2px", width: 1 }} /> : null}
-            {topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0 }} type="button">{item}</button>)}
+            {topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0 }} type="button">{topicLabel(item, language)}</button>)}
           </div>
         </div>
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 36px" }}>

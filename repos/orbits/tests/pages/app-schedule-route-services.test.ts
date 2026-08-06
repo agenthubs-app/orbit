@@ -126,13 +126,13 @@ test("schedule route model maps arrangements through contact, event, and follow-
   assert.match(contactArrangement.sourceContext, /来源/);
   assert.match(eventArrangement.primaryName, /Climate founders dinner/);
   assert.match(eventArrangement.secondaryName, /地点：Kanda Founders Table/);
-  assert.match(eventArrangement.reason, /活动原因/);
+  assert.match(eventArrangement.reason, /出发前可以先看看这场有谁值得认识/);
   assert.match(eventArrangement.timing, /2026年6月28日/);
   assert.match(eventArrangement.sourceContext, /来源/);
   assert.equal(eventArrangement.targetState, "ready");
   assert.match(eventArrangement.targetNote ?? "", /Climate founders dinner/);
   assert.match(eventArrangement.targetNote ?? "", /活动详情/);
-  assert.match(eventArrangement.targetNote ?? "", /不会写入日历/);
+  assert.match(eventArrangement.targetNote ?? "", /不会自动改动你的日历/);
 
   const visibleText = model.arrangements.map(visibleArrangementText).join(" ");
   assert.doesNotMatch(visibleText, /Review follow-up for contact_021/);
@@ -217,7 +217,7 @@ test("schedule event preview route preserves unavailable event context", async (
   assert.match(model.event.timing, /2026年7月9日/);
   assert.match(model.event.sourceContext, /来源/);
   assert.match(model.event.nextAction, /下一步/);
-  assert.match(model.guardrail, /不会写入日历/);
+  assert.match(model.guardrail, /不会自动改动你的日历/);
   const visibleText = [
     model.event.title,
     model.event.venue,

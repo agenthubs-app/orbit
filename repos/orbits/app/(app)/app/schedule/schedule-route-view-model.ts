@@ -183,7 +183,7 @@ function routeStateCopy(scenario: AppScheduleRouteScenario) {
     description: "日程来源暂时不可用，联系人、活动或跟进边界返回了受控失败。",
     eyebrow: "日程安排",
     guardrail:
-      "不可用期间，Orbit 只显示恢复入口，不会写入日历、提醒、消息或外部系统。",
+      "服务恢复前，Orbit 不会自动改动你的日历，也不会替你发出任何消息。",
     nextStep: "重新加载日程，或先检查来源状态。",
     title: "日程安排无法加载",
   };
@@ -395,7 +395,7 @@ function contactReasonForSchedule(input: {
 }
 
 function eventReasonForSchedule(event: EventRecord): string {
-  return `活动原因：${scheduleEventTitle(event)} 已由${scheduleEventSourceLabel(event)}标记为${statusLabelForEvent(event.status)}，适合在登记、预留时间或联系参会人前复核关系机会。`;
+  return `${scheduleEventTitle(event)} ${statusLabelForEvent(event.status)}（来源：${scheduleEventSourceLabel(event)}）。出发前可以先看看这场有谁值得认识。`;
 }
 
 function buildContactArrangement(input: {
@@ -425,7 +425,7 @@ function buildContactArrangement(input: {
       kind: "contact",
     },
     targetNote:
-      "打开联系人详情只读取当前关系记录；不会写入日历、提醒、消息或外部系统。",
+      "打开联系人详情只是查看，不会自动改动你的日历，也不会替你发出任何消息。",
     targetState: "ready",
     timing: `跟进时机：${followupLabel}`,
   };
@@ -451,7 +451,7 @@ function buildEventArrangement(input: {
       id: input.event.id,
       kind: "event",
     },
-    targetNote: `打开 ${title} 的活动详情只读取当前记录，不会写入日历、提醒、消息或外部系统。`,
+    targetNote: `打开 ${title} 的活动详情只是查看，不会自动改动你的日历，也不会替你发出任何消息。`,
     targetState: "ready",
     timing: `活动时间：${formatScheduleEventWindow(input.event)}`,
   };

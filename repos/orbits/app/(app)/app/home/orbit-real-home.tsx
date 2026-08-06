@@ -535,10 +535,22 @@ const AGENT_DOCK_SUGGESTIONS: Record<string, readonly { en: string; zh: string }
     { en: "Who is worth following up this week?", zh: "本周谁值得我优先跟进？" },
     { en: "Draft a follow-up note for my newest contact", zh: "帮我给最新的联系人起草一段跟进话术" },
   ],
-  events: [
+  contactsEmpty: [
+    { en: "How do I meet the right people fast?", zh: "怎么快速认识第一批对的人？" },
+    { en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
+  ],
+  eventsLive: [
     { en: "Who should I prioritize meeting tonight?", zh: "今晚我该优先见谁？" },
     { en: "Why am I seated at my table?", zh: "我为什么被分到这一桌？" },
     { en: "Prepare my opener for the top match", zh: "帮我准备和头号推荐对象的开场" },
+  ],
+  eventsNone: [
+    { en: "Find an event worth attending", zh: "帮我找一场值得去的活动" },
+    { en: "What kind of events suit my goals?", zh: "什么样的活动适合我的目标？" },
+  ],
+  eventsUpcoming: [
+    { en: "What should I prepare before my next event?", zh: "下一场活动我该提前准备什么？" },
+    { en: "Who is worth meeting at my next event?", zh: "下一场活动有谁值得认识？" },
   ],
   schedule: [
     { en: "Summarize my upcoming appointments", zh: "帮我梳理接下来的约谈安排" },
@@ -546,7 +558,27 @@ const AGENT_DOCK_SUGGESTIONS: Record<string, readonly { en: string; zh: string }
   ],
 };
 
-function AgentDock({ t }: { t: Translate }) {
+interface AgentDockState {
+  hasContacts: boolean;
+  hasLiveEvent: boolean;
+  hasUpcomingEvent: boolean;
+}
+
+// 建议问题必须与用户真实状态相符：没有进行中的活动就不出"我为什么被分到
+// 这一桌"这类必然扑空的问题，首次点击 AI 就要能得到有意义的回答。
+function agentDockSuggestions(context: string, state: AgentDockState) {
+  if (context === "contacts") {
+    return state.hasContacts
+      ? AGENT_DOCK_SUGGESTIONS.contacts
+      : AGENT_DOCK_SUGGESTIONS.contactsEmpty;
+  }
+  if (context === "schedule") return AGENT_DOCK_SUGGESTIONS.schedule;
+  if (state.hasLiveEvent) return AGENT_DOCK_SUGGESTIONS.eventsLive;
+  if (state.hasUpcomingEvent) return AGENT_DOCK_SUGGESTIONS.eventsUpcoming;
+  return AGENT_DOCK_SUGGESTIONS.eventsNone;
+}
+
+function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
   const [context, setContext] = useState("events");
   const [rotation, setRotation] = useState(0);
   const [draft, setDraft] = useState("");
@@ -567,7 +599,7 @@ function AgentDock({ t }: { t: Translate }) {
     const timer = window.setInterval(() => setRotation((value) => value + 1), 5_000);
     return () => window.clearInterval(timer);
   }, []);
-  const suggestions = AGENT_DOCK_SUGGESTIONS[context] ?? AGENT_DOCK_SUGGESTIONS.events;
+  const suggestions = agentDockSuggestions(context, state);
   const hint = t(suggestions[rotation % suggestions.length]);
   const ask = () => {
     orbitNavigate(`/agent?q=${encodeURIComponent(draft.trim() || hint)}`);
@@ -612,9 +644,13 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
           </div>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", gap: 30, marginTop: 22, padding: "16px 22px" }}>
-          {([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "In progress", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-            <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
-          ))}
+          {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
+            <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+          ) : (
+            ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Contacts", zh: "名片夹" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+              <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
+            ))
+          )}
         </div>
         {liveConsoleEvent(viewModel.events) ? (
           <div style={{ marginTop: 22 }}>
@@ -648,7 +684,7 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
         </details>
         <div style={{ height: 84 }} />
       </div>
-      <AgentDock t={t} />
+      <AgentDock state={{ hasContacts: viewModel.stats.people > 0, hasLiveEvent: liveConsoleEvent(viewModel.events) !== null, hasUpcomingEvent: viewModel.events.some((event) => event.status === "upcoming") }} t={t} />
     </div>
   );
 }
@@ -669,9 +705,13 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
           <button aria-label={t({ en: "Sign out", zh: "退出" })} className="hit-44" onClick={() => { void signOut({ callbackUrl: "/app" }); }} style={{ alignItems: "center", background: "var(--surface-2)", border: "none", borderRadius: "var(--r-pill)", color: "var(--text-2)", cursor: "pointer", display: "flex", flexShrink: 0, height: 38, justifyContent: "center", width: 38 }} type="button"><Icon name="logout" size={18} /></button>
         </div>
         <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 16, display: "flex", justifyContent: "space-between", marginTop: 16, padding: "14px 16px" }}>
-          {([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Active", zh: "在推进" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
-            <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
-          ))}
+          {viewModel.stats.events + viewModel.stats.people + viewModel.stats.inProgress === 0 ? (
+            <span style={{ color: "var(--text-2)", fontSize: 13 }}>{t({ en: "Register for an event and your contacts and follow-ups will build up here.", zh: "报名一场活动后，这里会开始积累你的名片夹和跟进中的关系。" })}</span>
+          ) : (
+            ([[t({ en: "Events", zh: "活动" }), viewModel.stats.events], [t({ en: "Cards", zh: "名片" }), viewModel.stats.people], [t({ en: "Following up", zh: "跟进中" }), viewModel.stats.inProgress]] as const).map(([label, value]) => (
+              <div key={label} style={{ textAlign: "center" }}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 12 }}>{label}</div></div>
+            ))
+          )}
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
           {hubEntryCards(t).map((item) => (
@@ -703,7 +743,7 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
         </details>
         <div style={{ height: 92 }} />
       </div>
-      <AgentDock t={t} />
+      <AgentDock state={{ hasContacts: viewModel.stats.people > 0, hasLiveEvent: liveConsoleEvent(viewModel.events) !== null, hasUpcomingEvent: viewModel.events.some((event) => event.status === "upcoming") }} t={t} />
     </div>
   );
 }

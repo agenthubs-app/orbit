@@ -95,7 +95,7 @@ export function eventDetailRouteToOrbitLandingEventView(
     descriptionZh: event.description || summary,
     detailLogoUrl: sceneAsset?.src ?? "",
     endsAt: model.canonicalEvent.endsAt,
-    feeLabel: "Source-backed",
+    feeLabel: "费用以主办方说明为准",
     host: event.sourceMetadata.label,
     id: event.id,
     industry: "relationship",

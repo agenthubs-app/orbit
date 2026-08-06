@@ -241,6 +241,21 @@ function OrganizerRailCard({ event, mobile = false, t }: { event: OrbitLandingEv
 
 const ATTENDEE_PREVIEW_COUNT = 12;
 
+// 报名统计不足以展示行业分布时，速答卡退回主办方写的"适合人群"前两条，
+// 让报名前的"这场都是什么人"永远有的可看。
+function audienceHintFor(event: OrbitLandingEventView): string | null {
+  const section = event.about?.find(
+    (item) => item.label.includes("适合人群") || /who|audience/iu.test(item.label),
+  );
+  if (!section) return null;
+  const bullets = section.body
+    .split("\n")
+    .map((line) => line.replace(/^[•\-–\s]+/u, "").trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  return bullets.length ? bullets.join("；") : null;
+}
+
 function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: OrbitLandingEventView; language: OrbitLanguage; t: Translate; workspaceAvailable: boolean }) {
   const [showAllAttendees, setShowAllAttendees] = useState(false);
   const [registrationStatus, setRegistrationStatus] =
@@ -300,7 +315,7 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
   const registrationSection = (
     <section className="card orbit-desktop-only" style={{ padding: 18, display: "block" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)", whiteSpace: "nowrap" }}>{event.feeLabel}</h3></div>
+        <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)" }}>{event.feeLabel}</h3></div>
         <StatusBadge language={language} status={event.status} />
       </div>
       <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
@@ -379,7 +394,7 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
           {!canSeeAttendees ? (
             <div className="card-flat" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
               <div style={{ fontSize: 14, color: "var(--text-2)" }}>{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div>
-              {event.stats.count && event.status !== "ended" ? <a className="btn btn-dark btn-sm" href={`/app/events/${encodeURIComponent(event.id)}/register`} style={{ textDecoration: "none" }}><Icon name="lock" size={15} />{t({ en: "Register", zh: "报名参加" })}</a> : null}
+              {event.stats.count && event.status !== "ended" ? <a href={`/app/events/${encodeURIComponent(event.id)}/register`} style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{t({ en: "Register", zh: "去报名" })} →</a> : null}
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
@@ -449,7 +464,12 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
         </>
       ) : (
         <>
-          {!ended ? <OrbitEventQuickSignup eventId={event.id} /> : null}
+          {!ended ? (
+            <OrbitEventQuickSignup
+              audienceHint={audienceHintFor(event)}
+              eventId={event.id}
+            />
+          ) : null}
           {aboutSection}
           {agendaSection}
           {attendeesSection}

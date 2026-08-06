@@ -44,7 +44,13 @@ export function readQuickSignupAnswers(
 // answers live only in localStorage until the registration wizard carries them
 // into the interview transcript after login — nothing is persisted server-side
 // from this card.
-export function OrbitEventQuickSignup({ eventId }: { eventId: string }) {
+export function OrbitEventQuickSignup({
+  audienceHint = null,
+  eventId,
+}: {
+  audienceHint?: string | null;
+  eventId: string;
+}) {
   const { t } = useOrbitLanguage();
   const [targetAttendees, setTargetAttendees] = useState("");
   const [valueOffered, setValueOffered] = useState("");
@@ -107,21 +113,33 @@ export function OrbitEventQuickSignup({ eventId }: { eventId: string }) {
     width: "100%",
   } as const;
 
-  const previewStats = preview && preview.total > 0 ? (
-    <div data-quick-signup-preview style={{ display: "grid", gap: 8 }}>
-      <span style={{ color: "var(--text-3)", fontSize: 13 }}>
-        {t({ en: `${preview.total} people have registered`, zh: `已有 ${preview.total} 人报名` })}
-        {preview.buckets.length === 0 ? t({ en: "; industry breakdown appears once enough people join.", zh: "，行业分布在报名人数足够后展示。" }) : null}
-      </span>
-      {preview.buckets.length ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {preview.buckets.map((bucket) => (
-            <span className="chip" key={bucket.label}>{bucket.label} × {bucket.count}+</span>
-          ))}
+  const showAudienceHint = Boolean(
+    audienceHint && (!preview || preview.buckets.length === 0),
+  );
+  const previewStats = (
+    <>
+      {preview && preview.total >= 5 ? (
+        <div data-quick-signup-preview style={{ display: "grid", gap: 8 }}>
+          <span style={{ color: "var(--text-3)", fontSize: 13 }}>
+            {t({ en: `${preview.total} people have registered`, zh: `已有 ${preview.total} 人报名` })}
+          </span>
+          {preview.buckets.length ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {preview.buckets.map((bucket) => (
+                <span className="chip" key={bucket.label}>{bucket.label} × {bucket.count}+</span>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
-    </div>
-  ) : null;
+      {showAudienceHint ? (
+        <div data-quick-signup-audience style={{ color: "var(--text-3)", fontSize: 13 }}>
+          <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{t({ en: "Who this is for: ", zh: "这场适合：" })}</span>
+          {audienceHint}
+        </div>
+      ) : null}
+    </>
+  );
 
   // 准入审核活动的报名申请只接受签名问答，速答不会带入——因此不收集
   // 任何回答，只保留聚合预览和入口，避免许下不会兑现的承诺。

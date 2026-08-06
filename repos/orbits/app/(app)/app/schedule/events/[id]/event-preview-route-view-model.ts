@@ -95,7 +95,7 @@ function failureViewModel(
     errorCode: result.success === false ? result.error.code : null,
     evidenceIds: result.success === false ? result.error.evidenceIds : [],
     guardrail:
-      "来源不可用时，Orbit 不会写入日历、提醒、消息或外部系统。",
+      "来源不可用时，Orbit 不会自动改动你的日历，也不会替你发出任何消息。",
     recoveryActions: [
       { href: "/app/schedule", label: "返回日程" },
       { href: "/app/events", label: "查看活动列表" },
@@ -130,7 +130,7 @@ export async function loadAppScheduleEventPreviewRouteViewModel(input: {
       "活动详情工作区还在接入中；这里先保留这条安排需要的活动名称、时间、来源和下一步。",
     event,
     guardrail:
-      "这是本地预览，不会写入日历、登记活动、发送提醒、发送消息或调用外部服务。",
+      "这是本地预览：不会自动改动你的日历，也不会替你报名或发出任何消息。",
     recoveryActions: [
       { href: "/app/schedule", label: "返回日程" },
       { href: "/app/events", label: "查看活动列表" },

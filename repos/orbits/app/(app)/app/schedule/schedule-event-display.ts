@@ -4,7 +4,7 @@ export function scheduleEventSourceLabel(event: EventRecord): string {
   const labels: Partial<Record<EventRecord["sourceMetadata"]["type"], string>> = {
     calendar_signal: "日历信号",
     event_import: "活动导入",
-    manual: "手动活动创建",
+    manual: "你手动添加",
   };
 
   return labels[event.sourceMetadata.type] ?? "活动来源";
