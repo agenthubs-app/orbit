@@ -156,7 +156,7 @@ function primaryAction(
 
   return (
     <ActionButton className="btn btn-primary" href={registrationHref} style={{ background: event.brandColor || undefined, flex }}>
-      {t({ en: "Register", zh: "报名参加" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
+      {t({ en: "Answer 2 questions & register", zh: "回答 2 题并报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
     </ActionButton>
   );
 }
@@ -352,7 +352,7 @@ function audienceHintFor(event: OrbitLandingEventView): string | null {
 
 type JourneyMiniInfo = { day: string; month: string; name: string; timeDate: string; timeTime: string; venue: string };
 
-function EventDetailPanel({ event, heading, language, mini, t, workspaceAvailable }: { event: OrbitLandingEventView; heading: ReactNode; language: OrbitLanguage; mini: JourneyMiniInfo; t: Translate; workspaceAvailable: boolean }) {
+function EventDetailPanel({ askAgentHref, event, language, mini, t, workspaceAvailable }: { askAgentHref: string; event: OrbitLandingEventView; language: OrbitLanguage; mini: JourneyMiniInfo; t: Translate; workspaceAvailable: boolean }) {
   const [showAllAttendees, setShowAllAttendees] = useState(false);
   const [registrationStatus, setRegistrationStatus] =
     useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
@@ -410,6 +410,7 @@ function EventDetailPanel({ event, heading, language, mini, t, workspaceAvailabl
     setBOpenChoice(null);
   }, [stage]);
   const aOpen = aOpenChoice ?? stage === "pre";
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const bOpen = bOpenChoice ?? false;
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
@@ -418,6 +419,18 @@ function EventDetailPanel({ event, heading, language, mini, t, workspaceAvailabl
     return () => window.clearInterval(timer);
   }, [event.status]);
   const progress = agendaProgress(event, new Date(nowTick));
+  // 信息瓦片 3 的副行：真实参会者角色按出现频次取前三；没有角色数据时退回
+  // 主办方写的"适合人群"。
+  const attendeeRoleDigest = (() => {
+    const counts = new Map<string, number>();
+    for (const person of event.stats.attendees) {
+      const role = person.role.trim();
+      if (!role) continue;
+      counts.set(role, (counts.get(role) ?? 0) + 1);
+    }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([role]) => role);
+    return top.length ? top.join(" · ") : audienceHintFor(event);
+  })();
   const aiReady = aiSummary?.resultsState === "ready";
   const myTables = aiSummary
     ? [
@@ -425,17 +438,6 @@ function EventDetailPanel({ event, heading, language, mini, t, workspaceAvailabl
         aiSummary.roundTwoTable ? { label: t({ en: "Round 2", zh: "第二轮" }), placement: aiSummary.roundTwoTable } : null,
       ].filter((entry): entry is { label: string; placement: NonNullable<EventMatchmakingSummary["roundOneTable"]> } => entry !== null)
     : [];
-
-  const registrationSection = (
-    <section className="card orbit-desktop-only" style={{ padding: 18, display: "block" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div><div style={{ fontSize: 13, color: "var(--text-3)" }}>{t({ en: "Registration", zh: "报名" })}</div><h3 className="h-section" style={{ color: "var(--ink)" }}>{event.feeLabel}</h3></div>
-        <StatusBadge language={language} status={event.status} />
-      </div>
-      <div style={{ display: "flex", gap: 10 }}>{primaryAction(event, t, registrationStatus)}{enterAction(event, t, youRsvped, workspaceAvailable)}</div>
-      {!youRsvped && event.status !== "ended" ? <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 11, display: "flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={13} />{t({ en: "Full attendee list visible after you register", zh: "确认参加后可见完整参会者名单" })}</div> : null}
-    </section>
-  );
 
   const aiSummaryStrip = !ended && youRsvped && aiReady && aiSummary ? (
     <section className="card" data-event-ai-summary style={{ borderLeft: "3px solid var(--accent)", display: "grid", gap: 8, padding: 16 }}>
@@ -664,14 +666,94 @@ function EventDetailPanel({ event, heading, language, mini, t, workspaceAvailabl
           </div>
         ) : null}
         <JourneyCollapse open={aOpen}>
-          <div id="orbit-journey-a-body" style={{ display: "flex", flexDirection: "column", gap: 24, padding: stage === "pre" ? 18 : "4px 18px 18px" }}>
-            {heading}
-            {registrationSection}
-            {stage === "pre" && !ended ? (
-              <OrbitEventQuickSignup audienceHint={audienceHintFor(event)} eventId={event.id} />
+          <div id="orbit-journey-a-body" style={{ display: "flex", flexDirection: "column", gap: 20, padding: stage === "pre" ? 20 : "4px 20px 20px" }}>
+            {/* ── 摘要区（始终可见）：徽章行 / 标题 / 标签 / 信息瓦片 / 简介 / CTA ── */}
+            <div style={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <span className="chip" style={{ background: "var(--accent-softer)", color: "var(--accent)", fontSize: 12, height: 26 }}>{event.code}</span>
+              {stage === "pre" && !ended && event.cap > event.stats.count ? (
+                <span className="badge" style={{ background: "var(--live-soft)", color: "var(--live)" }}>
+                  {t({ en: "Open", zh: "报名中" })} · {t({ en: `${event.cap - event.stats.count} seats left`, zh: `剩 ${event.cap - event.stats.count} 席` })}
+                </span>
+              ) : (
+                <StatusBadge language={language} status={event.status} />
+              )}
+              <button aria-controls="orbit-journey-a-details" aria-expanded={detailsOpen} className="btn btn-ghost btn-sm" onClick={() => setDetailsOpen((open) => !open)} style={{ marginLeft: "auto" }} type="button">
+                {t({ en: "Event details", zh: "活动详情" })}
+                <span aria-hidden style={{ display: "inline-flex", transform: detailsOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }}><Icon name="chevD" size={15} /></span>
+              </button>
+            </div>
+            <div>
+              <div style={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+                <h1 className="h-display" style={{ margin: 0 }}>{mini.name}</h1>
+                <a className="btn btn-soft btn-sm" data-agent-context="event" href={askAgentHref} style={{ flexShrink: 0, textDecoration: "none" }}>
+                  <Icon name="sparkle" size={16} />
+                  {t({ en: "Ask iOrbit about this event", zh: "问 iOrbit 这场活动" })}
+                </a>
+              </div>
+              {event.organizer ? <div style={{ color: "var(--text-2)", fontSize: 13.5, marginTop: 7 }}>{event.organizer} · {t({ en: "Organizer", zh: "主办" })}</div> : null}
+              {event.tags.length || event.cap ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+                  {event.tags.map((tag) => <span className="chip" key={tag} style={{ fontSize: 12, height: 26 }}>{tag}</span>)}
+                  {event.cap ? <span className="chip" style={{ fontSize: 12, height: 26 }}>{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="orbit-info-grid">
+              <div className="card-flat" style={{ alignItems: "flex-start", display: "flex", gap: 12, padding: "13px 15px" }}>
+                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", flexShrink: 0, height: 32, justifyContent: "center", width: 32 }}><Icon name="clock" size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 600 }}>{mini.timeDate} {mini.timeTime}</div>
+                  {event.agenda[0] ? <div style={{ color: "var(--text-2)", fontSize: 12.5, marginTop: 1 }}>{event.agenda[0].time} {event.agenda[0].label}</div> : null}
+                </div>
+              </div>
+              <div className="card-flat" style={{ alignItems: "flex-start", display: "flex", gap: 12, padding: "13px 15px" }}>
+                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", flexShrink: 0, height: 32, justifyContent: "center", width: 32 }}><Icon name="pin" size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 600 }}>{event.venue || t({ en: "Venue TBD", zh: "地点待定" })}</div>
+                  <div style={{ color: "var(--text-2)", fontSize: 12.5, marginTop: 1 }}>{event.address || t({ en: "Address to be announced", zh: "详细地址待主办方公布" })}</div>
+                </div>
+              </div>
+              <div className="card-flat" style={{ alignItems: "flex-start", display: "flex", gap: 12, padding: "13px 15px" }}>
+                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", flexShrink: 0, height: 32, justifyContent: "center", width: 32 }}><Icon name="users" size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 600 }}>
+                    {t({ en: "Registered", zh: "已报名" })} {event.stats.count}{event.cap ? ` / ${event.cap}` : ""} {t({ en: "people", zh: "人" })}
+                  </div>
+                  {attendeeRoleDigest ? <div style={{ color: "var(--text-2)", fontSize: 12.5, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attendeeRoleDigest}</div> : null}
+                </div>
+              </div>
+              <div className="card-flat" style={{ alignItems: "flex-start", display: "flex", gap: 12, padding: "13px 15px" }}>
+                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: 9, color: "var(--accent)", display: "flex", flexShrink: 0, height: 32, justifyContent: "center", width: 32 }}><Icon name="sparkle" size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "var(--ink)", fontSize: 13.5, fontWeight: 600 }}>{event.feeLabel}</div>
+                  <div style={{ color: "var(--text-2)", fontSize: 12.5, marginTop: 1 }}>{event.theme || event.industry || t({ en: "Matched and seated by Orbit", zh: "由 Orbit 匹配与分桌" })}</div>
+                </div>
+              </div>
+            </div>
+            {event.summaryZh || event.descriptionZh ? (
+              <div style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.75 }}>
+                {event.summaryZh ? <p style={{ margin: 0, whiteSpace: "pre-line" }}>{event.summaryZh}</p> : null}
+                {event.descriptionZh && event.descriptionZh !== event.summaryZh ? <p style={{ margin: event.summaryZh ? "9px 0 0" : 0, whiteSpace: "pre-line" }}>{event.descriptionZh}</p> : null}
+              </div>
             ) : null}
-            {aboutSection}
-            {agendaSection}
+            <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 14 }}>
+              {primaryAction(event, t, registrationStatus)}
+              {enterAction(event, t, youRsvped, workspaceAvailable)}
+              {stage === "pre" && !ended ? (
+                <span style={{ color: "var(--text-3)", fontSize: 12.5 }}>{t({ en: "Just 2 questions · see your first match direction right after", zh: "只需 2 个问题 · 报名后立即看到初步匹配方向" })}</span>
+              ) : null}
+            </div>
+
+            {/* ── 活动详情（右上角按钮控制收起/展开）── */}
+            <JourneyCollapse open={detailsOpen}>
+              <div id="orbit-journey-a-details" style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 4 }}>
+                {stage === "pre" && !ended ? (
+                  <OrbitEventQuickSignup audienceHint={audienceHintFor(event)} eventId={event.id} />
+                ) : null}
+                {aboutSection}
+                {agendaSection}
+              </div>
+            </JourneyCollapse>
             {stage !== "pre" ? (
               <button className="btn btn-ghost btn-sm" onClick={() => setAOpenChoice(false)} style={{ alignSelf: "flex-start" }} type="button">
                 {t({ en: "Collapse details", zh: "收起详情" })}
@@ -811,53 +893,6 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { ev
     timeTime: time.time,
     venue: event.venue || t({ en: "Venue TBD", zh: "地点待定" }),
   };
-  // 卡片 A 的完整信息区：由 EventDetailPanel 放进可折叠容器（报名后收成迷你条）。
-  const heading = (
-    <>
-            <div>
-              <div className="orbit-desktop-only" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}><span className="chip" style={{ height: 26, fontSize: 12, background: "var(--accent-softer)", color: "var(--accent)" }}>{event.code}</span><StatusBadge language={language} status={event.status} /></div>
-              <div style={{ alignItems: "flex-start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                <h1 className="h-display" style={{ margin: 0 }}>{name}</h1>
-                <a
-                  className="btn btn-soft btn-sm"
-                  data-agent-context="event"
-                  href={askAgentHref}
-                  style={{ flexShrink: 0, textDecoration: "none" }}
-                >
-                  <Icon name="sparkle" size={16} />
-                  {t({ en: "Ask iOrbit about this event", zh: "问 iOrbit 这场活动" })}
-                </a>
-              </div>
-              <div className="mono" style={{ fontSize: 13, color: "var(--text-3)", letterSpacing: "0.06em", marginTop: 8 }}>{codeUpper}</div>
-              {event.summaryZh ? <p style={{ fontSize: 16, color: "var(--text-2)", lineHeight: 1.5, marginTop: 14, marginBottom: 0 }}>{event.summaryZh}</p> : null}
-            </div>
-            <div className="orbit-info-grid">
-              <div className="card-flat" style={{ padding: 16, display: "flex", gap: 14, alignItems: "center" }}>
-                <div style={{ width: 50, borderRadius: "var(--r-sm)", overflow: "hidden", border: "1px solid var(--border)", textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ background: event.brandColor || "var(--accent)", color: "var(--on-dark)", fontSize: 11, fontWeight: 600, padding: "2px 0" }}>{time.month}</div>
-                  <div style={{ fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, padding: "4px 0", color: "var(--ink)" }}>{time.day}</div>
-                </div>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{time.date}</div><div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 2 }}>{time.time}</div></div>
-              </div>
-              <div className="card-flat" style={{ padding: 16, display: "flex", gap: 14, alignItems: "center" }}>
-                <div style={{ width: 50, height: 50, borderRadius: "var(--r-sm)", background: "var(--surface-2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "var(--text-2)" }}><Icon name="pin" size={22} /></div>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{event.venue || t({ en: "Venue TBD", zh: "地点待定" })}</div><div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 2 }}>{event.address || t({ en: "Organizer has not set a detailed address yet", zh: "主办方尚未设置详细地址" })}</div></div>
-              </div>
-            </div>
-            <div className="orbit-mobile-only" style={{ flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%" }}>
-                <div style={{ width: 38, height: 38, borderRadius: "var(--r-sm)", background: "var(--accent-soft)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)", flexShrink: 0 }}><Icon name="calendar" size={19} /></div>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{time.date}</div><div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 1 }}>{time.time}</div></div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%" }}>
-                <div style={{ width: 38, height: 38, borderRadius: "var(--r-sm)", background: "var(--surface-2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-2)", flexShrink: 0 }}><Icon name="pin" size={19} /></div>
-                <div style={{ minWidth: 0 }}><div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{event.venue || t({ en: "Venue TBD", zh: "地点待定" })}</div><div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 1 }}>{event.address || t({ en: "Organizer has not set a detailed address yet", zh: "主办方尚未设置详细地址" })}</div></div>
-              </div>
-              <OrganizerRailCard event={event} mobile t={t} />
-            </div>
-    </>
-  );
-
   return (
     <div className="orbit-shell" data-appscroll data-orbit-real-page="event-detail">
       <PublicTopNav active="events" />
@@ -904,7 +939,7 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { ev
             <OrganizerRailCard event={event} t={t} />
           </aside>
           <div className="orbit-detail-main">
-            <EventDetailPanel event={event} heading={heading} language={language} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
+            <EventDetailPanel askAgentHref={askAgentHref} event={event} language={language} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>
       </main>
