@@ -37,3 +37,30 @@ test("API proxy public allowlist is narrow and explicit", () => {
   assert.doesNotMatch(proxySource, /pathname\.startsWith\("\/api\/dashboard/);
   assert.doesNotMatch(proxySource, /pathname\.startsWith\("\/api\/permissions/);
 });
+
+test("registration preview allowlist regex matches exactly one anonymous path", () => {
+  // 与 proxy.ts 保持同一字面量；这里表驱动验证它不放行任何邻近路径。
+  const previewPattern = /^\/api\/events\/[^/]+\/registration\/preview$/u;
+  assert.match(
+    proxySource,
+    /\^\\\/api\\\/events\\\/\[\^\/\]\+\\\/registration\\\/preview\$/,
+  );
+  const allowed = [
+    "/api/events/event_signup_01/registration/preview",
+    "/api/events/EVTSIGNUP03/registration/preview",
+  ];
+  const denied = [
+    "/api/events/event_signup_01/registration",
+    "/api/events/event_signup_01/registration/preview/",
+    "/api/events/event_signup_01/registration/preview/extra",
+    "/api/events/a/b/registration/preview",
+    "/api/events//registration/preview",
+    "/api/eventsX/event_signup_01/registration/preview",
+  ];
+  for (const path of allowed) {
+    assert.equal(previewPattern.test(path), true, `expected allow: ${path}`);
+  }
+  for (const path of denied) {
+    assert.equal(previewPattern.test(path), false, `expected deny: ${path}`);
+  }
+});

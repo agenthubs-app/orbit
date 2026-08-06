@@ -44,6 +44,34 @@ Orbit uses one canonical aggregate for each kind of truth:
   evidence counts, but summary prose and follow-up recommendations may not use
   templates or local fallback generation.
 
+## Registration entry layering
+
+Registration cost is layered so the per-event wizard only asks what the event
+actually needs:
+
+- The universal profile owns identity. When the profile has a role or
+  organization, the wizard seeds `positioning` ("role @ organization") as an
+  already-answered turn and the per-event interview starts at the three intent
+  questions (who you want to meet, what outcome you want, what you can offer).
+  Answering the remaining adaptive questions stays optional; once the core
+  fields are complete the wizard offers finishing registration immediately.
+  Seeded turns are unsigned: the wizard submits them as plain `answers` next
+  to the signed `responses`, and the registration boundary only uses them to
+  fill fields no verified response covers (stored as legacy participant
+  snapshots, never overriding a verified answer). Admission-controlled events
+  do not seed at all — every core answer there must pass the signed
+  question-token check because organizers review the application.
+- The event detail page carries an anonymous quick-answer card (who you want
+  to meet / what you can offer). Answers live only in `localStorage` on the
+  visitor's device until the wizard seeds them as answered turns after login,
+  and are removed once the registration persists. Nothing is written
+  server-side before the authenticated registration command.
+- `GET /api/events/[id]/registration/preview` is the only anonymous
+  registration read. It returns aggregate cluster buckets (industry, else the
+  role segment of positioning) plus a total; a bucket is published only at
+  five or more members so individuals cannot be reverse-mapped, and bucket
+  labels use participant-stated answers only — no inferred content.
+
 ## Consistency and authorization
 
 Commands take the authenticated actor from the server boundary, never from a

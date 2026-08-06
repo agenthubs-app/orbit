@@ -203,6 +203,14 @@ export default async function AppEventRegistrationGuidePage({
       actor?.name?.trim() ||
       actor?.email?.trim() ||
       (language === "en" ? "Orbit member" : "Orbit 成员");
+    // 定位从通用画像派生（role @ organization），有值时向导免问"我是谁"，
+    // 本场只答三道意图题；两者皆缺时保持原流程照常提问。
+    const prefilledPositioning = (() => {
+      const role = actorProfile?.role?.trim() ?? "";
+      const organization = actorProfile?.organization?.trim() ?? "";
+      if (!role && !organization) return null;
+      return role && organization ? `${role} @ ${organization}` : role || organization;
+    })();
     const firstQuestion = questionSet.questions[0];
     const initialSignedQuestion =
       actor?.id &&
@@ -251,6 +259,7 @@ export default async function AppEventRegistrationGuidePage({
           initialAdmissionApplication={admissionState?.application ?? null}
           initialSignedQuestion={initialSignedQuestion}
           language={language}
+          prefilledPositioning={prefilledPositioning}
           profile={{ displayName }}
         />
         <OrbitVisualFreezeRuntime />

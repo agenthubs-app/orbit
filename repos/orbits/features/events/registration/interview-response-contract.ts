@@ -104,7 +104,9 @@ export function legacyResponsesFromAnswers(
   answeredAt: string,
 ): readonly EventProfileResponseSnapshot[] {
   return EVENT_PARTICIPANT_PROFILE_FIELDS.flatMap((field) => {
-    const value = answers[field]?.trim();
+    // 与 answersFromProfileResponses 的持久化上限一致：快照文本也不超过
+    // 1000 字符，避免"answers 已截断、审计快照未截断"的不一致。
+    const value = answers[field]?.trim().slice(0, 1_000);
     if (!value) return [];
     return [
       {

@@ -34,6 +34,10 @@ import {
   type SignedAdaptiveInterviewStep,
 } from "../../../../../../features/events/registration/interview-response-contract";
 import { Icon } from "../../../orbit-reference-primitives";
+import {
+  quickSignupStorageKey,
+  readQuickSignupAnswers,
+} from "../orbit-event-quick-signup";
 import { EventAdmissionStatusCard } from "./event-admission-status-card";
 
 type Language = "en" | "zh";
@@ -49,6 +53,11 @@ interface RegistrationWorkspaceProps {
   initialAdmissionApplication: EventAdmissionApplication | null;
   initialSignedQuestion: SignedAdaptiveInterviewQuestion | null;
   language: Language;
+  /** Positioning derived from the universal profile ("role @ organization").
+   *  When present and no answers are stored yet, the wizard seeds it as an
+   *  already-answered turn so the per-event interview starts at the three
+   *  intent questions instead of re-asking who the person is. */
+  prefilledPositioning?: string | null;
   profile: {
     displayName: string;
   };
@@ -145,6 +154,7 @@ export function EventRegistrationWorkspace({
   initialRegistration,
   initialSignedQuestion,
   language,
+  prefilledPositioning = null,
   profile,
 }: RegistrationWorkspaceProps) {
   const storedTranscript = transcriptFromAnswers(
@@ -166,12 +176,36 @@ export function EventRegistrationWorkspace({
     initialAdmissionApplication,
   );
   const [registration, setRegistration] = useState(initialRegistration);
-  const [transcript, setTranscript] = useState<AdaptiveInterviewTurn[]>(storedTranscript);
+  // 全局画像预填：无已存回答时，把"定位"作为已答轮种入访谈，本场只需回答
+  // 三道意图题（想认识谁 / 期待结果 / 能提供什么）。准入审核活动要求每道
+  // 核心回答都经签名问答核验，因此不种入任何未签名回答。
+  const positioningSeeded =
+    Boolean(prefilledPositioning?.trim()) &&
+    storedTranscript.length === 0 &&
+    !admissionControlled;
+  const seededTranscript: AdaptiveInterviewTurn[] = positioningSeeded
+    ? [
+        {
+          answer: prefilledPositioning!.trim(),
+          field: "positioning",
+          prompt: copy(language, {
+            en: "Your positioning (brought in from your universal profile)",
+            zh: "你的定位（来自通用画像）",
+          }),
+        },
+      ]
+    : storedTranscript;
+  // 预填后，服务端按空 transcript 生成的第一题若恰是定位题则弃用，改为
+  // 按已种入的 transcript 现场取下一题。
+  const initialQuestionUsable =
+    initialSignedQuestion &&
+    !(positioningSeeded && initialSignedQuestion.question.field === "positioning");
+  const [transcript, setTranscript] = useState<AdaptiveInterviewTurn[]>(seededTranscript);
   const [question, setQuestion] = useState<AdaptiveNextQuestion | null>(
-    () => initialSignedQuestion?.question ?? null,
+    () => (initialQuestionUsable ? initialSignedQuestion.question : null),
   );
   const [questionToken, setQuestionToken] = useState<string | null>(
-    () => initialSignedQuestion?.questionToken ?? null,
+    () => (initialQuestionUsable ? initialSignedQuestion.questionToken : null),
   );
   const [questionHistory, setQuestionHistory] = useState<AdaptiveNextQuestion[]>([]);
   const [questionTokenHistory, setQuestionTokenHistory] = useState<string[]>([]);
@@ -192,6 +226,8 @@ export function EventRegistrationWorkspace({
   );
   const [pendingCancel, setPendingCancel] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // 重新回答的世代号：让一次性种入 effect 在 restart 后必定重新运行。
+  const [interviewEpoch, setInterviewEpoch] = useState(0);
   const generationRunId = useRef(0);
   // 选项预取:题目一出现就为每个选项并行预生成下一题,用户点击时通常已就绪,
   // 把 ~10s 的模型延迟藏进读题决策时间里。key=选项文本。
@@ -216,6 +252,87 @@ export function EventRegistrationWorkspace({
     (field) => !transcript.some((turn) => turn.field === field),
   );
   const canSkipAdaptiveQuestions = missingCoreFields.length === 0;
+
+  // 挂载时一次性种入：1) 详情页匿名速答（本机 localStorage）作为已答轮带入，
+  // 避免登录后重复回答；2) 预填弃用了服务端首题时，按已种入的 transcript 自动
+  // 取真正的第一道意图题。localStorage 只在客户端可读，因此放在 effect 而非
+  // 初始 state，避免 SSR 水合不一致。
+  const autoFetchedFirstQuestion = useRef(false);
+  useEffect(() => {
+    if (autoFetchedFirstQuestion.current || stage !== "interview" || thinking) {
+      return;
+    }
+    autoFetchedFirstQuestion.current = true;
+
+    const quickAnswers =
+      storedTranscript.length === 0 && !admissionControlled
+        ? readQuickSignupAnswers(window.localStorage, event.id)
+        : null;
+    const answeredFields = new Set(transcript.map((turn) => turn.field));
+    const seededQuickTurns: AdaptiveInterviewTurn[] = [];
+    if (quickAnswers?.targetAttendees && !answeredFields.has("targetAttendees")) {
+      seededQuickTurns.push({
+        answer: quickAnswers.targetAttendees,
+        field: "targetAttendees",
+        prompt: copy(language, {
+          en: "Who you want to meet (brought in from your quick answer)",
+          zh: "这场你想认识谁（来自详情页速答）",
+        }),
+      });
+    }
+    if (quickAnswers?.valueOffered && !answeredFields.has("valueOffered")) {
+      seededQuickTurns.push({
+        answer: quickAnswers.valueOffered,
+        field: "valueOffered",
+        prompt: copy(language, {
+          en: "What you can offer (brought in from your quick answer)",
+          zh: "你能提供什么（来自详情页速答）",
+        }),
+      });
+    }
+
+    if (seededQuickTurns.length > 0) {
+      const nextTranscript = [...transcript, ...seededQuickTurns];
+      setTranscript(nextTranscript);
+      // 当前题若恰好是速答已覆盖的字段则弃用；其余题目仍然有效，保留继续答。
+      if (
+        question !== null &&
+        !seededQuickTurns.some((turn) => turn.field === question.field)
+      ) {
+        return;
+      }
+      setQuestion(null);
+      setQuestionToken(null);
+      void (async () => {
+        setThinking(true);
+        setError(null);
+        try {
+          const step = await fetchNextQuestion(nextTranscript);
+          if (!step.done && step.signedQuestion) {
+            setQuestion(step.signedQuestion.question);
+            setQuestionToken(step.signedQuestion.questionToken);
+          }
+        } catch (caught) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : copy(language, {
+                  en: "The AI interview could not start. Please retry.",
+                  zh: "AI 访谈暂时无法开始，请重试。",
+                }),
+          );
+        } finally {
+          setThinking(false);
+        }
+      })();
+      return;
+    }
+
+    if (question === null && positioningSeeded) {
+      void retryInterviewStart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, question, thinking, positioningSeeded, interviewEpoch]);
 
   const fetchNextQuestion = useCallback(
     async (
@@ -258,7 +375,7 @@ export function EventRegistrationWorkspace({
     setThinking(true);
     setError(null);
     try {
-      const step = await fetchNextQuestion([]);
+      const step = await fetchNextQuestion(transcript);
       if (step.done || !step.signedQuestion) {
         throw new Error(
           copy(language, {
@@ -315,9 +432,17 @@ export function EventRegistrationWorkspace({
               : `/api/events/${encodeURIComponent(event.id)}/registration`,
             {
               body: JSON.stringify(
-                finalResponses.length > 0
-                  ? { responses: finalResponses }
-                  : { answers: answersFrom(finalTranscript) },
+                finalResponses.length === 0
+                  ? { answers: answersFrom(finalTranscript) }
+                  : admissionControlled
+                    ? { responses: finalResponses }
+                    : {
+                        // 签名回答之外，附上整份 transcript 的 answers：服务端
+                        // 只用它补齐种入轮（定位预填/详情页速答）未覆盖的字段。
+                        // 准入审核活动只接受纯签名回答，因此不附带。
+                        answers: answersFrom(finalTranscript),
+                        responses: finalResponses,
+                      },
               ),
               headers: { "content-type": "application/json" },
               method: "POST",
@@ -347,6 +472,15 @@ export function EventRegistrationWorkspace({
           } else {
             savedRegistration = registrationBody.data as EventRegistration;
             setRegistration(savedRegistration);
+          }
+          // 报名已持久化，详情页速答的本机暂存完成使命，清掉避免下次误带入。
+          // 准入活动从不读取速答，也就不动它。
+          if (!admissionControlled) {
+            try {
+              window.localStorage.removeItem(quickSignupStorageKey(event.id));
+            } catch {
+              // localStorage 不可用时忽略：暂存本就不存在。
+            }
           }
         }
 
@@ -439,6 +573,14 @@ export function EventRegistrationWorkspace({
     setSelectedOption(answer);
     setError(null);
     setThinking(true);
+    // 已答内容先落地：下一题请求成败都不回滚这轮回答。核心答完时，即使
+    // 选答题生成失败，用户也能从"选答不可用"面板直接完成报名。
+    setTranscript(nextTranscript);
+    setResponses(nextResponses);
+    setQuestionHistory((history) => [...history, question]);
+    setQuestionTokenHistory((history) => [...history, questionToken]);
+    setFreeText("");
+    setFreeTextOpen(false);
 
     try {
       // 命中预取则近乎即时;预取失败/被中止/自由输入时退回实时请求。
@@ -460,12 +602,6 @@ export function EventRegistrationWorkspace({
         }
       }
 
-      setTranscript(nextTranscript);
-      setResponses(nextResponses);
-      setQuestionHistory((history) => [...history, question]);
-      setQuestionTokenHistory((history) => [...history, questionToken]);
-      setFreeText("");
-      setFreeTextOpen(false);
       setSelectedOption(null);
 
       if (step.done || !step.signedQuestion) {
@@ -482,6 +618,10 @@ export function EventRegistrationWorkspace({
           : copy(language, { en: "Something went wrong.", zh: "出错了,请重试。" }),
       );
       setSelectedOption(null);
+      // 当前题的字段已被这轮回答覆盖，不能留在屏幕上被重复作答；转入
+      // "选答不可用"面板（核心齐全时该面板提供完成报名）。
+      setQuestion(null);
+      setQuestionToken(null);
     } finally {
       setThinking(false);
     }
@@ -582,17 +722,23 @@ export function EventRegistrationWorkspace({
   function restartInterview() {
     generationRunId.current += 1;
     setStage("interview");
-    setTranscript([]);
+    // 重来时回到与首次进入一致的种子状态：定位预填仍然生效，挂载 effect
+    // 重新武装，速答等种入轮也按同一规则重新带入并取下一题。
+    autoFetchedFirstQuestion.current = false;
+    setInterviewEpoch((epoch) => epoch + 1);
+    setTranscript(seededTranscript);
     setResponses([]);
     setQuestionHistory([]);
     setQuestionTokenHistory([]);
     setPersona(null);
-    setQuestion(initialSignedQuestion?.question ?? null);
-    setQuestionToken(initialSignedQuestion?.questionToken ?? null);
+    setQuestion(initialQuestionUsable ? initialSignedQuestion.question : null);
+    setQuestionToken(
+      initialQuestionUsable ? initialSignedQuestion.questionToken : null,
+    );
     setFreeText("");
     setFreeTextOpen(false);
     setError(
-      initialSignedQuestion
+      initialSignedQuestion || positioningSeeded
         ? null
         : copy(language, {
             en: "The AI interview could not start. Retry when the model is available.",
@@ -818,6 +964,33 @@ export function EventRegistrationWorkspace({
                   {stepIndex + 1} / {TOTAL_STEPS}
                 </span>
               </div>
+
+              {positioningSeeded && transcript.some((turn) => turn.field === "positioning") ? (
+                <div data-registration-prefilled-positioning style={{ alignItems: "center", background: "var(--surface-2)", border: "1px dashed var(--border-2)", borderRadius: 12, color: "var(--text-2)", display: "flex", fontSize: 12.5, gap: 8, marginBottom: 16, padding: "9px 13px" }}>
+                  <Icon color="var(--accent)" name="user" size={14} />
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {copy(language, { en: "Positioning from your profile: ", zh: "定位已从通用画像带入：" })}
+                    <strong style={{ color: "var(--ink)" }}>{transcript.find((turn) => turn.field === "positioning")?.answer}</strong>
+                  </span>
+                  <a href="/app/profile" style={{ color: "var(--accent)", flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                    {copy(language, { en: "Edit profile", zh: "改通用画像" })}
+                  </a>
+                </div>
+              ) : null}
+
+              {canSkipAdaptiveQuestions ? (
+                <div data-registration-core-complete style={{ alignItems: "center", background: "var(--accent-softer, var(--accent-soft))", border: "1px solid var(--accent-soft)", borderRadius: 12, display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, padding: "11px 14px" }}>
+                  <span style={{ color: "var(--accent)", flex: 1, fontSize: 13, fontWeight: 700, minWidth: 180 }}>
+                    {copy(language, { en: "Core answers complete — you can register now.", zh: "核心三题已答完，现在就可以完成报名。" })}
+                    <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, fontWeight: 500, marginTop: 2 }}>
+                      {copy(language, { en: "Answering more sharpens your matches (optional).", zh: "继续回答能让匹配更准（选填）。" })}
+                    </span>
+                  </span>
+                  <button className="btn btn-primary btn-sm" disabled={thinking} onClick={() => void runGeneration(transcript, responses)} type="button">
+                    {copy(language, { en: "Finish registration", zh: "完成报名" })}
+                  </button>
+                </div>
+              ) : null}
 
               {question.acknowledgment ? (
                 <p
@@ -1536,16 +1709,26 @@ export function EventRegistrationWorkspace({
             </span>
             <div>
               <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, margin: 0 }}>
-                {copy(language, {
-                  en: "The AI interview is temporarily unavailable",
-                  zh: "AI 访谈暂时未生成",
-                })}
+                {transcript.length > 0
+                  ? copy(language, {
+                      en: "The next AI question is temporarily unavailable",
+                      zh: "下一道 AI 问题暂时未生成",
+                    })
+                  : copy(language, {
+                      en: "The AI interview is temporarily unavailable",
+                      zh: "AI 访谈暂时未生成",
+                    })}
               </h2>
               <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
-                {copy(language, {
-                  en: "No substitute question was used and no answer was saved. Retry the real AI generation here.",
-                  zh: "系统没有使用替代问题，也没有保存任何回答。你可以在这里重新请求真实 AI 生成。",
-                })}
+                {transcript.length > 0
+                  ? copy(language, {
+                      en: "Your answers so far are kept. No substitute question was used.",
+                      zh: "已完成的回答都已保留，系统没有使用替代问题。",
+                    })
+                  : copy(language, {
+                      en: "No substitute question was used and no answer was saved. Retry the real AI generation here.",
+                      zh: "系统没有使用替代问题，也没有保存任何回答。你可以在这里重新请求真实 AI 生成。",
+                    })}
               </p>
             </div>
             {error ? (
@@ -1553,20 +1736,48 @@ export function EventRegistrationWorkspace({
                 {error}
               </div>
             ) : null}
-            <div>
-              <button
-                className="btn btn-primary"
-                data-registration-interview-retry
-                disabled={thinking}
-                onClick={() => void retryInterviewStart()}
-                type="button"
-              >
-                <Icon name="sparkle" size={15} />
-                {thinking
-                  ? copy(language, { en: "Generating…", zh: "正在生成…" })
-                  : copy(language, { en: "Retry AI interview", zh: "重试 AI 访谈" })}
-              </button>
-            </div>
+            {canSkipAdaptiveQuestions ? (
+              // 核心回答已齐时，选答题生成失败不该拦住报名：完成报名放主位，
+              // 重试选答题降级为次要动作。
+              <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button
+                  className="btn btn-primary"
+                  data-registration-complete-anyway
+                  disabled={thinking}
+                  onClick={() => void runGeneration(transcript, responses)}
+                  type="button"
+                >
+                  <Icon name="check" size={15} />
+                  {copy(language, { en: "Finish registration", zh: "完成报名" })}
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  data-registration-interview-retry
+                  disabled={thinking}
+                  onClick={() => void retryInterviewStart()}
+                  type="button"
+                >
+                  {thinking
+                    ? copy(language, { en: "Generating…", zh: "正在生成…" })
+                    : copy(language, { en: "Retry optional questions", zh: "重试选答题" })}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <button
+                  className="btn btn-primary"
+                  data-registration-interview-retry
+                  disabled={thinking}
+                  onClick={() => void retryInterviewStart()}
+                  type="button"
+                >
+                  <Icon name="sparkle" size={15} />
+                  {thinking
+                    ? copy(language, { en: "Generating…", zh: "正在生成…" })
+                    : copy(language, { en: "Retry AI interview", zh: "重试 AI 访谈" })}
+                </button>
+              </div>
+            )}
           </section>
         ) : null}
       </section>

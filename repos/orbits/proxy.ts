@@ -18,6 +18,9 @@ function isPublicApiPath(pathname: string): boolean {
     pathname === "/api/health" ||
     pathname === "/api/health/error" ||
     pathname.startsWith("/api/events/public") ||
+    // 注册前聚类预览只返回阈值保护后的聚合桶（无任何个人数据），供匿名
+    // 详情页展示"谁会来"，因此放行；正则精确到该单一路径。
+    /^\/api\/events\/[^/]+\/registration\/preview$/u.test(pathname) ||
     pathname.startsWith("/api/auth/") ||
     /^\/api\/integrations\/[^/]+\/callback$/u.test(pathname)
   );

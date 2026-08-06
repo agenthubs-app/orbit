@@ -99,11 +99,13 @@ test("authenticated participants can use adaptive registration generation", asyn
       return Response.json({
         output_text:
           providerCalls === 1
-            ? JSON.stringify({
+            ? // 核心三题未答完时，服务端只允许模型从核心字段中出题
+              // （见 remainingFieldsFor 的 core-first 排序）。
+              JSON.stringify({
                 acknowledgment: "Your operator focus is clear.",
-                field: "industry",
-                options: ["Grid storage", "Industrial batteries"],
-                prompt: "Which storage segment is most relevant to your goal?",
+                field: "targetAttendees",
+                options: ["Storage operators", "Grid investors"],
+                prompt: "Who do you most want to meet at this event?",
               })
             : JSON.stringify({
                 energyStyle: "Focused one-to-one conversations",

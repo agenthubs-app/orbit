@@ -14,6 +14,7 @@ import {
   EVENT_PARTICIPANT_PROFILE_FIELDS,
   type EventParticipantProfileField,
 } from "./contract";
+import { EVENT_PROFILE_CORE_FIELDS } from "./interview-response-contract";
 
 export type AdaptiveInterviewModelRunner = typeof runOrbitAgentModelText;
 
@@ -127,10 +128,17 @@ function remainingFieldsFor(
   transcript: readonly AdaptiveInterviewTurn[],
 ): readonly EventParticipantProfileField[] {
   const answered = new Set(transcript.map((turn) => turn.field));
-
-  return EVENT_PARTICIPANT_PROFILE_FIELDS.filter(
+  const remaining = EVENT_PARTICIPANT_PROFILE_FIELDS.filter(
     (field) => !answered.has(field),
   );
+  // Per-event intent first: while any core field (positioning / who to meet /
+  // value offered / desired outcome) is unanswered, the interview may only
+  // ask core fields, so a minimal registration is always the shortest path
+  // and optional depth questions stay an explicit opt-in afterwards.
+  const coreRemaining = remaining.filter((field) =>
+    (EVENT_PROFILE_CORE_FIELDS as readonly EventParticipantProfileField[]).includes(field),
+  );
+  return coreRemaining.length > 0 ? coreRemaining : remaining;
 }
 
 function readModelQuestion(

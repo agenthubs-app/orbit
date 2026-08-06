@@ -10,6 +10,7 @@ import { AppError } from "../../../../../shared/errors/app-error";
 import type { EventParticipantProfileAnswers } from "../../../../../features/events/registration/contract";
 import {
   answersFromProfileResponses,
+  legacyResponsesFromAnswers,
   missingCoreProfileFields,
   type EventInterviewResponseSubmission,
   type EventProfileResponseSnapshot,
@@ -76,7 +77,29 @@ async function readRegistrationPayload(
         eventId: input.eventId,
         responses: submissions,
       });
-      const missingCore = missingCoreProfileFields(interviewResponses);
+      // 分层报名：定位预填与详情页速答是用户自述但未经签名问答的回答，向导
+      // 会随签名 responses 一并提交 answers。已验证的签名回答始终优先；普通
+      // answers 只补齐签名回答未覆盖的字段，以 legacy(participant) 快照落库，
+      // 绝不覆盖任何已验证字段。
+      const verifiedFields = new Set<string>(
+        interviewResponses.map((response) => response.field),
+      );
+      // 未知字段名交给 legacyResponsesFromAnswers 按字段白名单过滤；与签名
+      // 回答同样执行 NFC 规范化和 1000 字符上限，防止未签名路径写入超长
+      // 快照。
+      const seededAnswers: Record<string, string> = {};
+      if (isRecord(body.answers)) {
+        for (const [field, value] of Object.entries(body.answers)) {
+          if (typeof value === "string" && value.trim() && !verifiedFields.has(field)) {
+            seededAnswers[field] = value.normalize("NFC").trim().slice(0, 1_000);
+          }
+        }
+      }
+      const mergedResponses = [
+        ...legacyResponsesFromAnswers(seededAnswers, new Date().toISOString()),
+        ...interviewResponses,
+      ];
+      const missingCore = missingCoreProfileFields(mergedResponses);
       if (missingCore.length > 0) {
         throw new InterviewQuestionTokenError(
           "INTERVIEW_CORE_FIELDS_REQUIRED",
@@ -84,8 +107,8 @@ async function readRegistrationPayload(
         );
       }
       return {
-        answers: answersFromProfileResponses(interviewResponses),
-        interviewResponses,
+        answers: answersFromProfileResponses(mergedResponses),
+        interviewResponses: mergedResponses,
       };
     }
     return {

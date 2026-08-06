@@ -293,3 +293,100 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     }
   }
 });
+
+test("registration merges unsigned seeded answers under verified responses", async () => {
+  const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+  process.env.ORBIT_INTERVIEW_SIGNING_SECRET =
+    "route-test-interview-secret-with-enough-entropy";
+  const tokenActor = { id: "user:seeded-registration", name: "Seeded Tester" };
+  const tokenService = createEventRegistrationService({
+    provider: createMemoryEventRegistrationProvider(),
+  });
+  const { POST } = createEventRegistrationRouteHandlers({
+    registrationService: tokenService,
+    resolveActor: async () => tokenActor,
+  });
+  // 分层报名：只有"期待结果"经签名问答核验，其余核心字段来自种入轮
+  // （定位预填 / 详情页速答），以未签名 answers 一并提交。
+  const signedResponse = {
+    answer: "desiredOutcome option A",
+    questionToken: signAdaptiveInterviewQuestion({
+      actorId: tokenActor.id,
+      eventId,
+      language: "zh",
+      question: {
+        acknowledgment: "",
+        field: "desiredOutcome",
+        options: ["desiredOutcome option A", "desiredOutcome option B"],
+        prompt: "What outcome do you want from this event?",
+        provenance: {
+          fallbackReason: null,
+          generationMethod: "orbit-agent-model-adaptive",
+          model: "route-test-model",
+          provider: "route-test-provider",
+        },
+      },
+    }),
+  };
+
+  try {
+    const accepted = await POST(
+      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+        body: JSON.stringify({
+          answers: {
+            // 已验证字段的 seeded 值绝不覆盖签名回答。
+            desiredOutcome: "seeded must not override",
+            positioning: "创始人 @ Orbit",
+            targetAttendees: "硬件供应链的创始人",
+            valueOffered: "海外渠道资源",
+          },
+          responses: [signedResponse],
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      context,
+    );
+    const acceptedBody = await accepted.json();
+    assert.equal(accepted.status, 200);
+    const answers = acceptedBody.data.participantProfile.answers;
+    assert.equal(answers.desiredOutcome, "desiredOutcome option A");
+    assert.equal(answers.positioning, "创始人 @ Orbit");
+    assert.equal(answers.targetAttendees, "硬件供应链的创始人");
+    assert.equal(answers.valueOffered, "海外渠道资源");
+    const snapshots = acceptedBody.data.participantProfile.interviewResponses;
+    assert.equal(snapshots.length, 4);
+    const byField = new Map(
+      snapshots.map((snapshot: { field: string }) => [snapshot.field, snapshot]),
+    );
+    assert.equal(
+      (byField.get("desiredOutcome") as { questionSource: string }).questionSource,
+      "ai_adaptive",
+    );
+    for (const field of ["positioning", "targetAttendees", "valueOffered"]) {
+      assert.equal(
+        (byField.get(field) as { questionSource: string }).questionSource,
+        "legacy_unknown",
+      );
+    }
+
+    const missingCore = await POST(
+      new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+        body: JSON.stringify({
+          answers: { positioning: "创始人 @ Orbit" },
+          responses: [signedResponse],
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      context,
+    );
+    assert.equal(missingCore.status, 422);
+  } finally {
+    if (previousSecret === undefined) {
+      delete process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+    } else {
+      process.env.ORBIT_INTERVIEW_SIGNING_SECRET = previousSecret;
+    }
+  }
+});

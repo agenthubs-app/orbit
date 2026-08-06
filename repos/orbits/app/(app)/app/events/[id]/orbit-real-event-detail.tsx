@@ -13,6 +13,7 @@ import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets
 import { ORBIT_Z } from "../../orbit-z";
 import { EventCover } from "../orbit-event-cover";
 import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-event-matchmaking";
+import { OrbitEventQuickSignup } from "./orbit-event-quick-signup";
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
 type Translate = (copy: { en: string; zh: string }) => string;
@@ -448,6 +449,7 @@ function EventDetailPanel({ event, language, t, workspaceAvailable }: { event: O
         </>
       ) : (
         <>
+          {!ended ? <OrbitEventQuickSignup eventId={event.id} /> : null}
           {aboutSection}
           {agendaSection}
           {attendeesSection}
