@@ -195,9 +195,12 @@ test("app chat route has one production composition and no dead mock command cen
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
 
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /ChatWorkspace/);
-  assert.match(pageSource, /ChatRouteStateBoundary/);
+  // iOrbit 工作台合并（dashboard ⇄ 对话）后 /app/chat 收窄为深链重定向，
+  // 对话壳统一在 /app/agent；q / lang 查询参数透传（followups → today 先例）。
+  assert.match(pageSource, /redirect\(`\/app\/agent\$\{suffix\}`\)/);
+  assert.match(pageSource, /forwarded\.set\("q", q\)/);
+  assert.match(pageSource, /forwarded\.set\("lang", lang\)/);
+  assert.doesNotMatch(pageSource, /ChatWorkspace|ChatRouteStateBoundary/);
   assert.match(boundarySource, /StateView/);
   assert.match(boundarySource, /AccountTopNav/);
   assert.doesNotMatch(

@@ -12,14 +12,25 @@ function source(path: string): string {
 
 const personalHomeRoutes = [
   {
-    marker: "app-home-route",
-    sourcePath: "app/(app)/app/home/page.tsx",
-  },
-  {
     marker: "app-home-events-route",
     sourcePath: "app/(app)/app/home/events/page.tsx",
   },
 ] as const;
+
+// iOrbit 工作台合并：hub 页收窄为 /app/agent 重定向，hub 数据（同一个
+// loadAppHomeRouteViewModel）改由 agent route adapter 组合进 dashboard 首屏。
+test("app-home-route redirects into the iOrbit workspace which composes home data", () => {
+  const hubSource = source("app/(app)/app/home/page.tsx");
+  assert.match(hubSource, /redirect\("\/app\/agent"\)/);
+  assert.doesNotMatch(hubSource, /OrbitRealHome|HomeRouteStateBoundary/);
+
+  const agentPageSource = source("app/(app)/app/agent/page.tsx");
+  assert.match(agentPageSource, /loadAppHomeRouteViewModel\(undefined,/);
+  assert.match(agentPageSource, /presentOrbitEvents/);
+
+  const agentUiSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  assert.match(agentUiSource, /OrbitAgentDashboard/);
+});
 
 test("web root owns the responsive starfield journey", () => {
   const pageSource = source("app/page.tsx");

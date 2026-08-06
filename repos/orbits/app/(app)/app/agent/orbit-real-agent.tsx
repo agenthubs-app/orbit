@@ -24,8 +24,11 @@ import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
+import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
+import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 
 interface OrbitRealAgentProps {
+  home?: OrbitHomeViewModel | null;
   viewModel: OrbitAgentViewModel;
 }
 
@@ -1828,7 +1831,7 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   );
 }
 
-export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
+export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -2628,11 +2631,25 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
           <div ref={scrollRef} className="scroll orbit-agent-transcript" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
             <div className="orbit-agent-transcript-inner" style={{ margin: "0 auto", maxWidth: 720 }}>
               {!messages.length && !thinking ? (
+                home ? (
+                  <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
+                ) : (
+                  <>
+                    <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="desktop" />
+                    <AgentWelcome onPick={ask} viewModel={viewModel} />
+                  </>
+                )
+              ) : (
                 <>
-                  <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="desktop" />
-                  <AgentWelcome onPick={ask} viewModel={viewModel} />
+                  <div style={{ marginBottom: 14 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={newChat} type="button">
+                      <Icon name="chevL" size={15} />
+                      {t({ en: "Back to iOrbit home", zh: "返回 iOrbit 首页" })}
+                    </button>
+                  </div>
+                  {renderBubbles(false)}
                 </>
-              ) : renderBubbles(false)}
+              )}
             </div>
           </div>
           <div className="orbit-agent-composer-dock" style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
@@ -2666,11 +2683,25 @@ export function OrbitRealAgent({ viewModel }: OrbitRealAgentProps) {
       <div className="orbit-mobile-only" style={{ flex: 1, flexDirection: "column", minHeight: 0 }}>
         <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 12px" }}>
           {!messages.length && !thinking ? (
+            home ? (
+              <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
+            ) : (
+              <>
+                <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="mobile" />
+                <AgentWelcome onPick={ask} viewModel={viewModel} />
+              </>
+            )
+          ) : (
             <>
-              <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="mobile" />
-              <AgentWelcome onPick={ask} viewModel={viewModel} />
+              <div style={{ marginBottom: 12 }}>
+                <button className="btn btn-ghost btn-sm" onClick={newChat} type="button">
+                  <Icon name="chevL" size={15} />
+                  {t({ en: "Back to iOrbit home", zh: "返回 iOrbit 首页" })}
+                </button>
+              </div>
+              {renderBubbles(true)}
             </>
-          ) : renderBubbles(true)}
+          )}
         </div>
         <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "10px 16px 18px" }}>
           <ChatBox busy={thinking} value={text} onChange={setText} onSend={send} surface="mobile" />

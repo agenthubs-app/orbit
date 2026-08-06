@@ -157,12 +157,14 @@ test("/app/chat page authenticates before loading the actor-scoped route adapter
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
   );
 
-  assert.match(pageSource, /await auth\(\)/);
-  assert.match(pageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fchat"\)/);
-  assert.match(pageSource, /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/);
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /ChatWorkspace/);
-  assert.match(pageSource, /ChatRouteStateBoundary/);
+  // /app/chat 已收窄为 /app/agent 重定向；鉴权与 actor-scoped 组合责任随对话壳
+  // 一起移到 agent route adapter（工作台合并）。
+  assert.match(pageSource, /redirect\(`\/app\/agent\$\{suffix\}`\)/);
+  assert.doesNotMatch(pageSource, /await auth\(\)/);
+  const agentPageSource = source("app/(app)/app/agent/page.tsx");
+  assert.match(agentPageSource, /await auth\(\)/);
+  assert.match(agentPageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fagent"\)/);
+  assert.match(agentPageSource, /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/);
   assert.match(boundarySource, /StateView/);
   assert.match(boundarySource, /AccountTopNav/);
   assert.doesNotMatch(pageSource, /loadAppAsyncChatCommandCenterViewModel/);

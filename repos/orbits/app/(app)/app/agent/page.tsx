@@ -18,6 +18,8 @@ import {
 } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
 import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
 import { OrbitRealAgent } from "./orbit-real-agent";
+import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
+import { presentOrbitEvents } from "../orbit-event-presentation";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
   lang?: string | string[];
@@ -113,6 +115,15 @@ export default async function AppAgentPage({
   const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
     actorId,
   });
+  // iOrbit 工作台首屏（dashboard）与旧 /app/home 同源的数据：账户、统计、活动旅程。
+  const homeModel = await loadAppHomeRouteViewModel(undefined, {
+    displayName:
+      session?.user?.name?.trim() ||
+      session?.user?.email?.trim() ||
+      "Orbit member",
+    email: session?.user?.email,
+    id: actorId,
+  });
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -126,6 +137,17 @@ export default async function AppAgentPage({
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
           <OrbitRealAgent
+            home={
+              homeModel.state === "success"
+                ? localizeOrbitTree(
+                    {
+                      ...homeModel.home,
+                      events: presentOrbitEvents(homeModel.home.events, language),
+                    },
+                    language,
+                  )
+                : null
+            }
             viewModel={localizeOrbitTree(
               entryModel.viewModel,
               language,

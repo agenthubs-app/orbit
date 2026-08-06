@@ -107,7 +107,8 @@ test("proactive route composition stays out of API routes and presenter-only fil
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
 
   assert.match(agentPageSource, /loadAppChatRouteViewModel/);
-  assert.match(chatPageSource, /ChatWorkspace/);
+  // /app/chat 已收窄为 /app/agent 重定向（iOrbit 工作台合并），对话壳统一在 agent。
+  assert.match(chatPageSource, /redirect\(`\/app\/agent\$\{suffix\}`\)/);
   assert.doesNotMatch(chatPageSource, /app\/api/);
   assert.doesNotMatch(agentPageSource, /app\/api/);
   assert.doesNotMatch(
