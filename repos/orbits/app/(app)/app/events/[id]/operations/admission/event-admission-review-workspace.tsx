@@ -329,11 +329,6 @@ export function EventAdmissionReviewWorkspace({
           </div>
         </header>
 
-        <EventAdmissionPolicyPanel
-          canConfigurePolicy={canConfigurePolicy}
-          eventId={eventId}
-        />
-
         <div aria-label="报名审核视图" role="tablist" style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button aria-selected={!processed} className={!processed ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setView("pending")} role="tab" type="button">待审核</button>
           <button aria-selected={processed} className={processed ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setView("processed")} role="tab" type="button">已处理</button>
@@ -387,6 +382,18 @@ export function EventAdmissionReviewWorkspace({
             </aside>
           )}
         </div>
+
+        {/* Reviewing applications is this page's job; policy setup is occasional,
+            so it folds away below the queue instead of occupying the first screen. */}
+        <details style={{ marginTop: 24 }}>
+          <summary className="h-section" style={{ cursor: "pointer" }}>报名政策与时间设置</summary>
+          <div style={{ marginTop: 14 }}>
+            <EventAdmissionPolicyPanel
+              canConfigurePolicy={canConfigurePolicy}
+              eventId={eventId}
+            />
+          </div>
+        </details>
       </main>
     </>
   );

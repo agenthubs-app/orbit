@@ -56,7 +56,7 @@ const REMINDER_TITLE_ZH: Record<string, string> = {
 };
 
 const REMINDER_WINDOW_ZH: Record<string, string> = {
-  "Review before the scheduled in-app reminder": "在计划的应用内提醒前复核",
+  "Review before the scheduled in-app reminder": "到期前请复核",
   "Morning follow-up before the Tokyo workday starts": "东京工作日开始前的早间跟进",
   "One morning reminder until the requested asset is sent": "每天早间提醒，直到把对方要的资料发出",
   "Weekly relationship digest": "每周关系摘要",

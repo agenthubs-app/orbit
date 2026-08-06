@@ -218,7 +218,7 @@ function EventModuleCard({
             <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
           </div>
           <div className="orbit-event-module-foot">
-            <span>{event.status === "ended" ? t({ en: "Review event context", zh: "回看活动背景" }) : t({ en: "Open event context", zh: "打开活动背景" })}</span>
+            <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
             <strong style={{ position: "relative", zIndex: ORBIT_Z.raised + 1 }}>
               <a href={preserveHref(action.href)} style={{ alignItems: "center", color: "inherit", display: "inline-flex", textDecoration: "none" }}>
                 {action.badgeLabel ? <small>{action.badgeLabel} · </small> : null}

@@ -454,6 +454,22 @@ export function OrbitEventMatchmaking({
     })) ?? [];
   }, [workspace]);
 
+  // Notification deep links carry ?participant=… so the recipient lands with
+  // the counterpart's profile drawer already open instead of scanning cards.
+  const [focusParticipantId] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("participant"),
+  );
+  const [focusConsumed, setFocusConsumed] = useState(false);
+  useEffect(() => {
+    if (!focusParticipantId || focusConsumed || !authenticated) return;
+    setFocusConsumed(true);
+    void openParticipant(focusParticipantId);
+    // openParticipant is stable for this component's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated, focusConsumed, focusParticipantId]);
+
   useEffect(() => {
     if (!onWorkspaceSummary) return;
     if (!workspace) {

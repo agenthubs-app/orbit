@@ -557,12 +557,21 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
               ))}
             </div>
             {!filtered.length ? (
-              <div className="card-flat" style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 14, gap: 12, justifyContent: "space-between", padding: 18 }}>
-                <span>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</span>
-                <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
-                  {t({ en: "Clear filters", zh: "清除筛选" })}
-                </button>
-              </div>
+              items.length === 0 ? (
+                <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 18 }}>
+                  <span>{t({ en: "Contacts appear here after you and another attendee agree to exchange business cards at an event.", zh: "在活动中与对方互相同意交换名片后，联系人会出现在这里。" })}</span>
+                  <a className="btn btn-primary btn-sm" href="/app/events" style={{ justifySelf: "start", textDecoration: "none" }}>
+                    {t({ en: "Browse events", zh: "去看看活动" })}
+                  </a>
+                </div>
+              ) : (
+                <div className="card-flat" style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 14, gap: 12, justifyContent: "space-between", padding: 18 }}>
+                  <span>{t({ en: "No matching contacts yet.", zh: "当前没有符合筛选的联系人。" })}</span>
+                  <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
+                    {t({ en: "Clear filters", zh: "清除筛选" })}
+                  </button>
+                </div>
+              )
             ) : null}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
           </div>
@@ -604,12 +613,21 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             ))}
           </div>
           {!filtered.length ? (
-            <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 8, padding: 16 }}>
-              <span>{t({ en: "No matching contacts yet.", zh: "当前还没有匹配的联系人。" })}</span>
-              <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
-                {t({ en: "Clear filters", zh: "清除筛选" })}
-              </button>
-            </div>
+            items.length === 0 ? (
+              <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 16 }}>
+                <span>{t({ en: "Contacts appear here after you and another attendee agree to exchange business cards at an event.", zh: "在活动中与对方互相同意交换名片后，联系人会出现在这里。" })}</span>
+                <a className="btn btn-primary btn-sm" href="/app/events" style={{ justifySelf: "start", textDecoration: "none" }}>
+                  {t({ en: "Browse events", zh: "去看看活动" })}
+                </a>
+              </div>
+            ) : (
+              <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 8, padding: 16 }}>
+                <span>{t({ en: "No matching contacts yet.", zh: "当前没有符合筛选的联系人。" })}</span>
+                <button className="btn btn-ghost btn-sm" onClick={clearFilters} type="button">
+                  {t({ en: "Clear filters", zh: "清除筛选" })}
+                </button>
+              </div>
+            )
           ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
         </div>

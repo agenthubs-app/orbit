@@ -239,12 +239,45 @@ export function EventCenterWorkspace() {
                       </div>
                     ) : null}
                     <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 14 }}>
-                      <a className="btn btn-ghost btn-sm" href={`/app/events/${encodeURIComponent(event.eventId)}`}>查看活动</a>
-                      {onsiteAvailable && canOpenOperations(event) ? <a className="btn btn-primary btn-sm" href={operationsHref}>打开运营台</a> : null}
-                      {onsiteAvailable && canOpenCheckIn(event) ? <a className="btn btn-ghost btn-sm" href={checkInHref}>签到台</a> : null}
-                      {onsiteAvailable && canReviewAdmission(event) ? <a className="btn btn-ghost btn-sm" data-event-center-admission={event.eventId} href={admissionHref}>报名审核</a> : null}
-                      {reportAvailable && canOpenAnalytics(event) ? <a className="btn btn-ghost btn-sm" data-event-center-analytics={event.eventId} href={analyticsHref}>查看活动分析</a> : null}
-                      {event.owner ? <a className="btn btn-ghost btn-sm" data-event-center-manage-roles={event.eventId} href={rolesHref}>管理角色</a> : null}
+                      {(() => {
+                        // The organizer's next job depends on the lifecycle
+                        // phase: review admissions before the event, run the
+                        // check-in desk while it is live, read the report after
+                        // it ends. That action leads the row as the primary
+                        // button; everything else stays a ghost action.
+                        const nowMs = Date.now();
+                        const phase = Number.isFinite(Date.parse(event.startsAt)) && nowMs < Date.parse(event.startsAt)
+                          ? "upcoming"
+                          : Number.isFinite(Date.parse(event.endsAt)) && nowMs > Date.parse(event.endsAt)
+                            ? "ended"
+                            : "live";
+                        const actions = [
+                          { href: operationsHref, key: "operations", label: "打开运营台", visible: onsiteAvailable && canOpenOperations(event) },
+                          { attr: { "data-event-center-admission": event.eventId }, href: admissionHref, key: "admission", label: "报名审核", visible: onsiteAvailable && canReviewAdmission(event) },
+                          { href: checkInHref, key: "checkin", label: "签到台", visible: onsiteAvailable && canOpenCheckIn(event) },
+                          { attr: { "data-event-center-analytics": event.eventId }, href: analyticsHref, key: "analytics", label: "查看活动分析", visible: reportAvailable && canOpenAnalytics(event) },
+                          { href: `/app/events/${encodeURIComponent(event.eventId)}`, key: "view", label: "查看活动", visible: true },
+                          { attr: { "data-event-center-manage-roles": event.eventId }, href: rolesHref, key: "roles", label: "管理角色", visible: Boolean(event.owner) },
+                        ].filter((action) => action.visible);
+                        const preferredKey = phase === "upcoming" ? "admission" : phase === "live" ? "checkin" : "analytics";
+                        const primaryKey = actions.some((action) => action.key === preferredKey)
+                          ? preferredKey
+                          : actions.some((action) => action.key === "operations")
+                            ? "operations"
+                            : actions[0]?.key;
+                        const ordered = [...actions].sort((left, right) =>
+                          (left.key === primaryKey ? 0 : 1) - (right.key === primaryKey ? 0 : 1));
+                        return ordered.map((action) => (
+                          <a
+                            className={action.key === primaryKey ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+                            href={action.href}
+                            key={action.key}
+                            {...(action.attr ?? {})}
+                          >
+                            {action.label}
+                          </a>
+                        ));
+                      })()}
                     </div>
                   </>
                 )}

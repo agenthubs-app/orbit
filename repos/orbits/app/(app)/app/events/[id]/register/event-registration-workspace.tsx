@@ -984,7 +984,10 @@ export function EventRegistrationWorkspace({
               ) : (
                 <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
                   {transcript.length === 0
-                    ? copy(language, { en: "Answers stay scoped to this event.", zh: "回答只用于本次活动,不会改动全局档案。" })
+                    ? copy(language, {
+                        en: `Up to ${TOTAL_STEPS} quick questions (~2 minutes). Answers stay scoped to this event.`,
+                        zh: `最多 ${TOTAL_STEPS} 道快速问答，约 2 分钟；回答只用于本次活动，不会改动全局档案。`,
+                      })
                     : copy(language, {
                         en: `${missingCoreFields.length} core answer(s) remain before you can skip.`,
                         zh: `还需完成 ${missingCoreFields.length} 项核心回答，之后才可跳过选答题。`,

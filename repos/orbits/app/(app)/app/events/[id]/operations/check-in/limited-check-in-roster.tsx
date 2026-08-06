@@ -80,9 +80,13 @@ function CheckInAction({
   );
 }
 
+type RosterSegment = "all" | "pending" | "done";
+
 export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
   const [roster, setRoster] =
     useState<EventOperationsLimitedCheckInRoster | null>(null);
+  const [query, setQuery] = useState("");
+  const [segment, setSegment] = useState<RosterSegment>("all");
   const [loading, setLoading] = useState(true);
   const [loginRedirectPending, setLoginRedirectPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -267,15 +271,67 @@ export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
           </section>
         ) : null}
 
-        {roster ? (
+        {roster ? (() => {
+          const checkedCount = roster.participants.filter((participant) => participant.checkedIn).length;
+          const totalCount = roster.participants.length;
+          const trimmedQuery = query.trim().toLowerCase();
+          const visibleParticipants = roster.participants.filter((participant) => {
+            if (segment === "pending" && participant.checkedIn) return false;
+            if (segment === "done" && !participant.checkedIn) return false;
+            if (!trimmedQuery) return true;
+            return (
+              participant.displayName.toLowerCase().includes(trimmedQuery) ||
+              participant.participantId.toLowerCase().endsWith(trimmedQuery)
+            );
+          });
+          return (
           <section className="card" style={{ marginTop: 18, padding: 20 }}>
             <div className="eyebrow">LIMITED ROSTER · 最小权限名单</div>
-            <h2 className="h-title" style={{ margin: "8px 0 0" }}>
-              参会者到场状态
-            </h2>
+            <div style={{ alignItems: "baseline", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+              <h2 className="h-title" style={{ margin: "8px 0 0" }}>
+                参会者到场状态
+              </h2>
+              <strong aria-live="polite" style={{ color: "var(--accent)", fontSize: 15 }}>
+                已签到 {checkedCount} / {totalCount}
+              </strong>
+            </div>
             <p style={{ color: "var(--text-3)", fontSize: 13 }}>
               本页面只显示签到所需的姓名、参会者编号和到场时间。
             </p>
+
+            <div className="roster-controls">
+              <input
+                aria-label="按姓名搜索参会者"
+                className="field"
+                onInput={(input) => setQuery(input.currentTarget.value)}
+                placeholder="输入姓名快速查找…"
+                type="search"
+                value={query}
+              />
+              <div aria-label="签到状态筛选" className="roster-segments" role="group">
+                {([
+                  ["all", `全部 ${totalCount}`],
+                  ["pending", `未签到 ${totalCount - checkedCount}`],
+                  ["done", `已签到 ${checkedCount}`],
+                ] as const).map(([value, label]) => (
+                  <button
+                    aria-pressed={segment === value}
+                    className={segment === value ? "btn btn-dark btn-sm" : "btn btn-ghost btn-sm"}
+                    key={value}
+                    onClick={() => setSegment(value)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {visibleParticipants.length === 0 ? (
+              <p role="status" style={{ color: "var(--text-3)", fontSize: 14, marginTop: 16 }}>
+                没有匹配的参会者。换一个姓名试试，或清空筛选。
+              </p>
+            ) : null}
 
             <div className="roster-table-wrap">
               <table className="roster-table">
@@ -289,17 +345,15 @@ export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {roster.participants.map((participant) => {
+                  {visibleParticipants.map((participant) => {
                     const busy = pendingParticipantIds.has(
                       participant.participantId,
                     );
                     return (
                       <tr aria-busy={busy} key={participant.participantId}>
                         <td>
-                          <strong>{participant.displayName}</strong>
-                          <div className="mono participant-id">
-                            {participant.participantId}
-                          </div>
+                          <strong title={participant.participantId}>{participant.displayName}</strong>
+                          <span className="mono participant-id">#{participant.participantId.slice(-6)}</span>
                         </td>
                         <td>{participant.checkedIn ? "已签到" : "未签到"}</td>
                         <td>
@@ -322,12 +376,12 @@ export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
             </div>
 
             <div className="roster-cards">
-              {roster.participants.map((participant) => {
+              {visibleParticipants.map((participant) => {
                 const busy = pendingParticipantIds.has(participant.participantId);
                 return (
                   <article aria-busy={busy} className="roster-card" key={participant.participantId}>
-                    <strong>{participant.displayName}</strong>
-                    <div className="mono participant-id">{participant.participantId}</div>
+                    <strong title={participant.participantId}>{participant.displayName}</strong>
+                    <span className="mono participant-id">#{participant.participantId.slice(-6)}</span>
                     <div className="roster-card-row">
                       <span>{participant.checkedIn ? "已签到" : "未签到"}</span>
                       {participant.checkedInAt ? (
@@ -342,9 +396,13 @@ export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
               })}
             </div>
           </section>
-        ) : null}
+          );
+        })() : null}
       </main>
       <style jsx>{`
+        .roster-controls { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+        .roster-controls :global(input.field) { flex: 1 1 220px; max-width: 340px; }
+        .roster-segments { display: flex; flex-wrap: wrap; gap: 8px; }
         .roster-table-wrap { margin-top: 16px; }
         .roster-table { border-collapse: collapse; width: 100%; }
         .roster-table th, .roster-table td {
@@ -354,7 +412,7 @@ export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
           vertical-align: middle;
         }
         .roster-table th { color: var(--text-3); font-size: 11px; }
-        .participant-id { color: var(--text-3); font-size: 10px; margin-top: 4px; overflow-wrap: anywhere; }
+        .participant-id { color: var(--text-3); font-size: 10px; margin-left: 8px; }
         .roster-cards { display: none; }
         .roster-card { border-top: 1px solid var(--border); display: grid; gap: 10px; padding: 16px 0; }
         .roster-card-row { align-items: center; color: var(--text-2); display: flex; flex-wrap: wrap; font-size: 12px; gap: 8px; justify-content: space-between; }

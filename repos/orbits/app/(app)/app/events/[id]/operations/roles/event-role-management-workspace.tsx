@@ -130,6 +130,53 @@ export function EventRoleManagementWorkspace({ eventId }: { eventId: string }) {
   const [newRole, setNewRole] = useState<DelegatedRole>("operations");
   const [newReason, setNewReason] = useState("");
   const [memberEdits, setMemberEdits] = useState<Record<string, { reason: string; role: DelegatedRole }>>({});
+  // Registered participants of this event double as the candidate pool, so the
+  // owner can pick a person by name instead of hunting down a raw actor id.
+  // Loading this is best-effort: without the sensitive-read capability the
+  // manual actor-id input still works on its own.
+  const [participantOptions, setParticipantOptions] = useState<
+    readonly { actorId: string; label: string }[] | null
+  >(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/events/${encodeURIComponent(eventId)}/operations/admin`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) return;
+        const body = (await response.json().catch(() => null)) as {
+          data?: { participants?: readonly { actorId?: string; company?: string | null; displayName?: string }[] };
+        } | null;
+        const participants = body?.data?.participants ?? [];
+        const seen = new Set<string>();
+        const options = participants
+          .filter((participant): participant is { actorId: string; company?: string | null; displayName?: string } =>
+            typeof participant.actorId === "string" && participant.actorId.trim().length > 0)
+          .filter((participant) => {
+            if (seen.has(participant.actorId)) return false;
+            seen.add(participant.actorId);
+            return true;
+          })
+          .map((participant) => ({
+            actorId: participant.actorId,
+            label: [participant.displayName, participant.company].filter(Boolean).join(" · ") || participant.actorId,
+          }))
+          .sort((left, right) => left.label.localeCompare(right.label));
+        if (active && options.length) setParticipantOptions(options);
+      } catch {
+        // Best-effort enrichment only; manual input remains available.
+      }
+    })();
+    return () => { active = false; };
+  }, [eventId]);
+
+  const participantLabelByActorId = useMemo(
+    () => new Map((participantOptions ?? []).map((option) => [option.actorId, option.label])),
+    [participantOptions],
+  );
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -296,12 +343,33 @@ export function EventRoleManagementWorkspace({ eventId }: { eventId: string }) {
               <div className="eyebrow">GRANT EVENT ROLE</div>
               <h2 className="h-title" style={{ margin: "8px 0 0" }}>授予活动范围角色</h2>
               <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>
-                当前授权边界只保存账号 ID，未接入经过授权的姓名或邮箱目录。请粘贴准确的 <strong>账号 ID</strong>；不会做模糊全库搜索。
+                {participantOptions
+                  ? <>可直接从本活动的已报名参会者中选择授权对象；活动之外的人员仍可粘贴准确的 <strong>账号 ID</strong>。</>
+                  : <>当前授权边界只保存账号 ID，未接入经过授权的姓名或邮箱目录。请粘贴准确的 <strong>账号 ID</strong>；不会做模糊全库搜索。</>}
               </p>
               <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", marginTop: 16 }}>
+                {participantOptions ? (
+                  <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                    <span className="mono">从参会者选择</span>
+                    <select
+                      className="field"
+                      data-event-role-participant-picker
+                      onChange={(input) => { if (input.target.value) setNewSubjectActorId(input.target.value); }}
+                      value={participantLabelByActorId.has(newSubjectActorId) ? newSubjectActorId : ""}
+                    >
+                      <option value="">——手动输入账号 ID——</option>
+                      {participantOptions.map((option) => (
+                        <option key={option.actorId} value={option.actorId}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
                   <span className="mono">账号 ID（精确值）</span>
                   <input className="field" data-event-role-subject="new" onChange={(input) => setNewSubjectActorId(input.target.value)} placeholder="actor:operations-01" value={newSubjectActorId} />
+                  {participantLabelByActorId.has(newSubjectActorId) ? (
+                    <span style={{ color: "var(--accent)", fontSize: 12 }}>参会者：{participantLabelByActorId.get(newSubjectActorId)}</span>
+                  ) : null}
                 </label>
                 <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
                   <span className="mono">活动角色</span>
@@ -337,8 +405,11 @@ export function EventRoleManagementWorkspace({ eventId }: { eventId: string }) {
                     <article data-event-role-member={member.subjectActorId} key={member.subjectActorId} style={{ border: "1px solid var(--border)", borderRadius: 12, display: "grid", gap: 12, padding: 15 }}>
                       <div style={{ alignItems: "start", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
                         <div>
-                          <div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>账号 ID</div>
-                          <strong style={{ overflowWrap: "anywhere" }}>{member.subjectActorId}</strong>
+                          {participantLabelByActorId.has(member.subjectActorId) ? (
+                            <strong style={{ display: "block" }}>{participantLabelByActorId.get(member.subjectActorId)}</strong>
+                          ) : null}
+                          <div className="mono" style={{ color: "var(--text-3)", fontSize: 10, marginTop: participantLabelByActorId.has(member.subjectActorId) ? 4 : 0 }}>账号 ID</div>
+                          <strong style={{ fontSize: participantLabelByActorId.has(member.subjectActorId) ? 12 : undefined, fontWeight: participantLabelByActorId.has(member.subjectActorId) ? 500 : undefined, overflowWrap: "anywhere" }}>{member.subjectActorId}</strong>
                           <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 5 }}>当前版本 {member.revision}{member.assignedAt ? ` · 最近授权 ${new Date(member.assignedAt).toLocaleString()}` : " · 来自 Event Core"}</div>
                         </div>
                         <RoleBadge role={member.role} />

@@ -165,9 +165,20 @@ async function projectContactRequestNotification(input: {
       false,
     );
   }
+  // Deep-link straight to the counterpart's profile drawer so the recipient
+  // can act on the request without hunting through the recommendation list.
+  const focusParticipantKey =
+    notification.actorId === targetActorId
+      ? "requesterParticipantId"
+      : "targetParticipantId";
+  const focusParticipantValue = payload[focusParticipantKey];
+  const focusParticipantId =
+    typeof focusParticipantValue === "string" && focusParticipantValue.trim()
+      ? focusParticipantValue
+      : null;
   const actionHref = notification.contactId
     ? `/app/contacts/${encodeURIComponent(notification.contactId)}?eventId=${encodeURIComponent(input.message.eventId)}`
-    : `/app/events/${encodeURIComponent(input.message.eventId)}#event-matchmaking-title`;
+    : `/app/events/${encodeURIComponent(input.message.eventId)}${focusParticipantId ? `?participant=${encodeURIComponent(focusParticipantId)}` : ""}#event-matchmaking-title`;
   const notificationId = `notification:event-contact-request:${encodeURIComponent(requestId)}:${revision}:${transition}:${encodeURIComponent(notification.actorId)}`;
   await input.writer.createNotification({
     actionHref,

@@ -152,7 +152,11 @@ test("regrant reads a revoked subject's durable head revision before it writes",
     });
 
     assert.deepEqual(
-      observed.map(({ method, url }) => ({ method: method ?? "GET", url })),
+      observed
+        // The participant-picker enrichment fetch is best-effort and outside
+        // the durable role write path this test pins down.
+        .filter(({ url }) => !url.includes("/operations/admin"))
+        .map(({ method, url }) => ({ method: method ?? "GET", url })),
       [
         { method: "GET", url: `${baseUrl}/roles` },
         { method: "GET", url: `${baseUrl}/assignments/${encodeURIComponent("actor:revoked")}` },

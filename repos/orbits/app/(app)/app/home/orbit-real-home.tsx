@@ -292,7 +292,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
           <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span>
         </span>
         <span className="orbit-account-event-module-foot">
-          <span>{event.status === "ended" ? t({ en: "Review event context", zh: "回看活动背景" }) : t({ en: "Open event context", zh: "打开活动背景" })}</span>
+          <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
           <strong>{canEnter ? enterLabel : t({ en: "View event", zh: "查看活动" })}{canEnter ? <Icon name="arrowUR" size={14} /> : <Icon name="chevR" size={14} />}</strong>
         </span>
       </span>

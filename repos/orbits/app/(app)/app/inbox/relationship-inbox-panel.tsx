@@ -358,7 +358,18 @@ function AlertsTab() {
     <div className="ri-alerts">
       {visibleReminders.length ? (
         <div className="ri-alert-group">
-          <div className="ri-alert-eyebrow">{t({ en: "Reminders", zh: "跟进提醒" })}</div>
+          <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
+            <div className="ri-alert-eyebrow">{t({ en: "Reminders", zh: "跟进提醒" })}</div>
+            {visibleReminders.length > 1 ? (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => { for (const alert of visibleReminders) dismiss(alert.id); }}
+                type="button"
+              >
+                {t({ en: "Dismiss all", zh: "全部忽略" })}
+              </button>
+            ) : null}
+          </div>
           {visibleReminders.map((alert) => (
             <div className={`ri-alert ri-alert-pri-${alert.priority}`} key={alert.id}>
               <a className="ri-alert-main ri-alert-nav" href={alert.href} onClick={() => { void persistNotificationState(alert.id, "read"); }}>
