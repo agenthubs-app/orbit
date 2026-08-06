@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit · 活动旅程页原型</title>
+<style>
+  :root {
+    --accent: #6359E9;
+    --accent-hover: #5249D6;
+    --accent-press: #463DBE;
+    --accent-soft: #EEEDFC;
+    --accent-softer: #F6F5FD;
+    --accent-ring: rgba(99, 89, 233, .32);
+    --on-accent: #fff;
+    --live: #15A06B;
+    --live-soft: #E4F5EE;
+    --ink: #16161A;
+    --text: #1D1D22;
+    --text-2: #62626B;
+    --text-3: #8A8A93;
+    --bg: #F4F3F8;
+    --surface: #FFFFFF;
+    --surface-2: #F8F8FA;
+    --border: #ECECEF;
+    --border-2: #E2E2E7;
+    --sh-sm: 0 1px 2px rgba(18,18,28,.04), 0 2px 6px rgba(18,18,28,.05);
+    --sh-md: 0 2px 4px rgba(18,18,28,.04), 0 8px 24px rgba(18,18,28,.07);
+    --sh-lg: 0 8px 16px rgba(18,18,28,.06), 0 24px 56px rgba(18,18,28,.12);
+    --r-lg: 22px;
+    --r-md: 14px;
+    --r-sm: 10px;
+    --ff: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Segoe UI', system-ui, sans-serif;
+    /* 卡片 B（活动中）暗色域内的令牌 */
+    --nite-1: #1B1733;
+    --nite-2: #262052;
+    --nite-3: #322A6B;
+    --nite-text: rgba(255,255,255,.92);
+    --nite-text-2: rgba(255,255,255,.68);
+    --nite-text-3: rgba(255,255,255,.46);
+    --nite-border: rgba(255,255,255,.14);
+    /* AI 毛玻璃层 */
+    --glass-light: rgba(255,255,255,.62);
+    --glass-light-border: rgba(255,255,255,.75);
+    --glass-dark: rgba(255,255,255,.09);
+    --glass-dark-border: rgba(255,255,255,.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--ff);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100dvh;
+  }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .hide { display: none !important; }
+  svg { flex: 0 0 auto; }
+
+  /* ───────── 顶栏 + 原型状态切换 ───────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px;
+    background: rgba(244,243,248,.82);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); letter-spacing: .01em; }
+  .brand-dot { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #8B83F2, var(--accent) 68%); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .back { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); text-decoration: none; font-size: 13px; padding: 6px 10px; border-radius: 999px; transition: background .15s, color .15s; }
+  .back:hover { background: var(--surface); color: var(--ink); }
+  .proto-switch {
+    margin-left: auto;
+    display: flex; gap: 3px; padding: 3px;
+    background: var(--surface); border: 1px solid var(--border-2); border-radius: 999px; box-shadow: var(--sh-xs);
+  }
+  .proto-switch button {
+    padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--text-2);
+    transition: background .18s, color .18s;
+    min-height: 34px;
+  }
+  .proto-switch button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .proto-hint { font-size: 12px; color: var(--text-3); }
+  @media (max-width: 760px) { .proto-hint { display: none; } }
+
+  .page { max-width: 780px; margin: 0 auto; padding: 26px 18px 90px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ───────── 通用卡片语法 ───────── */
+  .bigcard { border-radius: var(--r-lg); overflow: hidden; }
+  .fold-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface);
+    transition: background .15s, color .15s, border-color .15s;
+    min-height: 38px;
+  }
+  .fold-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .fold-btn .chev { transition: transform .22s ease; }
+  .fold-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+  .collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s ease; }
+  .collapse > .collapse-inner { overflow: hidden; }
+  .collapse.open { grid-template-rows: 1fr; }
+
+  /* AI 徽标（示例内容通用） */
+  .ai-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .ai-chip.on-light { background: var(--accent-soft); color: var(--accent-press); }
+  .ai-chip.on-dark { background: rgba(255,255,255,.14); color: #CFC9FF; border: 1px solid rgba(255,255,255,.18); }
+
+  /* ══════════ 卡片 A · 活动信息 ══════════ */
+  .cardA {
+    background: linear-gradient(178deg, #FFFDF7, var(--surface) 42%);
+    border: 1px solid var(--border);
+    box-shadow: var(--sh-md);
+  }
+  .a-cover {
+    height: 128px;
+    background:
+      radial-gradient(120% 180% at 85% -20%, rgba(99,89,233,.35), transparent 55%),
+      radial-gradient(90% 140% at 12% 120%, rgba(240,171,90,.4), transparent 60%),
+      linear-gradient(120deg, #2A2350, #4A3F9E 60%, #7A6CE0);
+    position: relative;
+  }
+  .a-cover .a-date-badge {
+    position: absolute; left: 22px; bottom: -26px;
+    width: 60px; border-radius: 14px; overflow: hidden; text-align: center;
+    background: var(--surface); box-shadow: var(--sh-md); border: 1px solid var(--border);
+  }
+  .a-date-badge .m { display: block; font-size: 11px; font-weight: 700; background: var(--accent); color: #fff; padding: 2px 0; letter-spacing: .08em; }
+  .a-date-badge .d { display: block; font-size: 22px; font-weight: 700; color: var(--ink); padding: 3px 0 5px; }
+  .a-head { padding: 38px 24px 6px; }
+  .a-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tag { font-size: 12px; font-weight: 500; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); padding: 3px 10px; border-radius: 999px; }
+  .a-title { font-size: 24px; line-height: 1.35; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .a-sub { color: var(--text-2); font-size: 14px; margin-top: 6px; }
+  .a-body-grid { padding: 16px 24px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 620px) { .a-body-grid { grid-template-columns: 1fr; } }
+  .a-info {
+    display: flex; gap: 11px; align-items: flex-start;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 13px 15px;
+  }
+  .a-info .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .a-info b { display: block; font-size: 13.5px; color: var(--ink); font-weight: 600; }
+  .a-info span { font-size: 12.5px; color: var(--text-2); }
+  .a-desc { padding: 10px 24px 4px; color: var(--text-2); font-size: 14px; }
+  .a-desc p + p { margin-top: 8px; }
+  .a-cta-row { padding: 18px 24px 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: var(--on-accent);
+    font-size: 15px; font-weight: 600;
+    padding: 13px 26px; border-radius: 999px;
+    box-shadow: 0 6px 18px var(--accent-ring);
+    transition: background .15s, transform .12s;
+    min-height: 46px;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { background: var(--accent-press); transform: scale(.97); }
+  .a-cta-note { font-size: 12.5px; color: var(--text-3); }
+  /* 报名后的迷你态 */
+  .a-mini {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 16px 22px;
+  }
+  .a-mini .mini-date {
+    width: 48px; border-radius: 12px; overflow: hidden; text-align: center;
+    background: var(--surface); box-shadow: var(--sh-sm); border: 1px solid var(--border);
+  }
+  .a-mini .mini-date .m { display: block; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; padding: 1px 0; letter-spacing: .08em; }
+  .a-mini .mini-date .d { display: block; font-size: 17px; font-weight: 700; color: var(--ink); padding: 1px 0 3px; }
+  .a-mini-main { flex: 1; min-width: 200px; }
+  .a-mini-title { font-size: 15.5px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge-joined { font-size: 11px; font-weight: 700; color: var(--live); background: var(--live-soft); padding: 2px 9px; border-radius: 999px; letter-spacing: .03em; }
+  .badge-ended { font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border-2); padding: 2px 9px; border-radius: 999px; letter-spacing: .03em; }
+  .a-mini-meta { font-size: 13px; color: var(--text-2); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+  /* ══════════ 卡片 B · 活动中（暗色域） ══════════ */
+  .cardB {
+    position: relative;
+    background:
+      radial-gradient(60% 46% at 82% 4%, rgba(122,108,224,.4), transparent 62%),
+      radial-gradient(44% 40% at 8% 96%, rgba(52,177,196,.22), transparent 64%),
+      linear-gradient(164deg, var(--nite-1), var(--nite-2) 52%, var(--nite-3));
+    color: var(--nite-text);
+    box-shadow: var(--sh-lg);
+    isolation: isolate;
+  }
+  /* 星空微粒 */
+  .cardB::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; z-index: -1;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, rgba(255,255,255,.8), transparent 100%),
+      radial-gradient(1px 1px at 34% 68%, rgba(255,255,255,.55), transparent 100%),
+      radial-gradient(1.5px 1.5px at 58% 14%, rgba(255,255,255,.7), transparent 100%),
+      radial-gradient(1px 1px at 76% 44%, rgba(255,255,255,.5), transparent 100%),
+      radial-gradient(1.5px 1.5px at 90% 78%, rgba(255,255,255,.6), transparent 100%),
+      radial-gradient(1px 1px at 22% 88%, rgba(255,255,255,.45), transparent 100%);
+  }
+  .b-head { display: flex; align-items: center; gap: 10px; padding: 22px 24px 6px; flex-wrap: wrap; }
+  .b-title { font-size: 18px; font-weight: 700; letter-spacing: .01em; }
+  .badge-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #7DEBB8; background: rgba(21,160,107,.22); border: 1px solid rgba(125,235,184,.28); padding: 3px 10px; border-radius: 999px; }
+  .badge-live .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE97; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .b-head .fold-btn { margin-left: auto; background: rgba(255,255,255,.08); border-color: var(--nite-border); color: var(--nite-text-2); }
+  .b-head .fold-btn:hover { color: #fff; border-color: rgba(255,255,255,.4); }
+
+  /* —— 未报名：mock 钩子 —— */
+  .b-hook { padding: 8px 24px 26px; }
+  .hook-lede { font-size: 14px; color: var(--nite-text-2); margin-bottom: 16px; max-width: 46ch; }
+  .glass-d {
+    background: var(--glass-dark);
+    border: 1px solid var(--glass-dark-border);
+    border-radius: var(--r-md);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 10px 30px rgba(10,8,26,.35);
+  }
+  .hook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .hook-grid { grid-template-columns: 1fr; } }
+  .hook-card { padding: 16px 17px; position: relative; }
+  .hook-card h4 { font-size: 13px; font-weight: 600; color: var(--nite-text-2); letter-spacing: .04em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .mock-person { display: flex; gap: 11px; align-items: flex-start; padding: 9px 0; }
+  .mock-person + .mock-person { border-top: 1px dashed rgba(255,255,255,.12); }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; flex: 0 0 auto; }
+  .av-1 { background: linear-gradient(135deg,#7A6CE0,#4A3F9E); }
+  .av-2 { background: linear-gradient(135deg,#34B1C4,#1F7C8C); }
+  .av-3 { background: linear-gradient(135deg,#E08D5A,#B05C2C); }
+  .av-4 { background: linear-gradient(135deg,#5AA4E0,#2C63B0); }
+  .av-5 { background: linear-gradient(135deg,#C45AB4,#8C2C7E); }
+  .av-6 { background: linear-gradient(135deg,#6BBE7C,#2F7C42); }
+  .mock-person b { display: block; font-size: 14px; color: var(--nite-text); font-weight: 600; }
+  .mock-person .role { font-size: 12px; color: var(--nite-text-3); }
+  .mock-person .why { font-size: 12.5px; color: var(--nite-text-2); margin-top: 4px; }
+  .hook-seat { display: flex; align-items: center; gap: 14px; padding: 6px 0 2px; }
+  .seat-num { font-size: 30px; font-weight: 700; color: #CFC9FF; line-height: 1; }
+  .seat-desc { font-size: 12.5px; color: var(--nite-text-2); }
+  .hook-open { font-size: 13px; color: var(--nite-text); background: rgba(255,255,255,.06); border-left: 3px solid #8B83F2; padding: 10px 13px; border-radius: 8px; font-style: normal; }
+  .hook-foot { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .hook-foot .note { font-size: 12.5px; color: var(--nite-text-3); }
+  .btn-unlock {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: var(--ink); font-size: 14px; font-weight: 600;
+    padding: 11px 22px; border-radius: 999px;
+    transition: transform .12s, box-shadow .15s;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    min-height: 44px;
+  }
+  .btn-unlock:hover { box-shadow: 0 8px 26px rgba(0,0,0,.45); }
+  .btn-unlock:active { transform: scale(.97); }
+
+  /* —— 已报名：真实内容 —— */
+  .b-live { padding: 4px 0 22px; }
+  /* 进度条：横向可滑动 */
+  .progress-wrap { padding: 10px 24px 16px; }
+  .progress-scroll { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; padding: 4px 2px 10px; scroll-snap-type: x proximity; }
+  .progress-scroll::-webkit-scrollbar { display: none; }
+  .p-step { display: flex; align-items: center; flex: 0 0 auto; scroll-snap-align: center; }
+  .p-node { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 76px; }
+  .p-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 2px solid rgba(255,255,255,.25); color: var(--nite-text-3); background: rgba(255,255,255,.05); transition: all .2s; }
+  .p-step.done .p-dot { background: rgba(125,235,184,.16); border-color: rgba(125,235,184,.5); color: #7DEBB8; }
+  .p-step.now .p-dot { background: #fff; border-color: #fff; color: var(--accent-press); box-shadow: 0 0 0 5px rgba(255,255,255,.16); }
+  .p-label { font-size: 12px; color: var(--nite-text-3); white-space: nowrap; }
+  .p-step.done .p-label { color: var(--nite-text-2); }
+  .p-step.now .p-label { color: #fff; font-weight: 600; }
+  .p-time { font-size: 10.5px; color: var(--nite-text-3); }
+  .p-link { width: 34px; height: 2px; background: rgba(255,255,255,.16); margin: 0 2px 24px; }
+  .p-step.done + .p-step .p-link, .p-link.done { background: rgba(125,235,184,.45); }
+
+  /* 区块（可折叠） */
+  .blk { margin: 0 24px 12px; border-radius: var(--r-md); background: rgba(255,255,255,.05); border: 1px solid var(--nite-border); overflow: hidden; }
+  .blk-head {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 15px 17px; text-align: left; min-height: 52px;
+    transition: background .15s;
+  }
+  .blk-head:hover { background: rgba(255,255,255,.05); }
+  .blk-head .ic { width: 32px; height: 32px; border-radius: 9px; background: rgba(255,255,255,.1); display: grid; place-items: center; color: #CFC9FF; }
+  .blk-head b { font-size: 14.5px; font-weight: 600; color: var(--nite-text); }
+  .blk-head .meta { font-size: 12px; color: var(--nite-text-3); margin-left: 2px; }
+  .blk-head .count { font-size: 11px; font-weight: 700; background: #F0605A; color: #fff; min-width: 20px; height: 20px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; }
+  .blk-head .chev { margin-left: auto; color: var(--nite-text-3); transition: transform .22s ease; }
+  .blk-head[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .blk-body { padding: 2px 17px 16px; }
+
+  /* 座位 */
+  .seat-live { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .seat-badge {
+    width: 86px; height: 86px; border-radius: 20px; flex: 0 0 auto;
+    background: linear-gradient(150deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+    border: 1px solid rgba(255,255,255,.24);
+    display: grid; place-items: center; text-align: center;
+  }
+  .seat-badge b { font-size: 26px; color: #fff; display: block; line-height: 1.1; }
+  .seat-badge span { font-size: 11px; color: var(--nite-text-2); }
+  .seat-info { flex: 1; min-width: 200px; font-size: 13.5px; color: var(--nite-text-2); }
+  .seat-info b { color: var(--nite-text); }
+  .seat-mates { display: flex; margin-top: 9px; }
+  .seat-mates .avatar { width: 30px; height: 30px; font-size: 11px; border: 2px solid var(--nite-2); margin-left: -7px; }
+  .seat-mates .avatar:first-child { margin-left: 0; }
+
+  /* 推荐的人（真实，AI 理由用玻璃） */
+  .rec-card { border-radius: var(--r-md); padding: 15px 16px; margin-top: 10px; background: rgba(255,255,255,.06); border: 1px solid var(--nite-border); }
+  .rec-top { display: flex; align-items: center; gap: 12px; }
+  .rec-top b { font-size: 15px; color: var(--nite-text); display: block; }
+  .rec-top .role { font-size: 12.5px; color: var(--nite-text-3); }
+  .rec-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn-ghost-d {
+    font-size: 13px; font-weight: 500; color: var(--nite-text-2);
+    border: 1px solid var(--nite-border); border-radius: 999px; padding: 8px 15px;
+    transition: color .15s, border-color .15s; min-height: 38px;
+  }
+  .btn-ghost-d:hover { color: #fff; border-color: rgba(255,255,255,.4); }
+  .btn-add {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--ink); background: #fff;
+    border-radius: 999px; padding: 8px 16px; transition: transform .12s, opacity .15s; min-height: 38px;
+  }
+  .btn-add:active { transform: scale(.96); }
+  .btn-add.sent { background: rgba(255,255,255,.14); color: #7DEBB8; pointer-events: none; }
+  .rec-why { margin-top: 11px; padding: 11px 13px; font-size: 13px; color: var(--nite-text); border-radius: 11px; }
+  .rec-why .ai-chip { margin-bottom: 6px; }
+  .rec-why p { color: var(--nite-text-2); }
+  .rec-opener { margin-top: 8px; font-size: 13px; color: var(--nite-text); background: rgba(255,255,255,.05); border-left: 3px solid #8B83F2; padding: 9px 12px; border-radius: 8px; }
+  .rec-opener span { color: var(--nite-text-3); font-size: 11.5px; display: block; margin-bottom: 2px; }
+
+  /* 好友请求 */
+  .req-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; }
+  .req-row + .req-row { border-top: 1px dashed rgba(255,255,255,.12); }
+  .req-row b { font-size: 14px; color: var(--nite-text); display: block; }
+  .req-row .role { font-size: 12px; color: var(--nite-text-3); }
+  .req-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* 全部人脉：横滑 */
+  .ppl-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px 12px; scrollbar-width: thin; }
+  .ppl-card {
+    flex: 0 0 148px; border-radius: var(--r-md); padding: 14px 13px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--nite-border);
+    text-align: center; transition: background .15s, border-color .15s;
+  }
+  .ppl-card:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); }
+  .ppl-card .avatar { margin: 0 auto 8px; }
+  .ppl-card b { display: block; font-size: 13.5px; color: var(--nite-text); }
+  .ppl-card .role { font-size: 11.5px; color: var(--nite-text-3); display: block; min-height: 2.6em; }
+  .ppl-card .btn-add { width: 100%; justify-content: center; margin-top: 8px; padding: 7px 0; font-size: 12.5px; min-height: 34px; }
+  /* 人脉详情（点开卡片） */
+  .ppl-detail { margin: 4px 0 8px; padding: 14px 15px; border-radius: var(--r-md); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); }
+  .ppl-detail .rec-top b { font-size: 15px; }
+  .ppl-detail .bio { font-size: 13px; color: var(--nite-text-2); margin-top: 9px; }
+
+  /* 已结束：B 折叠条 */
+  .b-ended-bar { display: flex; align-items: center; gap: 12px; padding: 18px 24px; }
+  .b-ended-bar .txt { font-size: 14px; color: var(--nite-text-2); }
+  .b-ended-bar .txt b { color: var(--nite-text); }
+
+  /* ══════════ 卡片 C · 活动总结 ══════════ */
+  .cardC {
+    position: relative;
+    background:
+      radial-gradient(70% 60% at 90% 0%, rgba(139,131,242,.25), transparent 60%),
+      radial-gradient(50% 55% at 4% 100%, rgba(52,177,196,.16), transparent 60%),
+      linear-gradient(170deg, #FBFAFF, #F1EFFC 70%, #ECF4F6);
+    border: 1px solid #E4E1F4;
+    box-shadow: var(--sh-md);
+  }
+  .c-head { display: flex; align-items: center; gap: 10px; padding: 22px 24px 4px; flex-wrap: wrap; }
+  .c-title { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .c-head .fold-btn { margin-left: auto; }
+  .glass-l {
+    background: var(--glass-light);
+    border: 1px solid var(--glass-light-border);
+    border-radius: var(--r-md);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 8px 26px rgba(85,76,180,.1);
+  }
+  .c-mock { margin: 12px 24px 24px; padding: 18px 20px; }
+  .c-mock-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .c-mock-head b { font-size: 14.5px; color: var(--ink); }
+  .c-mock p { font-size: 13.5px; color: var(--text-2); }
+  .c-mock-stats { display: flex; gap: 10px; margin: 13px 0 4px; flex-wrap: wrap; }
+  .stat-pill { background: rgba(255,255,255,.8); border: 1px solid #E7E4F6; border-radius: 12px; padding: 9px 15px; }
+  .stat-pill b { font-size: 19px; color: var(--accent-press); display: block; line-height: 1.2; }
+  .stat-pill span { font-size: 11.5px; color: var(--text-3); }
+  .c-mock .note { font-size: 12px; color: var(--text-3); margin-top: 10px; }
+
+  /* 已结束的结算流程 */
+  .c-post { padding: 6px 24px 26px; }
+  .c-friends { display: flex; align-items: center; gap: 12px; margin: 12px 0 16px; flex-wrap: wrap; }
+  .c-friends .avatar { width: 42px; height: 42px; border: 2px solid #fff; box-shadow: var(--sh-sm); margin-left: -10px; }
+  .c-friends .avatar:first-child { margin-left: 0; }
+  .c-friends .txt { font-size: 14.5px; color: var(--text); }
+  .c-friends .txt b { color: var(--ink); }
+  .memo-ask { padding: 17px 19px; margin-bottom: 14px; }
+  .memo-ask h4 { font-size: 15px; color: var(--ink); margin-bottom: 5px; display: flex; gap: 8px; align-items: center; }
+  .memo-ask p { font-size: 13px; color: var(--text-2); margin-bottom: 13px; }
+  .memo-ask .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-secondary {
+    font-size: 14px; font-weight: 600; color: var(--accent-press);
+    background: #fff; border: 1px solid #D8D4F5; border-radius: 999px; padding: 11px 20px;
+    transition: border-color .15s, background .15s; min-height: 44px;
+  }
+  .btn-secondary:hover { border-color: var(--accent); background: var(--accent-softer); }
+  /* memo 面板 */
+  .memo-panel { margin-bottom: 14px; padding: 4px 19px 17px; }
+  .memo-row { padding: 13px 0; }
+  .memo-row + .memo-row { border-top: 1px dashed #DDD9F0; }
+  .memo-row .who { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .memo-row .who b { font-size: 14px; color: var(--ink); }
+  .memo-row .who .role { font-size: 12px; color: var(--text-3); }
+  .memo-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+  .m-chip {
+    font-size: 12.5px; font-weight: 500; color: var(--text-2);
+    background: #fff; border: 1px solid var(--border-2); border-radius: 999px; padding: 6px 13px;
+    transition: all .15s; min-height: 32px;
+  }
+  .m-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .m-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .memo-input { width: 100%; margin-top: 9px; font: inherit; font-size: 13px; color: var(--text); background: #fff; border: 1px solid var(--border-2); border-radius: 10px; padding: 9px 13px; }
+  .memo-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .memo-input::placeholder { color: var(--text-3); }
+
+  /* 报告 */
+  .report { display: flex; flex-direction: column; gap: 13px; }
+  .rp-sec { padding: 17px 19px; }
+  .rp-sec h4 { font-size: 14px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+  .rp-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .rp-person { padding: 12px 0; }
+  .rp-person + .rp-person { border-top: 1px dashed #DDD9F0; }
+  .rp-person .who { display: flex; align-items: center; gap: 10px; }
+  .rp-person .who b { font-size: 14.5px; color: var(--ink); }
+  .rp-person .who .role { font-size: 12px; color: var(--text-3); }
+  .rp-person .memo-tag { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--accent-press); background: var(--accent-soft); border-radius: 999px; padding: 3px 9px; }
+  .rp-lines { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .rp-line { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .rp-line .k { flex: 0 0 68px; font-weight: 600; color: var(--text-3); font-size: 12px; padding-top: 1px; }
+  .rp-line .v b { color: var(--ink); font-weight: 600; }
+  .rp-todo { display: flex; align-items: flex-start; gap: 11px; padding: 11px 0; }
+  .rp-todo + .rp-todo { border-top: 1px dashed #DDD9F0; }
+  .rp-todo .n { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; flex: 0 0 auto; margin-top: 2px; }
+  .rp-todo p { font-size: 13.5px; color: var(--text); flex: 1; }
+  .rp-todo p span { display: block; font-size: 12px; color: var(--text-3); }
+  .rp-todo .btn-secondary { padding: 7px 14px; font-size: 12.5px; min-height: 34px; flex: 0 0 auto; }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; font-size: 13.5px;
+    padding: 11px 20px; border-radius: 999px; box-shadow: var(--sh-lg);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 99;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-state="pre">
+
+<header class="topbar">
+  <span class="brand"><span class="brand-dot"></span>Orbit</span>
+  <a class="back" href="#"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>活动列表</a>
+  <span class="proto-hint">原型 · 切换状态查看页面变形 →</span>
+  <div class="proto-switch" role="group" aria-label="原型状态切换">
+    <button data-set="pre" aria-pressed="true">未报名</button>
+    <button data-set="joined" aria-pressed="false">已报名</button>
+    <button data-set="post" aria-pressed="false">活动结束</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ══════════ 卡片 A · 活动信息 ══════════ -->
+  <section class="bigcard cardA" aria-label="活动信息">
+
+    <!-- 报名后的迷你态：只露时间地点 -->
+    <div class="a-mini" data-show="joined post">
+      <span class="mini-date"><span class="m">8月</span><span class="d">13</span></span>
+      <div class="a-mini-main">
+        <div class="a-mini-title">关西跨境电商夜话 · 大阪场
+          <span class="badge-joined" data-show="joined">已报名</span>
+          <span class="badge-ended" data-show="post">已结束</span>
+        </div>
+        <div class="a-mini-meta">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          周四 19:00–21:30
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          梅田 Grand Front North Tower 7F
+        </div>
+      </div>
+      <button class="fold-btn" id="aToggle" aria-expanded="false" aria-controls="aFull">
+        活动详情
+        <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- 完整活动信息（未报名默认展开；报名后折叠可展开） -->
+    <div class="collapse open" id="aFull">
+      <div class="collapse-inner">
+        <div class="a-cover" data-show="pre">
+          <span class="a-date-badge"><span class="m">8月</span><span class="d">13</span></span>
+        </div>
+        <div class="a-head">
+          <div class="a-tags">
+            <span class="tag">跨境电商</span><span class="tag">渠道对接</span><span class="tag">两轮换桌</span><span class="tag">限 50 人</span>
+          </div>
+          <h1 class="a-title" data-show="pre">关西跨境电商夜话 · 大阪场</h1>
+          <p class="a-sub" data-show="pre">Orbit × 关西跨境联盟 联合主办</p>
+        </div>
+        <div class="a-body-grid">
+          <div class="a-info">
+            <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <div><b>8月13日（周四）19:00–21:30</b><span>18:30 开放签到</span></div>
+          </div>
+          <div class="a-info">
+            <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+            <div><b>大阪 · 梅田 Grand Front North Tower 7F</b><span>JR 大阪站直达 · 查看地图</span></div>
+          </div>
+          <div class="a-info">
+            <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            <div><b>已报名 37 / 50 人</b><span>品牌方 14 · 渠道 11 · 服务商 12</span></div>
+          </div>
+          <div class="a-info">
+            <span class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></span>
+            <div><b>两轮换桌 + 定向匹配</b><span>按目标与画像分桌，附破冰话题</span></div>
+          </div>
+        </div>
+        <div class="a-desc">
+          <p>面向跨境电商创始人、渠道负责人与物流／支付服务商的深度对接夜话。报名时告诉我们你想认识谁、能提供什么，Orbit 会在活动前为你完成匹配和分桌——你到场时已经知道该找谁、聊什么。</p>
+          <p data-show="pre">每桌 6 人，两轮换桌，全场 2.5 小时。不设自由领读环节，把时间留给真正的对接。</p>
+        </div>
+        <div class="a-cta-row" data-show="pre">
+          <button class="btn-primary">
+            回答 2 题并报名
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <span class="a-cta-note">只需 2 个问题 · 无需先注册 · 立即看到你的初步匹配</span>
+        </div>
+        <div class="a-cta-row" data-show="joined post" style="padding-top:6px;">
+          <button class="fold-btn" data-fold="aFull">收起详情
+            <svg class="chev" style="transform:rotate(180deg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 卡片 B · 活动中 ══════════ -->
+  <section class="bigcard cardB" aria-label="活动现场">
+
+    <div class="b-head">
+      <span class="b-title">活动现场</span>
+      <span class="badge-live" data-show="joined"><span class="dot"></span>LIVE · 第一轮进行中</span>
+      <span class="ai-chip on-dark" data-show="pre">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+        AI 示例效果
+      </span>
+      <button class="fold-btn" data-show="post" id="bToggle" aria-expanded="false" aria-controls="bLiveWrap">回顾现场内容
+        <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- —— 未报名：共用 mock 钩子 —— -->
+    <div class="b-hook" data-show="pre">
+      <p class="hook-lede">报名后，这里会变成你的现场工作台。下面是它为参会者生成的内容<b style="color:var(--nite-text)">（示例）</b>：</p>
+      <div class="hook-grid">
+        <div class="glass-d hook-card" style="grid-row: span 2;">
+          <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>为你推荐的人 · 示例</h4>
+          <div class="mock-person">
+            <span class="avatar av-1">山田</span>
+            <div><b>山田 拓也</b><span class="role">跨境物流 · 商务负责人</span>
+              <p class="why">他在为日本中小卖家找海外仓伙伴，与你的「找渠道」目标互补。</p>
+            </div>
+          </div>
+          <div class="mock-person">
+            <span class="avatar av-2">陈</span>
+            <div><b>陈 静</b><span class="role">DTC 品牌创始人</span>
+              <p class="why">正在筹备进入关西市场，想认识本地渠道与你重合。</p>
+            </div>
+          </div>
+          <div class="mock-person">
+            <span class="avatar av-3">金</span>
+            <div><b>金 志源</b><span class="role">跨境支付 BD</span>
+              <p class="why">能解决你提到的日元结算问题，双方目标匹配度高。</p>
+            </div>
+          </div>
+        </div>
+        <div class="glass-d hook-card">
+          <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 3v18M3 9h18"/></svg>你的座位 · 示例</h4>
+          <div class="hook-seat">
+            <span class="seat-num">5 桌</span>
+            <span class="seat-desc">第 2 轮 · 6 人桌<br>本桌围绕「日本市场进入」组桌：2 位品牌方＋2 位渠道＋1 位物流＋1 位支付</span>
+          </div>
+        </div>
+        <div class="glass-d hook-card">
+          <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>开场白建议 · 示例</h4>
+          <p class="hook-open">"听说你们在帮日本卖家做海外仓，我们正好在选仓——你们在关西有点位吗？"</p>
+        </div>
+      </div>
+      <div class="hook-foot">
+        <button class="btn-unlock">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          报名后解锁你的真实匹配
+        </button>
+        <span class="note">以上为示例效果，实际内容基于你的报名回答生成</span>
+      </div>
+    </div>
+
+    <!-- —— 已报名 / 结束后可回顾：真实内容 —— -->
+    <div class="collapse" id="bLiveWrap">
+      <div class="collapse-inner">
+        <div class="b-live">
+
+          <!-- 活动进程 · 横向可滑动 -->
+          <div class="progress-wrap" aria-label="活动进程">
+            <div class="progress-scroll">
+              <div class="p-step done"><div class="p-node"><span class="p-dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="p-label">签到</span><span class="p-time">18:30</span></div><span class="p-link done"></span></div>
+              <div class="p-step done"><div class="p-node"><span class="p-dot"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="p-label">开场</span><span class="p-time">19:00</span></div><span class="p-link done"></span></div>
+              <div class="p-step now"><div class="p-node"><span class="p-dot">3</span><span class="p-label">第一轮</span><span class="p-time">19:15</span></div><span class="p-link"></span></div>
+              <div class="p-step"><div class="p-node"><span class="p-dot">4</span><span class="p-label">换桌</span><span class="p-time">20:05</span></div><span class="p-link"></span></div>
+              <div class="p-step"><div class="p-node"><span class="p-dot">5</span><span class="p-label">第二轮</span><span class="p-time">20:15</span></div><span class="p-link"></span></div>
+              <div class="p-step"><div class="p-node"><span class="p-dot">6</span><span class="p-label">自由交流</span><span class="p-time">21:00</span></div><span class="p-link"></span></div>
+              <div class="p-step"><div class="p-node"><span class="p-dot">7</span><span class="p-label">结束</span><span class="p-time">21:30</span></div></div>
+            </div>
+          </div>
+
+          <!-- 座位 -->
+          <div class="blk">
+            <button class="blk-head" data-acc aria-expanded="true">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 3v18M3 9h18"/></svg></span>
+              <b>我的座位</b><span class="meta">第一轮</span>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="collapse open"><div class="collapse-inner"><div class="blk-body">
+              <div class="seat-live">
+                <span class="seat-badge"><span><b>3 桌</b><span>座位 B</span></span></span>
+                <div class="seat-info">
+                  面向舞台<b>左侧第二排</b>。本桌围绕「日本线上渠道」组桌，你是本桌唯一的品牌方——主动一点。
+                  <div class="seat-mates">
+                    <span class="avatar av-1">佐</span><span class="avatar av-2">林</span><span class="avatar av-3">高</span><span class="avatar av-4">王</span><span class="avatar av-5">中</span>
+                  </div>
+                </div>
+              </div>
+            </div></div></div>
+          </div>
+
+          <!-- 推荐的人 -->
+          <div class="blk">
+            <button class="blk-head" data-acc aria-expanded="false">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg></span>
+              <b>最值得认识的人</b><span class="meta">3 位 · 按你的目标匹配</span>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="collapse"><div class="collapse-inner"><div class="blk-body">
+
+              <div class="rec-card">
+                <div class="rec-top">
+                  <span class="avatar av-1">佐</span>
+                  <div><b>佐藤 健一</b><span class="role">乐天 · 渠道运营（美妆类目）</span></div>
+                  <div class="rec-actions">
+                    <button class="btn-ghost-d">查看</button>
+                    <button class="btn-add" data-addfriend>加好友</button>
+                  </div>
+                </div>
+                <div class="glass-d rec-why">
+                  <span class="ai-chip on-dark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>为什么是他</span>
+                  <p>你想找日本线上渠道，他正负责乐天美妆类目的品牌招商——双方目标直接互补。</p>
+                </div>
+                <div class="rec-opener"><span>开场白建议</span>"听说你在帮美妆品牌进乐天，我们正好在准备日本线上首发，类目门槛方便聊聊吗？"</div>
+              </div>
+
+              <div class="rec-card">
+                <div class="rec-top">
+                  <span class="avatar av-2">林</span>
+                  <div><b>林 慧</b><span class="role">跨境支付 · BD 总监</span></div>
+                  <div class="rec-actions">
+                    <button class="btn-ghost-d">查看</button>
+                    <button class="btn-add" data-addfriend>加好友</button>
+                  </div>
+                </div>
+                <div class="glass-d rec-why">
+                  <span class="ai-chip on-dark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>为什么是她</span>
+                  <p>你在报名时提到日元结算成本高，她的方案正覆盖中小卖家日元收付。</p>
+                </div>
+                <div class="rec-opener"><span>开场白建议</span>"我们每月日元结算量不小，手续费一直压不下来——你们通常能做到什么水平？"</div>
+              </div>
+
+              <div class="rec-card">
+                <div class="rec-top">
+                  <span class="avatar av-3">高</span>
+                  <div><b>高桥 美咲</b><span class="role">海外仓解决方案 · 关西区负责人</span></div>
+                  <div class="rec-actions">
+                    <button class="btn-ghost-d">查看</button>
+                    <button class="btn-add" data-addfriend>加好友</button>
+                  </div>
+                </div>
+                <div class="glass-d rec-why">
+                  <span class="ai-chip on-dark"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>为什么是她</span>
+                  <p>她手上有大阪湾区两个仓的余量，正在找长期稳定的中国品牌客户。</p>
+                </div>
+                <div class="rec-opener"><span>开场白建议</span>"你们大阪仓还有余量吗？我们 Q4 想把日本履约时效压到 2 天内。"</div>
+              </div>
+
+            </div></div></div>
+          </div>
+
+          <!-- 好友请求（置于全部人脉上方） -->
+          <div class="blk">
+            <button class="blk-head" data-acc aria-expanded="false">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
+              <b>请求加你好友</b><span class="count" id="reqCount">2</span>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="collapse"><div class="collapse-inner"><div class="blk-body">
+              <div class="req-row">
+                <span class="avatar av-4">王</span>
+                <div><b>王 磊</b><span class="role">消费电子卖家 · 同桌（第 3 桌）</span></div>
+                <div class="req-actions">
+                  <button class="btn-ghost-d">查看</button>
+                  <button class="btn-add" data-accept>同意</button>
+                </div>
+              </div>
+              <div class="req-row">
+                <span class="avatar av-5">中</span>
+                <div><b>中村 悠</b><span class="role">市场营销顾问 · 第 6 桌</span></div>
+                <div class="req-actions">
+                  <button class="btn-ghost-d">查看</button>
+                  <button class="btn-add" data-accept>同意</button>
+                </div>
+              </div>
+            </div></div></div>
+          </div>
+
+          <!-- 全部人脉（横滑） -->
+          <div class="blk">
+            <button class="blk-head" data-acc aria-expanded="false">
+              <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/></svg></span>
+              <b>本场全部参会者</b><span class="meta">37 人</span>
+              <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="collapse"><div class="collapse-inner"><div class="blk-body">
+              <div class="ppl-detail hide" id="pplDetail">
+                <div class="rec-top">
+                  <span class="avatar" id="pdAvatar">·</span>
+                  <div><b id="pdName">—</b><span class="role" id="pdRole">—</span></div>
+                  <div class="rec-actions">
+                    <button class="btn-add" data-addfriend>加好友</button>
+                    <button class="btn-ghost-d" id="pdClose">收起</button>
+                  </div>
+                </div>
+                <p class="bio" id="pdBio">—</p>
+              </div>
+              <div class="ppl-scroll" id="pplScroll"></div>
+            </div></div></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- —— 已结束：折叠条 —— -->
+    <div class="b-ended-bar" data-show="post" id="bEndedBar">
+      <span class="txt">活动已结束 · 现场共认识 <b>12 人</b>，交换名片 <b>4 张</b></span>
+    </div>
+  </section>
+
+  <!-- ══════════ 卡片 C · 活动总结 ══════════ -->
+  <section class="bigcard cardC" aria-label="活动总结">
+    <div class="c-head">
+      <span class="c-title">活动总结</span>
+      <span class="ai-chip on-light" data-show="pre joined">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+        AI 示例效果
+      </span>
+      <span class="ai-chip on-light" data-show="post">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+        iOrbit 生成
+      </span>
+    </div>
+
+    <!-- 未报名 / 已报名：示例报告缩略 -->
+    <div class="glass-l c-mock" data-show="pre joined">
+      <div class="c-mock-head"><b>活动结束后，你会在这里收到一份这样的复盘</b></div>
+      <p>谁和你交换了名片、聊了什么、这些人分别能给你带来什么、下一步该找谁聊什么——全部整理成可执行的跟进清单。</p>
+      <div class="c-mock-stats">
+        <span class="stat-pill"><b>4</b><span>新建立的连接</span></span>
+        <span class="stat-pill"><b>2</b><span>约定的跟进</span></span>
+        <span class="stat-pill"><b>1</b><span>潜在渠道合作</span></span>
+      </div>
+      <p class="note" data-show="pre">示例数据 · 报名并参加活动后生成你的真实复盘</p>
+      <p class="note" data-show="joined">活动结束后自动生成 · 补充 memo 可获得更详细的分析</p>
+    </div>
+
+    <!-- 活动结束：结算流程 -->
+    <div class="c-post" data-show="post">
+      <div class="c-friends">
+        <span class="avatar av-1">佐</span><span class="avatar av-2">林</span><span class="avatar av-4">王</span><span class="avatar av-5">中</span>
+        <span class="txt">本场你与 <b>4 位</b> 参会者互加了好友</span>
+      </div>
+
+      <!-- 第一步：memo 选择 -->
+      <div class="glass-l memo-ask" id="memoAsk">
+        <h4>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          趁记忆还热，给他们补几句 memo？
+        </h4>
+        <p>记下和每个人聊了什么，iOrbit 会据此生成更具体的跟进建议。也可以跳过，直接生成报告。</p>
+        <div class="row">
+          <button class="btn-primary" id="btnMemo" style="padding:11px 20px;font-size:14px;">补充 memo，生成详细报告</button>
+          <button class="btn-secondary" id="btnSkip">跳过，直接生成报告</button>
+        </div>
+      </div>
+
+      <!-- 第二步：memo 面板 -->
+      <div class="glass-l memo-panel hide" id="memoPanel">
+        <div class="memo-row">
+          <div class="who"><span class="avatar av-1" style="width:32px;height:32px;font-size:12px;">佐</span><b>佐藤 健一</b><span class="role">乐天渠道运营</span></div>
+          <div class="memo-chips">
+            <button class="m-chip" data-chip>聊了合作</button><button class="m-chip" data-chip>约了跟进</button><button class="m-chip" data-chip>交换了资源</button><button class="m-chip" data-chip>只是认识</button>
+          </div>
+          <input class="memo-input" placeholder="补一句：聊到哪一步了？（选填）" value="聊了乐天美妆类目入驻门槛，他答应帮我们预审资料">
+        </div>
+        <div class="memo-row">
+          <div class="who"><span class="avatar av-2" style="width:32px;height:32px;font-size:12px;">林</span><b>林 慧</b><span class="role">跨境支付 BD</span></div>
+          <div class="memo-chips">
+            <button class="m-chip" data-chip>聊了合作</button><button class="m-chip" data-chip>约了跟进</button><button class="m-chip" data-chip>交换了资源</button><button class="m-chip" data-chip>只是认识</button>
+          </div>
+          <input class="memo-input" placeholder="补一句：聊到哪一步了？（选填）">
+        </div>
+        <div class="memo-row">
+          <div class="who"><span class="avatar av-4" style="width:32px;height:32px;font-size:12px;">王</span><b>王 磊</b><span class="role">消费电子卖家</span></div>
+          <div class="memo-chips">
+            <button class="m-chip" data-chip>聊了合作</button><button class="m-chip" data-chip>约了跟进</button><button class="m-chip" data-chip>交换了资源</button><button class="m-chip" data-chip>只是认识</button>
+          </div>
+          <input class="memo-input" placeholder="补一句：聊到哪一步了？（选填）">
+        </div>
+        <div class="memo-row">
+          <div class="who"><span class="avatar av-5" style="width:32px;height:32px;font-size:12px;">中</span><b>中村 悠</b><span class="role">市场营销顾问</span></div>
+          <div class="memo-chips">
+            <button class="m-chip" data-chip>聊了合作</button><button class="m-chip" data-chip>约了跟进</button><button class="m-chip" data-chip>交换了资源</button><button class="m-chip" data-chip>只是认识</button>
+          </div>
+          <input class="memo-input" placeholder="补一句：聊到哪一步了？（选填）">
+        </div>
+        <div style="padding-top:14px;">
+          <button class="btn-primary" id="btnMemoDone" style="padding:11px 22px;font-size:14px;">完成，生成报告</button>
+        </div>
+      </div>
+
+      <!-- 第三步：报告 -->
+      <div class="report hide" id="report">
+        <div class="glass-l rp-sec">
+          <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg>连接总览</h4>
+          <div class="rp-stats">
+            <span class="stat-pill"><b>4</b><span>新建立的连接</span></span>
+            <span class="stat-pill"><b>2</b><span>约定的跟进</span></span>
+            <span class="stat-pill"><b>1</b><span>潜在渠道合作</span></span>
+            <span class="stat-pill"><b>82%</b><span>目标达成度</span></span>
+          </div>
+        </div>
+
+        <div class="glass-l rp-sec">
+          <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>每个人能给你带来什么</h4>
+
+          <div class="rp-person">
+            <div class="who"><span class="avatar av-1" style="width:34px;height:34px;font-size:12px;">佐</span><b>佐藤 健一</b><span class="role">乐天渠道运营</span><span class="memo-tag">约了跟进</span></div>
+            <div class="rp-lines">
+              <div class="rp-line"><span class="k">聊了什么</span><span class="v">乐天美妆类目入驻门槛，他答应帮你们预审资料</span></div>
+              <div class="rp-line"><span class="k">能带来</span><span class="v"><b>乐天类目入驻通道</b>——他直接负责品牌招商</span></div>
+              <div class="rp-line"><span class="k">下一步</span><span class="v">本周内把品牌资料发给他，约下周线上过审核细节</span></div>
+            </div>
+          </div>
+
+          <div class="rp-person">
+            <div class="who"><span class="avatar av-2" style="width:34px;height:34px;font-size:12px;">林</span><b>林 慧</b><span class="role">跨境支付 BD</span><span class="memo-tag">聊了合作</span></div>
+            <div class="rp-lines">
+              <div class="rp-line"><span class="k">聊了什么</span><span class="v">日元收付方案与费率区间</span></div>
+              <div class="rp-line"><span class="k">能带来</span><span class="v"><b>结算成本下降约 0.4%</b>，含日元本地收款</span></div>
+              <div class="rp-line"><span class="k">下一步</span><span class="v">把近三个月结算流水规模发她，请她出正式报价</span></div>
+            </div>
+          </div>
+
+          <div class="rp-person">
+            <div class="who"><span class="avatar av-4" style="width:34px;height:34px;font-size:12px;">王</span><b>王 磊</b><span class="role">消费电子卖家</span><span class="memo-tag">交换了资源</span></div>
+            <div class="rp-lines">
+              <div class="rp-line"><span class="k">聊了什么</span><span class="v">互换了各自在用的日本本地服务商清单</span></div>
+              <div class="rp-line"><span class="k">能带来</span><span class="v">同赛道卖家的<b>避坑经验</b>与服务商比价</span></div>
+              <div class="rp-line"><span class="k">下一步</span><span class="v">把你的物流商清单发他，交换他的税务代理联系方式</span></div>
+            </div>
+          </div>
+
+          <div class="rp-person">
+            <div class="who"><span class="avatar av-5" style="width:34px;height:34px;font-size:12px;">中</span><b>中村 悠</b><span class="role">市场营销顾问</span><span class="memo-tag">只是认识</span></div>
+            <div class="rp-lines">
+              <div class="rp-line"><span class="k">聊了什么</span><span class="v">简单互相介绍，未深入</span></div>
+              <div class="rp-line"><span class="k">能带来</span><span class="v">日本本地营销资源，<b>暂无直接需求</b></span></div>
+              <div class="rp-line"><span class="k">下一步</span><span class="v">保持弱联系即可；Q4 若启动日本投放再约</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-l rp-sec">
+          <h4><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 10h18"/></svg>建议行动清单</h4>
+          <div class="rp-todo">
+            <span class="n">1</span>
+            <p>给佐藤健一发品牌资料包<span>本周五前 · 决定乐天入驻进度的关键一步</span></p>
+            <button class="btn-secondary">加入日程</button>
+          </div>
+          <div class="rp-todo">
+            <span class="n">2</span>
+            <p>整理结算流水发给林慧，索取正式报价<span>下周一前</span></p>
+            <button class="btn-secondary">加入日程</button>
+          </div>
+          <div class="rp-todo">
+            <span class="n">3</span>
+            <p>与王磊互换服务商清单<span>三天内 · 你答应过他</span></p>
+            <button class="btn-secondary">加入日程</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var body = document.body;
+  var toastEl = document.getElementById('toast');
+  var toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+  }
+
+  /* ── 状态切换 ── */
+  var aFull = document.getElementById('aFull');
+  var aToggle = document.getElementById('aToggle');
+  var bLiveWrap = document.getElementById('bLiveWrap');
+  var bToggle = document.getElementById('bToggle');
+
+  function applyShow(state) {
+    document.querySelectorAll('[data-show]').forEach(function (el) {
+      el.classList.toggle('hide', el.getAttribute('data-show').split(' ').indexOf(state) === -1);
+    });
+  }
+  function setState(state) {
+    body.dataset.state = state;
+    applyShow(state);
+    document.querySelectorAll('.proto-switch button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.set === state));
+    });
+    /* 卡片 A：未报名展开；报名后/结束折叠 */
+    var aOpen = state === 'pre';
+    aFull.classList.toggle('open', aOpen);
+    if (aToggle) aToggle.setAttribute('aria-expanded', String(aOpen));
+    /* 卡片 B：已报名展开真实内容；未报名显示钩子；结束后折叠可回顾 */
+    var bOpen = state === 'joined';
+    bLiveWrap.classList.toggle('open', bOpen);
+    if (bToggle) bToggle.setAttribute('aria-expanded', 'false');
+    /* 卡片 C：结束后重置结算流程 */
+    if (state === 'post') resetPostFlow();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+  document.querySelectorAll('.proto-switch button').forEach(function (b) {
+    b.addEventListener('click', function () { setState(b.dataset.set); });
+  });
+
+  /* 卡片 A 展开/收起 */
+  if (aToggle) aToggle.addEventListener('click', function () {
+    var open = !aFull.classList.contains('open');
+    aFull.classList.toggle('open', open);
+    aToggle.setAttribute('aria-expanded', String(open));
+  });
+  document.querySelectorAll('[data-fold="aFull"]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      aFull.classList.remove('open');
+      if (aToggle) aToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  /* 卡片 B 结束后回顾 */
+  if (bToggle) bToggle.addEventListener('click', function () {
+    var open = !bLiveWrap.classList.contains('open');
+    bLiveWrap.classList.toggle('open', open);
+    bToggle.setAttribute('aria-expanded', String(open));
+  });
+
+  /* 区块手风琴 */
+  document.querySelectorAll('[data-acc]').forEach(function (head) {
+    head.addEventListener('click', function () {
+      var wrap = head.nextElementSibling;
+      var open = !wrap.classList.contains('open');
+      wrap.classList.toggle('open', open);
+      head.setAttribute('aria-expanded', String(open));
+    });
+  });
+
+  /* 加好友 / 同意 */
+  document.addEventListener('click', function (e) {
+    var add = e.target.closest('[data-addfriend]');
+    if (add && !add.classList.contains('sent')) {
+      add.classList.add('sent');
+      add.textContent = '已申请';
+      toast('已发送好友申请 · 对方同意后进入你的人脉库');
+      return;
+    }
+    var acc = e.target.closest('[data-accept]');
+    if (acc && !acc.classList.contains('sent')) {
+      acc.classList.add('sent');
+      acc.textContent = '已添加';
+      var c = document.getElementById('reqCount');
+      var n = Math.max(0, parseInt(c.textContent, 10) - 1);
+      c.textContent = n;
+      if (n === 0) c.style.display = 'none';
+      toast('已互加好友 · 会后可在总结里补充 memo');
+    }
+  });
+
+  /* memo 快捷标签 */
+  document.addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-chip]');
+    if (!chip) return;
+    chip.parentElement.querySelectorAll('.m-chip').forEach(function (c) { c.classList.remove('on'); });
+    chip.classList.add('on');
+  });
+
+  /* 结算流程 */
+  var memoAsk = document.getElementById('memoAsk');
+  var memoPanel = document.getElementById('memoPanel');
+  var report = document.getElementById('report');
+  function resetPostFlow() {
+    memoAsk.classList.remove('hide');
+    memoPanel.classList.add('hide');
+    report.classList.add('hide');
+  }
+  document.getElementById('btnMemo').addEventListener('click', function () {
+    memoAsk.classList.add('hide');
+    memoPanel.classList.remove('hide');
+  });
+  document.getElementById('btnSkip').addEventListener('click', function () {
+    memoAsk.classList.add('hide');
+    report.classList.remove('hide');
+    toast('报告已生成 · 之后补充 memo 可随时增强');
+  });
+  document.getElementById('btnMemoDone').addEventListener('click', function () {
+    memoPanel.classList.add('hide');
+    report.classList.remove('hide');
+    toast('已结合 memo 生成详细报告');
+  });
+
+  /* 全部人脉横滑卡片 */
+  var people = [
+    { i: '田', a: 'av-6', n: '田中 大辅', r: '家居品牌 · 创始人', b: '大阪本地家居品牌，正在找中国供应链，想认识有出口经验的工厂或贸易商。' },
+    { i: '刘', a: 'av-4', n: '刘 一凡', r: '3C 配件卖家', b: '亚马逊日本站年销 2 亿日元，在找本地退换货处理方案。' },
+    { i: '朴', a: 'av-5', n: '朴 秀妍', r: 'MCN 机构 · 日本区', b: '手上有 40+ 日本腰部达人资源，主做美妆与家居带货。' },
+    { i: '吉', a: 'av-2', n: '吉田 遥', r: '税务师事务所', b: '专做跨境卖家的日本消费税合规，可提供 JCT 注册代办。' },
+    { i: '郑', a: 'av-3', n: '郑 浩然', r: '独立站运营', b: 'Shopify 日本市场投放操盘手，月管理预算 30 万美元。' },
+    { i: '小', a: 'av-1', n: '小林 诚', r: '商社 · 采购经理', b: '关西老牌商社，为线下连锁渠道采购家电与个护产品。' },
+    { i: '许', a: 'av-6', n: '许 文静', r: '品牌出海顾问', b: '前乐天招商，现独立顾问，熟悉日本线上全渠道打法。' },
+    { i: '冈', a: 'av-4', n: '冈本 隆', r: '物流 · 关西仓网', b: '大阪湾区三仓运营方，支持一件代发与退货翻新。' }
+  ];
+  var scroll = document.getElementById('pplScroll');
+  var detail = document.getElementById('pplDetail');
+  people.forEach(function (p) {
+    var card = document.createElement('div');
+    card.className = 'ppl-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.innerHTML =
+      '<span class="avatar ' + p.a + '">' + p.i + '</span>' +
+      '<b>' + p.n + '</b><span class="role">' + p.r + '</span>' +
+      '<button class="btn-add" data-addfriend>加好友</button>';
+    function openDetail() {
+      document.getElementById('pdAvatar').className = 'avatar ' + p.a;
+      document.getElementById('pdAvatar').textContent = p.i;
+      document.getElementById('pdName').textContent = p.n;
+      document.getElementById('pdRole').textContent = p.r;
+      document.getElementById('pdBio').textContent = p.b;
+      detail.classList.remove('hide');
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('[data-addfriend]')) return;
+      openDetail();
+    });
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); }
+    });
+    scroll.appendChild(card);
+  });
+  document.getElementById('pdClose').addEventListener('click', function () {
+    detail.classList.add('hide');
+  });
+
+  setState('pre');
+})();
+</script>
+</body>
+</html>

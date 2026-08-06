@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit · Home / iOrbit 控制台原型</title>
+<style>
+  :root {
+    --accent: #6359E9;
+    --accent-hover: #5249D6;
+    --accent-press: #463DBE;
+    --accent-soft: #EEEDFC;
+    --accent-softer: #F6F5FD;
+    --accent-ring: rgba(99, 89, 233, .32);
+    --on-accent: #fff;
+    --live: #15A06B;
+    --live-soft: #E4F5EE;
+    --warn: #C77414;
+    --warn-soft: #FCF0DE;
+    --ink: #16161A;
+    --text: #1D1D22;
+    --text-2: #62626B;
+    --text-3: #8A8A93;
+    --bg: #F4F3F8;
+    --surface: #FFFFFF;
+    --surface-2: #F8F8FA;
+    --border: #ECECEF;
+    --border-2: #E2E2E7;
+    --sh-sm: 0 1px 2px rgba(18,18,28,.04), 0 2px 6px rgba(18,18,28,.05);
+    --sh-md: 0 2px 4px rgba(18,18,28,.04), 0 8px 24px rgba(18,18,28,.07);
+    --sh-lg: 0 8px 16px rgba(18,18,28,.06), 0 24px 56px rgba(18,18,28,.12);
+    --r-lg: 22px;
+    --r-md: 14px;
+    --ff: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Segoe UI', system-ui, sans-serif;
+    --glass: rgba(255,255,255,.58);
+    --glass-border: rgba(255,255,255,.8);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--ff);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100dvh;
+  }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  svg { flex: 0 0 auto; }
+
+  /* ───────── 顶部导航（真实导航） ───────── */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 26px;
+    padding: 13px 28px;
+    background: rgba(244,243,248,.85);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); font-size: 16px; }
+  .brand-dot { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #8B83F2, var(--accent) 68%); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-links a {
+    text-decoration: none; color: var(--text-2); font-size: 14px; font-weight: 500;
+    padding: 7px 14px; border-radius: 999px; transition: color .15s, background .15s;
+  }
+  .nav-links a:hover { color: var(--ink); background: var(--surface); }
+  .nav-links a.on { color: var(--accent-press); background: var(--accent-soft); font-weight: 600; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .avatar-me {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg,#E08D5A,#B05C2C);
+    color: #fff; font-size: 12.5px; font-weight: 700;
+    display: grid; place-items: center; cursor: pointer; border: 2px solid #fff; box-shadow: var(--sh-sm);
+  }
+  @media (max-width: 640px) { .nav { padding: 11px 16px; gap: 12px; } .nav-links a { padding: 7px 10px; } }
+
+  .page { max-width: 1020px; margin: 0 auto; padding: 30px 22px 90px; }
+
+  /* ───────── 问候区 ───────── */
+  .hello { margin-bottom: 20px; }
+  .hello h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+  .hello p { color: var(--text-2); font-size: 14px; margin-top: 2px; }
+
+  /* ───────── iOrbit 玻璃交互层 ───────── */
+  .iorbit {
+    position: relative;
+    border-radius: var(--r-lg);
+    padding: 26px 26px 22px;
+    margin-bottom: 26px;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 90% at 88% 0%, rgba(139,131,242,.4), transparent 60%),
+      radial-gradient(50% 80% at 2% 100%, rgba(52,177,196,.28), transparent 60%),
+      linear-gradient(120deg, #ECEAFB, #F3EDFA 55%, #E8F2F4);
+    border: 1px solid #E2DFF6;
+    box-shadow: var(--sh-md);
+  }
+  .iorbit-head { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+  .iorbit-mark {
+    width: 30px; height: 30px; border-radius: 10px;
+    background: linear-gradient(135deg, #8B83F2, var(--accent));
+    color: #fff; display: grid; place-items: center;
+    box-shadow: 0 4px 12px var(--accent-ring);
+  }
+  .iorbit-head b { font-size: 15px; color: var(--ink); font-weight: 700; }
+  .iorbit-status { font-size: 12px; color: var(--text-3); }
+  .iorbit-lede { font-size: 14px; color: var(--text-2); margin-bottom: 16px; max-width: 60ch; }
+  .iorbit-lede b { color: var(--ink); }
+
+  /* 首要建议（玻璃卡） */
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-md);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 8px 26px rgba(85,76,180,.1);
+  }
+  .iorbit-suggest { padding: 15px 17px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .iorbit-suggest .txt { flex: 1; min-width: 240px; }
+  .iorbit-suggest .txt b { display: block; font-size: 14.5px; color: var(--ink); }
+  .iorbit-suggest .txt span { font-size: 13px; color: var(--text-2); }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--accent); color: var(--on-accent);
+    font-size: 14px; font-weight: 600;
+    padding: 11px 20px; border-radius: 999px;
+    box-shadow: 0 5px 16px var(--accent-ring);
+    transition: background .15s, transform .12s;
+    min-height: 44px;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { background: var(--accent-press); transform: scale(.97); }
+
+  /* 输入行 */
+  .iorbit-input {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 6px 6px 18px;
+    border-radius: 999px;
+  }
+  .iorbit-input input {
+    flex: 1; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text);
+    min-height: 40px;
+  }
+  .iorbit-input input::placeholder { color: var(--text-3); }
+  .iorbit-input input:focus { outline: none; }
+  .iorbit-send {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--ink); color: #fff; display: grid; place-items: center;
+    transition: transform .12s, background .15s;
+  }
+  .iorbit-send:hover { background: #000; }
+  .iorbit-send:active { transform: scale(.94); }
+  .iorbit-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .chip {
+    font-size: 13px; font-weight: 500; color: var(--text-2);
+    background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.9);
+    border-radius: 999px; padding: 7px 15px;
+    transition: all .15s; min-height: 36px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .chip:hover { color: var(--accent-press); border-color: var(--accent); background: #fff; }
+  .iorbit-note { font-size: 11.5px; color: var(--text-3); margin-top: 12px; }
+
+  /* ───────── 行动区 ───────── */
+  .sec-title { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 12px; }
+  .sec-title h2 { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .sec-title span { font-size: 12.5px; color: var(--text-3); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 30px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+  .act {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 19px 20px;
+    box-shadow: var(--sh-sm);
+    display: flex; flex-direction: column; gap: 10px;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
+  }
+  .act:hover { box-shadow: var(--sh-md); transform: translateY(-2px); border-color: var(--border-2); }
+  .act.span2 { grid-column: span 2; }
+  @media (max-width: 560px) { .act.span2 { grid-column: span 1; } }
+  .act-top { display: flex; align-items: center; gap: 10px; }
+  .act-ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; }
+  .ic-violet { background: var(--accent-soft); color: var(--accent); }
+  .ic-green { background: var(--live-soft); color: var(--live); }
+  .ic-amber { background: var(--warn-soft); color: var(--warn); }
+  .ic-gray { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+  .act-top b { font-size: 15px; color: var(--ink); font-weight: 650; }
+  .act-badge { margin-left: auto; font-size: 11px; font-weight: 700; background: #F0605A; color: #fff; min-width: 20px; height: 20px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; }
+  .act p { font-size: 13.5px; color: var(--text-2); flex: 1; }
+  .act p b { color: var(--ink); font-weight: 600; }
+  .act-cta {
+    align-self: flex-start;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13.5px; font-weight: 600; color: var(--accent-press);
+    background: var(--accent-soft); border-radius: 999px; padding: 9px 17px;
+    transition: background .15s; min-height: 38px;
+  }
+  .act-cta:hover { background: #E2DFFA; }
+  .act-cta.solid { background: var(--accent); color: #fff; box-shadow: 0 4px 12px var(--accent-ring); }
+  .act-cta.solid:hover { background: var(--accent-hover); }
+
+  /* 旅程卡里的阶段进度 */
+  .stage-row { display: flex; align-items: center; gap: 0; margin: 2px 0 4px; flex-wrap: wrap; }
+  .stage { display: flex; align-items: center; }
+  .stage .s-dot {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--text-3);
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .stage.done .s-dot { color: var(--live); background: var(--live-soft); border-color: transparent; }
+  .stage.now .s-dot { color: #fff; background: var(--accent); border-color: transparent; box-shadow: 0 3px 10px var(--accent-ring); }
+  .stage .s-link { width: 16px; height: 1.5px; background: var(--border-2); }
+
+  /* AI 生成类行动卡的玻璃变体 */
+  .act.ai {
+    background:
+      radial-gradient(80% 120% at 100% 0%, rgba(139,131,242,.18), transparent 55%),
+      var(--glass);
+    border: 1px solid #E2DFF6;
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+  }
+  .ai-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    padding: 3px 9px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-press);
+    margin-left: auto;
+  }
+
+  /* ───────── 约谈提醒卡 ───────── */
+  .appt {
+    display: grid; grid-template-columns: auto 1fr; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 19px 20px; margin-bottom: 30px; box-shadow: var(--sh-sm);
+  }
+  @media (max-width: 640px) { .appt { grid-template-columns: 1fr; } }
+  .appt-when { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 18px; background: var(--accent-softer); border: 1px solid var(--border); border-radius: var(--r-md); align-self: start; min-width: 102px; }
+  .appt-when .d { font-size: 21px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+  .appt-when .t { font-size: 13px; font-weight: 600; color: var(--accent-press); }
+  .appt-when .len { font-size: 11px; color: var(--text-3); }
+  .appt-when .in { font-size: 11px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 999px; padding: 1px 9px; margin-top: 4px; }
+  .appt-main { min-width: 0; }
+  .appt-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .appt-title-row b { font-size: 15.5px; font-weight: 650; color: var(--ink); }
+  .badge-confirmed { font-size: 11px; font-weight: 700; color: var(--live); background: var(--live-soft); padding: 2px 9px; border-radius: 999px; }
+  .appt-who { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+  .appt-who .avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#5AA4E0,#2C63B0); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: 0 0 auto; }
+  .appt-who .w b { display: block; font-size: 13.5px; color: var(--ink); font-weight: 600; }
+  .appt-who .w span { font-size: 12.5px; color: var(--text-2); }
+  .appt-topics { margin-top: 12px; padding: 12px 14px; }
+  .appt-topics .hd { margin-bottom: 6px; }
+  .appt-topics .hd .ai-chip { margin-left: 0; }
+  .appt-topics ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .appt-topics li { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .appt-topics li::before { content: "→"; color: var(--accent); font-weight: 600; }
+  .appt-topics li b { color: var(--ink); font-weight: 600; }
+  .appt-actions { display: flex; gap: 8px; margin-top: 13px; flex-wrap: wrap; }
+  .btn-outline { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); background: #fff; border: 1px solid var(--border-2); border-radius: 999px; padding: 9px 17px; transition: border-color .15s, color .15s; min-height: 38px; }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ───────── 进行中的旅程 ───────── */
+  .journeys { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); overflow: hidden; margin-bottom: 30px; }
+  .j-row {
+    width: 100%; text-align: left;
+    display: flex; align-items: center; gap: 16px;
+    padding: 17px 22px;
+    transition: background .15s;
+  }
+  .j-row:hover { background: var(--accent-softer); }
+  .j-row + .j-row { border-top: 1px solid var(--border); }
+  .j-date {
+    width: 46px; border-radius: 11px; overflow: hidden; text-align: center; flex: 0 0 auto;
+    background: var(--surface); box-shadow: var(--sh-sm); border: 1px solid var(--border);
+  }
+  .j-date .m { display: block; font-size: 10px; font-weight: 700; background: var(--accent); color: #fff; padding: 1px 0; letter-spacing: .06em; }
+  .j-date .d { display: block; font-size: 16px; font-weight: 700; color: var(--ink); padding: 1px 0 3px; }
+  .j-date.past .m { background: var(--text-3); }
+  .j-main { flex: 1; min-width: 0; }
+  .j-main b { display: block; font-size: 14.5px; color: var(--ink); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .j-main span { font-size: 12.5px; color: var(--text-2); }
+  .j-stage { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 12px; flex: 0 0 auto; }
+  .st-act { color: var(--accent-press); background: var(--accent-soft); }
+  .st-wait { color: var(--warn); background: var(--warn-soft); }
+  .st-done { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+  .j-arrow { color: var(--text-3); flex: 0 0 auto; }
+  @media (max-width: 560px) { .j-stage { display: none; } }
+
+  /* 空态提示（人脉） */
+  .foot-note { text-align: center; font-size: 12.5px; color: var(--text-3); }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; font-size: 13.5px;
+    padding: 11px 20px; border-radius: 999px; box-shadow: var(--sh-lg);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 99;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 真实导航：首页 / 活动 / 人脉 / 今天 -->
+<nav class="nav" aria-label="主导航">
+  <span class="brand"><span class="brand-dot"></span>Orbit</span>
+  <div class="nav-links">
+    <a href="#" class="on" aria-current="page">首页</a>
+    <a href="#">活动</a>
+    <a href="#">人脉</a>
+    <a href="#">今天</a>
+  </div>
+  <div class="nav-right">
+    <span class="avatar-me" role="button" tabindex="0" aria-label="我的账户">Li</span>
+  </div>
+</nav>
+
+<main class="page">
+
+  <!-- 问候 -->
+  <header class="hello">
+    <h1>晚上好，Li</h1>
+    <p>8月6日 周四 · 距你的下一场活动还有 7 天 · 1 个约谈待赴约</p>
+  </header>
+
+  <!-- ═══════ iOrbit：玻璃交互层（chat / agent / home 合一） ═══════ -->
+  <section class="iorbit" aria-label="iOrbit">
+    <div class="iorbit-head">
+      <span class="iorbit-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+      </span>
+      <b>iOrbit</b>
+      <span class="iorbit-status">基于你的真实状态给出建议 · 普通对话不会执行外部动作</span>
+    </div>
+    <p class="iorbit-lede">你下周四要参加<b>「关西跨境电商夜话 · 大阪场」</b>，活动画像还差 2 题——完成它，主办方才能把你排进匹配。</p>
+
+    <!-- 首要建议：一个可执行动作 -->
+    <div class="glass iorbit-suggest">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
+      <div class="txt">
+        <b>现在最值得做：完成活动画像（约 1 分钟）</b>
+        <span>画像截止 8月11日 · 完成后你会先看到初步匹配方向</span>
+      </div>
+      <button class="btn-primary" data-toast="进入旅程页 · 活动画像还差 2 题">
+        去完成
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <!-- 输入 + 情境建议 -->
+    <div class="glass iorbit-input">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <input type="text" placeholder="告诉 iOrbit 你想达成什么，比如：帮我看看周四的活动值不值得去" aria-label="向 iOrbit 提问">
+      <button class="iorbit-send" aria-label="发送" data-toast="原型：发送到 iOrbit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4 7 4 7-14-7Z"/></svg>
+      </button>
+    </div>
+    <div class="iorbit-chips">
+      <button class="chip" data-toast="原型：iOrbit 生成参会准备建议">帮我准备周四的活动</button>
+      <button class="chip" data-toast="原型：跳转到好友请求">看看谁请求加我好友</button>
+      <button class="chip" data-toast="原型：iOrbit 生成上一场活动报告">生成上一场活动的报告</button>
+    </div>
+    <p class="iorbit-note">iOrbit 只根据你已授权的活动与人脉数据给建议，涉及对外动作（发消息、报名）都会先经你确认。</p>
+  </section>
+
+  <!-- ═══════ 即将到来的约谈 ═══════ -->
+  <div class="sec-title"><h2>即将到来的约谈</h2><span>来自你的人脉 · 双方已确认</span></div>
+  <section class="appt" aria-label="约谈提醒">
+    <div class="appt-when">
+      <span class="d">8/14</span>
+      <span class="t">周五 15:00</span>
+      <span class="len">60 min · Asia/Tokyo</span>
+      <span class="in">还有 8 天</span>
+    </div>
+    <div class="appt-main">
+      <div class="appt-title-row">
+        <b>与 Ren 的线上约谈</b>
+        <span class="badge-confirmed">confirmed</span>
+      </div>
+      <div class="appt-who">
+        <span class="avatar">Ren</span>
+        <div class="w">
+          <b>Ren · CircularPack 创始人（循环包装）</b>
+          <span>上月「东京 SaaS 出海沙龙」认识 · 已交换名片 · 他答应分享 18 家门店的试点数据</span>
+        </div>
+      </div>
+      <div class="glass appt-topics">
+        <div class="hd">
+          <span class="ai-chip">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+            iOrbit · 可能谈什么
+          </span>
+        </div>
+        <ul>
+          <li><span>请他过一遍<b>循环包装试点数据</b>——上次他提到从 2 家店扩到了 18 家</span></li>
+          <li><span>你们的<b>日本制造企业验证</b>需求，他有对应人脉可引荐</span></li>
+          <li><span>他在找 AI 产品团队——可以聊聊<b>研究合作</b>的可能性</span></li>
+        </ul>
+      </div>
+      <div class="appt-actions">
+        <button class="btn-primary" style="padding:9px 17px;font-size:13.5px;min-height:38px;" data-toast="打开 Ren 的名片与双向价值分析">查看名片与依据</button>
+        <button class="btn-outline" data-toast="原型：进入改期流程（需对方确认）">申请改期</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 现在可以做 ═══════ -->
+  <div class="sec-title"><h2>现在可以做</h2><span>按你的当前状态排序</span></div>
+  <section class="grid">
+
+    <!-- 旅程卡（占两格） -->
+    <article class="act span2">
+      <div class="act-top">
+        <span class="act-ic ic-violet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 10h18"/></svg>
+        </span>
+        <b>关西跨境电商夜话 · 大阪场</b>
+      </div>
+      <div class="stage-row" aria-label="旅程阶段">
+        <span class="stage done"><span class="s-dot"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>已报名</span></span>
+        <span class="stage"><span class="s-link"></span></span>
+        <span class="stage now"><span class="s-dot">画像 · 差 2 题</span></span>
+        <span class="stage"><span class="s-link"></span></span>
+        <span class="stage"><span class="s-dot">等待匹配发布</span></span>
+        <span class="stage"><span class="s-link"></span></span>
+        <span class="stage"><span class="s-dot">活动当天</span></span>
+      </div>
+      <p>8月13日（周四）19:00 · 梅田 Grand Front North Tower 7F · 匹配结果预计 <b>8月12日</b> 发布</p>
+      <button class="act-cta solid" data-toast="进入旅程页 · 完成画像">完成活动画像
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </article>
+
+    <!-- 好友请求 -->
+    <article class="act">
+      <div class="act-top">
+        <span class="act-ic ic-green">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        </span>
+        <b>好友请求</b>
+        <span class="act-badge">2</span>
+      </div>
+      <p><b>王磊</b> 和 <b>中村悠</b> 在上一场活动后请求加你好友，还没处理。</p>
+      <button class="act-cta" data-toast="打开好友请求列表">去处理</button>
+    </article>
+
+    <!-- 会后报告（AI → 玻璃变体） -->
+    <article class="act ai">
+      <div class="act-top">
+        <span class="act-ic ic-violet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg>
+        </span>
+        <b>会后复盘待生成</b>
+        <span class="ai-chip">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+          iOrbit
+        </span>
+      </div>
+      <p>上周「东京 SaaS 出海沙龙」你认识了 <b>4 个人</b>，复盘报告还没生成——趁记忆还热。</p>
+      <button class="act-cta" data-toast="进入上一场活动的总结卡片">生成复盘</button>
+    </article>
+
+    <!-- 发现活动 -->
+    <article class="act">
+      <div class="act-top">
+        <span class="act-ic ic-amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <b>发现下一场活动</b>
+      </div>
+      <p>根据你的目标「找日本渠道」，本月还有 <b>3 场</b>高匹配度活动可报名。</p>
+      <button class="act-cta" data-toast="打开活动列表（已按目标筛选）">去看看</button>
+    </article>
+
+    <!-- 人脉库（空态 → 单一动作） -->
+    <article class="act">
+      <div class="act-top">
+        <span class="act-ic ic-gray">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <b>人脉库</b>
+      </div>
+      <p>还没有联系人。从活动里认识的人会自动沉淀到这里，也可以<b>手动添加第一位</b>。</p>
+      <button class="act-cta" data-toast="打开手动添加联系人（姓名 / 公司 / 认识场景）">添加第一位联系人</button>
+    </article>
+
+  </section>
+
+  <!-- ═══════ 进行中的旅程 ═══════ -->
+  <div class="sec-title"><h2>我的活动旅程</h2><span>每场活动一个页面，从报名到复盘</span></div>
+  <section class="journeys">
+    <button class="j-row" data-toast="进入旅程页：关西跨境电商夜话（当前阶段：完成画像）">
+      <span class="j-date"><span class="m">8月</span><span class="d">13</span></span>
+      <span class="j-main"><b>关西跨境电商夜话 · 大阪场</b><span>周四 19:00 · 梅田 Grand Front</span></span>
+      <span class="j-stage st-act">进行中 · 完成画像</span>
+      <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <button class="j-row" data-toast="进入旅程页：CES Asia 预热酒会（等待主办方发布匹配）">
+      <span class="j-date"><span class="m">8月</span><span class="d">21</span></span>
+      <span class="j-main"><b>CES Asia 预热酒会 · 上海</b><span>周五 18:30 · 外滩 W 酒店</span></span>
+      <span class="j-stage st-wait">等待匹配发布</span>
+      <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <button class="j-row" data-toast="进入旅程页：东京 SaaS 出海沙龙（复盘待生成）">
+      <span class="j-date past"><span class="m">7月</span><span class="d">30</span></span>
+      <span class="j-main"><b>东京 SaaS 出海沙龙</b><span>已结束 · 认识 4 人 · 复盘待生成</span></span>
+      <span class="j-stage st-done">已结束</span>
+      <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+  </section>
+
+  <p class="foot-note">原型说明：右侧不再放通用画像 / 名片夹 / 日程安排——档案在旅程需要时就地补，人脉与今天在顶部导航。</p>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var toastEl = document.getElementById('toast');
+  var timer;
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-toast]');
+    if (!t) return;
+    toastEl.textContent = t.getAttribute('data-toast');
+    toastEl.classList.add('show');
+    clearTimeout(timer);
+    timer = setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
+  });
+})();
+</script>
+</body>
+</html>

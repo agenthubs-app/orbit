@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit · iOrbit 工作台（dashboard ⇄ 对话）</title>
+<style>
+  /* ═══ tokens：orbit-theme.tsx 浅色主题 + orbit-reference.generated.css ═══ */
+  :root {
+    --accent: #176a73; --accent-hover: #125b63; --accent-press: #0e4b52;
+    --accent-soft: #eef7f6; --accent-softer: #f4f8f7; --accent-ring: rgba(23,106,115,.28);
+    --on-accent: #ffffff;
+    --live: #16a34a; --live-soft: rgba(22,163,74,.12); --live-text: #0E7A3C;
+    --amber: #b45309; --amber-soft: rgba(180,83,9,.12); --amber-text: #8A5A00;
+    --signal: #C8323B;
+    --ink: #171a1c; --text: #2b3034; --text-2: #687078; --text-3: #5B646B; --text-4: #969da3;
+    --bg: #fafbfb; --bg-soft: #ffffff;
+    --surface: #ffffff; --surface-2: #f7f8f8; --surface-3: #f1f3f3;
+    --border: #e6e9eb; --border-2: #d9dee1; --border-strong: #c7cdd1; --hairline: #e6e9eb;
+    --r-xl: 24px; --r-lg: 18px; --r-md: 14px; --r-sm: 10px; --r-xs: 7px; --r-pill: 999px;
+    --fs-11: 11px;
+    --sidebar-w: 212px;               /* ORBIT_LEFT_SIDEBAR_WIDTH */
+    --agent-body-size: 15px;
+    --ff: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Segoe UI', sans-serif;
+    --ff-tight: 'Inter Tight', Inter, system-ui, -apple-system, 'PingFang SC', sans-serif;
+    --ff-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --glass: rgba(255,255,255,.66); --glass-border: #dbe7e4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--ff); background: var(--bg-soft); color: var(--text); font-size: 15px; line-height: 1.65; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  svg { flex: 0 0 auto; }
+  .hide { display: none !important; }
+  .mono { font-family: var(--ff-mono); font-variant-numeric: tabular-nums; }
+  .h-display { font-family: var(--ff-tight); font-weight: 600; letter-spacing: 0; line-height: 1.02; color: var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
+
+  /* ═══ 组件基元 ═══ */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: var(--r-sm); font-size: 15px; font-weight: 550; border: 1px solid transparent; cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .08s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:active { background: var(--accent-press); transform: scale(.98); }
+  .btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border-2); }
+  .btn-ghost:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  .btn-soft { background: var(--accent-soft); color: var(--accent); }
+  .btn-soft:hover { background: #e2efed; }
+  .btn-sm { height: 36px; padding: 0 14px; font-size: 13.5px; border-radius: var(--r-xs); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; background: var(--surface-2); color: var(--text-2); border: 1px solid transparent; white-space: nowrap; transition: background .14s, color .14s, border-color .14s; }
+  .chip:hover { color: var(--accent-press); border-color: var(--accent); background: var(--surface); }
+  .badge { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--r-pill); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .badge-ok { background: var(--live-soft); color: var(--live-text); }
+  .badge-wait { background: var(--amber-soft); color: var(--amber-text); }
+  .badge-muted { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: #fff; font-weight: 600; font-family: var(--ff-tight); flex-shrink: 0; background: linear-gradient(140deg, var(--av-a), var(--av-b)); }
+  .g-teal { --av-a:#2E8A93; --av-b:#0e4b52; }
+  .g-slate { --av-a:#7d92ad; --av-b:#40536b; }
+  .g-sand { --av-a:#c39a63; --av-b:#8a6b3a; }
+  .g-moss { --av-a:#6ba585; --av-b:#3f7d5c; }
+  .g-plum { --av-a:#a487a0; --av-b:#7a5a74; }
+  .ai-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-press); }
+  .glass { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r-md); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); }
+
+  /* ═══ 顶栏 ═══ */
+  .orbit-top-nav { flex-shrink: 0; background: #fff; border-bottom: 1px solid var(--hairline); align-items: center; column-gap: 16px; display: grid; grid-template-columns: 1fr auto 1fr; padding: 18px clamp(20px, 5vw, 56px); }
+  .orbit-nav-lead { align-items: center; display: flex; gap: 11px; min-width: 0; justify-self: start; }
+  .orbit-brand-link { align-items: center; color: var(--accent); display: inline-flex; flex: 0 0 auto; gap: 11px; text-decoration: none; }
+  .orbit-brand-word { display: flex; flex-direction: column; line-height: 1; }
+  .orbit-brand-name { color: var(--ink); font-size: 18px; font-weight: 500; letter-spacing: .02em; }
+  .orbit-brand-sub { color: var(--text-3); font-size: var(--fs-11); letter-spacing: .03em; margin-top: 4px; font-family: var(--ff-mono); }
+  .orbit-nav-page-title { display: none; color: var(--ink); font-family: var(--ff-tight); font-size: 17px; font-weight: 600; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .orbit-nav-links { align-items: center; display: flex; gap: 4px; justify-self: center; }
+  .orbit-nav-link { background: none; border: 0; border-radius: 9px; color: rgba(23,33,31,.64); font-size: 14px; font-weight: 600; padding: 8px 15px; text-decoration: none; transition: color .14s, background .14s; }
+  .orbit-nav-link:hover { color: var(--ink); }
+  .orbit-nav-link.is-active { background: rgba(23,33,31,.06); color: var(--ink); }
+  .orbit-top-actions { align-items: center; display: flex; gap: 14px; justify-self: end; }
+  .orbit-lang-toggle { align-items: center; display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 3px; }
+  .orbit-lang-toggle button { border-radius: var(--r-pill); min-height: 30px; min-width: 34px; padding: 0 9px; font-size: 12.5px; color: var(--text-3); font-family: var(--ff-mono); }
+  .orbit-lang-toggle button.is-active { color: var(--ink); }
+  .orbit-lang-sep { color: var(--text-4); font-size: 12px; }
+  .orbit-inbox-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--r-sm); color: var(--text-2); }
+  .orbit-inbox-trigger:hover { background: var(--surface-2); color: var(--ink); }
+  .orbit-inbox-trigger .dot { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; border-radius: 999px; background: var(--signal); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+  .orbit-nav-avatar { width: 32px; height: 32px; font-size: 12px; cursor: pointer; }
+
+  /* ═══ 骨架 ═══ */
+  .workspace { display: flex; flex-direction: column; height: 100dvh; background: var(--bg-soft); }
+  .ws-body { display: flex; flex: 1; min-height: 0; }
+  .agent-history { background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; width: var(--sidebar-w); }
+  .agent-history-actions { padding: 12px 12px 10px; }
+  .orbit-agent-new-chat { align-items: center; background: var(--accent-softer); border: 1px solid transparent; border-radius: 9px; color: var(--ink); font-size: 14px; font-weight: 650; gap: 9px; height: 40px; justify-content: flex-start; padding: 0 12px; width: 100%; display: inline-flex; }
+  .orbit-agent-new-chat:hover { background: var(--accent-soft); border-color: rgba(23,106,115,.2); }
+  .agent-history-heading { padding: 8px 16px 10px; }
+  .agent-history-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
+  .hist-item { width: 100%; text-align: left; display: block; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--text-2); line-height: 1.45; transition: background .14s, color .14s; }
+  .hist-item:hover { background: var(--surface-3); color: var(--ink); }
+  .hist-item.is-active { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  .hist-item .when { display: block; font-size: 11px; color: var(--text-4); margin-top: 2px; font-family: var(--ff-mono); }
+  .hist-group { padding: 12px 10px 4px; }
+
+  .ws-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .ws-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .ws-inner { max-width: 900px; margin: 0 auto; padding: 30px 32px 132px; }   /* 底部留白给悬浮输入 */
+
+  /* ═══ Dashboard ═══ */
+  .hub-head { align-items: center; display: flex; gap: 18px; flex-wrap: wrap; }
+  .hub-head .avatar { width: 64px; height: 64px; font-size: 26px; }
+  .hub-head .who { flex: 1; min-width: 220px; }
+  .hub-head h1 { font-size: 28px; }
+  .hub-head .sub { color: var(--text-2); font-size: 14.5px; margin-top: 5px; }
+  .hub-stats { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; display: flex; gap: 30px; margin-top: 18px; padding: 14px 20px; flex-wrap: wrap; }
+  .hub-stats .v { color: var(--ink); font-family: var(--ff-tight); font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .hub-stats .k { color: var(--text-3); font-size: 12.5px; margin-top: 1px; }
+
+  .brief { position: relative; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); padding: 20px; margin-top: 18px;
+    background: radial-gradient(64% 100% at 90% 0%, rgba(23,106,115,.13), transparent 58%), radial-gradient(48% 80% at 2% 100%, rgba(180,83,9,.07), transparent 58%), var(--accent-softer); }
+  .brief-head { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; flex-wrap: wrap; }
+  .brief-mark { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .brief-head b { font-family: var(--ff-tight); font-size: 15px; color: var(--ink); font-weight: 600; }
+  .brief-head .st { font-size: 12px; color: var(--text-3); }
+  .brief-lede { font-size: 14.5px; color: var(--text-2); margin-bottom: 13px; max-width: 62ch; line-height: 1.72; }
+  .brief-lede b { color: var(--ink); }
+  .brief-suggest { padding: 13px 15px; display: flex; align-items: center; gap: 13px; flex-wrap: wrap; margin-bottom: 12px; }
+  .brief-suggest .txt { flex: 1; min-width: 230px; }
+  .brief-suggest .txt b { display: block; font-size: 14.5px; color: var(--ink); }
+  .brief-suggest .txt span { font-size: 13px; color: var(--text-2); }
+  /* 简报内的玻璃输入（保留）*/
+  .brief-input { display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 16px; border-radius: var(--r-md); }
+  .brief-input input { flex: 1; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; }
+  .brief-input input::placeholder { color: var(--text-4); transition: opacity .2s; }
+  .brief-input input.ph-fade::placeholder { opacity: 0; }
+  .brief-input input:focus { outline: none; }
+  .brief-send { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--accent); color: #fff; display: grid; place-items: center; transition: background .15s, transform .08s; }
+  .brief-send:hover { background: var(--accent-hover); }
+  .brief-send:active { transform: scale(.95); }
+  .brief-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
+  .brief-note { font-size: 11.5px; color: var(--text-4); margin-top: 11px; }
+
+  .sec-title { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 11px; }
+  .sec-title h2 { font-family: var(--ff-tight); font-size: 16.5px; font-weight: 600; color: var(--ink); }
+  .sec-title span { font-size: 12.5px; color: var(--text-4); }
+
+  .appt { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 17px 19px; }
+  @media (max-width: 720px) { .appt { grid-template-columns: 1fr; gap: 13px; } }
+  .appt-when { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 11px 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); align-self: start; min-width: 100px; }
+  .appt-when .d { font-family: var(--ff-tight); font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+  .appt-when .t { font-size: 13px; font-weight: 600; color: var(--accent-press); }
+  .appt-when .len { font-size: 11px; color: var(--text-3); font-family: var(--ff-mono); }
+  .appt-when .in { font-size: 11px; font-weight: 600; color: var(--amber-text); background: var(--amber-soft); border-radius: var(--r-pill); padding: 1px 9px; margin-top: 5px; }
+  .appt-main { min-width: 0; }
+  .appt-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .appt-title-row b { font-size: 15.5px; font-weight: 600; color: var(--ink); }
+  .appt-who { display: flex; align-items: center; gap: 11px; margin-top: 10px; }
+  .appt-who .avatar { width: 38px; height: 38px; font-size: 13px; }
+  .appt-who .w b { display: block; font-size: 13.5px; color: var(--ink); font-weight: 600; }
+  .appt-who .w span { font-size: 12.5px; color: var(--text-2); }
+  .appt-topics { margin-top: 12px; padding: 12px 14px; }
+  .appt-topics .hd { margin-bottom: 7px; }
+  .appt-topics ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .appt-topics li { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .appt-topics li::before { content: "→"; color: var(--accent); font-weight: 600; }
+  .appt-topics li b { color: var(--ink); font-weight: 600; }
+  .appt-actions { display: flex; gap: 9px; margin-top: 12px; flex-wrap: wrap; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .act { padding: 16px 17px; display: flex; flex-direction: column; gap: 9px; transition: border-color .15s; }
+  .act:hover { border-color: var(--border-2); }
+  .act.span2 { grid-column: span 2; }
+  @media (max-width: 720px) { .act.span2 { grid-column: span 1; } }
+  .act-top { display: flex; align-items: center; gap: 10px; }
+  .act-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto; }
+  .ic-teal { background: var(--accent-soft); color: var(--accent); }
+  .ic-green { background: var(--live-soft); color: var(--live-text); }
+  .ic-amber { background: var(--amber-soft); color: var(--amber-text); }
+  .ic-gray { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+  .act-top b { font-size: 15px; color: var(--ink); font-weight: 600; }
+  .act-badge { margin-left: auto; font-size: 11px; font-weight: 700; background: var(--signal); color: #fff; min-width: 20px; height: 20px; border-radius: var(--r-pill); display: inline-grid; place-items: center; padding: 0 6px; }
+  .act p { font-size: 13.5px; color: var(--text-2); flex: 1; }
+  .act p b { color: var(--ink); font-weight: 600; }
+  .act .btn { align-self: flex-start; }
+  .act.ai { border-color: var(--glass-border); background: radial-gradient(80% 120% at 100% 0%, rgba(23,106,115,.1), transparent 55%), var(--glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
+  .act .ai-chip { margin-left: auto; }
+  .stage-row { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; }
+  .stage { display: flex; align-items: center; }
+  .stage .s-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 4px 11px; }
+  .stage.done .s-dot { color: var(--live-text); background: var(--live-soft); border-color: transparent; }
+  .stage.now .s-dot { color: #fff; background: var(--accent); border-color: transparent; }
+  .stage .s-link { width: 14px; height: 1.5px; background: var(--border-2); }
+
+  .journeys { overflow: hidden; }
+  .j-row { width: 100%; text-align: left; display: flex; align-items: center; gap: 14px; padding: 14px 18px; transition: background .15s; }
+  .j-row:hover { background: var(--accent-softer); }
+  .j-row + .j-row { border-top: 1px solid var(--border); }
+  .j-date { width: 42px; border-radius: var(--r-sm); overflow: hidden; text-align: center; flex: 0 0 auto; background: var(--surface-3); border: 1px solid var(--border); }
+  .j-date .m { display: block; font-size: 10px; font-weight: 600; color: var(--text-2); padding: 2px 0 0; }
+  .j-date .d { display: block; font-family: var(--ff-tight); font-weight: 600; font-size: 15px; color: var(--ink); padding: 0 0 3px; }
+  .j-main { flex: 1; min-width: 0; }
+  .j-main b { display: block; font-size: 14.5px; color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .j-main span { font-size: 12.5px; color: var(--text-2); }
+  .j-arrow { color: var(--text-4); flex: 0 0 auto; }
+
+  /* ═══ 对话页 ═══ */
+  .thread-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .btn-back { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--text-2); display: grid; place-items: center; flex: 0 0 auto; transition: border-color .15s, color .15s, background .15s; }
+  .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-softer); }
+  .thread-bar .title { font-family: var(--ff-tight); font-size: 16px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .thread-bar .when { font-size: 12px; color: var(--text-4); font-family: var(--ff-mono); margin-left: auto; flex: 0 0 auto; }
+  .thread { display: flex; flex-direction: column; gap: 20px; }
+  .msg-user { align-self: flex-end; max-width: 78%; background: var(--accent-soft); color: var(--ink); border-radius: var(--r-md) var(--r-md) 4px var(--r-md); padding: 11px 15px; font-size: var(--agent-body-size); }
+  .msg-a { display: flex; gap: 12px; }
+  .msg-a .mk { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; flex: 0 0 auto; margin-top: 2px; }
+  .msg-a .body { flex: 1; min-width: 0; }
+  .msg-a .body > p { font-size: var(--agent-body-size); color: var(--text); line-height: 1.7; }
+  .thinking { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-3); }
+  .thinking .sp { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 新对话空态 */
+  .new-empty { text-align: center; padding: 60px 0 20px; }
+  .new-empty .mk { width: 46px; height: 46px; border-radius: var(--r-md); background: var(--accent); color: #fff; display: grid; place-items: center; margin: 0 auto 14px; }
+  .new-empty h3 { font-family: var(--ff-tight); font-size: 20px; font-weight: 600; color: var(--ink); }
+  .new-empty p { font-size: 14px; color: var(--text-2); margin-top: 6px; }
+  .new-empty .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+
+  .panel { margin-top: 13px; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .panel-head b { font-size: 13px; color: var(--ink); font-weight: 600; }
+  .panel-head .meta { font-size: 12px; color: var(--text-3); margin-left: auto; }
+  .panel-body { padding: 6px 14px 12px; }
+  .p-person { display: flex; align-items: center; gap: 11px; padding: 11px 0; flex-wrap: wrap; }
+  .p-person + .p-person { border-top: 1px dashed var(--border-2); }
+  .p-person .avatar { width: 38px; height: 38px; font-size: 13px; }
+  .p-person .w { flex: 1; min-width: 160px; }
+  .p-person .w b { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
+  .p-person .w span { font-size: 12.5px; color: var(--text-2); }
+  .p-person .why { flex-basis: 100%; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-left: 2px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+  .p-acts { display: flex; gap: 8px; }
+
+  .evidence { margin-top: 11px; }
+  .ev-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); padding: 5px 10px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); }
+  .ev-toggle:hover { color: var(--ink); border-color: var(--border-2); }
+  .ev-toggle .chev { transition: transform .2s; }
+  .ev-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .ev-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .ev-item { display: flex; gap: 9px; font-size: 12.5px; color: var(--text-2); padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+  .ev-item .k { font-family: var(--ff-mono); font-size: 11px; color: var(--text-4); flex: 0 0 auto; }
+
+  .action-card { margin-top: 13px; border: 1px solid var(--border-2); border-radius: var(--r-md); padding: 13px 15px; background: var(--surface); }
+  .action-card .hd { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .action-card .hd b { font-size: 14px; color: var(--ink); font-weight: 600; }
+  .action-card p { font-size: 13px; color: var(--text-2); margin-top: 6px; }
+  .action-card .acts { display: flex; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
+  .guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
+
+  /* ═══ 全局悬浮 iOrbit：右下小球 ⇄ 屏幕中央毛玻璃输入 ═══ */
+  .orb-dock { position: fixed; right: 24px; bottom: 24px; z-index: 80; }
+  @media (max-width: 640px) { .orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); } }
+
+  .orb-ball {
+    position: relative;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center;
+    box-shadow: 0 8px 26px rgba(23,33,31,.22), 0 2px 6px rgba(23,33,31,.12);
+    transition: transform .16s ease, background .15s;
+  }
+  .orb-ball:hover { background: var(--accent-hover); transform: translateY(-2px); }
+  .orb-ball:active { transform: scale(.94); }
+  .orb-ball .pip { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); border: 2px solid var(--bg-soft); }
+
+  /* 底部居中毛玻璃胶囊：只有框自己是玻璃，四周一圈渐隐模糊晕，页面不整屏压暗 */
+  .orb-overlay {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 0 16px 18px;
+    background: none;
+    animation: orbFade .16s ease-out;
+  }
+  @media (max-width: 640px) { .orb-overlay { padding-bottom: calc(12px + env(safe-area-inset-bottom)); } }
+  @keyframes orbFade { from { opacity: 0; } to { opacity: 1; } }
+  .orb-panel { position: relative; width: min(560px, calc(100vw - 32px)); animation: orbIn .2s cubic-bezier(.2,.9,.3,1); }
+  @keyframes orbIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* 围绕输入框的渐进模糊：三层不同强度 + 不同羽化范围，避免单层遮罩的硬边 */
+  .orb-halo { position: absolute; inset: -86px -74px -52px; z-index: 0; pointer-events: none; }
+  .orb-halo i { position: absolute; inset: 0; display: block; }
+  /* 最外层：极弱模糊，铺最大范围，负责把边界化开 */
+  .orb-halo .h1 {
+    backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px);
+    -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%);
+    mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%);
+  }
+  /* 中层 */
+  .orb-halo .h2 {
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    -webkit-mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%);
+    mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%);
+  }
+  /* 贴近输入框：最强模糊，范围最小 */
+  .orb-halo .h3 {
+    backdrop-filter: blur(13px); -webkit-backdrop-filter: blur(13px);
+    -webkit-mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%);
+    mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%);
+  }
+  .orb-top, .orb-row, .orb-note { position: relative; z-index: 1; }
+
+  .orb-top { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .orb-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .orb-chips .chip {
+    display: inline-flex; align-items: center; height: 28px; padding: 0 11px;
+    border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500;
+    background: rgba(255,255,255,.84); color: var(--text-2);
+    border: 1px solid rgba(255,255,255,.95);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 3px 12px rgba(23,33,31,.10);
+    transition: background .14s, color .14s, border-color .14s;
+  }
+  .orb-chips .chip:hover { background: #fff; border-color: var(--accent); color: var(--accent-press); }
+  .orb-close {
+    margin-left: auto; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,.84); border: 1px solid rgba(255,255,255,.95);
+    color: var(--text-3); display: grid; place-items: center; flex: 0 0 auto;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 3px 12px rgba(23,33,31,.10);
+  }
+  .orb-close:hover { background: #fff; color: var(--ink); }
+
+  .orb-row {
+    display: flex; align-items: center; gap: 11px;
+    background: color-mix(in srgb, var(--surface) 66%, transparent);
+    border: 1px solid color-mix(in srgb, var(--surface) 82%, transparent);
+    outline: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    padding: 6px 6px 6px 18px;
+    backdrop-filter: blur(20px) saturate(175%); -webkit-backdrop-filter: blur(20px) saturate(175%);
+    box-shadow: 0 10px 30px rgba(23,33,31,.15);
+    transition: outline-color .15s, box-shadow .15s;
+  }
+  .orb-row:focus-within { outline-color: var(--accent); box-shadow: 0 10px 30px rgba(23,33,31,.15), 0 0 0 3px var(--accent-soft); }
+  .orb-row .lead { color: var(--text-3); display: inline-flex; flex: 0 0 auto; }
+  .orb-row input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; }
+  .orb-row input::placeholder { color: var(--text-3); transition: opacity .2s; }
+  .orb-row input.ph-fade::placeholder { opacity: 0; }
+  .orb-row input:focus { outline: none; }
+  .orb-send {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center; flex: 0 0 auto;
+    transition: background .15s, transform .08s;
+  }
+  .orb-send:hover { background: var(--accent-hover); }
+  .orb-send:active { transform: scale(.94); }
+  .orb-note { font-size: 11px; color: var(--text-2); margin-top: 9px; text-align: center; }
+
+  @media (max-width: 640px) {
+    .orbit-top-nav { display: flex; height: 56px; min-height: 56px; padding: 0 14px; gap: 10px; }
+    .orbit-nav-links, .orbit-brand-word { display: none !important; }
+    .orbit-nav-page-title { display: block; }
+    .orbit-top-actions { margin-left: auto; gap: 8px; }
+    .agent-history { display: none; }
+    .ws-inner { padding: 18px 16px 120px; }
+  }
+
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(20px); background: var(--ink); color: #fff; font-size: 13.5px; padding: 11px 20px; border-radius: var(--r-sm); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 99; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="workspace">
+
+  <header class="orbit-top-nav">
+    <div class="orbit-nav-lead">
+      <a class="orbit-brand-link" href="#" aria-label="Orbit">
+        <svg aria-hidden fill="none" height="24" viewBox="0 0 28 28" width="24">
+          <circle cx="14" cy="14" opacity="0.35" r="12.5" stroke="var(--accent)" stroke-width="1.6"/>
+          <circle cx="14" cy="14" fill="var(--accent)" r="4.4"/>
+          <circle cx="24.2" cy="10" fill="var(--accent)" r="2.5"/>
+        </svg>
+        <span class="orbit-brand-word">
+          <span class="orbit-brand-name">Orbit</span>
+          <span class="orbit-brand-sub">由 iOrbit 智能匹配引擎驱动</span>
+        </span>
+      </a>
+      <span class="orbit-nav-page-title">iOrbit</span>
+    </div>
+    <nav class="orbit-nav-links" aria-label="主导航">
+      <a class="orbit-nav-link is-active" href="#" aria-current="page">iOrbit</a>
+      <a class="orbit-nav-link" href="#">活动</a>
+      <a class="orbit-nav-link" href="#">日程</a>
+      <a class="orbit-nav-link" href="#">人脉</a>
+    </nav>
+    <div class="orbit-top-actions">
+      <span class="orbit-lang-toggle mono">
+        <button class="is-active" type="button">中</button>
+        <span class="orbit-lang-sep" aria-hidden="true">/</span>
+        <button type="button">EN</button>
+        <span class="orbit-lang-sep" aria-hidden="true">/</span>
+        <button type="button">日</button>
+      </span>
+      <button class="orbit-inbox-trigger" type="button" aria-label="关系收件箱" data-toast="打开关系收件箱">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        <span class="dot">2</span>
+      </button>
+      <span class="avatar g-sand orbit-nav-avatar" role="button" tabindex="0" aria-label="我的账户">Li</span>
+    </div>
+  </header>
+
+  <div class="ws-body">
+
+    <!-- 左栏：常驻 -->
+    <aside class="agent-history" aria-label="对话历史">
+      <div class="agent-history-actions">
+        <button class="orbit-agent-new-chat" type="button" id="btnNewChat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          新对话
+        </button>
+      </div>
+      <div class="agent-history-heading"><div class="eyebrow">对话历史</div></div>
+      <div class="agent-history-scroll" id="histList">
+        <div class="hist-group eyebrow" style="font-size:10.5px;">今天</div>
+        <button class="hist-item" data-hist="帮我准备周四的活动" data-when="刚刚">帮我准备周四的活动<span class="when">刚刚</span></button>
+        <button class="hist-item" data-hist="帮我看看林慧的费率方案" data-when="14:20">帮我看看林慧的费率方案<span class="when">14:20</span></button>
+        <div class="hist-group eyebrow" style="font-size:10.5px;">最近 7 天</div>
+        <button class="hist-item" data-hist="东京沙龙认识的人整理" data-when="8月2日">东京沙龙认识的人整理<span class="when">8月2日</span></button>
+        <button class="hist-item" data-hist="谁能帮我进乐天美妆类目" data-when="7月31日">谁能帮我进乐天美妆类目<span class="when">7月31日</span></button>
+        <button class="hist-item" data-hist="下个月值得去的活动" data-when="7月28日">下个月值得去的活动<span class="when">7月28日</span></button>
+      </div>
+    </aside>
+
+    <div class="ws-main">
+      <div class="ws-scroll" id="wsScroll">
+
+        <!-- ═══ Dashboard ═══ -->
+        <div class="ws-inner" id="dashboard">
+
+          <div class="hub-head">
+            <span class="avatar g-sand">L</span>
+            <div class="who">
+              <div class="eyebrow" style="margin-bottom:4px;">晚上好</div>
+              <h1 class="h-display">Li Qiuyu</h1>
+              <div class="sub">8月6日 周四 · 距下一场活动 7 天 · 1 个约谈待赴约</div>
+            </div>
+          </div>
+
+          <div class="hub-stats">
+            <div><div class="v">3</div><div class="k">活动</div></div>
+            <div><div class="v">0</div><div class="k">人脉</div></div>
+            <div><div class="v">1</div><div class="k">跟进中</div></div>
+            <div><div class="v">1</div><div class="k">待赴约谈</div></div>
+          </div>
+
+          <section class="brief">
+            <div class="brief-head">
+              <span class="brief-mark"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg></span>
+              <b>iOrbit</b>
+              <span class="st">基于你的真实状态 · 涉及对外动作会先经你确认</span>
+            </div>
+            <p class="brief-lede">你下周四要参加<b>「关西跨境电商夜话 · 大阪场」</b>，活动画像还差 2 题——完成它，主办方才能把你排进匹配。</p>
+
+            <div class="glass brief-suggest">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
+              <div class="txt">
+                <b>现在最值得做：完成活动画像（约 1 分钟）</b>
+                <span>画像截止 8月11日 · 完成后你会先看到初步匹配方向</span>
+              </div>
+              <button class="btn btn-primary btn-sm" data-toast="进入旅程页 · 活动画像还差 2 题">
+                去完成
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+
+            <!-- 保留：简报内的玻璃输入 -->
+            <form class="glass brief-input" id="briefForm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <input id="briefInput" type="text" aria-label="向 iOrbit 提问">
+              <button class="brief-send" type="submit" aria-label="发送">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4 7 4 7-14-7Z"/></svg>
+              </button>
+            </form>
+            <div class="brief-chips">
+              <button class="chip" data-ask="帮我准备周四的活动">帮我准备周四的活动</button>
+              <button class="chip" data-ask="帮我准备周五和 Ren 的约谈">帮我准备周五和 Ren 的约谈</button>
+              <button class="chip" data-ask="生成上一场活动的报告">生成上一场活动的报告</button>
+            </div>
+            <p class="brief-note">iOrbit 只根据你已授权的活动与人脉数据回答；涉及对外动作会先经你确认。</p>
+          </section>
+
+          <div class="sec-title"><h2>即将到来的约谈</h2><span>来自你的人脉 · 双方已确认</span></div>
+          <section class="card appt" aria-label="约谈提醒">
+            <div class="appt-when">
+              <span class="d">8/14</span>
+              <span class="t">周五 15:00</span>
+              <span class="len">60 min</span>
+              <span class="in">还有 8 天</span>
+            </div>
+            <div class="appt-main">
+              <div class="appt-title-row">
+                <b>与 Ren 的线上约谈</b>
+                <span class="badge badge-ok">confirmed</span>
+                <span class="badge badge-muted">日历未同步</span>
+              </div>
+              <div class="appt-who">
+                <span class="avatar g-slate">Ren</span>
+                <div class="w">
+                  <b>Ren · CircularPack 创始人（循环包装）</b>
+                  <span>上月「东京 SaaS 出海沙龙」认识 · 已交换名片 · 他答应分享 18 家门店的试点数据</span>
+                </div>
+              </div>
+              <div class="glass appt-topics">
+                <div class="hd">
+                  <span class="ai-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>iOrbit · 可能谈什么</span>
+                </div>
+                <ul>
+                  <li><span>请他过一遍<b>循环包装试点数据</b>——上次他提到从 2 家店扩到了 18 家</span></li>
+                  <li><span>你们的<b>日本制造企业验证</b>需求，他有对应人脉可引荐</span></li>
+                  <li><span>他在找 AI 产品团队——可以聊聊<b>研究合作</b>的可能性</span></li>
+                </ul>
+              </div>
+              <div class="appt-actions">
+                <button class="btn btn-primary btn-sm" data-toast="打开 Ren 的名片与双向价值分析">查看名片与依据</button>
+                <button class="btn btn-ghost btn-sm" data-ask="帮我准备周五和 Ren 的约谈">让 iOrbit 帮我准备</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="sec-title"><h2>现在可以做</h2><span>按你的当前状态排序</span></div>
+          <section class="grid">
+            <article class="card act span2">
+              <div class="act-top">
+                <span class="act-ic ic-teal"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M3 10h18"/></svg></span>
+                <b>关西跨境电商夜话 · 大阪场</b>
+              </div>
+              <div class="stage-row">
+                <span class="stage done"><span class="s-dot"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>已报名</span></span>
+                <span class="stage"><span class="s-link"></span></span>
+                <span class="stage now"><span class="s-dot">画像 · 差 2 题</span></span>
+                <span class="stage"><span class="s-link"></span></span>
+                <span class="stage"><span class="s-dot">等待匹配发布</span></span>
+                <span class="stage"><span class="s-link"></span></span>
+                <span class="stage"><span class="s-dot">活动当天</span></span>
+              </div>
+              <p>8月13日（周四）19:00 · 梅田 Grand Front North Tower 7F · 匹配结果预计 <b>8月12日</b> 发布</p>
+              <button class="btn btn-primary btn-sm" data-toast="进入旅程页 · 完成画像">完成活动画像
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </article>
+
+            <article class="card act">
+              <div class="act-top">
+                <span class="act-ic ic-green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
+                <b>名片交换请求</b>
+                <span class="act-badge">2</span>
+              </div>
+              <p><b>王磊</b> 和 <b>中村悠</b> 在上一场活动后请求与你交换名片，还没处理。</p>
+              <button class="btn btn-soft btn-sm" data-toast="打开关系收件箱 · 名片交换请求">去处理</button>
+            </article>
+
+            <article class="card act ai">
+              <div class="act-top">
+                <span class="act-ic ic-teal"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 5-6"/></svg></span>
+                <b>会后复盘待生成</b>
+                <span class="ai-chip"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>iOrbit</span>
+              </div>
+              <p>上周「东京 SaaS 出海沙龙」你认识了 <b>4 个人</b>，复盘报告还没生成——趁记忆还热。</p>
+              <button class="btn btn-soft btn-sm" data-toast="进入上一场活动的会后中心">生成复盘</button>
+            </article>
+
+            <article class="card act">
+              <div class="act-top">
+                <span class="act-ic ic-amber"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+                <b>发现下一场活动</b>
+              </div>
+              <p>根据你的目标「找日本渠道」，本月还有 <b>3 场</b>高匹配度活动可报名。</p>
+              <button class="btn btn-soft btn-sm" data-toast="打开活动列表（已按目标筛选）">去看看</button>
+            </article>
+
+            <article class="card act">
+              <div class="act-top">
+                <span class="act-ic ic-gray"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                <b>人脉库</b>
+              </div>
+              <p>还没有联系人。从活动里认识的人会自动沉淀到这里，也可以<b>手动添加第一位</b>。</p>
+              <button class="btn btn-ghost btn-sm" data-toast="打开手动添加联系人">添加第一位联系人</button>
+            </article>
+          </section>
+
+          <div class="sec-title"><h2>我的活动旅程</h2><span>每场活动一个页面，从报名到复盘</span></div>
+          <section class="card journeys">
+            <button class="j-row" data-toast="进入旅程页：关西跨境电商夜话（当前阶段：完成画像）">
+              <span class="j-date"><span class="m">8月</span><span class="d">13</span></span>
+              <span class="j-main"><b>关西跨境电商夜话 · 大阪场</b><span>周四 19:00 · 梅田 Grand Front</span></span>
+              <span class="badge badge-ok">进行中 · 完成画像</span>
+              <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <button class="j-row" data-toast="进入旅程页：CES Asia 预热酒会（等待发布）">
+              <span class="j-date"><span class="m">8月</span><span class="d">21</span></span>
+              <span class="j-main"><b>CES Asia 预热酒会 · 上海</b><span>周五 18:30 · 外滩 W 酒店</span></span>
+              <span class="badge badge-wait">等待匹配发布</span>
+              <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <button class="j-row" data-toast="进入旅程页：东京 SaaS 出海沙龙（复盘待生成）">
+              <span class="j-date"><span class="m">7月</span><span class="d">30</span></span>
+              <span class="j-main"><b>东京 SaaS 出海沙龙</b><span>已结束 · 认识 4 人 · 复盘待生成</span></span>
+              <span class="badge badge-muted">已结束</span>
+              <svg class="j-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </section>
+        </div>
+
+        <!-- ═══ 对话页 ═══ -->
+        <div class="ws-inner hide" id="chat">
+          <div class="thread-bar">
+            <button class="btn-back" id="btnBack" aria-label="返回 dashboard" title="返回">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span class="title" id="chatTitle">新对话</span>
+            <span class="when" id="chatWhen"></span>
+          </div>
+
+          <!-- 新对话空态 -->
+          <div class="new-empty" id="newEmpty">
+            <span class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg></span>
+            <h3>你想让 iOrbit 做什么？</h3>
+            <p>它能看到你的活动、报名答案、人脉和约谈——直接说目标就行。</p>
+            <div class="chips">
+              <button class="chip" data-ask="帮我准备周四的活动">帮我准备周四的活动</button>
+              <button class="chip" data-ask="帮我准备周五和 Ren 的约谈">帮我准备周五和 Ren 的约谈</button>
+              <button class="chip" data-ask="生成上一场活动的报告">生成上一场活动的报告</button>
+            </div>
+          </div>
+
+          <!-- 会话流 -->
+          <div class="thread hide" id="thread">
+            <div class="msg-user" id="threadQ">帮我准备周四的活动</div>
+
+            <div class="msg-a" id="threadThinking">
+              <span class="mk"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg></span>
+              <div class="body"><div class="thinking"><span class="sp"></span>正在检索你的报名答案与本场参会者画像…</div></div>
+            </div>
+
+            <div class="msg-a hide" id="threadA">
+              <span class="mk"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg></span>
+              <div class="body">
+                <p>你在这场活动的目标是<b>「找日本线上渠道」</b>。基于 37 位参会者的画像，有 3 位和你的目标直接互补；另外你的活动画像还差 2 题，补完后匹配质量会明显提升。</p>
+
+                <div class="panel">
+                  <div class="panel-head">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <b>建议优先认识</b>
+                    <span class="meta">3 位 · 来自本场参会者</span>
+                  </div>
+                  <div class="panel-body">
+                    <div class="p-person">
+                      <span class="avatar g-teal">佐</span>
+                      <span class="w"><b>佐藤 健一</b><span>乐天 · 渠道运营（美妆类目）</span></span>
+                      <span class="p-acts">
+                        <button class="btn btn-ghost btn-sm" data-toast="打开佐藤健一的画像与依据">查看</button>
+                        <button class="btn btn-soft btn-sm" data-toast="已加入你的现场必见清单">加入必见</button>
+                      </span>
+                      <span class="why">他负责乐天美妆类目招商，与你的「找日本线上渠道」直接互补。</span>
+                    </div>
+                    <div class="p-person">
+                      <span class="avatar g-slate">林</span>
+                      <span class="w"><b>林 慧</b><span>跨境支付 · BD 总监</span></span>
+                      <span class="p-acts">
+                        <button class="btn btn-ghost btn-sm" data-toast="打开林慧的画像与依据">查看</button>
+                        <button class="btn btn-soft btn-sm" data-toast="已加入你的现场必见清单">加入必见</button>
+                      </span>
+                      <span class="why">你报名时提到日元结算成本高，她的方案正覆盖中小卖家日元收付。</span>
+                    </div>
+                    <div class="p-person">
+                      <span class="avatar g-sand">高</span>
+                      <span class="w"><b>高桥 美咲</b><span>海外仓 · 关西区负责人</span></span>
+                      <span class="p-acts">
+                        <button class="btn btn-ghost btn-sm" data-toast="打开高桥美咲的画像与依据">查看</button>
+                        <button class="btn btn-soft btn-sm" data-toast="已加入你的现场必见清单">加入必见</button>
+                      </span>
+                      <span class="why">大阪湾区两个仓有余量，正在找长期稳定的中国品牌客户。</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="action-card">
+                  <div class="hd">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber-text)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                    <b>需要你确认后才执行</b>
+                    <span class="badge badge-wait">待确认</span>
+                  </div>
+                  <p>把「完成活动画像」加入你的待办，并在 8月11日 截止前一天提醒你。</p>
+                  <div class="acts">
+                    <button class="btn btn-primary btn-sm" data-toast="已创建待办 · 8月10日 提醒">确认执行</button>
+                    <button class="btn btn-ghost btn-sm" data-toast="已取消，未创建任何待办">不用了</button>
+                  </div>
+                  <div class="guard">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:3px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>iOrbit 不会替你发消息或报名。邮件类动作只生成草稿，发送始终由你操作。</span>
+                  </div>
+                </div>
+
+                <div class="evidence">
+                  <button class="ev-toggle" id="evToggle" aria-expanded="false" aria-controls="evList">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                    依据来源（4）
+                    <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="ev-list hide" id="evList">
+                    <div class="ev-item"><span class="k">REG-0813</span><span>你的报名答案：想认识「日本线上渠道负责人」，能提供「中国供应链与产能」</span></div>
+                    <div class="ev-item"><span class="k">PROF-882</span><span>佐藤健一活动画像：乐天美妆类目招商，正在找中国品牌</span></div>
+                    <div class="ev-item"><span class="k">PROF-914</span><span>林慧活动画像：中小卖家日元收付方案</span></div>
+                    <div class="ev-item"><span class="k">EVT-OSA-0813</span><span>活动画像截止时间：8月11日 23:59</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 全局悬浮 iOrbit（所有页面都在）═══ -->
+<div class="orb-dock">
+  <button class="orb-ball" id="orbBall" type="button" aria-label="打开 iOrbit" aria-expanded="false" style="position:relative;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z"/></svg>
+    <span class="pip" id="orbPip"></span>
+  </button>
+
+</div>
+
+<!-- 居中毛玻璃输入浮层 -->
+<div class="orb-overlay hide" id="orbOverlay">
+  <div class="orb-panel" role="dialog" aria-modal="true" aria-label="iOrbit 快速提问">
+    <span class="orb-halo" aria-hidden="true"><i class="h1"></i><i class="h2"></i><i class="h3"></i></span>
+    <div class="orb-top">
+      <div class="orb-chips">
+      <button class="chip" data-ask="帮我准备周四的活动">帮我准备周四的活动</button>
+      <button class="chip" data-ask="帮我准备周五和 Ren 的约谈">帮我准备周五和 Ren 的约谈</button>
+      <button class="chip" data-ask="生成上一场活动的报告">生成上一场活动的报告</button>
+      </div>
+      <button class="orb-close" id="orbClose" type="button" aria-label="收起"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <form class="orb-row" id="orbForm">
+      <span class="lead"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <input id="orbInput" type="text" aria-label="向 iOrbit 提问">
+      <button class="orb-send" type="submit" aria-label="发送"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-4 7 4 7-14-7Z"/></svg></button>
+    </form>
+    <p class="orb-note">发送后进入 iOrbit 对话页 · 涉及对外动作会先经你确认</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var toastEl = document.getElementById('toast');
+  var timer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(timer);
+    timer = setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
+  }
+
+  var dashboard = document.getElementById('dashboard');
+  var chat = document.getElementById('chat');
+  var newEmpty = document.getElementById('newEmpty');
+  var thread = document.getElementById('thread');
+  var threadQ = document.getElementById('threadQ');
+  var thinking = document.getElementById('threadThinking');
+  var answer = document.getElementById('threadA');
+  var chatTitle = document.getElementById('chatTitle');
+  var chatWhen = document.getElementById('chatWhen');
+  var scroll = document.getElementById('wsScroll');
+  var histList = document.getElementById('histList');
+  var replyTimer;
+
+  /* ── dashboard ⇄ 对话页 ── */
+  function openChat() {
+    dashboard.classList.add('hide');
+    chat.classList.remove('hide');
+    scroll.scrollTop = 0;
+  }
+  function backToDashboard() {
+    clearTimeout(replyTimer);
+    chat.classList.add('hide');
+    dashboard.classList.remove('hide');
+    histList.querySelectorAll('.hist-item').forEach(function (i) { i.classList.remove('is-active'); });
+    scroll.scrollTop = 0;
+  }
+  function newChat() {
+    openChat();
+    chatTitle.textContent = '新对话';
+    chatWhen.textContent = '';
+    newEmpty.classList.remove('hide');
+    thread.classList.add('hide');
+    histList.querySelectorAll('.hist-item').forEach(function (i) { i.classList.remove('is-active'); });
+  }
+  function ask(q, meta) {
+    openChat();
+    chatTitle.textContent = q.length > 24 ? q.slice(0, 24) + '…' : q;
+    chatWhen.textContent = (meta && meta.when) || '刚刚';
+    newEmpty.classList.add('hide');
+    thread.classList.remove('hide');
+    threadQ.textContent = q;
+    thinking.classList.remove('hide');
+    answer.classList.add('hide');
+    clearTimeout(replyTimer);
+    replyTimer = setTimeout(function () {
+      thinking.classList.add('hide');
+      answer.classList.remove('hide');
+    }, 1100);
+  }
+
+  document.getElementById('btnNewChat').addEventListener('click', newChat);
+  document.getElementById('btnBack').addEventListener('click', backToDashboard);
+
+  histList.addEventListener('click', function (e) {
+    var item = e.target.closest('.hist-item');
+    if (!item) return;
+    histList.querySelectorAll('.hist-item').forEach(function (i) { i.classList.remove('is-active'); });
+    item.classList.add('is-active');
+    ask(item.getAttribute('data-hist'), { when: item.getAttribute('data-when') });
+  });
+
+  /* ── 简报内的输入（保留）── */
+  var briefInput = document.getElementById('briefInput');
+  document.getElementById('briefForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = briefInput.value.trim() || briefInput.placeholder;
+    ask(q); briefInput.value = '';
+  });
+
+  /* ── 全局悬浮球 → 居中毛玻璃输入 ── */
+  var ball = document.getElementById('orbBall');
+  var overlay = document.getElementById('orbOverlay');
+  var orbInput = document.getElementById('orbInput');
+  var pip = document.getElementById('orbPip');
+
+  /* 提示语随机轮换（与产品 AgentDock 每 5s 轮换建议一致） */
+  var HINTS = [
+    '问 iOrbit：我周四该找谁聊？',
+    '帮我看看周四的活动值不值得去',
+    '周五和 Ren 的约谈该聊什么？',
+    '谁能帮我进乐天美妆类目？',
+    '整理一下东京沙龙认识的人',
+    '这个月还有哪些值得去的活动？',
+    '把「完成活动画像」加到我的待办',
+    '有谁在等我回复名片交换？'
+  ];
+  var hintOrder = [];
+  var hintTimer;
+  function nextHint() {
+    if (!hintOrder.length) {
+      hintOrder = HINTS.slice();
+      for (var i = hintOrder.length - 1; i > 0; i--) {   // Fisher–Yates 洗牌
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = hintOrder[i]; hintOrder[i] = hintOrder[j]; hintOrder[j] = tmp;
+      }
+    }
+    return hintOrder.pop();
+  }
+  function rotateHint(immediate) {
+    if (immediate) { orbInput.placeholder = nextHint(); return; }
+    orbInput.classList.add('ph-fade');
+    setTimeout(function () {
+      orbInput.placeholder = nextHint();
+      orbInput.classList.remove('ph-fade');
+    }, 200);
+  }
+  function startHintRotation() {
+    rotateHint(true);
+    clearInterval(hintTimer);
+    hintTimer = setInterval(function () {
+      if (!orbInput.value) rotateHint(false);   // 用户已输入就不打扰
+    }, 3500);
+  }
+
+  function openOrb() {
+    overlay.classList.remove('hide');
+    ball.classList.add('hide');
+    ball.setAttribute('aria-expanded', 'true');
+    pip.classList.add('hide');
+    startHintRotation();
+    orbInput.focus();
+  }
+  function closeOrb() {
+    overlay.classList.add('hide');
+    ball.classList.remove('hide');
+    ball.setAttribute('aria-expanded', 'false');
+    clearInterval(hintTimer);
+  }
+  ball.addEventListener('click', openOrb);
+  document.getElementById('orbClose').addEventListener('click', closeOrb);
+  document.getElementById('orbForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var q = orbInput.value.trim() || orbInput.placeholder;   // 空则用当前提示语
+    ask(q); orbInput.value = ''; closeOrb();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !overlay.classList.contains('hide')) closeOrb();
+  });
+  overlay.addEventListener('click', function (e) {
+    if (!e.target.closest('.orb-panel')) closeOrb();   // 点击浮层空白收起
+  });
+
+  /* ── 通用 ── */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-ask]');
+    if (a) { ask(a.getAttribute('data-ask')); closeOrb(); return; }
+    var t = e.target.closest('[data-toast]');
+    if (t) toast(t.getAttribute('data-toast'));
+  });
+
+  /* 简报输入的提示语也轮换（共用同一组，与悬浮层错开取值） */
+  (function rotateBriefHint() {
+    briefInput.placeholder = nextHint();
+    setInterval(function () {
+      if (briefInput.value || document.activeElement === briefInput) return;
+      briefInput.classList.add('ph-fade');
+      setTimeout(function () {
+        briefInput.placeholder = nextHint();
+        briefInput.classList.remove('ph-fade');
+      }, 200);
+    }, 4200);
+  })();
+
+  var evToggle = document.getElementById('evToggle');
+  evToggle.addEventListener('click', function () {
+    var list = document.getElementById('evList');
+    var open = list.classList.contains('hide');
+    list.classList.toggle('hide', !open);
+    evToggle.setAttribute('aria-expanded', String(open));
+  });
+})();
+</script>
+</body>
+</html>
