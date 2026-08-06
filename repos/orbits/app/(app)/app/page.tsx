@@ -1,16 +1,22 @@
+import { redirect } from "next/navigation";
+
 import { OrbitStarfieldHome } from "./orbit-starfield-home";
 import { OrbitReferenceStyles } from "./orbit-reference-styles";
 import { auth } from "../../../auth";
 
-// The starfield journey is the Orbit system's homepage: /app renders the same
-// page as /. The previous reference landing page has been removed.
+// The starfield journey stays the anonymous homepage; a signed-in member's
+// home is the personal console at /app/home, so every login lands on the
+// unified "what should I do now" surface instead of the marketing journey.
 export default async function AppHomePage() {
   const session = await auth();
+  if (session?.user?.id) {
+    redirect("/app/home");
+  }
 
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitStarfieldHome authenticated={Boolean(session?.user?.id)} />
+      <OrbitStarfieldHome authenticated={false} />
     </>
   );
 }

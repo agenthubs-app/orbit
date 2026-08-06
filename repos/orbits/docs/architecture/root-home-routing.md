@@ -3,7 +3,7 @@
 Orbit keeps three home-like routes on purpose:
 
 - `/` is the public product entry. It starts with Orbit Agent, then shows activity and event context drawn from source-backed local data. It is render-only and keeps no-write live safety: no messages, notifications, calendar writes, CRM writes, or outside provider calls happen during render.
-- `/app/home` is the signed-in personal hub. It uses the live-capable Home route model and may show fail-closed state UI when live storage is not configured.
+- `/app/home` is the signed-in personal console. It uses the live-capable Home route model and may show fail-closed state UI when live storage is not configured. A signed-in visit to `/app` redirects here, so the console — identity, live-event hero, event cards, schedule/contact reminders, and the floating iOrbit ask bar — is the post-login home; the starfield at `/app` remains anonymous-only.
 - `/app/home/events` is the personal events list. It stays focused on the user's registered or historical events.
 
 The public starfield entry and every `/app/**` product page share the same

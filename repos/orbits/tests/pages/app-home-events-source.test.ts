@@ -46,7 +46,7 @@ test("active and ended Home event cards preserve the actor-owned event identity 
   );
   assert.equal(
     homeSource.match(/onClick=\{\(\) => enterEvent\(event\.id\)\}/gu)?.length,
-    2,
+    3,
   );
   assert.doesNotMatch(homeSource, /orbitNavigate\("\/party"\)/u);
 });

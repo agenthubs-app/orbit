@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 
 import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
@@ -11,6 +11,7 @@ import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { partyHrefForEvent } from "../orbit-product-href";
 import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
+import { toReminderAlerts, type InboxReminderAlert } from "../inbox/inbox-panel-view-model";
 import {
   localizeHomeHeadline,
   localizeHomeList,
@@ -333,6 +334,266 @@ function AccountEventsBlock({ events, language, t }: { events: OrbitLandingEvent
   );
 }
 
+// ————— 控制台增强：今日活动 hero、提醒面板、iOrbit 悬浮输入条 —————
+
+interface TodayOpsSummary {
+  checkedIn: boolean;
+  pendingRequests: number;
+  recCount: number;
+  seat: string | null;
+  tableNumber: number | null;
+  theme: string | null;
+  topRec: { hint: string; name: string; role: string; score: number } | null;
+}
+
+/** Best-effort enrichment for the live event hero; every failure degrades to
+ *  the plain hero (the console never blocks on operations data). */
+function useTodayOpsSummary(eventId: string | null): TodayOpsSummary | null {
+  const [summary, setSummary] = useState<TodayOpsSummary | null>(null);
+  useEffect(() => {
+    if (!eventId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/operations`, { cache: "no-store" });
+        if (!response.ok) return;
+        const body = (await response.json().catch(() => null)) as {
+          data?: {
+            checkIn?: unknown;
+            contactRequests?: readonly { status: string; targetParticipantId: string }[];
+            directory?: readonly { company: string | null; displayName: string; participantId: string; role: string | null }[];
+            me?: { participantId: string };
+            recommendations?: { recommendations: readonly { memberHint: string; score: number; targetParticipantId: string }[] } | null;
+            roundOneTable?: { members: readonly { participantId: string; seat: string }[]; tableNumber: number; theme: string } | null;
+          };
+        } | null;
+        const data = body?.data;
+        if (!data?.me || !active) return;
+        const meId = data.me.participantId;
+        const byId = new Map((data.directory ?? []).map((person) => [person.participantId, person]));
+        const recs = data.recommendations?.recommendations ?? [];
+        const top = recs[0] ?? null;
+        const topPerson = top ? byId.get(top.targetParticipantId) : null;
+        setSummary({
+          checkedIn: Boolean(data.checkIn),
+          pendingRequests: (data.contactRequests ?? []).filter(
+            (request) => request.status === "awaiting_target_consent" && request.targetParticipantId === meId,
+          ).length,
+          recCount: recs.length,
+          seat: data.roundOneTable?.members.find((member) => member.participantId === meId)?.seat ?? null,
+          tableNumber: data.roundOneTable?.tableNumber ?? null,
+          theme: data.roundOneTable?.theme ?? null,
+          topRec: top && topPerson
+            ? {
+                hint: top.memberHint,
+                name: topPerson.displayName,
+                role: [topPerson.role, topPerson.company].filter(Boolean).join(" · "),
+                score: top.score,
+              }
+            : null,
+        });
+      } catch {
+        // Plain hero remains.
+      }
+    })();
+    return () => { active = false; };
+  }, [eventId]);
+  return summary;
+}
+
+function TodayEventHero({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
+  const ops = useTodayOpsSummary(event.id);
+  return (
+    <div data-console-today style={{ background: "linear-gradient(120deg, #1a7d9b, var(--accent) 42%, #c8a24a 135%)", borderRadius: 20, boxShadow: "0 14px 40px -8px rgba(21,94,117,.30)", padding: 2 }}>
+      <div style={{ background: "linear-gradient(180deg, var(--surface), var(--surface-2))", borderRadius: 18, display: "grid", gap: "6px 26px", gridTemplateColumns: ops?.topRec ? "1.2fr 1fr" : "1fr", overflow: "hidden", padding: "18px 22px", position: "relative" }}>
+        <div style={{ alignItems: "center", display: "flex", gap: 10, gridColumn: "1 / -1" }}>
+          <span className="badge badge-live"><span style={{ animation: "orbit-console-pulse 1.6s infinite", background: "currentcolor", borderRadius: "var(--r-pill)", display: "inline-block", height: 6, width: 6 }} />{t({ en: "Happening now", zh: "正在进行" })}</span>
+          <span style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 600 }}>{homeDateTimeRange(event, t)}</span>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <h3 style={{ fontFamily: "var(--ff-display)", fontSize: 21, fontWeight: 600, lineHeight: 1.3, margin: 0 }}>{event.name}</h3>
+          <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>
+            {eventPlace(event, t)}{ops?.checkedIn ? ` · ${t({ en: "Checked in", zh: "已签到" })} ✓` : ""}
+          </div>
+          {ops?.tableNumber ? (
+            <div style={{ alignItems: "center", display: "flex", gap: 14, marginTop: 12 }}>
+              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 46, fontWeight: 600, lineHeight: 0.95 }}>
+                {ops.tableNumber}<span style={{ color: "var(--text-2)", fontSize: 15, marginLeft: 2 }}>{t({ en: " table", zh: "号桌" })}</span>
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {ops.seat ? <span className="chip" style={{ width: "max-content" }}>{t({ en: `Seat ${ops.seat}`, zh: `座位 ${ops.seat}` })}</span> : null}
+                {ops.theme ? <span style={{ color: "var(--text-3)", fontSize: 12, maxWidth: 260 }}>{ops.theme}</span> : null}
+              </div>
+            </div>
+          ) : null}
+          <div style={{ alignItems: "center", display: "flex", gap: 12, marginTop: 14 }}>
+            <button className="btn btn-primary" onClick={() => enterEvent(event.id)} type="button">{t({ en: "Enter live event", zh: "进入现场" })}<Icon color="var(--on-dark)" name="arrowUR" size={15} /></button>
+            {ops ? (
+              <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+                {ops.recCount > 0 ? t({ en: `${ops.recCount} matches`, zh: `${ops.recCount} 位推荐` }) : null}
+                {ops.recCount > 0 && ops.pendingRequests > 0 ? " · " : ""}
+                {ops.pendingRequests > 0 ? t({ en: `${ops.pendingRequests} pending`, zh: `${ops.pendingRequests} 条待处理` }) : null}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        {ops?.topRec ? (
+          <div style={{ borderLeft: "1px dashed var(--border-2)", display: "grid", gap: 8, paddingLeft: 22 }}>
+            <span className="eyebrow" style={{ color: "var(--accent)" }}>{t({ en: "TOP MATCH TONIGHT", zh: "今晚最值得见" })}</span>
+            <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
+              <span className="avatar g-emerald" style={{ fontSize: 15, height: 40, width: 40 }}>{ops.topRec.name.slice(0, 1)}</span>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ display: "block", fontSize: 14.5 }}>{ops.topRec.name}</strong>
+                <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ops.topRec.role}</span>
+              </div>
+              <span style={{ background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", flexShrink: 0, fontSize: 11, fontWeight: 800, marginLeft: "auto", padding: "3px 9px" }}>{t({ en: `Match ${ops.topRec.score}`, zh: `匹配 ${ops.topRec.score}` })}</span>
+            </div>
+            <p style={{ color: "var(--text-2)", fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>{ops.topRec.hint}</p>
+          </div>
+        ) : null}
+      </div>
+      <style>{`@keyframes orbit-console-pulse { 50% { opacity: .35; } }`}</style>
+    </div>
+  );
+}
+
+function homeDateTimeRange(event: OrbitLandingEventView, t: Translate): string {
+  const starts = new Date(event.startsAt);
+  const ends = new Date(event.endsAt);
+  if (!Number.isFinite(starts.getTime())) return "";
+  const fmt = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", ...tz });
+  return `${t({ en: "Today", zh: "今天" })} ${fmt.format(starts)}${Number.isFinite(ends.getTime()) ? ` – ${fmt.format(ends)}` : ""}`;
+}
+
+/** 日程/人脉提醒：与收件箱同源（/api/notifications），按约谈类拆分到日程栏。 */
+function useConsoleReminders(language: OrbitLanguage) {
+  const [reminders, setReminders] = useState<readonly InboxReminderAlert[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch("/api/notifications", { headers: { accept: "application/json" } });
+        const envelope = (await response.json().catch(() => null)) as { data?: unknown; success?: boolean } | null;
+        if (!response.ok || envelope?.success !== true || !envelope.data) {
+          if (active) setReminders([]);
+          return;
+        }
+        if (active) setReminders(toReminderAlerts(envelope.data as Parameters<typeof toReminderAlerts>[0], language));
+      } catch {
+        if (active) setReminders([]);
+      }
+    })();
+    return () => { active = false; };
+  }, [language]);
+  return reminders;
+}
+
+function ReminderRow({ alert, t }: { alert: InboxReminderAlert; t: Translate }) {
+  return (
+    <a href={alert.href} style={{ alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 13, display: "flex", gap: 12, padding: "11px 13px", textDecoration: "none" }}>
+      <span className="avatar g-sky" style={{ flexShrink: 0, fontSize: 14, height: 38, width: 38 }}>{(alert.contactName || alert.title).slice(0, 1)}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <strong style={{ color: "var(--ink)", display: "block", fontSize: 13.5 }}>{alert.title}</strong>
+        <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {[alert.contactName, alert.organization].filter(Boolean).join(" · ") || alert.dueLabel}
+        </span>
+      </span>
+      <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 12.5, fontWeight: 700 }}>{t({ en: "Open", zh: "处理" })}</span>
+    </a>
+  );
+}
+
+function ConsoleReminderPanels({ language, t }: { language: OrbitLanguage; t: Translate }) {
+  const reminders = useConsoleReminders(language);
+  const isAppointment = (alert: InboxReminderAlert) => /约谈|appointment/iu.test(alert.title);
+  const schedule = (reminders ?? []).filter(isAppointment).slice(0, 2);
+  const people = (reminders ?? []).filter((alert) => !isAppointment(alert)).slice(0, 2);
+  return (
+    <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))" }}>
+      <section className="card" data-console-section="schedule" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
+        <span className="eyebrow">{t({ en: "SCHEDULE · PENDING", zh: "日程 · 待你处理" })}</span>
+        {reminders === null ? <span style={{ color: "var(--text-4)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        {schedule.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
+        {reminders !== null && schedule.length === 0 ? (
+          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/today" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/today"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
+        ) : null}
+      </section>
+      <section className="card" data-console-section="contacts" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>
+        <span className="eyebrow">{t({ en: "WORTH FOLLOWING UP", zh: "值得联系" })}</span>
+        {reminders === null ? <span style={{ color: "var(--text-4)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
+        {people.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
+        {reminders !== null && people.length === 0 ? (
+          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "Nothing waiting — contacts appear here after events.", zh: "暂无待跟进——活动之后的关系提醒会出现在这里。" })} <a href="/app/contacts" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/contacts"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open contacts", zh: "打开人脉" })}</a></span>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+const AGENT_DOCK_SUGGESTIONS: Record<string, readonly { en: string; zh: string }[]> = {
+  contacts: [
+    { en: "Who is worth following up this week?", zh: "本周谁值得我优先跟进？" },
+    { en: "Draft a follow-up note for my newest contact", zh: "帮我给最新的联系人起草一段跟进话术" },
+  ],
+  events: [
+    { en: "Who should I prioritize meeting tonight?", zh: "今晚我该优先见谁？" },
+    { en: "Why am I seated at my table?", zh: "我为什么被分到这一桌？" },
+    { en: "Prepare my opener for the top match", zh: "帮我准备和头号推荐对象的开场" },
+  ],
+  schedule: [
+    { en: "Summarize my upcoming appointments", zh: "帮我梳理接下来的约谈安排" },
+    { en: "What should I confirm before tomorrow's meeting?", zh: "明天的约谈之前我该确认什么？" },
+  ],
+};
+
+function AgentDock({ t }: { t: Translate }) {
+  const [context, setContext] = useState("events");
+  const [rotation, setRotation] = useState(0);
+  const [draft, setDraft] = useState("");
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll("[data-console-section]"));
+    if (!sections.length) return;
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+      const next = visible?.target.getAttribute("data-console-section");
+      if (next) setContext(next);
+    }, { threshold: [0.35] });
+    for (const section of sections) observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRotation((value) => value + 1), 5_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const suggestions = AGENT_DOCK_SUGGESTIONS[context] ?? AGENT_DOCK_SUGGESTIONS.events;
+  const hint = t(suggestions[rotation % suggestions.length]);
+  const ask = () => {
+    orbitNavigate(`/agent?q=${encodeURIComponent(draft.trim() || hint)}`);
+  };
+  return (
+    <div style={{ bottom: "calc(18px + env(safe-area-inset-bottom))", left: "50%", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: 60 }}>
+      <form
+        onSubmit={(submitEvent) => { submitEvent.preventDefault(); ask(); }}
+        style={{ alignItems: "center", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", background: "color-mix(in srgb, var(--surface) 62%, transparent)", border: "1px solid color-mix(in srgb, var(--surface) 80%, transparent)", borderRadius: "var(--r-pill)", boxShadow: "0 12px 40px rgba(23,33,31,.16)", display: "flex", gap: 10, outline: "1px solid var(--border)", padding: "8px 8px 8px 18px" }}
+      >
+        <span aria-hidden style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "grid", flexShrink: 0, fontSize: 14, height: 30, placeItems: "center", width: 30 }}>✦</span>
+        <input
+          aria-label={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}
+          onInput={(inputEvent) => setDraft(inputEvent.currentTarget.value)}
+          placeholder={t({ en: `Ask iOrbit: "${hint}"`, zh: `问问 iOrbit：「${hint}」` })}
+          style={{ background: "transparent", border: 0, color: "var(--ink)", flex: 1, fontSize: 14, minWidth: 0, outline: "none" }}
+          value={draft}
+        />
+        <button aria-label={t({ en: "Send", zh: "发送" })} className="btn btn-primary" style={{ borderRadius: "var(--r-pill)", height: 40, padding: 0, width: 40 }} type="submit">
+          <Icon color="var(--on-dark)" name="chevR" size={17} />
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
   return (
     <div className="orbit-desktop-only" style={{ background: "var(--bg)", minHeight: "100dvh" }}>
@@ -355,8 +616,12 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
             <div key={label}><div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 26, fontWeight: 600 }}>{value}</div><div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1 }}>{label}</div></div>
           ))}
         </div>
-        <ProfileSummary account={viewModel.account} language={language} t={t} />
-        <div style={{ alignItems: "start", display: "grid", gap: 30, gridTemplateColumns: "1fr 320px", marginTop: 34 }}>
+        {liveConsoleEvent(viewModel.events) ? (
+          <div style={{ marginTop: 22 }}>
+            <TodayEventHero event={liveConsoleEvent(viewModel.events)!} t={t} />
+          </div>
+        ) : null}
+        <div data-console-section="events" style={{ alignItems: "start", display: "grid", gap: 30, gridTemplateColumns: "1fr 320px", marginTop: 26 }}>
           <div>
             <div style={{ alignItems: "center", display: "flex", gap: 16, justifyContent: "space-between", marginBottom: 16 }}>
               <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
@@ -374,9 +639,22 @@ function HubDesktop({ language, t, viewModel }: { language: OrbitLanguage; t: Tr
             ))}
           </div>
         </div>
+        <div style={{ marginTop: 26 }}>
+          <ConsoleReminderPanels language={language} t={t} />
+        </div>
+        <details data-console-section="profile" style={{ marginTop: 26 }}>
+          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ en: "My universal profile", zh: "我的通用画像" })}</summary>
+          <ProfileSummary account={viewModel.account} language={language} t={t} />
+        </details>
+        <div style={{ height: 84 }} />
       </div>
+      <AgentDock t={t} />
     </div>
   );
+}
+
+function liveConsoleEvent(events: OrbitLandingEventView[]): OrbitLandingEventView | null {
+  return events.find((event) => event.status === "active" && event.stats.youRsvped) ?? null;
 }
 
 function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Translate; viewModel: OrbitHomeViewModel }) {
@@ -404,13 +682,28 @@ function HubMobile({ language, t, viewModel }: { language: OrbitLanguage; t: Tra
             </a>
           ))}
         </div>
-        <ProfileSummary account={viewModel.account} language={language} t={t} />
-        <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", margin: "24px 0 12px" }}>
-          <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
-          <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
+        {liveConsoleEvent(viewModel.events) ? (
+          <div style={{ marginTop: 18 }}>
+            <TodayEventHero event={liveConsoleEvent(viewModel.events)!} t={t} />
+          </div>
+        ) : null}
+        <div data-console-section="events">
+          <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", margin: "24px 0 12px" }}>
+            <h2 className="h-section" style={{ margin: 0 }}>{t({ en: "My events", zh: "我的活动" })}</h2>
+            <a aria-label={t({ en: "View all events", zh: "查看全部活动" })} href="/app/home/events" onClick={(event) => { event.preventDefault(); orbitNavigate("/home/events"); }} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, textDecoration: "none" }}>{t({ en: "All", zh: "全部" })}<Icon name="chevR" size={14} /></a>
+          </div>
+          <MyEventsBlock events={viewModel.events} language={language} t={t} />
         </div>
-        <MyEventsBlock events={viewModel.events} language={language} t={t} />
+        <div style={{ marginTop: 22 }}>
+          <ConsoleReminderPanels language={language} t={t} />
+        </div>
+        <details data-console-section="profile" style={{ marginTop: 22 }}>
+          <summary className="h-section" style={{ cursor: "pointer" }}>{t({ en: "My universal profile", zh: "我的通用画像" })}</summary>
+          <ProfileSummary account={viewModel.account} language={language} t={t} />
+        </details>
+        <div style={{ height: 92 }} />
       </div>
+      <AgentDock t={t} />
     </div>
   );
 }

@@ -74,7 +74,10 @@ test("/app mirrors the authenticated starfield entry", () => {
 
   assert.match(appPageSource, /OrbitStarfieldHome/);
   assert.match(appPageSource, /await auth\(\)/);
-  assert.match(appPageSource, /authenticated=\{Boolean\(session\?\.user\?\.id\)\}/);
+  // Signed-in members are redirected to the personal console; the starfield
+  // stays the anonymous-only entry.
+  assert.match(appPageSource, /redirect\("\/app\/home"\)/);
+  assert.match(appPageSource, /authenticated=\{false\}/);
   assert.doesNotMatch(appPageSource, /loadAppHomeRouteViewModel/);
 });
 
