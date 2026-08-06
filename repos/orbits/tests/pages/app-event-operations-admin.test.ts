@@ -30,10 +30,10 @@ test("organizer workspace exposes the complete strict generation and audit workf
   );
 
   assert.match(client, /method: "PUT"/);
-  assert.match(client, /创建生成快照/);
+  assert.match(client, /生成匹配/);
   assert.match(client, /Worker 处理中/);
   assert.match(client, /setInterval/);
-  assert.match(client, /持久 worker 已排队执行/);
+  assert.match(client, /失败的片段会自动重试/);
   assert.doesNotMatch(client, /maxConcurrency|event-operations-admin-ui/);
   assert.match(client, /重试失败分片/);
   assert.match(client, /原子发布/);

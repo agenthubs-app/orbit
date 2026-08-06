@@ -95,6 +95,23 @@ function shortGenerationId(generationId: string): string {
   return `生成 #${hash.slice(0, 8)}`;
 }
 
+/**
+ * Rough remaining-time estimate for a running generation, extrapolated from
+ * elapsed wall time and completed-task percentage. Returns a Chinese phrase;
+ * before any task completes it falls back to the observed 8–12 minute range.
+ */
+function generationEtaLabel(createdAt: string, percent: number): string {
+  const startedMs = Date.parse(createdAt);
+  if (!Number.isFinite(startedMs) || percent <= 0) return "预计 8–12 分钟";
+  const elapsedMs = Date.now() - startedMs;
+  if (elapsedMs <= 0) return "预计 8–12 分钟";
+  const remainingMs = (elapsedMs / percent) * (100 - percent);
+  const minutes = Math.max(1, Math.round(remainingMs / 60_000));
+  return `预计还需约 ${minutes} 分钟`;
+}
+
+const AUTO_RETRY_LIMIT = 2;
+
 function localDateTime(value: string): string {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
@@ -205,6 +222,10 @@ export function EventOperationsAdminWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+  const [confirmingStart, setConfirmingStart] = useState(false);
+  // Client-side orchestration: how many automatic retries this session has
+  // spent per generation. Only the newest generation is ever auto-retried.
+  const [autoRetries, setAutoRetries] = useState<Record<string, number>>({});
 
   const load = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -279,12 +300,13 @@ export function EventOperationsAdminWorkspace({
     setBusy("start");
     setError(null);
     setNotice(null);
+    setConfirmingStart(false);
     try {
       const generation = await requestJson<EventOperationsGeneration>(`${baseUrl}/generations`, {
         body: JSON.stringify({}),
         method: "POST",
       });
-      setNotice(`已捕获不可变报名快照 ${generation.snapshot.hash}，持久 worker 已排队执行。`);
+      setNotice(`已开始生成匹配（报名快照 ${generation.snapshot.hash.slice(0, 12)}…）。预计 8–12 分钟，失败的片段会自动重试；可以离开此页，完成后回来确认发布。`);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start generation.");
@@ -292,6 +314,28 @@ export function EventOperationsAdminWorkspace({
       setBusy(null);
     }
   }
+
+  // Auto-retry the newest generation when it fails on a retryable engine
+  // error, up to AUTO_RETRY_LIMIT rounds. Configuration-level failures are
+  // never auto-retried — they need an organizer decision.
+  const newestGeneration = workspace?.generations[0]?.generation ?? null;
+  useEffect(() => {
+    if (!newestGeneration || newestGeneration.status !== "failed") return;
+    const code = newestGeneration.errorCode ?? "";
+    if (code.includes("CONFIGURATION") || code.includes("NOT_CONFIGURED")) return;
+    const spent = autoRetries[newestGeneration.generationId] ?? 0;
+    if (spent >= AUTO_RETRY_LIMIT || busy !== null) return;
+    const generationId = newestGeneration.generationId;
+    setAutoRetries((current) => ({ ...current, [generationId]: spent + 1 }));
+    setNotice(`部分片段未通过校验，已自动重试（第 ${spent + 1}/${AUTO_RETRY_LIMIT} 次）…`);
+    void requestJson(
+      `${baseUrl}/generations/${encodeURIComponent(generationId)}/retry`,
+      { method: "POST" },
+    ).then(() => load(false)).catch(() => {
+      // The next poll surfaces persisted state; manual retry stays available.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newestGeneration?.generationId, newestGeneration?.status]);
 
   async function generationAction(generation: EventOperationsGeneration) {
     if (generation.status === "published") return;
@@ -445,9 +489,21 @@ export function EventOperationsAdminWorkspace({
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
                 <div><div className="eyebrow">STRICT AI PIPELINE</div><h2 className="h-title" style={{ margin: "8px 0 0" }}>AI 生成与发布</h2></div>
                 <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                  <button className="btn btn-primary" disabled={busy === "start"} onClick={startGeneration} type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />创建生成快照</button>
+                  {confirmingStart ? null : (
+                    <button className="btn btn-primary" disabled={busy === "start" || hasActiveGeneration} onClick={() => setConfirmingStart(true)} type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />{hasActiveGeneration ? "生成进行中…" : "生成匹配"}</button>
+                  )}
                 </div>
               </div>
+              {confirmingStart ? (
+                <div className="card-flat" data-generation-start-confirm style={{ display: "grid", gap: 10, marginTop: 12, padding: 14 }}>
+                  <strong>将为 {workspace.metrics.participantCount} 位已报名参会者生成推荐与两轮分桌</strong>
+                  <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>预计 8–12 分钟；失败的片段会自动重试。生成完成后由你预览并确认发布，不会自动对参会者公开。</p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn-primary btn-sm" disabled={busy === "start"} onClick={startGeneration} type="button">{busy === "start" ? "正在开始…" : "开始生成"}</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setConfirmingStart(false)} type="button">取消</button>
+                  </div>
+                </div>
+              ) : null}
               <p style={{ color: "var(--text-3)", fontSize: 13 }}>所有任务完成并由你发布后，参会者才能看到生成结果；无效、缺失或超时的 AI 输出会保持失败状态，不会被替代内容掩盖。</p>
               <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
                 {workspace.generations.length === 0 ? <div>尚未创建任何生成。</div> : null}
@@ -458,8 +514,23 @@ export function EventOperationsAdminWorkspace({
                       <span className={generation.status === "failed" ? "badge badge-ended" : generation.status === "published" ? "badge badge-live" : "badge"}>{generationStatusLabels[generation.status] ?? generation.status}</span>
                     </div>
                     <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 12 }}>{progress.completedTasks}/{progress.totalTasks} 已完成 · {progress.failedTasks} 失败 · {progress.percent}%</div>
+                    {generation.status === "queued" || generation.status === "running" ? (
+                      <div data-generation-progress style={{ display: "grid", gap: 7, marginTop: 10 }}>
+                        <div aria-hidden style={{ background: "var(--surface-3)", borderRadius: 999, height: 6, overflow: "hidden" }}>
+                          <div style={{ background: "var(--accent-grad-bar, var(--accent))", borderRadius: 999, height: "100%", transition: "width .6s ease", width: `${Math.max(3, progress.percent)}%` }} />
+                        </div>
+                        <div style={{ color: "var(--text-3)", fontSize: 12 }}>
+                          {generationEtaLabel(generation.createdAt, progress.percent)}
+                          {(autoRetries[generation.generationId] ?? 0) > 0 ? ` · 自动重试中（第 ${autoRetries[generation.generationId]}/${AUTO_RETRY_LIMIT} 次）` : ""}
+                          {" · 可离开此页，完成后回来确认发布"}
+                        </div>
+                      </div>
+                    ) : null}
+                    {generation.status === "failed" && (autoRetries[generation.generationId] ?? 0) >= AUTO_RETRY_LIMIT ? (
+                      <div data-generation-needs-attention style={{ color: "var(--amber)", fontSize: 12, marginTop: 8 }}>自动重试 {AUTO_RETRY_LIMIT} 次后仍有片段未通过，需要你手动处理。</div>
+                    ) : null}
                     {generation.errorMessage ? <div style={{ color: "var(--rose)", fontSize: 12, marginTop: 8 }}>{generationErrorLabel(generation.errorCode ?? "")}<span className="mono" style={{ marginLeft: 6 }}>{generation.errorCode}</span><div style={{ color: "var(--text-3)", marginTop: 3 }}>{generation.errorMessage}</div></div> : null}
-                    <button className="btn btn-ghost btn-sm" disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} style={{ marginTop: 12 }} type="button">{generationActionLabel(generation)}</button>
+                    <button className={generation.status === "completed" ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} style={{ marginTop: 12 }} type="button">{generationActionLabel(generation)}</button>
                   </article>
                 ))}
               </div>
