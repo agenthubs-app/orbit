@@ -41,16 +41,19 @@ test("first question comes from the model with event context", async () => {
     modelRunner: modelRunnerReturning(
       JSON.stringify({
         acknowledgment: "",
-        field: "positioning",
-        prompt: "用一句话说说你现在在做什么?",
-        options: ["刚起步", "在增长", "在转型"],
+        // Only the two core fields are askable before registration
+        // (EVENT_PROFILE_CORE_FIELDS), so a first question on any other field
+        // is rejected as off-contract rather than asked.
+        field: "targetAttendees",
+        prompt: "这场活动里你最想认识什么样的人?",
+        options: ["投资人", "潜在客户", "同行"],
       }),
     ),
     transcript: [],
   });
 
   assert.equal(step.done, false);
-  assert.equal(step.question?.field, "positioning");
+  assert.equal(step.question?.field, "targetAttendees");
   assert.equal(step.question?.provenance.generationMethod, "orbit-agent-model-adaptive");
 });
 

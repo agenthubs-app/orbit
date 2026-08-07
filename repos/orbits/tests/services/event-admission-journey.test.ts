@@ -196,7 +196,10 @@ test("journey rejects missing core fields without synthesizing an unanswered que
       onSubmit() { admissionWrites += 1; },
     }),
     eventCoreService: eventCore(),
-    verifyResponses: () => coreResponses.slice(0, 3),
+    // coreResponses is [positioning, targetAttendees, valueOffered,
+    // desiredOutcome]; the core set is now targetAttendees + valueOffered, so
+    // stopping at two supplies one core field and withholds the other.
+    verifyResponses: () => coreResponses.slice(0, 2),
   });
 
   await assert.rejects(
@@ -208,7 +211,7 @@ test("journey rejects missing core fields without synthesizing an unanswered que
     (error: unknown) =>
       error instanceof EventAdmissionJourneyError &&
       error.code === "PROFILE_INCOMPLETE" &&
-      error.message.includes("desiredOutcome"),
+      error.message.includes("valueOffered"),
   );
   assert.equal(admissionWrites, 0);
 });

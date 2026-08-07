@@ -118,7 +118,7 @@ test("/app/agent hydrates submitted to-do prompts through the client conversatio
   assert.match(agentSource, /fetch\("\/api\/ai\/conversations"/);
   assert.match(agentSource, /"followup_queue"/);
   assert.match(agentSource, /todoItemsFromArtifact\(followupArtifact\)/);
-  assert.match(agentSource, /function AgentTodoCard/);
+  assert.match(agentSource, /function AgentTodoRow/);
 });
 
 test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups", () => {

@@ -696,8 +696,10 @@ test("/app/agent product route keeps technical provenance secondary and prevents
   assert.match(agentSource, /<details/);
   assert.match(agentSource, /overflowWrap:\s*"anywhere"/);
   assert.match(agentSource, /minWidth:\s*0/);
-  // 结果面板保持固定产品宽度；聊天历史侧栏独立夹取并可拖拽。
-  assert.match(agentSource, /width:\s*444/);
+  // 工作台改版后固定 444px 的结果侧栏没有了，结果改为内联 .panel 渲染
+  // （AgentPeopleRow / AgentEventRow / AgentTodoRow）。这里改盯这个容器，
+  // 保证结果仍有专属承载区；聊天历史侧栏仍独立夹取并可拖拽。
+  assert.match(agentSource, /className="panel-body"/);
   assert.match(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
   assert.match(agentSource, /cursor: "col-resize"/);
   assert.match(agentSource, /<AgentOutcomeFeedback/);

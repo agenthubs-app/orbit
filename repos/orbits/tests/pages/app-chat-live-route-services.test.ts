@@ -220,7 +220,12 @@ test("chat route adapter feeds live conversation context into OrbitRealAgent", a
     );
 
     assert.match(html, /data-orbit-real-page="agent"/);
-    assert.match(html, /我是 iOrbit/);
+    // The workspace rebuild replaced the "我是 iOrbit" welcome heading with a
+    // prompt that names what iOrbit can already see. Either way the point of
+    // the assertion is the same: the adapter's view model reached the agent
+    // and the agent rendered its empty state rather than a blank shell.
+    assert.match(html, /你想让 iOrbit 做什么/);
+    assert.match(html, /它能看到你的活动、报名答案、人脉和约谈/);
     assert.doesNotMatch(html, /class="app-chat-route"/);
     assert.doesNotMatch(html, /data-state-boundary="app-chat-success"/);
     assert.doesNotMatch(html, /<details(?:\s|>)/i);

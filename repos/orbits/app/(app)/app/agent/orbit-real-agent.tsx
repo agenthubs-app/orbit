@@ -1680,6 +1680,10 @@ function OrbitAgentOrb({
   const [value, setValue] = useState("");
   const [hint, setHint] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // The privacy note under the field says what pressing send does and does not
+  // do. It is rendered but was not associated with the input, so a screen
+  // reader announced the label and nothing about the boundary.
+  const boundaryId = "orbit-agent-orb-boundary";
   const hintOrderRef = useRef<string[]>([]);
 
   const hints = useMemo(
@@ -1790,6 +1794,7 @@ function OrbitAgentOrb({
           >
             <span className="lead"><Icon name="message" size={16} /></span>
             <input
+              aria-describedby={boundaryId}
               aria-label={t({
                 en: "Ask Orbit about contacts, events, and relationship to-dos",
                 zh: "询问 Orbit 人脉、活动与关系待办",
@@ -1800,11 +1805,11 @@ function OrbitAgentOrb({
               type="text"
               value={value}
             />
-            <button aria-label={t({ en: "Send", zh: "发送" })} className="orb-send hit-44" data-orbit-agent-submit="true" type="submit">
+            <button aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })} className="orb-send hit-44" data-orbit-agent-submit="true" type="submit">
               <Icon name="arrow" size={15} style={{ transform: "rotate(-45deg)" }} />
             </button>
           </form>
-          <p className="orb-note" data-orbit-agent-privacy-boundary>
+          <p className="orb-note" data-orbit-agent-privacy-boundary id={boundaryId}>
             {t({
               en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.",
               zh: "发送后进入 iOrbit 对话 · 涉及对外动作会先经你确认",

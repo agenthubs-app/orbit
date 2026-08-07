@@ -101,7 +101,7 @@ test("/app/agent maps event artifacts into reason, timing, confidence, and detai
   assert.match(agentSource, /score: Number\.isFinite\(score\)/);
   assert.match(agentSource, /howto: item\.body/);
   assert.match(agentSource, /reason: item\.reason/);
-  assert.match(agentSource, /function AgentEventCard/);
+  assert.match(agentSource, /function AgentEventRow/);
   assert.match(agentSource, /navigate\(`\/events\/\$\{event\.code\}`\)/);
 });
 
@@ -120,7 +120,14 @@ test("/app/agent keeps client-side deep-link prompts and contextual discovery su
   assert.match(agentSource, /new URLSearchParams\(window\.location\.search\)\.get\("q"\)/);
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);
-  assert.match(agentSource, /what you want to do, who to meet, which event to attend/);
+  // The one-line placeholder that named all three discovery intents ("what you
+  // want to do, who to meet, which event to attend") became a rotating hint
+  // list with one hint per intent. Pin the list and all three intents so the
+  // suggestions cannot quietly shrink back to a bare input.
+  assert.match(agentSource, /const hints = useMemo\(/);
+  assert.match(agentSource, /Add my next step to my follow-ups/);
+  assert.match(agentSource, /Who should I prioritize at my next event\?/);
+  assert.match(agentSource, /Which events this month are worth going to\?/);
 });
 
 test("recommended event detail links resolve through the app event service", async () => {
