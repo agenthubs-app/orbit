@@ -33,37 +33,63 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("event detail component renders the restored desktop hierarchy from one exact event identity", async () => {
+test("event detail replaces the legacy surface with the green three-card journey", async () => {
   const html = await renderEventDetailPage();
 
   assert.match(html, /data-orbit-real-page="event-detail"/);
-  assert.match(html, /class="orbit-desktop-only"/);
+  assert.match(html, /data-event-journey-state="post"/);
+  assert.match(html, /href="\/event-journey-green\.css"/);
   assert.match(html, /class="orbit-detail-layout"/);
-  assert.match(html, /class="orbit-detail-rail orbit-desktop-only"/);
+  assert.match(html, /class="orbit-detail-rail"/);
   assert.match(html, /class="orbit-detail-main"/);
-  assert.match(html, /class="orbit-info-grid"/);
+  assert.match(html, /class="card cardA"/);
+  assert.match(html, /class="cardB"/);
+  assert.match(html, /class="card cardC"/);
+  assert.match(html, /class="rail-stage"/);
   assert.match(html, /Climate founders dinner/);
   assert.match(html, /Kanda Founders Table/);
-  assert.match(html, /Aiko Mori|Luis Ortega|Priya Shah/);
-  assert.match(html, /报名|Registration/);
-  assert.match(html, /参会者|Attendees/);
-  assert.match(html, /活动议程|Agenda/);
+  assert.match(html, /活动现场|Event floor/);
+  assert.match(html, /会后中心|Post-event center/);
+  assert.match(html, /向 iOrbit 询问这场活动|Ask iOrbit about this event/);
   assert.doesNotMatch(html, /Event workspace could not load/);
   assert.doesNotMatch(html, /<details/i);
 });
 
-test("event detail component keeps mobile detail content reachable without collapsed defaults", async () => {
+test("event journey stylesheet owns responsive layout without the retired mobile composition", async () => {
   const html = await renderEventDetailPage();
+  const css = source("public/event-journey-green.css");
 
-  assert.match(html, /class="orbit-mobile-only"/);
-  assert.match(html, /class="orbit-mobile-only orbit-sticky-cta"/);
-  assert.match(html, /position:fixed/);
-  assert.match(html, /safe-area-inset-bottom/);
+  assert.doesNotMatch(html, /orbit-mobile-only/);
+  assert.doesNotMatch(html, /orbit-sticky-cta/);
+  assert.match(css, /@media \(max-width: 900px\)/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /safe-area-inset-bottom/);
+  assert.match(css, /prefers-reduced-motion/);
   assert.match(html, /Climate founders dinner/);
   assert.match(html, /Kanda Founders Table/);
   assert.match(html, /已结束|Ended/);
-  assert.doesNotMatch(html, /hidden=""/);
   assert.doesNotMatch(html, /data-collapsed="true"/);
+});
+
+test("event journey renders unregistered, registered, and ended as exclusive product states", async () => {
+  const routeModel = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") return;
+  const event = eventDetailRouteToOrbitLandingEventView(routeModel);
+
+  const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} />);
+  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+
+  assert.match(pre, /data-event-journey-state="pre"/);
+  assert.match(pre, /回答 2 题并报名|Answer 2 questions &amp; register/);
+  assert.match(pre, /AI 示例|AI sample/);
+  assert.match(joined, /data-event-journey-state="joined"/);
+  assert.match(joined, /已报名|Registered/);
+  assert.match(joined, /查看活动准备|进入活动|View event preparation|Enter event/);
+  assert.match(post, /data-event-journey-state="post"/);
+  assert.match(post, /已结束|Ended/);
+  assert.doesNotMatch(post, /回答 2 题并报名|Answer 2 questions &amp; register/);
 });
 
 test("registered attendees can open the normal preparation workspace before the event starts", async () => {
@@ -104,7 +130,7 @@ test("/app/events/[id] resolves public and authorized private details through ca
   assert.match(pageSource, /resolution\.state === "success"/);
   assert.doesNotMatch(pageSource, /Open organizer operations/);
   assert.match(matchmakingSource, /data-event-participant-directory/);
-  assert.match(matchmakingSource, /参会者目录不依赖 AI 结果发布/);
+  assert.match(matchmakingSource, /所有已确认报名的人都在这里/);
   assert.match(matchmakingSource, /contactRequestsOpen/);
   assert.match(pageSource, /attendees: resolution\.registered \?/);
   assert.match(

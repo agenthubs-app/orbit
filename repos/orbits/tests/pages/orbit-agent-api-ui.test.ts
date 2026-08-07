@@ -38,12 +38,13 @@ test("Orbit agent submit controls expose a 44px target and guard blank or concur
   );
 
   assert.match(agentSource, /type="button"/);
-  assert.match(agentSource, /aria-disabled=\{busy \|\| isBlank\}/);
   assert.match(agentSource, /data-orbit-agent-submit="true"/);
-  assert.match(agentSource, /disabled=\{busy \|\| isBlank\}/);
-  assert.match(agentSource, /if \(thinking \|\| !value\) return/);
-  assert.match(agentSource, /height: 44/);
-  assert.match(agentSource, /width: 44/);
+  // 发送守卫：请求进行中或空输入（无提示语兜底）时不提交
+  assert.match(agentSource, /if \(busy\) return/);
+  assert.match(agentSource, /const query = value\.trim\(\) \|\| hint/);
+  assert.match(agentSource, /if \(!query\) return/);
+  // 视觉尺寸按设计定稿（36px 圆钮），可点击热区仍为 44px（.hit-44 ::after）
+  assert.match(agentSource, /className="orb-send hit-44"/);
 });
 
 test("Orbit agent uses CSS-gated responsive trees and exposes one shared request state", () => {
@@ -53,13 +54,10 @@ test("Orbit agent uses CSS-gated responsive trees and exposes one shared request
 
   assert.match(agentSource, /className="orbit-desktop-only"/);
   assert.match(agentSource, /className="orbit-mobile-only"/);
-  assert.equal((agentSource.match(/<ChatBox\b/g) ?? []).length, 2);
   assert.equal(
-    (agentSource.match(/<ChatBox busy=\{thinking\}/g) ?? []).length,
+    (agentSource.match(/\{workspaceContent\}/g) ?? []).length,
     2,
   );
-  assert.match(agentSource, /surface="desktop"/);
-  assert.match(agentSource, /surface="mobile"/);
   assert.match(agentSource, /data-orbit-agent-request-state/);
   assert.match(agentSource, /aria-busy=\{thinking\}/);
   assert.match(agentSource, /histOpen \?/);

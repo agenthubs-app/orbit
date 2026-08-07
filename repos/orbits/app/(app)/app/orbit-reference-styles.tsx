@@ -2596,16 +2596,11 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
   border-bottom-color: var(--agent-hairline);
 }
 
-[data-orbit-real-page="agent"] .orbit-agent-workspace,
-[data-orbit-real-page="agent"] .orbit-agent-center,
-[data-orbit-real-page="agent"] .orbit-agent-history,
-[data-orbit-real-page="agent"] .orbit-agent-results,
-[data-orbit-real-page="agent"] .orbit-agent-composer-dock {
+[data-orbit-real-page="agent"] .orbit-agent-workspace {
   background: var(--bg) !important;
 }
 
-[data-orbit-real-page="agent"] .orbit-agent-history,
-[data-orbit-real-page="agent"] .orbit-agent-results {
+[data-orbit-real-page="agent"] .orbit-agent-history {
   border-color: var(--border) !important;
 }
 
@@ -2773,117 +2768,12 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
   outline: none;
 }
 
-[data-orbit-real-page="agent"] .orbit-agent-transcript {
-  background: var(--bg);
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-transcript-inner {
-  max-width: 760px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome {
-  min-height: 46vh !important;
-  padding-block: 30px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark,
-[data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
-  background: var(--accent-soft) !important;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) !important;
-  color: var(--accent) !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark {
-  border-radius: 10px !important;
-  height: 46px !important;
-  width: 46px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome .orbit-agent-mark svg,
-[data-orbit-real-page="agent"] .orbit-agent-assistant-mark svg {
-  color: var(--accent) !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome h2 {
-  font-family: var(--ff);
-  font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  margin: 18px 0 8px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-welcome > p {
-  color: var(--text-2) !important;
-  font-size: var(--agent-body-size) !important;
-  line-height: 1.7 !important;
-  margin-bottom: 24px !important;
-  max-width: 460px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-suggestion {
-  background: var(--surface) !important;
-  border-color: var(--border-2) !important;
-  border-radius: 9px !important;
-  min-height: 48px;
-  padding: 12px 14px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-suggestion span {
-  font-size: 14px !important;
-  font-weight: 550 !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-suggestion:hover {
-  background: var(--surface-2) !important;
-  border-color: var(--border-strong) !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-suggestion:focus-visible,
-[data-orbit-real-page="agent"] .orbit-agent-message-copy:focus-visible,
-[data-orbit-real-page="agent"] .orbit-agent-send:focus-visible {
+/* 旧 Conversation+ 聊天皮肤已随 UI 重做移除（home-console-green 设计的样式
+   现在由 orbit-real-agent.tsx 的 CONSOLE_STYLES 提供）。下面仅保留仍在使用的
+   markdown 与消息复制按钮的静默化规则。 */
+[data-orbit-real-page="agent"] .orbit-agent-message-copy:focus-visible {
   outline: 3px solid var(--accent-ring);
   outline-offset: 2px;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-user-turn {
-  margin-bottom: 22px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-user-bubble {
-  background: var(--surface-3) !important;
-  border-radius: 10px 10px 3px 10px !important;
-  color: var(--ink) !important;
-  font-size: var(--agent-body-size) !important;
-  line-height: 1.65 !important;
-  max-width: min(82%, 620px) !important;
-  padding: 10px 14px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-assistant-turn {
-  gap: 13px !important;
-  margin-bottom: 26px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
-  border-radius: 8px !important;
-  height: 30px !important;
-  margin-top: 2px;
-  width: 30px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-assistant-content {
-  align-items: flex-start !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-assistant-message {
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  color: var(--text) !important;
-  font-size: var(--agent-body-size) !important;
-  line-height: 1.65 !important;
-  max-width: 68ch;
-  padding: 3px 0 0 !important;
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-markdown {
@@ -2913,132 +2803,6 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
 [data-orbit-real-page="agent"] .orbit-agent-message-copy:hover {
   background: var(--surface-2) !important;
   color: var(--ink) !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-thinking-message {
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  padding: 7px 0 0 !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-thinking-indicator > span:first-child {
-  font-size: 14px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-results-header {
-  border-color: var(--border) !important;
-  padding: 18px 20px 14px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-results-header .h-section {
-  font-family: var(--ff);
-  font-size: 16px;
-  font-weight: 650;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-results-header > div:last-child {
-  font-size: var(--agent-meta-size) !important;
-  line-height: 1.5;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-result-cards {
-  gap: 12px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-result-cards > .card {
-  background: var(--surface) !important;
-  border-color: var(--border-2) !important;
-  border-radius: 9px !important;
-  box-shadow: none !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-result-cards > .card:hover {
-  border-color: var(--border-strong) !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-result-cards .mono {
-  font-size: var(--agent-meta-size) !important;
-  letter-spacing: 0.02em;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-result-cards .chip {
-  font-size: var(--agent-meta-size);
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-composer-dock {
-  border-color: var(--border) !important;
-  padding-top: 14px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-composer {
-  background: var(--surface) !important;
-  border-color: var(--border-2) !important;
-  border-radius: 10px !important;
-  box-shadow: none !important;
-  padding: 11px 11px 8px !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-composer:focus-within {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-soft) !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-composer-input {
-  font-size: var(--agent-body-size) !important;
-  line-height: 1.55 !important;
-  min-height: 25px;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-composer-input::placeholder {
-  color: var(--text-3);
-  opacity: 1;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-capability {
-  background: transparent !important;
-  border-radius: 0 !important;
-  color: var(--text-2) !important;
-  font-size: 13px !important;
-  font-weight: 550 !important;
-  height: 30px !important;
-  padding: 0 4px !important;
-}
-
-[data-orbit-real-page="agent"] .orbit-agent-send {
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  min-height: 40px;
-  min-width: 40px;
-}
-
-@media (max-width: 760px) {
-  [data-orbit-real-page="agent"] .orbit-agent-welcome {
-    justify-content: flex-start !important;
-    min-height: auto !important;
-    padding: 38px 4px 26px !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-agent-assistant-turn {
-    gap: 10px !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-agent-assistant-mark {
-    height: 28px !important;
-    width: 28px !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-agent-user-bubble {
-    max-width: 88% !important;
-  }
-
-  [data-orbit-real-page="agent"] .orbit-agent-result-cards > .card {
-    border-radius: 8px !important;
-  }
-
 }
 
 /* Minimum readable text: the prototype dips to 8–10.5px on date tiles and
@@ -3247,18 +3011,292 @@ const orbitNamecardStyles = `
 `;
 
 /**
+ * Event attendee cards — the participant directory and the recommendation list
+ * inside the event journey's matchmaking panel.
+ *
+ * Authored purely in tokens (--ink / --text-* / --border / --surface-* /
+ * --accent), never in literal colours, because the same markup renders on two
+ * very different grounds: the light app surfaces, and the journey's `.cardB`
+ * nite panel, which re-binds exactly those tokens to its dark glass values
+ * (public/event-journey-green.css). `--accent-softer` and the semantic soft
+ * fills (--live-soft, --amber-soft) are deliberately avoided — cardB does not
+ * re-bind them, so they would punch a near-white block into the dark card.
+ */
+const orbitAttendeeCardStyles = `
+[data-orbit-real-page] {
+  --attendee-clear-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
+}
+
+/* The journey's main column is a fixed 488px at every viewport, so the only
+   layouts on offer are one 488px card or two 238px ones. Two is the right
+   density here; the 210px floor is what makes it fit, and it is not a number
+   to raise without re-measuring that column. */
+[data-orbit-real-page] .orbit-attendee-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+/* Participant detail dialog. .card-flat normally paints --surface, which in
+   the light theme is the canvas white — fine on a page, but inside the white
+   dialog panel the "why Orbit recommends" and seating blocks came out white on
+   white, separated by a hairline only. A tonal step gives the nested blocks an
+   edge without adding a shadow the flat light theme does not use.
+   (No backticks in this block: it is emitted from a JS template literal.) */
+[data-orbit-real-page] .orbit-participant-dialog .card-flat {
+  background: var(--surface-2);
+}
+
+[data-orbit-real-page] .orbit-attendee-search {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  transition: border-color .16s ease;
+}
+
+/* The sitewide a11y rule rings every focused input, which inside a wrapper
+   like this stacks a second accent rectangle inside the field border. The ring
+   moves out to the wrapper — same 2px accent, one indicator, drawn on the edge
+   the user reads as "the field". Beating that rule needs :focus-visible here
+   too; a plain descendant selector loses to it on specificity. */
+[data-orbit-real-page] .orbit-attendee-search:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  outline-offset: 1px;
+}
+
+[data-orbit-real-page] .orbit-attendee-search input {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+  padding: 0;
+}
+
+[data-orbit-real-page] .orbit-attendee-search input:focus-visible { outline: none; }
+
+[data-orbit-real-page] .orbit-attendee-search input::placeholder { color: var(--text-3); }
+
+/* Chrome draws the native clear glyph from the document's colour-scheme, which
+   is light — a blue cross on the journey's dark panel. Masking it re-cuts the
+   same control out of currentColor so it follows whatever ground it lands on. */
+[data-orbit-real-page] .orbit-attendee-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  background: currentColor;
+  cursor: pointer;
+  height: 13px;
+  -webkit-mask: var(--attendee-clear-glyph) center / contain no-repeat;
+  mask: var(--attendee-clear-glyph) center / contain no-repeat;
+  opacity: .45;
+  width: 13px;
+}
+
+[data-orbit-real-page] .orbit-attendee-search input::-webkit-search-cancel-button:hover { opacity: .9; }
+
+/* iOS zooms the page when a focused input is under 16px, so the field grows
+   on the widths where that fires instead of everywhere. */
+@media (max-width: 640px) {
+  [data-orbit-real-page] .orbit-attendee-search input { font-size: 16px; }
+}
+
+[data-orbit-real-page] .orbit-attendee-count {
+  color: var(--text-3);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+[data-orbit-real-page] .orbit-attendee-empty {
+  color: var(--text-3);
+  font-size: 13px;
+  margin: 0;
+  padding: 4px 0 2px;
+}
+
+[data-orbit-real-page] .orbit-attendee-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: grid;
+  gap: 12px;
+  /* identity / focus / action — the middle row absorbs slack so every footer
+     in a row lands on the same baseline no matter how long the intent runs. */
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+  padding: 14px;
+  position: relative;
+  transition: background-color .16s ease, border-color .16s ease;
+}
+
+[data-orbit-real-page] .orbit-attendee-card:hover {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+/* The whole card opens the profile. A stretched transparent button carries the
+   hit area and the accessible name, so the footer's contact action can stay a
+   sibling control instead of an illegal nested button. */
+[data-orbit-real-page] .orbit-attendee-open {
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+  inset: 0;
+  padding: 0;
+  position: absolute;
+  z-index: 0;
+}
+
+[data-orbit-real-page] .orbit-attendee-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+[data-orbit-real-page] .orbit-attendee-head,
+[data-orbit-real-page] .orbit-attendee-focus {
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+
+[data-orbit-real-page] .orbit-attendee-head {
+  display: grid;
+  gap: 7px;
+}
+
+[data-orbit-real-page] .orbit-attendee-id {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+[data-orbit-real-page] .orbit-attendee-name {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sits on its own full-width row rather than beside the avatar, and wraps
+   instead of truncating. In a 238px card the column next to a 38px avatar is
+   only ~162px wide — enough to turn "Climate founder · LoopMatter" into three
+   ragged lines or, truncated, to hide the half that says where they work. */
+[data-orbit-real-page] .orbit-attendee-role {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-3);
+  display: -webkit-box;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+[data-orbit-real-page] .orbit-attendee-self {
+  align-items: center;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  height: 22px;
+  padding: 0 9px;
+}
+
+[data-orbit-real-page] .orbit-attendee-focus {
+  align-content: start;
+  display: grid;
+  gap: 7px;
+}
+
+/* Lead topic reads as the person's domain; the rest is what they came to do.
+   Splitting them stops the card from collapsing into one grey "a · b" run. */
+[data-orbit-real-page] .orbit-attendee-domain {
+  background: var(--accent-soft);
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  justify-self: start;
+  line-height: 24px;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-orbit-real-page] .orbit-attendee-intent {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-2);
+  display: -webkit-box;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  overflow: hidden;
+}
+
+[data-orbit-real-page] .orbit-attendee-act {
+  align-items: center;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  padding-top: 11px;
+  position: relative;
+  z-index: 2;
+}
+
+/* Before the doors open there is nothing to press, so the row states the fact
+   instead of parking a full-width disabled sentence in every card. */
+[data-orbit-real-page] .orbit-attendee-wait {
+  align-items: center;
+  color: var(--text-3);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+[data-orbit-real-page] .orbit-attendee-wait svg {
+  flex-shrink: 0;
+  height: 13px;
+  width: 13px;
+}
+
+@media (max-width: 420px) {
+  [data-orbit-real-page] .orbit-attendee-grid { grid-template-columns: minmax(0, 1fr); }
+}
+`;
+
+/**
  * Emits the product stylesheet in cascade order:
  *
  *   1. the prototype base — a cacheable `<link>` (React hoists it into `<head>`,
  *      so it stays ahead of everything below in document order);
- *   2. the Orbit override layer + namecard components, still inline because they
- *      are authored here and total ~90 KB.
+ *   2. the Orbit override layer + namecard and attendee-card components, still
+ *      inline because they are authored here and total ~90 KB.
  *
  * When the generated asset is missing (fresh checkout, no build step yet) the
  * base falls back to inline extraction so pages never render unstyled.
  */
 export function OrbitReferenceStyles() {
-  const overrides = `${reactReferenceIsolationStyles}\n${orbitNamecardStyles}`;
+  const overrides = `${reactReferenceIsolationStyles}\n${orbitNamecardStyles}\n${orbitAttendeeCardStyles}`;
 
   if (!generatedCssExists()) {
     return (

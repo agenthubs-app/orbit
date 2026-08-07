@@ -17,7 +17,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  ADAPTIVE_INTERVIEW_MAX_TURNS,
   type AdaptiveInterviewTurn,
   type AdaptiveNextQuestion,
   type EventPersona,
@@ -54,9 +53,8 @@ interface RegistrationWorkspaceProps {
   initialSignedQuestion: SignedAdaptiveInterviewQuestion | null;
   language: Language;
   /** Positioning derived from the universal profile ("role @ organization").
-   *  When present and no answers are stored yet, the wizard seeds it as an
-   *  already-answered turn so the per-event interview starts at the three
-   *  intent questions instead of re-asking who the person is. */
+   *  It gives the AI context but does not count toward the two required
+   *  event-registration answers. */
   prefilledPositioning?: string | null;
   profile: {
     displayName: string;
@@ -86,7 +84,7 @@ type Stage =
   | "waitlisted"
   | "withdrawn";
 
-const TOTAL_STEPS = ADAPTIVE_INTERVIEW_MAX_TURNS;
+const TOTAL_REQUIRED_QUESTIONS = EVENT_PROFILE_CORE_FIELDS.length;
 const GENERATING_MIN_MS = 2700;
 const GENERATING_STAGE_MS = 900;
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
@@ -176,9 +174,9 @@ export function EventRegistrationWorkspace({
     initialAdmissionApplication,
   );
   const [registration, setRegistration] = useState(initialRegistration);
-  // 全局画像预填：无已存回答时，把"定位"作为已答轮种入访谈，本场只需回答
-  // 三道意图题（想认识谁 / 期待结果 / 能提供什么）。准入审核活动要求每道
-  // 核心回答都经签名问答核验，因此不种入任何未签名回答。
+  // 全局画像预填只为 AI 提供本人的语境，不计入报名进度；报名固定只问
+  // 「想认识谁 / 能提供什么」两题。准入审核活动仍要求报名回答走签名问答，
+  // 因此不会把未经签名的定位写入审核申请。
   const positioningSeeded =
     Boolean(prefilledPositioning?.trim()) &&
     storedTranscript.length === 0 &&
@@ -235,6 +233,9 @@ export function EventRegistrationWorkspace({
     Map<string, Promise<SignedAdaptiveInterviewStep>>
   >(new Map());
   const prefetchAbortRef = useRef<AbortController | null>(null);
+  // 首次客户端 effect 读取详情页速答之前禁止预取，否则两项速答已经齐全时，
+  // 初始题卡仍会抢跑一次“下一题”请求，产生实际不存在的第三题流量。
+  const questionPrefetchReadyRef = useRef(false);
 
   const status =
     admissionApplication?.status ?? registration?.status ?? "unregistered";
@@ -247,11 +248,16 @@ export function EventRegistrationWorkspace({
   );
   const canCancelEnrollment = canWithdrawAdmission || status === "rsvped";
   const eventHref = `/app/events/${encodeURIComponent(event.id)}?language=${language}`;
-  const stepIndex = Math.min(transcript.length, TOTAL_STEPS - 1);
   const missingCoreFields = EVENT_PROFILE_CORE_FIELDS.filter(
     (field) => !transcript.some((turn) => turn.field === field),
   );
-  const canSkipAdaptiveQuestions = missingCoreFields.length === 0;
+  const registrationAnswersComplete = missingCoreFields.length === 0;
+  const completedRequiredQuestions =
+    TOTAL_REQUIRED_QUESTIONS - missingCoreFields.length;
+  const currentQuestionNumber = Math.min(
+    completedRequiredQuestions + 1,
+    TOTAL_REQUIRED_QUESTIONS,
+  );
 
   // 挂载时一次性种入：1) 详情页匿名速答（本机 localStorage）作为已答轮带入，
   // 避免登录后重复回答；2) 预填弃用了服务端首题时，按已种入的 transcript 自动
@@ -294,6 +300,15 @@ export function EventRegistrationWorkspace({
     if (seededQuickTurns.length > 0) {
       const nextTranscript = [...transcript, ...seededQuickTurns];
       setTranscript(nextTranscript);
+      const requiredAnswersReady = EVENT_PROFILE_CORE_FIELDS.every((field) =>
+        nextTranscript.some((turn) => turn.field === field),
+      );
+      if (requiredAnswersReady) {
+        setQuestion(null);
+        setQuestionToken(null);
+        void runGeneration(nextTranscript, responses);
+        return;
+      }
       // 当前题若恰好是速答已覆盖的字段则弃用；其余题目仍然有效，保留继续答。
       if (
         question !== null &&
@@ -328,6 +343,7 @@ export function EventRegistrationWorkspace({
       return;
     }
 
+    questionPrefetchReadyRef.current = true;
     if (question === null && positioningSeeded) {
       void retryInterviewStart();
     }
@@ -573,8 +589,8 @@ export function EventRegistrationWorkspace({
     setSelectedOption(answer);
     setError(null);
     setThinking(true);
-    // 已答内容先落地：下一题请求成败都不回滚这轮回答。核心答完时，即使
-    // 选答题生成失败，用户也能从"选答不可用"面板直接完成报名。
+    // 已答内容先落地：下一题请求成败都不回滚这轮回答；两项必答齐全后
+    // 直接提交报名，不再请求参加活动前的第三道题。
     setTranscript(nextTranscript);
     setResponses(nextResponses);
     setQuestionHistory((history) => [...history, question]);
@@ -586,8 +602,12 @@ export function EventRegistrationWorkspace({
       // 命中预取则近乎即时;预取失败/被中止/自由输入时退回实时请求。
       let step: SignedAdaptiveInterviewStep;
 
-      if (nextTranscript.length >= TOTAL_STEPS) {
-        step = { done: true, signedQuestion: null };
+      const requiredAnswersReady = EVENT_PROFILE_CORE_FIELDS.every((field) =>
+        nextTranscript.some((candidate) => candidate.field === field),
+      );
+      if (requiredAnswersReady) {
+        await runGeneration(nextTranscript, nextResponses);
+        return;
       } else {
         const prefetched = prefetchRef.current.get(trimmed);
 
@@ -619,7 +639,7 @@ export function EventRegistrationWorkspace({
       );
       setSelectedOption(null);
       // 当前题的字段已被这轮回答覆盖，不能留在屏幕上被重复作答；转入
-      // "选答不可用"面板（核心齐全时该面板提供完成报名）。
+      // 恢复面板。若两项回答已齐，恢复动作直接重试报名提交。
       setQuestion(null);
       setQuestionToken(null);
     } finally {
@@ -636,7 +656,8 @@ export function EventRegistrationWorkspace({
       stage !== "interview" ||
       !question ||
       thinking ||
-      transcript.length + 1 >= TOTAL_STEPS
+      !questionPrefetchReadyRef.current ||
+      missingCoreFields.length <= 1
     ) {
       return undefined;
     }
@@ -664,7 +685,7 @@ export function EventRegistrationWorkspace({
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, question, transcript.length]);
+  }, [stage, question, missingCoreFields.length]);
 
   // Typeform 式键盘选择:A/B/C/D 直接选中对应选项(输入框聚焦时不劫持)。
   useEffect(() => {
@@ -696,7 +717,7 @@ export function EventRegistrationWorkspace({
   }, [stage, thinking, freeTextOpen, question, transcript]);
 
   function goBack() {
-    if (transcript.length === 0 || thinking) {
+    if (questionHistory.length === 0 || thinking) {
       return;
     }
 
@@ -842,6 +863,14 @@ export function EventRegistrationWorkspace({
         .reg-chip:active { transform: translateY(0) scale(.99); }
         .reg-ghost-btn { transition: color .15s ease, background .15s ease; border-radius: 9px; padding: 7px 12px; }
         .reg-ghost-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+        .reg-chip:focus-visible, .reg-ghost-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 38%, transparent); outline-offset: 3px; }
+        @media (max-width: 600px) {
+          [data-orbit-registration-profile-guide="register"] { padding: 20px 12px 40px !important; }
+          .reg-page-header { align-items: flex-start !important; margin: 14px 4px 18px !important; }
+          .reg-question-body { padding: 24px 20px 22px !important; }
+          .reg-question-footer { align-items: flex-start !important; flex-direction: column !important; padding: 13px 16px !important; }
+          .reg-question-footer > span { line-height: 1.5; }
+        }
         @media (prefers-reduced-motion: reduce) {
           [data-reg-anim], .reg-stagger > * { animation: none !important; }
         }
@@ -857,7 +886,7 @@ export function EventRegistrationWorkspace({
           {copy(language, { en: "Back to event", zh: "返回活动页" })}
         </a>
 
-        <header style={{ alignItems: "flex-end", display: "flex", gap: 18, justifyContent: "space-between", margin: "20px 0 24px" }}>
+        <header className="reg-page-header" style={{ alignItems: "flex-end", display: "flex", gap: 18, justifyContent: "space-between", margin: "20px 0 24px" }}>
           <div style={{ minWidth: 0 }}>
             <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 11.5, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               <Icon name="sparkle" size={13} />
@@ -925,18 +954,25 @@ export function EventRegistrationWorkspace({
             }}
           >
             {/* 顶部进度束 */}
-            <div style={{ background: "var(--surface-3)", display: "flex", height: 4 }}>
+            <div
+              aria-label={copy(language, { en: "Registration progress", zh: "报名进度" })}
+              aria-valuemax={TOTAL_REQUIRED_QUESTIONS}
+              aria-valuemin={0}
+              aria-valuenow={currentQuestionNumber}
+              role="progressbar"
+              style={{ background: "var(--surface-3)", display: "flex", height: 4 }}
+            >
               <span
                 style={{
                   background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, var(--surface)), var(--accent))",
                   borderRadius: "0 99px 99px 0",
                   transition: "width .45s cubic-bezier(.22,1,.36,1)",
-                  width: `${((stepIndex + 1) / TOTAL_STEPS) * 100}%`,
+                  width: `${(currentQuestionNumber / TOTAL_REQUIRED_QUESTIONS) * 100}%`,
                 }}
               />
             </div>
 
-            <div style={{ padding: "30px 34px 26px", position: "relative" }}>
+            <div className="reg-question-body" style={{ padding: "30px 34px 26px", position: "relative" }}>
               {/* 幽灵序号:填充留白,给页面编辑感 */}
               <span
                 aria-hidden="true"
@@ -953,15 +989,19 @@ export function EventRegistrationWorkspace({
                   userSelect: "none",
                 }}
               >
-                {String(stepIndex + 1).padStart(2, "0")}
+                {String(currentQuestionNumber).padStart(2, "0")}
               </span>
 
               <div style={{ alignItems: "center", display: "flex", gap: 10, marginBottom: 20 }}>
                 <span className="chip" style={{ background: "var(--accent-soft)", border: 0, color: "var(--accent)", fontSize: 11.5, fontWeight: 700 }}>
                   {fieldLabel(language, question.field)}
                 </span>
-                <span className="mono" style={{ color: "var(--text-4)", fontSize: 12 }}>
-                  {stepIndex + 1} / {TOTAL_STEPS}
+                <span
+                  className="mono"
+                  data-registration-progress-label={`${currentQuestionNumber}/${TOTAL_REQUIRED_QUESTIONS}`}
+                  style={{ color: "var(--text-4)", fontSize: 12 }}
+                >
+                  {currentQuestionNumber} / {TOTAL_REQUIRED_QUESTIONS}
                 </span>
               </div>
 
@@ -975,20 +1015,6 @@ export function EventRegistrationWorkspace({
                   <a href="/app/profile" style={{ color: "var(--accent)", flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
                     {copy(language, { en: "Edit profile", zh: "改通用画像" })}
                   </a>
-                </div>
-              ) : null}
-
-              {canSkipAdaptiveQuestions ? (
-                <div data-registration-core-complete style={{ alignItems: "center", background: "var(--accent-softer, var(--accent-soft))", border: "1px solid var(--accent-soft)", borderRadius: 12, display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, padding: "11px 14px" }}>
-                  <span style={{ color: "var(--accent)", flex: 1, fontSize: 13, fontWeight: 700, minWidth: 180 }}>
-                    {copy(language, { en: "Core answers complete — you can register now.", zh: "核心三题已答完，现在就可以完成报名。" })}
-                    <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, fontWeight: 500, marginTop: 2 }}>
-                      {copy(language, { en: "Answering more sharpens your matches (optional).", zh: "继续回答能让匹配更准（选填）。" })}
-                    </span>
-                  </span>
-                  <button className="btn btn-primary btn-sm" disabled={thinking} onClick={() => void runGeneration(transcript, responses)} type="button">
-                    {copy(language, { en: "Finish registration", zh: "完成报名" })}
-                  </button>
                 </div>
               ) : null}
 
@@ -1044,6 +1070,7 @@ export function EventRegistrationWorkspace({
                     {question.options.map((option, optionIndex) => (
                       <button
                         key={option}
+                        aria-pressed={selectedOption === option}
                         className="reg-chip"
                         data-reg-option
                         onClick={() => void submitAnswer(option)}
@@ -1098,6 +1125,7 @@ export function EventRegistrationWorkspace({
                       style={{ display: "flex", gap: 10, marginTop: 14 }}
                     >
                       <input
+                        aria-label={copy(language, { en: "Your own answer", zh: "你的回答" })}
                         aria-invalid={error ? true : undefined}
                         autoFocus
                         className="field"
@@ -1132,41 +1160,23 @@ export function EventRegistrationWorkspace({
               ) : null}
             </div>
 
-            <footer style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", gap: 14, justifyContent: "space-between", padding: "13px 22px" }}>
+            <footer className="reg-question-footer" style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", gap: 14, justifyContent: "space-between", padding: "13px 22px" }}>
               <button
                 className="reg-ghost-btn"
-                disabled={transcript.length === 0 || thinking}
+                disabled={questionHistory.length === 0 || thinking}
                 onClick={goBack}
                 type="button"
-                style={{ alignItems: "center", background: "transparent", border: 0, color: transcript.length === 0 ? "var(--text-4)" : "var(--text-2)", cursor: transcript.length === 0 ? "default" : "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
+                style={{ alignItems: "center", background: "transparent", border: 0, color: questionHistory.length === 0 ? "var(--text-4)" : "var(--text-2)", cursor: questionHistory.length === 0 ? "default" : "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
               >
                 <Icon name="chevR" size={13} style={{ transform: "rotate(180deg)" }} />
                 {copy(language, { en: "Previous", zh: "上一题" })}
               </button>
-              {canSkipAdaptiveQuestions ? (
-                <button
-                  className="reg-ghost-btn"
-                  disabled={thinking}
-                  onClick={() => void runGeneration(transcript, responses)}
-                  type="button"
-                  style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 6 }}
-                >
-                  <Icon name="sparkle" size={13} />
-                  {copy(language, { en: "Skip the rest — generate now", zh: "跳过剩余问题,直接生成画像" })}
-                </button>
-              ) : (
-                <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
-                  {transcript.length === 0
-                    ? copy(language, {
-                        en: `Up to ${TOTAL_STEPS} quick questions (~2 minutes). Answers stay scoped to this event.`,
-                        zh: `最多 ${TOTAL_STEPS} 道快速问答，约 2 分钟；回答只用于本次活动，不会改动全局档案。`,
-                      })
-                    : copy(language, {
-                        en: `${missingCoreFields.length} core answer(s) remain before you can skip.`,
-                        zh: `还需完成 ${missingCoreFields.length} 项核心回答，之后才可跳过选答题。`,
-                      })}
-                </span>
-              )}
+              <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
+                {copy(language, {
+                  en: `${missingCoreFields.length} question(s) left before registration. Answers stay scoped to this event.`,
+                  zh: `还需完成 ${missingCoreFields.length} 个问题即可报名；回答只用于本次活动。`,
+                })}
+              </span>
             </footer>
           </div>
         ) : null}
@@ -1709,7 +1719,12 @@ export function EventRegistrationWorkspace({
             </span>
             <div>
               <h2 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 22, margin: 0 }}>
-                {transcript.length > 0
+                {registrationAnswersComplete
+                  ? copy(language, {
+                      en: "Registration has not been submitted yet",
+                      zh: "报名尚未提交完成",
+                    })
+                  : transcript.length > 0
                   ? copy(language, {
                       en: "The next AI question is temporarily unavailable",
                       zh: "下一道 AI 问题暂时未生成",
@@ -1720,7 +1735,12 @@ export function EventRegistrationWorkspace({
                     })}
               </h2>
               <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
-                {transcript.length > 0
+                {registrationAnswersComplete
+                  ? copy(language, {
+                      en: "Your two answers are kept. Retry to finish registration without answering anything else.",
+                      zh: "两项回答都已保留，无需再回答其它问题；请重试完成报名。",
+                    })
+                  : transcript.length > 0
                   ? copy(language, {
                       en: "Your answers so far are kept. No substitute question was used.",
                       zh: "已完成的回答都已保留，系统没有使用替代问题。",
@@ -1736,9 +1756,7 @@ export function EventRegistrationWorkspace({
                 {error}
               </div>
             ) : null}
-            {canSkipAdaptiveQuestions ? (
-              // 核心回答已齐时，选答题生成失败不该拦住报名：完成报名放主位，
-              // 重试选答题降级为次要动作。
+            {registrationAnswersComplete ? (
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10 }}>
                 <button
                   className="btn btn-primary"
@@ -1749,17 +1767,6 @@ export function EventRegistrationWorkspace({
                 >
                   <Icon name="check" size={15} />
                   {copy(language, { en: "Finish registration", zh: "完成报名" })}
-                </button>
-                <button
-                  className="btn btn-ghost"
-                  data-registration-interview-retry
-                  disabled={thinking}
-                  onClick={() => void retryInterviewStart()}
-                  type="button"
-                >
-                  {thinking
-                    ? copy(language, { en: "Generating…", zh: "正在生成…" })
-                    : copy(language, { en: "Retry optional questions", zh: "重试选答题" })}
                 </button>
               </div>
             ) : (

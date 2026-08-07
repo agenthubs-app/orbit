@@ -177,22 +177,34 @@ const EXEMPTIONS: {
     reason: "message-copy control with dedicated focus and status behavior",
   },
   {
-    count: 1,
+    count: 2,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orbit-agent-suggestion\"",
-    reason: "welcome suggestion card",
-  },
-  {
-    count: 3,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"card card-hover\"",
-    reason: "people, event, and task result cards",
+    marker: "className=\"chip\"",
+    reason: "design-spec suggestion chips (new-chat empty state + orb overlay)",
   },
   {
     count: 1,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orbit-agent-send\"",
-    reason: "composer control with a dedicated gradient state",
+    marker: "orb-ball",
+    reason: "floating iOrbit ball (design-spec 54px circle)",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orb-close\"",
+    reason: "orb overlay close control (design-spec 28px glass circle)",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orb-send hit-44\"",
+    reason: "orb composer send (design-spec 36px circle, 44px hit area)",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"orbit-agent-new-chat\"",
+    reason: "sidebar new-chat control (design-spec soft block button)",
   },
   {
     count: 1,
@@ -215,7 +227,7 @@ const EXEMPTIONS: {
   {
     count: 2,
     file: "app/(app)/app/events/orbit-real-explore-client.tsx",
-    marker: "setStatus(key)",
+    marker: "setEventScope(key)",
     reason: "desktop/mobile event-status filter chips",
   },
   {

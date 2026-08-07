@@ -33,10 +33,10 @@ export type EventParticipantProfileAnswers = Partial<
 export interface EventRegistrationQuestion {
   id: EventRegistrationQuestionIntent;
   intent: EventRegistrationQuestionIntent;
-  optional: true;
   options: readonly string[];
   participantProfileField: EventParticipantProfileField;
   prompt: string;
+  required: true;
 }
 
 export interface EventRegistrationQuestionSet {

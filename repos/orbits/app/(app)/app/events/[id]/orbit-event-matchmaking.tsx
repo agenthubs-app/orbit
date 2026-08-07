@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { Avatar, Icon, gradientFromString } from "../../orbit-reference-primitives";
 import { OrbitAppointmentNegotiation } from "./orbit-appointment-negotiation";
 import { OrbitEncounterCapture } from "./orbit-encounter-capture";
 
@@ -85,17 +87,31 @@ function CandidateContactAction({
   const { t } = useOrbitLanguage();
 
   if (!request) {
+    // Before the doors open there is nothing to press. A full-width disabled
+    // sentence repeated down the grid was outshouting the people it sat under,
+    // so the closed state degrades to a quiet status line and keeps the full
+    // explanation on the title for anyone who wants it.
+    if (!contactRequestsOpen) {
+      return (
+        <span
+          className="orbit-attendee-wait"
+          data-contact-request-state="none"
+          title={t({ en: "Contact requests open when the event starts", zh: "活动开始后可申请交换联系方式" })}
+        >
+          <Icon name="lock" size={13} />
+          {t({ en: "Opens at start", zh: "活动开始后开放" })}
+        </span>
+      );
+    }
     return (
       <button
-        className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+        className="btn btn-primary btn-sm"
         data-contact-request-state="none"
-        disabled={busy || !contactRequestsOpen}
+        disabled={busy}
         onClick={() => void onRequest(participantId, null)}
         type="button"
       >
-        {contactRequestsOpen
-          ? t({ en: "Request business card", zh: "申请交换名片" })
-          : t({ en: "Contact requests open when the event starts", zh: "活动开始后可申请交换联系" })}
+        {t({ en: "Request business card", zh: "申请交换名片" })}
       </button>
     );
   }
@@ -127,7 +143,7 @@ function CandidateContactAction({
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <span className="chip" data-contact-request-state="withdrawn">{t({ en: "Request withdrawn", zh: "申请已撤回" })}</span>
-        {canWithdraw ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(participantId, request.revision)} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请" })}</button> : null}
+        {canWithdraw ? <button className={contactRequestsOpen ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={busy || !contactRequestsOpen} onClick={() => void onRequest(participantId, request.revision)} title={contactRequestsOpen ? undefined : t({ en: "Contact requests open when the event starts", zh: "活动开始后可再次申请交换联系方式" })} type="button">{contactRequestsOpen ? t({ en: "Request again", zh: "再次申请" }) : t({ en: "Opens at start", zh: "活动开始后开放" })}</button> : null}
       </div>
     );
   }
@@ -227,28 +243,107 @@ function ParticipantDetailPanel({
 }) {
   const { language, t } = useOrbitLanguage();
   const contact = detail.contactRequest;
+  const panelRef = useRef<HTMLElement>(null);
+
+  // Escape closes, focus moves into the dialog on open and back to whatever
+  // opened it on close, and Tab cycles inside the panel. Without this the
+  // dialog was reachable only by mouse: keyboard focus stayed on the card
+  // behind the scrim, and Tab walked the page underneath rather than the thing
+  // on top of it. The tabbable set is recomputed per keypress because the
+  // footer swaps controls as a contact request changes state, and the accepted
+  // state mounts two more forms below it.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+
+    const tabbables = () => {
+      const panel = panelRef.current;
+      if (!panel) return [];
+      const candidates = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      return Array.from(candidates).filter((node) => node.getClientRects().length > 0);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const stops = tabbables();
+      // Nothing tabbable yet (or focus has escaped the panel): park it on the
+      // panel itself rather than letting Tab fall through to the page behind.
+      if (!stops.length) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const active = document.activeElement;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      if (!panel.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    // Lock the page behind the dialog. On the event journey the scroller is the
+    // page shell, not the document, so locking <html> alone does nothing.
+    const scroller = document.querySelector<HTMLElement>("[data-appscroll]") ?? document.documentElement;
+    const previousOverflow = scroller.style.overflow;
+    const previousPadding = scroller.style.paddingRight;
+    const scrollbar = scroller === document.documentElement
+      ? window.innerWidth - document.documentElement.clientWidth
+      : scroller.offsetWidth - scroller.clientWidth;
+    scroller.style.overflow = "hidden";
+    if (scrollbar > 0) scroller.style.paddingRight = `${scrollbar}px`;
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      scroller.style.overflow = previousOverflow;
+      scroller.style.paddingRight = previousPadding;
+      opener?.focus?.();
+    };
+  }, [onClose]);
 
   return (
     <div
       aria-label={t({ en: "Participant detail", zh: "参会者详情" })}
       aria-modal="true"
+      className="orbit-participant-dialog"
       data-event-participant-detail={detail.participantId}
       onClick={onClose}
       role="dialog"
       style={{
         alignItems: "center",
-        background: "color-mix(in srgb, var(--ink) 38%, transparent)",
+        backdropFilter: "blur(2px)",
+        background: "var(--scrim)",
         display: "flex",
         inset: 0,
         justifyContent: "center",
         padding: 20,
         position: "fixed",
+        WebkitBackdropFilter: "blur(2px)",
         zIndex: "var(--z-modal)",
       }}
     >
       <article
         className="card"
         onClick={(event) => event.stopPropagation()}
+        ref={panelRef}
+        tabIndex={-1}
         style={{
           display: "grid",
           gap: 18,
@@ -273,8 +368,8 @@ function ParticipantDetailPanel({
               {[detail.role, detail.company, detail.industry].filter(Boolean).join(" · ")}
             </p>
           </div>
-          <button aria-label={t({ en: "Close", zh: "关闭" })} className="btn btn-ghost btn-sm" onClick={onClose} type="button">
-            ×
+          <button aria-label={t({ en: "Close", zh: "关闭" })} className="btn btn-ghost btn-sm hit-44" onClick={onClose} style={{ alignSelf: "start", padding: "0 10px" }} type="button">
+            <Icon name="x" size={16} />
           </button>
         </header>
 
@@ -402,9 +497,25 @@ export function OrbitEventMatchmaking({
   registrationOpen?: boolean;
 }) {
   const { t } = useOrbitLanguage();
+  const sectionRef = useRef<HTMLElement>(null);
+  // The detail dialog is fixed and full-screen, but it is authored inside this
+  // section — which on the event journey sits inside the `.cardB` nite panel.
+  // cardB re-binds --ink/--surface/--text for a small glass card on a dark
+  // gradient, so the dialog inherited a white scrim, a 5.5%-alpha "surface"
+  // and near-white body text: the whole page showed straight through it.
+  // Re-parenting to the page root escapes those overrides. It has to be the
+  // [data-orbit-real-page] element and not document.body, because the entire
+  // Orbit override layer (.card, .chip, .btn accent) is scoped under it —
+  // on body the primary button reverts to the prototype's indigo.
+  const [dialogHost, setDialogHost] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    setDialogHost(sectionRef.current?.closest<HTMLElement>("[data-orbit-real-page]") ?? document.body);
+  }, []);
   const [workspace, setWorkspace] = useState<OperationsWorkspace | null>(null);
   const [detail, setDetail] = useState<ParticipantDetail | null>(null);
   const [directoryOpen, setDirectoryOpen] = useState(false);
+  const [directoryQuery, setDirectoryQuery] = useState("");
   const [loading, setLoading] = useState(authenticated);
   const [unauthorized, setUnauthorized] = useState(!authenticated);
   const [error, setError] = useState("");
@@ -453,6 +564,19 @@ export function OrbitEventMatchmaking({
       recommendation,
     })) ?? [];
   }, [workspace]);
+
+  // Search covers everything a card shows plus industry, so what someone reads
+  // on a card is always something they can type back in. 64 confirmed profiles
+  // is well past the point where scrolling the grid is the fastest way to find
+  // one person.
+  const directoryMatches = useMemo(() => {
+    const directory = workspace?.directory ?? [];
+    const needle = directoryQuery.trim().toLowerCase();
+    if (!needle) return directory;
+    return directory.filter((participant) =>
+      [participant.displayName, participant.role, participant.company, participant.industry, ...participant.topics]
+        .some((field) => field?.toLowerCase().includes(needle)));
+  }, [directoryQuery, workspace]);
 
   // Notification deep links carry ?participant=… so the recipient lands with
   // the counterpart's profile drawer already open instead of scanning cards.
@@ -537,7 +661,7 @@ export function OrbitEventMatchmaking({
   );
 
   return (
-    <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden", padding: 16 }}>
+    <section aria-labelledby="event-matchmaking-title" className="card" data-event-matchmaking ref={sectionRef} style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden", padding: 16 }}>
       <div style={{ display: "grid", gap: 4 }}>
         <span className="eyebrow">ORBIT MATCH</span>
         <h3 className="h-section" id="event-matchmaking-title" style={{ margin: 0 }}>{t({ en: "People worth meeting", zh: "值得认识的人" })}</h3>
@@ -550,89 +674,6 @@ export function OrbitEventMatchmaking({
           <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
           {authenticated && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : !authenticated ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
         </div>
-      ) : null}
-
-      {workspace ? (
-        <section
-          className="card-flat"
-          data-event-participant-directory
-          style={{ display: "grid", gap: 12, padding: 14 }}
-        >
-          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
-            <div>
-              <strong>{t({ en: "All participants", zh: "全部参会者" })}</strong>
-              <p style={{ color: "var(--text-3)", fontSize: 12, margin: "3px 0 0" }}>
-                {t({
-                  en: `${workspace.directory.length} confirmed registration profiles. This directory is independent of AI publishing; open any card to review the event profile.`,
-                  zh: `${workspace.directory.length} 份已确认报名画像；参会者目录不依赖 AI 结果发布，点击任意卡片查看活动画像。`,
-                })}
-              </p>
-            </div>
-            <button
-              aria-expanded={directoryOpen}
-              className="btn btn-ghost btn-sm"
-              onClick={() => setDirectoryOpen((open) => !open)}
-              type="button"
-            >
-              {directoryOpen
-                ? t({ en: "Collapse directory", zh: "收起参会者" })
-                : t({ en: `All participants · ${workspace.directory.length}`, zh: `全部参会者 · ${workspace.directory.length}` })}
-            </button>
-          </div>
-          {directoryOpen ? (
-            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
-              {workspace.directory.map((participant) => {
-                const contactRequest = workspace.contactRequests.find(
-                  (request) =>
-                    request.requesterParticipantId === participant.participantId ||
-                    request.targetParticipantId === participant.participantId,
-                ) ?? null;
-                const isMe = participant.participantId === workspace.me.participantId;
-                return (
-                  <article
-                    className="card-flat"
-                    data-event-directory-participant={participant.participantId}
-                    key={participant.participantId}
-                    style={{ display: "grid", gap: 9, minWidth: 0, padding: 12 }}
-                  >
-                    <button
-                      aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })}
-                      onClick={() => void openParticipant(participant.participantId)}
-                      style={{ background: "transparent", border: 0, color: "inherit", cursor: "pointer", padding: 0, textAlign: "left" }}
-                      type="button"
-                    >
-                      <div style={{ alignItems: "start", display: "flex", gap: 8, justifyContent: "space-between" }}>
-                        <div style={{ minWidth: 0 }}>
-                          <strong style={{ color: "var(--ink)", fontSize: 14 }}>{participant.displayName}</strong>
-                          <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>
-                            {[participant.role, participant.company].filter(Boolean).join(" · ")}
-                          </div>
-                        </div>
-                        {isMe ? <span className="chip">{t({ en: "You", zh: "你" })}</span> : null}
-                      </div>
-                      {participant.topics.length ? (
-                        <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0 0" }}>
-                          {participant.topics.slice(0, 3).join(" · ")}
-                        </p>
-                      ) : null}
-                    </button>
-                    {!isMe ? (
-                      <CandidateContactAction
-                        busy={working === `request:${participant.participantId}`}
-                        canWithdraw={contactRequest?.requesterParticipantId === workspace.me.participantId}
-                        contactRequestsOpen={contactRequestsOpen}
-                        onRequest={requestContact}
-                        onWithdraw={withdrawContact}
-                        participantId={participant.participantId}
-                        request={contactRequest}
-                      />
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
-        </section>
       ) : null}
 
       {workspace?.resultsState === "locked" ? <div className="card-flat" data-operations-state="locked" style={{ padding: 14 }}><strong>{t({ en: "Results are not open yet", zh: "匹配结果尚未开放" })}</strong><p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 0" }}>{t({ en: `Available at ${formatGate(workspace.configuration.resultsAvailableAt)}.`, zh: `将在 ${formatGate(workspace.configuration.resultsAvailableAt)} 开放。` })}</p></div> : null}
@@ -680,8 +721,131 @@ export function OrbitEventMatchmaking({
         </>
       ) : null}
 
+      {workspace ? (
+        <section
+          className="card-flat"
+          data-event-participant-directory
+          style={{ display: "grid", gap: 12, padding: 14 }}
+        >
+          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between" }}>
+            <div>
+              <strong>{t({ en: `All participants · ${workspace.directory.length}`, zh: `全部参会者 · ${workspace.directory.length}` })}</strong>
+              <p style={{ color: "var(--text-3)", fontSize: 12, margin: "4px 0 0" }}>
+                {t({
+                  en: "Everyone who has confirmed their registration. Open a card to read what they wrote about themselves.",
+                  zh: "所有已确认报名的人都在这里。点开卡片可以看到 TA 自己填写的介绍。",
+                })}
+              </p>
+            </div>
+            <button
+              aria-expanded={directoryOpen}
+              className="btn btn-ghost btn-sm"
+              onClick={() => setDirectoryOpen((open) => !open)}
+              type="button"
+            >
+              {directoryOpen
+                ? t({ en: "Collapse", zh: "收起" })
+                : t({ en: "Show participants", zh: "展开参会者" })}
+            </button>
+          </div>
+          {directoryOpen && workspace.directory.length ? (
+            <div className="orbit-attendee-search">
+              <Icon color="var(--text-3)" name="search" size={17} />
+              <input
+                aria-label={t({ en: "Search participants", zh: "搜索参会者" })}
+                onChange={(event) => setDirectoryQuery(event.target.value)}
+                placeholder={t({ en: "Name, company, or what they are looking for", zh: "姓名、公司，或 TA 想找的事" })}
+                type="search"
+                value={directoryQuery}
+              />
+              {directoryQuery.trim() ? (
+                <span aria-live="polite" className="orbit-attendee-count">
+                  {t({ en: `${directoryMatches.length} of ${workspace.directory.length}`, zh: `${directoryMatches.length} / ${workspace.directory.length} 人` })}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {directoryOpen && !directoryMatches.length ? (
+            <p className="orbit-attendee-empty" data-event-directory-empty>
+              {directoryQuery.trim()
+                ? t({
+                    en: `No participant matches "${directoryQuery.trim()}". Try a company, an industry, or part of a name.`,
+                    zh: `没有匹配「${directoryQuery.trim()}」的参会者。可以试试公司、行业，或名字的一部分。`,
+                  })
+                : t({
+                    en: "No confirmed registration profiles yet.",
+                    zh: "还没有已确认报名的参会者。",
+                  })}
+            </p>
+          ) : null}
+          {directoryOpen ? (
+            <div className="orbit-attendee-grid">
+              {directoryMatches.map((participant) => {
+                const contactRequest = workspace.contactRequests.find(
+                  (request) =>
+                    request.requesterParticipantId === participant.participantId ||
+                    request.targetParticipantId === participant.participantId,
+                ) ?? null;
+                const isMe = participant.participantId === workspace.me.participantId;
+                // The registration profile lists the domain first and what the
+                // person came to do after it. Kept apart, the card reads as
+                // "who / what they want"; joined by "·" it read as one grey run.
+                const [domain, ...intent] = participant.topics;
+                const role = [participant.role, participant.company].filter(Boolean).join(" · ");
+                return (
+                  <article
+                    className="orbit-attendee-card"
+                    data-event-directory-participant={participant.participantId}
+                    key={participant.participantId}
+                  >
+                    <button
+                      aria-label={t({ en: `Open ${participant.displayName}'s profile`, zh: `打开 ${participant.displayName} 的画像` })}
+                      className="orbit-attendee-open"
+                      onClick={() => void openParticipant(participant.participantId)}
+                      type="button"
+                    />
+                    <div className="orbit-attendee-head">
+                      <div className="orbit-attendee-id">
+                        <Avatar
+                          g={gradientFromString(participant.participantId)}
+                          letter={participant.displayName.slice(0, 1)}
+                          size={36}
+                        />
+                        <div className="orbit-attendee-name" title={participant.displayName}>{participant.displayName}</div>
+                        {isMe ? <span className="orbit-attendee-self">{t({ en: "You", zh: "你" })}</span> : null}
+                      </div>
+                      {role ? <div className="orbit-attendee-role" title={role}>{role}</div> : null}
+                    </div>
+                    <div className="orbit-attendee-focus">
+                      {domain ? <span className="orbit-attendee-domain" title={domain}>{domain}</span> : null}
+                      {intent.length ? <p className="orbit-attendee-intent">{intent.join(" · ")}</p> : null}
+                    </div>
+                    {!isMe ? (
+                      <div className="orbit-attendee-act">
+                        <CandidateContactAction
+                          busy={working === `request:${participant.participantId}`}
+                          canWithdraw={contactRequest?.requesterParticipantId === workspace.me.participantId}
+                          contactRequestsOpen={contactRequestsOpen}
+                          onRequest={requestContact}
+                          onWithdraw={withdrawContact}
+                          participantId={participant.participantId}
+                          request={contactRequest}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {visibleError ? <p role="alert" style={{ color: "var(--danger)", fontSize: 13, margin: 0 }}>{visibleError}</p> : null}
-      {detail ? <ParticipantDetailPanel busy={working !== null} contactRequestsOpen={contactRequestsOpen} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} /> : null}
+      {detail && dialogHost ? createPortal(
+        <ParticipantDetailPanel busy={working !== null} contactRequestsOpen={contactRequestsOpen} detail={detail} eventId={eventId} onClose={() => setDetail(null)} onRequest={requestContact} onRespond={respondContact} onWithdraw={withdrawContact} />,
+        dialogHost,
+      ) : null}
     </section>
   );
 }

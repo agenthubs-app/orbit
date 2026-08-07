@@ -323,10 +323,11 @@ test("event detail reads registration state from the registration record API", (
   assert.match(detailSource, /Manage registration|管理报名/);
   assert.match(detailSource, /Register again|重新报名/);
   assert.match(detailSource, /\/app\/events\/.*\/register/);
-  assert.match(detailSource, /const canSeeAttendees = youRsvped/);
+  assert.match(detailSource, /const youRsvped = registrationStatus === "rsvped"/);
+  assert.match(detailSource, /youRsvped=\{youRsvped\}/);
   assert.doesNotMatch(
     detailSource,
-    /canSeeAttendees = youRsvped \|\| event\.status === "ended"/,
+    /youRsvped = registrationStatus === "rsvped" \|\| event\.status === "ended"/,
   );
 });
 

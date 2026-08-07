@@ -131,10 +131,8 @@ function remainingFieldsFor(
   const remaining = EVENT_PARTICIPANT_PROFILE_FIELDS.filter(
     (field) => !answered.has(field),
   );
-  // Per-event intent first: while any core field (positioning / who to meet /
-  // value offered / desired outcome) is unanswered, the interview may only
-  // ask core fields, so a minimal registration is always the shortest path
-  // and optional depth questions stay an explicit opt-in afterwards.
+  // 报名前只允许追问两项必答（想认识谁 / 能提供什么）；两项完成后，服务
+  // 仍可为报名后的画像深化生成其它字段，但报名工作区不会再调用第三题。
   const coreRemaining = remaining.filter((field) =>
     (EVENT_PROFILE_CORE_FIELDS as readonly EventParticipantProfileField[]).includes(field),
   );

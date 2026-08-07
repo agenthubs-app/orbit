@@ -29,6 +29,13 @@ test("event matching reads only published operations and uses canonical consent"
   assert.match(source, /data-operations-state="processing"/);
   assert.match(source, /data-operations-state="failed"/);
   assert.match(source, /data-event-participant-directory/);
+  // The detail dialog must be re-parented to the page root. Left inside the
+  // matchmaking section it inherits the journey nite panel's --ink/--surface
+  // overrides and renders as a transparent panel behind a white scrim; moved
+  // all the way to document.body it loses the Orbit .card/.btn override layer,
+  // which is scoped under [data-orbit-real-page].
+  assert.match(source, /createPortal\(/);
+  assert.match(source, /closest<HTMLElement>\("\[data-orbit-real-page\]"\)/);
   assert.doesNotMatch(source, /\/api\/events\/.*\/matchmaking/);
   assert.doesNotMatch(source, /\/api\/agent\/matchmaking/);
   assert.doesNotMatch(source, /type="datetime-local"/);
@@ -301,5 +308,73 @@ test("failed requests remain retryable while declined requests stay visible and 
     if (renderer) {
       await act(async () => renderer.unmount());
     }
+  }
+});
+
+test("the participant directory search filters on name, company, industry and topics", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    Response.json({ data: operations(), success: true })) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+
+  const cardIds = () => renderer.root
+    .findAll((node) => typeof node.props["data-event-directory-participant"] === "string")
+    .map((node) => node.props["data-event-directory-participant"] as string);
+  const search = async (value: string) => {
+    const input = renderer.root.find(
+      (node) => node.type === "input" && node.props.type === "search",
+    );
+    await act(async () => {
+      input.props.onChange({ target: { value } });
+    });
+  };
+
+  try {
+    await act(async () => {
+      renderer = create(createElement(OrbitEventMatchmaking, {
+        eventId: "event:tokyo-ai-night",
+      }));
+    });
+
+    // The directory ships collapsed, so there is nothing to search until it opens.
+    assert.deepEqual(cardIds(), []);
+    const toggle = renderer.root.find(
+      (node) => node.type === "button" && node.props["aria-expanded"] === false,
+    );
+    await act(async () => {
+      toggle.props.onClick();
+    });
+    assert.deepEqual(cardIds().sort(), ["participant:julia", "participant:maya"]);
+
+    // Display name.
+    await search("julia");
+    assert.deepEqual(cardIds(), ["participant:julia"]);
+
+    // Industry, which no card prints — proves the haystack is wider than the card.
+    await search("venture");
+    assert.deepEqual(cardIds(), ["participant:maya"]);
+
+    // Company, case-insensitively.
+    await search("JULIA AI");
+    assert.deepEqual(cardIds(), ["participant:julia"]);
+
+    // Topic shared by both.
+    await search("  ai  ");
+    assert.deepEqual(cardIds().sort(), ["participant:julia", "participant:maya"]);
+
+    // No match keeps the field and explains itself instead of showing a blank grid.
+    await search("nobody");
+    assert.deepEqual(cardIds(), []);
+    const empty = renderer.root.find(
+      (node) => node.props["data-event-directory-empty"] !== undefined,
+    );
+    assert.match(JSON.stringify(empty.props.children), /没有匹配「nobody」的参会者/u);
+
+    // Clearing restores the full directory.
+    await search("");
+    assert.deepEqual(cardIds().sort(), ["participant:julia", "participant:maya"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => renderer.unmount());
   }
 });

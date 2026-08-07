@@ -23,7 +23,7 @@ async function main() {
     await pageA.goto(`${baseUrl}/app/events/${encodeURIComponent(eventId)}`);
     await pageA.locator(`[data-matchmaking-candidate="${participantB}"]`).getByRole("button", { name: /申请交换名片|Request business card/ }).click();
     await pageB.goto(`${baseUrl}/app/events/${encodeURIComponent(eventId)}`);
-    await pageB.getByRole("button", { name: /全部参会者|All participants/ }).click();
+    await pageB.getByRole("button", { name: /展开参会者|Show participants/ }).click();
     await pageB.locator("[data-event-participant-directory]").getByRole("button", { name: new RegExp(nameA) }).click().catch(async () => {
       await pageB.locator(`[data-matchmaking-candidate="${participantA}"]`).getByRole("button").first().click();
     });
@@ -38,7 +38,7 @@ async function main() {
     }
     await pageA.getByRole("button", { name: /发送提议|Send proposal/ }).click();
     await pageB.reload();
-    await pageB.getByRole("button", { name: /全部参会者|All participants/ }).click();
+    await pageB.getByRole("button", { name: /展开参会者|Show participants/ }).click();
     await pageB.locator(`[data-matchmaking-candidate="${participantA}"]`).getByRole("button").first().click().catch(async () => {
       await pageB.locator("[data-event-participant-directory]").getByRole("button", { name: new RegExp(nameA) }).click();
     });

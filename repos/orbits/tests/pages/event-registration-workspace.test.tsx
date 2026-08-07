@@ -22,9 +22,9 @@ test("an initial AI failure offers an in-place real-model retry without a fallba
     signedQuestion: {
       question: {
         acknowledgment: "",
-        field: "positioning",
-        options: ["Building", "Scaling"],
-        prompt: "How should attendees understand what you are building?",
+        field: "targetAttendees",
+        options: ["Founders", "Investors"],
+        prompt: "Who do you want to meet at this event?",
         provenance: {
           fallbackReason: null,
           generationMethod: "orbit-agent-model-adaptive",
@@ -101,15 +101,24 @@ test("an initial AI failure offers an in-place real-model retry without a fallba
   }
 });
 
-test("a failed optional-question fetch keeps committed core answers and offers finishing", async () => {
+test("two quick answers submit registration without requesting a third interview question", async () => {
   const originalFetch = globalThis.fetch;
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  const eventId = "event-core-finish";
+  const eventId = "event-two-question-finish";
+  const requests: { body: unknown; url: string }[] = [];
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       addEventListener() {},
+      clearInterval() {},
       removeEventListener() {},
+      setInterval() {
+        return 1;
+      },
+      setTimeout(callback: () => void) {
+        callback();
+        return 1;
+      },
       localStorage: {
         getItem: (key: string) =>
           key === `orbit-quick-answers:${eventId}`
@@ -123,10 +132,44 @@ test("a failed optional-question fetch keeps committed core answers and offers f
       },
     },
   });
-  // 种入定位+速答后，当前题是"期待结果"；回答它即核心齐全。选答题请求
-  // 全部失败——已答内容必须保留，且降级面板要提供"完成报名"。
-  globalThis.fetch = (async () => {
-    throw new Error("optional question generation unavailable");
+  globalThis.fetch = (async (input, init) => {
+    const url = String(input);
+    requests.push({
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
+      url,
+    });
+    if (url.endsWith("/registration/persona")) {
+      return Response.json({
+        data: {
+          persona: {
+            energyStyle: "Focused",
+            industryTags: ["Technology"],
+            offering: "海外渠道资源",
+            openers: ["你目前最关注哪个市场？"],
+            provenance: {
+              fallbackReason: null,
+              generationMethod: "orbit-agent-model-adaptive",
+              model: "test-model",
+              provider: "test-provider",
+            },
+            seeking: "硬件供应链的创始人",
+            tagline: "连接硬件与海外市场",
+            tags: ["硬件", "出海"],
+          },
+        },
+        success: true,
+      });
+    }
+    if (url.endsWith("/registration")) {
+      return Response.json({
+        data: {
+          participantProfile: { answers: {} },
+          status: "rsvped",
+        },
+        success: true,
+      });
+    }
+    throw new Error(`unexpected request: ${url}`);
   }) as typeof fetch;
   let renderer!: ReactTestRenderer;
 
@@ -135,15 +178,15 @@ test("a failed optional-question fetch keeps committed core answers and offers f
       renderer = create(
         <EventRegistrationWorkspace
           admissionControlled={false}
-          event={{ id: eventId, title: "Core Finish Night", venue: "Tokyo" }}
+          event={{ id: eventId, title: "Two Question Night", venue: "Tokyo" }}
           initialAdmissionApplication={null}
           initialRegistration={null}
           initialSignedQuestion={{
             question: {
               acknowledgment: "",
-              field: "desiredOutcome",
-              options: ["Find partners", "Meet investors"],
-              prompt: "What outcome do you want?",
+              field: "targetAttendees",
+              options: ["Founders", "Investors"],
+              prompt: "Who do you want to meet?",
               provenance: {
                 fallbackReason: null,
                 generationMethod: "orbit-agent-model-adaptive",
@@ -151,7 +194,7 @@ test("a failed optional-question fetch keeps committed core answers and offers f
                 provider: "test-provider",
               },
             },
-            questionToken: "signed-desired-outcome-question",
+            questionToken: "signed-target-attendees-question",
           }}
           language="zh"
           prefilledPositioning="创始人 @ Orbit"
@@ -160,35 +203,143 @@ test("a failed optional-question fetch keeps committed core answers and offers f
       );
     });
 
-    const optionButton = renderer.root.findAll(
-      (node) =>
-        node.type === "button" && node.props["data-reg-option"] !== undefined,
-    )[0];
-    assert.ok(optionButton, "the desiredOutcome option should render");
-    await act(async () => {
-      await optionButton.props.onClick();
-    });
-
     assert.equal(
-      renderer.root.findAll(
-        (node) => node.props["data-registration-complete-anyway"] !== undefined,
-      ).length,
-      1,
-      "core-complete fallback must offer finishing registration",
+      requests.some((request) => request.url.endsWith("/registration/interview")),
+      false,
+      "the registration flow must not request an optional third question",
     );
+    const registrationRequest = requests.find((request) =>
+      request.url.endsWith("/registration"),
+    );
+    assert.deepEqual(registrationRequest?.body, {
+      answers: {
+        positioning: "创始人 @ Orbit",
+        targetAttendees: "硬件供应链的创始人",
+        valueOffered: "海外渠道资源",
+      },
+    });
     assert.equal(
       renderer.root.findAll(
-        (node) => node.props["data-registration-interview-retry"] !== undefined,
+        (node) => node.props["data-registration-stage"] === "persona",
       ).length,
       1,
-      "retrying the optional questions stays available",
     );
   } finally {
     globalThis.fetch = originalFetch;
+    if (renderer) {
+      await act(async () => {
+        renderer.unmount();
+      });
+    }
     if (originalWindow) {
       Object.defineProperty(globalThis, "window", originalWindow);
     } else {
       delete (globalThis as { window?: unknown }).window;
+    }
+  }
+});
+
+test("the questionnaire progress counts only the two required event answers", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const secondStep: SignedAdaptiveInterviewStep = {
+    done: false,
+    signedQuestion: {
+      question: {
+        acknowledgment: "明白了，你想围绕创业者建立连接。",
+        field: "valueOffered",
+        options: ["行业经验", "合作资源"],
+        prompt: "你最适合为遇到的人提供什么？",
+        provenance: {
+          fallbackReason: null,
+          generationMethod: "orbit-agent-model-adaptive",
+          model: "test-model",
+          provider: "test-provider",
+        },
+      },
+      questionToken: "signed-value-offered-question",
+    },
+  };
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      addEventListener() {},
+      removeEventListener() {},
+      localStorage: { getItem: () => null, removeItem() {}, setItem() {} },
+    },
+  });
+  globalThis.fetch = (async () =>
+    Response.json({ data: secondStep, success: true })) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventRegistrationWorkspace
+          admissionControlled={false}
+          event={{ id: "event-progress", title: "Progress Night", venue: "Tokyo" }}
+          initialAdmissionApplication={null}
+          initialRegistration={null}
+          initialSignedQuestion={{
+            question: {
+              acknowledgment: "",
+              field: "targetAttendees",
+              options: ["创业者", "投资人"],
+              prompt: "你最希望认识谁？",
+              provenance: {
+                fallbackReason: null,
+                generationMethod: "orbit-agent-model-adaptive",
+                model: "test-model",
+                provider: "test-provider",
+              },
+            },
+            questionToken: "signed-target-question",
+          }}
+          language="zh"
+          prefilledPositioning="创始人 @ Orbit"
+          profile={{ displayName: "Aiko" }}
+        />,
+      );
+    });
+
+    let progress = renderer.root.findByProps({ role: "progressbar" });
+    assert.equal(progress.props["aria-valuemax"], 2);
+    assert.equal(progress.props["aria-valuenow"], 1);
+    assert.equal(
+      renderer.root.findAllByProps({
+        "data-registration-progress-label": "1/2",
+      }).length,
+      1,
+    );
+
+    const firstOption = renderer.root.findAll(
+      (node) => node.type === "button" && node.props["data-reg-option"] !== undefined,
+    )[0];
+    assert.ok(firstOption);
+    await act(async () => {
+      firstOption.props.onClick();
+      await Promise.resolve();
+    });
+
+    progress = renderer.root.findByProps({ role: "progressbar" });
+    assert.equal(progress.props["aria-valuenow"], 2);
+    assert.equal(
+      renderer.root.findAllByProps({
+        "data-registration-progress-label": "2/2",
+      }).length,
+      1,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) {
+      await act(async () => {
+        renderer.unmount();
+      });
+    }
+    if (originalWindow) {
+      Object.defineProperty(globalThis, "window", originalWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
     }
   }
 });

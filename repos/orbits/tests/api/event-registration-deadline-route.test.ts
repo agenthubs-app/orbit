@@ -45,7 +45,8 @@ test("registration route returns a clear 409 after the event profile deadline", 
       {
         body: JSON.stringify({
           answers: {
-            desiredOutcome: "A late answer that must be rejected",
+            targetAttendees: "Climate operators",
+            valueOffered: "A late offer that must be rejected",
           },
         }),
         headers: { "content-type": "application/json" },

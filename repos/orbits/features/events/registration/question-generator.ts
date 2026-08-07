@@ -44,13 +44,6 @@ export function candidatesFor(
   if (language === "en") {
     return [
       {
-        id: "positioning",
-        intent: "positioning",
-        options: ["Exploring", "Building", "Scaling"],
-        participantProfileField: "positioning",
-        prompt: `At ${title}, how would you like other attendees to understand what you are working on now?`,
-      },
-      {
         id: "target_attendees",
         intent: "target_attendees",
         options: ["Founders", "Operators", "Investors or partners"],
@@ -64,24 +57,10 @@ export function candidatesFor(
         participantProfileField: "valueOffered",
         prompt: `What could you most usefully offer people you meet at ${title}?`,
       },
-      {
-        id: "desired_outcome",
-        intent: "desired_outcome",
-        options: ["One useful conversation", "A follow-up meeting", "A concrete collaboration"],
-        participantProfileField: "desiredOutcome",
-        prompt: `What outcome would make ${title} worthwhile for you?`,
-      },
     ];
   }
 
   return [
-    {
-      id: "positioning",
-      intent: "positioning",
-      options: ["正在探索", "正在建设", "正在扩大规模"],
-      participantProfileField: "positioning",
-      prompt: `参加「${title}」时，你希望其他参与者如何理解你目前正在做的事？`,
-    },
     {
       id: "target_attendees",
       intent: "target_attendees",
@@ -95,13 +74,6 @@ export function candidatesFor(
       options: ["相关引荐", "实操经验", "反馈或专业能力"],
       participantProfileField: "valueOffered",
       prompt: `在「${title}」认识新朋友时，你最适合为对方提供什么？`,
-    },
-    {
-      id: "desired_outcome",
-      intent: "desired_outcome",
-      options: ["一次有效交流", "一次后续会面", "一项具体合作"],
-      participantProfileField: "desiredOutcome",
-      prompt: `什么结果会让你觉得参加「${title}」是值得的？`,
     },
   ];
 }
@@ -168,10 +140,10 @@ function readQuestion(
   return {
     id,
     intent,
-    optional: true,
     options,
     participantProfileField: candidate.participantProfileField,
     prompt,
+    required: true,
   };
 }
 
@@ -194,11 +166,11 @@ function parseModelQuestions(
 
   const candidateMap = new Map(candidates.map((question) => [question.id, question]));
   const questions = parsed.questions
-    .slice(0, 4)
+    .slice(0, 2)
     .map((question) => readQuestion(question, candidateMap, eventTitle));
 
   if (
-    questions.length === 0 ||
+    questions.length !== candidates.length ||
     questions.some((question) => question === null) ||
     new Set(questions.map((question) => question?.id)).size !== questions.length
   ) {
@@ -234,7 +206,7 @@ export async function generateEventRegistrationQuestions(input: {
   const modelResult = await modelRunner({
     config: input.modelConfig,
     systemInstruction:
-      "You customize optional Orbit event-registration questions. Use the exact Orbit AI provider and model supplied by the shared model boundary. Return strict JSON only. Preserve every id, intent, and participantProfileField. Never ask for sensitive identity, credential, financial, or health data.",
+      "You customize Orbit's two required event-registration questions. Use the exact Orbit AI provider and model supplied by the shared model boundary. Return strict JSON only. Preserve every id, intent, and participantProfileField. Never ask for sensitive identity, credential, financial, or health data.",
     userText: JSON.stringify({
       event: {
         description: input.event.description,
@@ -244,7 +216,7 @@ export async function generateEventRegistrationQuestions(input: {
       },
       instructions: {
         language,
-        maxQuestions: 4,
+        maxQuestions: 2,
         outputShape: {
           questions: [
             {

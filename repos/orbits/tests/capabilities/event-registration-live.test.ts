@@ -40,18 +40,18 @@ test("registration question generation uses the Orbit Agent model boundary and v
       text: JSON.stringify({
         questions: [
           {
-            id: "positioning",
-            intent: "positioning",
-            participantProfileField: "positioning",
-            prompt: "在 Climate founders dinner 上，你希望别人如何理解你目前的工作重点？",
-            options: ["正在验证方向", "正在寻找合作伙伴", "正在扩大影响力"],
-          },
-          {
             id: "target_attendees",
             intent: "target_attendees",
             participantProfileField: "targetAttendees",
             prompt: "这场 Climate founders dinner 中，你最希望遇见哪类参与者？",
             options: ["气候创业者", "运营型投资人", "活动组织者"],
+          },
+          {
+            id: "value_offered",
+            intent: "value_offered",
+            participantProfileField: "valueOffered",
+            prompt: "参加 Climate founders dinner 时，你最适合为新朋友提供什么？",
+            options: ["相关引荐", "实操经验", "反馈或专业能力"],
           },
         ],
       }),
@@ -70,8 +70,8 @@ test("registration question generation uses the Orbit Agent model boundary and v
   assert.match(requests[0]?.systemInstruction ?? "", /Orbit AI.*provider.*model/i);
   assert.match(requests[0]?.userText ?? "", /Climate founders dinner/);
   assert.equal(result.questions.length, 2);
-  assert.equal(result.questions[0]?.intent, "positioning");
-  assert.equal(result.questions[1]?.participantProfileField, "targetAttendees");
+  assert.equal(result.questions[0]?.intent, "target_attendees");
+  assert.equal(result.questions[1]?.participantProfileField, "valueOffered");
   assert.equal(result.provenance.generationMethod, "orbit-agent-model-customized");
   assert.equal(result.provenance.provider, "gemini");
   assert.equal(result.provenance.model, "orbit-shared-model");

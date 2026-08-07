@@ -102,7 +102,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /industry: item\.confidenceLabel/);
   assert.match(agentSource, /opener: item\.body/);
   assert.match(agentSource, /reason: item\.reason/);
-  assert.match(agentSource, /function AgentPeopleCard/);
+  assert.match(agentSource, /function AgentPeopleRow/);
   assert.match(agentSource, /navigate\(`\/home\/cards\/\$\{connection\.id\}`\)/);
   assert.match(agentSource, /<AgentEvidenceSources/);
   assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
@@ -116,8 +116,8 @@ test("/app/agent makes contact and event discovery explicit before submission", 
 
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);
-  assert.match(agentSource, /find the right people in your network/);
-  assert.match(agentSource, /the right events to join/);
+  assert.match(agentSource, /It can see your events, registration answers/);
+  assert.match(agentSource, /just say the goal/);
   assert.match(agentSource, /Ask Orbit about contacts, events, and relationship to-dos/);
   assert.match(agentSource, /data-orbit-agent-submit="true"/);
 });

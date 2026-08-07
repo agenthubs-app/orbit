@@ -4,9 +4,26 @@
     {
       "name": "orbits",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "repos/orbits"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "repos/orbits"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "designs",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3320",
+        "-d",
+        "docs/designs"
+      ],
+      "port": 3320
     }
   ]
 }

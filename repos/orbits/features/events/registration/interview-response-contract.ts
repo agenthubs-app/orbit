@@ -6,10 +6,8 @@ import {
 import type { AdaptiveNextQuestion } from "./adaptive-interview-service";
 
 export const EVENT_PROFILE_CORE_FIELDS = [
-  "positioning",
   "targetAttendees",
   "valueOffered",
-  "desiredOutcome",
 ] as const satisfies readonly EventParticipantProfileField[];
 
 export type EventProfileResponseVisibility =

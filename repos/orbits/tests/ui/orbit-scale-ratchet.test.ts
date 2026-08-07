@@ -67,12 +67,24 @@ interface ScaleHit {
   value: number;
 }
 
+// The scale governs React style objects. Pages that carry a stylesheet as a
+// template literal (`const X = \`… .foo { gap: 9px } …\``) are the same
+// "extracted string template, not a style object" case that excludes
+// orbit-reference-styles.tsx wholesale — and `gap: 9px` matches the same
+// regex as `gap: 9`. Blank out template-literal bodies (keeping newlines so
+// reported line numbers stay right) so CSS text does not count as a hit.
+function withoutTemplateLiterals(text: string): string {
+  return text.replace(/`(?:\\[\s\S]|[^\\`])*`/g, (block) =>
+    "`" + "\n".repeat((block.match(/\n/g) ?? []).length) + "`",
+  );
+}
+
 // Matches `<prop>: <number>` in a style object (e.g. `fontSize: 13.5`,
 // `gap: 6`). `\b` before the property name keeps this from matching a
 // differently-named property that merely ends in the same word (there are
 // none of those for these three props today, but it costs nothing).
 function findScaleViolations(file: string, prop: string, scale: Set<number>): ScaleHit[] {
-  const text = readFileSync(file, "utf8");
+  const text = withoutTemplateLiterals(readFileSync(file, "utf8"));
   const rel = relative(projectRoot, file);
   const re = new RegExp(`\\b${prop}\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)`, "g");
   const hits: ScaleHit[] = [];

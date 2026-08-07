@@ -99,7 +99,7 @@ test("authenticated participants can use adaptive registration generation", asyn
       return Response.json({
         output_text:
           providerCalls === 1
-            ? // 核心三题未答完时，服务端只允许模型从核心字段中出题
+            ? // 报名两题未答完时，服务端只允许模型从必答字段中出题
               // （见 remainingFieldsFor 的 core-first 排序）。
               JSON.stringify({
                 acknowledgment: "Your operator focus is clear.",

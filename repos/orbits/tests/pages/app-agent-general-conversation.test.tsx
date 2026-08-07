@@ -88,7 +88,7 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
 
   assert.match(agentSource, /message\.role === "user" \?/);
   assert.match(agentSource, /<AgentMarkdown text=\{message\.text\}/);
-  assert.match(agentSource, /inlinePanel && message\.items\.length > 0/);
+  assert.match(agentSource, /message\.items\.length > 0 \? \(/);
   assert.match(agentSource, /items:\s*\[\],\s*kind:\s*"people"/);
 });
 
@@ -98,8 +98,6 @@ test("/app/agent input explains the no-tool privacy boundary before sensitive co
   );
 
   assert.match(agentSource, /data-orbit-agent-privacy-boundary/);
-  assert.match(agentSource, /Normal chat does not send messages or execute external actions/);
-  assert.match(agentSource, /普通聊天不会发送消息或执行外部动作/);
-  assert.match(agentSource, /Actions still require confirmation/);
-  assert.match(agentSource, /aria-describedby=\{boundaryId\}/);
+  assert.match(agentSource, /external actions always need your confirmation/);
+  assert.match(agentSource, /涉及对外动作会先经你确认/);
 });

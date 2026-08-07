@@ -50,16 +50,16 @@ Registration cost is layered so the per-event wizard only asks what the event
 actually needs:
 
 - The universal profile owns identity. When the profile has a role or
-  organization, the wizard seeds `positioning` ("role @ organization") as an
-  already-answered turn and the per-event interview starts at the three intent
-  questions (who you want to meet, what outcome you want, what you can offer).
-  Answering the remaining adaptive questions stays optional; once the core
-  fields are complete the wizard offers finishing registration immediately.
+  organization, the wizard seeds `positioning` ("role @ organization") as
+  context, but it does not count toward registration progress. Pre-event
+  registration asks exactly two questions: who you want to meet and what you
+  can offer. The second answer submits registration immediately; deeper persona
+  fields belong after registration instead of blocking attendance.
   Seeded turns are unsigned: the wizard submits them as plain `answers` next
   to the signed `responses`, and the registration boundary only uses them to
   fill fields no verified response covers (stored as legacy participant
   snapshots, never overriding a verified answer). Admission-controlled events
-  do not seed at all — every core answer there must pass the signed
+  do not seed at all — both required answers there must pass the signed
   question-token check because organizers review the application.
 - The event detail page carries an anonymous quick-answer card (who you want
   to meet / what you can offer). Answers live only in `localStorage` on the

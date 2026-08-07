@@ -44,12 +44,20 @@ async function readRegistrationPayload(
   interviewResponses: readonly EventProfileResponseSnapshot[];
 }> {
   if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
-    return { answers: {}, interviewResponses: [] };
+    throw new InterviewQuestionTokenError(
+      "INTERVIEW_CORE_FIELDS_REQUIRED",
+      "The two required event-registration answers must be submitted as JSON.",
+    );
   }
 
   try {
     const body = (await request.json()) as unknown;
-    if (!isRecord(body)) return { answers: {}, interviewResponses: [] };
+    if (!isRecord(body)) {
+      throw new InterviewQuestionTokenError(
+        "INTERVIEW_CORE_FIELDS_REQUIRED",
+        "The two required event-registration answers are missing.",
+      );
+    }
     if (Array.isArray(body.responses)) {
       const submissions = body.responses.flatMap((value) => {
         if (
@@ -111,15 +119,30 @@ async function readRegistrationPayload(
         interviewResponses: mergedResponses,
       };
     }
+    const answers = isRecord(body.answers)
+      ? (body.answers as EventParticipantProfileAnswers)
+      : {};
+    const answerSnapshots = legacyResponsesFromAnswers(
+      answers,
+      new Date().toISOString(),
+    );
+    const missingCore = missingCoreProfileFields(answerSnapshots);
+    if (missingCore.length > 0) {
+      throw new InterviewQuestionTokenError(
+        "INTERVIEW_CORE_FIELDS_REQUIRED",
+        `Required event-registration answers are still missing: ${missingCore.join(", ")}.`,
+      );
+    }
     return {
-      answers: isRecord(body.answers)
-        ? (body.answers as EventParticipantProfileAnswers)
-        : {},
-      interviewResponses: [],
+      answers: answersFromProfileResponses(answerSnapshots),
+      interviewResponses: answerSnapshots,
     };
   } catch (error) {
     if (error instanceof InterviewQuestionTokenError) throw error;
-    return { answers: {}, interviewResponses: [] };
+    throw new InterviewQuestionTokenError(
+      "INTERVIEW_QUESTION_TOKEN_INVALID",
+      "The event-registration payload is not valid JSON.",
+    );
   }
 }
 

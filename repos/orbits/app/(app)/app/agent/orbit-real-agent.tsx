@@ -23,7 +23,6 @@ import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
-import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 
@@ -1500,32 +1499,19 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   const { language, t } = useOrbitLanguage();
 
   return (
-    <div className="orbit-agent-welcome" style={{ alignItems: "center", display: "flex", flexDirection: "column", justifyContent: "center", padding: "48px 8px 24px", textAlign: "center" }}>
-      <span className="avatar g-indigo orbit-agent-mark" style={{ alignItems: "center", borderRadius: "var(--r-lg)", display: "flex", fontSize: 0, height: 54, justifyContent: "center", width: 54 }}>
-        <Icon name="sparkle" size={26} color="var(--on-dark)" />
-      </span>
-      <h2 className="h-title" style={{ margin: "16px 0 6px" }}>
-        {t({ en: "I am iOrbit", zh: "我是 iOrbit" })}
-      </h2>
-      <p style={{ color: "var(--text-2)", fontSize: 14, lineHeight: 1.65, margin: "0 0 22px", maxWidth: 380 }}>
+    <div className="new-empty">
+      <span className="mk"><AgentStar size={22} /></span>
+      <h3>{t({ en: "What should iOrbit do for you?", zh: "你想让 iOrbit 做什么？" })}</h3>
+      <p>
         {t({
-          en: "Tell me what you want to do. I will find the right people in your network, the right events to join, and how to start the conversation.",
-          zh: "说出你想做的事，我帮你从人脉里找对的人、从活动里找对的局，并告诉你该怎么开口。",
+          en: "It can see your events, registration answers, contacts and appointments — just say the goal.",
+          zh: "它能看到你的活动、报名答案、人脉和约谈——直接说目标就行。",
         })}
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "min(420px, 100%)" }}>
+      <div className="chips">
         {viewModel.suggests.map((suggest) => (
-          <button
-            className="orbit-agent-suggestion"
-            key={suggest.label}
-            type="button"
-            onClick={() => onPick(suggest.q)}
-            style={{ alignItems: "center", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-md)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", gap: 12, padding: "13px 15px", textAlign: "left" }}
-          >
-            <Icon name={suggest.icon} size={17} color="var(--accent)" />
-            <span style={{ color: "var(--ink)", fontSize: 14, fontWeight: 600 }}>{agentSuggestLabel(suggest.label, language === "ja" ? "en" : language)}</span>
-            <div style={{ flex: 1 }} />
-            <Icon name="arrow" size={16} color="var(--text-4)" />
+          <button className="chip" key={suggest.label} onClick={() => onPick(suggest.q)} type="button">
+            {agentSuggestLabel(suggest.label, language === "ja" ? "en" : language)}
           </button>
         ))}
       </div>
@@ -1533,55 +1519,29 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   );
 }
 
-function AgentPeopleCard({ item, navigate, t }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void; t: Translate }) {
+// 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
+function AgentPeopleRow({ item, navigate, t }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void; t: Translate }) {
   const connection = item.connection;
-  const depth = depthFor(t);
-  const status = depth[connection.pipelineStatus] ?? depth.to_contact;
 
   return (
-    <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", padding: 15, textAlign: "left", width: "100%" }} onClick={() => navigate(`/home/cards/${connection.id}`)}>
-      <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
-        <Avatar letter={connection.initial} g={connection.g} size={46} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600 }}>{connection.displayName}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {[connection.title, connection.company].filter(Boolean).join(" · ")}
-          </div>
-        </div>
-        <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.match}%</div>
-          <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Match", zh: "匹配度" })}</div>
-        </div>
-      </div>
-      <div style={{ background: "var(--surface-3)", borderRadius: "var(--r-pill)", height: 6, marginTop: 12, overflow: "hidden" }}>
-        <span style={{ background: "var(--accent-grad-bar)", display: "block", height: "100%", width: `${item.match}%` }} />
-      </div>
-      <div style={{ alignItems: "center", display: "flex", gap: 8, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: status.soft, borderRadius: "var(--r-pill)", color: status.text, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
-          <span style={{ background: status.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
-          {status.label}
-        </span>
-        {connection.industry ? (
-          <span className="chip" style={{ height: 24, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{connection.industry}</span>
-        ) : null}
-      </div>
-      <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
-      <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
-        <Icon name="message" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Why this person", zh: "推荐依据" })}</div>
-          <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.opener}</div>
-        </div>
-      </div>
-      <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
-        {t({ en: "View contact", zh: "查看名片" })}
-        <Icon name="chevR" size={14} />
-      </div>
-    </button>
+    <div className="p-person">
+      <Avatar g={connection.g} letter={connection.initial} size={38} />
+      <span className="w">
+        <b>{connection.displayName}</b>
+        <span>{[connection.title, connection.company].filter(Boolean).join(" · ")}</span>
+      </span>
+      <span className="p-acts">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/home/cards/${connection.id}`)} type="button">
+          {t({ en: "View", zh: "查看" })}
+        </button>
+      </span>
+      {item.reason ? <span className="why">{item.reason}</span> : null}
+      {item.opener ? <span className="why">{item.opener}</span> : null}
+    </div>
   );
 }
 
-function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEventResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
+function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
   const event = item.event;
   const date = parseDate(event.startsAt);
   const weekday = date ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date) : "";
@@ -1590,215 +1550,75 @@ function AgentEventCard({ item, language, navigate, t }: { item: OrbitAgentEvent
     : t({ en: "Time TBD", zh: "时间待定" });
 
   return (
-    <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", overflow: "hidden", padding: 0, textAlign: "left", width: "100%" }} onClick={() => navigate(`/events/${event.code}`)}>
-      <div style={{ display: "flex", gap: 16, padding: 15 }}>
-        <EventCover g={gradientFromString(event.code)} imageAlt={event.name} imageSizes="60px" imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 22 }} style={{ borderRadius: "var(--r-md)", flexShrink: 0, height: 60, width: 60 }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ alignItems: "flex-start", display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{event.name}</div>
-              <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 3 }}>{dateLabel}</div>
-            </div>
-            <div style={{ flexShrink: 0, textAlign: "right" }}>
-              <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{item.score}</div>
-              <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Score", zh: "匹配分" })}</div>
-            </div>
-          </div>
-          <div style={{ alignItems: "center", color: "var(--text-3)", display: "flex", fontSize: 12, gap: 8, marginTop: 8 }}>
-            <Icon name="pin" size={13} />
-            {event.place}
-          </div>
-        </div>
-      </div>
-      <div style={{ padding: "0 15px 15px" }}>
-        <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{item.reason}</div>
-        <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
-          <Icon name="sparkle" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div>
-            <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "How to network on site", zh: "怎么在现场社交" })}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.howto}</div>
-          </div>
-        </div>
-        <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
-          {t({ en: "View event", zh: "查看活动" })}
-          <Icon name="chevR" size={14} />
-        </div>
-      </div>
-    </button>
+    <div className="p-person">
+      <EventCover g={gradientFromString(event.code)} imageAlt={event.name} imageSizes="38px" imageUrl={eventCoverPhoto(event.code)} monogram={eventCoverPhoto(event.code) ? null : { text: event.name.slice(0, 1), size: 15 }} style={{ borderRadius: "var(--r-sm)", flexShrink: 0, height: 38, width: 38 }} />
+      <span className="w">
+        <b>{event.name}</b>
+        <span>{[dateLabel, event.place].filter(Boolean).join(" · ")}</span>
+      </span>
+      <span className="p-acts">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/events/${event.code}`)} type="button">
+          {t({ en: "View", zh: "查看" })}
+        </button>
+      </span>
+      {item.reason ? <span className="why">{item.reason}</span> : null}
+      {item.howto ? <span className="why">{item.howto}</span> : null}
+    </div>
   );
 }
 
-// 待办/行程卡片：到期 + 优先级 + 联系人 + 建议动作，点击进入跟进页复核。
-function AgentTodoCard({ item, navigate, t }: { item: OrbitAgentTodoResultView; navigate: (href: string) => void; t: Translate }) {
-  const priorityColor =
-    item.priority === t({ en: "Today", zh: "今天" })
-      ? { color: "var(--amber)", soft: "var(--amber-soft)" }
-      : item.priority === t({ en: "This week", zh: "本周" })
-        ? { color: "var(--sky)", soft: "var(--sky-soft)" }
-        : { color: "var(--text-3)", soft: "var(--surface-2)" };
-
+function AgentTodoRow({ item, navigate, t }: { item: OrbitAgentTodoResultView; navigate: (href: string) => void; t: Translate }) {
   return (
-    <button type="button" className="card card-hover" style={{ cursor: "pointer", display: "block", fontFamily: "var(--ff)", padding: 15, textAlign: "left", width: "100%" }} onClick={() => navigate("/home/schedule")}>
-      <div style={{ alignItems: "center", display: "flex", gap: 12 }}>
-        <Avatar letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} g={gradientFromString(item.contactName || item.id)} size={44} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "var(--ink)", fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {[item.contactName, item.organization].filter(Boolean).join(" · ")}
-          </div>
-        </div>
-        <div style={{ flexShrink: 0, textAlign: "right" }}>
-          <div style={{ color: "var(--accent)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.due}</div>
-          <div className="mono" style={{ color: "var(--text-4)", fontSize: 11 }}>{t({ en: "Due", zh: "到期" })}</div>
-        </div>
-      </div>
-      <div style={{ alignItems: "center", display: "flex", gap: 8, marginTop: 11 }}>
-        <span style={{ alignItems: "center", background: priorityColor.soft, borderRadius: "var(--r-pill)", color: priorityColor.color, display: "inline-flex", fontSize: 12, fontWeight: 600, gap: 4, height: 24, padding: "0 10px" }}>
-          <span style={{ background: priorityColor.color, borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
-          {item.priority}
-        </span>
-        {item.sourceLabel ? (
-          <span className="chip" style={{ height: 24, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.sourceLabel}</span>
-        ) : null}
-      </div>
-      {item.reason ? (
-        <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6, marginTop: 11 }}>{item.reason}</div>
-      ) : null}
-      {item.task ? (
-        <div style={{ background: "var(--accent-softer)", borderRadius: "var(--r-sm)", display: "flex", gap: 8, marginTop: 11, padding: 11 }}>
-          <Icon name="clock" size={15} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>{t({ en: "Suggested action", zh: "建议动作" })}</div>
-            <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.5, marginTop: 2 }}>{item.task}</div>
-          </div>
-        </div>
-      ) : null}
-      <div style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 4, justifyContent: "flex-end", marginTop: 12 }}>
-        {t({ en: "Open schedule", zh: "查看日程" })}
-        <Icon name="chevR" size={14} />
-      </div>
-    </button>
+    <div className="p-person">
+      <Avatar g={gradientFromString(item.contactName || item.id)} letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} size={38} />
+      <span className="w">
+        <b>{item.title}</b>
+        <span>{[item.contactName, item.organization, item.due].filter(Boolean).join(" · ")}</span>
+      </span>
+      <span className="p-acts">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate("/home/schedule")} type="button">
+          {t({ en: "View", zh: "查看" })}
+        </button>
+      </span>
+      {item.reason ? <span className="why">{item.reason}</span> : null}
+      {item.task ? <span className="why">{item.task}</span> : null}
+    </div>
   );
 }
 
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
-  return (
-    <div className="orbit-agent-result-cards" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {panel.items.map((item, index) =>
-        isPeopleResult(item) ? (
-          <AgentPeopleCard key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
-        ) : isTodoResult(item) ? (
-          <AgentTodoCard key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
-        ) : (
-          <AgentEventCard key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
-        ),
-      )}
-    </div>
-  );
-}
-
-// custom-shadow: the composer's violet focus glow is a distinct brand accent
-// treatment, not a generic elevation shadow — the flat --sh-* tokens (which
-// go to `none` in the light theme) would remove this always-on affordance.
-const AGENT_COMPOSER_GLOW =
-  "0 18px 50px rgba(99,89,233,0.12), 0 2px 8px rgba(18,18,28,0.05)";
-// custom-shadow: saturated accent-magenta halo signals "ready to send" —
-// a state cue, not decorative elevation, so it stays independent of theme.
-const AGENT_SEND_READY_GLOW = "0 8px 18px rgba(99,76,226,0.28)";
-
-function ChatBox({
-  big,
-  busy,
-  onChange,
-  onSend,
-  surface,
-  value,
-}: {
-  big?: boolean;
-  busy: boolean;
-  onChange: (value: string) => void;
-  onSend: () => void;
-  surface: "desktop" | "mobile";
-  value: string;
-}) {
-  const { t } = useOrbitLanguage();
-  const isBlank = !value.trim();
-  const boundaryId = `orbit-agent-input-boundary-${surface}`;
+  const meta =
+    panel.kind === "people"
+      ? t({ en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
+      : panel.kind === "events"
+        ? t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` })
+        : t({ en: `${panel.items.length} items`, zh: `${panel.items.length} 条` });
 
   return (
-    <div
-      aria-busy={busy}
-      className="orbit-agent-composer"
-      data-orbit-agent-request-state={busy ? "pending" : "idle"}
-      style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: "var(--r-lg)", boxShadow: AGENT_COMPOSER_GLOW, padding: big ? "18px 18px 12px" : "12px 12px 8px", width: "100%" }}
-    >
-      <textarea
-        className="orbit-agent-composer-input"
-        aria-describedby={boundaryId}
-        aria-label={t({
-          en: "Ask Orbit about contacts, events, and relationship to-dos",
-          zh: "询问 Orbit 人脉、活动与关系待办",
-        })}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey && !busy) {
-            event.preventDefault();
-            onSend();
-          }
-        }}
-        placeholder={t({ en: "Ask Orbit: what you want to do, who to meet, which event to attend…", zh: "问问 Orbit：想做什么、想认识谁、想去什么活动…" })}
-        rows={big ? 2 : 1}
-        style={{ background: "transparent", border: "none", color: "var(--ink)", fontFamily: "var(--ff)", fontSize: big ? 17 : 15, lineHeight: 1.5, outline: "none", padding: "2px 4px", resize: "none", width: "100%" }}
-      />
-      <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginTop: big ? 8 : 4 }}>
-        <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span className="orbit-agent-capability" style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-pill)", color: "var(--accent)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 4, height: 32, padding: "0 12px" }}>
-            <Icon name="sparkle" size={14} />
-            iOrbit
-          </span>
-          <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: "Contacts · Events · Business value", zh: "人脉 · 活动 · 商业价值" })}</span>
-        </div>
-        <button
-          aria-disabled={busy || isBlank}
-          aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })}
-          className="orbit-agent-send"
-          data-orbit-agent-submit="true"
-          type="button"
-          onClick={onSend}
-          disabled={busy || isBlank}
-          style={{ alignItems: "center", background: !busy && !isBlank ? "var(--accent-grad)" : "var(--surface-3)", border: "none", borderRadius: "var(--r-sm)", boxShadow: !busy && !isBlank ? AGENT_SEND_READY_GLOW : "none", color: !busy && !isBlank ? "var(--on-dark)" : "var(--text-4)", cursor: !busy && !isBlank ? "pointer" : "default", display: "flex", height: 44, justifyContent: "center", width: 44 }}
-        >
-          <Icon name="arrow" size={19} style={{ transform: "rotate(-90deg)" }} />
-        </button>
+    <div className="panel">
+      <div className="panel-head">
+        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : panel.kind === "events" ? "calendar" : "clock"} size={14} />
+        <b>{panel.panelTitle}</b>
+        <span className="meta">{meta}</span>
       </div>
-      <p
-        data-orbit-agent-privacy-boundary
-        id={boundaryId}
-        style={{ color: "var(--text-4)", fontSize: 12, lineHeight: 1.5, margin: "6px 4px 0" }}
-      >
-        {t({
-          en: "Normal chat does not send messages or execute external actions. Actions still require confirmation.",
-          zh: "普通聊天不会发送消息或执行外部动作；任何操作仍需确认。",
-        })}
-      </p>
+      <div className="panel-body">
+        {panel.items.map((item, index) =>
+          isPeopleResult(item) ? (
+            <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
+          ) : isTodoResult(item) ? (
+            <AgentTodoRow key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
+          ) : (
+            <AgentEventRow key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
+          ),
+        )}
+      </div>
     </div>
-  );
-}
-
-function TypingDots() {
-  return (
-    <span style={{ display: "inline-flex", gap: 4 }}>
-      {[0, 1, 2].map((index) => (
-        <span key={index} style={{ animation: `blink 1s ${index * 0.2}s infinite`, background: "var(--text-4)", borderRadius: "var(--r-pill)", height: 6, width: 6 }} />
-      ))}
-    </span>
   );
 }
 
 // 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
 // 回调，等待可能好几秒。为了不让用户对着一个静止的点发呆，这里按时间推进一串
-// “正在…”阶段文案（理解→检索→深度思考→整理），配合跳动圆点，营造进度感。
+// “正在…”阶段文案（理解→检索→深度思考→整理），配合旋转指示，营造进度感。
 // 纯展示：文案与真实进度无严格对应，只按固定节奏往后走并停在最后一个。
 const THINKING_PHASES: readonly Copy[] = [
   { en: "Understanding your request", zh: "正在理解你的需求" },
@@ -1808,6 +1628,15 @@ const THINKING_PHASES: readonly Copy[] = [
 ];
 
 const THINKING_PHASE_INTERVAL_MS = 2200;
+
+// 设计稿的四角星标（home-console-green.html 中 iOrbit 的品牌记号）。
+export function AgentStar({ size = 15 }: { size?: number }) {
+  return (
+    <svg aria-hidden fill="currentColor" height={size} viewBox="0 0 24 24" width={size}>
+      <path d="M12 2l1.9 5.8L20 9.7l-5 3.9 1.7 6.1L12 16.4l-4.7 3.3L9 13.6 4 9.7l6.1-1.9L12 2z" />
+    </svg>
+  );
+}
 
 function ThinkingIndicator({ t }: { t: Translate }) {
   const [phase, setPhase] = useState(0);
@@ -1824,16 +1653,402 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   }, []);
 
   return (
-    <span aria-live="polite" className="orbit-agent-thinking-indicator" style={{ alignItems: "center", display: "inline-flex", gap: 8 }}>
-      <span style={{ color: "var(--text-2)", fontSize: 14 }}>{t(THINKING_PHASES[phase])}</span>
-      <TypingDots />
+    <span aria-live="polite" className="thinking orbit-agent-thinking-indicator">
+      <span className="sp" />
+      {t(THINKING_PHASES[phase])}
     </span>
   );
 }
 
+/**
+ * 全局悬浮 iOrbit：右下小球 ⇄ 底部居中毛玻璃输入（设计定稿 home-console-green.html）。
+ * 发送即进入真实的 /api/ai/conversations 管线（onAsk）。
+ */
+function OrbitAgentOrb({
+  busy,
+  chips,
+  onAsk,
+  t,
+}: {
+  busy: boolean;
+  chips: readonly { label: string; query: string }[];
+  onAsk: (query: string) => void;
+  t: Translate;
+}) {
+  const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(false);
+  const [value, setValue] = useState("");
+  const [hint, setHint] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const hintOrderRef = useRef<string[]>([]);
+
+  const hints = useMemo(
+    () => [
+      ...chips.map((chip) => chip.label),
+      t({ en: "Who should I prioritize at my next event?", zh: "下一场活动我该重点找谁聊？" }),
+      t({ en: "Add my next step to my follow-ups", zh: "把我的下一步加到待办里" }),
+      t({ en: "Which events this month are worth going to?", zh: "这个月还有哪些值得去的活动？" }),
+    ],
+    [chips, t],
+  );
+
+  const nextHint = useCallback(() => {
+    if (!hintOrderRef.current.length) {
+      const order = [...hints];
+      for (let i = order.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      hintOrderRef.current = order;
+    }
+    return hintOrderRef.current.pop() ?? "";
+  }, [hints]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    setHint(nextHint());
+    // 提示语每 3.5s 轮换（用户已输入就不打扰）；不引入人为延时。
+    const timer = window.setInterval(() => {
+      if (inputRef.current?.value) return;
+      setHint(nextHint());
+    }, 3500);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    inputRef.current?.focus();
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [nextHint, open]);
+
+  const openOrb = () => {
+    setOpen(true);
+    setSeen(true);
+  };
+  const closeOrb = () => setOpen(false);
+  const submit = () => {
+    if (busy) return;
+    const query = value.trim() || hint;
+    if (!query) return;
+    setValue("");
+    setOpen(false);
+    onAsk(query);
+  };
+
+  return (
+    <>
+      <div className="orb-dock">
+        <button
+          aria-expanded={open}
+          aria-label={t({ en: "Open iOrbit", zh: "打开 iOrbit" })}
+          className={`orb-ball${open ? " hide" : ""}`}
+          data-orbit-agent-orb-ball
+          onClick={openOrb}
+          type="button"
+        >
+          <AgentStar size={24} />
+          {seen ? null : <span className="pip" />}
+        </button>
+      </div>
+      <div
+        className={`orb-overlay${open ? "" : " hide"}`}
+        data-orbit-agent-orb-overlay
+        onClick={(event) => {
+          if (!(event.target instanceof Element) || !event.target.closest(".orb-panel")) closeOrb();
+        }}
+      >
+        <div aria-label={t({ en: "Ask iOrbit", zh: "iOrbit 快速提问" })} aria-modal="true" className="orb-panel" role="dialog">
+          <span aria-hidden className="orb-halo"><i className="h1" /><i className="h2" /><i className="h3" /></span>
+          <div className="orb-top">
+            <div className="orb-chips">
+              {chips.slice(0, 2).map((chip) => (
+                <button
+                  className="chip"
+                  key={chip.label}
+                  onClick={() => {
+                    closeOrb();
+                    onAsk(chip.query);
+                  }}
+                  type="button"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            <button aria-label={t({ en: "Close", zh: "收起" })} className="orb-close" onClick={closeOrb} type="button">
+              <Icon name="x" size={15} />
+            </button>
+          </div>
+          <form
+            className="orb-row"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            <span className="lead"><Icon name="message" size={16} /></span>
+            <input
+              aria-label={t({
+                en: "Ask Orbit about contacts, events, and relationship to-dos",
+                zh: "询问 Orbit 人脉、活动与关系待办",
+              })}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder={hint}
+              ref={inputRef}
+              type="text"
+              value={value}
+            />
+            <button aria-label={t({ en: "Send", zh: "发送" })} className="orb-send hit-44" data-orbit-agent-submit="true" type="submit">
+              <Icon name="arrow" size={15} style={{ transform: "rotate(-45deg)" }} />
+            </button>
+          </form>
+          <p className="orb-note" data-orbit-agent-privacy-boundary>
+            {t({
+              en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.",
+              zh: "发送后进入 iOrbit 对话 · 涉及对外动作会先经你确认",
+            })}
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ═══ 工作台整页样式：docs/designs/journey/home-console-green.html 1:1 迁移，
+   全部限定在 [data-orbit-real-page="agent"] 作用域内。═══ */
+const CONSOLE_STYLES = `
+[data-orbit-real-page="agent"] {
+  --sidebar-w: ${ORBIT_LEFT_SIDEBAR_WIDTH}px;
+  --agent-body-size: 15px;
+  --console-tight: 'Inter Tight', Inter, system-ui, -apple-system, 'PingFang SC', sans-serif;
+  --glass: rgba(255,255,255,.66);
+  --glass-border: #dbe7e4;
+  font-size: 15px;
+  line-height: 1.65;
+}
+[data-orbit-real-page="agent"] .hide { display: none !important; }
+[data-orbit-real-page="agent"] .h-display { font-family: var(--console-tight); font-weight: 600; letter-spacing: 0; line-height: 1.02; color: var(--ink); }
+[data-orbit-real-page="agent"] .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
+[data-orbit-real-page="agent"] .glass { background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r-md); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); }
+[data-orbit-real-page="agent"] .ai-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-press); }
+[data-orbit-real-page="agent"] .badge { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--r-pill); font-size: 12px; font-weight: 600; white-space: nowrap; }
+[data-orbit-real-page="agent"] .badge-ok { background: var(--live-soft); color: var(--live-text, #0E7A3C); }
+[data-orbit-real-page="agent"] .badge-wait { background: var(--amber-soft); color: var(--amber-text, #8A5A00); }
+[data-orbit-real-page="agent"] .badge-muted { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+[data-orbit-real-page="agent"] .chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 500; background: var(--surface-2); color: var(--text-2); border: 1px solid transparent; white-space: nowrap; transition: background .14s, color .14s, border-color .14s; cursor: pointer; }
+[data-orbit-real-page="agent"] .chip:hover { color: var(--accent-press); border-color: var(--accent); background: var(--surface); }
+[data-orbit-real-page="agent"] .avatar.avatar { font-family: var(--console-tight); background: linear-gradient(140deg, var(--av-a, #2E8A93), var(--av-b, #0e4b52)); box-shadow: none; color: #fff; border: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-weight: 600; flex-shrink: 0; }
+[data-orbit-real-page="agent"] .avatar.avatar .avatar-letter { color: #fff; }
+[data-orbit-real-page="agent"] .avatar.avatar .avatar-orbit { display: none; }
+[data-orbit-real-page="agent"] .g-teal { --av-a:#2E8A93; --av-b:#0e4b52; }
+[data-orbit-real-page="agent"] .g-slate { --av-a:#7d92ad; --av-b:#40536b; }
+[data-orbit-real-page="agent"] .g-sand { --av-a:#c39a63; --av-b:#8a6b3a; }
+[data-orbit-real-page="agent"] .g-moss { --av-a:#6ba585; --av-b:#3f7d5c; }
+[data-orbit-real-page="agent"] .g-plum { --av-a:#a487a0; --av-b:#7a5a74; }
+
+/* ═══ 骨架 ═══ */
+[data-orbit-real-page="agent"] .ws-body { display: flex; flex: 1; min-height: 0; }
+[data-orbit-real-page="agent"] .agent-history.agent-history { background: #fafbfb !important; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+[data-orbit-real-page="agent"] .agent-history-actions { padding: 12px 12px 10px; }
+[data-orbit-real-page="agent"] .orbit-agent-new-chat { align-items: center; background: var(--accent-softer); border: 1px solid transparent; border-radius: 9px; color: var(--ink); font-size: 14px; font-weight: 650; gap: 9px; height: 40px; justify-content: flex-start; padding: 0 12px; width: 100%; display: inline-flex; cursor: pointer; }
+[data-orbit-real-page="agent"] .orbit-agent-new-chat:hover { background: var(--accent-soft); border-color: rgba(23,106,115,.2); }
+[data-orbit-real-page="agent"] .agent-history-heading { padding: 8px 16px 10px; }
+[data-orbit-real-page="agent"] .agent-history-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
+[data-orbit-real-page="agent"] .orbit-agent-history-group { padding: 12px 10px 4px; font-size: 10.5px; }
+[data-orbit-real-page="agent"] .ws-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+[data-orbit-real-page="agent"] .ws-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+[data-orbit-real-page="agent"] .ws-inner { max-width: 900px; margin: 0 auto; padding: 30px 32px 132px; }
+
+/* ═══ Dashboard ═══ */
+[data-orbit-real-page="agent"] .hub-head { align-items: center; display: flex; gap: 18px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .hub-head .avatar { font-size: 26px !important; }
+[data-orbit-real-page="agent"] .hub-head .who { flex: 1; min-width: 220px; }
+[data-orbit-real-page="agent"] .hub-head h1 { font-size: 28px; margin: 0; }
+[data-orbit-real-page="agent"] .hub-head .sub { color: var(--text-2); font-size: 14.5px; margin-top: 5px; }
+[data-orbit-real-page="agent"] .hub-stats { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; display: flex; gap: 30px; margin-top: 18px; padding: 14px 20px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .hub-stats .v { color: var(--ink); font-family: var(--console-tight); font-size: 24px; font-weight: 600; line-height: 1.1; }
+[data-orbit-real-page="agent"] .hub-stats .k { color: var(--text-3); font-size: 12.5px; margin-top: 1px; }
+[data-orbit-real-page="agent"] .brief { position: relative; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); padding: 20px; margin-top: 18px;
+  background: radial-gradient(64% 100% at 90% 0%, rgba(23,106,115,.13), transparent 58%), radial-gradient(48% 80% at 2% 100%, rgba(180,83,9,.07), transparent 58%), var(--accent-softer); }
+[data-orbit-real-page="agent"] .brief-head { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .brief-mark { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+[data-orbit-real-page="agent"] .brief-head b { font-family: var(--console-tight); font-size: 15px; color: var(--ink); font-weight: 600; }
+[data-orbit-real-page="agent"] .brief-head .st { font-size: 12px; color: var(--text-3); }
+[data-orbit-real-page="agent"] .brief-lede { font-size: 14.5px; color: var(--text-2); margin: 0 0 13px; max-width: 62ch; line-height: 1.72; }
+[data-orbit-real-page="agent"] .brief-lede b { color: var(--ink); }
+[data-orbit-real-page="agent"] .brief-suggest { padding: 13px 15px; display: flex; align-items: center; gap: 13px; flex-wrap: wrap; margin-bottom: 12px; }
+[data-orbit-real-page="agent"] .brief-suggest .txt { flex: 1; min-width: 230px; }
+[data-orbit-real-page="agent"] .brief-suggest .txt b { display: block; font-size: 14.5px; color: var(--ink); }
+[data-orbit-real-page="agent"] .brief-suggest .txt span { font-size: 13px; color: var(--text-2); }
+[data-orbit-real-page="agent"] .brief-signal-quiet { font-size: 12.5px; color: var(--text-3); background: none; border: 0; cursor: pointer; padding: 4px 6px; border-radius: var(--r-xs); }
+[data-orbit-real-page="agent"] .brief-signal-quiet:hover { color: var(--ink); background: rgba(255,255,255,.7); }
+[data-orbit-real-page="agent"] .brief-refresh { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-4); background: none; border: 0; cursor: pointer; padding: 2px 0; margin-bottom: 10px; }
+[data-orbit-real-page="agent"] .brief-refresh:hover { color: var(--text-2); }
+[data-orbit-real-page="agent"] .brief-input { display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 16px; border-radius: var(--r-md); }
+[data-orbit-real-page="agent"] .brief-input input { flex: 1; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; outline: none; min-width: 0; }
+[data-orbit-real-page="agent"] .brief-input input::placeholder { color: var(--text-4); transition: opacity .2s; }
+[data-orbit-real-page="agent"] .brief-send { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--accent); color: #fff; display: grid; place-items: center; transition: background .15s, transform .08s; border: 0; cursor: pointer; }
+[data-orbit-real-page="agent"] .brief-send:hover { background: var(--accent-hover); }
+[data-orbit-real-page="agent"] .brief-send:active { transform: scale(.95); }
+[data-orbit-real-page="agent"] .brief-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
+[data-orbit-real-page="agent"] .brief-note { font-size: 11.5px; color: var(--text-4); margin: 11px 0 0; }
+[data-orbit-real-page="agent"] .sec-title { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 11px; }
+[data-orbit-real-page="agent"] .sec-title h2 { font-family: var(--console-tight); font-size: 16.5px; font-weight: 600; color: var(--ink); margin: 0; }
+[data-orbit-real-page="agent"] .sec-title span { font-size: 12.5px; color: var(--text-4); }
+[data-orbit-real-page="agent"] .appt { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 17px 19px; }
+[data-orbit-real-page="agent"] .appt-when { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 11px 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); align-self: start; min-width: 100px; }
+[data-orbit-real-page="agent"] .appt-when .d { font-family: var(--console-tight); font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+[data-orbit-real-page="agent"] .appt-when .t { font-size: 13px; font-weight: 600; color: var(--accent-press); }
+[data-orbit-real-page="agent"] .appt-when .len { font-size: 11px; color: var(--text-3); font-family: var(--ff-mono); }
+[data-orbit-real-page="agent"] .appt-when .in { font-size: 11px; font-weight: 600; color: var(--amber-text, #8A5A00); background: var(--amber-soft); border-radius: var(--r-pill); padding: 1px 9px; margin-top: 5px; }
+[data-orbit-real-page="agent"] .appt-main { min-width: 0; }
+[data-orbit-real-page="agent"] .appt-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .appt-title-row b { font-size: 15.5px; font-weight: 600; color: var(--ink); }
+[data-orbit-real-page="agent"] .appt-who { display: flex; align-items: center; gap: 11px; margin-top: 10px; }
+[data-orbit-real-page="agent"] .appt-actions { display: flex; gap: 9px; margin-top: 12px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
+[data-orbit-real-page="agent"] .act { padding: 16px 17px; display: flex; flex-direction: column; gap: 9px; transition: border-color .15s; }
+[data-orbit-real-page="agent"] .act:hover { border-color: var(--border-2); }
+[data-orbit-real-page="agent"] .act.span2 { grid-column: span 2; }
+[data-orbit-real-page="agent"] .act-top { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="agent"] .act-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .ic-teal { background: var(--accent-soft); color: var(--accent); }
+[data-orbit-real-page="agent"] .ic-green { background: var(--live-soft); color: var(--live-text, #0E7A3C); }
+[data-orbit-real-page="agent"] .ic-amber { background: var(--amber-soft); color: var(--amber-text, #8A5A00); }
+[data-orbit-real-page="agent"] .ic-gray { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+[data-orbit-real-page="agent"] .act-top b { font-size: 15px; color: var(--ink); font-weight: 600; }
+[data-orbit-real-page="agent"] .act-badge { margin-left: auto; font-size: 11px; font-weight: 700; background: var(--signal, #C8323B); color: #fff; min-width: 20px; height: 20px; border-radius: var(--r-pill); display: inline-grid; place-items: center; padding: 0 6px; }
+[data-orbit-real-page="agent"] .act p { font-size: 13.5px; color: var(--text-2); flex: 1; margin: 0; }
+[data-orbit-real-page="agent"] .act p b { color: var(--ink); font-weight: 600; }
+[data-orbit-real-page="agent"] .act .btn { align-self: flex-start; }
+[data-orbit-real-page="agent"] .act.ai { border-color: var(--glass-border); background: radial-gradient(80% 120% at 100% 0%, rgba(23,106,115,.1), transparent 55%), var(--glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
+[data-orbit-real-page="agent"] .act .ai-chip { margin-left: auto; }
+[data-orbit-real-page="agent"] .stage-row { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; }
+[data-orbit-real-page="agent"] .stage { display: flex; align-items: center; }
+[data-orbit-real-page="agent"] .stage .s-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 4px 11px; }
+[data-orbit-real-page="agent"] .stage.done .s-dot { color: var(--live-text, #0E7A3C); background: var(--live-soft); border-color: transparent; }
+[data-orbit-real-page="agent"] .stage.now .s-dot { color: #fff; background: var(--accent); border-color: transparent; }
+[data-orbit-real-page="agent"] .stage .s-link { width: 14px; height: 1.5px; background: var(--border-2); }
+[data-orbit-real-page="agent"] .journeys { overflow: hidden; }
+[data-orbit-real-page="agent"] .j-row { width: 100%; text-align: left; display: flex; align-items: center; gap: 14px; padding: 14px 18px; transition: background .15s; background: none; border: 0; cursor: pointer; font: inherit; color: inherit; }
+[data-orbit-real-page="agent"] .j-row:hover { background: var(--accent-softer); }
+[data-orbit-real-page="agent"] .j-row + .j-row { border-top: 1px solid var(--border); }
+[data-orbit-real-page="agent"] .j-date { width: 42px; border-radius: var(--r-sm); overflow: hidden; text-align: center; flex: 0 0 auto; background: var(--surface-3); border: 1px solid var(--border); }
+[data-orbit-real-page="agent"] .j-date .m { display: block; font-size: 10px; font-weight: 600; color: var(--text-2); padding: 2px 0 0; }
+[data-orbit-real-page="agent"] .j-date .d { display: block; font-family: var(--console-tight); font-weight: 600; font-size: 15px; color: var(--ink); padding: 0 0 3px; }
+[data-orbit-real-page="agent"] .j-main { flex: 1; min-width: 0; }
+[data-orbit-real-page="agent"] .j-main b { display: block; font-size: 14.5px; color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-orbit-real-page="agent"] .j-main span { font-size: 12.5px; color: var(--text-2); }
+[data-orbit-real-page="agent"] .j-arrow { color: var(--text-4); flex: 0 0 auto; }
+
+/* ═══ 对话页 ═══ */
+[data-orbit-real-page="agent"] .thread-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+[data-orbit-real-page="agent"] .btn-back { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--text-2); display: grid; place-items: center; flex: 0 0 auto; transition: border-color .15s, color .15s, background .15s; cursor: pointer; }
+[data-orbit-real-page="agent"] .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-softer); }
+[data-orbit-real-page="agent"] .thread-bar .title { font-family: var(--console-tight); font-size: 16px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="agent"] .thread-bar .when { font-size: 12px; color: var(--text-4); font-family: var(--ff-mono); margin-left: auto; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .thread { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="agent"] .msg-user-row { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-end; gap: 8px; }
+[data-orbit-real-page="agent"] .msg-user-row .orbit-agent-message-copy { opacity: 0; transition: opacity .15s; }
+[data-orbit-real-page="agent"] .msg-user-row:hover .orbit-agent-message-copy { opacity: 1; }
+[data-orbit-real-page="agent"] .msg-user { background: var(--accent-soft); color: var(--ink); border-radius: var(--r-md) var(--r-md) 4px var(--r-md); padding: 11px 15px; font-size: var(--agent-body-size); }
+[data-orbit-real-page="agent"] .msg-a { display: flex; gap: 12px; }
+[data-orbit-real-page="agent"] .msg-a .mk { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; flex: 0 0 auto; margin-top: 2px; }
+[data-orbit-real-page="agent"] .msg-a .body { flex: 1; min-width: 0; }
+[data-orbit-real-page="agent"] .msg-a .body .orbit-agent-markdown { font-size: var(--agent-body-size); color: var(--text); line-height: 1.7; }
+[data-orbit-real-page="agent"] .msg-note { align-items: center; background: var(--amber-soft); border-radius: var(--r-sm); color: var(--amber-text, #8A5A00); display: inline-flex; font-size: 13px; font-weight: 600; gap: 8px; margin-bottom: 10px; padding: 7px 12px; }
+[data-orbit-real-page="agent"] .msg-tools { display: flex; justify-content: flex-end; margin-top: 8px; opacity: 0; transition: opacity .15s; }
+[data-orbit-real-page="agent"] .msg-a:hover .msg-tools { opacity: 1; }
+[data-orbit-real-page="agent"] .thinking { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-3); }
+[data-orbit-real-page="agent"] .thinking .sp { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--accent); animation: orbit-agent-spin .8s linear infinite; }
+@keyframes orbit-agent-spin { to { transform: rotate(360deg); } }
+[data-orbit-real-page="agent"] .new-empty { text-align: center; padding: 60px 0 20px; }
+[data-orbit-real-page="agent"] .new-empty .mk { width: 46px; height: 46px; border-radius: var(--r-md); background: var(--accent); color: #fff; display: grid; place-items: center; margin: 0 auto 14px; }
+[data-orbit-real-page="agent"] .new-empty h3 { font-family: var(--console-tight); font-size: 20px; font-weight: 600; color: var(--ink); margin: 0; }
+[data-orbit-real-page="agent"] .new-empty p { font-size: 14px; color: var(--text-2); margin: 6px 0 0; }
+[data-orbit-real-page="agent"] .new-empty .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+[data-orbit-real-page="agent"] .panel { margin-top: 13px; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+[data-orbit-real-page="agent"] .panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+[data-orbit-real-page="agent"] .panel-head b { font-size: 13px; color: var(--ink); font-weight: 600; }
+[data-orbit-real-page="agent"] .panel-head .meta { font-size: 12px; color: var(--text-3); margin-left: auto; }
+[data-orbit-real-page="agent"] .panel-body { padding: 6px 14px 12px; }
+[data-orbit-real-page="agent"] .p-person { display: flex; align-items: center; gap: 11px; padding: 11px 0; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .p-person + .p-person { border-top: 1px dashed var(--border-2); }
+[data-orbit-real-page="agent"] .p-person .w { flex: 1; min-width: 160px; }
+[data-orbit-real-page="agent"] .p-person .w b { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
+[data-orbit-real-page="agent"] .p-person .w span { font-size: 12.5px; color: var(--text-2); }
+[data-orbit-real-page="agent"] .p-person .why { flex-basis: 100%; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-left: 2px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+[data-orbit-real-page="agent"] .p-acts { display: flex; gap: 8px; }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] { border-top: 0; margin-top: 11px; padding-top: 0; font-size: 12.5px; color: var(--text-3); }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); padding: 5px 10px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 500; list-style: none; }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary::-webkit-details-marker { display: none; }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary:hover { color: var(--ink); border-color: var(--border-2); }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div { margin-top: 8px; }
+[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div > div { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-2); padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+[data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
+
+/* ═══ 全局悬浮 iOrbit ═══ */
+[data-orbit-real-page="agent"] .orb-dock { position: fixed; right: 24px; bottom: 24px; z-index: 80; }
+[data-orbit-real-page="agent"] .orb-ball { position: relative; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 8px 26px rgba(23,33,31,.22), 0 2px 6px rgba(23,33,31,.12); transition: transform .16s ease, background .15s; border: 0; cursor: pointer; }
+[data-orbit-real-page="agent"] .orb-ball:hover { background: var(--accent-hover); transform: translateY(-2px); }
+[data-orbit-real-page="agent"] .orb-ball:active { transform: scale(.94); }
+[data-orbit-real-page="agent"] .orb-ball .pip { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); border: 2px solid var(--bg-soft); }
+[data-orbit-real-page="agent"] .orb-overlay { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 18px; background: none; animation: orbit-agent-orb-fade .16s ease-out; }
+@keyframes orbit-agent-orb-fade { from { opacity: 0; } to { opacity: 1; } }
+[data-orbit-real-page="agent"] .orb-panel { position: relative; width: min(560px, calc(100vw - 32px)); animation: orbit-agent-orb-in .2s cubic-bezier(.2,.9,.3,1); }
+@keyframes orbit-agent-orb-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+[data-orbit-real-page="agent"] .orb-halo { position: absolute; inset: -86px -74px -52px; z-index: 0; pointer-events: none; }
+[data-orbit-real-page="agent"] .orb-halo i { position: absolute; inset: 0; display: block; }
+[data-orbit-real-page="agent"] .orb-halo .h1 { backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px);
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%);
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%); }
+[data-orbit-real-page="agent"] .orb-halo .h2 { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  -webkit-mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%);
+  mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%); }
+[data-orbit-real-page="agent"] .orb-halo .h3 { backdrop-filter: blur(13px); -webkit-backdrop-filter: blur(13px);
+  -webkit-mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%);
+  mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%); }
+[data-orbit-real-page="agent"] .orb-top, [data-orbit-real-page="agent"] .orb-row, [data-orbit-real-page="agent"] .orb-note { position: relative; z-index: 1; }
+[data-orbit-real-page="agent"] .orb-top { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .orb-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+[data-orbit-real-page="agent"] .orb-chips .chip { display: inline-flex; align-items: center; height: 28px; padding: 0 11px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500; background: rgba(255,255,255,.84); color: var(--text-2); border: 1px solid rgba(255,255,255,.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 3px 12px rgba(23,33,31,.10); transition: background .14s, color .14s, border-color .14s; }
+[data-orbit-real-page="agent"] .orb-chips .chip:hover { background: #fff; border-color: var(--accent); color: var(--accent-press); }
+[data-orbit-real-page="agent"] .orb-close { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.84); border: 1px solid rgba(255,255,255,.95); color: var(--text-3); display: grid; place-items: center; flex: 0 0 auto; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 3px 12px rgba(23,33,31,.10); cursor: pointer; }
+[data-orbit-real-page="agent"] .orb-close:hover { background: #fff; color: var(--ink); }
+[data-orbit-real-page="agent"] .orb-row { display: flex; align-items: center; gap: 11px; background: color-mix(in srgb, var(--surface) 66%, transparent); border: 1px solid color-mix(in srgb, var(--surface) 82%, transparent); outline: 1px solid var(--border); border-radius: var(--r-pill); padding: 6px 6px 6px 18px; backdrop-filter: blur(20px) saturate(175%); -webkit-backdrop-filter: blur(20px) saturate(175%); box-shadow: 0 10px 30px rgba(23,33,31,.15); transition: outline-color .15s, box-shadow .15s; }
+[data-orbit-real-page="agent"] .orb-row:focus-within { outline-color: var(--accent); box-shadow: 0 10px 30px rgba(23,33,31,.15), 0 0 0 3px var(--accent-soft); }
+[data-orbit-real-page="agent"] .orb-row .lead { color: var(--text-3); display: inline-flex; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .orb-row input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; outline: none; }
+[data-orbit-real-page="agent"] .orb-row input:focus, [data-orbit-real-page="agent"] .orb-row input:focus-visible,
+[data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
+[data-orbit-real-page="agent"] .orb-row input::placeholder { color: var(--text-3); transition: opacity .2s; }
+[data-orbit-real-page="agent"] .orb-row input.ph-fade::placeholder { opacity: 0; }
+[data-orbit-real-page="agent"] .orb-send { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; flex: 0 0 auto; transition: background .15s, transform .08s; border: 0; cursor: pointer; }
+[data-orbit-real-page="agent"] .orb-send:hover { background: var(--accent-hover); }
+[data-orbit-real-page="agent"] .orb-send:active { transform: scale(.94); }
+[data-orbit-real-page="agent"] .orb-note { font-size: 11px; color: var(--text-2); margin: 9px 0 0; text-align: center; }
+
+@media (max-width: 720px) {
+  [data-orbit-real-page="agent"] .grid { grid-template-columns: 1fr; }
+  [data-orbit-real-page="agent"] .act.span2 { grid-column: span 1; }
+  [data-orbit-real-page="agent"] .appt { grid-template-columns: 1fr; gap: 13px; }
+}
+@media (max-width: 640px) {
+  [data-orbit-real-page="agent"] .ws-inner { padding: 18px 16px 120px; }
+  [data-orbit-real-page="agent"] .orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  [data-orbit-real-page="agent"] .orb-overlay { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-orbit-real-page="agent"] *, [data-orbit-real-page="agent"] *::before, [data-orbit-real-page="agent"] *::after { animation: none !important; transition: none !important; }
+}
+`;
+
 export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) {
   const { language, preserveHref, t } = useOrbitLanguage();
-  const [text, setText] = useState("");
+  // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
+  const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
@@ -1884,7 +2099,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     setHistOpen(false);
     setMessages(session.messages);
     setPanel(session.panel ?? panelFromMessages(session.messages));
-    setText("");
+    setChatOpen(true);
     setThinking(false);
     setActiveQ("");
     setActiveSessionId(session.id);
@@ -2155,7 +2370,6 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       if (query) {
         setMessages([]);
         setPanel(null);
-        setText("");
         setActiveSessionId(null);
         activeSessionIdRef.current = null;
         void ask(query);
@@ -2246,13 +2460,6 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     [historySidebarWidth],
   );
 
-  const send = () => {
-    const value = text.trim();
-    if (thinking || !value) return;
-    setText("");
-    ask(value);
-  };
-
   const pickHistory = (item: OrbitAgentHistoryView) => {
     if (item.sessionId) {
       const session = storedSessionsRef.current.find(
@@ -2284,27 +2491,30 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
-    setText("");
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
     void ask(item.q);
   };
 
-  const newChat = () => {
+  const clearConversation = (openChat: boolean) => {
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
-    setText("");
     setThinking(false);
     setActiveQ("");
     setActiveSessionId(null);
+    setChatOpen(openChat);
     activeSessionIdRef.current = null;
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
     }
     navigate("/agent");
   };
+
+  // 「新对话」：进入对话页的空态；「返回」：回 dashboard（当前对话已在历史里）。
+  const newChat = () => clearConversation(true);
+  const backToDashboard = () => clearConversation(false);
 
   const updateHistorySession = async (
     sessionId: string,
@@ -2450,10 +2660,10 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       setHistOpen(false);
       setMessages([]);
       setPanel(null);
-      setText("");
       setThinking(false);
       setActiveQ("");
       setActiveSessionId(null);
+      setChatOpen(false);
       activeSessionIdRef.current = null;
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
@@ -2465,95 +2675,123 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     }
   };
 
-  const renderBubbles = (inlinePanel: boolean) => (
+  const renderBubbles = () => (
     <>
       {messages.map((message, index) =>
         message.role === "user" ? (
-          <div className="orbit-agent-user-turn" key={`user-${index}`} style={{ alignItems: "flex-end", display: "flex", gap: 8, justifyContent: "flex-end", marginBottom: 16 }}>
+          <div className="msg-user-row" key={`user-${index}`}>
             <AgentMessageCopyButton text={message.text} />
-            <div className="orbit-agent-user-bubble" style={{ background: "var(--accent)", borderRadius: "16px 16px 4px 16px", color: "var(--on-dark)", fontSize: 15, lineHeight: 1.55, maxWidth: "82%", padding: "11px 15px" }}>{message.text}</div>
+            <div className="msg-user">{message.text}</div>
           </div>
         ) : (
-          <div className="orbit-agent-assistant-turn" key={`assistant-${index}`} style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-            <span className="avatar g-indigo orbit-agent-assistant-mark" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
-              <Icon name="sparkle" size={16} color="var(--on-dark)" />
+          <div className="msg-a" key={`assistant-${index}`}>
+            <span className="mk">
+              <AgentStar size={15} />
             </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="body">
               {message.note ? (
-                <div style={{ alignItems: "center", background: "var(--amber-soft)", borderRadius: "var(--r-sm)", color: "var(--amber-text)", display: "inline-flex", fontSize: 13, fontWeight: 600, gap: 8, marginBottom: 10, padding: "7px 12px" }}>
+                <div className="msg-note">
                   <Icon name="eye" size={14} />
                   {message.note}
                 </div>
               ) : null}
-              <div className="orbit-agent-assistant-content" style={{ alignItems: "flex-end", display: "flex", gap: 8 }}>
-                <div className="orbit-agent-assistant-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", color: "var(--text)", flex: 1, fontSize: 15, lineHeight: 1.6, minWidth: 0, padding: "12px 15px" }}>
-                  <AgentMarkdown text={message.text} />
-                  <AgentEvidenceSources
-                    references={message.evidenceRefs ?? []}
-                  />
-                  {message.runId ? (
-                    <AgentOutcomeFeedback
-                      evidenceIds={(message.evidenceRefs ?? []).flatMap(
-                        (reference) => reference.evidenceIds,
-                      )}
-                      language={language === "zh" ? "zh" : "en"}
-                      runId={message.runId}
-                      sourceModules={(message.evidenceRefs ?? []).flatMap(
-                        (reference) => reference.sourceModules,
-                      )}
-                    />
-                  ) : null}
-                  {message.runId ? (
-                    <AgentActionStatusCard
-                      actionIds={message.actionIds ?? []}
-                      language={language === "zh" ? "zh" : "en"}
-                      navigate={navigate}
-                      onRetryRequest={async () => {
-                        const request = agentRetryRequestForAssistant(
-                          messages,
-                          index,
-                        );
-                        if (request) await ask(request);
-                      }}
-                      runId={message.runId}
-                    />
-                  ) : null}
-                  {message.retryRequest ? (
-                    <button
-                      className="btn btn-quiet"
-                      data-agent-message-retry-request
-                      disabled={thinking}
-                      onClick={() => void ask(message.retryRequest!, index)}
-                      style={{ marginTop: 10 }}
-                      type="button"
-                    >
-                      {language === "zh" ? "重新提交请求" : "Retry request"}
-                    </button>
-                  ) : null}
-                </div>
+              <AgentMarkdown text={message.text} />
+              {message.items.length > 0 ? (
+                <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
+              ) : null}
+              {message.runId ? (
+                <AgentOutcomeFeedback
+                  evidenceIds={(message.evidenceRefs ?? []).flatMap(
+                    (reference) => reference.evidenceIds,
+                  )}
+                  language={language === "zh" ? "zh" : "en"}
+                  runId={message.runId}
+                  sourceModules={(message.evidenceRefs ?? []).flatMap(
+                    (reference) => reference.sourceModules,
+                  )}
+                />
+              ) : null}
+              {message.runId ? (
+                <AgentActionStatusCard
+                  actionIds={message.actionIds ?? []}
+                  language={language === "zh" ? "zh" : "en"}
+                  navigate={navigate}
+                  onRetryRequest={async () => {
+                    const request = agentRetryRequestForAssistant(
+                      messages,
+                      index,
+                    );
+                    if (request) await ask(request);
+                  }}
+                  runId={message.runId}
+                />
+              ) : null}
+              <AgentEvidenceSources references={message.evidenceRefs ?? []} />
+              {message.retryRequest ? (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  data-agent-message-retry-request
+                  disabled={thinking}
+                  onClick={() => void ask(message.retryRequest!, index)}
+                  style={{ marginTop: 10 }}
+                  type="button"
+                >
+                  {language === "zh" ? "重新提交请求" : "Retry request"}
+                </button>
+              ) : null}
+              <div className="msg-tools">
                 <AgentMessageCopyButton text={message.text} />
               </div>
-              {inlinePanel && message.items.length > 0 ? (
-                <div className="orbit-agent-inline-results" style={{ marginTop: 12 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>{message.panelTitle}</div>
-                  <PanelCards language={language === "ja" ? "en" : language} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} navigate={navigate} t={t} />
-                </div>
-              ) : null}
             </div>
           </div>
         ),
       )}
       {thinking ? (
-        <div className="orbit-agent-assistant-turn orbit-agent-thinking-turn" style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-          <span className="avatar g-indigo orbit-agent-assistant-mark" style={{ borderRadius: "var(--r-sm)", flexShrink: 0, fontSize: 0, height: 32, width: 32 }}>
-            <Icon name="sparkle" size={16} color="var(--on-dark)" />
+        <div className="msg-a orbit-agent-thinking-turn">
+          <span className="mk">
+            <AgentStar size={15} />
           </span>
-          <div className="orbit-agent-thinking-message" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "4px 16px 16px 16px", padding: "12px 16px" }}>
+          <div className="body">
             <ThinkingIndicator t={t} />
           </div>
         </div>
       ) : null}
     </>
+  );
+
+  const inChat = chatOpen || messages.length > 0 || thinking;
+  const threadTitle = messages.length
+    ? titleFromMessages(messages)
+    : t({ en: "New chat", zh: "新对话" });
+  const orbChips = viewModel.suggests.slice(0, 3).map((suggest) => ({
+    label: agentSuggestLabel(suggest.label, language === "ja" ? "en" : language),
+    query: suggest.q,
+  }));
+
+  const workspaceContent = inChat ? (
+    <>
+      <div className="thread-bar">
+        <button
+          aria-label={t({ en: "Back to dashboard", zh: "返回 dashboard" })}
+          className="btn-back"
+          onClick={backToDashboard}
+          title={t({ en: "Back", zh: "返回" })}
+          type="button"
+        >
+          <Icon name="back" size={16} />
+        </button>
+        <span className="title">{threadTitle}</span>
+      </div>
+      {messages.length || thinking ? (
+        <div className="thread">{renderBubbles()}</div>
+      ) : (
+        <AgentWelcome onPick={ask} viewModel={viewModel} />
+      )}
+    </>
+  ) : home ? (
+    <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
+  ) : (
+    <AgentWelcome onPick={ask} viewModel={viewModel} />
   );
 
   return (
@@ -2564,6 +2802,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       data-orbit-real-page="agent"
       style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}
     >
+      <style dangerouslySetInnerHTML={{ __html: CONSOLE_STYLES }} />
       <h1
         data-orbit-agent-screen-title
         style={{ clipPath: "inset(50%)", height: 1, margin: -1, overflow: "hidden", position: "absolute", whiteSpace: "nowrap", width: 1 }}
@@ -2587,18 +2826,18 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
         />
       </div>
 
-      <div className="orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <aside className="orbit-agent-history" data-orbit-agent-history-sidebar style={{ background: "var(--bg)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
-          <div className="orbit-agent-history-actions">
-            <button className="btn btn-block orbit-agent-new-chat" type="button" onClick={newChat}>
+      <div className="ws-body orbit-desktop-only" style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        <aside className="agent-history orbit-agent-history" data-orbit-agent-history-sidebar style={{ maxWidth: HISTORY_SIDEBAR_MAX_WIDTH, minWidth: HISTORY_SIDEBAR_MIN_WIDTH, width: historySidebarWidth }}>
+          <div className="agent-history-actions orbit-agent-history-actions">
+            <button className="orbit-agent-new-chat" type="button" onClick={newChat}>
               <Icon name="plus" size={16} color="var(--accent)" />
               {t({ en: "New chat", zh: "新对话" })}
             </button>
           </div>
-          <div className="orbit-agent-history-heading">
+          <div className="agent-history-heading orbit-agent-history-heading">
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
-          <div className="scroll orbit-agent-history-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <div className="scroll agent-history-scroll orbit-agent-history-scroll">
             <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} />
           </div>
         </aside>
@@ -2620,93 +2859,29 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
             alignSelf: "stretch",
             background: historySidebarResizing ? "var(--accent-soft)" : "transparent",
             border: "none",
-            borderRight: "1px solid var(--border)",
             cursor: "col-resize",
             flexShrink: 0,
+            marginLeft: -8,
             padding: 0,
+            position: "relative",
             width: 8,
+            zIndex: 1,
           }}
         />
-        <div className="orbit-agent-center" style={{ display: "flex", flex: 1, flexDirection: "column", minWidth: 0 }}>
-          <div ref={scrollRef} className="scroll orbit-agent-transcript" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 28px" }}>
-            <div className="orbit-agent-transcript-inner" style={{ margin: "0 auto", maxWidth: 720 }}>
-              {!messages.length && !thinking ? (
-                home ? (
-                  <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
-                ) : (
-                  <>
-                    <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="desktop" />
-                    <AgentWelcome onPick={ask} viewModel={viewModel} />
-                  </>
-                )
-              ) : (
-                <>
-                  <div style={{ marginBottom: 14 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={newChat} type="button">
-                      <Icon name="chevL" size={15} />
-                      {t({ en: "Back to iOrbit home", zh: "返回 iOrbit 首页" })}
-                    </button>
-                  </div>
-                  {renderBubbles(false)}
-                </>
-              )}
-            </div>
-          </div>
-          <div className="orbit-agent-composer-dock" style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "12px 28px 18px" }}>
-            <div style={{ margin: "0 auto", maxWidth: 720 }}>
-              <ChatBox busy={thinking} value={text} onChange={setText} onSend={send} surface="desktop" />
-            </div>
+        <div className="ws-main">
+          <div ref={scrollRef} className="scroll ws-scroll">
+            <div className="ws-inner">{workspaceContent}</div>
           </div>
         </div>
-        {panel ? (
-          <aside className="orbit-agent-results" key={`${panel.panelTitle}-${messages.length}`} style={{ animation: "agentpanel .32s cubic-bezier(.22,1,.36,1)", background: "var(--bg)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, width: 444 }}>
-            <div className="orbit-agent-results-header" style={{ borderBottom: "1px solid var(--border)", padding: "18px 20px 12px" }}>
-              <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                <span style={{ alignItems: "center", background: "var(--accent-soft)", borderRadius: "var(--r-sm)", color: "var(--accent)", display: "flex", height: 30, justifyContent: "center", width: 30 }}>
-                  <Icon name={panel.kind === "people" ? "users" : "calendar"} size={17} />
-                </span>
-                <h3 className="h-section">{panel.panelTitle}</h3>
-              </div>
-              <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>
-                {panel.kind === "people"
-                  ? t({ en: "Click a card to open the contact page.", zh: "点卡片可直接跳转到对应名片页" })
-                  : t({ en: "Click a card to open the event page.", zh: "点卡片可直接跳转到对应活动页" })}
-              </div>
-            </div>
-            <div className="scroll orbit-agent-results-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 18px 24px" }}>
-              <PanelCards language={language === "ja" ? "en" : language} panel={panel} navigate={navigate} t={t} />
-            </div>
-          </aside>
-        ) : null}
       </div>
 
       <div className="orbit-mobile-only" style={{ flex: 1, flexDirection: "column", minHeight: 0 }}>
-        <div ref={scrollRef} className="scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "18px 16px 12px" }}>
-          {!messages.length && !thinking ? (
-            home ? (
-              <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
-            ) : (
-              <>
-                <OrbitAgentTodayWorkspace navigate={navigate} onAsk={ask} surface="mobile" />
-                <AgentWelcome onPick={ask} viewModel={viewModel} />
-              </>
-            )
-          ) : (
-            <>
-              <div style={{ marginBottom: 12 }}>
-                <button className="btn btn-ghost btn-sm" onClick={newChat} type="button">
-                  <Icon name="chevL" size={15} />
-                  {t({ en: "Back to iOrbit home", zh: "返回 iOrbit 首页" })}
-                </button>
-              </div>
-              {renderBubbles(true)}
-            </>
-          )}
-        </div>
-        <div style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "10px 16px 18px" }}>
-          <ChatBox busy={thinking} value={text} onChange={setText} onSend={send} surface="mobile" />
+        <div ref={scrollRef} className="scroll ws-scroll">
+          <div className="ws-inner">{workspaceContent}</div>
         </div>
       </div>
+
+      <OrbitAgentOrb busy={thinking} chips={orbChips} onAsk={ask} t={t} />
 
       {histOpen ? (
         <AgentMobileHistoryDrawer

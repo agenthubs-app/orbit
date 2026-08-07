@@ -39,8 +39,8 @@ test("event registration routes create cancel and reactivate the same record", a
     new Request(`http://orbit.local/api/events/${eventId}/registration`, {
       body: JSON.stringify({
         answers: {
-          desiredOutcome: "Meet a climate operator",
-          positioning: "Building Orbit",
+          targetAttendees: "Climate operators",
+          valueOffered: "A working relationship graph",
         },
       }),
       headers: { "content-type": "application/json" },
@@ -70,7 +70,10 @@ test("event registration routes create cancel and reactivate the same record", a
   const reactivatedResponse = await register(
     new Request(`http://orbit.local/api/events/${eventId}/registration`, {
       body: JSON.stringify({
-        answers: { desiredOutcome: "Meet two climate operators" },
+        answers: {
+          targetAttendees: "Two climate operators",
+          valueOffered: "A working relationship graph",
+        },
       }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -95,6 +98,24 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(stateResponse.status, 200);
   assert.equal(stateBody.data.registration.id, firstBody.data.id);
   assert.deepEqual(stateBody.data.questionSet.questions, []);
+});
+
+test("plain registration answers cannot bypass the two required questions", async () => {
+  const response = await register(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({
+        answers: { targetAttendees: "Climate operators" },
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 422);
+  assert.equal(body.success, false);
+  assert.match(body.error.message, /valueOffered/);
 });
 
 test("cancelling without a registration returns a stable not-found envelope", async () => {
@@ -204,10 +225,8 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     resolveActor: async () => tokenActor,
   });
   const fields = [
-    "positioning",
     "targetAttendees",
     "valueOffered",
-    "desiredOutcome",
   ] as const satisfies readonly EventParticipantProfileField[];
   const responses = fields.map((field, index) => ({
     answer: `${field} option A`,
@@ -253,12 +272,12 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     const acceptedBody = await accepted.json();
     assert.equal(accepted.status, 200);
     assert.equal(
-      acceptedBody.data.participantProfile.answers.desiredOutcome,
-      "desiredOutcome option A",
+      acceptedBody.data.participantProfile.answers.valueOffered,
+      "valueOffered option A",
     );
     assert.equal(
       acceptedBody.data.participantProfile.interviewResponses.length,
-      4,
+      2,
     );
     assert.equal(
       acceptedBody.data.participantProfile.interviewResponses.every(
@@ -269,7 +288,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     );
     assert.match(
       acceptedBody.data.participantProfile.interviewResponses[0].question.prompt,
-      /positioning/,
+      /targetAttendees/,
     );
 
     const replayedByAnotherActor = createEventRegistrationRouteHandlers({
@@ -306,8 +325,8 @@ test("registration merges unsigned seeded answers under verified responses", asy
     registrationService: tokenService,
     resolveActor: async () => tokenActor,
   });
-  // 分层报名：只有"期待结果"经签名问答核验，其余核心字段来自种入轮
-  // （定位预填 / 详情页速答），以未签名 answers 一并提交。
+  // 非必答画像字段仍可随两项报名回答一起保存；签名回答始终覆盖同字段
+  // 的未签名 seed，报名边界只要求「想认识谁 / 能提供什么」。
   const signedResponse = {
     answer: "desiredOutcome option A",
     questionToken: signAdaptiveInterviewQuestion({
