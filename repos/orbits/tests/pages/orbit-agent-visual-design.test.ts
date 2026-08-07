@@ -32,9 +32,10 @@ test("Orbit agent workspace exposes the console-green composition hooks", () => 
   assert.match(agentSource, /className="thread-bar"/);
   assert.match(agentSource, /className="msg-user"/);
   assert.match(agentSource, /className="msg-a"/);
-  // 全局悬浮 iOrbit（小球 ⇄ 毛玻璃输入）
-  assert.match(agentSource, /className=\{`orb-ball/);
-  assert.match(agentSource, /className="orb-row"/);
+  // 悬浮输入框已提取到 layout 级的 orbit-global-ask（全站可用、跨页保留草稿），
+  // 这一页只负责把自己的 ask 注册成落点，不再自己渲染小球和输入行。
+  assert.doesNotMatch(agentSource, /className=\{`orb-ball/);
+  assert.match(agentSource, /useOrbitAskTarget\(/);
   assert.doesNotMatch(agentSource, /orbit-agent-page-wordmark/);
 });
 
@@ -43,7 +44,8 @@ test("Orbit agent styles ship the scoped console-green skin", () => {
   assert.match(agentSource, /const CONSOLE_STYLES = `/);
   assert.match(agentSource, /\[data-orbit-real-page="agent"\] \.brief \{/);
   assert.match(agentSource, /\[data-orbit-real-page="agent"\] \.hub-stats \{/);
-  assert.match(agentSource, /\[data-orbit-real-page="agent"\] \.orb-overlay \{/);
+  // 悬浮输入框的样式跟着组件搬去 orbit-global-ask-styles，不该再留在这里。
+  assert.doesNotMatch(agentSource, /\.orb-overlay \{/);
   // 旧 Conversation+ 聊天皮肤不允许回流
   assert.doesNotMatch(styles, /\.orbit-agent-assistant-turn/);
   assert.doesNotMatch(styles, /\.orbit-agent-composer\b/);

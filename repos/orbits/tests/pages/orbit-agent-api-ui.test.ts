@@ -33,18 +33,17 @@ test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
 });
 
 test("Orbit agent submit controls expose a 44px target and guard blank or concurrent requests", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // 输入框已提取成 layout 级的全局组件，发送守卫也跟着搬了过去。
+  const agentSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
 
   assert.match(agentSource, /type="button"/);
   assert.match(agentSource, /data-orbit-agent-submit="true"/);
   // 发送守卫：请求进行中或空输入（无提示语兜底）时不提交
   assert.match(agentSource, /if \(busy\) return/);
-  assert.match(agentSource, /const query = value\.trim\(\) \|\| hint/);
-  assert.match(agentSource, /if \(!query\) return/);
+  assert.match(agentSource, /const text = query\.trim\(\) \|\| hint/);
+  assert.match(agentSource, /if \(!text\) return/);
   // 视觉尺寸按设计定稿（36px 圆钮），可点击热区仍为 44px（.hit-44 ::after）
-  assert.match(agentSource, /className="orb-send hit-44"/);
+  assert.match(agentSource, /className="oga-send hit-44"/);
 });
 
 test("Orbit agent uses CSS-gated responsive trees and exposes one shared request state", () => {

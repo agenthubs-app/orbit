@@ -177,28 +177,10 @@ const EXEMPTIONS: {
     reason: "message-copy control with dedicated focus and status behavior",
   },
   {
-    count: 2,
+    count: 1,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",
     marker: "className=\"chip\"",
-    reason: "design-spec suggestion chips (new-chat empty state + orb overlay)",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "orb-ball",
-    reason: "floating iOrbit ball (design-spec 54px circle)",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orb-close\"",
-    reason: "orb overlay close control (design-spec 28px glass circle)",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orb-send hit-44\"",
-    reason: "orb composer send (design-spec 36px circle, 44px hit area)",
+    reason: "design-spec suggestion chip (new-chat empty state)",
   },
   {
     count: 1,

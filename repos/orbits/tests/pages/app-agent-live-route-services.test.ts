@@ -125,9 +125,17 @@ test("/app/agent keeps the composer reachable when a new actor has no chat conve
   );
 
   assert.match(html, /data-orbit-real-page="agent"/);
-  assert.match(html, /询问 Orbit 人脉、活动与关系待办/);
-  assert.match(html, /data-orbit-agent-submit="true"/);
   assert.doesNotMatch(html, /No chat context is ready/);
+
+  // 输入框已从这一页提取到 layout 级的全局提问入口，所以单独渲染 OrbitRealAgent
+  // 时它本来就不该出现在 HTML 里。这一页现在的责任是把自己的 ask 注册成落点——
+  // 没注册，全局输入框就会退回「跳转」行为，在 iOrbit 页上表现为原地打转。
+  // 输入框本身在 /app/agent 上确实可达，由 orbit-global-ask-routes 的默认展开
+  // 用例 + 浏览器验证覆盖。
+  const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+
+  assert.match(agentSource, /useOrbitAskTarget\(askTarget\)/);
+  assert.match(agentSource, /onAsk: ask/);
 });
 
 test("/app/agent does not turn chat failures or missing conversation ids into a ready Agent", async () => {

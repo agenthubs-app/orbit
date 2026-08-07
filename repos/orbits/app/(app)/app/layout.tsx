@@ -13,6 +13,8 @@ import { cookies, headers } from "next/headers";
 import { SessionProvider } from "next-auth/react";
 
 import { auth } from "../../../auth";
+import { OrbitAskProvider } from "./orbit-global-ask/orbit-ask-context";
+import { OrbitGlobalAsk } from "./orbit-global-ask/orbit-global-ask";
 import { OrbitLanguageProvider } from "./orbit-language-context";
 import { normalizeOrbitLanguage } from "./orbit-language-core";
 import { OrbitResponsiveA11y } from "./orbit-responsive-a11y";
@@ -33,7 +35,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitResponsiveA11y />
         <OrbitThemeStyles />
         <OrbitThemeRuntime />
-        {children}
+        {/* 全局 iOrbit 提问入口。挂在 layout 而不是各页面：App Router 换页时只有
+            layout 存活，草稿和展开态要跨页保留就必须住在这一层。组件自己做登录
+            与路由门禁，不该出现的地方渲染 null。 */}
+        <OrbitAskProvider>
+          {children}
+          <OrbitGlobalAsk />
+        </OrbitAskProvider>
       </OrbitLanguageProvider>
     </SessionProvider>
   );

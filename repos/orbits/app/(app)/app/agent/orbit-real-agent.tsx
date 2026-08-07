@@ -13,6 +13,8 @@ import type {
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
+import { useOrbitAskTarget } from "../orbit-global-ask/orbit-ask-context";
+import { takePendingAsk } from "../orbit-global-ask/orbit-ask-draft";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -1660,166 +1662,6 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   );
 }
 
-/**
- * 全局悬浮 iOrbit：右下小球 ⇄ 底部居中毛玻璃输入（设计定稿 home-console-green.html）。
- * 发送即进入真实的 /api/ai/conversations 管线（onAsk）。
- */
-function OrbitAgentOrb({
-  busy,
-  chips,
-  onAsk,
-  t,
-}: {
-  busy: boolean;
-  chips: readonly { label: string; query: string }[];
-  onAsk: (query: string) => void;
-  t: Translate;
-}) {
-  const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(false);
-  const [value, setValue] = useState("");
-  const [hint, setHint] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  // The privacy note under the field says what pressing send does and does not
-  // do. It is rendered but was not associated with the input, so a screen
-  // reader announced the label and nothing about the boundary.
-  const boundaryId = "orbit-agent-orb-boundary";
-  const hintOrderRef = useRef<string[]>([]);
-
-  const hints = useMemo(
-    () => [
-      ...chips.map((chip) => chip.label),
-      t({ en: "Who should I prioritize at my next event?", zh: "下一场活动我该重点找谁聊？" }),
-      t({ en: "Add my next step to my follow-ups", zh: "把我的下一步加到待办里" }),
-      t({ en: "Which events this month are worth going to?", zh: "这个月还有哪些值得去的活动？" }),
-    ],
-    [chips, t],
-  );
-
-  const nextHint = useCallback(() => {
-    if (!hintOrderRef.current.length) {
-      const order = [...hints];
-      for (let i = order.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [order[i], order[j]] = [order[j], order[i]];
-      }
-      hintOrderRef.current = order;
-    }
-    return hintOrderRef.current.pop() ?? "";
-  }, [hints]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    setHint(nextHint());
-    // 提示语每 3.5s 轮换（用户已输入就不打扰）；不引入人为延时。
-    const timer = window.setInterval(() => {
-      if (inputRef.current?.value) return;
-      setHint(nextHint());
-    }, 3500);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    inputRef.current?.focus();
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [nextHint, open]);
-
-  const openOrb = () => {
-    setOpen(true);
-    setSeen(true);
-  };
-  const closeOrb = () => setOpen(false);
-  const submit = () => {
-    if (busy) return;
-    const query = value.trim() || hint;
-    if (!query) return;
-    setValue("");
-    setOpen(false);
-    onAsk(query);
-  };
-
-  return (
-    <>
-      <div className="orb-dock">
-        <button
-          aria-expanded={open}
-          aria-label={t({ en: "Open iOrbit", zh: "打开 iOrbit" })}
-          className={`orb-ball${open ? " hide" : ""}`}
-          data-orbit-agent-orb-ball
-          onClick={openOrb}
-          type="button"
-        >
-          <AgentStar size={24} />
-          {seen ? null : <span className="pip" />}
-        </button>
-      </div>
-      <div
-        className={`orb-overlay${open ? "" : " hide"}`}
-        data-orbit-agent-orb-overlay
-        onClick={(event) => {
-          if (!(event.target instanceof Element) || !event.target.closest(".orb-panel")) closeOrb();
-        }}
-      >
-        <div aria-label={t({ en: "Ask iOrbit", zh: "iOrbit 快速提问" })} aria-modal="true" className="orb-panel" role="dialog">
-          <span aria-hidden className="orb-halo"><i className="h1" /><i className="h2" /><i className="h3" /></span>
-          <div className="orb-top">
-            <div className="orb-chips">
-              {chips.slice(0, 2).map((chip) => (
-                <button
-                  className="chip"
-                  key={chip.label}
-                  onClick={() => {
-                    closeOrb();
-                    onAsk(chip.query);
-                  }}
-                  type="button"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-            <button aria-label={t({ en: "Close", zh: "收起" })} className="orb-close" onClick={closeOrb} type="button">
-              <Icon name="x" size={15} />
-            </button>
-          </div>
-          <form
-            className="orb-row"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submit();
-            }}
-          >
-            <span className="lead"><Icon name="message" size={16} /></span>
-            <input
-              aria-describedby={boundaryId}
-              aria-label={t({
-                en: "Ask Orbit about contacts, events, and relationship to-dos",
-                zh: "询问 Orbit 人脉、活动与关系待办",
-              })}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder={hint}
-              ref={inputRef}
-              type="text"
-              value={value}
-            />
-            <button aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })} className="orb-send hit-44" data-orbit-agent-submit="true" type="submit">
-              <Icon name="arrow" size={15} style={{ transform: "rotate(-45deg)" }} />
-            </button>
-          </form>
-          <p className="orb-note" data-orbit-agent-privacy-boundary id={boundaryId}>
-            {t({
-              en: "Sending opens the iOrbit conversation · external actions always need your confirmation first.",
-              zh: "发送后进入 iOrbit 对话 · 涉及对外动作会先经你确认",
-            })}
-          </p>
-        </div>
-      </div>
-    </>
-  );
-}
 
 /* ═══ 工作台整页样式：docs/designs/journey/home-console-green.html 1:1 迁移，
    全部限定在 [data-orbit-real-page="agent"] 作用域内。═══ */
@@ -1864,7 +1706,9 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .orbit-agent-history-group { padding: 12px 10px 4px; font-size: 10.5px; }
 [data-orbit-real-page="agent"] .ws-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 [data-orbit-real-page="agent"] .ws-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-[data-orbit-real-page="agent"] .ws-inner { max-width: 900px; margin: 0 auto; padding: 30px 32px 132px; }
+/* 底部留白跟着全局提问输入框走：它是 fixed 的，不占文档流，展开时要主动让位，
+   收起时 --orbit-ask-clearance 归 0，只留小球的余量。 */
+[data-orbit-real-page="agent"] .ws-inner { max-width: 900px; margin: 0 auto; padding: 30px 32px calc(32px + var(--orbit-ask-clearance, 0px)); }
 
 /* ═══ Dashboard ═══ */
 [data-orbit-real-page="agent"] .hub-head { align-items: center; display: flex; gap: 18px; flex-wrap: wrap; }
@@ -1994,46 +1838,7 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] [data-agent-evidence-sources] > div > div { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-2); padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
 [data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
 
-/* ═══ 全局悬浮 iOrbit ═══ */
-[data-orbit-real-page="agent"] .orb-dock { position: fixed; right: 24px; bottom: 24px; z-index: 80; }
-[data-orbit-real-page="agent"] .orb-ball { position: relative; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 8px 26px rgba(23,33,31,.22), 0 2px 6px rgba(23,33,31,.12); transition: transform .16s ease, background .15s; border: 0; cursor: pointer; }
-[data-orbit-real-page="agent"] .orb-ball:hover { background: var(--accent-hover); transform: translateY(-2px); }
-[data-orbit-real-page="agent"] .orb-ball:active { transform: scale(.94); }
-[data-orbit-real-page="agent"] .orb-ball .pip { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 999px; background: var(--amber); border: 2px solid var(--bg-soft); }
-[data-orbit-real-page="agent"] .orb-overlay { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 18px; background: none; animation: orbit-agent-orb-fade .16s ease-out; }
-@keyframes orbit-agent-orb-fade { from { opacity: 0; } to { opacity: 1; } }
-[data-orbit-real-page="agent"] .orb-panel { position: relative; width: min(560px, calc(100vw - 32px)); animation: orbit-agent-orb-in .2s cubic-bezier(.2,.9,.3,1); }
-@keyframes orbit-agent-orb-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-[data-orbit-real-page="agent"] .orb-halo { position: absolute; inset: -86px -74px -52px; z-index: 0; pointer-events: none; }
-[data-orbit-real-page="agent"] .orb-halo i { position: absolute; inset: 0; display: block; }
-[data-orbit-real-page="agent"] .orb-halo .h1 { backdrop-filter: blur(2.5px); -webkit-backdrop-filter: blur(2.5px);
-  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%);
-  mask-image: radial-gradient(ellipse 100% 100% at 50% 64%, #000 0%, rgba(0,0,0,.94) 26%, rgba(0,0,0,.78) 42%, rgba(0,0,0,.55) 56%, rgba(0,0,0,.32) 70%, rgba(0,0,0,.14) 83%, rgba(0,0,0,.04) 92%, transparent 100%); }
-[data-orbit-real-page="agent"] .orb-halo .h2 { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  -webkit-mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%);
-  mask-image: radial-gradient(ellipse 76% 78% at 50% 66%, #000 0%, rgba(0,0,0,.92) 22%, rgba(0,0,0,.72) 38%, rgba(0,0,0,.46) 54%, rgba(0,0,0,.24) 70%, rgba(0,0,0,.08) 86%, transparent 100%); }
-[data-orbit-real-page="agent"] .orb-halo .h3 { backdrop-filter: blur(13px); -webkit-backdrop-filter: blur(13px);
-  -webkit-mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%);
-  mask-image: radial-gradient(ellipse 54% 56% at 50% 68%, #000 0%, rgba(0,0,0,.88) 20%, rgba(0,0,0,.62) 38%, rgba(0,0,0,.34) 56%, rgba(0,0,0,.12) 76%, transparent 100%); }
-[data-orbit-real-page="agent"] .orb-top, [data-orbit-real-page="agent"] .orb-row, [data-orbit-real-page="agent"] .orb-note { position: relative; z-index: 1; }
-[data-orbit-real-page="agent"] .orb-top { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .orb-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .orb-chips .chip { display: inline-flex; align-items: center; height: 28px; padding: 0 11px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500; background: rgba(255,255,255,.84); color: var(--text-2); border: 1px solid rgba(255,255,255,.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 3px 12px rgba(23,33,31,.10); transition: background .14s, color .14s, border-color .14s; }
-[data-orbit-real-page="agent"] .orb-chips .chip:hover { background: #fff; border-color: var(--accent); color: var(--accent-press); }
-[data-orbit-real-page="agent"] .orb-close { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.84); border: 1px solid rgba(255,255,255,.95); color: var(--text-3); display: grid; place-items: center; flex: 0 0 auto; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 3px 12px rgba(23,33,31,.10); cursor: pointer; }
-[data-orbit-real-page="agent"] .orb-close:hover { background: #fff; color: var(--ink); }
-[data-orbit-real-page="agent"] .orb-row { display: flex; align-items: center; gap: 11px; background: color-mix(in srgb, var(--surface) 66%, transparent); border: 1px solid color-mix(in srgb, var(--surface) 82%, transparent); outline: 1px solid var(--border); border-radius: var(--r-pill); padding: 6px 6px 6px 18px; backdrop-filter: blur(20px) saturate(175%); -webkit-backdrop-filter: blur(20px) saturate(175%); box-shadow: 0 10px 30px rgba(23,33,31,.15); transition: outline-color .15s, box-shadow .15s; }
-[data-orbit-real-page="agent"] .orb-row:focus-within { outline-color: var(--accent); box-shadow: 0 10px 30px rgba(23,33,31,.15), 0 0 0 3px var(--accent-soft); }
-[data-orbit-real-page="agent"] .orb-row .lead { color: var(--text-3); display: inline-flex; flex: 0 0 auto; }
-[data-orbit-real-page="agent"] .orb-row input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; outline: none; }
-[data-orbit-real-page="agent"] .orb-row input:focus, [data-orbit-real-page="agent"] .orb-row input:focus-visible,
 [data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
-[data-orbit-real-page="agent"] .orb-row input::placeholder { color: var(--text-3); transition: opacity .2s; }
-[data-orbit-real-page="agent"] .orb-row input.ph-fade::placeholder { opacity: 0; }
-[data-orbit-real-page="agent"] .orb-send { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; flex: 0 0 auto; transition: background .15s, transform .08s; border: 0; cursor: pointer; }
-[data-orbit-real-page="agent"] .orb-send:hover { background: var(--accent-hover); }
-[data-orbit-real-page="agent"] .orb-send:active { transform: scale(.94); }
-[data-orbit-real-page="agent"] .orb-note { font-size: 11px; color: var(--text-2); margin: 9px 0 0; text-align: center; }
 
 @media (max-width: 720px) {
   [data-orbit-real-page="agent"] .grid { grid-template-columns: 1fr; }
@@ -2041,9 +1846,7 @@ const CONSOLE_STYLES = `
   [data-orbit-real-page="agent"] .appt { grid-template-columns: 1fr; gap: 13px; }
 }
 @media (max-width: 640px) {
-  [data-orbit-real-page="agent"] .ws-inner { padding: 18px 16px 120px; }
-  [data-orbit-real-page="agent"] .orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
-  [data-orbit-real-page="agent"] .orb-overlay { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  [data-orbit-real-page="agent"] .ws-inner { padding: 18px 16px calc(20px + var(--orbit-ask-clearance, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="agent"] *, [data-orbit-real-page="agent"] *::before, [data-orbit-real-page="agent"] *::after { animation: none !important; transition: none !important; }
@@ -2768,10 +2571,47 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
   const threadTitle = messages.length
     ? titleFromMessages(messages)
     : t({ en: "New chat", zh: "新对话" });
-  const orbChips = viewModel.suggests.slice(0, 3).map((suggest) => ({
-    label: agentSuggestLabel(suggest.label, language === "ja" ? "en" : language),
-    query: suggest.q,
-  }));
+  // 记忆化：useOrbitAskTarget 用引用相等判断是否重新注册，每次渲染都造新数组会死循环。
+  const orbChips = useMemo(
+    () =>
+      viewModel.suggests.slice(0, 3).map((suggest) => ({
+        label: agentSuggestLabel(suggest.label, language === "ja" ? "en" : language),
+        query: suggest.q,
+      })),
+    [language, viewModel.suggests],
+  );
+
+  // 全局输入框在这一页直接落到当前对话，不再跳转。
+  const askTarget = useMemo(
+    () => ({ busy: thinking, chips: orbChips, onAsk: ask }),
+    [ask, orbChips, thinking],
+  );
+
+  useOrbitAskTarget(askTarget);
+
+  // 从别的页面发起的提问：来源页把它暂存在 sessionStorage，这里取出来跑一次。
+  // takePendingAsk 读完即删，配合 ref 兜住 StrictMode 的双次挂载。
+  const pendingAskRan = useRef(false);
+
+  useEffect(() => {
+    if (pendingAskRan.current) return;
+    pendingAskRan.current = true;
+
+    const pending = takePendingAsk();
+
+    if (!pending) return;
+
+    // 上下文拼进消息本体，而不是偷偷加在 system prompt 里：用户在对话里
+    // 看到的那句话，就是我们真正发出去的那句话。
+    const message = pending.context
+      ? languageRef.current === "zh"
+        ? `${pending.query}\n\n（我正在看${pending.context}）`
+        : `${pending.query}\n\n(I'm currently looking at ${pending.context}.)`
+      : pending.query;
+
+    setChatOpen(true);
+    void ask(message);
+  }, [ask]);
 
   const workspaceContent = inChat ? (
     <>
@@ -2799,11 +2639,15 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     <AgentWelcome onPick={ask} viewModel={viewModel} />
   );
 
+  // data-orbit-ask-clearance="manual"：这一页的底部留白自己在 .ws-inner 上处理。
+  // 根节点是 height:100dvh 的 flex 列，全局样式表那个 ::after 垫片放进来会变成
+  // flex item 把布局挤歪。
   return (
     <div
       aria-busy={thinking}
       className="orbit-agent-workspace"
       data-orbit-agent-request-state={thinking ? "pending" : "idle"}
+      data-orbit-ask-clearance="manual"
       data-orbit-real-page="agent"
       style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}
     >
@@ -2885,8 +2729,6 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
           <div className="ws-inner">{workspaceContent}</div>
         </div>
       </div>
-
-      <OrbitAgentOrb busy={thinking} chips={orbChips} onAsk={ask} t={t} />
 
       {histOpen ? (
         <AgentMobileHistoryDrawer

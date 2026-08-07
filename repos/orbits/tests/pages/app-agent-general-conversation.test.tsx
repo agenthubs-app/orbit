@@ -93,9 +93,8 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
 });
 
 test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // 隐私边界说明挂在输入框上，随输入框搬到了全局组件。
+  const agentSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
 
   assert.match(agentSource, /data-orbit-agent-privacy-boundary/);
   assert.match(agentSource, /external actions always need your confirmation/);

@@ -118,8 +118,10 @@ test("/app/agent makes contact and event discovery explicit before submission", 
   assert.match(agentSource, /onPick\(suggest\.q\)/);
   assert.match(agentSource, /It can see your events, registration answers/);
   assert.match(agentSource, /just say the goal/);
-  assert.match(agentSource, /Ask Orbit about contacts, events, and relationship to-dos/);
-  assert.match(agentSource, /data-orbit-agent-submit="true"/);
+  // 输入框现在由全局组件渲染（layout 级），断言跟着组件走。
+  const composerSource = readProjectFile("app/(app)/app/orbit-global-ask/orbit-global-ask.tsx");
+  assert.match(composerSource, /Ask Orbit about contacts, events, and relationship to-dos/);
+  assert.match(composerSource, /data-orbit-agent-submit="true"/);
 });
 
 test("contact detail mapping translates live source and relationship tokens into labels", async () => {

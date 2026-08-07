@@ -124,10 +124,15 @@ test("/app/agent keeps client-side deep-link prompts and contextual discovery su
   // want to do, who to meet, which event to attend") became a rotating hint
   // list with one hint per intent. Pin the list and all three intents so the
   // suggestions cannot quietly shrink back to a bare input.
-  assert.match(agentSource, /const hints = useMemo\(/);
-  assert.match(agentSource, /Add my next step to my follow-ups/);
-  assert.match(agentSource, /Who should I prioritize at my next event\?/);
-  assert.match(agentSource, /Which events this month are worth going to\?/);
+  // 提示语随输入框搬到了 layout 级的全局提问入口。
+  const composerSource = readProjectFile(
+    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
+  );
+
+  assert.match(composerSource, /const hints = useMemo\(/);
+  assert.match(composerSource, /Add my next step to my follow-ups/);
+  assert.match(composerSource, /Who should I prioritize at my next event\?/);
+  assert.match(composerSource, /Which events this month are worth going to\?/);
 });
 
 test("recommended event detail links resolve through the app event service", async () => {
