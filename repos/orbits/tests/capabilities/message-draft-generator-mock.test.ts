@@ -40,7 +40,7 @@ test("message draft generator keeps typed contract separate from mock fixture pr
     MESSAGE_DRAFT_GENERATOR_FIXTURE_SOURCE: string;
     mockMessageDraftGeneratorFixture: {
       state: string;
-      drafts: readonly Array<{
+      drafts: ReadonlyArray<{
         draftId: string;
         kind: string;
         channel: string;
@@ -188,7 +188,7 @@ test("mock message draft generator service is deterministic and never calls live
         success: boolean;
         data?: {
           state: string;
-          drafts: readonly Array<{
+          drafts: ReadonlyArray<{
             draftId: string;
             kind: string;
             body: string;
@@ -207,7 +207,7 @@ test("mock message draft generator service is deterministic and never calls live
         success: boolean;
         data?: {
           state: string;
-          drafts: readonly Array<{
+          drafts: ReadonlyArray<{
             draftId: string;
             status: string;
             body: string;
@@ -341,7 +341,7 @@ test("message draft API routes return stable envelopes with empty and failure pa
     success: true;
     data: {
       state: string;
-      drafts: readonly Array<{
+      drafts: ReadonlyArray<{
         kind: string;
         body: string;
         aiProviderRequested: false;
@@ -357,7 +357,7 @@ test("message draft API routes return stable envelopes with empty and failure pa
     success: true;
     data: {
       state: string;
-      drafts: readonly Array<{
+      drafts: ReadonlyArray<{
         draftId: string;
         status: string;
         externalSendRequested: false;
@@ -413,7 +413,7 @@ test("message draft API routes return stable envelopes with empty and failure pa
 test("message draft generator debug route renders all states and the live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     MESSAGE_DRAFT_GENERATOR_MOCK_SLUG: string;
-    MESSAGE_DRAFT_GENERATOR_API_PROBES: readonly Array<{
+    MESSAGE_DRAFT_GENERATOR_API_PROBES: ReadonlyArray<{
       label: string;
       method: "POST" | "PATCH";
       path: string;

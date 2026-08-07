@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
 import { localizeOrbitAiPanelProactiveContext } from "../../features/orbit-ai/panel-localization";
 import { loadOrbitAiProactiveCalendarMessagesForApp } from "../../features/orbit-ai/proactive-calendar-service";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -18,11 +19,11 @@ function readProjectFile(relativePath: string): string {
 }
 
 test("/app/agent Chinese contact artifacts carry localized product labels and answers", () => {
-  const result = createMockOrbitAgentConversationService().sendMessage({
+  const result = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "zh",
     message:
       "Find a Japan SMB manufacturing AI workflow PoC buyer with follow-up context.",
-  });
+  }));
 
   assert.equal(result.success, true);
   if (result.success === false) return;
@@ -40,10 +41,10 @@ test("/app/agent Chinese contact artifacts carry localized product labels and an
 });
 
 test("/app/agent Chinese event artifacts use the locale passed through the conversation API", () => {
-  const result = createMockOrbitAgentConversationService().sendMessage({
+  const result = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "zh",
     message: "推荐适合见投资人并获得创始人反馈的活动",
-  });
+  }));
 
   assert.equal(result.success, true);
   if (result.success === false) return;
@@ -62,7 +63,7 @@ test("/app/agent Chinese event artifacts use the locale passed through the conve
 });
 
 test("/app/agent proactive calendar context remains localizable without changing technical ids", () => {
-  const result = loadOrbitAiProactiveCalendarMessagesForApp();
+  const result = syncResult(loadOrbitAiProactiveCalendarMessagesForApp());
   const message = result.data.messages[0];
   const localized = localizeOrbitAiPanelProactiveContext(message, "zh");
   const visibleContract = JSON.stringify(localized);

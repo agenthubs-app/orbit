@@ -41,7 +41,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
       state: string;
       event: { id: string; title: string; liveDatabaseReadExecuted: false };
       reviewId: string;
-      contacts: readonly Array<{
+      contacts: ReadonlyArray<{
         contactDraftId: string;
         displayName: string;
         status: string;
@@ -50,7 +50,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
           generatedBy: string;
           aiProviderRequested: false;
         };
-        tags: readonly Array<{
+        tags: ReadonlyArray<{
           label: string;
           generatedBy: string;
           aiProviderRequested: false;
@@ -91,7 +91,7 @@ test("post-event review contract exposes review contacts summaries tags follow-u
     mockPostEventReviewConfirmFixture: {
       state: string;
       eventId: string;
-      confirmedContacts: readonly Array<{
+      confirmedContacts: ReadonlyArray<{
         contactId: string;
         contactDraftId: string;
         batchPersistenceExecuted: false;

@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const backendEnvName = "ORBIT_RELATIONSHIP_SEARCH_BACKEND";
@@ -80,32 +81,32 @@ test("relationship natural search contract exposes typed filters fixtures servic
   >("features/search/mock-service.ts");
 
   const service = serviceModule.createMockRelationshipNaturalSearchService();
-  const success = service.queryRelationships();
-  const intentFiltered = service.queryRelationships({
+  const success = syncResult(service.queryRelationships());
+  const intentFiltered = syncResult(service.queryRelationships({
     businessIntent: "find_warm_intro",
-  });
-  const industryFiltered = service.queryRelationships({
+  }));
+  const industryFiltered = syncResult(service.queryRelationships({
     industryFilters: ["climate"],
-  });
-  const sourceFiltered = service.queryRelationships({
+  }));
+  const sourceFiltered = syncResult(service.queryRelationships({
     sourceFilters: ["event_import"],
-  });
-  const valueFiltered = service.queryRelationships({
+  }));
+  const valueFiltered = syncResult(service.queryRelationships({
     valueTypeFilters: ["strategic_intro"],
-  });
-  const followUpFiltered = service.queryRelationships({
+  }));
+  const followUpFiltered = syncResult(service.queryRelationships({
     followUpStatusFilters: ["needs_follow_up"],
-  });
-  const textSearch = service.queryRelationships({
+  }));
+  const textSearch = syncResult(service.queryRelationships({
     query: "pilot operator intro",
-  });
-  const empty = service.queryRelationships({ scenario: "empty" });
-  const pending = service.queryRelationships({ scenario: "pending" });
-  const failure = service.queryRelationships({ scenario: "failure" });
-  const unsupported = service.queryRelationships({
+  }));
+  const empty = syncResult(service.queryRelationships({ scenario: "empty" }));
+  const pending = syncResult(service.queryRelationships({ scenario: "pending" }));
+  const failure = syncResult(service.queryRelationships({ scenario: "failure" }));
+  const unsupported = syncResult(service.queryRelationships({
     industryFilters: ["space-mining"],
-  });
-  const suggestions = service.getSearchSuggestions();
+  }));
+  const suggestions = syncResult(service.getSearchSuggestions());
 
   assert.deepEqual(contract.RELATIONSHIP_NATURAL_SEARCH_BUSINESS_INTENTS, [
     "find_warm_intro",
@@ -314,7 +315,7 @@ test("mock relationship natural search is deterministic and has no external prov
     service.getSearchSuggestions(),
   );
 
-  const filtered = service.queryRelationships(queryInput);
+  const filtered = syncResult(service.queryRelationships(queryInput));
 
   assert.equal(filtered.success, true);
   assert.equal(filtered.data.results.length, 1);
@@ -392,11 +393,11 @@ test("relationship search backend and store abstractions resolve from env and ke
     { backend: "basic_rules", store: "fixture" },
     async () => {
       const service = serviceFactory.createRelationshipNaturalSearchService();
-      const result = service.queryRelationships({
+      const result = syncResult(service.queryRelationships({
         businessIntent: "find_warm_intro",
         industryFilters: ["climate"],
         query: "pilot operator intro",
-      });
+      }));
 
       assert.equal(result.success, true);
       assert.deepEqual(
@@ -412,7 +413,7 @@ test("relationship search backend and store abstractions resolve from env and ke
     { backend: "vector_live", store: "fixture" },
     async () => {
       const service = serviceFactory.createRelationshipNaturalSearchService();
-      const result = service.queryRelationships({ query: "climate" });
+      const result = syncResult(service.queryRelationships({ query: "climate" }));
 
       assert.equal(result.success, false);
       assert.equal(
@@ -427,7 +428,7 @@ test("relationship search backend and store abstractions resolve from env and ke
     { backend: "basic_rules", store: "postgres" },
     async () => {
       const service = serviceFactory.createRelationshipNaturalSearchService();
-      const result = service.getSearchSuggestions();
+      const result = syncResult(service.getSearchSuggestions());
 
       assert.equal(result.success, false);
       assert.equal(

@@ -46,18 +46,18 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
       newContacts: {
         count: number;
         windowLabel: string;
-        contacts: readonly Array<{ contactId: string; sourceLabel: string }>;
+        contacts: ReadonlyArray<{ contactId: string; sourceLabel: string }>;
       };
       highValueCount: number;
       pendingFollowups: {
         count: number;
-        tasks: readonly Array<{ taskId: string; evidenceIds: readonly string[] }>;
+        tasks: ReadonlyArray<{ taskId: string; evidenceIds: readonly string[] }>;
       };
       dormantContacts: {
         count: number;
-        contacts: readonly Array<{ contactId: string; lastTouchpointDays: number }>;
+        contacts: ReadonlyArray<{ contactId: string; lastTouchpointDays: number }>;
       };
-      recentActivity: readonly Array<{
+      recentActivity: ReadonlyArray<{
         activityId: string;
         type: string;
         evidenceIds: readonly string[];
@@ -78,8 +78,8 @@ test("dashboard aggregate contract exports typed fixtures service and errors", a
     };
     mockDashboardAggregateSummaryFixture: {
       state: string;
-      metrics: readonly Array<{ id: string; label: string; value: number }>;
-      recentActivity: readonly Array<{ activityId: string }>;
+      metrics: ReadonlyArray<{ id: string; label: string; value: number }>;
+      recentActivity: ReadonlyArray<{ activityId: string }>;
       provenance: { generationMethod: string };
     };
     mockEmptyDashboardAggregateFixture: {
@@ -235,7 +235,7 @@ test("mock dashboard aggregate service is deterministic and provider-free", asyn
         success: boolean;
         data?: {
           state: string;
-          recentActivity: readonly Array<{ activityId: string }>;
+          recentActivity: ReadonlyArray<{ activityId: string }>;
           provenance: {
             liveAnalyticsQueryExecuted: false;
             productionAggregateReadExecuted: false;
@@ -249,7 +249,7 @@ test("mock dashboard aggregate service is deterministic and provider-free", asyn
         success: boolean;
         data?: {
           state: string;
-          metrics: readonly Array<{ id: string; value: number }>;
+          metrics: ReadonlyArray<{ id: string; value: number }>;
           provenance: { generationMethod: string };
         };
         error?: { code: string; appCode: string };

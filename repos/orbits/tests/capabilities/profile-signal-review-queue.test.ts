@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -39,11 +40,11 @@ test("profile signal review queue contract exposes typed chat, activity, and con
   >("features/profile/mock-signal-service.ts");
 
   const service = serviceModule.createMockProfileSignalReviewQueueService();
-  const success = service.listUpdateSuggestions();
-  const empty = service.listUpdateSuggestions({ scenario: "empty" });
-  const pending = service.listUpdateSuggestions({ scenario: "pending" });
-  const failure = service.listUpdateSuggestions({ scenario: "failure" });
-  const accept = service.acceptUpdateSuggestion("demo-profile-suggestion-1");
+  const success = syncResult(service.listUpdateSuggestions());
+  const empty = syncResult(service.listUpdateSuggestions({ scenario: "empty" }));
+  const pending = syncResult(service.listUpdateSuggestions({ scenario: "pending" }));
+  const failure = syncResult(service.listUpdateSuggestions({ scenario: "failure" }));
+  const accept = syncResult(service.acceptUpdateSuggestion("demo-profile-suggestion-1"));
 
   assert.deepEqual(contract.PROFILE_SIGNAL_REVIEW_QUEUE_ERROR_CODES, [
     "PROFILE_SIGNAL_ACTOR_REQUIRED",

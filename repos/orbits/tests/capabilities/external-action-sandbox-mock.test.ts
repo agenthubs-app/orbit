@@ -39,7 +39,7 @@ test("external action sandbox contract exports no-op fixtures errors and service
     EXTERNAL_ACTION_SANDBOX_FIXTURE_SOURCE: string;
     mockExternalActionSandboxFixture: {
       state: string;
-      actions: readonly Array<{
+      actions: ReadonlyArray<{
         actionId: string;
         actionType: string;
         label: string;
@@ -70,7 +70,7 @@ test("external action sandbox contract exports no-op fixtures errors and service
           deviceRequested: false;
         };
       }>;
-      auditRecords: readonly Array<{
+      auditRecords: ReadonlyArray<{
         auditId: string;
         actionType: string;
         relationshipContext: {
@@ -369,7 +369,7 @@ test("mock external action sandbox service is deterministic provider-free and si
         success: boolean;
         data?: {
           state: string;
-          auditRecords: readonly Array<{
+          auditRecords: ReadonlyArray<{
             actionType: string;
             noOp: true;
             sideEffectExecuted: false;

@@ -40,10 +40,10 @@ test("app bootstrap contract exports typed fixture service and error definitions
       state: string;
       account: { accountId: string; workspaceName: string };
       profile: { profileId: string; displayName: string };
-      upcomingEvents: readonly Array<{ eventId: string; evidenceIds: readonly string[] }>;
+      upcomingEvents: ReadonlyArray<{ eventId: string; evidenceIds: readonly string[] }>;
       connectionSummary: { totalContacts: number; evidenceBackedConnections: number };
-      pendingTasks: readonly Array<{ taskId: string; evidenceIds: readonly string[] }>;
-      topAgentActions: readonly Array<{ actionId: string; confirmationRequired: boolean }>;
+      pendingTasks: ReadonlyArray<{ taskId: string; evidenceIds: readonly string[] }>;
+      topAgentActions: ReadonlyArray<{ actionId: string; confirmationRequired: boolean }>;
       dashboardSummary: { relationshipAssets: number; highValueRelationships: number };
       permissionSummary: { stagedPermissions: readonly string[]; grantedPermissions: readonly string[] };
       notificationSummary: { unreadCount: number; pendingDeliveryCount: number };
@@ -173,8 +173,8 @@ test("mock app bootstrap aggregator is deterministic provider-free and rule-base
         success: boolean;
         data?: {
           state: string;
-          pendingTasks: readonly Array<{ taskId: string }>;
-          topAgentActions: readonly Array<{ actionId: string }>;
+          pendingTasks: ReadonlyArray<{ taskId: string }>;
+          topAgentActions: ReadonlyArray<{ actionId: string }>;
           provenance: {
             generationMethod: string;
             serverSidePersonalizationExecuted: false;

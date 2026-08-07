@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as analysisValueFixtures from "../../features/analysis/value-fixtures";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -37,31 +38,31 @@ test("relationship value contract exposes typed scores rationale fixtures servic
   >("features/analysis/mock-value-service.ts");
 
   const service = serviceModule.createMockRelationshipValueScoringService();
-  const success = service.getRelationshipValue({
+  const success = syncResult(service.getRelationshipValue({
     connectionId: "demo-connection-1",
-  });
-  const empty = service.getRelationshipValue({
+  }));
+  const empty = syncResult(service.getRelationshipValue({
     connectionId: "demo-connection-1",
     scenario: "empty",
-  });
-  const pending = service.getRelationshipValue({
+  }));
+  const pending = syncResult(service.getRelationshipValue({
     connectionId: "demo-connection-1",
     scenario: "pending",
-  });
-  const failure = service.getRelationshipValue({
+  }));
+  const failure = syncResult(service.getRelationshipValue({
     connectionId: "demo-connection-1",
     scenario: "failure",
-  });
-  const missing = service.getRelationshipValue({
+  }));
+  const missing = syncResult(service.getRelationshipValue({
     connectionId: "missing-connection",
-  });
-  const recomputed = service.recomputeRelationshipValue({
+  }));
+  const recomputed = syncResult(service.recomputeRelationshipValue({
     connectionId: "demo-connection-1",
     evidenceIds: [
       "evidence:connection-storage-pilot",
       "evidence:connection-follow-up",
     ],
-  });
+  }));
 
   assert.deepEqual(contract.RELATIONSHIP_VALUE_TYPES, [
     "strategic_intro",

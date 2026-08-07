@@ -39,7 +39,7 @@ test("source consistency provenance audit contract exports typed fixtures servic
     SOURCE_CONSISTENCY_PROVENANCE_AUDIT_FIXTURE_SOURCE: string;
     mockSourceConsistencyProvenanceAuditFixture: {
       state: string;
-      auditedCollections: readonly Array<{
+      auditedCollections: ReadonlyArray<{
         entityKind: string;
         auditedCount: number;
         inconsistentCount: number;
@@ -47,7 +47,7 @@ test("source consistency provenance audit contract exports typed fixtures servic
         provenanceComplete: boolean;
         evidenceIds: readonly string[];
       }>;
-      findings: readonly Array<{
+      findings: ReadonlyArray<{
         findingId: string;
         entityKind: string;
         severity: string;

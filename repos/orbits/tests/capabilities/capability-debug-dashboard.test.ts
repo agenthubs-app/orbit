@@ -49,12 +49,12 @@ test("capability debug dashboard exports typed contract fixtures service and err
     CAPABILITY_DEBUG_DASHBOARD_FIXTURE_SOURCE: string;
     capabilityDebugDashboardFixture: {
       state: string;
-      capabilityLinks: readonly Array<{
+      capabilityLinks: ReadonlyArray<{
         id: string;
         href: string;
         serviceStatus: string;
       }>;
-      scenarioLinks: readonly Array<{
+      scenarioLinks: ReadonlyArray<{
         id: string;
         state: string;
         href: string;
@@ -65,13 +65,13 @@ test("capability debug dashboard exports typed contract fixtures service and err
           envelope: string;
         };
       }>;
-      apiProbes: readonly Array<{
+      apiProbes: ReadonlyArray<{
         name: string;
         method: string;
         path: string;
         expectStatus: number;
       }>;
-      resetControls: readonly Array<{
+      resetControls: ReadonlyArray<{
         id: string;
         method: string;
         path: string;
@@ -268,8 +268,8 @@ test("mock capability debug dashboard service is deterministic and provider-free
         success: boolean;
         data?: {
           state: string;
-          capabilityLinks: readonly Array<{ id: string }>;
-          apiProbes: readonly Array<{ path: string }>;
+          capabilityLinks: ReadonlyArray<{ id: string }>;
+          apiProbes: ReadonlyArray<{ path: string }>;
           provenance: {
             productionAdminToolsReplaced: true;
             externalObservabilityReplaced: true;

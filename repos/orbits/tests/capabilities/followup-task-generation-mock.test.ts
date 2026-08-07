@@ -38,7 +38,7 @@ test("followup task generation contract exports typed fixtures errors and mock-o
     FOLLOWUP_TASK_GENERATION_FIXTURE_SOURCE: string;
     mockFollowupTaskGenerationFixture: {
       state: string;
-      tasks: readonly Array<{
+      tasks: ReadonlyArray<{
         taskId: string;
         title: string;
         triggerKind: string;
@@ -345,7 +345,7 @@ test("followup task API routes return stable envelopes with empty and failure pa
     success: true;
     data: {
       state: string;
-      tasks: readonly Array<{
+      tasks: ReadonlyArray<{
         taskId: string;
         triggerKind: string;
         aiProviderRequested: false;
@@ -361,7 +361,7 @@ test("followup task API routes return stable envelopes with empty and failure pa
     success: true;
     data: {
       state: string;
-      tasks: readonly Array<{ triggerKind: string }>;
+      tasks: ReadonlyArray<{ triggerKind: string }>;
     };
   };
 
@@ -449,7 +449,7 @@ test("followup task API handlers reject unauthenticated reads and generation", a
 
 test("followup task generation dev probe manifest exercises declared API paths", async () => {
   const debugView = await importProjectModule<{
-    FOLLOWUP_TASK_GENERATION_API_PROBES: readonly Array<{
+    FOLLOWUP_TASK_GENERATION_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

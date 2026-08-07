@@ -85,7 +85,7 @@ test("on-site want-to-connect contract exposes intent mutual-interest match succ
     };
     mockWantConnectMatchesFixture: {
       state: string;
-      matches: readonly Array<{
+      matches: ReadonlyArray<{
         matchId: string;
         eventId: string;
         participantContactIds: readonly string[];
@@ -399,7 +399,7 @@ test("on-site want-to-connect API routes return stable envelopes with empty and 
     success: true;
     data: {
       state: string;
-      matches: readonly Array<{
+      matches: ReadonlyArray<{
         matchId: string;
         successNotice: { message: string };
       }>;

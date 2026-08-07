@@ -52,7 +52,7 @@ test("chat writing assist keeps typed contract separate from mock fixture proven
     CHAT_WRITING_ASSIST_FIXTURE_SOURCE: string;
     mockChatWritingAssistFixture: {
       state: string;
-      assists: readonly Array<{
+      assists: ReadonlyArray<{
         assistId: string;
         kind: string;
         label: string;
@@ -195,7 +195,7 @@ test("mock chat writing assist service is deterministic and never calls live pro
         success: boolean;
         data?: {
           state: string;
-          assists: readonly Array<{
+          assists: ReadonlyArray<{
             kind: string;
             originalText: string;
             suggestedText: string;
@@ -213,7 +213,7 @@ test("mock chat writing assist service is deterministic and never calls live pro
         success: boolean;
         data?: {
           state: string;
-          assists: readonly Array<{
+          assists: ReadonlyArray<{
             kind: string;
             suggestedText: string;
             externalNetworkRequested: false;
@@ -227,7 +227,7 @@ test("mock chat writing assist service is deterministic and never calls live pro
       }) => {
         success: boolean;
         data?: {
-          assists: readonly Array<{ kind: string; suggestedText: string }>;
+          assists: ReadonlyArray<{ kind: string; suggestedText: string }>;
         };
       };
       createQuickGreeting: (input?: {
@@ -236,7 +236,7 @@ test("mock chat writing assist service is deterministic and never calls live pro
       }) => {
         success: boolean;
         data?: {
-          assists: readonly Array<{ kind: string; suggestedText: string }>;
+          assists: ReadonlyArray<{ kind: string; suggestedText: string }>;
         };
       };
     };
@@ -374,7 +374,7 @@ test("chat writing assist API routes return stable envelopes with empty and fail
     success: true;
     data: {
       state: string;
-      assists: readonly Array<{
+      assists: ReadonlyArray<{
         kind: string;
         originalText: string;
         suggestedText: string;
@@ -391,7 +391,7 @@ test("chat writing assist API routes return stable envelopes with empty and fail
     success: true;
     data: {
       state: string;
-      assists: readonly Array<{
+      assists: ReadonlyArray<{
         kind: string;
         suggestedText: string;
         externalSendRequested: false;
@@ -449,7 +449,7 @@ test("chat writing assist API routes return stable envelopes with empty and fail
 test("chat writing assist debug route renders all states and the live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     CHAT_WRITING_ASSIST_MOCK_SLUG: string;
-    CHAT_WRITING_ASSIST_API_PROBES: readonly Array<{
+    CHAT_WRITING_ASSIST_API_PROBES: ReadonlyArray<{
       label: string;
       method: "POST";
       path: string;

@@ -63,7 +63,7 @@ test("chat privacy controls keeps typed contract separate from mock fixture stat
         productionDataDeletionExecuted: false;
         productionPrivacyAuditLogWritten: false;
       };
-      privateNotes: readonly Array<{
+      privateNotes: ReadonlyArray<{
         noteId: string;
         visibility: string;
         bodyRedacted: true;
@@ -267,7 +267,7 @@ test("mock chat privacy controls service is deterministic and never calls live p
         data?: {
           state: string;
           analysisOptIn: { enabled: boolean; status: string };
-          privateNotes: readonly Array<{ bodyRedacted: true }>;
+          privateNotes: ReadonlyArray<{ bodyRedacted: true }>;
           provenance: {
             aiProviderRequested: false;
             externalNetworkRequested: false;
@@ -453,7 +453,7 @@ test("chat privacy controls API routes return stable envelopes with empty and fa
         status: string;
         productionDataDeletionExecuted: false;
       };
-      privateNotes: readonly Array<{
+      privateNotes: ReadonlyArray<{
         visibility: string;
         visibleToAiAnalysis: false;
       }>;
@@ -568,7 +568,7 @@ test("chat privacy controls API routes return stable envelopes with empty and fa
 test("chat privacy controls debug route renders all states and live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     CHAT_PRIVACY_CONTROLS_MOCK_SLUG: string;
-    CHAT_PRIVACY_CONTROLS_API_PROBES: readonly Array<{
+    CHAT_PRIVACY_CONTROLS_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

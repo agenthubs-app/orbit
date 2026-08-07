@@ -22,6 +22,7 @@ import {
 import { createMockProfileService } from "../../features/profile/mock-service";
 import * as profileOnboardingDebugViewModule from "../../features/profile/profile-onboarding-and-manual-profile-editor/debug-view";
 import { createProfileRouteHandlers } from "../../app/api/profile/handlers";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const profileOnboardingDebugView =
@@ -38,10 +39,10 @@ const profileRoute = createProfileRouteHandlers({
 
 test("profile contract exposes onboarding, update, completeness, and controlled error definitions", () => {
   const service = createMockProfileService();
-  const onboarding = service.getProfile();
-  const empty = service.getProfile({ scenario: "empty" });
-  const pending = service.getPendingManualReview();
-  const failure = service.updateProfile({ displayName: "" });
+  const onboarding = syncResult(service.getProfile());
+  const empty = syncResult(service.getProfile({ scenario: "empty" }));
+  const pending = syncResult(service.getPendingManualReview());
+  const failure = syncResult(service.updateProfile({ displayName: "" }));
 
   assert.deepEqual(PROFILE_ERROR_CODES, [
     "PROFILE_REQUIRED",

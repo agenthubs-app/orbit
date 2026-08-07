@@ -41,7 +41,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
     mockEventAttendeeImportFixture: {
       state: string;
       event: { id: string; name: string };
-      contactDrafts: readonly Array<{
+      contactDrafts: ReadonlyArray<{
         id: string;
         attendeeId: string;
         displayName: string;
@@ -53,7 +53,7 @@ test("event attendee import contract exposes attendee roster drafts relationship
     };
     mockEventAttendeeRosterFixture: {
       state: string;
-      attendees: readonly Array<{
+      attendees: ReadonlyArray<{
         attendeeId: string;
         relationshipStatus: { label: string };
         organizerFeedRequested: false;
@@ -215,7 +215,7 @@ test("mock event attendee import service is deterministic rule-based code with n
   const filtered = service.importEventAttendees(filterInput) as {
     success: true;
     data: {
-      contactDrafts: readonly Array<{
+      contactDrafts: ReadonlyArray<{
         relationshipStatus: { code: string };
       }>;
       provenance: { generationMethod: string };

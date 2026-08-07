@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -64,10 +65,10 @@ test("/app/agent GET q to-do prompts render source-backed upcoming work", async 
 
   const prompt =
     "What should I do today? Summarize my to-do list from conversations and schedule.";
-  const result = serviceModule.createMockOrbitAgentConversationService().sendMessage({
+  const result = syncResult(serviceModule.createMockOrbitAgentConversationService().sendMessage({
     locale: "en",
     message: prompt,
-  });
+  }));
   const artifact = result.data?.artifacts[0];
   const items = artifact?.result.generatedView?.sections[0]?.items ?? [];
   const metadataText = items
@@ -122,10 +123,10 @@ test("/app/agent hydrates submitted to-do prompts through the client conversatio
 });
 
 test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups", () => {
-  const result = createMockOrbitAgentConversationService().sendMessage({
+  const result = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "zh",
     message: "今日待办",
-  });
+  }));
 
   assert.equal(result.success, true);
   if (result.success === false) return;

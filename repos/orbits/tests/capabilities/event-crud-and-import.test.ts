@@ -41,7 +41,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
     EVENT_CRUD_IMPORT_FIXTURE_SOURCE: string;
     mockEventListFixture: {
       state: string;
-      events: readonly Array<{
+      events: ReadonlyArray<{
         id: string;
         title: string;
         status: string;
@@ -53,7 +53,7 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
           liveDatabaseWriteExecuted: false;
         };
       }>;
-      importedRecords: readonly Array<{
+      importedRecords: ReadonlyArray<{
         id: string;
         externalRecordId: string;
         sourceMetadata: { captureMethod: string };

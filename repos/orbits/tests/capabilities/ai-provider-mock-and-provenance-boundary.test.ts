@@ -83,7 +83,7 @@ test("AI provider contract exports typed provenance errors and service interface
     AI_PROVIDER_FIXTURE_SOURCE: string;
     mockAiProviderFixture: {
       state: string;
-      runs: readonly Array<{
+      runs: ReadonlyArray<{
         runId: string;
         promptTemplateId: string;
         inputHash: string;
@@ -229,7 +229,7 @@ test("mock AI provider service is deterministic and never calls live providers",
         success: boolean;
         data?: {
           state: string;
-          runs: readonly Array<{
+          runs: ReadonlyArray<{
             runId: string;
             inputHash: string;
             output: { text: string; fallbackUsed: boolean };
@@ -469,7 +469,7 @@ test("AI provider API routes return stable envelopes with empty and failure path
     success: true;
     data: {
       state: string;
-      runs: readonly Array<{
+      runs: ReadonlyArray<{
         runId: string;
         output: { text: string; fallbackUsed: false };
         provenance: {
@@ -661,7 +661,7 @@ test("AI provider API routes fail closed in live mode instead of returning NOT_I
 test("AI provider provenance debug route renders all states and live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     AI_PROVIDER_MOCK_PROVENANCE_SLUG: string;
-    AI_PROVIDER_MOCK_API_PROBES: readonly Array<{
+    AI_PROVIDER_MOCK_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as contactsDetailFixtures from "../../features/contacts/detail-fixtures";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -37,8 +38,8 @@ test("contact detail tag and status contract exposes detail tags status notes la
   >("features/contacts/mock-detail-service.ts");
 
   const service = serviceModule.createMockContactDetailTagStatusService();
-  const success = service.getContactDetail({ contactId: "demo-contact-1" });
-  const updated = service.updateContactDetail({
+  const success = syncResult(service.getContactDetail({ contactId: "demo-contact-1" }));
+  const updated = syncResult(service.updateContactDetail({
     addTags: ["topic:venture-ecosystem"],
     contactId: "demo-contact-1",
     lastInteraction: {
@@ -52,33 +53,33 @@ test("contact detail tag and status contract exposes detail tags status notes la
     },
     removeTags: ["event:climate-founders-dinner"],
     status: "active",
-  });
-  const empty = service.getContactDetail({
+  }));
+  const empty = syncResult(service.getContactDetail({
     contactId: "demo-contact-1",
     scenario: "empty",
-  });
-  const pending = service.getContactDetail({
+  }));
+  const pending = syncResult(service.getContactDetail({
     contactId: "demo-contact-1",
     scenario: "pending",
-  });
-  const failure = service.getContactDetail({
+  }));
+  const failure = syncResult(service.getContactDetail({
     contactId: "demo-contact-1",
     scenario: "failure",
-  });
-  const invalidPatchBody = service.invalidPatchBody();
-  const pendingUpdate = service.updateContactDetail({
+  }));
+  const invalidPatchBody = syncResult(service.invalidPatchBody());
+  const pendingUpdate = syncResult(service.updateContactDetail({
     contactId: "demo-contact-1",
     scenario: "pending",
-  });
-  const unsupportedStatus = service.updateContactDetail({
+  }));
+  const unsupportedStatus = syncResult(service.updateContactDetail({
     contactId: "demo-contact-1",
     status: "blocked",
-  });
-  const unsupportedTag = service.updateContactDetail({
+  }));
+  const unsupportedTag = syncResult(service.updateContactDetail({
     addTags: ["topic:unverified"],
     contactId: "demo-contact-1",
-  });
-  const missing = service.getContactDetail({ contactId: "missing-contact" });
+  }));
+  const missing = syncResult(service.getContactDetail({ contactId: "missing-contact" }));
 
   assert.deepEqual(contract.CONTACT_DETAIL_TAG_STATUS_ERROR_CODES, [
     "CONTACT_DETAIL_ACTOR_REQUIRED",
@@ -261,7 +262,7 @@ test("mock contact detail tag and status service is deterministic with no extern
     service.getContactDetail({ contactId: "demo-contact-1" }),
   );
 
-  const updated = service.updateContactDetail(updateInput);
+  const updated = syncResult(service.updateContactDetail(updateInput));
 
   assert.equal(updated.success, true);
   assert.equal(updated.data.contact?.status, "active");

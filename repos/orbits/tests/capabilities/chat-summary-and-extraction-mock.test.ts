@@ -62,25 +62,25 @@ test("chat summary keeps typed contract separate from mock fixture provenance", 
         aiProviderRequested: false;
         liveDatabaseWriteExecuted: false;
       };
-      extractedNeeds: readonly Array<{
+      extractedNeeds: ReadonlyArray<{
         needId: string;
         statement: string;
         evidenceIds: readonly string[];
         source: { label: string };
       }>;
-      extractedTasks: readonly Array<{
+      extractedTasks: ReadonlyArray<{
         taskId: string;
         title: string;
         dueHint: string;
         evidenceIds: readonly string[];
       }>;
-      relationshipProfileUpdates: readonly Array<{
+      relationshipProfileUpdates: ReadonlyArray<{
         updateId: string;
         field: string;
         proposedValue: string;
         autoApplied: false;
       }>;
-      confirmationRequiredProfileSuggestions: readonly Array<{
+      confirmationRequiredProfileSuggestions: ReadonlyArray<{
         suggestionId: string;
         confirmationRequired: true;
         autoApplied: false;
@@ -240,10 +240,10 @@ test("mock chat summary service is deterministic and never calls live providers"
             aiProviderRequested: false;
             liveDatabaseWriteExecuted: false;
           } | null;
-          extractedNeeds: readonly Array<{ statement: string }>;
-          extractedTasks: readonly Array<{ title: string }>;
-          relationshipProfileUpdates: readonly Array<{ autoApplied: false }>;
-          confirmationRequiredProfileSuggestions: readonly Array<{
+          extractedNeeds: ReadonlyArray<{ statement: string }>;
+          extractedTasks: ReadonlyArray<{ title: string }>;
+          relationshipProfileUpdates: ReadonlyArray<{ autoApplied: false }>;
+          confirmationRequiredProfileSuggestions: ReadonlyArray<{
             confirmationRequired: true;
             autoApplied: false;
           }>;
@@ -266,10 +266,10 @@ test("mock chat summary service is deterministic and never calls live providers"
           participantName: string;
           organization: string;
           summary: { narrative: string } | null;
-          extractedNeeds: readonly Array<{ statement: string }>;
-          extractedTasks: readonly Array<{ title: string }>;
-          relationshipProfileUpdates: readonly Array<{ autoApplied: false }>;
-          confirmationRequiredProfileSuggestions: readonly Array<{
+          extractedNeeds: ReadonlyArray<{ statement: string }>;
+          extractedTasks: ReadonlyArray<{ title: string }>;
+          relationshipProfileUpdates: ReadonlyArray<{ autoApplied: false }>;
+          confirmationRequiredProfileSuggestions: ReadonlyArray<{
             confirmationRequired: true;
             autoApplied: false;
           }>;
@@ -463,13 +463,13 @@ test("chat summary and extraction API routes return stable envelopes with empty 
     success: true;
     data: {
       state: string;
-      extractedNeeds: readonly Array<{ needId: string; statement: string }>;
-      extractedTasks: readonly Array<{ taskId: string; title: string }>;
-      relationshipProfileUpdates: readonly Array<{
+      extractedNeeds: ReadonlyArray<{ needId: string; statement: string }>;
+      extractedTasks: ReadonlyArray<{ taskId: string; title: string }>;
+      relationshipProfileUpdates: ReadonlyArray<{
         updateId: string;
         autoApplied: false;
       }>;
-      confirmationRequiredProfileSuggestions: readonly Array<{
+      confirmationRequiredProfileSuggestions: ReadonlyArray<{
         suggestionId: string;
         confirmationRequired: true;
         autoApplied: false;
@@ -547,7 +547,7 @@ test("chat summary and extraction API routes return stable envelopes with empty 
 test("chat summary and extraction debug route renders all states and live replacement handoff", async () => {
   const debugView = await importProjectModule<{
     CHAT_SUMMARY_EXTRACTION_MOCK_SLUG: string;
-    CHAT_SUMMARY_EXTRACTION_API_PROBES: readonly Array<{
+    CHAT_SUMMARY_EXTRACTION_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

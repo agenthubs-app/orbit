@@ -40,7 +40,7 @@ test("agent autonomy settings contract exports levels fixtures service interface
     mockAgentAutonomySettingsFixture: {
       state: string;
       currentLevel: string;
-      levels: readonly Array<{
+      levels: ReadonlyArray<{
         level: string;
         label: string;
         boundary: string;
@@ -50,14 +50,14 @@ test("agent autonomy settings contract exports levels fixtures service interface
         rules: readonly string[];
         blockedLiveCapabilities: readonly string[];
       }>;
-      confirmationRules: readonly Array<{
+      confirmationRules: ReadonlyArray<{
         ruleId: string;
         level: string;
         actionType: string;
         requiresConfirmation: boolean;
         consequence: string;
       }>;
-      relationshipWorkflowProtections: readonly Array<{
+      relationshipWorkflowProtections: ReadonlyArray<{
         workflowId: string;
         label: string;
         protectedContext: string;
@@ -272,7 +272,7 @@ test("mock agent autonomy settings service is deterministic provider-free and si
         data?: {
           state: string;
           currentLevel: string;
-          levels: readonly Array<{
+          levels: ReadonlyArray<{
             level: string;
             autonomousExecutionAllowed: false;
             scheduledLiveAgentJobsAllowed: false;

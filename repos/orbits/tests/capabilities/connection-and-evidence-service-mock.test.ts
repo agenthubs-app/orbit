@@ -10,6 +10,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -39,9 +40,9 @@ test("connection and evidence contract exposes records timelines source links fi
   >("features/connections/mock-service.ts");
 
   const service = serviceModule.createMockConnectionEvidenceService();
-  const list = service.listConnections();
-  const detail = service.getConnection({ connectionId: "demo-connection-1" });
-  const added = service.addEvidence({
+  const list = syncResult(service.listConnections());
+  const detail = syncResult(service.getConnection({ connectionId: "demo-connection-1" }));
+  const added = syncResult(service.addEvidence({
     connectionId: "demo-connection-1",
     contribution: "follow_up_signal",
     occurredAt: "2026-06-25T19:20:00.000Z",
@@ -50,26 +51,26 @@ test("connection and evidence contract exposes records timelines source links fi
     title: "Operator confirmed warm introduction path",
     excerpt:
       "Kenji wants the storage pilot operator intro before the partner review call.",
-  });
-  const empty = service.listConnections({ scenario: "empty" });
-  const pending = service.getConnection({
+  }));
+  const empty = syncResult(service.listConnections({ scenario: "empty" }));
+  const pending = syncResult(service.getConnection({
     connectionId: "demo-connection-1",
     scenario: "pending",
-  });
-  const failure = service.getConnection({
+  }));
+  const failure = syncResult(service.getConnection({
     connectionId: "demo-connection-1",
     scenario: "failure",
-  });
-  const unsupportedSource = service.addEvidence({
+  }));
+  const unsupportedSource = syncResult(service.addEvidence({
     connectionId: "demo-connection-1",
     sourceType: "business_card_ocr",
-  });
-  const pendingAdd = service.addEvidence({
+  }));
+  const pendingAdd = syncResult(service.addEvidence({
     connectionId: "demo-connection-1",
     scenario: "pending",
-  });
-  const invalidBody = service.invalidAddEvidenceBody();
-  const missing = service.getConnection({ connectionId: "missing-connection" });
+  }));
+  const invalidBody = syncResult(service.invalidAddEvidenceBody());
+  const missing = syncResult(service.getConnection({ connectionId: "missing-connection" }));
 
   assert.deepEqual(contract.CONNECTION_EVIDENCE_SERVICE_ERROR_CODES, [
     "CONNECTION_ACTOR_REQUIRED",
@@ -230,7 +231,7 @@ test("mock connection evidence service is deterministic with no external provide
     service.listConnections(),
   );
 
-  const added = service.addEvidence(addInput);
+  const added = syncResult(service.addEvidence(addInput));
 
   assert.equal(added.success, true);
   assert.equal(added.data.connection?.databaseWriteExecuted, false);

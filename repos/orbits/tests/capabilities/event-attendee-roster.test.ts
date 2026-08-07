@@ -40,10 +40,10 @@ test("event attendee roster contract exposes tags known-contact markers recommen
     EVENT_ATTENDEE_ROSTER_FIXTURE_SOURCE: string;
     mockEventAttendeeRosterFixture: {
       state: string;
-      attendees: readonly Array<{
+      attendees: ReadonlyArray<{
         attendeeId: string;
         displayName: string;
-        attendeeTags: readonly Array<{ code: string; label: string }>;
+        attendeeTags: ReadonlyArray<{ code: string; label: string }>;
         knownContactMarker: {
           isKnownContact: boolean;
           contactId: string | null;
@@ -59,12 +59,12 @@ test("event attendee roster contract exposes tags known-contact markers recommen
         databaseWriteExecuted: false;
         aiProviderRequested: false;
       }>;
-      knownContactMarkers: readonly Array<{
+      knownContactMarkers: ReadonlyArray<{
         attendeeId: string;
         isKnownContact: boolean;
         contactId: string | null;
       }>;
-      eligibleRecommendationPool: readonly Array<{
+      eligibleRecommendationPool: ReadonlyArray<{
         attendeeId: string;
         recommendationCandidateId: string;
       }>;
@@ -381,7 +381,7 @@ test("event attendee roster API routes return stable envelopes with empty and fa
         venue: string;
         startsAt: string;
       };
-      attendees: readonly Array<{
+      attendees: ReadonlyArray<{
         attendeeId: string;
         displayName: string;
         organization: string;
@@ -401,7 +401,7 @@ test("event attendee roster API routes return stable envelopes with empty and fa
         venue: string;
         startsAt: string;
       };
-      attendees: readonly Array<{
+      attendees: ReadonlyArray<{
         attendeeId: string;
         displayName: string;
         organization: string;

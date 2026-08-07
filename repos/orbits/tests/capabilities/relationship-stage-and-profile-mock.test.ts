@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as connectionsProfileFixtures from "../../features/connections/profile-fixtures";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -37,11 +38,11 @@ test("relationship profile contract exposes typed fixtures service methods and e
   >("features/connections/mock-profile-service.ts");
 
   const service = serviceModule.createMockRelationshipStageAndProfileService();
-  const stageUpdate = service.updateStage({
+  const stageUpdate = syncResult(service.updateStage({
     connectionId: "demo-connection-1",
     relationshipStage: "active",
-  });
-  const profileUpdate = service.updateProfile({
+  }));
+  const profileUpdate = syncResult(service.updateProfile({
     connectionId: "demo-connection-1",
     context:
       "Kenji asked for a storage pilot operator introduction after the climate founders dinner.",
@@ -57,27 +58,27 @@ test("relationship profile contract exposes typed fixtures service methods and e
         "The intro is the highest-signal action from the latest source-backed context.",
     },
     relationshipType: "customer_candidate",
-  });
-  const empty = service.updateStage({
+  }));
+  const empty = syncResult(service.updateStage({
     connectionId: "demo-connection-1",
     scenario: "empty",
-  });
-  const pending = service.updateProfile({
+  }));
+  const pending = syncResult(service.updateProfile({
     connectionId: "demo-connection-1",
     scenario: "pending",
-  });
-  const failure = service.updateStage({
+  }));
+  const failure = syncResult(service.updateStage({
     connectionId: "demo-connection-1",
     scenario: "failure",
-  });
-  const missing = service.updateProfile({
+  }));
+  const missing = syncResult(service.updateProfile({
     connectionId: "missing-connection",
-  });
-  const invalidStage = service.updateStage({
+  }));
+  const invalidStage = syncResult(service.updateStage({
     connectionId: "demo-connection-1",
     relationshipStage: "unknown-stage",
-  });
-  const invalidBody = service.invalidRelationshipProfileBody();
+  }));
+  const invalidBody = syncResult(service.invalidRelationshipProfileBody());
 
   assert.deepEqual(contract.RELATIONSHIP_PROFILE_ERROR_CODES, [
     "RELATIONSHIP_PROFILE_NOT_FOUND",
@@ -212,7 +213,7 @@ test("relationship stage and profile mock is deterministic with no external prov
     service.updateStage(stageInput),
   );
 
-  const profile = service.updateProfile(profileInput);
+  const profile = syncResult(service.updateProfile(profileInput));
 
   assert.equal(profile.success, true);
   assert.equal(profile.data.profile.databaseReadExecuted, false);

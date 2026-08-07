@@ -45,7 +45,7 @@ test("mock scenario contract exports typed fixtures service interface and errors
       string,
       { appCode: string; message: string; recovery: string }
     >;
-    mockScenarioFixtures: readonly Array<{
+    mockScenarioFixtures: ReadonlyArray<{
       id: string;
       label: string;
       scenarioKind: string;
@@ -165,7 +165,7 @@ test("mock scenario and reset services are deterministic provider-free rules", a
         success: true;
         data: {
           activeScenarioId: string;
-          scenarios: readonly Array<{ id: string; selected: boolean }>;
+          scenarios: ReadonlyArray<{ id: string; selected: boolean }>;
         };
       };
       activateScenario: (scenarioId: string) => {

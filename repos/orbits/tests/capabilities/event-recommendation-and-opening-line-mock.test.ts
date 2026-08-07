@@ -40,13 +40,13 @@ test("event recommendation contract exposes ranked attendees signals opening lin
     mockEventRecommendationsFixture: {
       state: string;
       event: { id: string; title: string; venue: string };
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         recommendationId: string;
         attendee: { attendeeId: string; displayName: string };
         rank: number;
         score: number;
         reasons: readonly string[];
-        matchSignals: readonly Array<{
+        matchSignals: ReadonlyArray<{
           signalId: string;
           label: string;
           weight: number;
@@ -413,7 +413,7 @@ test("event recommendation API routes return stable envelopes with empty and fai
     data: {
       state: string;
       event: { id: string; title: string };
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         attendee: { attendeeId: string; displayName: string };
         score: number;
         openingLine: { aiProviderRequested: false };

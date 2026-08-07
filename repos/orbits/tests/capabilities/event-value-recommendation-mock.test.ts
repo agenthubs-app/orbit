@@ -43,7 +43,7 @@ test("event value recommendation contract exposes fixtures errors and mock-only 
         location: string;
         industryPreference: string;
       };
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         eventId: string;
         title: string;
         location: string;
@@ -389,7 +389,7 @@ test("event value recommendation API routes return stable envelopes with empty a
     success: true;
     data: {
       state: string;
-      recommendations: readonly Array<{
+      recommendations: ReadonlyArray<{
         eventId: string;
         title: string;
         valueScore: number;
@@ -483,7 +483,7 @@ test("event value recommendation API routes return stable envelopes with empty a
 
 test("event value recommendation dev probe manifest exercises every API path", async () => {
   const debugView = await importProjectModule<{
-    EVENT_VALUE_RECOMMENDATION_API_PROBES: readonly Array<{
+    EVENT_VALUE_RECOMMENDATION_API_PROBES: ReadonlyArray<{
       label: string;
       method: "GET" | "POST";
       path: string;

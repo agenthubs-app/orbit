@@ -46,13 +46,13 @@ test("event goal and readiness contract exposes goal suggestions checklist prepa
         aiProviderRequested: false;
         liveDatabaseWriteExecuted: false;
       };
-      suggestedGoals: readonly Array<{
+      suggestedGoals: ReadonlyArray<{
         goalId: string;
         label: string;
         rationale: string;
         aiProviderRequested: false;
       }>;
-      readinessChecklist: readonly Array<{
+      readinessChecklist: ReadonlyArray<{
         itemId: string;
         label: string;
         status: string;

@@ -12,6 +12,7 @@ import {
 } from "../../app/(app)/app/agent/agent-action-status-card";
 import { createOrbitAiCalendarActionService } from "../../features/orbit-ai/calendar-action-service";
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
+import { syncResult } from "../support/sync-result";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -23,11 +24,11 @@ function readProjectFile(relativePath: string): string {
 }
 
 test("event recommendations still produce a local, unconfirmed calendar preview contract", () => {
-  const conversation = createMockOrbitAgentConversationService().sendMessage({
+  const conversation = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "en",
     message:
       "Recommend events where I can meet investors for seed fundraising and founder feedback.",
-  });
+  }));
 
   assert.equal(conversation.success, true);
   if (conversation.success === false) return;
@@ -85,10 +86,10 @@ test("external calendar actions remain reviewable but cannot be confirmed inside
 });
 
 test("to-do artifacts preserve their source link and local calendar safety boundary", () => {
-  const conversation = createMockOrbitAgentConversationService().sendMessage({
+  const conversation = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "zh",
     message: "今日待办",
-  });
+  }));
 
   assert.equal(conversation.success, true);
   if (conversation.success === false) return;
