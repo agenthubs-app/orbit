@@ -106,6 +106,28 @@ export function createOrbitAgentConversationService(
 }
 
 /**
+ * Creates the artifact service for an actor already resolved by the server
+ * authentication boundary. Live reads stay actor-scoped; mock mode keeps its
+ * deterministic fixture implementation for tests and local UI development.
+ */
+export function createOrbitAgentArtifactTaskServiceForActor(
+  actorId: string,
+  mode?: ModuleMode | string,
+): OrbitAgentArtifactTaskService {
+  const resolution = resolveOrbitAgentArtifactTaskService(mode);
+
+  if (resolution.success === false) {
+    throw new Error(resolution.error.message);
+  }
+
+  if (resolution.mode !== "live") {
+    return resolution.service;
+  }
+
+  return createOrbitAgentLiveArtifactTaskService({ actorId });
+}
+
+/**
  * Creates the conversation service for an actor already resolved by the
  * server authentication boundary. Mock behavior stays deterministic; Live
  * artifact reads receive the actor without trusting request payload identity.

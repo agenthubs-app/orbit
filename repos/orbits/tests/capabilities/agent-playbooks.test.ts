@@ -171,6 +171,31 @@ test("Playbook preview fails closed without a server-authenticated actor", async
   );
 });
 
+test("Playbook preview executes its registered read-only artifact without permission-prefix false positives", async () => {
+  const result = await previewAgentAutomationDefinition(
+    {
+      capabilityId: "followups.reviewQueue",
+      delivery: "in_app",
+      instruction:
+        "复核待跟进关系，给出有证据的优先级；仅输出分析，不执行任何发送或日程操作。",
+      title: "每日待跟进关系复核",
+      trigger: {
+        kind: "schedule",
+        schedule: {
+          kind: "daily",
+          time: "09:00",
+          timeZone: "Asia/Tokyo",
+        },
+      },
+    },
+    { actorId: "actor:playbook-preview" },
+  );
+
+  assert.doesNotMatch(result.summary, /权限授权|Gmail|permission/i);
+  assert.ok(result.runId);
+  assert.ok(result.sourceModules?.includes("followups"));
+});
+
 test("Playbook configuration edits create versions while pause and resume do not", async () => {
   let now = "2026-07-27T00:00:00.000Z";
   const service = createStorageAgentAutomationService({

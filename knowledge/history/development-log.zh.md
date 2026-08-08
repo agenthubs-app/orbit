@@ -126,3 +126,20 @@
 - 修改摘要：`scripts/knowledge/build-catalog.mjs` 新增 julyBacklogDocs 38 条人工条目（每条经阅读原文撰写中文标题/摘要/审计依据）；排除 `**/.claude/**` 与 `CLAUDE.md`（共 7 个 agent 工具说明）；live-handoff 自动收录扩展到 `*_LIVE_IMPLEMENTATION.md`/`*_MOCK_TO_LIVE.md`（6 个）；moduleDocs 增加 home。重新生成 catalog（191 条）、中文镜像与 app manifest。
 - 环境修复：repos/orbits node_modules 缺失 react-markdown 等依赖导致 knowledge 页面测试失败，npm install 后恢复。
 - 验证方式：freshness 报告未登记归零；`node --test tests/knowledge-*.test.mjs` 6/6；app 侧 knowledge-manifest、knowledge-document-content、knowledge-wiki-page 测试 11/11。
+
+## [2026-08-08] verification | iOrbit Agent 全面浏览器验收与中文压力数据
+
+- 用户目标：整理当前 iOrbit Agent 具体能力，为 `qa@orbit.test` 注入大量中文测试数据，使用真实浏览器点击验证全部主要界面，并把功能、实际效果和浏览器验收状态写入项目 Wiki。
+- 数据结果：注入并验证 8,335 条账号级测试记录或 membership，包括 13 场活动、66 位联系人、4,447 条证据、80 个任务、200 条消息、350 条匹配推荐和 13 条报名投影；`failures: []`。
+- 修复摘要：修复活动推荐标题/去重、Today 东京时区、Playbook permission false positive、账号活动 ID 到 canonical Event Core 的 provenance 回落、Agent 阶段条无条件“已报名”假状态，以及本地浏览器 dev origin。
+- 浏览器结果：Agent chat.context、联系人/活动推荐、任务/提醒/草稿、记忆、反馈、Action ledger、Playbook 生命周期，Events 列表/地图/详情，Today、人脉各子页、收件箱、设置和 390×844 手机布局均有真实点击证据。活动 registration window 未配置/已过期、约见和外部连接未配置等保留为 FAIL 或受控限制，没有伪造通过。
+- 文档：新增 `knowledge/wiki/iorbit-agent-capabilities-and-browser-verification.zh.md`，记录能力矩阵、数据规模、浏览器证据、已知问题和复测顺序。
+- 验证方式：聚焦 Node tests 94/94 通过；知识库测试 6/6 通过；本轮修改文件独立 TypeScript 检查通过。全量 `npm test` 的 6 个失败集中于尚未迁移到 canonical-only loader 的旧 registration route tests；全量 typecheck 仍受既有测试类型基线阻塞。
+
+## [2026-08-08] fix | 活动报名窗口、canonical 状态与公开报名路由统一
+
+- 根因：活动列表和详情只按活动 lifecycle 推断“报名中”，没有读取 Event Operations 的 profile deadline/cutoff；列表还会让陈旧 legacy 投影覆盖 canonical membership；详情报名按钮使用 canonical 内部 ID，含 `event:` 的活动无法被公开报名页解析。
+- 修改摘要：新增统一 `EventRegistrationAvailability` 读模型；列表和详情共同消费数据库窗口；canonical 活动只认 canonical membership；报名 CTA 改用 public code；旧 registration route tests 改为显式注入 deterministic Event Record。
+- 浏览器结果：`event_signup_02` / `event_signup_03` 桌面详情显示禁用“报名暂不可用”且无报名链接，桌面/移动卡片显示“查看活动”；`event_signup_01` 保持“已报名”并可进入已保存画像；Admission Journey Lab 实际完成两题并生成中文活动画像，保存为“待审核”；390×844 无横向溢出。
+- 风险记录：GitNexus 将活动卡片和详情主链评为 HIGH，原因是同时覆盖列表、地图、移动卡和详情入口；修改前已报告，随后以统一类型、浏览器点击和全量回归验证。未出现 CRITICAL 修改。
+- 验证方式：报名相关 28/28 tests 通过；本轮文件定向 TypeScript 检查通过；全量 `npm test` 退出码 0；全量 `npm run typecheck` 仍被仓库既有测试类型基线阻塞。

@@ -11,6 +11,7 @@ import {
 } from "../../features/events/registration/service";
 import { signAdaptiveInterviewQuestion } from "../../features/events/registration/interview-question-token.server";
 import type { EventParticipantProfileField } from "../../features/events/registration/contract";
+import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 
 loadLocalEnv();
@@ -20,8 +21,45 @@ const eventId = "event_signup_02";
 const registrationService = createEventRegistrationService({
   provider: createMemoryEventRegistrationProvider(),
 });
+const registrationEvent: EventRecord = {
+  aiProviderRequested: false,
+  calendarProviderRequested: false,
+  calendarSyncRequested: false,
+  description: "Deterministic registration route fixture.",
+  emailProviderRequested: false,
+  endsAt: "2030-03-14T12:00:00.000Z",
+  evidence: [],
+  externalNetworkRequested: false,
+  id: eventId,
+  liveDatabaseWriteExecuted: false,
+  nextAction: "Complete registration",
+  notificationDelivered: false,
+  organizerFeedRequested: false,
+  recommendedPreparation: "Answer both participant-profile questions.",
+  relationshipContext: "Route-level registration contract test.",
+  sourceMetadata: {
+    calendarSyncRequested: false,
+    captureMethod: "manual_form",
+    externalNetworkRequested: false,
+    importedAt: "2030-01-01T00:00:00.000Z",
+    label: "Registration route fixture",
+    liveDatabaseWriteExecuted: false,
+    organizerFeedRequested: false,
+    provider: "test",
+    providerRecordId: eventId,
+    id: "source:event-registration-route",
+    type: "manual",
+  },
+  startsAt: "2030-03-14T09:30:00.000Z",
+  status: "confirmed",
+  title: "Registration route fixture",
+  venue: "Tokyo",
+};
+const loadRegistrationEvent = async (id: string) =>
+  id === eventId ? registrationEvent : null;
 const { GET: getRegistration, POST: register } =
   createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     registrationService,
     resolveActor: async () => actor,
   });
@@ -139,6 +177,7 @@ test("cancelling without a registration returns a stable not-found envelope", as
 
 test("event registration route rejects requests without an authenticated actor", async () => {
   const { GET } = createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     resolveActor: async () => null,
   });
   const response = await GET(
@@ -164,6 +203,7 @@ test("legacy registration writes cannot bypass an admission-controlled event", a
     },
   };
   const guarded = createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     registrationService: guardedService,
     resolveActor: async () => actor,
     resolveAdmissionControl: async () => "admission",
@@ -195,6 +235,7 @@ test("legacy registration writes cannot bypass an admission-controlled event", a
 
 test("legacy registration writes fail closed when admission control cannot be read", async () => {
   const guarded = createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     registrationService,
     resolveActor: async () => actor,
     resolveAdmissionControl: async () => "unavailable",
@@ -221,6 +262,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     provider: createMemoryEventRegistrationProvider(),
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     registrationService: tokenService,
     resolveActor: async () => tokenActor,
   });
@@ -292,6 +334,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     );
 
     const replayedByAnotherActor = createEventRegistrationRouteHandlers({
+      loadEvent: loadRegistrationEvent,
       registrationService: tokenService,
       resolveActor: async () => ({ id: "user:token-replay" }),
     }).POST;
@@ -322,6 +365,7 @@ test("registration merges unsigned seeded answers under verified responses", asy
     provider: createMemoryEventRegistrationProvider(),
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    loadEvent: loadRegistrationEvent,
     registrationService: tokenService,
     resolveActor: async () => tokenActor,
   });

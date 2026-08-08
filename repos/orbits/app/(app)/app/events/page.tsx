@@ -1,6 +1,9 @@
 import { auth } from "../../../../auth";
 import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../features/events/core/public-catalogue-runtime";
-import { listRuntimeEventRegistrationsForUser } from "../../../../features/events/registration/runtime";
+import {
+  listRuntimeEventRegistrationsForUser,
+  readRuntimeEventRegistrationAvailability,
+} from "../../../../features/events/registration/runtime";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { applyOrbitEventPresentation } from "../orbit-event-presentation";
 import {
@@ -65,14 +68,20 @@ export default async function AppEventsPage({
     await canonicalCatalogue.read(),
   );
   const eventIds = catalogue.events.map((event) => event.id);
-  const registrations = await (
+  const [registrations, availabilityEntries] = await Promise.all([
     session?.user?.id
       ? listRuntimeEventRegistrationsForUser({
         eventIds,
         userId: session.user.id,
       })
-      : Promise.resolve([])
-  );
+      : Promise.resolve([]),
+    Promise.all(
+      eventIds.map(async (eventId) => [
+        eventId,
+        await readRuntimeEventRegistrationAvailability(eventId),
+      ] as const),
+    ),
+  ]);
   const registrationsByEventId = new Map(
     registrations.map((registration) => [registration.eventId, registration]),
   );
@@ -110,6 +119,7 @@ export default async function AppEventsPage({
               ? resolvedSearchParams.scope
               : "all"
           }
+          registrationAvailabilityByEventId={Object.fromEntries(availabilityEntries)}
           viewModel={viewModel}
         />
       </div>

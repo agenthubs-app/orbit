@@ -25,6 +25,7 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
+      registrationAvailability="open"
     />,
   );
 }
@@ -77,9 +78,9 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
   if (routeModel.routeState !== "success") return;
   const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
-  const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} />);
-  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
-  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+  const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} registrationAvailability="open" />);
+  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
+  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
 
   assert.match(pre, /data-event-journey-state="pre"/);
   assert.match(pre, /回答 2 题并报名|Answer 2 questions &amp; register/);
@@ -108,6 +109,7 @@ test("registered attendees can open the normal preparation workspace before the 
         stats: { ...event.stats, youRsvped: true },
         youRsvped: true,
       }}
+      registrationAvailability="registration_closed"
       workspaceAvailable
     />,
   );
@@ -117,8 +119,35 @@ test("registered attendees can open the normal preparation workspace before the 
   assert.doesNotMatch(html, />未开始<|>Not started</);
 });
 
+test("unavailable registration windows disable every detail-page registration entry", async () => {
+  const routeModel = await loadAppEventDetailRoute({
+    eventId: "demo-event-1",
+    mode: "mock",
+  });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") return;
+  const event = eventDetailRouteToOrbitLandingEventView(routeModel);
+  const html = renderToStaticMarkup(
+    <OrbitRealEventDetail
+      event={{
+        ...event,
+        status: "upcoming",
+        stats: { ...event.stats, youRsvped: false },
+        youRsvped: false,
+      }}
+      registrationAvailability="unavailable"
+    />,
+  );
+
+  assert.match(html, /报名暂不可用|Registration unavailable/);
+  assert.match(html, /disabled=""/);
+  assert.doesNotMatch(html, /href="\/app\/events\/[^"]+\/register"/);
+  assert.doesNotMatch(html, /报名中|Registration open/);
+});
+
 test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
+  const detailSource = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
   const matchmakingSource = source("app/(app)/app/events/[id]/orbit-event-matchmaking.tsx");
 
   assert.match(pageSource, /resolveConfiguredCanonicalEventDetailView/);
@@ -140,6 +169,10 @@ test("/app/events/[id] resolves public and authorized private details through ca
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /resolution\.state === "authentication_required"/);
   assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(
+    detailSource,
+    /encodeURIComponent\(event\.code \|\| event\.id\)\}\/register/g,
+  );
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(pageSource, /action: readSearchParam/);
   assert.doesNotMatch(pageSource, /targetContactId: readSearchParam/);

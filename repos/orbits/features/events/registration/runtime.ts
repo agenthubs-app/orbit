@@ -1,14 +1,21 @@
-import { createDeadlineGatedEventRegistrationService } from "./deadline-gated-service";
+import {
+  createDeadlineGatedEventRegistrationService,
+  resolveEventRegistrationAvailability,
+  type EventRegistrationAvailability,
+} from "./deadline-gated-service";
 import { createConfiguredEventOperationsRepository } from "../event-operations/repository";
 import { createEventRegistrationService } from "./service";
 import { createConfiguredEventOperationsRegistrationWindowProvider } from "./storage/event-operations-window-provider";
 import { createConfiguredEventRegistrationProvider } from "./storage/live-record-provider";
+import type { EventRegistration } from "./contract";
 
 const runtimeProvider = createConfiguredEventRegistrationProvider();
 const runtimeBaseService = createEventRegistrationService({
   provider: runtimeProvider,
 });
 const eventOperationsRepository = createConfiguredEventOperationsRepository();
+const runtimeWindowProvider =
+  createConfiguredEventOperationsRegistrationWindowProvider();
 const canonicalService = eventOperationsRepository
   ? {
       cancel: eventOperationsRepository.cancelCanonicalRegistration.bind(
@@ -29,9 +36,20 @@ export const eventRegistrationRuntimeService =
     baseService: runtimeBaseService,
     canonicalService,
     projectionProvider: runtimeProvider,
-    windowProvider:
-      createConfiguredEventOperationsRegistrationWindowProvider(),
+    windowProvider: runtimeWindowProvider,
   });
+
+export async function readRuntimeEventRegistrationAvailability(
+  eventId: string,
+): Promise<EventRegistrationAvailability> {
+  try {
+    return resolveEventRegistrationAvailability(
+      await runtimeWindowProvider.getEnrollment(eventId),
+    );
+  } catch {
+    return "unavailable";
+  }
+}
 
 export async function listRuntimeEventRegistrationsForUser(input: {
   eventIds: readonly string[];
@@ -39,7 +57,7 @@ export async function listRuntimeEventRegistrationsForUser(input: {
 }) {
   const eventIds = [...new Set(input.eventIds.filter(Boolean))];
   if (eventIds.length === 0) return [];
-  const [projected, canonical] = await Promise.all([
+  const [projected, canonical, enrollmentEntries] = await Promise.all([
     runtimeProvider.listRegistrationsForUser(input.userId, eventIds),
     eventOperationsRepository
       ? eventOperationsRepository.listCanonicalRegistrationsForUser(
@@ -47,14 +65,32 @@ export async function listRuntimeEventRegistrationsForUser(input: {
           eventIds,
         )
       : Promise.resolve([]),
+    Promise.all(
+      eventIds.map(async (eventId) => [
+        eventId,
+        await runtimeWindowProvider.getEnrollment(eventId),
+      ] as const),
+    ),
   ]);
-  const byEventId = new Map(
-    projected.map((registration) => [registration.eventId, registration]),
+  const projectedByEventId = new Map<string, EventRegistration>(
+    projected.map((registration) => [registration.eventId, registration] as const),
   );
-  for (const registration of canonical) {
-    // Canonical membership is authoritative when an enrolled event also has a
-    // best-effort live-record projection.
-    byEventId.set(registration.eventId, registration);
+  const canonicalByEventId = new Map<string, EventRegistration>(
+    canonical.map((registration: EventRegistration) => [
+      registration.eventId,
+      registration,
+    ] as const),
+  );
+  const enrollmentByEventId = new Map(enrollmentEntries);
+  const registrations: EventRegistration[] = [];
+  for (const eventId of eventIds) {
+    const enrollment = enrollmentByEventId.get(eventId);
+    const registration =
+      enrollment?.state === "legacy_unenrolled" ||
+      enrollment?.state === "legacy_importing"
+        ? projectedByEventId.get(eventId)
+        : canonicalByEventId.get(eventId);
+    if (registration) registrations.push(registration);
   }
-  return [...byEventId.values()];
+  return registrations;
 }

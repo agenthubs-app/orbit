@@ -305,7 +305,7 @@ export function OrbitAgentDashboard({
               <span className={`stage${nextEvent.youRsvped || nextEvent.stats.youRsvped ? " done" : " now"}`}>
                 <span className="s-dot">
                   {nextEvent.youRsvped || nextEvent.stats.youRsvped ? <Icon name="check" size={11} /> : null}
-                  {t({ en: "Registered", zh: "已报名" })}
+                  {t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })}
                 </span>
               </span>
               <span className="stage"><span className="s-link" /></span>

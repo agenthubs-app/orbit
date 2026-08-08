@@ -204,6 +204,17 @@ function eventText(event: EventRecord): string {
     .toLowerCase();
 }
 
+function semanticEventKey(event: EventRecord): string {
+  const startsAtMs = Date.parse(event.startsAt);
+  const normalizedStartsAt = Number.isFinite(startsAtMs)
+    ? new Date(startsAtMs).toISOString()
+    : event.startsAt;
+
+  return [event.title, normalizedStartsAt, event.venue]
+    .map((value) => value.trim().toLocaleLowerCase())
+    .join("\u0000");
+}
+
 function isDirectEventReference(query: string, event: EventRecord): boolean {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   if (!normalizedQuery) return false;
@@ -314,7 +325,7 @@ function candidateFor(input: {
     databaseQueryExecuted: input.databaseQueryExecuted,
     description: input.event.description,
     endsAt: input.event.endsAt,
-    eventLabel: input.event.sourceMetadata.label ?? input.event.title,
+    eventLabel: input.event.title,
     eventId: input.event.id,
     evidenceIds: evidenceIdsFor(input.event),
     localizedDescriptions: localizedDescriptionsFor(input.event.description),
@@ -459,9 +470,18 @@ function canonicalBackedListResult(
   const eventsById = new Map(
     publicEvents.map((event) => [event.id, event] as const),
   );
+  const eventIdsBySemanticKey = new Map(
+    publicEvents.map((event) => [semanticEventKey(event), event.id] as const),
+  );
 
   for (const event of ownedEvents) {
+    const semanticKey = semanticEventKey(event);
+    const duplicateId = eventIdsBySemanticKey.get(semanticKey);
+    if (duplicateId && duplicateId !== event.id) {
+      eventsById.delete(duplicateId);
+    }
     eventsById.set(event.id, event);
+    eventIdsBySemanticKey.set(semanticKey, event.id);
   }
 
   const events = [...eventsById.values()];

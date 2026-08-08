@@ -14,6 +14,14 @@ test("registered event actions are consistent across lifecycle states", () => {
   assert.equal(eventCardActionKind("upcoming", false), "register");
   assert.equal(eventCardActionKind("active", false), "register");
   assert.equal(eventCardActionKind("ended", false), "view");
+  assert.equal(
+    eventCardActionKind("upcoming", false, "registration_closed"),
+    "view",
+  );
+  assert.equal(
+    eventCardActionKind("active", false, "unavailable"),
+    "view",
+  );
 });
 
 test("event scope has one URL source across registered and lifecycle transitions", () => {

@@ -11,6 +11,7 @@ import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primit
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../orbit-z";
 import { EventCover } from "./orbit-event-cover";
+import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "registered", "upcoming", "active", "ended"] as const;
@@ -40,8 +41,13 @@ export function eventScopeSearchString(
 export function eventCardActionKind(
   status: OrbitLandingEventView["status"],
   registered: boolean,
+  registrationAvailability: EventRegistrationAvailability = "open",
 ): "enter" | "manage" | "register" | "view" {
-  if (!registered) return status === "ended" ? "view" : "register";
+  if (!registered) {
+    return status === "ended" || registrationAvailability !== "open"
+      ? "view"
+      : "register";
+  }
   if (status === "active") return "enter";
   return status === "upcoming" ? "manage" : "view";
 }
@@ -59,6 +65,7 @@ interface MappedEvent {
   pos: { x: number; y: number };
   status: OrbitLandingEventView["status"];
   registered: boolean;
+  registrationAvailability: EventRegistrationAvailability;
   sub: string;
   time: string;
 }
@@ -131,7 +138,11 @@ function eventTopics(event: OrbitLandingEventView) {
     .filter((item) => item !== event.address && item !== event.place);
 }
 
-function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEvent {
+function mapEvent(
+  event: OrbitLandingEventView,
+  language: "en" | "zh",
+  registrationAvailability: EventRegistrationAvailability,
+): MappedEvent {
   const date = formatEventDate(event, language);
   const name = event.name || event.code || (language === "en" ? "Untitled event" : "未命名活动");
   const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
@@ -148,6 +159,7 @@ function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEv
     pos: { x: event.mapX, y: event.mapY },
     status: event.status,
     registered: Boolean(event.stats.youRsvped),
+    registrationAvailability,
     // 行业（词典化）+ 编号；主办方代号与封面主题 slug 不进用户可见的副标题。
     sub: [topicLabel(event.industry, language), event.code].filter(Boolean).join(" · "),
     time: date.time,
@@ -157,9 +169,14 @@ function mapEvent(event: OrbitLandingEventView, language: "en" | "zh"): MappedEv
 function eventCardAction(
   event: Pick<OrbitLandingEventView, "code" | "id" | "status" | "stats">,
   t: ReturnType<typeof useOrbitLanguage>["t"],
+  registrationAvailability: EventRegistrationAvailability,
 ) {
   const registered = Boolean(event.stats.youRsvped);
-  const kind = eventCardActionKind(event.status, registered);
+  const kind = eventCardActionKind(
+    event.status,
+    registered,
+    registrationAvailability,
+  );
   if (kind === "register" || kind === "view") {
     return {
       badgeLabel: null,
@@ -189,13 +206,20 @@ function eventCardAction(
 
 function EventModuleGrid({
   events,
+  registrationAvailabilityByEventId,
 }: {
   events: OrbitLandingEventView[];
+  registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
 }) {
   return (
     <div className="orbit-event-module-grid">
       {events.map((event, index) => (
-        <EventModuleCard event={event} imagePriority={index < 2} key={event.id} />
+        <EventModuleCard
+          event={event}
+          imagePriority={index < 2}
+          key={event.id}
+          registrationAvailability={registrationAvailabilityByEventId[event.id] ?? "unavailable"}
+        />
       ))}
     </div>
   );
@@ -204,13 +228,15 @@ function EventModuleGrid({
 function EventModuleCard({
   event,
   imagePriority = false,
+  registrationAvailability,
 }: {
   event: OrbitLandingEventView;
   imagePriority?: boolean;
+  registrationAvailability: EventRegistrationAvailability;
 }) {
   const { language, preserveHref, t } = useOrbitLanguage();
-  const mapped = mapEvent(event, language === "ja" ? "en" : language);
-  const action = eventCardAction(event, t);
+  const mapped = mapEvent(event, language === "ja" ? "en" : language, registrationAvailability);
+  const action = eventCardAction(event, t, registrationAvailability);
   const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
   const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
   // 行业已作为卡片眉行展示，标签行不再重复同一个词。
@@ -332,6 +358,7 @@ function MapEventCard({
       status: item.status,
     },
     t,
+    item.registrationAvailability,
   );
 
   return (
@@ -367,6 +394,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
       status: item.status,
     },
     t,
+    item.registrationAvailability,
   );
 
   return (
@@ -475,9 +503,11 @@ function EventsEmptyState({
 
 export function OrbitRealExploreClient({
   initialScope = "all",
+  registrationAvailabilityByEventId,
   viewModel,
 }: {
   initialScope?: EventScope;
+  registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitLandingViewModel;
 }) {
   const { language, t } = useOrbitLanguage();
@@ -505,7 +535,14 @@ export function OrbitRealExploreClient({
     const matchesQuery = !query || event.name.includes(query) || event.code.includes(query) || event.theme.includes(query);
     return matchesStatus && matchesTopic && matchesQuery;
   }), [events, query, status, topic]);
-  const mapItems = useMemo(() => filtered.map((event) => mapEvent(event, language === "ja" ? "en" : language)), [filtered, language]);
+  const mapItems = useMemo(
+    () => filtered.map((event) => mapEvent(
+      event,
+      language === "ja" ? "en" : language,
+      registrationAvailabilityByEventId[event.id] ?? "unavailable",
+    )),
+    [filtered, language, registrationAvailabilityByEventId],
+  );
   const located = mapItems.filter((item) => Number.isFinite(item.pos.x) && Number.isFinite(item.pos.y));
   const canShowMap = located.length > 0;
   const effMode = mode === "map" && canShowMap ? "map" : "modules";
@@ -579,7 +616,7 @@ export function OrbitRealExploreClient({
             {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
-          {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} /> : null}
+          {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} registrationAvailabilityByEventId={registrationAvailabilityByEventId} /> : null}
           {filtered.length === 0 ? (
             <EventsEmptyState
               filteredView={filteredView}
@@ -644,7 +681,11 @@ export function OrbitRealExploreClient({
             <div style={{ display: "grid", gap: 12 }}>
               {filtered.map((event) => (
                 <MobileExploreCard
-                  item={mapEvent(event, language === "ja" ? "en" : language)}
+                  item={mapEvent(
+                    event,
+                    language === "ja" ? "en" : language,
+                    registrationAvailabilityByEventId[event.id] ?? "unavailable",
+                  )}
                   key={event.id}
                 />
               ))}

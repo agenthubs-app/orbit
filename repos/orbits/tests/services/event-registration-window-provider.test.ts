@@ -3,6 +3,7 @@ import test from "node:test";
 
 import type { EventOperationsPostgresRuntime } from "../../features/events/event-operations/storage/postgres-client";
 import { createEventOperationsRegistrationWindowProvider } from "../../features/events/registration/storage/event-operations-window-provider";
+import { resolveEventRegistrationAvailability } from "../../features/events/registration/deadline-gated-service";
 
 function runtimeWithRows(
   rows: readonly Record<string, unknown>[],
@@ -93,4 +94,51 @@ test("an enrolled event uses PostgreSQL statement_timestamp with its configured 
       registrationCutoffAt: "2026-08-03T11:00:00.000Z",
     },
   });
+});
+
+test("registration availability follows the same authoritative window as writes", () => {
+  assert.equal(
+    resolveEventRegistrationAvailability({ state: "legacy_unenrolled" }),
+    "open",
+  );
+  assert.equal(
+    resolveEventRegistrationAvailability({ state: "canonical_misconfigured" }),
+    "unavailable",
+  );
+  assert.equal(
+    resolveEventRegistrationAvailability({
+      state: "enrolled",
+      statementTimestamp: "2026-08-03T09:00:00.000Z",
+      window: {
+        eventId: "event:open",
+        profileEditDeadlineAt: "2026-08-03T10:00:00.000Z",
+        registrationCutoffAt: "2026-08-03T11:00:00.000Z",
+      },
+    }),
+    "open",
+  );
+  assert.equal(
+    resolveEventRegistrationAvailability({
+      state: "enrolled",
+      statementTimestamp: "2026-08-03T10:30:00.000Z",
+      window: {
+        eventId: "event:profile-frozen",
+        profileEditDeadlineAt: "2026-08-03T10:00:00.000Z",
+        registrationCutoffAt: "2026-08-03T11:00:00.000Z",
+      },
+    }),
+    "profile_edit_closed",
+  );
+  assert.equal(
+    resolveEventRegistrationAvailability({
+      state: "enrolled",
+      statementTimestamp: "2026-08-03T11:00:00.000Z",
+      window: {
+        eventId: "event:closed",
+        profileEditDeadlineAt: "2026-08-03T10:00:00.000Z",
+        registrationCutoffAt: "2026-08-03T11:00:00.000Z",
+      },
+    }),
+    "registration_closed",
+  );
 });

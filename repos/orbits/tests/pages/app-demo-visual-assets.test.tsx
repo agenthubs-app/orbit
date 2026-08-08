@@ -33,6 +33,7 @@ async function renderEventsPage(): Promise<string> {
 
   return renderToStaticMarkup(
     <OrbitRealExploreClient
+      registrationAvailabilityByEventId={{}}
       viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
     />,
   );
@@ -53,6 +54,7 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
+      registrationAvailability="open"
     />,
   );
 }

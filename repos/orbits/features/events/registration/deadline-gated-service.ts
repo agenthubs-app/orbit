@@ -29,6 +29,12 @@ export interface EventRegistrationWindowProvider {
   getEnrollment(eventId: string): Promise<EventRegistrationWindowEnrollment>;
 }
 
+export type EventRegistrationAvailability =
+  | "open"
+  | "profile_edit_closed"
+  | "registration_closed"
+  | "unavailable";
+
 export const EVENT_REGISTRATION_WINDOW_ERROR_CODES = [
   "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
   "EVENT_REGISTRATION_WINDOW_INVALID",
@@ -133,6 +139,30 @@ function validWindow(window: EventRegistrationWindow): {
     );
   }
   return { profileEditDeadlineMs, registrationCutoffMs };
+}
+
+export function resolveEventRegistrationAvailability(
+  enrollment: EventRegistrationWindowEnrollment,
+): EventRegistrationAvailability {
+  if (enrollment.state === "legacy_unenrolled") return "open";
+  if (enrollment.state !== "enrolled") return "unavailable";
+
+  const currentMs = Date.parse(enrollment.statementTimestamp);
+  if (!Number.isFinite(currentMs)) return "unavailable";
+
+  try {
+    const { profileEditDeadlineMs, registrationCutoffMs } = validWindow(
+      enrollment.window,
+    );
+    if (currentMs >= registrationCutoffMs) return "registration_closed";
+    // The public registration journey always writes the two matching-profile
+    // answers, so it must close when profile writes freeze even if a lower-level
+    // empty-shell RSVP remains technically possible until the final cutoff.
+    if (currentMs >= profileEditDeadlineMs) return "profile_edit_closed";
+    return "open";
+  } catch {
+    return "unavailable";
+  }
 }
 
 export function createDeadlineGatedEventRegistrationService(input: {

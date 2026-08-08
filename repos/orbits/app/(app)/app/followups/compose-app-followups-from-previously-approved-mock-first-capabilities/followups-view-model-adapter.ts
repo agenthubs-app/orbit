@@ -4,6 +4,7 @@ import type {
   OrbitScheduleItemView,
   OrbitScheduleViewModel,
 } from "../../orbit-schedule-route-view-model";
+import { ORBIT_DISPLAY_TIME_ZONE } from "../../orbit-datetime";
 
 type AppFollowupsSuccessRouteViewModel = Extract<
   AppFollowupsRouteViewModel,
@@ -62,13 +63,8 @@ function dateForDue(value: string, index: number): string {
 }
 
 function dateForCard(card: { due: string; dueAt?: string }, index: number): string {
-  if (card.dueAt) {
-    const dueDate = new Date(card.dueAt);
-
-    if (Number.isFinite(dueDate.getTime())) {
-      return dueDate.toISOString().slice(0, 10);
-    }
-  }
+  const dueParts = dateTimePartsFor(card.dueAt);
+  if (dueParts) return dueParts.date;
 
   return dateForDue(card.due, index);
 }
@@ -78,9 +74,38 @@ function timeForIndex(index: number): string {
 }
 
 function timeForCard(card: { dueAt?: string }, index: number): string {
-  const time = card.dueAt?.match(/T(\d{2}:\d{2})/)?.[1];
+  const time = dateTimePartsFor(card.dueAt)?.time;
 
   return time ?? timeForIndex(index);
+}
+
+function dateTimePartsFor(
+  value: string | undefined,
+): { date: string; time: string } | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "2-digit",
+    timeZone: ORBIT_DISPLAY_TIME_ZONE,
+    year: "numeric",
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes): string | null =>
+    parts.find((part) => part.type === type)?.value ?? null;
+  const year = read("year");
+  const month = read("month");
+  const day = read("day");
+  const hour = read("hour");
+  const minute = read("minute");
+
+  return year && month && day && hour && minute
+    ? { date: `${year}-${month}-${day}`, time: `${hour}:${minute}` }
+    : null;
 }
 
 export function followupsRouteToOrbitScheduleViewModel(

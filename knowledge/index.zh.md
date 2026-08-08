@@ -19,6 +19,7 @@
 - [数据与 Mockdata](wiki/data-and-mockdata.zh.md)（`knowledge/wiki/data-and-mockdata.zh.md`）：local-remote database、relationship schema、generated fixture 和 mockdata 生成链路。
 - [Harness](wiki/harness.zh.md)（`knowledge/wiki/harness.zh.md`）：长跑 harness、sprint contract、evidence、protected paths 和验证流程。
 - [模块地图](wiki/modules.zh.md)（`knowledge/wiki/modules.zh.md`）：业务模块分组、模块架构文档和读取顺序。
+- [iOrbit Agent 能力与浏览器验收](wiki/iorbit-agent-capabilities-and-browser-verification.zh.md)（`knowledge/wiki/iorbit-agent-capabilities-and-browser-verification.zh.md`）：当前能力清单、中文压力数据、实际浏览器点击证据、已知限制和后续复测顺序。
 
 ## 阅读顺序
 

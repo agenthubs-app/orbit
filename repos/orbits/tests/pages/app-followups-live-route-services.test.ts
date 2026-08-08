@@ -619,6 +619,44 @@ test("followups product schedule adapter keeps duplicate source ids unique for R
   );
 });
 
+test("followup schedules render UTC due dates in the Orbit display timezone", () => {
+  const schedule = followupsRouteToOrbitScheduleViewModel({
+    state: "success",
+    workspace: {
+      ledger: {
+        draftCount: 0,
+        dueTodayCount: 1,
+        reminderCount: 0,
+        taskCount: 1,
+      },
+      priority: null,
+      reminderQueue: {
+        entries: [],
+        evidenceIds: [],
+      },
+      workflowCards: [
+        {
+          body: "Tokyo-local follow-up",
+          due: "Due tomorrow",
+          dueAt: "2026-08-08T16:30:00.000Z",
+          evidenceIds: ["evidence:task:timezone"],
+          id: "task:timezone",
+          recordIds: [],
+          relationship: "未关联联系人 · ",
+          reviewStatus: "Held for review",
+          sourceContext: "live task",
+          stepLabel: "Review",
+          targetContactId: null,
+          title: "东京时间任务",
+        },
+      ],
+    },
+  });
+
+  assert.equal(schedule.schedules[0]?.date, "2026-08-09");
+  assert.equal(schedule.schedules[0]?.time, "01:30");
+});
+
 test("followup schedules preserve real contact ids instead of display-name slugs", () => {
   assert.equal(
     contactIdFromConnectionIdentity("connection_for_contact_021"),

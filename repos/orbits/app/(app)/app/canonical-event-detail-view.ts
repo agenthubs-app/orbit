@@ -7,10 +7,13 @@ import {
 } from "../../../features/events/core/public-catalogue";
 import { createConfiguredEventCoreService } from "../../../features/events/core/runtime";
 import type { EventCoreService } from "../../../features/events/core/service";
+import { createEventCrudAndImportService } from "../../../features/events/service-factory";
 import {
   readRegisteredCatalogueAttendees,
   type RegisteredCatalogueAttendeeContext,
 } from "../../../features/events/registered-catalogue-attendees";
+import type { EventRegistrationAvailability } from "../../../features/events/registration/deadline-gated-service";
+import { readRuntimeEventRegistrationAvailability } from "../../../features/events/registration/runtime";
 import { getOrbitLandingEventView, type OrbitLandingEventView } from "./orbit-landing-route-view-model";
 import { getOrbitRegisteredEventViewModel } from "./orbit-registered-event-route-view-model";
 
@@ -22,6 +25,7 @@ export type CanonicalEventDetailResolution =
   | {
       canOpenOperations: boolean;
       event: OrbitLandingEventView;
+      registrationAvailability: EventRegistrationAvailability;
       registered: boolean;
       state: "success";
       workspaceAvailable: boolean;
@@ -34,10 +38,31 @@ export interface CanonicalEventDetailDependencies {
   readOperationsSummary: (
     eventId: string,
   ) => Promise<EventOperationsCatalogueSummary | null>;
+  readRegistrationAvailability: (
+    eventId: string,
+  ) => Promise<EventRegistrationAvailability>;
   readRegisteredContext: (input: {
     actorId: string;
     eventId: string;
   }) => Promise<RegisteredCatalogueAttendeeContext | null>;
+  resolveActorEventCanonicalId?: (input: {
+    actorId: string;
+    eventId: string;
+  }) => Promise<string | null>;
+}
+
+async function resolveConfiguredActorEventCanonicalId(input: {
+  actorId: string;
+  eventId: string;
+}): Promise<string | null> {
+  const result = await createEventCrudAndImportService("live").getEvent({
+    actorId: input.actorId,
+    eventId: input.eventId,
+  });
+  if (result.success === false) return null;
+
+  const canonicalId = result.data.event.sourceMetadata.providerRecordId.trim();
+  return canonicalId && canonicalId !== input.eventId ? canonicalId : null;
 }
 
 export async function resolveCanonicalEventDetailView(
@@ -47,13 +72,29 @@ export async function resolveCanonicalEventDetailView(
   const routeId = input.routeId.trim();
   if (!routeId) return { state: "not_found" };
 
-  const canonicalEvent = await dependencies.coreService.getPublishedEvent(
+  const actorId = input.actorId?.trim() || null;
+  let canonicalEvent = await dependencies.coreService.getPublishedEvent(
     routeId,
     dependencies.now,
   );
+  if (
+    !canonicalEvent &&
+    actorId &&
+    dependencies.resolveActorEventCanonicalId
+  ) {
+    const canonicalId = await dependencies.resolveActorEventCanonicalId({
+      actorId,
+      eventId: routeId,
+    });
+    if (canonicalId) {
+      canonicalEvent = await dependencies.coreService.getPublishedEvent(
+        canonicalId,
+        dependencies.now,
+      );
+    }
+  }
   if (!canonicalEvent) return { state: "not_found" };
 
-  const actorId = input.actorId?.trim() || null;
   const publiclyVisible = Boolean(canonicalEvent.publicCode?.trim());
   if (!publiclyVisible && !actorId) {
     return { state: "authentication_required" };
@@ -62,6 +103,8 @@ export async function resolveCanonicalEventDetailView(
   const operationSummaryPromise = dependencies.readOperationsSummary(
     canonicalEvent.eventId,
   );
+  const registrationAvailabilityPromise =
+    dependencies.readRegistrationAvailability(canonicalEvent.eventId);
   const registeredContextPromise = actorId
     ? dependencies.readRegisteredContext({
         actorId,
@@ -74,8 +117,9 @@ export async function resolveCanonicalEventDetailView(
         subjectActorId: actorId,
       })
     : Promise.resolve(null);
-  const [operationSummary, registeredContext, access] = await Promise.all([
+  const [operationSummary, registrationAvailability, registeredContext, access] = await Promise.all([
     operationSummaryPromise,
+    registrationAvailabilityPromise,
     registeredContextPromise,
     accessPromise,
   ]);
@@ -117,6 +161,7 @@ export async function resolveCanonicalEventDetailView(
         authed: Boolean(actorId),
       },
     },
+    registrationAvailability,
     registered,
     state: "success",
     workspaceAvailable: operationSummary !== null,
@@ -134,6 +179,8 @@ export async function resolveConfiguredCanonicalEventDetailView(input: {
     coreService,
     now: new Date(),
     readOperationsSummary: readEventOperationsCatalogueSummary,
+    readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
     readRegisteredContext: readRegisteredCatalogueAttendees,
+    resolveActorEventCanonicalId: resolveConfiguredActorEventCanonicalId,
   });
 }

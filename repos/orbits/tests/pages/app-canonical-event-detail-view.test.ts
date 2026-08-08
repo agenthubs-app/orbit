@@ -37,6 +37,7 @@ function dependencies(input: {
   access?: { owner: boolean; role: "operations" | "reviewer" | null; state: "active" | "revoked" | null } | null;
   event: PublishedCanonicalEvent;
   registered?: boolean;
+  resolvableRouteIds?: readonly string[];
 }): CanonicalEventDetailDependencies {
   return {
     accessService: input.access === null
@@ -61,11 +62,18 @@ function dependencies(input: {
         },
     coreService: {
       async getEvent() { return input.event; },
-      async getPublishedEvent() { return input.event; },
+      async getPublishedEvent(routeId) {
+        return input.resolvableRouteIds && !input.resolvableRouteIds.includes(routeId)
+          ? null
+          : input.event;
+      },
       async listEvents() { return [input.event]; },
       async listPublishedEvents() { return [input.event]; },
     },
     now,
+    async readRegistrationAvailability() {
+      return "open";
+    },
     async readOperationsSummary(eventId) {
       return {
         activeRegistrationCount: 62,
@@ -108,7 +116,48 @@ test("anonymous users can read a public canonical event without attendee disclos
   assert.equal(result.event.code, "EVT-CLIMATE-CAPITAL");
   assert.equal(result.event.participantCount, 62);
   assert.equal(result.event.stats.attendees.length, 0);
+  assert.equal(result.registrationAvailability, "open");
   assert.equal(result.registered, false);
+});
+
+test("an authenticated account-scoped event id resolves only through its canonical provenance id", async () => {
+  const lookedUpActorEvents: string[] = [];
+  const deps = dependencies({
+    event: canonicalEvent("EVT-CLIMATE-CAPITAL"),
+    resolvableRouteIds: ["event:canonical:climate-capital"],
+  });
+  deps.resolveActorEventCanonicalId = async ({ actorId, eventId }) => {
+    lookedUpActorEvents.push(`${actorId}:${eventId}`);
+    return "event:canonical:climate-capital";
+  };
+
+  const result = await resolveCanonicalEventDetailView(
+    {
+      actorId: "actor:qa",
+      routeId: "actor:qa:event:canonical:climate-capital",
+    },
+    deps,
+  );
+
+  assert.equal(result.state, "success");
+  assert.deepEqual(lookedUpActorEvents, [
+    "actor:qa:actor:qa:event:canonical:climate-capital",
+  ]);
+});
+
+test("an account-scoped event without canonical provenance stays unavailable", async () => {
+  const deps = dependencies({
+    event: canonicalEvent("EVT-CLIMATE-CAPITAL"),
+    resolvableRouteIds: ["event:canonical:climate-capital"],
+  });
+  deps.resolveActorEventCanonicalId = async () => null;
+
+  const result = await resolveCanonicalEventDetailView(
+    { actorId: "actor:qa", routeId: "actor:qa:event:private-note" },
+    deps,
+  );
+
+  assert.equal(result.state, "not_found");
 });
 
 test("private canonical events require authentication before any workspace reads", async () => {

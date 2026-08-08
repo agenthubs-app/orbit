@@ -410,6 +410,60 @@ test("events recommendation tool includes one canonical Event Core snapshot when
   );
 });
 
+test("events recommendation tool uses a human title and deduplicates an actor copy of a canonical event", async () => {
+  const canonical = canonicalRecord({
+    description: "AI partnership matchmaking for founders and enterprise operators.",
+    endsAt: "2026-08-01T12:00:00.000Z",
+    id: "event:canonical:ai-partners",
+    startsAt: "2026-08-01T10:00:00.000Z",
+    title: "Tokyo AI partnership forum",
+    venue: "Marunouchi",
+  });
+  const ownedRecord: LiveEventStoreRecord = {
+    ...liveRecord,
+    description: canonical.description,
+    endsAt: "2026-08-01T21:00:00+09:00",
+    id: "event:actor-copy:ai-partners",
+    startsAt: "2026-08-01T19:00:00+09:00",
+    title: canonical.title,
+    venue: canonical.venue,
+    source: {
+      ...liveRecord.source,
+      id: "source:event:actor-copy:ai-partners",
+      label: "actor-event-postgres",
+      provider: "actor-event-postgres",
+      providerRecordId: "event:actor-copy:ai-partners",
+    },
+  };
+  const tool = createEventsRecommendationTool({
+    actorId,
+    canonicalReader: canonicalReaderFor([canonical]),
+    eventService: createLiveEventCrudAndImportService({
+      provider: {
+        source: "actor-event-postgres",
+        sourceLabel: "Actor event store",
+        listEvents: () => [ownedRecord],
+        getEvent: () => ownedRecord,
+        createManualEvent: () => {
+          throw new Error("Recommendation reads must not create events.");
+        },
+      },
+    }),
+    now: () => Date.parse("2026-07-28T00:00:00.000Z"),
+  });
+
+  const result = await tool.recommend({
+    query: "推荐 AI 合作活动",
+    toolArguments: { limit: 5 },
+  });
+
+  assert.equal(result.state, "success");
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0]?.eventId, ownedRecord.id);
+  assert.equal(result.candidates[0]?.eventLabel, canonical.title);
+  assert.equal(result.candidates[0]?.title, canonical.title);
+});
+
 test("events recommendation tool returns a specifically referenced ended canonical event", async () => {
   const tool = createEventsRecommendationTool({
     actorId,
