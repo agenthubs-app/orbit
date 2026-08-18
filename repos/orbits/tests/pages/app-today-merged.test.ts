@@ -2,8 +2,8 @@
  * T1（today-schedule 合并计划）门测试：/app/today 骨架合并。
  *
  * 覆盖三块：
- *  - view-model：?date= / ?view= 解析，三源装配里单源失败只降级它自己的区块。
- *  - 整页渲染（renderToStaticMarkup）：月历、当日|本月、需要你决定、可复核安排、
+ *  - view-model：?date= / ?view= 解析，两源装配里单源失败只降级它自己的区块。
+ *  - 整页渲染（renderToStaticMarkup）：月历、当日|本月、需要你决定、
  *    折叠区、页头两按钮、护栏文案关键句同时出现。
  *  - 对账断言：查看名片/起草邮件/展开详情/添加来源/安排约见 字符串齐全——后三
  *    个天然依赖当天是否恰好有安排，所以用一个手工构造的确定性 viewModel 直接
@@ -18,29 +18,25 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { OrbitScheduleViewModel } from "../../app/(app)/app/orbit-schedule-route-view-model";
-import { formatScheduleEventWindow } from "../../app/(app)/app/schedule/schedule-event-display";
-import { loadAppScheduleRouteViewModel } from "../../app/(app)/app/schedule/schedule-route-view-model";
 import {
-  __internal,
   loadAppTodayMergedViewModel,
   type AppTodayMergedLoaders,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model";
 import {
   appointmentScheduleFromRecords,
+  confirmedEventScheduleFromRecords,
   emptyTodayAppointmentSchedule,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule";
 import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
 import { OrbitRealToday } from "../../app/(app)/app/today/orbit-real-today";
 import { OrbitTodayTimeSpine } from "../../app/(app)/app/today/orbit-today-time-spine";
 import { presentTodaySectionTitles } from "../../app/(app)/app/today/today-section-presentation";
-import { mockOrbitAiRecommendedEventDetailRecord } from "../../features/events/event-crud-and-import/fixtures";
 import type { AppointmentAggregate } from "../../features/appointments/contract";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 const realLoaders: AppTodayMergedLoaders = {
   loadTimeSpine: async () => emptyTodayAppointmentSchedule(new Date("2026-07-20T00:00:00.000Z")),
-  loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
 
@@ -70,28 +66,10 @@ test("Today server route authenticates once and passes that actor through every 
   );
   assert.match(
     mergedSource,
-    /loadConfiguredTodayAppointmentSchedule\(actorId\)/,
+    /loadConfiguredTodaySchedule\(actorId\)/,
   );
-  assert.match(
-    mergedSource,
-    /loadAppScheduleRouteViewModel\(controls\.schedule, undefined, actorId\)/,
-  );
-});
-
-// ---- timeline-merge parser contract: `eventArrangementDateTime` parses the
-// human-formatted string `formatScheduleEventWindow` produces. Nothing else
-// wired these two together before — a future change to either format could
-// silently break the merge (confirmedEventTimelineItems just drops the
-// event on a parse miss) without any test failing loudly. ----
-
-test("eventArrangementDateTime parses formatScheduleEventWindow's real output format", () => {
-  const formatted = formatScheduleEventWindow(mockOrbitAiRecommendedEventDetailRecord);
-  const parsed = __internal.eventArrangementDateTime(formatted);
-
-  assert.ok(parsed, `expected eventArrangementDateTime to parse "${formatted}"`);
-  assert.equal(parsed!.date, "2026-07-09");
-  assert.equal(parsed!.time, "09:00");
-  assert.equal(parsed!.durationMinutes, 180);
+  assert.doesNotMatch(contentSource, /OrbitTodayArrangements/);
+  assert.doesNotMatch(mergedSource, /loadAppScheduleRouteViewModel/);
 });
 
 test("Today only projects confirmed appointments with an actor-owned canonical contact", () => {
@@ -111,7 +89,7 @@ test("Today only projects confirmed appointments with an actor-owned canonical c
     },
     contactIdsByActor: { [actorId]: "contact:real" },
     status: "confirmed",
-  } as AppointmentAggregate;
+  } as unknown as AppointmentAggregate;
   const unconfirmedAppointment = {
     ...confirmedAppointment,
     appointmentId: "appointment:draft",
@@ -144,6 +122,29 @@ test("Today only projects confirmed appointments with an actor-owned canonical c
   assert.equal(schedule.schedules[0]?.time, "14:30");
   assert.equal(schedule.schedules[0]?.status, "已确认");
   assert.equal(schedule.connections[0]?.displayName, "伊藤香織");
+});
+
+test("Today only projects events from the actor-approved Orbit Schedule store", () => {
+  const schedule = confirmedEventScheduleFromRecords({
+    items: [
+      {
+        evidenceIds: ["evidence:event-approved"],
+        eventId: "event:approved",
+        id: "schedule:event-approved",
+        startsAt: "2026-07-20T01:00:00.000Z",
+        endsAt: "2026-07-20T03:00:00.000Z",
+        location: "东京",
+        title: "用户明确加入的活动",
+      },
+    ],
+    now: new Date("2026-07-20T00:00:00.000Z"),
+  });
+
+  assert.equal(schedule.schedules.length, 1);
+  assert.equal(schedule.schedules[0]?.id, "schedule:event-approved");
+  assert.equal(schedule.schedules[0]?.contactId, null);
+  assert.equal(schedule.schedules[0]?.status, "已确认");
+  assert.equal(schedule.schedules[0]?.topic, "用户明确加入的活动");
 });
 
 // ---- view-model: ?date= / ?view= ----
@@ -182,28 +183,10 @@ test("public Today query input cannot activate internal child route controls", a
   );
 
   assert.equal(merged.today.state, "success");
-  assert.equal(merged.schedule.state, "success");
   assert.notEqual(merged.timeSpine, null);
 });
 
-// ---- three-source assembly: one source failing only degrades its own section ----
-
-test("a schedule-source failure degrades only the arrangements section", async () => {
-  const merged = await loadAppTodayMergedViewModel(undefined, {
-    ...realLoaders,
-    loadSchedule: async () => {
-      throw new Error("schedule source unavailable");
-    },
-  });
-
-  assert.equal(merged.schedule.state, "route-state");
-  if (merged.schedule.state === "route-state") {
-    assert.equal(merged.schedule.routeState.errorCode, "SCHEDULE_SECTION_LOAD_FAILED");
-  }
-  assert.equal(merged.today.state, "success");
-  assert.notEqual(merged.timeSpine, null);
-  assert.deepEqual(merged.dimmedArrangementIds, new Set());
-});
+// ---- two-source assembly: one source failing only degrades its own section ----
 
 test("a today-ledger-source failure degrades only the decide/prepared/recent sections", async () => {
   const merged = await loadAppTodayMergedViewModel(undefined, {
@@ -215,7 +198,6 @@ test("a today-ledger-source failure degrades only the decide/prepared/recent sec
 
   assert.equal(merged.today.state, "failure");
   assert.equal(merged.today.errorCode, "TODAY_SECTION_LOAD_FAILED");
-  assert.equal(merged.schedule.state, "success");
   assert.notEqual(merged.timeSpine, null);
 });
 
@@ -229,15 +211,13 @@ test("an appointments-source failure only takes down the time spine", async () =
 
   assert.equal(merged.timeSpine, null);
   assert.equal(merged.timeSpineError?.title, "真实约谈暂时无法加载");
-  assert.equal(merged.schedule.state, "success");
   assert.equal(merged.today.state, "success");
 });
 
-test("with all three sources healthy, nothing degrades", async () => {
+test("with both sources healthy, nothing degrades", async () => {
   const merged = await loadAppTodayMergedViewModel(undefined, realLoaders);
 
   assert.equal(merged.today.state, "success");
-  assert.equal(merged.schedule.state, "success");
   assert.equal(merged.timeSpineError, null);
   assert.notEqual(merged.timeSpine, null);
   const pendingScheduleCount =
@@ -254,67 +234,6 @@ test("with all three sources healthy, nothing degrades", async () => {
     pendingScheduleCount,
     total: decisionCount + pendingScheduleCount,
   });
-});
-
-// ---- timeline merge / filter-dim, exercised through the real loaders end
-// to end (not the parser unit above) — this is what actually breaks if the
-// merge silently drops the event. ----
-
-test("a confirmed arrangement event actually appears in the merged timeSpine", async () => {
-  const merged = await loadAppTodayMergedViewModel(undefined, realLoaders);
-
-  assert.notEqual(merged.timeSpine, null);
-  assert.equal(merged.schedule.state, "success");
-  const confirmedEventArrangement =
-    merged.schedule.state === "success"
-      ? merged.schedule.arrangements.find(
-          (arrangement) =>
-            arrangement.target.kind === "event" && /已确认|confirmed/i.test(arrangement.statusLabel),
-        )
-      : undefined;
-  assert.ok(
-    confirmedEventArrangement,
-    "expected a confirmed event arrangement in the real mock fixtures",
-  );
-  assert.ok(
-    merged.timeSpine!.schedules.some((item) => item.id === confirmedEventArrangement!.id),
-    "expected the confirmed event arrangement to appear as a timeSpine schedule item",
-  );
-});
-
-test("with ?date= set to an unrelated date, dimmedArrangementIds is non-empty", async () => {
-  const merged = await loadAppTodayMergedViewModel({ date: "2099-01-01" }, realLoaders);
-
-  assert.ok(merged.dimmedArrangementIds.size > 0);
-});
-
-// ---- degraded-state cards: TimeSpineErrorCard / ArrangementsErrorCard used
-// to render only eyebrow/title/description, dropping the loaders' guardrail
-// copy and recovery-action links that the old standalone pages rendered.
-// ?scenario=failure drives every source into its normal (non-throw)
-// route-state failure, which is what actually carries copy.guardrail and
-// recoveryActions — the thrown-loader fixtures above use a fixed, shorter
-// fallback copy that doesn't exercise this path. ----
-
-test("a degraded arrangements card shows the guardrail and a recovery link", async () => {
-  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
-    searchParams?: Promise<Record<string, string>>;
-    routeControls?: {
-      schedule?: { scenario: "failure" };
-    };
-  }) => Promise<React.ReactElement>;
-  const html = renderToStaticMarkup(
-    await Page({
-      routeControls: { schedule: { scenario: "failure" } },
-    }),
-  );
-
-  const cardMatch = html.match(/data-orbit-today-arrangements-error="true"[\s\S]*?<\/div><\/div>/);
-  assert.ok(cardMatch, "expected the arrangements error card to render");
-  const card = cardMatch![0];
-
-  assert.match(card, /服务恢复前，Orbit 不会自动改动你的日历，也不会替你发出任何消息。/);
-  assert.match(card, /href="\/app\/today#arrangements"/);
 });
 
 test("a degraded time-spine card shows the guardrail and a recovery link", async () => {
@@ -356,18 +275,16 @@ test("/app/today renders the merged workspace shell", async () => {
   assert.match(html, /当日/);
   assert.match(html, /本月全部/);
 
-  // 需要你决定 / 可复核安排 / 折叠区
+  // 需要你决定 / 折叠区；原始联系人建议和活动库存不再作为“安排”出现
   assert.match(html, /data-orbit-today-section="decide"/);
-  assert.match(html, /data-orbit-today-arrangements/);
+  assert.doesNotMatch(html, /data-orbit-today-arrangements/);
+  assert.doesNotMatch(html, /可复核安排/);
   assert.match(html, /<details[^>]*data-orbit-today-section="prepared"/);
   assert.match(html, /<details[^>]*data-orbit-today-section="recent"/);
 
   // 页头两按钮
   assert.match(html, /安排约见/);
   assert.match(html, /添加来源/);
-
-  // 可复核安排卡的护栏文案（不依赖决策卡是否展开——见 arrangement targetNote）
-  assert.match(html, /不会自动改动你的日历/);
 
   // mobile single-column breakpoint stays intact (existing structural gate)
   assert.match(html, /data-orbit-real-page="today"/);

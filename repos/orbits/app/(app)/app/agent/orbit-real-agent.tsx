@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -1537,32 +1537,114 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   );
 }
 
-// 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
-function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
-  const connection = item.connection;
-  const [draftState, setDraftState] = useState<"idle" | "generating" | "ready" | "error">("idle");
-  const [draftErrorCode, setDraftErrorCode] = useState<string | null>(null);
+function useAgentInlineDraft(input: {
+  contactId?: string;
+  language: "en" | "zh";
+  organization: string;
+  recipientName: string;
+}) {
+  const [state, setState] = useState<"idle" | "generating" | "ready" | "error">("idle");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  const generateDraft = async () => {
-    setDraftState("generating");
-    setDraftErrorCode(null);
-    const result = await requestMessageDraft({
-      contactId: connection.id,
-      language,
-      organization: connection.company,
-      recipientName: connection.displayName,
-    });
+  const generate = async () => {
+    setState("generating");
+    setErrorCode(null);
+    const result = await requestMessageDraft(input);
     if (result.success === false) {
-      setDraftErrorCode(result.error.code);
-      setDraftState("error");
+      setErrorCode(result.error.code);
+      setState("error");
       return;
     }
     setSubject(result.data.subject);
     setBody(result.data.body);
-    setDraftState("ready");
+    setState("ready");
   };
+
+  return { body, errorCode, generate, setBody, setSubject, state, subject };
+}
+
+function AgentInlineDraftResult({
+  contactId,
+  draft,
+  organization,
+  recipientName,
+  t,
+}: {
+  contactId?: string;
+  draft: ReturnType<typeof useAgentInlineDraft>;
+  organization: string;
+  recipientName: string;
+  t: Translate;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (draft.state === "error") {
+    return (
+      <div data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode ?? undefined} role="alert" style={{ color: "var(--danger)", flexBasis: "100%", fontSize: 13 }}>
+        {t({ en: "The draft could not be generated. Try again.", zh: "草稿生成失败，请重试。" })}
+      </div>
+    );
+  }
+  if (draft.state !== "ready") return null;
+
+  return (
+    <div data-agent-inline-draft style={{ background: "var(--accent-softer)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "grid", flexBasis: "100%", gap: 8, padding: 12 }}>
+      <strong style={{ fontSize: 13 }}>{t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}</strong>
+      <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
+        {t({ en: "Subject", zh: "主题" })}
+        <input className="field" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
+      </label>
+      <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
+        {t({ en: "Message", zh: "正文" })}
+        <textarea className="field" onChange={(event) => draft.setBody(event.target.value)} rows={5} value={draft.body} />
+      </label>
+      <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+        <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+          {t({ en: "Draft only. Nothing is sent without confirmation.", zh: "仅生成草稿；未经确认不会发送。" })}
+        </span>
+        <span style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={!draft.subject.trim() || !draft.body.trim()}
+            onClick={async () => setCopied(await copyAgentMessageText(`${draft.subject}\n\n${draft.body}`))}
+            type="button"
+          >
+            <Icon name={copied ? "check" : "copy"} size={14} />
+            {copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy draft", zh: "复制草稿" })}
+          </button>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={!draft.subject.trim() || !draft.body.trim()}
+            onClick={() =>
+              openRelationshipInboxCompose({
+                body: draft.body,
+                contactId,
+                organization,
+                recipient: recipientName,
+                subject: draft.subject,
+              })
+            }
+            type="button"
+          >
+            {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
+function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
+  const connection = item.connection;
+  const draft = useAgentInlineDraft({
+    contactId: connection.id,
+    language,
+    organization: connection.company,
+    recipientName: connection.displayName,
+  });
 
   return (
     <div className="p-person">
@@ -1577,57 +1659,19 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
         </button>
         <button
           className="btn btn-primary btn-sm"
-          disabled={draftState === "generating"}
-          onClick={() => void generateDraft()}
+          disabled={draft.state === "generating"}
+          onClick={() => void draft.generate()}
           type="button"
         >
           <Icon name="sparkle" size={14} />
-          {draftState === "generating"
+          {draft.state === "generating"
             ? t({ en: "Drafting…", zh: "正在生成…" })
             : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
         </button>
       </span>
       {item.reason ? <span className="why">{item.reason}</span> : null}
       {item.opener ? <span className="why">{item.opener}</span> : null}
-      {draftState === "error" ? (
-        <div data-agent-inline-draft-error data-agent-inline-draft-error-code={draftErrorCode ?? undefined} role="alert" style={{ color: "var(--danger)", flexBasis: "100%", fontSize: 13 }}>
-          {t({ en: "The draft could not be generated. Try again.", zh: "草稿生成失败，请重试。" })}
-        </div>
-      ) : null}
-      {draftState === "ready" ? (
-        <div data-agent-inline-draft style={{ background: "var(--accent-softer)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "grid", flexBasis: "100%", gap: 8, padding: 12 }}>
-          <strong style={{ fontSize: 13 }}>{t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}</strong>
-          <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
-            {t({ en: "Subject", zh: "主题" })}
-            <input className="field" onChange={(event) => setSubject(event.target.value)} value={subject} />
-          </label>
-          <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
-            {t({ en: "Message", zh: "正文" })}
-            <textarea className="field" onChange={(event) => setBody(event.target.value)} rows={5} value={body} />
-          </label>
-          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-3)", fontSize: 12 }}>
-              {t({ en: "Draft only. Nothing is sent without confirmation.", zh: "仅生成草稿；未经确认不会发送。" })}
-            </span>
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={!subject.trim() || !body.trim()}
-              onClick={() =>
-                openRelationshipInboxCompose({
-                  body,
-                  contactId: connection.id,
-                  organization: connection.company,
-                  recipient: connection.displayName,
-                  subject,
-                })
-              }
-              type="button"
-            >
-              {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <AgentInlineDraftResult contactId={connection.id} draft={draft} organization={connection.company} recipientName={connection.displayName} t={t} />
     </div>
   );
 }
@@ -1658,7 +1702,13 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
   );
 }
 
-function AgentTodoRow({ item, navigate, t }: { item: OrbitAgentTodoResultView; navigate: (href: string) => void; t: Translate }) {
+function AgentTodoRow({ item, language, navigate, t }: { item: OrbitAgentTodoResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
+  const draft = useAgentInlineDraft({
+    language,
+    organization: item.organization,
+    recipientName: item.contactName,
+  });
+
   return (
     <div className="p-person">
       <Avatar g={gradientFromString(item.contactName || item.id)} letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} size={38} />
@@ -1667,12 +1717,19 @@ function AgentTodoRow({ item, navigate, t }: { item: OrbitAgentTodoResultView; n
         <span>{[item.contactName, item.organization, item.due].filter(Boolean).join(" · ")}</span>
       </span>
       <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate("/home/schedule")} type="button">
-          {t({ en: "View", zh: "查看" })}
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts?query=${encodeURIComponent(item.contactName)}`)} type="button">
+          {t({ en: "View contact", zh: "查看联系人" })}
+        </button>
+        <button className="btn btn-primary btn-sm" disabled={draft.state === "generating"} onClick={() => void draft.generate()} type="button">
+          <Icon name="sparkle" size={14} />
+          {draft.state === "generating"
+            ? t({ en: "Drafting…", zh: "正在生成…" })
+            : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
         </button>
       </span>
       {item.reason ? <span className="why">{item.reason}</span> : null}
       {item.task ? <span className="why">{item.task}</span> : null}
+      <AgentInlineDraftResult draft={draft} organization={item.organization} recipientName={item.contactName} t={t} />
     </div>
   );
 }
@@ -1701,7 +1758,7 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
           isPeopleResult(item) ? (
             <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ) : isTodoResult(item) ? (
-            <AgentTodoRow key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
+            <AgentTodoRow key={`${item.id}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ) : (
             <AgentEventRow key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ),
@@ -2817,7 +2874,14 @@ export function OrbitRealAgent({
       data-orbit-agent-request-state={thinking ? "pending" : "idle"}
       data-orbit-ask-clearance="manual"
       data-orbit-real-page="agent"
-      style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}
+      style={{
+        "--text-3": "#687078",
+        "--text-4": "#687078",
+        background: "var(--bg-soft)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+      } as CSSProperties}
     >
       <style dangerouslySetInnerHTML={{ __html: CONSOLE_STYLES }} />
       <h1

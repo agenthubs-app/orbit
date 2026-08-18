@@ -166,7 +166,10 @@ test("/app/agent source exposes to-do prompt affordances without owning business
   assert.match(agentSource, /onPick\(suggest\.q\)/);
   assert.match(agentSource, /"followup_queue"/);
   assert.match(agentSource, /function todoItemsFromArtifact/);
-  assert.match(agentSource, /navigate\("\/home\/schedule"\)/);
+  assert.match(
+    agentSource,
+    /navigate\(`\/app\/contacts\?query=\$\{encodeURIComponent\(item\.contactName\)\}`\)/,
+  );
 });
 
 test("/app/agent input has an explicit to-do capable accessible name", () => {

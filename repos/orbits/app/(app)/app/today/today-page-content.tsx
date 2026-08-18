@@ -2,10 +2,10 @@
  * Today 工作台 route adapter — T1 骨架合并 + T2 决策卡原位展开
  * （design doc §1-§2, §5, §7）。
  *
- * 三个来源（账本 / 关系安排 / 真实约谈）并行加载，任一失败只降级它自己的区块
- * （见 today-merged-view-model.ts）。左栏是时间脊柱（月历+当日|本月+时间轴，
- * 抽自旧日历页）；右栏是行动流：需要你决定（原位展开的决策卡）→ 可复核安排
- * （抽自关系安排页）→ 已准备的操作/最近动态（默认折叠）。
+ * 两个权威来源（账本 / 用户明确确认的日程）并行加载，任一失败只降级它自己的区块
+ * （见 today-merged-view-model.ts）。左栏是时间脊柱（月历+当日|本月+时间轴）；
+ * 右栏是行动流：需要你决定（原位展开的决策卡）→ 已准备的操作/最近动态
+ * （默认折叠）。联系人状态、跟进建议和活动库存都不能冒充用户日程。
  *
  * T2 把右栏"决策卡列表 + 常驻详情面板"两块拆分布局，改成一块 accordion 列表
  * ——详情面板 `OrbitTodayDecisionPanel` 不再作为独立栏渲染，它的内容现在内嵌
@@ -31,7 +31,6 @@ import {
 } from "./compose-app-today-from-agent-ledger/today-merged-view-model";
 import { resolveAgentLedgerForServerPage } from "../../../api/_shared/agent-request-context";
 import { OrbitRealToday } from "./orbit-real-today";
-import { OrbitTodayArrangements } from "./orbit-today-arrangements";
 import { OrbitTodayHeaderActions } from "./orbit-today-header-actions";
 import { presentTodaySectionTitles } from "./today-section-presentation";
 import { OrbitTodayTimeSpine } from "./orbit-today-time-spine";
@@ -92,31 +91,6 @@ function TimeSpineErrorCard({
   );
 }
 
-function ArrangementsErrorCard({
-  schedule,
-}: {
-  schedule: AppTodayMergedViewModel["schedule"];
-}) {
-  const copy =
-    schedule.state === "route-state"
-      ? schedule.routeState.copy
-      : { description: "重新加载今天的工作台，或稍后再试。", guardrail: "", title: "可复核安排暂时无法加载" };
-  const recoveryActions =
-    schedule.state === "route-state" ? schedule.routeState.recoveryActions : [];
-
-  return (
-    <div className="card" data-orbit-today-arrangements-error style={{ display: "flex", flexDirection: "column", gap: 8, padding: 22 }}>
-      <div className="eyebrow">可复核安排</div>
-      <h2 style={{ fontSize: 18, margin: "8px 0 0" }}>{copy.title}</h2>
-      <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{copy.description}</p>
-      {copy.guardrail ? (
-        <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{copy.guardrail}</p>
-      ) : null}
-      <RouteStateRecoveryActions recoveryActions={recoveryActions} />
-    </div>
-  );
-}
-
 // renderToStaticMarkup(await Page()) in tests calls this outside a real HTTP
 // request, where next/headers' headers() throws instead of returning empty
 // headers (same fallback schedule/page.tsx already needs for the same
@@ -165,7 +139,6 @@ export default async function AppTodayPageContent({
     presentTodaySectionTitles(merged.today, language),
     language,
   );
-  const localizedSchedule = localizeOrbitTree(merged.schedule, language);
   const localizedTimeSpine = merged.timeSpine
     ? localizeOrbitTree(merged.timeSpine, language)
     : null;
@@ -198,22 +171,21 @@ export default async function AppTodayPageContent({
               align-items: start;
               display: grid;
               gap: 28px;
-              grid-template-areas: "spine decide" "spine arrangements" "spine collapsed";
+              grid-template-areas: "spine decide" "spine collapsed";
               grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-              grid-template-rows: auto auto 1fr;
+              grid-template-rows: auto 1fr;
             }
             .orbit-today-columns > [data-orbit-today-spine-column] { grid-area: spine; }
             .orbit-today-columns > [data-orbit-today-decide-column] { grid-area: decide; }
-            .orbit-today-columns > [data-orbit-today-arrangements-column] { grid-area: arrangements; }
             .orbit-today-columns > [data-orbit-today-collapsed-column] { grid-area: collapsed; }
-            /* ≤760 单列，顺序=决策→时间轴→安排→折叠区（design doc §3）：
+            /* ≤760 单列，顺序=决策→时间轴→折叠区（design doc §3）：
                grid-template-areas 换成单列纵向堆叠，跟桌面端"左栏时间脊柱/
                右栏行动流"的两栏顺序（时间脊柱在前）刻意不同——决策优先。 */
             @media (max-width: 760px) {
               .orbit-today-columns {
-                grid-template-areas: "decide" "spine" "arrangements" "collapsed";
+                grid-template-areas: "decide" "spine" "collapsed";
                 grid-template-columns: minmax(0, 1fr);
-                grid-template-rows: auto auto auto auto;
+                grid-template-rows: auto auto auto;
               }
             }
           `}</style>
@@ -235,7 +207,7 @@ export default async function AppTodayPageContent({
               </h1>
               <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
                 {merged.today.state === "failure"
-                  ? "决策账本暂时不可用，日程和可复核安排仍可使用。"
+                  ? "决策账本暂时不可用，已确认日程仍可查看。"
                   : merged.attention.pendingScheduleCount > 0
                     ? `${merged.attention.decisionCount} 项待确认决策 · ${merged.attention.pendingScheduleCount} 项真实约谈待确认。需要你确认的会先问你。`
                     : "其余的 Orbit 都盯着——需要你确认的会先问你，做过的操作大多可以撤销。"}
@@ -245,7 +217,7 @@ export default async function AppTodayPageContent({
           </header>
 
           <div className="orbit-today-columns">
-            <div data-orbit-today-spine-column>
+            <div data-orbit-today-spine-column id="arrangements">
               {localizedTimeSpine ? (
                 <OrbitTodayTimeSpine
                   initialSelected={merged.calendar.selected}
@@ -265,18 +237,6 @@ export default async function AppTodayPageContent({
                 preserveParams={preserveParams}
                 viewModel={localizedToday}
               />
-            </div>
-
-            <div data-orbit-today-arrangements-column id="arrangements">
-              {localizedSchedule.state === "success" ? (
-                <OrbitTodayArrangements
-                  arrangements={localizedSchedule.arrangements}
-                  dimmedIds={merged.dimmedArrangementIds}
-                  evidenceCount={localizedSchedule.evidenceIds.length}
-                />
-              ) : (
-                <ArrangementsErrorCard schedule={localizedSchedule} />
-              )}
             </div>
 
             <div data-orbit-today-collapsed-column>

@@ -41,6 +41,8 @@ test("the global composer collapses after explicit send and suggestion chips onl
 
   assert.match(dock, /setDraft\?\.\(chip\.query\)/);
   assert.doesNotMatch(dock, /onClick=\{\(\) => send\(chip\.query\)\}/);
+  assert.match(context, /const \[open, setOpen\] = useState\(false\)/);
+  assert.match(context, /useEffect\(\(\) => \{\s*setOpen\(false\);\s*\}, \[pathname\]\)/);
   assert.match(context, /target\.onAsk\(trimmed\);\s*setOpen\(false\)/);
 });
 
@@ -53,6 +55,17 @@ test("Agent waiting, timeout recovery, and trust summaries state their real boun
   assert.match(agent, /retryRequest: query/);
   assert.match(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
   assert.match(agent, /不会把泛化回答展示成真实推荐/);
+});
+
+test("both recommendation and follow-up queue cards generate an editable draft in place", () => {
+  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+
+  assert.match(agent, /function AgentPeopleRow[\s\S]*?useAgentInlineDraft/);
+  assert.match(agent, /function AgentTodoRow[\s\S]*?useAgentInlineDraft[\s\S]*?Generate follow-up draft/);
+  assert.match(agent, /\/app\/contacts\?query=\$\{encodeURIComponent\(item\.contactName\)\}/);
+  assert.match(agent, /data-agent-inline-draft/);
+  assert.match(agent, /仅生成草稿；未经确认不会发送。/);
+  assert.match(agent, /复制草稿/);
 });
 
 test("an empty account gets an honest non-persistent example before import", () => {
@@ -86,6 +99,23 @@ test("Today limits and groups decisions while keeping overflow traceable", () =>
   assert.match(today, /href="\/app\/contacts\/all-actions"/);
 });
 
+test("Today only accepts actor-authorized records as schedule truth", () => {
+  const appointmentSchedule = source(
+    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule.ts",
+  );
+  const merged = source(
+    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
+  );
+  const page = source("app/(app)/app/today/today-page-content.tsx");
+
+  assert.match(appointmentSchedule, /appointment\.confirmed/);
+  assert.match(appointmentSchedule, /appointment\.contactIdsByActor\[input\.actorId\]/);
+  assert.match(appointmentSchedule, /listConfiguredOrbitScheduleItems\(actorId\)/);
+  assert.match(merged, /loadConfiguredTodaySchedule\(actorId\)/);
+  assert.doesNotMatch(merged, /loadAppScheduleRouteViewModel/);
+  assert.doesNotMatch(page, /OrbitTodayArrangements/);
+});
+
 test("unavailable registration explains the known reason and shortens samples", () => {
   const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
 
@@ -105,4 +135,13 @@ test("long result surfaces expose skip and list semantics for keyboard and scree
   assert.match(contacts, /role="listitem"/);
   assert.match(history, /role="list"/);
   assert.match(history, /role="listitem"/);
+});
+
+test("small Agent and contact status copy use readable foreground tokens", () => {
+  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const contacts = source("app/(app)/app/contacts/orbit-real-contacts.tsx");
+
+  assert.match(agent, /"--text-3": "#687078"/);
+  assert.match(agent, /"--text-4": "#687078"/);
+  assert.match(contacts, /status === "to_contact" \? "var\(--amber-text\)" : meta\.color/);
 });

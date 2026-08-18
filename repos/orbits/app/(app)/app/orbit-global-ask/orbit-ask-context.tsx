@@ -17,7 +17,7 @@ import {
   stashPendingAsk,
   writeAskDraft,
 } from "./orbit-ask-draft";
-import { isOrbitAskHome, ORBIT_ASK_HOME } from "./orbit-ask-routes";
+import { ORBIT_ASK_HOME } from "./orbit-ask-routes";
 
 export interface OrbitAskChip {
   label: string;
@@ -67,9 +67,9 @@ export function OrbitAskProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [draft, setDraftState] = useState("");
-  // 首屏用路由决定展开态：iOrbit 页进去就是打开的，其他页进去是收起的。
-  // 服务端和客户端读到的是同一个 pathname，所以不会有 hydration 抖动。
-  const [open, setOpen] = useState(() => isOrbitAskHome(pathname));
+  // 全局提问器默认收起。iOrbit 工作台已有自己的主输入区；再自动展开一层固定
+  // 输入框会遮住结果，也会制造两个并列的提交入口。
+  const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<OrbitAskTarget | null>(null);
 
   // 草稿只能在挂载后读：sessionStorage 在服务端不存在，初值必须是空串。
@@ -79,10 +79,9 @@ export function OrbitAskProvider({ children }: { children: ReactNode }) {
     if (stored) setDraftState(stored);
   }, []);
 
-  // 换页时重置展开态。用户在活动列表展开写了一半又点进详情，输入框收起、草稿还在，
-  // 点开就接着写。
+  // 换页时总是收起；草稿仍保留，用户主动点开后可继续写。
   useEffect(() => {
-    setOpen(isOrbitAskHome(pathname));
+    setOpen(false);
   }, [pathname]);
 
   const setDraft = useCallback((value: string) => {

@@ -232,11 +232,12 @@ function StageDot({
   withLabel?: boolean;
 }) {
   const meta = stageMeta(viewModel, status);
+  const labelColor = status === "to_contact" ? "var(--amber-text)" : meta.color;
 
   return (
     <span style={{ alignItems: "center", background: withLabel ? meta.soft : "transparent", borderRadius: "var(--r-pill)", display: "inline-flex", gap: 4, height: 24, padding: withLabel ? "0 9px 0 8px" : 0 }}>
       <span style={{ background: meta.color, borderRadius: "var(--r-pill)", height: 7, width: 7 }} />
-      {withLabel ? <span style={{ color: meta.color, fontSize: 12, fontWeight: 600 }}>{meta.label}</span> : null}
+      {withLabel ? <span style={{ color: labelColor, fontSize: 12, fontWeight: 600 }}>{meta.label}</span> : null}
     </span>
   );
 }

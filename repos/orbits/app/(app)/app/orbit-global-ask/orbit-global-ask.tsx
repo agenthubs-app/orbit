@@ -49,8 +49,8 @@ function OrbitAskDock() {
   const ask = useOrbitAsk();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  // 首屏在 iOrbit 页是默认展开的，这时不该抢焦点（读屏用户会被直接丢进输入框）。
-  // 只有用户自己点开时才聚焦。
+  // 全局提问器始终由用户主动展开，展开后才聚焦；iOrbit 工作台自己的主输入区
+  // 仍按页面阅读顺序获得焦点。
   const openedByUser = useRef(false);
   const hintOrderRef = useRef<string[]>([]);
   const [hint, setHint] = useState("");

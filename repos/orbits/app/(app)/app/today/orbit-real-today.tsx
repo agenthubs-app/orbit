@@ -168,8 +168,8 @@ export function OrbitRealToday({
   language?: OrbitLanguage;
   /** Render only the listed sections (still in canonical decide/prepared/
    *  recent order). Omit to render all of them — used by the merged Today
-   *  page to slot "可复核安排" between the decide section and the
-   *  collapsed prepared/recent sections (see today/page.tsx). */
+   *  page to place the confirmed schedule beside decisions without
+   *  duplicating ledger state (see today/page.tsx). */
   onlyKeys?: readonly TodaySectionKey[];
   /** ?date=/?view= from the current request, merged into every entry link
    *  so opening/closing a decision card never drops the selected calendar
