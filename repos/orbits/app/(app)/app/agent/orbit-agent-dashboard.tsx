@@ -18,6 +18,7 @@ import type { OrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { AgentStar } from "./orbit-real-agent";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
+import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -68,12 +69,16 @@ function greeting(t: Translate, now: Date): string {
 
 function journeyStageBadge(
   event: OrbitHomeViewModel["events"][number],
+  registrationAvailability: EventRegistrationAvailability,
   t: Translate,
 ): { label: string; tone: "act" | "done" | "wait" } {
   if (event.status === "ended") return { label: t({ en: "Ended", zh: "已结束" }), tone: "done" };
   if (event.status === "active") return { label: t({ en: "Live now", zh: "进行中" }), tone: "act" };
   if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Waiting for matches", zh: "等待匹配发布" }), tone: "wait" };
-  return { label: t({ en: "Upcoming", zh: "即将开始" }), tone: "wait" };
+  if (registrationAvailability === "open") return { label: t({ en: "Registration open", zh: "报名开放" }), tone: "act" };
+  if (registrationAvailability === "registration_closed") return { label: t({ en: "Registration closed", zh: "报名已截止" }), tone: "done" };
+  if (registrationAvailability === "profile_edit_closed") return { label: t({ en: "Registration profile locked", zh: "报名资料已锁定" }), tone: "wait" };
+  return { label: t({ en: "Registration unavailable", zh: "报名暂不可用" }), tone: "wait" };
 }
 
 const APPOINTMENT_TZ = "Asia/Tokyo";
@@ -89,12 +94,14 @@ export function OrbitAgentDashboard({
   language,
   navigate,
   onAsk,
+  registrationAvailabilityByEventId,
   t,
 }: {
   home: OrbitHomeViewModel;
   language: OrbitLanguage;
   navigate: (href: string) => void;
   onAsk: (query: string) => void;
+  registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   t: Translate;
 }) {
   const [appointments, setAppointments] = useState<AppointmentView[]>([]);
@@ -126,6 +133,19 @@ export function OrbitAgentDashboard({
   const journeys = home.events.slice(0, 5);
   const nextEvent = journeys.find((event) => event.status !== "ended") ?? null;
   const endedPending = journeys.find((event) => event.status === "ended") ?? null;
+  const nextEventRegistrationAvailability = nextEvent
+    ? registrationAvailabilityByEventId[nextEvent.id] ?? "unavailable"
+    : "unavailable";
+  const nextEventRegistered = Boolean(
+    nextEvent && (nextEvent.youRsvped || nextEvent.stats.youRsvped),
+  );
+  const openUnregisteredEvent = journeys.find(
+    (event) =>
+      event.status !== "ended" &&
+      !event.youRsvped &&
+      !event.stats.youRsvped &&
+      registrationAvailabilityByEventId[event.id] === "open",
+  );
 
   const nextEventDate = nextEvent ? eventTemporalBounds(nextEvent.startsAt, nextEvent.endsAt).start : null;
   const daysToNext = nextEventDate ? Math.max(0, Math.ceil((nextEventDate.getTime() - now.getTime()) / 86_400_000)) : null;
@@ -302,14 +322,18 @@ export function OrbitAgentDashboard({
               <b>{nextEvent.name || nextEvent.code}</b>
             </div>
             <div className="stage-row">
-              <span className={`stage${nextEvent.youRsvped || nextEvent.stats.youRsvped ? " done" : " now"}`}>
+              <span className={`stage${nextEventRegistered ? " done" : nextEventRegistrationAvailability === "open" ? " now" : ""}`}>
                 <span className="s-dot">
-                  {nextEvent.youRsvped || nextEvent.stats.youRsvped ? <Icon name="check" size={11} /> : null}
-                  {t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })}
+                  {nextEventRegistered ? <Icon name="check" size={11} /> : null}
+                  {nextEventRegistered
+                    ? t({ en: "Registration complete", zh: "已完成报名" })
+                    : nextEventRegistrationAvailability === "open"
+                      ? t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })
+                      : journeyStageBadge(nextEvent, nextEventRegistrationAvailability, t).label}
                 </span>
               </span>
               <span className="stage"><span className="s-link" /></span>
-              <span className={`stage${nextEvent.youRsvped || nextEvent.stats.youRsvped ? " now" : ""}`}>
+              <span className={`stage${nextEventRegistered ? " now" : ""}`}>
                 <span className="s-dot">{t({ en: "Event profile", zh: "完成活动画像" })}</span>
               </span>
               <span className="stage"><span className="s-link" /></span>
@@ -351,9 +375,15 @@ export function OrbitAgentDashboard({
             <span className="act-ic ic-amber"><Icon name="search" size={17} /></span>
             <b>{t({ en: "Find your next event", zh: "发现下一场活动" })}</b>
           </div>
-          <p>{t({ en: "Browse open events and register by answering two questions.", zh: "浏览可报名的活动，回答两题即可完成报名。" })}</p>
+          <p>
+            {openUnregisteredEvent
+              ? t({ en: "There are events accepting registration now. Answer two questions to complete registration.", zh: "目前有活动正在开放报名，回答两题即可完成报名。" })
+              : t({ en: "Review upcoming events and their current registration status.", zh: "查看近期活动及各自的真实报名状态。" })}
+          </p>
           <button className="btn btn-soft btn-sm" onClick={() => navigate("/app/events")} type="button">
-            {t({ en: "Browse", zh: "去看看" })}
+            {openUnregisteredEvent
+              ? t({ en: "Browse open events", zh: "查看开放报名活动" })
+              : t({ en: "View event status", zh: "查看活动状态" })}
           </button>
         </article>
 
@@ -378,7 +408,11 @@ export function OrbitAgentDashboard({
       {journeys.length ? (
         <section className="card journeys">
           {journeys.map((event) => {
-            const badge = journeyStageBadge(event, t);
+            const badge = journeyStageBadge(
+              event,
+              registrationAvailabilityByEventId[event.id] ?? "unavailable",
+              t,
+            );
             const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
             const date = eventDateLabel(bounds.start);
             const timeLabel = bounds.start

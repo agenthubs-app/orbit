@@ -47,10 +47,12 @@ function readRawParam(
   return undefined;
 }
 
-function greetingHeadline(today: AppTodayMergedViewModel["today"]): string {
-  if (today.state === "failure") return "今天的日程仍可查看。";
-  if (today.decideCount === 0) return "今晚没有需要你决定的事。";
-  return `今晚有 ${today.decideCount} 件事需要你决定。`;
+function greetingHeadline(merged: AppTodayMergedViewModel): string {
+  if (merged.today.state === "failure" && merged.attention.total === 0) {
+    return "今天的日程仍可查看。";
+  }
+  if (merged.attention.total === 0) return "当前没有待你处理的事。";
+  return `当前有 ${merged.attention.total} 件事待你处理。`;
 }
 
 function RouteStateRecoveryActions({
@@ -232,12 +234,14 @@ export default async function AppTodayPageContent({
             <div>
               <div className="eyebrow">Today</div>
               <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
-                {greetingHeadline(merged.today)}
+                {greetingHeadline(merged)}
               </h1>
               <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
                 {merged.today.state === "failure"
                   ? "决策账本暂时不可用，日程和可复核安排仍可使用。"
-                  : "其余的 Orbit 都盯着——需要你确认的会先问你，做过的操作大多可以撤销。"}
+                  : merged.attention.pendingScheduleCount > 0
+                    ? `${merged.attention.decisionCount} 项 Agent 决策 · ${merged.attention.pendingScheduleCount} 项日程待确认。需要你确认的会先问你。`
+                    : "其余的 Orbit 都盯着——需要你确认的会先问你，做过的操作大多可以撤销。"}
               </p>
             </div>
             <OrbitTodayHeaderActions connections={headerConnections} />

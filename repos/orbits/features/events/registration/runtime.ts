@@ -94,3 +94,52 @@ export async function listRuntimeEventRegistrationsForUser(input: {
   }
   return registrations;
 }
+
+export interface RuntimeEventRegistrationState {
+  availability: EventRegistrationAvailability;
+  registered: boolean;
+}
+
+/**
+ * Read the per-user registration truth used by every event surface.
+ *
+ * Keeping availability and membership in one snapshot prevents callers from
+ * combining a canonical registration with a guessed/default window state (or
+ * vice versa). An unavailable window remains explicit instead of being
+ * presented as open.
+ */
+export async function readRuntimeEventRegistrationStates(input: {
+  eventIds: readonly string[];
+  userId?: string | null;
+}): Promise<Record<string, RuntimeEventRegistrationState>> {
+  const eventIds = [...new Set(input.eventIds.filter(Boolean))];
+  const [registrations, availabilityEntries] = await Promise.all([
+    input.userId
+      ? listRuntimeEventRegistrationsForUser({
+          eventIds,
+          userId: input.userId,
+        })
+      : Promise.resolve([]),
+    Promise.all(
+      eventIds.map(async (eventId) => [
+        eventId,
+        await readRuntimeEventRegistrationAvailability(eventId),
+      ] as const),
+    ),
+  ]);
+  const registeredEventIds = new Set(
+    registrations
+      .filter((registration) => registration.status === "rsvped")
+      .map((registration) => registration.eventId),
+  );
+
+  return Object.fromEntries(
+    availabilityEntries.map(([eventId, availability]) => [
+      eventId,
+      {
+        availability,
+        registered: registeredEventIds.has(eventId),
+      },
+    ]),
+  );
+}

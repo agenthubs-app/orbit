@@ -150,12 +150,16 @@ export function hasRenderedComposeTriggerArea(
 
 // 用当前账户的人脉证据生成首封 AI 草稿（subject + body），供发起新对话预填。
 // 这里只生成可编辑草稿；接口不会调用邮件发送方，也不会创建外部副作用。
-export async function generateMessageDraft(input: {
+export type MessageDraftRequestResult =
+  | { success: true; data: { subject: string; body: string } }
+  | { success: false; error: { code: string; message: string } };
+
+export async function requestMessageDraft(input: {
   contactId?: string;
   language: OrbitLanguage;
   recipientName: string;
   organization: string;
-}): Promise<{ subject: string; body: string } | null> {
+}): Promise<MessageDraftRequestResult> {
   try {
     const response = await fetch("/api/chat/assist/email-draft", {
       method: "POST",
@@ -170,18 +174,50 @@ export async function generateMessageDraft(input: {
     const envelope = (await response.json()) as {
       success?: boolean;
       data?: { subject?: string; body?: string };
+      error?: { code?: string; message?: string };
     };
     if (!response.ok || envelope.success !== true) {
-      return null;
+      return {
+        success: false,
+        error: {
+          code: envelope.error?.code ?? "DRAFT_REQUEST_FAILED",
+          message: envelope.error?.message ?? "The draft request failed.",
+        },
+      };
     }
     const draft = envelope.data;
     if (!draft) {
-      return null;
+      return {
+        success: false,
+        error: {
+          code: "DRAFT_RESPONSE_INVALID",
+          message: "The draft response did not include a reviewable draft.",
+        },
+      };
     }
-    return { subject: draft.subject ?? "", body: draft.body ?? "" };
+    return {
+      success: true,
+      data: { subject: draft.subject ?? "", body: draft.body ?? "" },
+    };
   } catch {
-    return null;
+    return {
+      success: false,
+      error: {
+        code: "DRAFT_REQUEST_FAILED",
+        message: "The draft request could not be completed.",
+      },
+    };
   }
+}
+
+export async function generateMessageDraft(input: {
+  contactId?: string;
+  language: OrbitLanguage;
+  recipientName: string;
+  organization: string;
+}): Promise<{ subject: string; body: string } | null> {
+  const result = await requestMessageDraft(input);
+  return result.success ? result.data : null;
 }
 
 // draft→thread：从确认后的草稿创建一个新的本地 staged 对话线程。

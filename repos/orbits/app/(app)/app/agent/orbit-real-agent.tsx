@@ -27,9 +27,15 @@ import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
+import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
+import {
+  openRelationshipInboxCompose,
+  requestMessageDraft,
+} from "../inbox/relationship-inbox-panel";
 
 interface OrbitRealAgentProps {
   home?: OrbitHomeViewModel | null;
+  registrationAvailabilityByEventId?: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitAgentViewModel;
 }
 
@@ -310,6 +316,15 @@ function artifactMetadataValue(
   return "";
 }
 
+const CONTACT_RECOMMENDATION_ITEM_PREFIX = "contact-recommendation:";
+
+export function contactIdFromArtifactItemId(value: unknown): string {
+  const itemId = String(value ?? "");
+  return itemId.startsWith(CONTACT_RECOMMENDATION_ITEM_PREFIX)
+    ? itemId.slice(CONTACT_RECOMMENDATION_ITEM_PREFIX.length)
+    : itemId;
+}
+
 function peopleItemsFromArtifact(
   artifact: AgentArtifactRecord | null,
 ): OrbitAgentPeopleResultView[] {
@@ -319,7 +334,7 @@ function peopleItemsFromArtifact(
     ) ?? [];
 
   return items.map((item) => {
-    const contactId = String(item.id ?? "").split(":").pop() ?? "";
+    const contactId = contactIdFromArtifactItemId(item.id);
     const displayName = item.title?.trim() || contactId || "Orbit";
     const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
 
@@ -1522,8 +1537,31 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
 }
 
 // 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
-function AgentPeopleRow({ item, navigate, t }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void; t: Translate }) {
+function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
   const connection = item.connection;
+  const [draftState, setDraftState] = useState<"idle" | "generating" | "ready" | "error">("idle");
+  const [draftErrorCode, setDraftErrorCode] = useState<string | null>(null);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+
+  const generateDraft = async () => {
+    setDraftState("generating");
+    setDraftErrorCode(null);
+    const result = await requestMessageDraft({
+      contactId: connection.id,
+      language,
+      organization: connection.company,
+      recipientName: connection.displayName,
+    });
+    if (result.success === false) {
+      setDraftErrorCode(result.error.code);
+      setDraftState("error");
+      return;
+    }
+    setSubject(result.data.subject);
+    setBody(result.data.body);
+    setDraftState("ready");
+  };
 
   return (
     <div className="p-person">
@@ -1533,12 +1571,62 @@ function AgentPeopleRow({ item, navigate, t }: { item: OrbitAgentPeopleResultVie
         <span>{[connection.title, connection.company].filter(Boolean).join(" · ")}</span>
       </span>
       <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/home/cards/${connection.id}`)} type="button">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts/${connection.id}`)} type="button">
           {t({ en: "View", zh: "查看" })}
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={draftState === "generating"}
+          onClick={() => void generateDraft()}
+          type="button"
+        >
+          <Icon name="sparkle" size={14} />
+          {draftState === "generating"
+            ? t({ en: "Drafting…", zh: "正在生成…" })
+            : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
         </button>
       </span>
       {item.reason ? <span className="why">{item.reason}</span> : null}
       {item.opener ? <span className="why">{item.opener}</span> : null}
+      {draftState === "error" ? (
+        <div data-agent-inline-draft-error data-agent-inline-draft-error-code={draftErrorCode ?? undefined} role="alert" style={{ color: "var(--danger)", flexBasis: "100%", fontSize: 13 }}>
+          {t({ en: "The draft could not be generated. Try again.", zh: "草稿生成失败，请重试。" })}
+        </div>
+      ) : null}
+      {draftState === "ready" ? (
+        <div data-agent-inline-draft style={{ background: "var(--accent-softer)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "grid", flexBasis: "100%", gap: 8, padding: 12 }}>
+          <strong style={{ fontSize: 13 }}>{t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}</strong>
+          <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
+            {t({ en: "Subject", zh: "主题" })}
+            <input className="field" onChange={(event) => setSubject(event.target.value)} value={subject} />
+          </label>
+          <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
+            {t({ en: "Message", zh: "正文" })}
+            <textarea className="field" onChange={(event) => setBody(event.target.value)} rows={5} value={body} />
+          </label>
+          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+              {t({ en: "Draft only. Nothing is sent without confirmation.", zh: "仅生成草稿；未经确认不会发送。" })}
+            </span>
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={!subject.trim() || !body.trim()}
+              onClick={() =>
+                openRelationshipInboxCompose({
+                  body,
+                  contactId: connection.id,
+                  organization: connection.company,
+                  recipient: connection.displayName,
+                  subject,
+                })
+              }
+              type="button"
+            >
+              {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1589,6 +1677,10 @@ function AgentTodoRow({ item, navigate, t }: { item: OrbitAgentTodoResultView; n
 }
 
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
+  const [showAll, setShowAll] = useState(false);
+  const initialLimit = panel.kind === "people" ? 3 : panel.items.length;
+  const visibleItems = showAll ? panel.items : panel.items.slice(0, initialLimit);
+  const hiddenCount = panel.items.length - visibleItems.length;
   const meta =
     panel.kind === "people"
       ? t({ en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
@@ -1604,15 +1696,28 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
         <span className="meta">{meta}</span>
       </div>
       <div className="panel-body">
-        {panel.items.map((item, index) =>
+        {visibleItems.map((item, index) =>
           isPeopleResult(item) ? (
-            <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
+            <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ) : isTodoResult(item) ? (
             <AgentTodoRow key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
           ) : (
             <AgentEventRow key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ),
         )}
+        {panel.kind === "people" && panel.items.length > initialLimit ? (
+          <button
+            className="btn btn-ghost btn-sm"
+            data-agent-recommendations-toggle
+            onClick={() => setShowAll((value) => !value)}
+            style={{ marginTop: 8 }}
+            type="button"
+          >
+            {showAll
+              ? t({ en: "Show top 3 only", zh: "只看前三位" })
+              : t({ en: `View ${hiddenCount} more`, zh: `查看另外 ${hiddenCount} 位` })}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -1853,7 +1958,11 @@ const CONSOLE_STYLES = `
 }
 `;
 
-export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) {
+export function OrbitRealAgent({
+  home = null,
+  registrationAvailabilityByEventId = {},
+  viewModel,
+}: OrbitRealAgentProps) {
   const { language, preserveHref, t } = useOrbitLanguage();
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
@@ -2520,19 +2629,28 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
                 />
               ) : null}
               {message.runId ? (
-                <AgentActionStatusCard
-                  actionIds={message.actionIds ?? []}
-                  language={language === "zh" ? "zh" : "en"}
-                  navigate={navigate}
-                  onRetryRequest={async () => {
-                    const request = agentRetryRequestForAssistant(
-                      messages,
-                      index,
-                    );
-                    if (request) await ask(request);
-                  }}
-                  runId={message.runId}
-                />
+                <details data-agent-run-details style={{ marginTop: 10 }}>
+                  <summary
+                    className="btn btn-ghost btn-sm"
+                    style={{ cursor: "pointer", display: "inline-flex", listStyle: "none" }}
+                  >
+                    <Icon name="chevR" size={14} />
+                    {language === "zh" ? "查看完整 Agent 过程" : "View full Agent run"}
+                  </summary>
+                  <AgentActionStatusCard
+                    actionIds={message.actionIds ?? []}
+                    language={language === "zh" ? "zh" : "en"}
+                    navigate={navigate}
+                    onRetryRequest={async () => {
+                      const request = agentRetryRequestForAssistant(
+                        messages,
+                        index,
+                      );
+                      if (request) await ask(request);
+                    }}
+                    runId={message.runId}
+                  />
+                </details>
               ) : null}
               <AgentEvidenceSources references={message.evidenceRefs ?? []} />
               {message.retryRequest ? (
@@ -2634,7 +2752,14 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       )}
     </>
   ) : home ? (
-    <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
+    <OrbitAgentDashboard
+      home={home}
+      language={language}
+      navigate={navigate}
+      onAsk={ask}
+      registrationAvailabilityByEventId={registrationAvailabilityByEventId}
+      t={t}
+    />
   ) : (
     <AgentWelcome onPick={ask} viewModel={viewModel} />
   );

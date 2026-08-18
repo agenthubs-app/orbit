@@ -190,6 +190,20 @@ test("with all three sources healthy, nothing degrades", async () => {
   assert.equal(merged.schedule.state, "success");
   assert.equal(merged.followups.state, "success");
   assert.notEqual(merged.timeSpine, null);
+  const pendingScheduleCount =
+    merged.timeSpine?.schedules.filter((schedule) => {
+      const selected = merged.calendar.selected;
+      const selectedDate = selected.d == null
+        ? null
+        : `${selected.y}-${String(selected.m + 1).padStart(2, "0")}-${String(selected.d).padStart(2, "0")}`;
+      return schedule.date === selectedDate && schedule.status === "待确认";
+    }).length ?? 0;
+  const decisionCount = merged.today.decideCount;
+  assert.deepEqual(merged.attention, {
+    decisionCount,
+    pendingScheduleCount,
+    total: decisionCount + pendingScheduleCount,
+  });
 });
 
 // ---- timeline merge / filter-dim, exercised through the real loaders end

@@ -1,8 +1,7 @@
 import { auth } from "../../../../auth";
 import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../features/events/core/public-catalogue-runtime";
 import {
-  listRuntimeEventRegistrationsForUser,
-  readRuntimeEventRegistrationAvailability,
+  readRuntimeEventRegistrationStates,
 } from "../../../../features/events/registration/runtime";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { applyOrbitEventPresentation } from "../orbit-event-presentation";
@@ -68,29 +67,16 @@ export default async function AppEventsPage({
     await canonicalCatalogue.read(),
   );
   const eventIds = catalogue.events.map((event) => event.id);
-  const [registrations, availabilityEntries] = await Promise.all([
-    session?.user?.id
-      ? listRuntimeEventRegistrationsForUser({
-        eventIds,
-        userId: session.user.id,
-      })
-      : Promise.resolve([]),
-    Promise.all(
-      eventIds.map(async (eventId) => [
-        eventId,
-        await readRuntimeEventRegistrationAvailability(eventId),
-      ] as const),
-    ),
-  ]);
-  const registrationsByEventId = new Map(
-    registrations.map((registration) => [registration.eventId, registration]),
-  );
+  const registrationStates = await readRuntimeEventRegistrationStates({
+    eventIds,
+    userId: session?.user?.id,
+  });
   const presentedCatalogue = applyOrbitEventPresentation(catalogue, language);
   const events = presentedCatalogue.events.map((event) =>
     publicListEvent(
       event,
       Boolean(session?.user?.id),
-      registrationsByEventId.get(event.id)?.status === "rsvped",
+      registrationStates[event.id]?.registered ?? false,
       event.participantCount,
     ),
   );
@@ -119,7 +105,12 @@ export default async function AppEventsPage({
               ? resolvedSearchParams.scope
               : "all"
           }
-          registrationAvailabilityByEventId={Object.fromEntries(availabilityEntries)}
+          registrationAvailabilityByEventId={Object.fromEntries(
+            Object.entries(registrationStates).map(([eventId, state]) => [
+              eventId,
+              state.availability,
+            ]),
+          )}
           viewModel={viewModel}
         />
       </div>

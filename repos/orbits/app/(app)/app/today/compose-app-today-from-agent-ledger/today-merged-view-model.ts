@@ -53,6 +53,12 @@ export interface AppTodayMergedCalendarState {
 }
 
 export interface AppTodayMergedViewModel {
+  /** One summary derived from the actionable rows actually rendered on Today. */
+  attention: {
+    decisionCount: number;
+    pendingScheduleCount: number;
+    total: number;
+  };
   calendar: AppTodayMergedCalendarState;
   /** ids of arrangement cards unrelated to the selected date — dim, don't hide. */
   dimmedArrangementIds: ReadonlySet<string>;
@@ -331,6 +337,25 @@ function mergeTimeSpine(
   };
 }
 
+function attentionSummary(
+  today: AppTodayRouteViewModel,
+  timeSpine: OrbitScheduleViewModel | null,
+  selectedDateKey: string,
+): AppTodayMergedViewModel["attention"] {
+  const decisionCount = today.state === "failure" ? 0 : today.decideCount;
+  const pendingScheduleCount =
+    timeSpine?.schedules.filter(
+      (schedule) =>
+        schedule.date === selectedDateKey && schedule.status === "待确认",
+    ).length ?? 0;
+
+  return {
+    decisionCount,
+    pendingScheduleCount,
+    total: decisionCount + pendingScheduleCount,
+  };
+}
+
 // ---- filter-dim: arrangement cards unrelated to the selected date get
 // opacity .45 in the right column. Decision cards have no date attribute
 // and are never touched by this rule (design doc §7.2, decided 2026-07-25). ----
@@ -416,6 +441,7 @@ export async function loadAppTodayMergedViewModel(
     selected.d != null ? dateKeyFromParts({ d: selected.d, m: selected.m, y: selected.y }) : todayKey;
 
   return {
+    attention: attentionSummary(today, timeSpine, selectedDateKey),
     calendar: { selected, view: parseViewParam(searchParams) },
     dimmedArrangementIds: computeDimmedArrangementIds(schedule, selectedDateKey, todayKey),
     followups,

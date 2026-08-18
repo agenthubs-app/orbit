@@ -103,10 +103,35 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /opener: item\.body/);
   assert.match(agentSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentPeopleRow/);
-  assert.match(agentSource, /navigate\(`\/home\/cards\/\$\{connection\.id\}`\)/);
+  assert.match(agentSource, /navigate\(`\/app\/contacts\/\$\{connection\.id\}`\)/);
+  assert.match(agentSource, /requestMessageDraft/);
+  assert.match(agentSource, /data-agent-inline-draft-error-code/);
+  assert.match(agentSource, /data-agent-inline-draft/);
+  assert.match(agentSource, /生成跟进草稿/);
+  assert.match(agentSource, /panel\.items\.slice\(0, initialLimit\)/);
+  assert.match(agentSource, /data-agent-recommendations-toggle/);
+  assert.match(agentSource, /查看完整 Agent 过程/);
+  assert.match(agentSource, /<details data-agent-run-details/);
   assert.match(agentSource, /<AgentEvidenceSources/);
   assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
   assert.match(agentSource, /details\.open = !details\.open/);
+});
+
+test("contact artifact mapping preserves actor-scoped contact ids", async () => {
+  const { contactIdFromArtifactItemId } = await importProjectModule<{
+    contactIdFromArtifactItemId: (value: unknown) => string;
+  }>("app/(app)/app/agent/orbit-real-agent.tsx");
+
+  assert.equal(
+    contactIdFromArtifactItemId(
+      "contact-recommendation:iorbit-qa:contact_042",
+    ),
+    "iorbit-qa:contact_042",
+  );
+  assert.equal(
+    contactIdFromArtifactItemId("contact-recommendation:contact_001"),
+    "contact_001",
+  );
 });
 
 test("/app/agent makes contact and event discovery explicit before submission", () => {

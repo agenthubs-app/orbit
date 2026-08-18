@@ -51,17 +51,37 @@ export interface CanonicalEventDetailDependencies {
   }) => Promise<string | null>;
 }
 
-async function resolveConfiguredActorEventCanonicalId(input: {
+export async function resolveConfiguredActorEventCanonicalIds(input: {
+  actorId: string;
+  eventIds: readonly string[];
+}): Promise<Record<string, string>> {
+  const routeIds = new Set(input.eventIds.map((eventId) => eventId.trim()).filter(Boolean));
+  if (routeIds.size === 0) return {};
+
+  const result = await createEventCrudAndImportService("live").listEvents({
+    actorId: input.actorId,
+  });
+  if (result.success === false) return {};
+
+  return Object.fromEntries(
+    result.data.events
+      .filter((event) => routeIds.has(event.id))
+      .map((event) => {
+        const canonicalId = event.sourceMetadata.providerRecordId.trim();
+        return [event.id, canonicalId || event.id];
+      }),
+  );
+}
+
+export async function resolveConfiguredActorEventCanonicalId(input: {
   actorId: string;
   eventId: string;
 }): Promise<string | null> {
-  const result = await createEventCrudAndImportService("live").getEvent({
+  const resolved = await resolveConfiguredActorEventCanonicalIds({
     actorId: input.actorId,
-    eventId: input.eventId,
+    eventIds: [input.eventId],
   });
-  if (result.success === false) return null;
-
-  const canonicalId = result.data.event.sourceMetadata.providerRecordId.trim();
+  const canonicalId = resolved[input.eventId];
   return canonicalId && canonicalId !== input.eventId ? canonicalId : null;
 }
 

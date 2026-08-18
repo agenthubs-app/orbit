@@ -27,6 +27,10 @@ test("app-home-route redirects into the iOrbit workspace which composes home dat
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
   assert.match(agentPageSource, /loadAppHomeRouteViewModel\(undefined,/);
   assert.match(agentPageSource, /presentOrbitEvents/);
+  assert.match(agentPageSource, /readRuntimeEventRegistrationStates/);
+  assert.match(agentPageSource, /resolveConfiguredActorEventCanonicalIds/);
+  assert.match(agentPageSource, /registrationAvailabilityByEventId=/);
+  assert.match(agentPageSource, /youRsvped: registered/);
 
   const agentUiSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
   assert.match(agentUiSource, /OrbitAgentDashboard/);
@@ -140,6 +144,21 @@ test("app home does not relabel event records as registrations", () => {
   assert.match(homeRouteSource, /import \{ eventChoiceToLandingEvent \}/);
   assert.doesNotMatch(homeUiSource, /报名活动/);
   assert.match(homeUiSource, /en: "Events", zh: "活动"/);
+});
+
+test("iOrbit dashboard presents registration state from the shared runtime snapshot", () => {
+  const dashboardSource = source(
+    "app/(app)/app/agent/orbit-agent-dashboard.tsx",
+  );
+
+  assert.match(dashboardSource, /registrationAvailabilityByEventId/);
+  assert.match(dashboardSource, /nextEventRegistrationAvailability === "open"/);
+  assert.match(dashboardSource, /报名已截止/);
+  assert.match(dashboardSource, /报名资料已锁定/);
+  assert.doesNotMatch(
+    dashboardSource,
+    /浏览可报名的活动，回答两题即可完成报名/,
+  );
 });
 
 test("app home mobile event rows keep long event titles readable", () => {

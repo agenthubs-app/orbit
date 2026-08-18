@@ -269,7 +269,7 @@ test("/app/events renders the public event catalogue without requiring authentic
   assert.match(pageSource, /OrbitRealExploreClient/);
   assert.match(pageSource, /createConfiguredCanonicalPublicEventCatalogue/);
   assert.match(pageSource, /getOrbitLandingViewModelFromCatalogue/);
-  assert.match(pageSource, /listRuntimeEventRegistrationsForUser/);
+  assert.match(pageSource, /readRuntimeEventRegistrationStates/);
   assert.doesNotMatch(pageSource, /readPublicEventCatalogue/u);
   assert.doesNotMatch(pageSource, /readEventOperationsCatalogueSummaries/u);
   assert.doesNotMatch(pageSource, /eventRegistrationRuntimeService\.get/);
