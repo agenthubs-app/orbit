@@ -52,6 +52,10 @@ test("event detail replaces the legacy surface with the green three-card journey
   assert.match(html, /活动现场|Event floor/);
   assert.match(html, /会后中心|Post-event center/);
   assert.match(html, /向 iOrbit 询问这场活动|Ask iOrbit about this event/);
+  assert.match(html, /线下活动|In person/);
+  assert.match(html, /已确认|Confirmed/);
+  assert.match(html, /日历已同步|Calendar synced/);
+  assert.doesNotMatch(html, />live<|>confirmed<|>calendar_sync</);
   assert.doesNotMatch(html, /Event workspace could not load/);
   assert.doesNotMatch(html, /<details/i);
 });
@@ -84,7 +88,7 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
 
   assert.match(pre, /data-event-journey-state="pre"/);
   assert.match(pre, /回答 2 题并报名|Answer 2 questions &amp; register/);
-  assert.match(pre, /AI 示例|AI sample/);
+  assert.match(pre, /功能示例|Feature sample/);
   assert.match(joined, /data-event-journey-state="joined"/);
   assert.match(joined, /已报名|Registered/);
   assert.match(joined, /查看活动准备|进入活动|View event preparation|Enter event/);

@@ -256,7 +256,10 @@ function OrbitAskDock() {
                 <button
                   className="oga-chip"
                   key={chip.label}
-                  onClick={() => send(chip.query)}
+                  onClick={() => {
+                    setDraft?.(chip.query);
+                    window.requestAnimationFrame(() => inputRef.current?.focus());
+                  }}
                   type="button"
                 >
                   {chip.label}

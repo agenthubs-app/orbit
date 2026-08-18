@@ -106,6 +106,7 @@ export function OrbitAgentDashboard({
 }) {
   const [appointments, setAppointments] = useState<AppointmentView[]>([]);
   const [briefText, setBriefText] = useState("");
+  const [showEmptyAccountDemo, setShowEmptyAccountDemo] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -259,6 +260,63 @@ export function OrbitAgentDashboard({
             zh: "iOrbit 只根据你已授权的活动与人脉数据回答；涉及对外动作会先经你确认。",
           })}
         </p>
+
+        {home.stats.people === 0 ? (
+          <section
+            data-orbit-agent-empty-account-demo
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)",
+              display: "grid",
+              gap: 12,
+              marginTop: 16,
+              padding: 16,
+            }}
+          >
+            <div>
+              <b>{t({ en: "Try the decision flow before importing", zh: "还没导入联系人，也可以先体验决策流程" })}</b>
+              <p style={{ color: "var(--text-2)", fontSize: 13, margin: "5px 0 0" }}>
+                {t({
+                  en: "This uses three clearly labeled archetypes, not real people or account data.",
+                  zh: "这里使用 3 个明确标注的角色示例，不会冒充真实联系人或账号数据。",
+                })}
+              </p>
+            </div>
+            <button
+              aria-expanded={showEmptyAccountDemo}
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowEmptyAccountDemo((value) => !value)}
+              type="button"
+            >
+              {showEmptyAccountDemo
+                ? t({ en: "Hide example", zh: "收起示例结果" })
+                : t({ en: "Preview a top-3 result", zh: "预览“最值得联系的 3 位”" })}
+            </button>
+            {showEmptyAccountDemo ? (
+              <div data-orbit-agent-demo-result style={{ display: "grid", gap: 8 }}>
+                {[
+                  t({ en: "1 · Potential customer — validate a current need", zh: "1 · 潜在客户角色——先验证当前需求" }),
+                  t({ en: "2 · Trusted peer — ask for a focused introduction", zh: "2 · 熟悉的同行角色——提出一次明确引荐" }),
+                  t({ en: "3 · Channel partner — test a small joint next step", zh: "3 · 渠道伙伴角色——验证一个小型合作下一步" }),
+                ].map((item) => (
+                  <div key={item} style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", color: "var(--text)", fontSize: 13, padding: "10px 12px" }}>
+                    {item}
+                  </div>
+                ))}
+                <p style={{ color: "var(--text-2)", fontSize: 12, margin: 0 }}>
+                  {t({
+                    en: "After you import contacts, iOrbit replaces these archetypes with your authorized records, evidence, and editable drafts.",
+                    zh: "导入联系人后，iOrbit 会用你已授权的真实记录、依据和可编辑草稿替换这些角色示例。",
+                  })}
+                </p>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate("/app/contacts/new")} type="button">
+                  {t({ en: "Import contacts when ready", zh: "准备好后导入联系人" })}
+                </button>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </section>
 
       {/* ── 即将到来的约谈 ── */}
@@ -287,10 +345,10 @@ export function OrbitAgentDashboard({
             <div className="appt-main">
               <div className="appt-title-row">
                 <b>{t({ en: "Online appointment", zh: "线上约谈" })}</b>
-                <span className="badge badge-ok">confirmed</span>
+                <span className="badge badge-ok">{t({ en: "Confirmed by both", zh: "双方已确认" })}</span>
               </div>
               <div className="appt-who">
-                <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5 }}>{appointmentTz}</span>
+                <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{appointmentTz}</span>
               </div>
               <div className="appt-actions">
                 {upcomingAppointment.contactId ? (
@@ -433,7 +491,7 @@ export function OrbitAgentDashboard({
         </section>
       ) : (
         <section className="card journeys">
-          <div style={{ color: "var(--text-2)", fontSize: 13.5, padding: "16px 18px" }}>
+          <div style={{ color: "var(--text-2)", fontSize: 14, padding: "16px 18px" }}>
             {t({ en: "No event journeys yet — register for one and it appears here, from registration to debrief.", zh: "还没有活动旅程——报名一场活动后，从报名到复盘都会出现在这里。" })}
           </div>
         </section>

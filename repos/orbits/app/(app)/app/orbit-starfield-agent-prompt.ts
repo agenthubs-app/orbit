@@ -7,6 +7,48 @@ export interface StarfieldPromptPreview {
   visible: boolean;
 }
 
+function promptNodes(host: HTMLElement) {
+  return {
+    input: host.querySelector<HTMLInputElement>("#skPromptInput"),
+    scope: host.querySelector<HTMLElement>("#skPromptScope"),
+  };
+}
+
+export function updateStarfieldPromptScope(host: HTMLElement): void {
+  const { input, scope } = promptNodes(host);
+  if (!input || !scope) return;
+
+  const language = host.getAttribute("data-lang") === "en" ? "en" : "zh";
+  scope.textContent = input.value.trim()
+    ? language === "zh"
+      ? "将读取你已授权的人脉、活动与跟进记录；点击发送后才开始，不会自动发送消息或写入日历。"
+      : "Uses only contacts, events, and follow-ups you authorized. Nothing starts until you send; no messages or calendar writes happen automatically."
+    : language === "zh"
+      ? "示例只会填入输入框，不会自动执行。"
+      : "Examples only fill the input. They never run automatically.";
+}
+
+export function fillStarfieldPromptFromExample(host: HTMLElement, candidate: string): void {
+  const { input } = promptNodes(host);
+  if (!input) return;
+
+  input.value = candidate.trim();
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  updateStarfieldPromptScope(host);
+  input.focus();
+}
+
+export function submitStarfieldPrompt(host: HTMLElement): void {
+  const { input } = promptNodes(host);
+  if (!input) return;
+
+  const language = host.getAttribute("data-lang") === "en" ? "en" : "zh";
+  const fallback = language === "en"
+    ? "Who are the three people I should contact now?"
+    : "现在最值得联系的 3 位是谁？";
+  window.location.assign(agentHrefForPrompt(input.value.trim() || fallback));
+}
+
 export function updateStarfieldPromptPreview(
   input: HTMLInputElement | null,
   preview: StarfieldPromptPreview,
@@ -31,9 +73,6 @@ export function bindStarfieldAgentPrompt(
 ): () => void {
   const input = host.querySelector<HTMLInputElement>("#skPromptInput");
   const submitButton = host.querySelector<HTMLButtonElement>("#skEnter");
-  const chips = Array.from(
-    host.querySelectorAll<HTMLButtonElement>(".sk-chip"),
-  );
 
   if (!input || !submitButton) {
     return () => undefined;
@@ -46,8 +85,15 @@ export function bindStarfieldAgentPrompt(
       window.location.assign(agentHrefForPrompt(prompt));
     }
   };
-  const submitInput = () => submit(input.value);
-  const onInputKeyDown = (event: KeyboardEvent) => {
+  const submitInput = () => {
+    const currentInput = host.querySelector<HTMLInputElement>("#skPromptInput");
+    submit(currentInput?.value ?? "");
+  };
+  const fillFromExample = (candidate: string) => {
+    fillStarfieldPromptFromExample(host, candidate);
+  };
+  const onHostKeyDown = (event: KeyboardEvent) => {
+    if (!(event.target instanceof HTMLInputElement) || event.target.id !== "skPromptInput") return;
     event.stopPropagation();
 
     if (event.key === "Enter") {
@@ -55,20 +101,29 @@ export function bindStarfieldAgentPrompt(
       submitInput();
     }
   };
-  const chipHandlers = chips.map((chip) => {
-    const handler = () => submit(chip.textContent ?? "");
-    chip.addEventListener("click", handler);
-    return { chip, handler };
-  });
+  const onHostInput = (event: Event) => {
+    if (event.target instanceof HTMLInputElement && event.target.id === "skPromptInput") {
+      updateStarfieldPromptScope(host);
+    }
+  };
+  const onHostClick = (event: MouseEvent) => {
+    if (!(event.target instanceof Element)) return;
+    const chip = event.target.closest<HTMLButtonElement>(".sk-chip");
+    if (chip && host.contains(chip)) {
+      fillFromExample(chip.textContent ?? "");
+      return;
+    }
+    const submitTarget = event.target.closest<HTMLButtonElement>("#skEnter");
+    if (submitTarget && host.contains(submitTarget)) submitInput();
+  };
 
-  input.addEventListener("keydown", onInputKeyDown);
-  submitButton.addEventListener("click", submitInput);
+  host.addEventListener("keydown", onHostKeyDown);
+  host.addEventListener("input", onHostInput);
+  host.addEventListener("click", onHostClick);
 
   return () => {
-    input.removeEventListener("keydown", onInputKeyDown);
-    submitButton.removeEventListener("click", submitInput);
-    chipHandlers.forEach(({ chip, handler }) =>
-      chip.removeEventListener("click", handler),
-    );
+    host.removeEventListener("keydown", onHostKeyDown);
+    host.removeEventListener("input", onHostInput);
+    host.removeEventListener("click", onHostClick);
   };
 }

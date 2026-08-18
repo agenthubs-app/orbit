@@ -5,7 +5,7 @@
  * 三个来源（账本 / 关系安排 / 真实约谈）并行加载，任一失败只降级它自己的区块
  * （见 today-merged-view-model.ts）。左栏是时间脊柱（月历+当日|本月+时间轴，
  * 抽自旧日历页）；右栏是行动流：需要你决定（原位展开的决策卡）→ 可复核安排
- * （抽自关系安排页）→ ORBIT 已准备/最近动态（默认折叠）。
+ * （抽自关系安排页）→ 已准备的操作/最近动态（默认折叠）。
  *
  * T2 把右栏"决策卡列表 + 常驻详情面板"两块拆分布局，改成一块 accordion 列表
  * ——详情面板 `OrbitTodayDecisionPanel` 不再作为独立栏渲染，它的内容现在内嵌
@@ -229,7 +229,7 @@ export default async function AppTodayPageContent({
             }}
           >
             <div>
-              <div className="eyebrow">Today</div>
+              <div className="eyebrow">{language === "zh" ? "今天" : language === "ja" ? "今日" : "Today"}</div>
               <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
                 {greetingHeadline(merged)}
               </h1>
@@ -237,7 +237,7 @@ export default async function AppTodayPageContent({
                 {merged.today.state === "failure"
                   ? "决策账本暂时不可用，日程和可复核安排仍可使用。"
                   : merged.attention.pendingScheduleCount > 0
-                    ? `${merged.attention.decisionCount} 项 Agent 决策 · ${merged.attention.pendingScheduleCount} 项日程待确认。需要你确认的会先问你。`
+                    ? `${merged.attention.decisionCount} 项待确认决策 · ${merged.attention.pendingScheduleCount} 项真实约谈待确认。需要你确认的会先问你。`
                     : "其余的 Orbit 都盯着——需要你确认的会先问你，做过的操作大多可以撤销。"}
               </p>
             </div>

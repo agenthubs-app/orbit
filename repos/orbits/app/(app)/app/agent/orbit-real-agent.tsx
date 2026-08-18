@@ -986,8 +986,8 @@ function AgentEvidenceSources({
         style={{ cursor: "pointer", fontWeight: 600 }}
       >
         {t({
-          en: `Sources · ${totalItems} records`,
-          zh: `查看依据 · ${totalItems} 条真实记录`,
+          en: `Evidence from ${totalItems} records · no external action taken`,
+          zh: `依据 ${totalItems} 条 · 未执行外部动作`,
         })}
       </summary>
       <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
@@ -1089,7 +1089,7 @@ function AgentHistoryList({
           <div className="eyebrow orbit-agent-history-group">
             {group}
           </div>
-          <div className="orbit-agent-history-group-list" style={{ display: "flex", flexDirection: "column" }}>
+          <div aria-label={`${group} · ${history.filter((item) => item.group === group).length}`} className="orbit-agent-history-group-list" role="list" style={{ display: "flex", flexDirection: "column" }}>
             {history
               .filter((item) => item.group === group)
               .map((item) => {
@@ -1107,6 +1107,7 @@ function AgentHistoryList({
                     aria-busy={pending}
                     className={`orbit-agent-history-row${active ? " is-active" : ""}`}
                     key={item.id}
+                    role="listitem"
                     onMouseEnter={() => setHoveredHistoryId(item.id)}
                     onMouseLeave={() => {
                       setHoveredHistoryId((current) => (current === item.id ? null : current));
@@ -1605,7 +1606,7 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
             <textarea className="field" onChange={(event) => setBody(event.target.value)} rows={5} value={body} />
           </label>
           <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+            <span style={{ color: "var(--text-3)", fontSize: 12 }}>
               {t({ en: "Draft only. Nothing is sent without confirmation.", zh: "仅生成草稿；未经确认不会发送。" })}
             </span>
             <button
@@ -1725,16 +1726,48 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
 
 // 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
 // 回调，等待可能好几秒。为了不让用户对着一个静止的点发呆，这里按时间推进一串
-// “正在…”阶段文案（理解→检索→深度思考→整理），配合旋转指示，营造进度感。
-// 纯展示：文案与真实进度无严格对应，只按固定节奏往后走并停在最后一个。
+// 文案只说明这条管线将核对的维度，不伪装成服务端实时进度；按固定节奏轮换，
+// 并明确给出用户可预期的等待范围与副作用边界。
 const THINKING_PHASES: readonly Copy[] = [
-  { en: "Understanding your request", zh: "正在理解你的需求" },
-  { en: "Searching your network & events", zh: "正在检索信息" },
-  { en: "Thinking it through", zh: "正在深度思考中" },
-  { en: "Composing recommendations", zh: "正在整理答复" },
+  { en: "Checking your authorized contacts, events, and follow-ups", zh: "正在核对你已授权的人脉、活动与跟进记录" },
+  { en: "Comparing relationship strength, timing, and your goal", zh: "正在比较关系强度、时机与你的目标" },
+  { en: "Ranking the most useful next decisions", zh: "正在排列最值得处理的下一步" },
+  { en: "Preparing the answer and its evidence", zh: "正在整理答复与依据" },
 ];
 
 const THINKING_PHASE_INTERVAL_MS = 2200;
+const AGENT_REQUEST_TIMEOUT_MS = 30_000;
+
+class AgentRequestTimeoutError extends Error {
+  constructor() {
+    super("Agent request timed out");
+    this.name = "AgentRequestTimeoutError";
+  }
+}
+
+async function fetchAgentConversation(body: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    AGENT_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetch("/api/ai/conversations", {
+      body,
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new AgentRequestTimeoutError();
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 // 设计稿的四角星标（home-console-green.html 中 iOrbit 的品牌记号）。
 export function AgentStar({ size = 15 }: { size?: number }) {
@@ -1760,9 +1793,11 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   }, []);
 
   return (
-    <span aria-live="polite" className="thinking orbit-agent-thinking-indicator">
-      <span className="sp" />
-      {t(THINKING_PHASES[phase])}
+    <span aria-live="polite" className="thinking orbit-agent-thinking-indicator" style={{ display: "inline-grid", gap: 4 }}>
+      <span><span className="sp" />{t(THINKING_PHASES[phase])}</span>
+      <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+        {t({ en: "Usually 10–20 seconds · no external action is being taken", zh: "通常需要 10–20 秒 · 当前不会执行任何外部动作" })}
+      </span>
     </span>
   );
 }
@@ -1777,6 +1812,8 @@ const CONSOLE_STYLES = `
   --console-tight: 'Inter Tight', Inter, system-ui, -apple-system, 'PingFang SC', sans-serif;
   --glass: rgba(255,255,255,.66);
   --glass-border: #dbe7e4;
+  --text-3: #687078;
+  --text-4: #687078;
   font-size: 15px;
   line-height: 1.65;
 }
@@ -2097,7 +2134,7 @@ export function OrbitRealAgent({
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
       locale === "zh"
-        ? "Agent 暂时无法完成这次回复，请稍后再试。"
+        ? "iOrbit 暂时无法完成这次回复，请稍后再试。"
         : "The agent could not complete this reply. Please try again.";
 
     // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
@@ -2124,11 +2161,9 @@ export function OrbitRealAgent({
     // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
     try {
-      const response = await fetch("/api/ai/conversations", {
-        body: JSON.stringify({ history, locale, message: query }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      });
+      const response = await fetchAgentConversation(
+        JSON.stringify({ history, locale, message: query }),
+      );
       const payload = (await response.json().catch(() => null)) as {
         data?: {
           actionIds?: unknown;
@@ -2201,10 +2236,14 @@ export function OrbitRealAgent({
             : locale === "zh"
               ? "人脉推荐"
               : "Recommended contacts");
-      const assistantText =
-        payload.data.assistantMessage?.trim() ||
-        activeArtifact?.result?.generatedView?.summary ||
-        failureText;
+      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
+      const assistantText = items.length === 0 && evidenceRefs.length === 0
+        ? locale === "zh"
+          ? "本次没有从你已授权的人脉、活动或跟进记录中找到可核查的结果，因此不会把泛化回答展示成真实推荐，也没有执行任何外部动作。请先导入联系人或补充可用记录后重试。"
+          : "No verifiable result was found in your authorized contacts, events, or follow-ups. A generic answer will not be presented as a real recommendation, and no external action was taken. Import contacts or add usable records, then retry."
+        : payload.data.assistantMessage?.trim() ||
+          activeArtifact?.result?.generatedView?.summary ||
+          failureText;
       const runId =
         typeof payload.data.runId === "string" && payload.data.runId.trim()
           ? payload.data.runId.trim()
@@ -2216,8 +2255,6 @@ export function OrbitRealAgent({
               : [],
           )
         : [];
-      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
-
       setMessages((current) => [
         ...current,
         {
@@ -2233,7 +2270,13 @@ export function OrbitRealAgent({
       ]);
 
       setPanel(items.length > 0 ? { items, kind, panelTitle } : null);
-    } catch {
+    } catch (error) {
+      const requestFailureText =
+        error instanceof AgentRequestTimeoutError
+          ? locale === "zh"
+            ? "等待超过 30 秒，本次请求已停止；当前未执行任何外部动作。你可以重新提交。"
+            : "The request took over 30 seconds and was stopped. No external action was taken. You can retry it."
+          : failureText;
       setMessages((current) => [
         ...current,
         {
@@ -2242,7 +2285,7 @@ export function OrbitRealAgent({
           panelTitle: "",
           retryRequest: query,
           role: "assistant",
-          text: failureText,
+          text: requestFailureText,
         },
       ]);
     } finally {
@@ -2616,6 +2659,7 @@ export function OrbitRealAgent({
               {message.items.length > 0 ? (
                 <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
               ) : null}
+              <AgentEvidenceSources references={message.evidenceRefs ?? []} />
               {message.runId ? (
                 <AgentOutcomeFeedback
                   evidenceIds={(message.evidenceRefs ?? []).flatMap(
@@ -2635,7 +2679,7 @@ export function OrbitRealAgent({
                     style={{ cursor: "pointer", display: "inline-flex", listStyle: "none" }}
                   >
                     <Icon name="chevR" size={14} />
-                    {language === "zh" ? "查看完整 Agent 过程" : "View full Agent run"}
+                    {language === "zh" ? "查看完整处理过程" : "View full processing trace"}
                   </summary>
                   <AgentActionStatusCard
                     actionIds={message.actionIds ?? []}
@@ -2652,7 +2696,6 @@ export function OrbitRealAgent({
                   />
                 </details>
               ) : null}
-              <AgentEvidenceSources references={message.evidenceRefs ?? []} />
               {message.retryRequest ? (
                 <button
                   className="btn btn-ghost btn-sm"
@@ -2735,7 +2778,7 @@ export function OrbitRealAgent({
     <>
       <div className="thread-bar">
         <button
-          aria-label={t({ en: "Back to dashboard", zh: "返回 dashboard" })}
+          aria-label={t({ en: "Back to workspace", zh: "返回工作台" })}
           className="btn-back"
           onClick={backToDashboard}
           title={t({ en: "Back", zh: "返回" })}
@@ -2781,7 +2824,7 @@ export function OrbitRealAgent({
         data-orbit-agent-screen-title
         style={{ clipPath: "inset(50%)", height: 1, margin: -1, overflow: "hidden", position: "absolute", whiteSpace: "nowrap", width: 1 }}
       >
-        {t({ en: "iOrbit Agent workspace", zh: "iOrbit Agent 工作区" })}
+        {t({ en: "iOrbit workspace", zh: "iOrbit 工作区" })}
       </h1>
       <div className="orbit-desktop-only">
         {/* No rightExtra here: the "New chat" action already lives in the

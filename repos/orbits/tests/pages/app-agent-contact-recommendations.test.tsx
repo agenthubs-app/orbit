@@ -110,7 +110,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /生成跟进草稿/);
   assert.match(agentSource, /panel\.items\.slice\(0, initialLimit\)/);
   assert.match(agentSource, /data-agent-recommendations-toggle/);
-  assert.match(agentSource, /查看完整 Agent 过程/);
+  assert.match(agentSource, /查看完整处理过程/);
   assert.match(agentSource, /<details data-agent-run-details/);
   assert.match(agentSource, /<AgentEvidenceSources/);
   assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
@@ -152,12 +152,13 @@ test("/app/agent makes contact and event discovery explicit before submission", 
 test("contact detail mapping translates live source and relationship tokens into labels", async () => {
   const routeModule = await importProjectModule<{
     loadAppContactDetailRoute: (input: {
+      actorId?: string | null;
       contactId: string;
       liveContactGraphProvider: {
         source: string;
         sourceLabel: string;
         readContactGraph: () => never;
-        readContactGraphForContact: (contactId: string) => {
+        readContactGraphForContact: (contactId: string, actorId?: string) => {
           contacts: readonly unknown[];
           connections: readonly unknown[];
           evidence: readonly unknown[];

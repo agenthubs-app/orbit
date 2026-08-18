@@ -101,6 +101,7 @@ export function OrbitAskProvider({ children }: { children: ReactNode }) {
 
       if (target) {
         target.onAsk(trimmed);
+        setOpen(false);
         return;
       }
 

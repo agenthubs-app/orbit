@@ -171,6 +171,7 @@ function parseViewParam(
 function todayLoadFailureViewModel(message: string): AppTodayRouteViewModel {
   return {
     decideCount: 0,
+    hiddenDecisionCount: 0,
     errorCode: "TODAY_SECTION_LOAD_FAILED",
     evidenceIds: [],
     failureMessage: message,

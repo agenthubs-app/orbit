@@ -4,10 +4,7 @@
 // (x-dc Component.componentDidMount / componentWillUnmount). Do not hand-edit
 // values here; regenerate from the reference. Mechanical adaptations only:
 // this->self, element lookups scoped to host, avatars mapped to local assets.
-import {
-  bindStarfieldAgentPrompt,
-  updateStarfieldPromptPreview,
-} from "./orbit-starfield-agent-prompt";
+import { bindStarfieldAgentPrompt, updateStarfieldPromptPreview } from "./orbit-starfield-agent-prompt";
 import {
   initializeStarfieldLanguage,
   persistStarfieldLanguage,
@@ -50,8 +47,9 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         HELP:['看早期 AI 应用，能给你估值与节奏建议','正在选型 AI 获客工具，愿做你的首批内测','手握本地渠道，帮你的产品快速落地','能把你引荐给对口的产业客户','带过同类项目，能补上你的增长盘','正在搭出海合规链路，可与你并道','能帮你把核心团队补齐','常年混迹你的目标圈层，熟人多'],
         DEAL:['领投你的天使轮','付费 PoC + 案例背书','渠道分销协议','联合解决方案','资源置换 / 互推','顾问入股','内推核心候选人','邀你进核心局'],
         relTags:['同赛道投资人','潜在客户','供应链资源','可对接渠道','同城同行','技术顾问'],
-        sep:' · ', badge:'今日最值得认识', cardRsn:'iOrbit 为你匹配', couldWork:'可能合作 · ', tipPrefix:'iOrbit：',
-        query:'我想创业，给我推荐一些人脉资源', placeholder:'向 Orbit 写下你的目标…',
+        sep:' · ', badge:'示例中的首位', cardRsn:'示例预览 · 导入后换成真实数据', couldWork:'可能合作 · ', tipPrefix:'iOrbit：',
+        query:'现在最值得联系的 3 位是谁？', placeholder:'例如：现在最值得联系谁？',
+        promptScope:'示例只会填入输入框，不会自动执行。',
         proc1:'iOrbit 解析你的目标  →  挖掘人脉关联  →  为你排序推荐',
         proc2:'iOrbit 读懂全场  →  计算商业匹配  →  为你排好这一桌',
         slo2:'一场活动几百张名片，对的只有几个人\n—— Orbit 帮你找到他们。',
@@ -59,11 +57,11 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         steps:[['注册一次 · 名片通用','你的商务身份成为一颗固定的星'],['报名即自动归轨','Orbit 把同频的人悄悄聚到你周围'],['到场即连接','坐下就在对的圈子，并点名该认识谁']],
         cueNext:'上滑 · 翻到下一幕', cueLast:'已是最后一幕 · 上滑回到顶部',
         brandSub:'由 iOrbit 智能匹配引擎驱动', navEvents:'活动', navSchedule:'日程', navNetwork:'人脉', account:'我的', signIn:'登录', signUp:'注册',
-        kickerHtml:'Relationship&nbsp;Starfield&nbsp;&nbsp;·&nbsp;&nbsp;人脉星空',
-        h1Html:'<span class="sk-word" style="display:inline-block;opacity:0;">你的人脉，</span><span class="sk-word" style="display:inline-block;opacity:0;">是一片</span><br><span class="sk-word" style="display:inline-block;opacity:0;">待你点亮的</span><span class="sk-word" style="display:inline-block;font-weight:500;color:#fff;opacity:0;">星空</span>',
-        subText:'人脉本是散落天际的星星，Orbit 让它们围绕你的轨道运转、为你所用。',
-        chip0:'我要创业', chip1:'看看谁能帮我', chip2:'找金融 AI 方向的人脉', chip3:'推荐 AI / 出海活动',
-        corner:'某商业峰会 · 已报名 826 人 · iOrbit 已读取全场',
+        kickerHtml:'iOrbit&nbsp;人脉决策',
+        h1Html:'<span class="sk-word" style="display:inline-block;opacity:0;">从你认识的人里，</span><span class="sk-word" style="display:inline-block;opacity:0;">找出现在</span><br><span class="sk-word" style="display:inline-block;opacity:0;">最值得联系的</span><span class="sk-word" style="display:inline-block;font-weight:500;color:#fff;opacity:0;">3 位</span>',
+        subText:'基于你已授权的人脉、活动与跟进记录，给出联系人、依据和可编辑消息草稿；不会自动发送或写入日历。',
+        chip0:'找现在最值得联系的 3 位', chip1:'找可能成为客户的人', chip2:'找金融 AI 合作伙伴', chip3:'找适合我的近期活动',
+        corner:'活动场景示例 · 使用模拟报名数据',
         forYou:'For You · 个人用户', forOrg:'For Organizers · 活动方', leftCTA:'创建我的人脉星图 · 注册', enterStarfield:'进入我的人脉星图', rightCTA:'我是活动主办方 · 接入 Orbit',
         leftParaHtml:'<span style="display:block;">名片夹里的人，是一片待点亮的星空。</span><span style="display:block;margin-top:3px;">iOrbit 逐颗解读，挖出背后的<b style="font-weight:500;color:#fff;">商业价值</b>。</span>',
         rightParaHtml:'<span style="display:block;">让活动从「人多」变成<b style="font-weight:500;color:#fff;">「人对」</b>。</span><span style="display:block;margin-top:3px;">iOrbit 替每位来宾算好轨道。</span>'
@@ -76,8 +74,9 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         HELP:['Backs early AI products — can advise on valuation and pacing','Choosing an AI growth tool — happy to be one of your first testers','Holds local channels to get your product live fast','Can introduce you to the right enterprise customers','Has run similar projects — can round out your growth plan','Building a cross-border compliance path — can travel it with you','Can help you complete your core team','A regular in your target circles, and knows everyone'],
         DEAL:['Lead your angel round','Paid PoC + case-study endorsement','Channel distribution deal','Joint solution','Resource swap / cross-promo','Advisor equity','Refer a key hire','An invite to the inner circle'],
         relTags:['Investor in your space','Potential customer','Supply-chain resource','Channel to tap','Local peer','Technical advisor'],
-        sep:' · ', badge:"Today's top intro", cardRsn:'Matched by iOrbit', couldWork:'Could collaborate · ', tipPrefix:'iOrbit: ',
-        query:"I'm starting a company — show me who can help.", placeholder:"Tell Orbit what you're after…",
+        sep:' · ', badge:"Top example", cardRsn:'Example preview · replaced after import', couldWork:'Could collaborate · ', tipPrefix:'iOrbit: ',
+        query:"Who are the 3 people most worth contacting now?", placeholder:"For example: who should I contact now?",
+        promptScope:'Examples only fill the input. They never run automatically.',
         proc1:'iOrbit reads your goal  →  maps your connections  →  ranks the best matches',
         proc2:'iOrbit reads the whole room  →  scores every match  →  seats your table',
         slo2:'Hundreds of cards at one event —\nonly a few matter. Orbit finds them for you.',
@@ -85,11 +84,11 @@ export function runStarfieldMobile(host: HTMLElement): () => void {
         steps:[['Sign up once · one card everywhere','Your identity becomes a fixed star.'],['Register — auto-enter orbit','Orbit draws your people around you.'],['Arrive and connect','Sit down in the right circle.']],
         cueNext:'Swipe up · next scene', cueLast:'Swipe up to restart',
         brandSub:'Powered by iOrbit', navEvents:'Events', navSchedule:'Schedule', navNetwork:'Network', account:'Account', signIn:'Sign in', signUp:'Sign up',
-        kickerHtml:'Relationship&nbsp;Starfield',
-        h1Html:'<span class="sk-word" style="display:inline-block;opacity:0;">Your&nbsp;network&nbsp;is&nbsp;</span><span class="sk-word" style="display:inline-block;opacity:0;">a&nbsp;starfield</span><br><span class="sk-word" style="display:inline-block;opacity:0;">waiting&nbsp;for&nbsp;</span><span class="sk-word" style="display:inline-block;font-weight:500;color:#fff;opacity:0;">your&nbsp;light</span>',
-        subText:'Your contacts are stars scattered across the sky — Orbit pulls them into orbit around you, ready when you need them.',
-        chip0:'Raising a seed round', chip1:'Fintech & AI contacts', chip2:'Partners to go global', chip3:'AI / expansion events',
-        corner:'A business summit · 826 registered · iOrbit has read the room',
+        kickerHtml:'iOrbit&nbsp;relationship&nbsp;decisions',
+        h1Html:'<span class="sk-word" style="display:inline-block;opacity:0;">Find the 3 people</span><span class="sk-word" style="display:inline-block;opacity:0;">in your network</span><br><span class="sk-word" style="display:inline-block;opacity:0;">most worth contacting</span><span class="sk-word" style="display:inline-block;font-weight:500;color:#fff;opacity:0;">now</span>',
+        subText:'Uses contacts, events, and follow-ups you authorized to show people, evidence, and editable drafts. It never sends or writes to your calendar automatically.',
+        chip0:'Find my top 3 contacts now', chip1:'Find potential customers', chip2:'Find fintech AI partners', chip3:'Find relevant upcoming events',
+        corner:'Event scenario example · simulated registration data',
         forYou:'For You · Individuals', forOrg:'For Organizers · Event hosts', leftCTA:'Create my network map · Sign up', enterStarfield:'Open my network map', rightCTA:'I host events · Get Orbit',
         leftParaHtml:'<span style="display:block;">The people in your card holder are a starfield.</span><span style="display:block;margin-top:3px;">Orbit surfaces the <b style="font-weight:500;color:#fff;">business value</b> in each.</span>',
         rightParaHtml:'<span style="display:block;">Turn an event into <b style="font-weight:500;color:#fff;">the right crowd</b>.</span><span style="display:block;margin-top:3px;">Orbit charts an orbit for every guest.</span>'

@@ -257,7 +257,7 @@ export function OrbitRealToday({
           </div>
         );
 
-        // "需要你决定" stays expanded; "ORBIT 已准备"/"最近动态" default to
+        // "需要你决定" stays expanded; "已准备的操作"/"最近动态" default to
         // collapsed (content-priority — completed/queued work shouldn't
         // compete with pending decisions for attention). A native
         // disclosure element needs no client state and adds no hand-rolled
@@ -279,6 +279,20 @@ export function OrbitRealToday({
                 {heading}
               </div>
               {rows}
+              {viewModel.hiddenDecisionCount > 0 ? (
+                <a
+                  className="btn btn-ghost btn-sm"
+                  data-orbit-today-hidden-decisions
+                  href="/app/contacts/all-actions"
+                  style={{ marginTop: 10 }}
+                >
+                  {language === "zh"
+                    ? `另外 ${viewModel.hiddenDecisionCount} 项已按联系人收进全部操作`
+                    : language === "ja"
+                      ? `残り ${viewModel.hiddenDecisionCount} 件は連絡先ごとに「すべての操作」へ整理済み`
+                      : `${viewModel.hiddenDecisionCount} more grouped by contact in All actions`}
+                </a>
+              ) : null}
             </section>
           );
         }

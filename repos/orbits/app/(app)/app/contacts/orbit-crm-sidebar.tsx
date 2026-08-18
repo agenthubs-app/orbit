@@ -106,29 +106,35 @@ export function CrmSidebar({
   counts?: CrmSidebarCounts;
 }) {
   const { t } = useOrbitLanguage();
-  // 还没有任何联系人时，管线/图谱/表盘这些高级视图都是空的，八个入口只会
-  // 加重上手负担——默认只留「全部人脉」，其余折叠到「更多功能」。当前页
-  // 恰好是高级视图时保持可见，避免导航高亮凭空消失。
+  // 核心关系动作保持常驻；图谱、引荐、表盘和操作记录属于分析/复核入口，
+  // 默认收进“更多”。当前页即使是高级视图也会保持可见，避免导航高亮消失。
   const [expanded, setExpanded] = useState(false);
-  const collapse = counts.list === 0 && !expanded;
-  const walletItems = collapse
-    ? WALLET_ITEMS.filter((item) => item.key === "list" || item.key === active)
+  const walletItems = !expanded
+    ? WALLET_ITEMS.filter(
+        (item) =>
+          item.key === "list" ||
+          item.key === "pipeline" ||
+          item.key === active,
+      )
     : WALLET_ITEMS;
   return (
     <aside style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", overflowY: "auto", padding: "22px 14px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <NavGroup active={active} counts={counts} items={walletItems} label={{ en: "Wallet", zh: "名片夹" }} t={t} />
-        {collapse ? (
-          <button
-            data-crm-sidebar-more
-            onClick={() => setExpanded(true)}
-            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 11, color: "var(--text-3)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13, gap: 12, padding: "10px 12px", textAlign: "left" }}
-            type="button"
-          >
-            <Icon name="chevR" size={17} />
-            <span style={{ flex: 1 }}>{t({ en: "More views", zh: "更多功能" })}</span>
-          </button>
-        ) : null}
+        <button
+          aria-expanded={expanded}
+          data-crm-sidebar-more
+          onClick={() => setExpanded((value) => !value)}
+          style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 11, color: "var(--text-3)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13, gap: 12, padding: "10px 12px", textAlign: "left" }}
+          type="button"
+        >
+          <Icon name={expanded ? "chevD" : "chevR"} size={17} />
+          <span style={{ flex: 1 }}>
+            {expanded
+              ? t({ en: "Hide extra views", zh: "收起更多分析与记录" })
+              : t({ en: "More analysis & records", zh: "更多分析与记录" })}
+          </span>
+        </button>
         <div style={{ height: 18 }} />
         <NavGroup active={active} counts={counts} items={CAPTURE_ITEMS} label={{ en: "Capture", zh: "采集" }} t={t} />
       </div>

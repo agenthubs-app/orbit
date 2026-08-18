@@ -49,6 +49,22 @@ const SAMPLE_MATCHES = [
   },
 ] as const;
 
+const EVENT_TAG_COPY: Record<string, { en: string; zh: string }> = {
+  calendar_sync: { en: "Calendar synced", zh: "日历已同步" },
+  confirmed: { en: "Confirmed", zh: "已确认" },
+  "event import": { en: "Event import", zh: "活动导入" },
+  invite_only: { en: "Invite only", zh: "仅限邀请" },
+  live: { en: "In person", zh: "线下活动" },
+  online: { en: "Online", zh: "线上活动" },
+  partners: { en: "Partners", zh: "合作伙伴" },
+  "relationship building": { en: "Relationship building", zh: "关系建立" },
+};
+
+function eventTagLabel(tag: string, t: Translate): string {
+  const copy = EVENT_TAG_COPY[tag.trim().toLowerCase()];
+  return copy ? t(copy) : tag;
+}
+
 function dateLocale(language: OrbitLanguage): string {
   return language === "en" ? "en-US" : "zh-CN";
 }
@@ -227,10 +243,34 @@ function RegistrationUnavailableAction({
   flex: CSSProperties["flex"];
   t: Translate;
 }) {
+  const detail =
+    availability === "registration_closed"
+      ? t({
+          en: "The cutoff has passed, so this event will not reopen registration.",
+          zh: "本场报名截止时间已过，不会再次开放报名。",
+        })
+      : availability === "profile_edit_closed"
+        ? t({
+            en: "The required event-profile window is frozen, so the complete registration flow cannot reopen.",
+            zh: "报名所需的活动画像编辑窗口已冻结，本场不会重新开放完整报名流程。",
+          })
+        : t({
+            en: "The registration window is missing or cannot be read. A next opening time has not been published, and no reminder was created.",
+            zh: "报名窗口尚未配置或当前无法读取；下一次开放时间未公布，也没有创建开放提醒。",
+          });
+
   return (
-    <ActionButton className="btn is-disabled" disabled style={{ flex }}>
-      {registrationAvailabilityCopy(availability, t)}
-    </ActionButton>
+    <div data-event-registration-unavailable style={{ display: "grid", flex, gap: 6 }}>
+      <ActionButton className="btn is-disabled" disabled style={{ width: "100%" }}>
+        {registrationAvailabilityCopy(availability, t)}
+      </ActionButton>
+      <span role="status" style={{ color: "var(--text-2)", fontSize: 12, lineHeight: 1.5 }}>
+        {detail}{" "}
+        <a href={productHref("/events")}>
+          {t({ en: "View other events accepting registration", zh: "查看其他可报名活动" })}
+        </a>
+      </span>
+    </div>
   );
 }
 
@@ -426,15 +466,19 @@ function RegistrationPreview({
   t: Translate;
 }) {
   const registrationHref = `/app/events/${encodeURIComponent(event.code || event.id)}/register`;
+  const compactPreview = registrationAvailability !== "open";
+  const visibleMatches = compactPreview ? SAMPLE_MATCHES.slice(0, 1) : SAMPLE_MATCHES;
   return (
     <div className="b-hook">
       <p className="hook-lede">
-        {t({ en: "After you register, this becomes your on-site workspace. The content below is a sample:", zh: "报名后，这里会变成你的现场工作台。下面是它为参会者生成的内容（示例）：" })}
+        {compactPreview
+          ? t({ en: "Registration is unavailable, so only a short labeled preview is shown.", zh: "当前无法报名，因此这里只保留一条明确标注的简短预览。" })
+          : t({ en: "After you register, this becomes your on-site workspace. The content below is a sample:", zh: "报名后，这里会变成你的现场工作台。下面是它为参会者生成的内容（示例）：" })}
       </p>
       <div className="hook-grid">
         <div className="glass-dark hook-card">
           <h4>{t({ en: "People matched for you · sample", zh: "为你推荐的人 · 示例" })}</h4>
-          {SAMPLE_MATCHES.map((person, index) => (
+          {visibleMatches.map((person, index) => (
             <div className="mock-person" key={person.name.en}>
               <Avatar g={["g-teal", "g-slate", "g-sand"][index]} letter={person.initial} size={36} />
               <div className="mock-person-copy">
@@ -443,7 +487,7 @@ function RegistrationPreview({
             </div>
           ))}
         </div>
-        <div className="hook-side">
+        {!compactPreview ? <div className="hook-side">
           <div className="glass-dark hook-card">
             <h4>{t({ en: "Your seat · sample", zh: "你的座位 · 示例" })}</h4>
             <div className="hook-seat"><span className="seat-num">{t({ en: "Table 5", zh: "5 桌" })}</span><span className="seat-desc">{t({ en: "Round 2 · table of 6, grouped around market-entry goals", zh: "第 2 轮 · 6 人桌，围绕「市场进入」目标组桌" })}</span></div>
@@ -452,7 +496,7 @@ function RegistrationPreview({
             <h4>{t({ en: "Opener suggestion · sample", zh: "开场白建议 · 示例" })}</h4>
             <p className="hook-open">{t({ en: "“I hear you run overseas warehouses for Japanese sellers — do you have capacity in Kansai?”", zh: "「听说你们在帮日本卖家做海外仓，我们正好在选仓——你们在关西有点位吗？」" })}</p>
           </div>
-        </div>
+        </div> : null}
       </div>
       <div className="hook-foot">
         {registrationAvailability === "open" ? (
@@ -534,7 +578,7 @@ function EventInfoCard({
             </div>
             {event.organizer ? <p className="a-sub">Orbit × {event.organizer} {t({ en: "co-hosted", zh: "联合主办" })}</p> : null}
             <div className="a-tags">
-              {event.tags.map((tag) => <span className="a-tag" key={tag}>{tag}</span>)}
+              {event.tags.map((tag) => <span className="a-tag" key={tag}>{eventTagLabel(tag, t)}</span>)}
               {event.cap ? <span className="a-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
             </div>
           </div>
@@ -590,9 +634,9 @@ function OnsiteCard({
   return (
     <section aria-label={t({ en: "On-site", zh: "活动现场" })} className="cardB">
       <div className="b-head">
-        <div className="b-titlewrap"><span className="b-eyebrow">On-site</span><span className="b-title">{t({ en: "Event floor", zh: "活动现场" })}</span></div>
+        <div className="b-titlewrap"><span className="b-eyebrow">{t({ en: "On-site", zh: "现场阶段" })}</span><span className="b-title">{t({ en: "Event floor", zh: "活动现场" })}</span></div>
         {stage === "joined" && event.status === "active" ? <span className="badge-live"><span className="dot" />LIVE · {t({ en: "In progress", zh: "进行中" })}</span> : null}
-        {stage === "pre" ? <span className="ai-chip on-dark"><Icon name="sparkle" size={11} />{t({ en: "AI sample", zh: "AI 示例" })}</span> : null}
+        {stage === "pre" ? <span className="ai-chip on-dark"><Icon name="sparkle" size={11} />{t({ en: "Feature sample", zh: "功能示例" })}</span> : null}
         {stage === "post" && youRsvped ? (
           <button aria-expanded={reviewOpen} className="fold-btn" onClick={() => setReviewOpen((value) => !value)} type="button">
             {t({ en: "Review the event floor", zh: "回顾现场内容" })}<span className="chev"><Icon name="chevD" size={14} /></span>
@@ -645,8 +689,8 @@ function PostEventCard({ event, stage, summary, t, youRsvped }: { event: OrbitLa
   return (
     <section aria-label={t({ en: "Post-event center", zh: "会后中心" })} className="card cardC">
       <div className="c-head">
-        <div className="c-titlewrap"><span className="eyebrow">Post-Event</span><h3 className="h-display c-title">{t({ en: "Post-event center", zh: "会后中心" })}</h3></div>
-        <div className="right"><span className="ai-chip on-light"><Icon name="sparkle" size={11} />{stage === "post" ? t({ en: "Generated by iOrbit", zh: "iOrbit 生成" }) : t({ en: "AI sample", zh: "AI 示例" })}</span></div>
+        <div className="c-titlewrap"><span className="eyebrow">{t({ en: "Post-Event", zh: "会后阶段" })}</span><h3 className="h-display c-title">{t({ en: "Post-event center", zh: "会后中心" })}</h3></div>
+        <div className="right"><span className="ai-chip on-light"><Icon name="sparkle" size={11} />{stage === "post" ? t({ en: "Generated by iOrbit", zh: "iOrbit 生成" }) : t({ en: "Feature sample", zh: "功能示例" })}</span></div>
       </div>
       <div className="c-body">
         {stage === "post" && youRsvped ? (

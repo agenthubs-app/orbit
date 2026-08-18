@@ -518,6 +518,9 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{subtitle}</div>
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <a className="btn btn-ghost btn-sm" href="#contact-results-desktop">
+                  {t({ en: "Skip to results", zh: "跳到联系人结果" })}
+                </a>
                 <a className="btn btn-ghost btn-sm" href="/app/contacts/new"><Icon name="scan" size={16} />{t({ en: "Scan", zh: "扫名片" })}</a>
                 <a className="btn btn-primary btn-sm" href="/app/contacts/new"><Icon name="download" size={16} />{t({ en: "Import", zh: "导入人脉" })}</a>
               </div>
@@ -558,7 +561,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             </div>
             {!filtered.length ? (
               items.length === 0 ? (
-                <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 18 }}>
+                <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 8, padding: 18 }}>
                   <span>{t({ en: "Contacts appear here after you and another attendee agree to exchange business cards at an event.", zh: "在活动中与对方互相同意交换名片后，联系人会出现在这里。" })}</span>
                   <a className="btn btn-primary btn-sm" href="/app/events" style={{ justifySelf: "start", textDecoration: "none" }}>
                     {t({ en: "Browse events", zh: "去看看活动" })}
@@ -573,7 +576,9 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 </div>
               )
             ) : null}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
+            <div aria-label={t({ en: `${filtered.length} contact results`, zh: `${filtered.length} 条联系人结果` })} id="contact-results-desktop" role="list" style={{ display: "flex", flexDirection: "column", gap: 12 }} tabIndex={-1}>
+              {filtered.map((item) => <div key={item.id} role="listitem"><PersonCard item={item} t={t} viewModel={viewModel} /></div>)}
+            </div>
           </div>
         </div>
       </div>
@@ -614,7 +619,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
           </div>
           {!filtered.length ? (
             items.length === 0 ? (
-              <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 10, padding: 16 }}>
+              <div className="card-flat" style={{ color: "var(--text-3)", display: "grid", fontSize: 14, gap: 8, padding: 16 }}>
                 <span>{t({ en: "Contacts appear here after you and another attendee agree to exchange business cards at an event.", zh: "在活动中与对方互相同意交换名片后，联系人会出现在这里。" })}</span>
                 <a className="btn btn-primary btn-sm" href="/app/events" style={{ justifySelf: "start", textDecoration: "none" }}>
                   {t({ en: "Browse events", zh: "去看看活动" })}
@@ -629,7 +634,9 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
               </div>
             )
           ) : null}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>{filtered.map((item) => <PersonCard item={item} key={item.id} t={t} viewModel={viewModel} />)}</div>
+          <div aria-label={t({ en: `${filtered.length} contact results`, zh: `${filtered.length} 条联系人结果` })} role="list" style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
+            {filtered.map((item) => <div key={item.id} role="listitem"><PersonCard item={item} t={t} viewModel={viewModel} /></div>)}
+          </div>
         </div>
       </div>
     </main>
