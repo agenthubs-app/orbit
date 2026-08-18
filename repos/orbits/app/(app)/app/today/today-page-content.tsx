@@ -2,7 +2,7 @@
  * Today 工作台 route adapter — T1 骨架合并 + T2 决策卡原位展开
  * （design doc §1-§2, §5, §7）。
  *
- * 三个来源（账本 / 关系安排 / 跟进日程）并行加载，任一失败只降级它自己的区块
+ * 三个来源（账本 / 关系安排 / 真实约谈）并行加载，任一失败只降级它自己的区块
  * （见 today-merged-view-model.ts）。左栏是时间脊柱（月历+当日|本月+时间轴，
  * 抽自旧日历页）；右栏是行动流：需要你决定（原位展开的决策卡）→ 可复核安排
  * （抽自关系安排页）→ ORBIT 已准备/最近动态（默认折叠）。
@@ -26,6 +26,7 @@ import {
   loadAppTodayMergedViewModel,
   type AppTodayMergedRouteControls,
   type AppTodayMergedSearchParams,
+  type AppTodayMergedLoaders,
   type AppTodayMergedViewModel,
 } from "./compose-app-today-from-agent-ledger/today-merged-view-model";
 import { resolveAgentLedgerForServerPage } from "../../../api/_shared/agent-request-context";
@@ -74,26 +75,19 @@ function RouteStateRecoveryActions({
 }
 
 function TimeSpineErrorCard({
-  followups,
+  error,
 }: {
-  followups: AppTodayMergedViewModel["followups"];
+  error: NonNullable<AppTodayMergedViewModel["timeSpineError"]>;
 }) {
-  const copy =
-    followups.state === "route-state"
-      ? followups.routeState.copy
-      : { description: "重新加载今天的工作台，或稍后再试。", guardrail: "", title: "时间脊柱暂时无法加载" };
-  const recoveryActions =
-    followups.state === "route-state" ? followups.routeState.recoveryActions : [];
-
   return (
     <div className="card" data-orbit-today-time-spine-error style={{ display: "flex", flexDirection: "column", gap: 8, padding: 22 }}>
       <div className="eyebrow">日程</div>
-      <h2 style={{ fontSize: 18, margin: "8px 0 0" }}>{copy.title}</h2>
-      <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{copy.description}</p>
-      {copy.guardrail ? (
-        <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{copy.guardrail}</p>
+      <h2 style={{ fontSize: 18, margin: "8px 0 0" }}>{error.title}</h2>
+      <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{error.description}</p>
+      {error.guardrail ? (
+        <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>{error.guardrail}</p>
       ) : null}
-      <RouteStateRecoveryActions recoveryActions={recoveryActions} />
+      <RouteStateRecoveryActions recoveryActions={error.recoveryActions} />
     </div>
   );
 }
@@ -143,11 +137,13 @@ export default async function AppTodayPageContent({
   searchParams,
   actorId = "test:today-page-content",
   ledgerService,
+  loaders,
   routeControls,
 }: {
   searchParams?: Promise<AppTodayMergedSearchParams>;
   actorId?: string;
   ledgerService?: AgentLedgerService | null;
+  loaders?: AppTodayMergedLoaders;
   routeControls?: AppTodayMergedRouteControls;
 } = {}) {
   const resolvedSearchParams = await searchParams;
@@ -157,11 +153,12 @@ export default async function AppTodayPageContent({
       : ledgerService;
   const merged = await loadAppTodayMergedViewModel(
     resolvedSearchParams,
-    createAppTodayMergedLoaders(
-      resolvedLedgerService,
-      actorId,
-      routeControls,
-    ),
+    loaders ??
+      createAppTodayMergedLoaders(
+        resolvedLedgerService,
+        actorId,
+        routeControls,
+      ),
   );
   const language = await getTodayPageLanguage();
   const localizedToday = localizeOrbitTree(
@@ -256,7 +253,7 @@ export default async function AppTodayPageContent({
                   viewModel={localizedTimeSpine}
                 />
               ) : (
-                <TimeSpineErrorCard followups={merged.followups} />
+                <TimeSpineErrorCard error={merged.timeSpineError!} />
               )}
             </div>
 

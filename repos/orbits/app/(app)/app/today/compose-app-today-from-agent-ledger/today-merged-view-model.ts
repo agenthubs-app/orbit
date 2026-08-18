@@ -1,7 +1,7 @@
 /**
  * Today × 日程 合并页 route view-model。
  *
- * 三个来源并行加载（账本 / 关系安排 / 跟进日程），任一失败只降级对应区块，
+ * 三个来源并行加载（账本 / 关系安排 / 真实约谈），任一失败只降级对应区块，
  * 不拖垮整页——每个 section 的 loader 各自包一层 try/catch，再一起
  * `Promise.all`，这样一次意外抛错不会让另外两个区块也失败。
  *
@@ -9,14 +9,6 @@
  * 合流进时间轴（design doc §2 左栏时间轴合流），以及给右栏"可复核安排"算出
  * 哪些卡片和选中日期无关、需要淡化（design doc §7.2：只降不透明度，不隐藏）。
  */
-import {
-  loadAppFollowupsRouteViewModel,
-  type AppFollowupsRouteControls,
-  type AppFollowupsRouteScenario,
-  type AppFollowupsRouteStateViewModel,
-  type AppFollowupsRouteViewModel,
-} from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
-import { followupsRouteToOrbitScheduleViewModel } from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
 import type {
   OrbitScheduleConnectionView,
   OrbitScheduleItemView,
@@ -41,6 +33,10 @@ import {
   type AppTodaySearchParams,
 } from "./today-route-view-model";
 import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
+import {
+  emptyTodayAppointmentSchedule,
+  loadConfiguredTodayAppointmentSchedule,
+} from "./today-appointment-schedule";
 
 export type AppTodayMergedSearchParams = AppTodaySearchParams & {
   date?: string | string[];
@@ -62,21 +58,26 @@ export interface AppTodayMergedViewModel {
   calendar: AppTodayMergedCalendarState;
   /** ids of arrangement cards unrelated to the selected date — dim, don't hide. */
   dimmedArrangementIds: ReadonlySet<string>;
-  followups: AppFollowupsRouteViewModel;
   schedule: AppScheduleRouteViewModel;
-  /** merged left-column feed: followups meetings + confirmed arrangement events. null when the followups source failed to load. */
+  /** Confirmed persisted appointments + confirmed arrangement events. */
   timeSpine: OrbitScheduleViewModel | null;
+  timeSpineError: {
+    description: string;
+    guardrail: string;
+    recoveryActions: readonly { href: string; label: string }[];
+    title: string;
+  } | null;
   today: AppTodayRouteViewModel;
 }
 
 export interface AppTodayMergedRouteControls {
-  followups?: AppFollowupsRouteControls;
+  appointments?: { scenario?: "failure" };
   schedule?: AppScheduleRouteControls;
   today?: AppTodayRouteControls;
 }
 
 export interface AppTodayMergedLoaders {
-  loadFollowups: () => Promise<AppFollowupsRouteViewModel>;
+  loadTimeSpine: () => Promise<OrbitScheduleViewModel>;
   loadSchedule: () => Promise<AppScheduleRouteViewModel>;
   loadToday: (
     searchParams?: AppTodaySearchParams,
@@ -84,7 +85,7 @@ export interface AppTodayMergedLoaders {
 }
 
 const defaultLoaders: AppTodayMergedLoaders = {
-  loadFollowups: loadAppFollowupsRouteViewModel,
+  loadTimeSpine: async () => emptyTodayAppointmentSchedule(),
   loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
@@ -96,12 +97,12 @@ export function createAppTodayMergedLoaders(
 ): AppTodayMergedLoaders {
   return {
     ...defaultLoaders,
-    loadFollowups: () =>
-      loadAppFollowupsRouteViewModel(
-        controls.followups,
-        undefined,
-        actorId,
-      ),
+    loadTimeSpine: () => {
+      if (controls.appointments?.scenario === "failure") {
+        throw new Error("appointment source unavailable");
+      }
+      return loadConfiguredTodayAppointmentSchedule(actorId);
+    },
     loadSchedule: () =>
       loadAppScheduleRouteViewModel(controls.schedule, undefined, actorId),
     loadToday: (searchParams) =>
@@ -197,28 +198,6 @@ function scheduleLoadFailureViewModel(message: string): AppScheduleRouteViewMode
   return { routeState, state: "route-state" };
 }
 
-function followupsLoadFailureViewModel(
-  message: string,
-): AppFollowupsRouteViewModel {
-  const scenario: AppFollowupsRouteScenario = "failure";
-  const routeState: AppFollowupsRouteStateViewModel = {
-    copy: {
-      description: message,
-      emptyState: "时间脊柱暂时没有可显示的约见。",
-      guardrail: "加载失败期间，Orbit 不会写入日历、提醒、消息或外部系统。",
-      nextStep: "重新加载今天的工作台，或稍后再试。",
-      purpose: "来源不可用时，仍显示可见的恢复入口。",
-      title: "时间脊柱暂时无法加载",
-    },
-    errorCode: "FOLLOWUPS_SECTION_LOAD_FAILED",
-    evidenceIds: [],
-    recoveryActions: [{ href: "/app/today", label: "重新加载" }],
-    scenario,
-  };
-
-  return { routeState, state: "route-state" };
-}
-
 async function loadTodaySection(
   searchParams: AppTodayMergedSearchParams | undefined,
   loadToday: AppTodayMergedLoaders["loadToday"],
@@ -240,13 +219,24 @@ async function loadScheduleSection(
   }
 }
 
-async function loadFollowupsSection(
-  loadFollowups: AppTodayMergedLoaders["loadFollowups"],
-): Promise<AppFollowupsRouteViewModel> {
+async function loadTimeSpineSection(
+  loadTimeSpine: AppTodayMergedLoaders["loadTimeSpine"],
+): Promise<{
+  error: AppTodayMergedViewModel["timeSpineError"];
+  viewModel: OrbitScheduleViewModel | null;
+}> {
   try {
-    return await loadFollowups();
+    return { error: null, viewModel: await loadTimeSpine() };
   } catch (error) {
-    return followupsLoadFailureViewModel(errorMessage(error));
+    return {
+      error: {
+        description: errorMessage(error),
+        guardrail: "来源不可用期间，Orbit 不会把跟进任务、提醒或 AI 建议冒充为日程。",
+        recoveryActions: [{ href: "/app/today", label: "重新加载" }],
+        title: "真实约谈暂时无法加载",
+      },
+      viewModel: null,
+    };
   }
 }
 
@@ -320,20 +310,20 @@ function confirmedEventTimelineItems(
 }
 
 function mergeTimeSpine(
-  followupsSchedule: OrbitScheduleViewModel,
+  appointmentSchedule: OrbitScheduleViewModel,
   scheduleRoute: AppScheduleRouteViewModel,
 ): OrbitScheduleViewModel {
-  if (scheduleRoute.state !== "success") return followupsSchedule;
+  if (scheduleRoute.state !== "success") return appointmentSchedule;
 
   const { connections: eventConnections, items: eventItems } =
     confirmedEventTimelineItems(scheduleRoute.arrangements);
 
-  if (eventItems.length === 0) return followupsSchedule;
+  if (eventItems.length === 0) return appointmentSchedule;
 
   return {
-    connections: [...followupsSchedule.connections, ...eventConnections],
-    schedules: [...followupsSchedule.schedules, ...eventItems],
-    today: followupsSchedule.today,
+    connections: [...appointmentSchedule.connections, ...eventConnections],
+    schedules: [...appointmentSchedule.schedules, ...eventItems],
+    today: appointmentSchedule.today,
   };
 }
 
@@ -418,18 +408,14 @@ export async function loadAppTodayMergedViewModel(
   const todaySearchParams = requestedEntry
     ? { entry: requestedEntry }
     : undefined;
-  const [today, schedule, followups] = await Promise.all([
+  const [today, schedule, timeSpineSection] = await Promise.all([
     loadTodaySection(todaySearchParams, loaders.loadToday),
     loadScheduleSection(loaders.loadSchedule),
-    loadFollowupsSection(loaders.loadFollowups),
+    loadTimeSpineSection(loaders.loadTimeSpine),
   ]);
 
-  const followupsSchedule =
-    followups.state === "success"
-      ? followupsRouteToOrbitScheduleViewModel(followups)
-      : null;
   const timeSpine =
-    followupsSchedule && mergeTimeSpine(followupsSchedule, schedule);
+    timeSpineSection.viewModel && mergeTimeSpine(timeSpineSection.viewModel, schedule);
 
   const now = new Date();
   const todayKey = dateKeyFromParts({ d: now.getDate(), m: now.getMonth(), y: now.getFullYear() });
@@ -444,9 +430,9 @@ export async function loadAppTodayMergedViewModel(
     attention: attentionSummary(today, timeSpine, selectedDateKey),
     calendar: { selected, view: parseViewParam(searchParams) },
     dimmedArrangementIds: computeDimmedArrangementIds(schedule, selectedDateKey, todayKey),
-    followups,
     schedule,
     timeSpine,
+    timeSpineError: timeSpineSection.error,
     today,
   };
 }

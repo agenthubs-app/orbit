@@ -17,7 +17,6 @@ import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { loadAppFollowupsRouteViewModel } from "../../app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
 import type { OrbitScheduleViewModel } from "../../app/(app)/app/orbit-schedule-route-view-model";
 import { formatScheduleEventWindow } from "../../app/(app)/app/schedule/schedule-event-display";
 import { loadAppScheduleRouteViewModel } from "../../app/(app)/app/schedule/schedule-route-view-model";
@@ -26,16 +25,21 @@ import {
   loadAppTodayMergedViewModel,
   type AppTodayMergedLoaders,
 } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model";
+import {
+  appointmentScheduleFromRecords,
+  emptyTodayAppointmentSchedule,
+} from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule";
 import { loadAppTodayRouteViewModel } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
 import { OrbitRealToday } from "../../app/(app)/app/today/orbit-real-today";
 import { OrbitTodayTimeSpine } from "../../app/(app)/app/today/orbit-today-time-spine";
 import { presentTodaySectionTitles } from "../../app/(app)/app/today/today-section-presentation";
 import { mockOrbitAiRecommendedEventDetailRecord } from "../../features/events/event-crud-and-import/fixtures";
+import type { AppointmentAggregate } from "../../features/appointments/contract";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 const realLoaders: AppTodayMergedLoaders = {
-  loadFollowups: loadAppFollowupsRouteViewModel,
+  loadTimeSpine: async () => emptyTodayAppointmentSchedule(new Date("2026-07-20T00:00:00.000Z")),
   loadSchedule: loadAppScheduleRouteViewModel,
   loadToday: loadAppTodayRouteViewModel,
 };
@@ -66,7 +70,7 @@ test("Today server route authenticates once and passes that actor through every 
   );
   assert.match(
     mergedSource,
-    /loadAppFollowupsRouteViewModel\(\s*controls\.followups,\s*undefined,\s*actorId,\s*\)/,
+    /loadConfiguredTodayAppointmentSchedule\(actorId\)/,
   );
   assert.match(
     mergedSource,
@@ -88,6 +92,58 @@ test("eventArrangementDateTime parses formatScheduleEventWindow's real output fo
   assert.equal(parsed!.date, "2026-07-09");
   assert.equal(parsed!.time, "09:00");
   assert.equal(parsed!.durationMinutes, 180);
+});
+
+test("Today only projects confirmed appointments with an actor-owned canonical contact", () => {
+  const actorId = "actor:today";
+  const confirmedAppointment = {
+    appointmentId: "appointment:confirmed",
+    authorityRequestId: "request:accepted",
+    confirmed: {
+      candidateId: "candidate:1",
+      confirmedAt: "2026-07-01T00:00:00.000Z",
+      confirmedByActorId: actorId,
+      durationMinutes: 45,
+      medium: { kind: "video", provider: "other", joinUrl: null },
+      proposalRevision: 1,
+      startsAtUtc: "2026-07-20T05:30:00.000Z",
+      timezone: "Asia/Tokyo",
+    },
+    contactIdsByActor: { [actorId]: "contact:real" },
+    status: "confirmed",
+  } as AppointmentAggregate;
+  const unconfirmedAppointment = {
+    ...confirmedAppointment,
+    appointmentId: "appointment:draft",
+    confirmed: null,
+    status: "draft",
+  } as AppointmentAggregate;
+  const missingContactAppointment = {
+    ...confirmedAppointment,
+    appointmentId: "appointment:missing-contact",
+    contactIdsByActor: { [actorId]: "contact:not-in-store" },
+  } as AppointmentAggregate;
+  const contact = {
+    id: "contact:real",
+    displayName: "伊藤香織",
+    organization: "横滨餐饮",
+    role: "市场负责人",
+  } as Parameters<typeof appointmentScheduleFromRecords>[0]["contacts"][number];
+
+  const schedule = appointmentScheduleFromRecords({
+    actorId,
+    appointments: [unconfirmedAppointment, missingContactAppointment, confirmedAppointment],
+    contacts: [contact],
+    now: new Date("2026-07-20T00:00:00.000Z"),
+  });
+
+  assert.equal(schedule.schedules.length, 1);
+  assert.equal(schedule.schedules[0]?.id, "appointment:confirmed");
+  assert.equal(schedule.schedules[0]?.contactId, "contact:real");
+  assert.equal(schedule.schedules[0]?.date, "2026-07-20");
+  assert.equal(schedule.schedules[0]?.time, "14:30");
+  assert.equal(schedule.schedules[0]?.status, "已确认");
+  assert.equal(schedule.connections[0]?.displayName, "伊藤香織");
 });
 
 // ---- view-model: ?date= / ?view= ----
@@ -127,10 +183,7 @@ test("public Today query input cannot activate internal child route controls", a
 
   assert.equal(merged.today.state, "success");
   assert.equal(merged.schedule.state, "success");
-  assert.equal(merged.followups.state, "success");
-  if (merged.followups.state === "success") {
-    assert.equal("actionResult" in merged.followups.workspace, false);
-  }
+  assert.notEqual(merged.timeSpine, null);
 });
 
 // ---- three-source assembly: one source failing only degrades its own section ----
@@ -166,19 +219,16 @@ test("a today-ledger-source failure degrades only the decide/prepared/recent sec
   assert.notEqual(merged.timeSpine, null);
 });
 
-test("a followups-source failure only takes down the time spine", async () => {
+test("an appointments-source failure only takes down the time spine", async () => {
   const merged = await loadAppTodayMergedViewModel(undefined, {
     ...realLoaders,
-    loadFollowups: async () => {
-      throw new Error("followups unavailable");
+    loadTimeSpine: async () => {
+      throw new Error("appointments unavailable");
     },
   });
 
   assert.equal(merged.timeSpine, null);
-  assert.equal(merged.followups.state, "route-state");
-  if (merged.followups.state === "route-state") {
-    assert.equal(merged.followups.routeState.errorCode, "FOLLOWUPS_SECTION_LOAD_FAILED");
-  }
+  assert.equal(merged.timeSpineError?.title, "真实约谈暂时无法加载");
   assert.equal(merged.schedule.state, "success");
   assert.equal(merged.today.state, "success");
 });
@@ -188,7 +238,7 @@ test("with all three sources healthy, nothing degrades", async () => {
 
   assert.equal(merged.today.state, "success");
   assert.equal(merged.schedule.state, "success");
-  assert.equal(merged.followups.state, "success");
+  assert.equal(merged.timeSpineError, null);
   assert.notEqual(merged.timeSpine, null);
   const pendingScheduleCount =
     merged.timeSpine?.schedules.filter((schedule) => {
@@ -271,12 +321,12 @@ test("a degraded time-spine card shows the guardrail and a recovery link", async
   const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
     searchParams?: Promise<Record<string, string>>;
     routeControls?: {
-      followups?: { scenario: "failure" };
+      appointments?: { scenario: "failure" };
     };
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
     await Page({
-      routeControls: { followups: { scenario: "failure" } },
+      routeControls: { appointments: { scenario: "failure" } },
     }),
   );
 
@@ -284,7 +334,7 @@ test("a degraded time-spine card shows the guardrail and a recovery link", async
   assert.ok(cardMatch, "expected the time-spine error card to render");
   const card = cardMatch![0];
 
-  assert.match(card, /不可用期间，Orbit 不会保存记录、安排提醒、发送消息或投递通知。/);
+  assert.match(card, /不会把跟进任务、提醒或 AI 建议冒充为日程/);
   assert.match(card, /href="\/app\/today"/);
 });
 
@@ -292,8 +342,10 @@ test("a degraded time-spine card shows the guardrail and a recovery link", async
 // calendar day happens to be selected ----
 
 test("/app/today renders the merged workspace shell", async () => {
-  const Page = (await import("../../app/(app)/app/today/today-page-content")).default;
-  const html = renderToStaticMarkup(await Page());
+  const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
+    loaders?: AppTodayMergedLoaders;
+  }) => Promise<React.ReactElement>;
+  const html = renderToStaticMarkup(await Page({ loaders: realLoaders }));
 
   // 月历标记 + 翻月/今天控件
   assert.match(html, /data-orbit-today-time-spine/);
@@ -379,10 +431,11 @@ test("/app/today shows the draft-only guardrail once a decision card is expanded
 
 test("/app/today keeps working when a ?date= without any meetings is requested", async () => {
   const Page = (await import("../../app/(app)/app/today/today-page-content")).default as (props?: {
+    loaders?: AppTodayMergedLoaders;
     searchParams?: Promise<Record<string, string>>;
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
-    await Page({ searchParams: Promise.resolve({ date: "1999-01-01", view: "month" }) }),
+    await Page({ loaders: realLoaders, searchParams: Promise.resolve({ date: "1999-01-01", view: "month" }) }),
   );
 
   assert.match(html, /data-orbit-today-time-spine/);
