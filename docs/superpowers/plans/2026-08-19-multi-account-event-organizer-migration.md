@@ -163,7 +163,7 @@ git commit -m "feat(contacts): persist registered actor links"
 
 - [ ] **Step 1: Write failing in-memory plan/apply tests**
 
-Assert that dry-run creates a stable 13-account/6-link/1-Xiaoyu-membership plan without writing; apply requires the reviewed count/hash; missing or non-Google `agenthubs` identity fails; a Xiaoyu binding that does not resolve to `account_orbit_generated` and `profile_orbit_generated_operator` fails; existing matching organizer emails are reused and re-provisioned; conflicting display name/account chains fail; a second apply reports no new writes and preserves the same final state. The reviewed action count is exactly 20: 13 organizer identities, 6 ContactActorLinks, and 1 Xiaoyu auth membership.
+Assert that dry-run creates a stable 13-account/6-link/1-Xiaoyu-membership/2-canonical-owner-repair plan without writing; apply requires the reviewed count/hash; missing or non-Google `agenthubs` identity fails; a Xiaoyu binding that does not resolve to `account_orbit_generated` and `profile_orbit_generated_operator` fails; existing matching organizer emails are reused and re-provisioned; conflicting display name/account chains fail; a second apply reports no new writes and preserves the same final state. The reviewed action count is exactly 22: 13 organizer identities, 6 ContactActorLinks, 1 Xiaoyu auth membership, and 2 Xiaoyu canonical LiveRecord owner repairs.
 
 - [ ] **Step 2: Run service tests and verify RED**
 
@@ -182,6 +182,7 @@ export interface OrganizerAccountBootstrapPlan {
   readonly hash: string;
   readonly items: readonly OrganizerAccountBootstrapItem[];
   readonly manifestVersion: "event-organizers-v1";
+  readonly xiaoyuCanonicalOwnershipRepairCount: 2;
   readonly xiaoyuIdentityBindingCount: 1;
 }
 
@@ -195,7 +196,7 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
 
 Call `registerUser()` only for missing users. For existing users, call the existing account provisioner and verify account/profile completeness. Never log or return `password` or `passwordHash`.
 
-For Xiaoyu, create one deterministic membership Profile whose payload `id` is the selected `agenthubs` AuthUser ID and whose `accountId` is `account_orbit_generated`; preserve `profile_orbit_generated_operator` unchanged. Extend `ensureAccountForUser()` so a complete existing membership prevents creation of a shadow Account/Profile. Reject ambiguous or incomplete memberships instead of silently provisioning another owner boundary.
+For Xiaoyu, create one deterministic membership Profile whose payload `id` is the selected `agenthubs` AuthUser ID and whose `accountId` is `account_orbit_generated`. Atomically repair only the outer LiveRecord `user_id` on `account_orbit_generated` and `profile_orbit_generated_operator` when it is null, preserving both payloads and all public profile content. Extend `ensureAccountForUser()` so a complete existing membership prevents creation of a shadow Account/Profile. Reject ambiguous, incomplete, or non-null conflicting ownership instead of silently provisioning another owner boundary.
 
 - [ ] **Step 4: Write and implement CLI parsing tests**
 
@@ -203,7 +204,7 @@ Support only:
 
 ```text
 --dry-run --xiaoyu-auth-user-id <id>
---apply --xiaoyu-auth-user-id <id> --expected-count 20 --expected-plan-hash <64hex>
+--apply --xiaoyu-auth-user-id <id> --expected-count 22 --expected-plan-hash <64hex>
 ```
 
 Apply requires `ORBIT_DEMO_ORGANIZER_PASSWORD` with at least eight characters and rejects `NODE_ENV=production`. Unknown/mixed flags fail before database writes.
@@ -310,7 +311,7 @@ Verify Event Operations schema version 15 exists. Do not run generic auth-accoun
 
 - [ ] **Step 4: Dry-run and apply organizer account bootstrap**
 
-Run dry-run with `--xiaoyu-auth-user-id user_mry5y200_58jpi8`, capture its count/hash, review that it contains 13 account, 6 contact-link, and 1 Xiaoyu membership operation (20 total), then apply with the same count/hash and `ORBIT_DEMO_ORGANIZER_PASSWORD` present only in the process environment.
+Run dry-run with `--xiaoyu-auth-user-id user_mry5y200_58jpi8`, capture its count/hash, review that it contains 13 account, 6 contact-link, 1 Xiaoyu membership, and 2 canonical owner-repair operations (22 total), then apply with the same count/hash and `ORBIT_DEMO_ORGANIZER_PASSWORD` present only in the process environment.
 
 - [ ] **Step 5: Repair remaining auth account chains**
 

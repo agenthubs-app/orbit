@@ -47,6 +47,8 @@ profile.accountId == account.id
 
 绑定通过一条确定性的 auth-membership Profile 记录表达：其 payload `id` 等于 `agenthubs` AuthUser ID，`accountId` 等于 `account_orbit_generated`。这样现有 Session 解析会把 Google 登录映射到小雨原 Account，而不需要重写小雨已有数据的 owner ID。原公开 Profile 继续负责展示，membership Profile 只承担登录身份到 Account 的归属关系。
 
+本地历史 Account 与公开 Profile 的 payload 已经正确，但两条 LiveRecord 的外层 `user_id` 为空。bootstrap 额外包含两项精确的 canonical ownership repair，只把这两个外层 `user_id` 设置为 `account_orbit_generated`；不得改变 Account/Profile payload、Profile 文案或其他元数据。冲突的非空 owner 必须 fail closed。
+
 account provisioner 必须先识别完整、无冲突的既有 membership，再决定是否创建默认 Account/Profile，避免后续 Google 登录为 `agenthubs` 生成第二个影子 Account。若 AuthUser、membership、Account 或小雨原 Profile 的链路与上述选择不一致，迁移 fail closed。
 
 ## 4. 账号与联系人关联
