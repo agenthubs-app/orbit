@@ -38,6 +38,14 @@ _Avoid_: Questionnaire, global profile
 The user's confirmed, event-scoped positioning, goals, contribution, and connection preferences for one event.
 _Avoid_: Global profile, registration answers
 
+**Registered Event Organizer**:
+An Orbit user with a complete AuthUser, Account, and Profile identity chain whose account-backed Actor owns an Event. Every Event organizer must be a registered user, including organizers who are not in the current user's relationship network.
+_Avoid_: Contact, organizer label, synthetic actor, unregistered external host
+
+**Contact Actor Link**:
+An explicit, auditable link between one user's Confirmed Contact and the registered Orbit Actor belonging to that person. The link establishes identity correspondence; it does not transfer Contact ownership or grant Event permissions.
+_Avoid_: Contact import, account membership, event role
+
 ## Relationship Inbox
 
 **Conversation Thread**:

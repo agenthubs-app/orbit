@@ -8,6 +8,14 @@ Events 负责活动创建、导入、参会者名单、目标准备、现场记�
 
 模块应支持活动全生命周期：活动详情、参会者、活动目标、准备度、现场 encounter、want-to-connect 和 post-event review。每一步都应保留来源和操作边界。
 
+## 主办方身份与所有权
+
+每个活动的 `organizerActorId` 必须属于一个已注册的 Orbit 用户，并解析到完整的 AuthUser、Account 和 Profile 身份链。Contact、Profile ID、邮箱、公开主办方标签或任意外部字符串都不能直接充当活动 owner。
+
+主办方是否属于小雨的现有人脉，由独立的 ContactActorLink/关系事实表达，不改变活动 owner 的账号语义。未注册的外部人物只能作为候选主办方；完成注册和账号关联前不能接收活动主办权。
+
+owner 从 Event Core organizer 派生。主办权变更必须走显式、可审计的 ownership-transfer 流程，不能通过直接覆盖数据库字段实现。
+
 ## Mock 行为
 
 Mock 服务返回固定活动、参会者、准备度、现场记录、连接意向和会后复核数据，不访问真实日历、活动平台、消息系统、数据库或外部网络。
