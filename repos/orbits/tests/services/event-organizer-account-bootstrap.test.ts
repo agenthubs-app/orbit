@@ -7,6 +7,7 @@ import {
   buildOrganizerAccountBootstrapPlan,
   XIAOYU_AUTH_USER_ID,
   type OrganizerAccountBootstrapDependencies,
+  type OrganizerAccountBootstrapOwnershipWriter,
 } from "../../features/events/organizer-accounts/bootstrap";
 import { createAuthUserService } from "../../features/auth/auth-user-service";
 import {
@@ -47,7 +48,13 @@ function record(
   };
 }
 
-function createDependencies(options: { xiaoyuProvider?: "credentials" | "google" } = {}) {
+function createDependencies(options: {
+  canonicalOwnerId?: string | null;
+  xiaoyuProvider?: "credentials" | "google";
+} = {}) {
+  const canonicalOwnerId = options.canonicalOwnerId === undefined
+    ? null
+    : options.canonicalOwnerId;
   const store = createMemoryLiveRecordStore([
     record("auth_users", authUserRecordId("agenthubs@example.com"), {
       id: xiaoyuUserId,
@@ -64,7 +71,7 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
       name: "Xiaoyu's Orbit",
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, xiaoyuAccountId),
+    }, canonicalOwnerId),
     record("profiles", xiaoyuProfileId, {
       id: xiaoyuProfileId,
       accountId: xiaoyuAccountId,
@@ -72,7 +79,7 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
       timezone: "Asia/Tokyo",
       createdAt: timestamp,
       updatedAt: timestamp,
-    }, xiaoyuAccountId),
+    }, canonicalOwnerId),
     ...["contact_090", "contact_005", "contact_003", "contact_085", "contact_066", "contact_027"].map((contactId) =>
       record("contacts", contactId, { id: contactId }, xiaoyuAccountId),
     ),
@@ -92,6 +99,19 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
       return "inserted" as const;
     },
   };
+  const ownershipWriter: OrganizerAccountBootstrapOwnershipWriter = {
+    async setOwnerIfAbsent(input) {
+      const existing = await store.getRecord({
+        workspaceId: input.workspaceId,
+        collectionName: input.collectionName,
+        recordId: input.recordId,
+        includeDeleted: true,
+      });
+      if (!existing || existing.userId !== null) return "existing";
+      await store.upsertRecord({ ...existing, userId: input.ownerActorId });
+      return "updated";
+    },
+  };
 
   return {
     dependencies: {
@@ -104,6 +124,7 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
       }),
       contactActorLinkProvider: createStorageContactActorLinkProvider({ store, workspaceId }),
       membershipWriter,
+      ownershipWriter,
       store,
       workspaceId,
     } satisfies OrganizerAccountBootstrapDependencies,
@@ -111,9 +132,21 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
   };
 }
 
-test("builds a stable reviewed 20-item plan without writes and replays it idempotently", async () => {
+test("builds a stable reviewed 22-item plan, repairs only canonical owners, and replays idempotently", async () => {
   const { dependencies, store } = createDependencies();
   const before = store.listRecords({ workspaceId }).length;
+  const legacyAccount = store.getRecord({
+    workspaceId,
+    collectionName: "accounts",
+    recordId: xiaoyuAccountId,
+    includeDeleted: true,
+  })!;
+  const legacyProfile = store.getRecord({
+    workspaceId,
+    collectionName: "profiles",
+    recordId: xiaoyuProfileId,
+    includeDeleted: true,
+  })!;
   const plan = await buildOrganizerAccountBootstrapPlan({
     dependencies,
     xiaoyuAuthUserId: xiaoyuUserId,
@@ -121,14 +154,15 @@ test("builds a stable reviewed 20-item plan without writes and replays it idempo
 
   assert.equal(plan.accountCount, 13);
   assert.equal(plan.contactLinkCount, 6);
+  assert.equal(plan.xiaoyuCanonicalOwnershipRepairCount, 2);
   assert.equal(plan.xiaoyuIdentityBindingCount, 1);
-  assert.equal(plan.items.length, 20);
+  assert.equal(plan.items.length, 22);
   assert.equal(plan.manifestVersion, "event-organizers-v1");
   assert.match(plan.hash, /^[a-f0-9]{64}$/);
   assert.equal(store.listRecords({ workspaceId }).length, before);
 
   const first = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -136,6 +170,7 @@ test("builds a stable reviewed 20-item plan without writes and replays it idempo
   assert.equal(first.newAccountCount, 13);
   assert.equal(first.newContactLinkCount, 6);
   assert.equal(first.newXiaoyuIdentityBindingCount, 1);
+  assert.equal(first.newXiaoyuCanonicalOwnershipRepairCount, 2);
   assert.equal(store.listRecords({ workspaceId, collectionName: "accounts" }).length, 14);
   assert.equal(store.listRecords({ workspaceId, collectionName: "contact_actor_links" }).length, 6);
   const membership = store.listRecords({ workspaceId, collectionName: "profiles" }).find((item) => item.payload.id === xiaoyuUserId);
@@ -144,9 +179,17 @@ test("builds a stable reviewed 20-item plan without writes and replays it idempo
   assert.equal(membership?.sourceId, `auth-membership:${xiaoyuUserId}`);
   assert.deepEqual(membership?.evidenceIds, ["evidence:organizer-account-manifest:v1"]);
   assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId: xiaoyuProfileId })?.payload.displayName, "小雨运营者");
+  assert.deepEqual(
+    store.getRecord({ workspaceId, collectionName: "accounts", recordId: xiaoyuAccountId, includeDeleted: true }),
+    { ...legacyAccount, userId: xiaoyuAccountId },
+  );
+  assert.deepEqual(
+    store.getRecord({ workspaceId, collectionName: "profiles", recordId: xiaoyuProfileId, includeDeleted: true }),
+    { ...legacyProfile, userId: xiaoyuAccountId },
+  );
 
   const replay = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -154,8 +197,57 @@ test("builds a stable reviewed 20-item plan without writes and replays it idempo
   assert.equal(replay.newAccountCount, 0);
   assert.equal(replay.newContactLinkCount, 0);
   assert.equal(replay.newXiaoyuIdentityBindingCount, 0);
+  assert.equal(replay.newXiaoyuCanonicalOwnershipRepairCount, 0);
   assert.equal(store.getRecord({ workspaceId, collectionName: "accounts", recordId: xiaoyuUserId }), null);
   assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId: `profile:${xiaoyuUserId}` }), null);
+});
+
+test("fails dry-run for a non-null conflicting canonical owner", async () => {
+  const { dependencies } = createDependencies({ canonicalOwnerId: "account_conflicting" });
+
+  await assert.rejects(
+    buildOrganizerAccountBootstrapPlan({
+      dependencies,
+      xiaoyuAuthUserId: xiaoyuUserId,
+    }),
+    /canonical account\/profile chain/i,
+  );
+});
+
+test("preserves a conflicting owner won by a concurrent repair writer", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  dependencies.ownershipWriter = {
+    async setOwnerIfAbsent(input) {
+      const existing = await store.getRecord({
+        workspaceId,
+        collectionName: input.collectionName,
+        recordId: input.recordId,
+        includeDeleted: true,
+      });
+      if (existing) {
+        await store.upsertRecord({ ...existing, userId: "account_concurrent" });
+      }
+      return "existing";
+    },
+  };
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 22,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /canonical ownership repair/i,
+  );
+  assert.equal(
+    store.getRecord({ workspaceId, collectionName: "accounts", recordId: xiaoyuAccountId, includeDeleted: true })?.userId,
+    "account_concurrent",
+  );
 });
 
 test("fails closed for an invalid Xiaoyu identity and before a reviewed apply mismatch", async () => {
@@ -243,7 +335,7 @@ test("fails closed when a deterministic Xiaoyu membership record exists but diff
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 20,
+      expectedCount: 22,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -272,7 +364,7 @@ test("fails closed when the deterministic Xiaoyu membership was deleted", async 
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 20,
+      expectedCount: 22,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -290,7 +382,7 @@ test("replays the deterministic membership after Postgres null normalization", a
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -305,7 +397,7 @@ test("replays the deterministic membership after Postgres null normalization", a
   });
 
   const replay = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -330,7 +422,7 @@ test("rejects a second active Xiaoyu membership profile", async () => {
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 20,
+      expectedCount: 22,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -354,7 +446,7 @@ test("rejects and preserves a deterministic membership inserted concurrently by 
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 20,
+      expectedCount: 22,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -389,7 +481,7 @@ test("repairs only absent organizer account/profile records", async () => {
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   const result = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -448,7 +540,7 @@ test("rejects a self-consistent forged organizer plan", async () => {
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 20,
+      expectedCount: 22,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -488,7 +580,7 @@ test("reuses a matching organizer identity and rejects a conflicting existing on
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   const result = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,

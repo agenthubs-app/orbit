@@ -8,6 +8,7 @@ import {
   type OrganizerAccountBootstrapVerification,
   type OrganizerAccountBootstrapDependencies,
   type OrganizerAccountBootstrapMembershipWriter,
+  type OrganizerAccountBootstrapOwnershipWriter,
 } from "../features/events/organizer-accounts/bootstrap";
 import { createAuthUserService } from "../features/auth/auth-user-service";
 import { createStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
@@ -78,13 +79,13 @@ export function parseEventOrganizerAccountBootstrapCommand(
   if (options.size !== 3) throw new Error("--apply requires only reviewed count and hash options.");
   const expectedCountText = requiredOption(options, "--expected-count");
   const expectedPlanHash = requiredOption(options, "--expected-plan-hash");
-  if (expectedCountText !== "20") {
-    throw new Error("--apply requires --expected-count 20.");
+  if (expectedCountText !== "22") {
+    throw new Error("--apply requires --expected-count 22.");
   }
   if (!/^[a-f0-9]{64}$/u.test(expectedPlanHash)) {
     throw new Error("--apply requires --expected-plan-hash with 64 lowercase hex characters.");
   }
-  return { expectedCount: 20, expectedPlanHash, kind: "apply", xiaoyuAuthUserId };
+  return { expectedCount: 22, expectedPlanHash, kind: "apply", xiaoyuAuthUserId };
 }
 
 export interface EventOrganizerAccountBootstrapRuntime {
@@ -169,6 +170,31 @@ export function createPostgresOrganizerMembershipWriter({
   };
 }
 
+export function createPostgresOrganizerOwnershipWriter({
+  client,
+}: {
+  client: ClosableLiveRecordSqlClient;
+}): OrganizerAccountBootstrapOwnershipWriter {
+  return {
+    async setOwnerIfAbsent(input) {
+      const result = await client.query<{ record_id: string }>(
+        `
+          update orbit_records
+          set user_id = $4
+          where workspace_id = $1
+            and collection_name = $2
+            and record_id = $3
+            and user_id is null
+          returning record_id
+        `,
+        [input.workspaceId, input.collectionName, input.recordId, input.ownerActorId],
+      );
+
+      return result.rows.length === 1 ? "updated" : "existing";
+    },
+  };
+}
+
 function createDependencies(): EventOrganizerAccountBootstrapRuntime {
   const configured = createConfiguredPostgresLiveRecordStore({ max: 1 });
   if (!configured) {
@@ -195,6 +221,9 @@ function createDependencies(): EventOrganizerAccountBootstrapRuntime {
         workspaceId: configured.workspaceId,
       }),
       membershipWriter: createPostgresOrganizerMembershipWriter({
+        client: configured.client,
+      }),
+      ownershipWriter: createPostgresOrganizerOwnershipWriter({
         client: configured.client,
       }),
       store: configured.store,
@@ -231,8 +260,8 @@ export async function runEventOrganizerAccountBootstrapCommand(
       log(JSON.stringify(plan, null, 2));
       return;
     }
-    if (command.expectedCount !== 20 || command.expectedPlanHash !== plan.hash) {
-      throw new Error(`Reviewed organizer account plan mismatch: expected 20/${command.expectedPlanHash}, actual 20/${plan.hash}.`);
+    if (command.expectedCount !== 22 || command.expectedPlanHash !== plan.hash) {
+      throw new Error(`Reviewed organizer account plan mismatch: expected 22/${command.expectedPlanHash}, actual 22/${plan.hash}.`);
     }
 
     await runtime.client.query("BEGIN");

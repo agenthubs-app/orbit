@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createPostgresOrganizerOwnershipWriter,
   createPostgresOrganizerMembershipWriter,
   parseEventOrganizerAccountBootstrapCommand,
   runEventOrganizerAccountBootstrapCommand,
@@ -21,9 +22,9 @@ test("organizer bootstrap command accepts only the reviewed dry-run and apply fo
   ]), { kind: "dry-run", xiaoyuAuthUserId: userId });
   assert.deepEqual(parseEventOrganizerAccountBootstrapCommand([
     "--apply", "--xiaoyu-auth-user-id", userId,
-    "--expected-count", "20", "--expected-plan-hash", hash,
+    "--expected-count", "22", "--expected-plan-hash", hash,
   ]), {
-    expectedCount: 20,
+    expectedCount: 22,
     expectedPlanHash: hash,
     kind: "apply",
     xiaoyuAuthUserId: userId,
@@ -38,14 +39,15 @@ test("organizer bootstrap command rejects mixed, duplicate, and unknown flags be
     ["--dry-run", "--xiaoyu-auth-user-id", userId, "--unknown"],
     ["--dry-run", "--xiaoyu-auth-user-id", "user_not_xiaoyu"],
     ["--apply", "--xiaoyu-auth-user-id", userId, "--expected-count", "19", "--expected-plan-hash", hash],
-    ["--apply", "--xiaoyu-auth-user-id", userId, "--expected-count", "20", "--expected-plan-hash", "A".repeat(64)],
+    ["--apply", "--xiaoyu-auth-user-id", userId, "--expected-count", "20", "--expected-plan-hash", hash],
+    ["--apply", "--xiaoyu-auth-user-id", userId, "--expected-count", "22", "--expected-plan-hash", "A".repeat(64)],
   ]) {
     assert.throws(() => parseEventOrganizerAccountBootstrapCommand(args));
   }
 });
 
 function reviewedPlan(): OrganizerAccountBootstrapPlan {
-  const items = Array.from({ length: 20 }, (_, index) => ({
+  const items = Array.from({ length: 22 }, (_, index) => ({
     accountKey: `organizer-${index}`,
     displayName: `Organizer ${index}`,
     email: `organizer-${index}@organizers.orbit.example.test`,
@@ -57,6 +59,7 @@ function reviewedPlan(): OrganizerAccountBootstrapPlan {
     hash,
     items,
     manifestVersion: "event-organizers-v1",
+    xiaoyuCanonicalOwnershipRepairCount: 2,
     xiaoyuIdentityBindingCount: 1,
   } as OrganizerAccountBootstrapPlan;
 }
@@ -86,7 +89,9 @@ function runnerHarness() {
         hash,
         newAccountCount: 0,
         newContactLinkCount: 0,
+        newXiaoyuCanonicalOwnershipRepairCount: 0,
         newXiaoyuIdentityBindingCount: 0,
+        xiaoyuCanonicalOwnershipRepairCount: 2 as const,
         xiaoyuIdentityBindingCount: 1 as const,
       }),
       buildPlan: async () => reviewedPlan(),
@@ -107,7 +112,7 @@ test("runner rejects production and missing passwords before dependencies", asyn
     await assert.rejects(
       runEventOrganizerAccountBootstrapCommand([
         "--apply", "--xiaoyu-auth-user-id", userId,
-        "--expected-count", "20", "--expected-plan-hash", hash,
+        "--expected-count", "22", "--expected-plan-hash", hash,
       ], { ...harness.options, env }),
     );
     assert.equal(harness.createCount(), 0);
@@ -142,7 +147,7 @@ test("runner commits only after successful reviewed apply without logging secret
   let applied = false;
   await runEventOrganizerAccountBootstrapCommand([
     "--apply", "--xiaoyu-auth-user-id", userId,
-    "--expected-count", "20", "--expected-plan-hash", hash,
+    "--expected-count", "22", "--expected-plan-hash", hash,
   ], {
     ...harness.options,
     applyPlan: async () => {
@@ -154,7 +159,9 @@ test("runner commits only after successful reviewed apply without logging secret
         hash,
         newAccountCount: 0,
         newContactLinkCount: 0,
+        newXiaoyuCanonicalOwnershipRepairCount: 0,
         newXiaoyuIdentityBindingCount: 0,
+        xiaoyuCanonicalOwnershipRepairCount: 2 as const,
         xiaoyuIdentityBindingCount: 1 as const,
       };
     },
@@ -171,7 +178,7 @@ test("runner rolls back failed apply without commit or success log", async () =>
   await assert.rejects(
     runEventOrganizerAccountBootstrapCommand([
       "--apply", "--xiaoyu-auth-user-id", userId,
-      "--expected-count", "20", "--expected-plan-hash", hash,
+      "--expected-count", "22", "--expected-plan-hash", hash,
     ], {
       ...harness.options,
       applyPlan: async () => { throw new Error("final verification failed"); },
@@ -215,4 +222,34 @@ test("Postgres membership writer uses insert-if-absent without updates", async (
   assert.match(calls[0]!.text, /returning record_id/i);
   assert.doesNotMatch(calls[0]!.text, /do update/i);
   assert.equal(calls[0]!.values?.[2], record.recordId);
+});
+
+test("Postgres canonical ownership writer conditionally updates only a null user_id", async () => {
+  const calls: Array<{ text: string; values: readonly unknown[] | undefined }> = [];
+  const writer = createPostgresOrganizerOwnershipWriter({
+    client: {
+      close: async () => {},
+      query: async <TRow>(text: string, values?: readonly unknown[]) => {
+        calls.push({ text, values });
+        return { rows: [{ record_id: "account_orbit_generated" }] as TRow[] };
+      },
+    },
+  });
+
+  assert.equal(await writer.setOwnerIfAbsent({
+    workspaceId: "workspace:test",
+    collectionName: "accounts",
+    recordId: "account_orbit_generated",
+    ownerActorId: "account_orbit_generated",
+  }), "updated");
+  assert.match(calls[0]!.text, /update orbit_records\s+set user_id = \$4/i);
+  assert.match(calls[0]!.text, /user_id is null/i);
+  assert.match(calls[0]!.text, /returning record_id/i);
+  assert.doesNotMatch(calls[0]!.text, /payload\s*=|updated_at\s*=|lifecycle_state\s*=/i);
+  assert.deepEqual(calls[0]!.values, [
+    "workspace:test",
+    "accounts",
+    "account_orbit_generated",
+    "account_orbit_generated",
+  ]);
 });

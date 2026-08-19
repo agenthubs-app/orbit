@@ -26,12 +26,22 @@ export interface OrganizerAccountBootstrapMembershipWriter {
   ) => Promise<"inserted" | "existing">;
 }
 
+export interface OrganizerAccountBootstrapOwnershipWriter {
+  setOwnerIfAbsent: (input: {
+    collectionName: "accounts" | "profiles";
+    ownerActorId: typeof XIAOYU_ACCOUNT_ID;
+    recordId: string;
+    workspaceId: string;
+  }) => Promise<"updated" | "existing">;
+}
+
 export interface OrganizerAccountBootstrapDependencies {
   accountProvisioner: AuthAccountProvisioningProvider;
   authUserProvider: AuthUserStorageProvider;
   authUserService: AuthUserService;
   contactActorLinkProvider: ContactActorLinkProvider;
   membershipWriter: OrganizerAccountBootstrapMembershipWriter;
+  ownershipWriter: OrganizerAccountBootstrapOwnershipWriter;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }
@@ -53,6 +63,12 @@ export type OrganizerAccountBootstrapItem =
     authUserId: string;
     kind: "xiaoyu-auth-membership";
     profileId: typeof XIAOYU_PUBLIC_PROFILE_ID;
+  }
+  | {
+    collectionName: "accounts" | "profiles";
+    kind: "xiaoyu-canonical-ownership-repair";
+    ownerActorId: typeof XIAOYU_ACCOUNT_ID;
+    recordId: typeof XIAOYU_ACCOUNT_ID | typeof XIAOYU_PUBLIC_PROFILE_ID;
   };
 
 export interface OrganizerAccountBootstrapPlan {
@@ -61,6 +77,7 @@ export interface OrganizerAccountBootstrapPlan {
   readonly hash: string;
   readonly items: readonly OrganizerAccountBootstrapItem[];
   readonly manifestVersion: "event-organizers-v1";
+  readonly xiaoyuCanonicalOwnershipRepairCount: 2;
   readonly xiaoyuIdentityBindingCount: 1;
 }
 
@@ -70,7 +87,9 @@ export interface OrganizerAccountBootstrapVerification {
   readonly hash: string;
   readonly newAccountCount: number;
   readonly newContactLinkCount: number;
+  readonly newXiaoyuCanonicalOwnershipRepairCount: number;
   readonly newXiaoyuIdentityBindingCount: number;
+  readonly xiaoyuCanonicalOwnershipRepairCount: 2;
   readonly xiaoyuIdentityBindingCount: 1;
 }
 
@@ -188,6 +207,18 @@ function buildItems(): readonly OrganizerAccountBootstrapItem[] {
       kind: "xiaoyu-auth-membership",
       profileId: XIAOYU_PUBLIC_PROFILE_ID,
     },
+    {
+      collectionName: "accounts",
+      kind: "xiaoyu-canonical-ownership-repair",
+      ownerActorId: XIAOYU_ACCOUNT_ID,
+      recordId: XIAOYU_ACCOUNT_ID,
+    },
+    {
+      collectionName: "profiles",
+      kind: "xiaoyu-canonical-ownership-repair",
+      ownerActorId: XIAOYU_ACCOUNT_ID,
+      recordId: XIAOYU_PUBLIC_PROFILE_ID,
+    },
   ];
 }
 
@@ -199,6 +230,7 @@ function expectedPlan(): OrganizerAccountBootstrapPlan {
     hash: planHash(items),
     items,
     manifestVersion: EVENT_ORGANIZER_BOOTSTRAP_MANIFEST_VERSION,
+    xiaoyuCanonicalOwnershipRepairCount: 2,
     xiaoyuIdentityBindingCount: 1,
   };
 }
@@ -258,9 +290,12 @@ async function resolveXiaoyuUser(
   return user;
 }
 
-async function assertXiaoyuCanonicalChain(
+async function readXiaoyuCanonicalChain(
   dependencies: OrganizerAccountBootstrapDependencies,
-): Promise<void> {
+): Promise<{
+  account: LiveRecord<Record<string, unknown>>;
+  profile: LiveRecord<Record<string, unknown>>;
+}> {
   const [account, profile] = await Promise.all([
     dependencies.store.getRecord({
       workspaceId: dependencies.workspaceId,
@@ -276,14 +311,79 @@ async function assertXiaoyuCanonicalChain(
     }),
   ]);
 
+  const accountPayload = account?.payload;
+  const profilePayload = profile?.payload;
   if (
     account?.lifecycleState !== "active" ||
-    account.userId !== XIAOYU_ACCOUNT_ID ||
-    account.payload.id !== XIAOYU_ACCOUNT_ID ||
+    (account.userId !== null && account.userId !== XIAOYU_ACCOUNT_ID) ||
+    !isRecord(accountPayload) ||
+    accountPayload.id !== XIAOYU_ACCOUNT_ID ||
+    !nonEmptyString(accountPayload.name) ||
+    !nonEmptyString(accountPayload.createdAt) ||
+    !nonEmptyString(accountPayload.updatedAt) ||
     profile?.lifecycleState !== "active" ||
-    profile.userId !== XIAOYU_ACCOUNT_ID ||
-    profile.payload.id !== XIAOYU_PUBLIC_PROFILE_ID ||
-    profile.payload.accountId !== XIAOYU_ACCOUNT_ID
+    (profile.userId !== null && profile.userId !== XIAOYU_ACCOUNT_ID) ||
+    !isRecord(profilePayload) ||
+    profilePayload.id !== XIAOYU_PUBLIC_PROFILE_ID ||
+    profilePayload.accountId !== XIAOYU_ACCOUNT_ID ||
+    !nonEmptyString(profilePayload.displayName) ||
+    !nonEmptyString(profilePayload.timezone) ||
+    !nonEmptyString(profilePayload.createdAt) ||
+    !nonEmptyString(profilePayload.updatedAt)
+  ) {
+    throw new Error("Xiaoyu canonical account/profile chain is incomplete or conflicting.");
+  }
+
+  return { account, profile };
+}
+
+function sameRecordAfterOwnerRepair(
+  before: LiveRecord<Record<string, unknown>>,
+  after: LiveRecord<Record<string, unknown>>,
+): boolean {
+  return JSON.stringify(canonicalize(after)) === JSON.stringify(canonicalize({
+    ...before,
+    userId: XIAOYU_ACCOUNT_ID,
+  }));
+}
+
+async function repairXiaoyuCanonicalOwnership(
+  dependencies: OrganizerAccountBootstrapDependencies,
+): Promise<number> {
+  const before = await readXiaoyuCanonicalChain(dependencies);
+  let repairedCount = 0;
+
+  for (const record of [before.account, before.profile]) {
+    if (record.userId === null) {
+      const result = await dependencies.ownershipWriter.setOwnerIfAbsent({
+        workspaceId: dependencies.workspaceId,
+        collectionName: record.collectionName as "accounts" | "profiles",
+        recordId: record.recordId,
+        ownerActorId: XIAOYU_ACCOUNT_ID,
+      });
+      if (result === "updated") repairedCount += 1;
+    }
+    const after = await dependencies.store.getRecord({
+      workspaceId: dependencies.workspaceId,
+      collectionName: record.collectionName,
+      recordId: record.recordId,
+      includeDeleted: true,
+    });
+    if (!after || !sameRecordAfterOwnerRepair(record, after)) {
+      throw new Error(`Xiaoyu canonical ownership repair conflicted for ${record.recordId}.`);
+    }
+  }
+
+  return repairedCount;
+}
+
+async function assertXiaoyuCanonicalChain(
+  dependencies: OrganizerAccountBootstrapDependencies,
+): Promise<void> {
+  const { account, profile } = await readXiaoyuCanonicalChain(dependencies);
+  if (
+    account.userId !== XIAOYU_ACCOUNT_ID ||
+    profile.userId !== XIAOYU_ACCOUNT_ID
   ) {
     throw new Error("Xiaoyu canonical account/profile chain is incomplete or conflicting.");
   }
@@ -423,7 +523,7 @@ function assertPlan(input: {
 }): void {
   const expected = expectedPlan();
   if (
-    input.expectedCount !== 20 ||
+    input.expectedCount !== 22 ||
     input.expectedPlanHash !== expected.hash ||
     JSON.stringify(canonicalize(input.plan)) !== JSON.stringify(canonicalize(expected))
   ) {
@@ -440,7 +540,7 @@ export async function buildOrganizerAccountBootstrapPlan(input: {
     throw new Error(`Organizer account manifest is invalid: ${manifest.errors.join(" ")}`);
   }
   const user = await resolveXiaoyuUser(input.dependencies, input.xiaoyuAuthUserId);
-  await assertXiaoyuCanonicalChain(input.dependencies);
+  await readXiaoyuCanonicalChain(input.dependencies);
 
   for (const definition of EVENT_ORGANIZER_ACCOUNT_MANIFEST) {
     const existing = await input.dependencies.authUserProvider.getUserByEmail(definition.email);
@@ -469,6 +569,7 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
     throw new Error("Reviewed organizer account plan has no Xiaoyu membership.");
   }
   const xiaoyuUser = await resolveXiaoyuUser(dependencies, membershipItem.authUserId);
+  const newXiaoyuCanonicalOwnershipRepairCount = await repairXiaoyuCanonicalOwnership(dependencies);
   await assertXiaoyuCanonicalChain(dependencies);
 
   const newXiaoyuIdentityBindingCount = await ensureXiaoyuMembership(dependencies, xiaoyuUser) ? 1 : 0;
@@ -541,7 +642,9 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
     hash: input.plan.hash,
     newAccountCount,
     newContactLinkCount,
+    newXiaoyuCanonicalOwnershipRepairCount,
     newXiaoyuIdentityBindingCount,
+    xiaoyuCanonicalOwnershipRepairCount: 2,
     xiaoyuIdentityBindingCount: 1,
   };
 }
