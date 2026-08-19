@@ -8,7 +8,7 @@
 
 把当前以小雨单账号为主的本地数据升级为可真实登录、可隔离授权的多账号数据集，并为现有 16 个活动分配合法主办方。
 
-最终数据包含 14 个唯一注册用户：小雨负责 3 个活动，另外 13 个注册用户各负责 1 个活动。其中 6 个用户已经是小雨的人脉，另外 7 个用户尚未进入小雨的人脉。
+最终数据包含 14 个唯一注册活动主办用户：小雨负责 3 个活动，另外 13 个注册用户各负责 1 个活动。其中 6 个用户已经是小雨的人脉，另外 7 个用户尚未进入小雨的人脉。数据库中既有的 `demo` 和 `Zhao Xin` 登录继续保留为独立用户，但不进入本次 14 位主办用户集合，也不获得小雨数据或活动主办权。
 
 ## 2. 核心领域约束
 
@@ -29,9 +29,9 @@
 - `accounts`：Orbit 业务账号，也是业务 Actor 的所有权边界；
 - `profiles`：公开身份和业务资料。
 
-本阶段不建立第二套并行登录数据库，也不把 14 个用户硬编码到认证逻辑。所有测试账号必须通过现有 `AuthUserService.registerUser()` 注册，使密码经过 bcrypt cost 12 哈希，并由现有 account provisioner 创建 Account 与 Profile。
+本阶段不建立第二套并行登录数据库，也不把 14 个用户硬编码到认证逻辑。13 个新增测试账号必须通过现有 `AuthUserService.registerUser()` 注册，使密码经过 bcrypt cost 12 哈希，并由现有 account provisioner 创建 Account 与 Profile。
 
-注册完成后的不变量为：
+13 个新增账号注册完成后的不变量为：
 
 ```text
 auth_user.id == account.id == actor.id
@@ -40,6 +40,14 @@ profile.accountId == account.id
 ```
 
 这些 ID 当前可能具有相同字符串，但在领域上仍分别表示认证身份、业务账号和公开资料。
+
+### 3.1 小雨的既有 Google 登录绑定
+
+小雨不创建新登录，也不改用 `demo` 或 `Zhao Xin`。本次迁移将现有 Google AuthUser `agenthubs`（当前本地 ID 为 `user_mry5y200_58jpi8`）绑定到小雨既有的 canonical Account `account_orbit_generated`，并保留完整公开资料 `profile_orbit_generated_operator`。
+
+绑定通过一条确定性的 auth-membership Profile 记录表达：其 payload `id` 等于 `agenthubs` AuthUser ID，`accountId` 等于 `account_orbit_generated`。这样现有 Session 解析会把 Google 登录映射到小雨原 Account，而不需要重写小雨已有数据的 owner ID。原公开 Profile 继续负责展示，membership Profile 只承担登录身份到 Account 的归属关系。
+
+account provisioner 必须先识别完整、无冲突的既有 membership，再决定是否创建默认 Account/Profile，避免后续 Google 登录为 `agenthubs` 生成第二个影子 Account。若 AuthUser、membership、Account 或小雨原 Profile 的链路与上述选择不一致，迁移 fail closed。
 
 ## 4. 账号与联系人关联
 
@@ -121,9 +129,9 @@ interface ContactActorLink {
 
 1. 备份当前 PostgreSQL 数据库。
 2. 应用 Event Operations schema migration，确保 Event Core 和权限表完整。
-3. 解析并确认小雨现有 AuthUser、Account、Profile 和 Actor。
+3. 精确确认 `agenthubs` Google AuthUser 与小雨现有 Account/Profile，创建 review-gated membership 绑定。
 4. dry-run 注册 13 位新主办方，检查邮箱和身份冲突。
-5. apply 注册，验证 14 位目标用户全部具有完整身份链。
+5. apply 注册，验证 14 位目标主办用户全部具有完整身份链，并确认 `agenthubs` 没有影子 Account。
 6. 为 6 位现有人脉创建 ContactActorLink；验证 7 位外部用户没有小雨关系。
 7. 根据固定 manifest 生成 Event Core owner backfill plan。
 8. 人工核对 event count、plan hash 和 owner mapping 后 apply。
@@ -150,13 +158,13 @@ interface ContactActorLink {
 
 ## 10. 验收标准
 
-- 目标数据中有 14 个唯一注册主办用户和 16 条活动 owner 映射。
+- 目标数据中有 14 个唯一注册主办用户和 16 条活动 owner 映射；`demo`、`Zhao Xin` 等非主办用户不计入该集合。
 - 每个主办用户都有一条有效 AuthUser、Account 和 Profile。
 - 3 个指定活动的 owner 是小雨。
 - 6 个活动的 owner 是已通过 ContactActorLink 关联的小雨现有人脉。
 - 7 个活动的 owner 是注册用户，但在小雨关系空间中没有 ContactActorLink。
 - 任何 Contact ID、Profile ID 或邮箱都没有被直接写入 `organizerActorId`。
-- 14 个账号均可通过正式认证流程建立 Session；错误密码不能登录。
+- 13 个新增账号可通过正式凭证认证建立 Session；小雨沿用 `agenthubs` Google 登录并解析到 `account_orbit_generated`，错误凭证不能登录。
 - 每个账号的活动中心只返回其拥有或被授权的活动。
 - 公共活动 API 返回可展示的主办方资料，但不泄露内部身份字段。
 - dry-run/apply 可重复执行，第二次执行不产生额外数据。

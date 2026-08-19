@@ -24,6 +24,10 @@ user identity 解析到对应 Account/Profile，live mode 不得回退到任意 
 
 多账号之间的数据默认按 Actor 隔离。注册成功后由 account provisioner 幂等地
 补齐 Account/Profile；缺少完整身份链的用户不能进入活动 owner 等业务权限边界。
+对于从旧数据迁移而来的登录身份，允许显式 membership Profile 将 AuthUser 绑定到
+既有 canonical Account。account provisioner 必须优先识别这条完整且无冲突的
+membership，不能为同一登录再创建影子 Account。当前小雨沿用 `agenthubs` Google
+AuthUser，并解析到既有 `account_orbit_generated`；`demo` 与 `Zhao Xin` 保持独立。
 
 缺少 database 配置时，live service 返回
 `ACCOUNT_LIVE_STORE_UNCONFIGURED`，route 使用统一 API envelope 报告
