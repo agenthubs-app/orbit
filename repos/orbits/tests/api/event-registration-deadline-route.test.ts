@@ -9,7 +9,7 @@ import {
   createMemoryEventRegistrationProvider,
 } from "../../features/events/registration/service";
 
-test("registration route returns a clear 409 after the event profile deadline", async () => {
+test("registration route returns a clear 409 after the event starts", async () => {
   const baseService = createEventRegistrationService({
     now: () => "2026-08-03T10:00:00.001Z",
     provider: createMemoryEventRegistrationProvider(),
@@ -60,7 +60,7 @@ test("registration route returns a clear 409 after the event profile deadline", 
   assert.equal(response.status, 409);
   assert.equal(body.success, false);
   assert.equal(body.error.code, "CONFLICT");
-  assert.match(body.error.message, /profile editing deadline has passed/i);
+  assert.match(body.error.message, /closes when the event starts/i);
   assert.equal(
     await baseService.get({
       eventId: "demo-event-1",

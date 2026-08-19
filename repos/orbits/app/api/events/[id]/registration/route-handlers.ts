@@ -156,6 +156,7 @@ function errorResponse(error: AppError, status: number): Response {
 
 export function createEventRegistrationRouteHandlers(input: {
   loadEvent?: typeof loadEventForRegistration;
+  now?: () => Date;
   registrationService?: EventRegistrationService;
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveActor: () => Promise<RegistrationActor | null>;
@@ -238,6 +239,14 @@ export function createEventRegistrationRouteHandlers(input: {
     if (!["confirmed", "imported"].includes(event.status)) {
       return errorResponse(
         new AppError("CONFLICT", "This event is not open for registration."),
+        409,
+      );
+    }
+    const startsAtMs = Date.parse(event.startsAt);
+    const nowMs = (input.now?.() ?? new Date()).getTime();
+    if (!Number.isFinite(startsAtMs) || nowMs >= startsAtMs) {
+      return errorResponse(
+        new AppError("CONFLICT", "Registration closes when the event starts."),
         409,
       );
     }

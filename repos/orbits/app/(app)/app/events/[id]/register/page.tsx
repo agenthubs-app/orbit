@@ -85,9 +85,12 @@ type RegistrationEvent = NonNullable<
 function isRegisterableEventForWorkspace(
   event: Awaited<ReturnType<typeof loadEventForRegistration>>,
 ): event is RegistrationEvent & { status: "confirmed" | "imported" } {
+  const startsAtMs = Date.parse(event?.startsAt ?? "");
   return (
     event !== null &&
-    (event.status === "confirmed" || event.status === "imported")
+    (event.status === "confirmed" || event.status === "imported") &&
+    Number.isFinite(startsAtMs) &&
+    Date.now() < startsAtMs
   );
 }
 
@@ -112,6 +115,10 @@ export default async function AppEventRegistrationGuidePage({
   const actor = actorContext.actor;
   const language = await getEventRegistrationPageLanguage(preferredLanguage);
   const event = await loadEventForRegistration(id, actor?.id);
+  const eventStartsAtMs = Date.parse(event?.startsAt ?? "");
+  const registrationClosed = event !== null &&
+    Number.isFinite(eventStartsAtMs) &&
+    Date.now() >= eventStartsAtMs;
 
   if (isRegisterableEventForWorkspace(event)) {
     const eventLanguage = language === "en" ? "en" : "zh";
@@ -314,7 +321,9 @@ export default async function AppEventRegistrationGuidePage({
             },
           ]}
           title={
-            language === "en" ? "Registration unavailable" : "报名暂不可用"
+            registrationClosed
+              ? language === "en" ? "Registration closed" : "报名已结束"
+              : language === "en" ? "Registration unavailable" : "报名暂不可用"
           }
         />
       </main>

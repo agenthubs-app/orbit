@@ -54,7 +54,6 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
-      registrationAvailability="open"
     />,
   );
 }

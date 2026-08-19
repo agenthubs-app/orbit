@@ -117,21 +117,19 @@ test("Today only accepts actor-authorized records as schedule truth", () => {
   assert.doesNotMatch(page, /OrbitTodayArrangements/);
 });
 
-test("unavailable registration explains the known reason, offers a durable reminder, and shortens samples", () => {
+test("event registration uses event start as the only public availability rule", () => {
   const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
-  const reminder = source("features/events/registration/opening-reminder-service.ts");
-  const handler = source("app/api/events/[id]/registration-opening-reminder/handler.ts");
+  const windowProvider = source("features/events/registration/storage/event-operations-window-provider.ts");
+  const registrationRepository = source("features/events/event-operations/storage/canonical-registration-repository.ts");
 
-  assert.match(detail, /下一次开放时间尚未公布/);
-  assert.match(detail, /开放报名时提醒我/);
-  assert.match(detail, /仅绑定当前账号，可随时取消/);
-  assert.match(detail, /查看其他可报名活动/);
+  assert.match(detail, /event\.status !== "upcoming"/);
+  assert.match(detail, /报名已结束/);
+  assert.doesNotMatch(detail, /报名暂不可用/);
+  assert.doesNotMatch(detail, /开放报名时提醒我/);
+  assert.doesNotMatch(detail, /查看其他可报名活动/);
   assert.match(detail, /SAMPLE_MATCHES\.slice\(0, 1\)/);
-  assert.match(detail, /当前无法报名，因此这里只保留一条明确标注的简短预览/);
-  assert.match(reminder, /event_registration_opening_reminders/);
-  assert.match(reminder, /userId: actorId/);
-  assert.match(reminder, /collectionName: "notifications"/);
-  assert.match(handler, /availability !== "unavailable"/);
+  assert.match(windowProvider, /event\.starts_at/);
+  assert.match(registrationRepository, /event_row\.starts_at as registration_cutoff_at/);
 });
 
 test("long result surfaces expose skip and list semantics for keyboard and screen-reader navigation", () => {

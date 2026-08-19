@@ -12,11 +12,11 @@ test("registered event actions are consistent across lifecycle states", () => {
   assert.equal(eventCardActionKind("active", true), "enter");
   assert.equal(eventCardActionKind("ended", true), "view");
   assert.equal(eventCardActionKind("upcoming", false), "register");
-  assert.equal(eventCardActionKind("active", false), "register");
+  assert.equal(eventCardActionKind("active", false), "view");
   assert.equal(eventCardActionKind("ended", false), "view");
   assert.equal(
     eventCardActionKind("upcoming", false, "registration_closed"),
-    "view",
+    "register",
   );
   assert.equal(
     eventCardActionKind("active", false, "unavailable"),

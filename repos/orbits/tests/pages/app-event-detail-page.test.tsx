@@ -25,7 +25,6 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
-      registrationAvailability="open"
     />,
   );
 }
@@ -82,12 +81,12 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
   if (routeModel.routeState !== "success") return;
   const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
-  const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} registrationAvailability="open" />);
-  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
-  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
+  const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} />);
+  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
 
   assert.match(pre, /data-event-journey-state="pre"/);
-  assert.match(pre, /回答 2 题并报名|Answer 2 questions &amp; register/);
+  assert.match(pre, />报名<|>Register</);
   assert.match(pre, /功能示例|Feature sample/);
   assert.match(joined, /data-event-journey-state="joined"/);
   assert.match(joined, /已报名|Registered/);
@@ -113,7 +112,6 @@ test("registered attendees can open the normal preparation workspace before the 
         stats: { ...event.stats, youRsvped: true },
         youRsvped: true,
       }}
-      registrationAvailability="registration_closed"
       workspaceAvailable
     />,
   );
@@ -123,7 +121,7 @@ test("registered attendees can open the normal preparation workspace before the 
   assert.doesNotMatch(html, />未开始<|>Not started</);
 });
 
-test("unavailable registration windows disable every detail-page registration entry", async () => {
+test("an upcoming event stays directly registerable without legacy window data", async () => {
   const routeModel = await loadAppEventDetailRoute({
     eventId: "demo-event-1",
     mode: "mock",
@@ -139,15 +137,14 @@ test("unavailable registration windows disable every detail-page registration en
         stats: { ...event.stats, youRsvped: false },
         youRsvped: false,
       }}
-      registrationAvailability="unavailable"
     />,
   );
 
-  assert.match(html, /报名暂不可用|Registration unavailable/);
-  assert.match(html, /开放报名时提醒我|Remind me when registration opens/);
-  assert.match(html, /disabled=""/);
-  assert.doesNotMatch(html, /href="\/app\/events\/[^"]+\/register"/);
-  assert.doesNotMatch(html, /报名中|Registration open/);
+  assert.match(html, /报名|Register/);
+  assert.match(html, /报名中|Registration open/);
+  assert.doesNotMatch(html, /报名暂不可用|Registration unavailable/);
+  assert.doesNotMatch(html, /开放报名时提醒我|Remind me when registration opens/);
+  assert.doesNotMatch(html, /查看其他可报名活动|View other events accepting registration/);
 });
 
 test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {

@@ -69,16 +69,13 @@ function greeting(t: Translate, now: Date): string {
 
 function journeyStageBadge(
   event: OrbitHomeViewModel["events"][number],
-  registrationAvailability: EventRegistrationAvailability,
+  _registrationAvailability: EventRegistrationAvailability,
   t: Translate,
 ): { label: string; tone: "act" | "done" | "wait" } {
   if (event.status === "ended") return { label: t({ en: "Ended", zh: "已结束" }), tone: "done" };
   if (event.status === "active") return { label: t({ en: "Live now", zh: "进行中" }), tone: "act" };
   if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Waiting for matches", zh: "等待匹配发布" }), tone: "wait" };
-  if (registrationAvailability === "open") return { label: t({ en: "Registration open", zh: "报名开放" }), tone: "act" };
-  if (registrationAvailability === "registration_closed") return { label: t({ en: "Registration closed", zh: "报名已截止" }), tone: "done" };
-  if (registrationAvailability === "profile_edit_closed") return { label: t({ en: "Registration profile locked", zh: "报名资料已锁定" }), tone: "wait" };
-  return { label: t({ en: "Registration unavailable", zh: "报名暂不可用" }), tone: "wait" };
+  return { label: t({ en: "Registration open", zh: "报名开放" }), tone: "act" };
 }
 
 const APPOINTMENT_TZ = "Asia/Tokyo";
@@ -142,10 +139,9 @@ export function OrbitAgentDashboard({
   );
   const openUnregisteredEvent = journeys.find(
     (event) =>
-      event.status !== "ended" &&
+      event.status === "upcoming" &&
       !event.youRsvped &&
-      !event.stats.youRsvped &&
-      registrationAvailabilityByEventId[event.id] === "open",
+      !event.stats.youRsvped,
   );
 
   const nextEventDate = nextEvent ? eventTemporalBounds(nextEvent.startsAt, nextEvent.endsAt).start : null;

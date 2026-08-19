@@ -189,6 +189,45 @@ test("event registration route rejects requests without an authenticated actor",
   assert.equal(response.status, 401);
 });
 
+test("event registration closes exactly when the event starts", async () => {
+  let writes = 0;
+  const startedEvent = {
+    ...registrationEvent,
+    startsAt: "2030-03-14T09:30:00.000Z",
+  };
+  const guarded = createEventRegistrationRouteHandlers({
+    loadEvent: async () => startedEvent,
+    now: () => new Date("2030-03-14T09:30:00.000Z"),
+    registrationService: {
+      ...registrationService,
+      async register(input) {
+        writes += 1;
+        return registrationService.register(input);
+      },
+    },
+    resolveActor: async () => actor,
+  });
+  const response = await guarded.POST(
+    new Request("http://orbit.local/api/events/event_signup_02/registration", {
+      body: JSON.stringify({
+        answers: {
+          targetAttendees: "Climate operators",
+          valueOffered: "A working relationship graph",
+        },
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 409);
+  assert.equal(body.error.code, "CONFLICT");
+  assert.match(body.error.message, /closes when the event starts/i);
+  assert.equal(writes, 0);
+});
+
 test("legacy registration writes cannot bypass an admission-controlled event", async () => {
   let registrationWrites = 0;
   const guardedService = {

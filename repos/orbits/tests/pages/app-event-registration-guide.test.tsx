@@ -91,12 +91,12 @@ test("/app/events/[id]/register renders canonical event identity without inventi
   }) => Promise<React.ReactElement>;
   const html = renderToStaticMarkup(
     await Page({
-      params: Promise.resolve({ id: "event_signup_01" }),
+      params: Promise.resolve({ id: "event_signup_02" }),
       searchParams: Promise.resolve({ language: "en" }),
     }),
   );
 
-  assert.match(html, /Kansai Cross-Border Business Connect/);
+  assert.match(html, /Tokyo AI Implementation Partner Meetup/);
   assert.match(html, /data-registration-stage="interview"/);
   assert.doesNotMatch(html, /data-reg-option/);
   assert.match(html, /No substitute question was used/);
@@ -111,11 +111,11 @@ test("/app/events/[id]/register renders a public event without query setup", asy
     }) => Promise<React.ReactElement>;
     const html = renderToStaticMarkup(
       await Page({
-        params: Promise.resolve({ id: "event_signup_01" }),
+        params: Promise.resolve({ id: "event_signup_02" }),
       }),
     );
 
-    assert.match(html, /<h1[^>]*>关西跨境商务对接会<\/h1>/);
+    assert.match(html, /<h1[^>]*>东京 AI 落地伙伴对接会<\/h1>/);
     // 没有真实请求 actor 时不能签发题目 token，也不能伪造替代题。
     assert.match(html, /data-registration-stage="interview"/);
     assert.equal(
@@ -135,18 +135,17 @@ test("/app/events/[id]/register uses reviewed English identity for public catalo
     }) => Promise<React.ReactElement>;
     const html = renderToStaticMarkup(
       await Page({
-        params: Promise.resolve({ id: "event_signup_01" }),
+        params: Promise.resolve({ id: "event_signup_02" }),
         searchParams: Promise.resolve({ language: "en" }),
       }),
     );
 
     assert.match(
       html,
-      /<h1[^>]*>Kansai Cross-Border Business Connect<\/h1>/,
+      /<h1[^>]*>Tokyo AI Implementation Partner Meetup<\/h1>/,
     );
-    assert.match(html, />Osaka</);
     assert.match(html, /No substitute question was used/);
-    assert.doesNotMatch(html, /关西跨境商务对接会|>大阪</);
+    assert.doesNotMatch(html, /东京 AI 落地伙伴对接会/);
   });
 });
 
@@ -171,15 +170,15 @@ test("registration resolves only published canonical Event Core records and alia
     "../../features/events/registration/event-loader"
   );
   const endedEvent = await loadEventForRegistration("event_01");
-  const upcomingEvent = await loadEventForRegistration("event_signup_01");
+  const upcomingEvent = await loadEventForRegistration("event_signup_02");
   const upcomingEventByPublicCode =
-    await loadEventForRegistration("EVTSIGNUP01");
+    await loadEventForRegistration("EVTSIGNUP02");
 
   assert.equal(endedEvent?.status, "cancelled");
   assert.ok(Date.parse(endedEvent?.endsAt ?? "") < Date.now());
   assert.equal(upcomingEvent?.status, "imported");
-  assert.equal(upcomingEventByPublicCode?.id, "event_signup_01");
-  assert.equal(upcomingEvent?.title, "关西跨境商务对接会");
+  assert.equal(upcomingEventByPublicCode?.id, "event_signup_02");
+  assert.equal(upcomingEvent?.title, "东京 AI 落地伙伴对接会");
   assert.equal(
     upcomingEvent?.sourceMetadata.label,
     "event-core-postgres",

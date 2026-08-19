@@ -41,12 +41,10 @@ export function eventScopeSearchString(
 export function eventCardActionKind(
   status: OrbitLandingEventView["status"],
   registered: boolean,
-  registrationAvailability: EventRegistrationAvailability = "open",
+  _registrationAvailability: EventRegistrationAvailability = "open",
 ): "enter" | "manage" | "register" | "view" {
   if (!registered) {
-    return status === "ended" || registrationAvailability !== "open"
-      ? "view"
-      : "register";
+    return status === "upcoming" ? "register" : "view";
   }
   if (status === "active") return "enter";
   return status === "upcoming" ? "manage" : "view";

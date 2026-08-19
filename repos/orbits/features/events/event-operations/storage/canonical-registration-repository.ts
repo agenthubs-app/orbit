@@ -449,21 +449,15 @@ async function lockRegistrationScope(
     `
       select
         statement_timestamp() as db_now,
-        configuration.profile_edit_deadline_at,
-        configuration.registration_cutoff_at
-      from event_ops_configuration_heads configuration_head
-      join event_ops_configurations configuration
-        on configuration.workspace_id = configuration_head.workspace_id
-        and configuration.event_id = configuration_head.event_id
-        and configuration.configuration_version = configuration_head.configuration_version
-      join event_ops_events event_row
-        on event_row.workspace_id = configuration_head.workspace_id
-        and event_row.event_id = configuration_head.event_id
-      where configuration_head.workspace_id = $1
-        and configuration_head.event_id = $2
-        and event_row.lifecycle_state = 'active'
+        event_row.starts_at as profile_edit_deadline_at,
+        event_row.starts_at as registration_cutoff_at
+      from event_ops_events event_row
+      where event_row.workspace_id = $1
+        and event_row.event_id = $2
+        and event_row.lifecycle_state_v2 = 'published'
+        and event_row.starts_at is not null
         and event_row.registration_migration_state = 'canonical'
-      for share of configuration_head, configuration, event_row
+      for share of event_row
     `,
     [workspaceId, eventId],
   );
@@ -471,7 +465,7 @@ async function lockRegistrationScope(
   if (!row) {
     throw new EventRegistrationWindowError(
       "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
-      "The enrolled event registration window is not configured; registration writes are unavailable.",
+      "The published event start time is unavailable; registration writes are unavailable.",
     );
   }
   return row;
