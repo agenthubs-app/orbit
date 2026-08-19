@@ -6,6 +6,7 @@
     "db:migrate:live": "tsx scripts/migrate-live-records.ts",
     "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",
     "db:bootstrap:event-organizers": "tsx scripts/bootstrap-event-organizer-accounts.ts",
+    "db:migrate:event-organizer-owners": "tsx scripts/migrate-event-organizer-owners.ts",
     "db:seed:live-events": "tsx scripts/seed-live-events.ts",
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
