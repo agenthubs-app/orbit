@@ -12,6 +12,7 @@ import type { ContactActorLinkProvider } from "../../contacts/contact-actor-link
 import type { LiveRecord, LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
 
 export const EVENT_ORGANIZER_BOOTSTRAP_MANIFEST_VERSION = "event-organizers-v1" as const;
+export const XIAOYU_AUTH_USER_ID = "user_mry5y200_58jpi8";
 export const XIAOYU_ACCOUNT_ID = "account_orbit_generated";
 export const XIAOYU_PUBLIC_PROFILE_ID = "profile_orbit_generated_operator";
 export const XIAOYU_AUTH_MEMBERSHIP_EVIDENCE_ID = "evidence:organizer-account-manifest:v1";
@@ -129,9 +130,12 @@ function expectedMembershipRecord(
     provider: "event-organizer-account-bootstrap",
     providerRecordId: user.id,
     evidenceIds: [XIAOYU_AUTH_MEMBERSHIP_EVIDENCE_ID],
+    targetType: null,
+    targetId: null,
     occurredAt: XIAOYU_AUTH_MEMBERSHIP_TIMESTAMP,
     createdAt: XIAOYU_AUTH_MEMBERSHIP_TIMESTAMP,
     updatedAt: XIAOYU_AUTH_MEMBERSHIP_TIMESTAMP,
+    deletedAt: null,
     lifecycleState: "active",
     searchText: `${user.displayName} ${user.email}`,
     payload,
@@ -167,21 +171,21 @@ function contactLinkItems(): readonly OrganizerAccountBootstrapItem[] {
     }));
 }
 
-function buildItems(xiaoyuAuthUserId: string): readonly OrganizerAccountBootstrapItem[] {
+function buildItems(): readonly OrganizerAccountBootstrapItem[] {
   return [
     ...accountItems(),
     ...contactLinkItems(),
     {
       accountId: XIAOYU_ACCOUNT_ID,
-      authUserId: xiaoyuAuthUserId,
+      authUserId: XIAOYU_AUTH_USER_ID,
       kind: "xiaoyu-auth-membership",
       profileId: XIAOYU_PUBLIC_PROFILE_ID,
     },
   ];
 }
 
-function expectedPlan(xiaoyuAuthUserId: string): OrganizerAccountBootstrapPlan {
-  const items = buildItems(xiaoyuAuthUserId);
+function expectedPlan(): OrganizerAccountBootstrapPlan {
+  const items = buildItems();
   return {
     accountCount: 13,
     contactLinkCount: 6,
@@ -222,8 +226,8 @@ async function resolveXiaoyuUser(
   dependencies: OrganizerAccountBootstrapDependencies,
   xiaoyuAuthUserId: string,
 ): Promise<StoredAuthUser> {
-  if (!nonEmptyString(xiaoyuAuthUserId)) {
-    throw new Error("Xiaoyu auth user ID is required.");
+  if (xiaoyuAuthUserId !== XIAOYU_AUTH_USER_ID) {
+    throw new Error("Use the reviewed Xiaoyu auth user ID.");
   }
 
   const records = await dependencies.store.listRecords({
@@ -255,18 +259,22 @@ async function assertXiaoyuCanonicalChain(
       workspaceId: dependencies.workspaceId,
       collectionName: "accounts",
       recordId: XIAOYU_ACCOUNT_ID,
+      includeDeleted: true,
     }),
     dependencies.store.getRecord({
       workspaceId: dependencies.workspaceId,
       collectionName: "profiles",
       recordId: XIAOYU_PUBLIC_PROFILE_ID,
+      includeDeleted: true,
     }),
   ]);
 
   if (
-    account?.userId !== XIAOYU_ACCOUNT_ID ||
+    account?.lifecycleState !== "active" ||
+    account.userId !== XIAOYU_ACCOUNT_ID ||
     account.payload.id !== XIAOYU_ACCOUNT_ID ||
-    profile?.userId !== XIAOYU_ACCOUNT_ID ||
+    profile?.lifecycleState !== "active" ||
+    profile.userId !== XIAOYU_ACCOUNT_ID ||
     profile.payload.id !== XIAOYU_PUBLIC_PROFILE_ID ||
     profile.payload.accountId !== XIAOYU_ACCOUNT_ID
   ) {
@@ -279,19 +287,27 @@ async function ensureXiaoyuMembership(
   user: StoredAuthUser,
 ): Promise<boolean> {
   const expected = expectedMembershipRecord(user, dependencies.workspaceId);
+  const deterministic = await dependencies.store.getRecord({
+    workspaceId: dependencies.workspaceId,
+    collectionName: "profiles",
+    recordId: expected.recordId,
+    includeDeleted: true,
+  });
+  if (deterministic && !sameMembershipRecord(deterministic, expected)) {
+    throw new Error("Xiaoyu auth membership conflicts with the reviewed binding.");
+  }
   const profiles = await dependencies.store.listRecords({
     workspaceId: dependencies.workspaceId,
     collectionName: "profiles",
   });
-  const matching = profiles.filter((profile) => profile.payload.id === user.id);
+  const matching = profiles.filter(
+    (profile) => profile.recordId !== expected.recordId && profile.payload.id === user.id,
+  );
 
-  if (matching.length > 1) {
+  if (matching.length > 0) {
     throw new Error("Xiaoyu auth membership is ambiguous.");
   }
-  if (matching.length === 1) {
-    if (!sameMembershipRecord(matching[0]!, expected)) {
-      throw new Error("Xiaoyu auth membership conflicts with the reviewed binding.");
-    }
+  if (deterministic) {
     return false;
   }
 
@@ -299,11 +315,38 @@ async function ensureXiaoyuMembership(
   return true;
 }
 
-async function assertOrganizerChain(
+function isValidOrganizerAccount(
+  account: LiveRecord<Record<string, unknown>>,
+  user: StoredAuthUser,
+): boolean {
+  return (
+    account.lifecycleState === "active" &&
+    account.userId === user.id &&
+    isRecord(account.payload) &&
+    account.payload.id === user.id
+  );
+}
+
+function isValidOrganizerProfile(
+  profile: LiveRecord<Record<string, unknown>>,
+  definition: OrganizerAccountDefinition,
+  user: StoredAuthUser,
+): boolean {
+  return (
+    profile.lifecycleState === "active" &&
+    profile.userId === user.id &&
+    isRecord(profile.payload) &&
+    profile.payload.id === `profile:${user.id}` &&
+    profile.payload.accountId === user.id &&
+    profile.payload.displayName === definition.displayName
+  );
+}
+
+async function organizerChainState(
   dependencies: OrganizerAccountBootstrapDependencies,
   definition: OrganizerAccountDefinition,
   user: StoredAuthUser,
-): Promise<void> {
+): Promise<"complete" | "repairable"> {
   if (
     user.displayName !== definition.displayName ||
     user.provider !== "credentials"
@@ -316,23 +359,23 @@ async function assertOrganizerChain(
       workspaceId: dependencies.workspaceId,
       collectionName: "accounts",
       recordId: user.id,
+      includeDeleted: true,
     }),
     dependencies.store.getRecord({
       workspaceId: dependencies.workspaceId,
       collectionName: "profiles",
       recordId: `profile:${user.id}`,
+      includeDeleted: true,
     }),
   ]);
   if (
-    account?.userId !== user.id ||
-    account.payload.id !== user.id ||
-    profile?.userId !== user.id ||
-    profile.payload.id !== `profile:${user.id}` ||
-    profile.payload.accountId !== user.id ||
-    profile.payload.displayName !== definition.displayName
+    (account !== null && !isValidOrganizerAccount(account, user)) ||
+    (profile !== null && !isValidOrganizerProfile(profile, definition, user))
   ) {
-    throw new Error(`Organizer account/profile chain is incomplete for ${definition.email}.`);
+    throw new Error(`Conflicting organizer account/profile chain for ${definition.email}.`);
   }
+
+  return account && profile ? "complete" : "repairable";
 }
 
 async function assertReviewedContacts(
@@ -365,16 +408,11 @@ function assertPlan(input: {
   expectedPlanHash: string;
   plan: OrganizerAccountBootstrapPlan;
 }): void {
-  const itemHash = planHash(input.plan.items);
+  const expected = expectedPlan();
   if (
     input.expectedCount !== 20 ||
-    input.plan.accountCount !== 13 ||
-    input.plan.contactLinkCount !== 6 ||
-    input.plan.xiaoyuIdentityBindingCount !== 1 ||
-    input.plan.items.length !== 20 ||
-    input.plan.manifestVersion !== EVENT_ORGANIZER_BOOTSTRAP_MANIFEST_VERSION ||
-    input.expectedPlanHash !== input.plan.hash ||
-    input.plan.hash !== itemHash
+    input.expectedPlanHash !== expected.hash ||
+    JSON.stringify(canonicalize(input.plan)) !== JSON.stringify(canonicalize(expected))
   ) {
     throw new Error("Reviewed organizer account plan mismatch.");
   }
@@ -394,15 +432,11 @@ export async function buildOrganizerAccountBootstrapPlan(input: {
   for (const definition of EVENT_ORGANIZER_ACCOUNT_MANIFEST) {
     const existing = await input.dependencies.authUserProvider.getUserByEmail(definition.email);
     if (existing) {
-      await assertOrganizerChain(input.dependencies, definition, existing).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : "Unknown organizer identity error.";
-        if (/incomplete/.test(message)) return;
-        throw error;
-      });
+      await organizerChainState(input.dependencies, definition, existing);
     }
   }
 
-  return expectedPlan(user.id);
+  return expectedPlan();
 }
 
 export async function applyOrganizerAccountBootstrapPlan(input: {
@@ -447,7 +481,9 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
       throw new Error(`Organizer registration did not persist ${definition.email}.`);
     }
     await dependencies.accountProvisioner.ensureAccountForUser(user);
-    await assertOrganizerChain(dependencies, definition, user);
+    if (await organizerChainState(dependencies, definition, user) !== "complete") {
+      throw new Error(`Organizer account/profile chain is incomplete for ${definition.email}.`);
+    }
     organizerUsers.set(definition.key, user);
   }
 

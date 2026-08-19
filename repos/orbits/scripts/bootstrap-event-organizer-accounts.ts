@@ -3,6 +3,9 @@ import { pathToFileURL } from "node:url";
 import {
   applyOrganizerAccountBootstrapPlan,
   buildOrganizerAccountBootstrapPlan,
+  XIAOYU_AUTH_USER_ID,
+  type OrganizerAccountBootstrapPlan,
+  type OrganizerAccountBootstrapVerification,
   type OrganizerAccountBootstrapDependencies,
 } from "../features/events/organizer-accounts/bootstrap";
 import { createAuthUserService } from "../features/auth/auth-user-service";
@@ -62,6 +65,9 @@ export function parseEventOrganizerAccountBootstrapCommand(
 
   if (mode === null) throw new Error("Specify exactly one of --dry-run or --apply.");
   const xiaoyuAuthUserId = requiredOption(options, "--xiaoyu-auth-user-id");
+  if (xiaoyuAuthUserId !== XIAOYU_AUTH_USER_ID) {
+    throw new Error("Use the reviewed Xiaoyu auth user ID.");
+  }
   if (mode === "dry-run") {
     if (options.size !== 1) throw new Error("--dry-run accepts only --xiaoyu-auth-user-id.");
     return { kind: "dry-run", xiaoyuAuthUserId };
@@ -79,11 +85,33 @@ export function parseEventOrganizerAccountBootstrapCommand(
   return { expectedCount: 20, expectedPlanHash, kind: "apply", xiaoyuAuthUserId };
 }
 
-function createDependencies(): {
+export interface EventOrganizerAccountBootstrapRuntime {
   client: ClosableLiveRecordSqlClient;
   close: () => Promise<void>;
   dependencies: OrganizerAccountBootstrapDependencies;
-} {
+}
+
+export interface EventOrganizerAccountBootstrapRunnerOptions {
+  applyPlan?: (
+    input: {
+      expectedCount: number;
+      expectedPlanHash: string;
+      password: string;
+      plan: OrganizerAccountBootstrapPlan;
+    },
+    dependencies: OrganizerAccountBootstrapDependencies,
+  ) => Promise<OrganizerAccountBootstrapVerification>;
+  buildPlan?: (input: {
+    dependencies: OrganizerAccountBootstrapDependencies;
+    xiaoyuAuthUserId: string;
+  }) => Promise<OrganizerAccountBootstrapPlan>;
+  createDependencies?: () => EventOrganizerAccountBootstrapRuntime;
+  env?: Record<string, string | undefined>;
+  loadEnv?: () => void;
+  log?: (value: string) => void;
+}
+
+function createDependencies(): EventOrganizerAccountBootstrapRuntime {
   const configured = createConfiguredPostgresLiveRecordStore({ max: 1 });
   if (!configured) {
     throw new Error("Organizer bootstrap requires a configured Orbit PostgreSQL database.");
@@ -114,25 +142,32 @@ function createDependencies(): {
   };
 }
 
-async function main(): Promise<void> {
-  const command = parseEventOrganizerAccountBootstrapCommand(process.argv.slice(2));
-  loadLocalEnv();
-  if (command.kind === "apply" && process.env.NODE_ENV === "production") {
+export async function runEventOrganizerAccountBootstrapCommand(
+  args: readonly string[],
+  options: EventOrganizerAccountBootstrapRunnerOptions = {},
+): Promise<void> {
+  const command = parseEventOrganizerAccountBootstrapCommand(args);
+  (options.loadEnv ?? loadLocalEnv)();
+  const env = options.env ?? process.env;
+  if (command.kind === "apply" && env.NODE_ENV === "production") {
     throw new Error("Organizer bootstrap refuses NODE_ENV=production.");
   }
-  const password = command.kind === "apply" ? process.env.ORBIT_DEMO_ORGANIZER_PASSWORD : undefined;
+  const password = command.kind === "apply" ? env.ORBIT_DEMO_ORGANIZER_PASSWORD : undefined;
   if (command.kind === "apply" && (!password || password.length < 8)) {
     throw new Error("Set ORBIT_DEMO_ORGANIZER_PASSWORD to at least 8 characters before applying.");
   }
 
-  const runtime = createDependencies();
+  const runtime = (options.createDependencies ?? createDependencies)();
+  const buildPlan = options.buildPlan ?? buildOrganizerAccountBootstrapPlan;
+  const applyPlan = options.applyPlan ?? applyOrganizerAccountBootstrapPlan;
+  const log = options.log ?? ((value: string) => console.log(value));
   try {
-    const plan = await buildOrganizerAccountBootstrapPlan({
+    const plan = await buildPlan({
       dependencies: runtime.dependencies,
       xiaoyuAuthUserId: command.xiaoyuAuthUserId,
     });
     if (command.kind === "dry-run") {
-      console.log(JSON.stringify(plan, null, 2));
+      log(JSON.stringify(plan, null, 2));
       return;
     }
     if (command.expectedCount !== 20 || command.expectedPlanHash !== plan.hash) {
@@ -141,14 +176,14 @@ async function main(): Promise<void> {
 
     await runtime.client.query("BEGIN");
     try {
-      const verification = await applyOrganizerAccountBootstrapPlan({
+      const verification = await applyPlan({
         expectedCount: command.expectedCount,
         expectedPlanHash: command.expectedPlanHash,
         password,
         plan,
       }, runtime.dependencies);
       await runtime.client.query("COMMIT");
-      console.log(JSON.stringify(verification, null, 2));
+      log(JSON.stringify(verification, null, 2));
     } catch (error) {
       await runtime.client.query("ROLLBACK");
       throw error;
@@ -159,7 +194,7 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
+  runEventOrganizerAccountBootstrapCommand(process.argv.slice(2)).catch((error: unknown) => {
     console.error(error);
     process.exitCode = 1;
   });

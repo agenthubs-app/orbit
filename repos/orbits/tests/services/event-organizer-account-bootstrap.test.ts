@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
   applyOrganizerAccountBootstrapPlan,
   buildOrganizerAccountBootstrapPlan,
+  XIAOYU_AUTH_USER_ID,
   type OrganizerAccountBootstrapDependencies,
 } from "../../features/events/organizer-accounts/bootstrap";
 import { createAuthUserService } from "../../features/auth/auth-user-service";
@@ -194,6 +196,237 @@ test("fails closed for an invalid Xiaoyu identity and before a reviewed apply mi
     /reviewed organizer account plan mismatch/i,
   );
   assert.equal(valid.store.listRecords({ workspaceId }).length, before);
+});
+
+test("pins Xiaoyu to the reviewed auth user ID", async () => {
+  const { dependencies } = createDependencies();
+
+  await assert.rejects(
+    buildOrganizerAccountBootstrapPlan({
+      dependencies,
+      xiaoyuAuthUserId: "user_not_xiaoyu",
+    }),
+    /reviewed Xiaoyu auth user ID/i,
+  );
+  assert.equal(XIAOYU_AUTH_USER_ID, xiaoyuUserId);
+});
+
+test("fails closed when a deterministic Xiaoyu membership record exists but differs", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  const recordId = `profile:auth-membership:${xiaoyuUserId}`;
+  store.upsertRecord(record("profiles", recordId, {
+    id: xiaoyuUserId,
+    accountId: xiaoyuAccountId,
+    displayName: "agenthubs",
+    timezone: "Asia/Tokyo",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }, xiaoyuAccountId));
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 20,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /membership conflicts/i,
+  );
+  assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId })?.sourceId, `test:profiles:${recordId}`);
+});
+
+test("fails closed when the deterministic Xiaoyu membership was deleted", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  const recordId = `profile:auth-membership:${xiaoyuUserId}`;
+  const deleted = record("profiles", recordId, {
+    id: xiaoyuUserId,
+    accountId: xiaoyuAccountId,
+    displayName: "agenthubs",
+    timezone: "Asia/Tokyo",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }, xiaoyuAccountId);
+  store.upsertRecord({ ...deleted, lifecycleState: "deleted", deletedAt: timestamp });
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 20,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /membership conflicts/i,
+  );
+  assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId }), null);
+  assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId, includeDeleted: true })?.lifecycleState, "deleted");
+});
+
+test("replays the deterministic membership after Postgres null normalization", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  await applyOrganizerAccountBootstrapPlan({
+    expectedCount: 20,
+    expectedPlanHash: plan.hash,
+    password: "organizer-password",
+    plan,
+  }, dependencies);
+  const recordId = `profile:auth-membership:${xiaoyuUserId}`;
+  const membership = store.getRecord({ workspaceId, collectionName: "profiles", recordId })!;
+  store.upsertRecord({
+    ...membership,
+    deletedAt: null,
+    targetId: null,
+    targetType: null,
+  });
+
+  const replay = await applyOrganizerAccountBootstrapPlan({
+    expectedCount: 20,
+    expectedPlanHash: plan.hash,
+    password: "organizer-password",
+    plan,
+  }, dependencies);
+  assert.equal(replay.newXiaoyuIdentityBindingCount, 0);
+});
+
+test("rejects a second active Xiaoyu membership profile", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  store.upsertRecord(record("profiles", "profile:another-membership", {
+    id: xiaoyuUserId,
+    accountId: xiaoyuAccountId,
+    displayName: "agenthubs",
+    timezone: "Asia/Tokyo",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }, xiaoyuAccountId));
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 20,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /membership is ambiguous/i,
+  );
+});
+
+test("repairs only absent organizer account/profile records", async () => {
+  const { dependencies } = createDependencies();
+  await dependencies.authUserProvider.saveUser({
+    id: "user_missing_organizer_chain",
+    email: "yuhang-wei@organizers.orbit.example.test",
+    displayName: "魏宇航",
+    provider: "credentials",
+    passwordHash: "unused-in-bootstrap-test",
+    providerAccountId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  const result = await applyOrganizerAccountBootstrapPlan({
+    expectedCount: 20,
+    expectedPlanHash: plan.hash,
+    password: "organizer-password",
+    plan,
+  }, dependencies);
+
+  assert.equal(result.newAccountCount, 12);
+});
+
+test("fails dry-run for a malformed present organizer profile", async () => {
+  const { dependencies, store } = createDependencies();
+  await dependencies.authUserProvider.saveUser({
+    id: "user_malformed_organizer_chain",
+    email: "yuhang-wei@organizers.orbit.example.test",
+    displayName: "魏宇航",
+    provider: "credentials",
+    passwordHash: "unused-in-bootstrap-test",
+    providerAccountId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  store.upsertRecord(record("profiles", "profile:user_malformed_organizer_chain", {
+    id: "profile:user_malformed_organizer_chain",
+    accountId: "user_malformed_organizer_chain",
+    displayName: "Wrong Name",
+    timezone: "Asia/Tokyo",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }, "user_malformed_organizer_chain"));
+
+  await assert.rejects(
+    buildOrganizerAccountBootstrapPlan({
+      dependencies,
+      xiaoyuAuthUserId: xiaoyuUserId,
+    }),
+    /conflicting organizer account\/profile chain/i,
+  );
+});
+
+test("rejects a self-consistent forged organizer plan", async () => {
+  const { dependencies } = createDependencies();
+  const reviewed = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  const items = reviewed.items.map((item, index) => index === 0
+    ? { ...item, email: "forged@organizers.orbit.example.test" }
+    : item,
+  );
+  const plan = {
+    ...reviewed,
+    hash: createHash("sha256")
+      .update(JSON.stringify({ items, manifestVersion: reviewed.manifestVersion }))
+      .digest("hex"),
+    items,
+  };
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 20,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /reviewed organizer account plan mismatch/i,
+  );
+});
+
+test("fails closed when Xiaoyu canonical account or rich profile is archived or deleted", async () => {
+  for (const lifecycleState of ["archived", "deleted"] as const) {
+    for (const collectionName of ["accounts", "profiles"] as const) {
+      const { dependencies, store } = createDependencies();
+      const recordId = collectionName === "accounts" ? xiaoyuAccountId : xiaoyuProfileId;
+      const existing = store.getRecord({ workspaceId, collectionName, recordId })!;
+      store.upsertRecord({ ...existing, lifecycleState, ...(lifecycleState === "deleted" ? { deletedAt: timestamp } : {}) });
+
+      await assert.rejects(
+        buildOrganizerAccountBootstrapPlan({
+          dependencies,
+          xiaoyuAuthUserId: xiaoyuUserId,
+        }),
+        /canonical account\/profile chain/i,
+      );
+    }
+  }
 });
 
 test("reuses a matching organizer identity and rejects a conflicting existing one", async () => {
