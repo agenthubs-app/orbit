@@ -79,13 +79,13 @@ export function parseEventOrganizerAccountBootstrapCommand(
   if (options.size !== 3) throw new Error("--apply requires only reviewed count and hash options.");
   const expectedCountText = requiredOption(options, "--expected-count");
   const expectedPlanHash = requiredOption(options, "--expected-plan-hash");
-  if (expectedCountText !== "22") {
-    throw new Error("--apply requires --expected-count 22.");
+  if (expectedCountText !== "28") {
+    throw new Error("--apply requires --expected-count 28.");
   }
   if (!/^[a-f0-9]{64}$/u.test(expectedPlanHash)) {
     throw new Error("--apply requires --expected-plan-hash with 64 lowercase hex characters.");
   }
-  return { expectedCount: 22, expectedPlanHash, kind: "apply", xiaoyuAuthUserId };
+  return { expectedCount: 28, expectedPlanHash, kind: "apply", xiaoyuAuthUserId };
 }
 
 export interface EventOrganizerAccountBootstrapRuntime {
@@ -176,6 +176,21 @@ export function createPostgresOrganizerOwnershipWriter({
   client: ClosableLiveRecordSqlClient;
 }): OrganizerAccountBootstrapOwnershipWriter {
   return {
+    async lockForUpdate(input) {
+      const result = await client.query<{ record_id: string }>(
+        `
+          select record_id
+          from orbit_records
+          where workspace_id = $1
+            and collection_name = $2
+            and record_id = $3
+          for update
+        `,
+        [input.workspaceId, input.collectionName, input.recordId],
+      );
+
+      return result.rows.length === 1 ? "locked" : "missing";
+    },
     async setOwnerIfAbsent(input) {
       const result = await client.query<{ record_id: string }>(
         `
@@ -260,8 +275,8 @@ export async function runEventOrganizerAccountBootstrapCommand(
       log(JSON.stringify(plan, null, 2));
       return;
     }
-    if (command.expectedCount !== 22 || command.expectedPlanHash !== plan.hash) {
-      throw new Error(`Reviewed organizer account plan mismatch: expected 22/${command.expectedPlanHash}, actual 22/${plan.hash}.`);
+    if (command.expectedCount !== 28 || command.expectedPlanHash !== plan.hash) {
+      throw new Error(`Reviewed organizer account plan mismatch: expected 28/${command.expectedPlanHash}, actual 28/${plan.hash}.`);
     }
 
     await runtime.client.query("BEGIN");

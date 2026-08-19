@@ -27,8 +27,13 @@ export interface OrganizerAccountBootstrapMembershipWriter {
 }
 
 export interface OrganizerAccountBootstrapOwnershipWriter {
+  lockForUpdate: (input: {
+    collectionName: "accounts" | "contacts" | "profiles";
+    recordId: string;
+    workspaceId: string;
+  }) => Promise<"locked" | "missing">;
   setOwnerIfAbsent: (input: {
-    collectionName: "accounts" | "profiles";
+    collectionName: "accounts" | "contacts" | "profiles";
     ownerActorId: typeof XIAOYU_ACCOUNT_ID;
     recordId: string;
     workspaceId: string;
@@ -69,6 +74,13 @@ export type OrganizerAccountBootstrapItem =
     kind: "xiaoyu-canonical-ownership-repair";
     ownerActorId: typeof XIAOYU_ACCOUNT_ID;
     recordId: typeof XIAOYU_ACCOUNT_ID | typeof XIAOYU_PUBLIC_PROFILE_ID;
+  }
+  | {
+    collectionName: "contacts";
+    contactId: string;
+    kind: "xiaoyu-contact-ownership-repair";
+    ownerActorId: typeof XIAOYU_ACCOUNT_ID;
+    recordId: string;
   };
 
 export interface OrganizerAccountBootstrapPlan {
@@ -78,6 +90,7 @@ export interface OrganizerAccountBootstrapPlan {
   readonly items: readonly OrganizerAccountBootstrapItem[];
   readonly manifestVersion: "event-organizers-v1";
   readonly xiaoyuCanonicalOwnershipRepairCount: 2;
+  readonly xiaoyuContactOwnershipRepairCount: 6;
   readonly xiaoyuIdentityBindingCount: 1;
 }
 
@@ -88,8 +101,10 @@ export interface OrganizerAccountBootstrapVerification {
   readonly newAccountCount: number;
   readonly newContactLinkCount: number;
   readonly newXiaoyuCanonicalOwnershipRepairCount: number;
+  readonly newXiaoyuContactOwnershipRepairCount: number;
   readonly newXiaoyuIdentityBindingCount: number;
   readonly xiaoyuCanonicalOwnershipRepairCount: 2;
+  readonly xiaoyuContactOwnershipRepairCount: 6;
   readonly xiaoyuIdentityBindingCount: 1;
 }
 
@@ -197,6 +212,19 @@ function contactLinkItems(): readonly OrganizerAccountBootstrapItem[] {
     }));
 }
 
+function contactOwnershipRepairItems(): readonly OrganizerAccountBootstrapItem[] {
+  return EVENT_ORGANIZER_ACCOUNT_MANIFEST
+    .filter((item) => item.relationship === "existing_contact")
+    .sort((left, right) => left.contactId!.localeCompare(right.contactId!))
+    .map((item) => ({
+      collectionName: "contacts" as const,
+      contactId: item.contactId!,
+      kind: "xiaoyu-contact-ownership-repair" as const,
+      ownerActorId: XIAOYU_ACCOUNT_ID,
+      recordId: item.contactId!,
+    }));
+}
+
 function buildItems(): readonly OrganizerAccountBootstrapItem[] {
   return [
     ...accountItems(),
@@ -219,6 +247,7 @@ function buildItems(): readonly OrganizerAccountBootstrapItem[] {
       ownerActorId: XIAOYU_ACCOUNT_ID,
       recordId: XIAOYU_PUBLIC_PROFILE_ID,
     },
+    ...contactOwnershipRepairItems(),
   ];
 }
 
@@ -231,6 +260,7 @@ function expectedPlan(): OrganizerAccountBootstrapPlan {
     items,
     manifestVersion: EVENT_ORGANIZER_BOOTSTRAP_MANIFEST_VERSION,
     xiaoyuCanonicalOwnershipRepairCount: 2,
+    xiaoyuContactOwnershipRepairCount: 6,
     xiaoyuIdentityBindingCount: 1,
   };
 }
@@ -377,6 +407,87 @@ async function repairXiaoyuCanonicalOwnership(
   return repairedCount;
 }
 
+async function readReviewedContacts(
+  dependencies: OrganizerAccountBootstrapDependencies,
+): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
+  const contactIds = EVENT_ORGANIZER_ACCOUNT_MANIFEST
+    .filter((definition) => definition.relationship === "existing_contact")
+    .map((definition) => definition.contactId!);
+  const contacts = await Promise.all(contactIds.map((recordId) =>
+    dependencies.store.getRecord({
+      workspaceId: dependencies.workspaceId,
+      collectionName: "contacts",
+      recordId,
+      includeDeleted: true,
+    }),
+  ));
+
+  for (let index = 0; index < contactIds.length; index += 1) {
+    const contactId = contactIds[index]!;
+    const record = contacts[index];
+    if (
+      record?.lifecycleState !== "active" ||
+      (record.userId !== null && record.userId !== XIAOYU_ACCOUNT_ID) ||
+      !isRecord(record.payload) ||
+      record.payload.id !== contactId
+    ) {
+      throw new Error(`Reviewed Xiaoyu contact is missing or owned by another account: ${contactId}.`);
+    }
+  }
+
+  return contacts as readonly LiveRecord<Record<string, unknown>>[];
+}
+
+async function repairReviewedContactOwnership(
+  dependencies: OrganizerAccountBootstrapDependencies,
+): Promise<number> {
+  const before = await readReviewedContacts(dependencies);
+  let repairedCount = 0;
+  for (const record of before) {
+    if (record.userId === null) {
+      const result = await dependencies.ownershipWriter.setOwnerIfAbsent({
+        workspaceId: dependencies.workspaceId,
+        collectionName: "contacts",
+        recordId: record.recordId,
+        ownerActorId: XIAOYU_ACCOUNT_ID,
+      });
+      if (result === "updated") repairedCount += 1;
+    }
+    const after = await dependencies.store.getRecord({
+      workspaceId: dependencies.workspaceId,
+      collectionName: "contacts",
+      recordId: record.recordId,
+      includeDeleted: true,
+    });
+    if (!after || !sameRecordAfterOwnerRepair(record, after)) {
+      throw new Error(`Reviewed Xiaoyu contact ownership repair conflicted for ${record.recordId}.`);
+    }
+  }
+
+  return repairedCount;
+}
+
+async function lockReviewedOwnershipRecords(
+  dependencies: OrganizerAccountBootstrapDependencies,
+): Promise<void> {
+  const records = [
+    { collectionName: "accounts" as const, recordId: XIAOYU_ACCOUNT_ID },
+    { collectionName: "profiles" as const, recordId: XIAOYU_PUBLIC_PROFILE_ID },
+    ...EVENT_ORGANIZER_ACCOUNT_MANIFEST
+      .filter((definition) => definition.relationship === "existing_contact")
+      .map((definition) => ({ collectionName: "contacts" as const, recordId: definition.contactId! })),
+  ];
+  for (const record of records) {
+    const state = await dependencies.ownershipWriter.lockForUpdate({
+      workspaceId: dependencies.workspaceId,
+      ...record,
+    });
+    if (state !== "locked") {
+      throw new Error(`Reviewed ownership record is missing: ${record.collectionName}/${record.recordId}.`);
+    }
+  }
+}
+
 async function assertXiaoyuCanonicalChain(
   dependencies: OrganizerAccountBootstrapDependencies,
 ): Promise<void> {
@@ -494,24 +605,10 @@ async function organizerChainState(
 async function assertReviewedContacts(
   dependencies: OrganizerAccountBootstrapDependencies,
 ): Promise<void> {
-  const contactDefinitions = EVENT_ORGANIZER_ACCOUNT_MANIFEST.filter(
-    (definition) => definition.relationship === "existing_contact",
-  );
-  const contacts = await Promise.all(contactDefinitions.map(async (definition) => ({
-    definition,
-    record: await dependencies.store.getRecord({
-      workspaceId: dependencies.workspaceId,
-      collectionName: "contacts",
-      recordId: definition.contactId!,
-    }),
-  })));
-
-  for (const { definition, record } of contacts) {
-    if (
-      record?.userId !== XIAOYU_ACCOUNT_ID ||
-      record.payload.id !== definition.contactId
-    ) {
-      throw new Error(`Reviewed Xiaoyu contact is missing or owned by another account: ${definition.contactId}.`);
+  const contacts = await readReviewedContacts(dependencies);
+  for (const record of contacts) {
+    if (record.userId !== XIAOYU_ACCOUNT_ID) {
+      throw new Error(`Reviewed Xiaoyu contact is missing or owned by another account: ${record.recordId}.`);
     }
   }
 }
@@ -523,7 +620,7 @@ function assertPlan(input: {
 }): void {
   const expected = expectedPlan();
   if (
-    input.expectedCount !== 22 ||
+    input.expectedCount !== 28 ||
     input.expectedPlanHash !== expected.hash ||
     JSON.stringify(canonicalize(input.plan)) !== JSON.stringify(canonicalize(expected))
   ) {
@@ -541,6 +638,7 @@ export async function buildOrganizerAccountBootstrapPlan(input: {
   }
   const user = await resolveXiaoyuUser(input.dependencies, input.xiaoyuAuthUserId);
   await readXiaoyuCanonicalChain(input.dependencies);
+  await readReviewedContacts(input.dependencies);
 
   for (const definition of EVENT_ORGANIZER_ACCOUNT_MANIFEST) {
     const existing = await input.dependencies.authUserProvider.getUserByEmail(definition.email);
@@ -568,8 +666,10 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
   if (!membershipItem) {
     throw new Error("Reviewed organizer account plan has no Xiaoyu membership.");
   }
+  await lockReviewedOwnershipRecords(dependencies);
   const xiaoyuUser = await resolveXiaoyuUser(dependencies, membershipItem.authUserId);
   const newXiaoyuCanonicalOwnershipRepairCount = await repairXiaoyuCanonicalOwnership(dependencies);
+  const newXiaoyuContactOwnershipRepairCount = await repairReviewedContactOwnership(dependencies);
   await assertXiaoyuCanonicalChain(dependencies);
 
   const newXiaoyuIdentityBindingCount = await ensureXiaoyuMembership(dependencies, xiaoyuUser) ? 1 : 0;
@@ -643,8 +743,10 @@ export async function applyOrganizerAccountBootstrapPlan(input: {
     newAccountCount,
     newContactLinkCount,
     newXiaoyuCanonicalOwnershipRepairCount,
+    newXiaoyuContactOwnershipRepairCount,
     newXiaoyuIdentityBindingCount,
     xiaoyuCanonicalOwnershipRepairCount: 2,
+    xiaoyuContactOwnershipRepairCount: 6,
     xiaoyuIdentityBindingCount: 1,
   };
 }

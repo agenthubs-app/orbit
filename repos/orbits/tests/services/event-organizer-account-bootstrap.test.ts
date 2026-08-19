@@ -50,11 +50,15 @@ function record(
 
 function createDependencies(options: {
   canonicalOwnerId?: string | null;
+  contactOwnerId?: string | null;
   xiaoyuProvider?: "credentials" | "google";
 } = {}) {
   const canonicalOwnerId = options.canonicalOwnerId === undefined
     ? null
     : options.canonicalOwnerId;
+  const contactOwnerId = options.contactOwnerId === undefined
+    ? null
+    : options.contactOwnerId;
   const store = createMemoryLiveRecordStore([
     record("auth_users", authUserRecordId("agenthubs@example.com"), {
       id: xiaoyuUserId,
@@ -81,7 +85,7 @@ function createDependencies(options: {
       updatedAt: timestamp,
     }, canonicalOwnerId),
     ...["contact_090", "contact_005", "contact_003", "contact_085", "contact_066", "contact_027"].map((contactId) =>
-      record("contacts", contactId, { id: contactId }, xiaoyuAccountId),
+      record("contacts", contactId, { id: contactId }, contactOwnerId),
     ),
   ]);
   const authUserProvider = createStorageAuthUserProvider({ store, workspaceId });
@@ -100,6 +104,15 @@ function createDependencies(options: {
     },
   };
   const ownershipWriter: OrganizerAccountBootstrapOwnershipWriter = {
+    async lockForUpdate(input) {
+      const existing = await store.getRecord({
+        workspaceId: input.workspaceId,
+        collectionName: input.collectionName,
+        recordId: input.recordId,
+        includeDeleted: true,
+      });
+      return existing ? "locked" : "missing";
+    },
     async setOwnerIfAbsent(input) {
       const existing = await store.getRecord({
         workspaceId: input.workspaceId,
@@ -132,7 +145,7 @@ function createDependencies(options: {
   };
 }
 
-test("builds a stable reviewed 22-item plan, repairs only canonical owners, and replays idempotently", async () => {
+test("builds a stable reviewed 28-item plan, repairs only reviewed owners, and replays idempotently", async () => {
   const { dependencies, store } = createDependencies();
   const before = store.listRecords({ workspaceId }).length;
   const legacyAccount = store.getRecord({
@@ -147,6 +160,9 @@ test("builds a stable reviewed 22-item plan, repairs only canonical owners, and 
     recordId: xiaoyuProfileId,
     includeDeleted: true,
   })!;
+  const legacyContacts = ["contact_090", "contact_005", "contact_003", "contact_085", "contact_066", "contact_027"].map(
+    (recordId) => store.getRecord({ workspaceId, collectionName: "contacts", recordId, includeDeleted: true })!,
+  );
   const plan = await buildOrganizerAccountBootstrapPlan({
     dependencies,
     xiaoyuAuthUserId: xiaoyuUserId,
@@ -155,14 +171,15 @@ test("builds a stable reviewed 22-item plan, repairs only canonical owners, and 
   assert.equal(plan.accountCount, 13);
   assert.equal(plan.contactLinkCount, 6);
   assert.equal(plan.xiaoyuCanonicalOwnershipRepairCount, 2);
+  assert.equal(plan.xiaoyuContactOwnershipRepairCount, 6);
   assert.equal(plan.xiaoyuIdentityBindingCount, 1);
-  assert.equal(plan.items.length, 22);
+  assert.equal(plan.items.length, 28);
   assert.equal(plan.manifestVersion, "event-organizers-v1");
   assert.match(plan.hash, /^[a-f0-9]{64}$/);
   assert.equal(store.listRecords({ workspaceId }).length, before);
 
   const first = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -171,6 +188,7 @@ test("builds a stable reviewed 22-item plan, repairs only canonical owners, and 
   assert.equal(first.newContactLinkCount, 6);
   assert.equal(first.newXiaoyuIdentityBindingCount, 1);
   assert.equal(first.newXiaoyuCanonicalOwnershipRepairCount, 2);
+  assert.equal(first.newXiaoyuContactOwnershipRepairCount, 6);
   assert.equal(store.listRecords({ workspaceId, collectionName: "accounts" }).length, 14);
   assert.equal(store.listRecords({ workspaceId, collectionName: "contact_actor_links" }).length, 6);
   const membership = store.listRecords({ workspaceId, collectionName: "profiles" }).find((item) => item.payload.id === xiaoyuUserId);
@@ -187,9 +205,24 @@ test("builds a stable reviewed 22-item plan, repairs only canonical owners, and 
     store.getRecord({ workspaceId, collectionName: "profiles", recordId: xiaoyuProfileId, includeDeleted: true }),
     { ...legacyProfile, userId: xiaoyuAccountId },
   );
+  for (const legacyContact of legacyContacts) {
+    assert.deepEqual(
+      store.getRecord({ workspaceId, collectionName: "contacts", recordId: legacyContact.recordId, includeDeleted: true }),
+      { ...legacyContact, userId: xiaoyuAccountId },
+    );
+  }
 
+  let replayLockCount = 0;
+  const ownershipWriter = dependencies.ownershipWriter;
+  dependencies.ownershipWriter = {
+    ...ownershipWriter,
+    async lockForUpdate(input) {
+      replayLockCount += 1;
+      return ownershipWriter.lockForUpdate(input);
+    },
+  };
   const replay = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -198,6 +231,8 @@ test("builds a stable reviewed 22-item plan, repairs only canonical owners, and 
   assert.equal(replay.newContactLinkCount, 0);
   assert.equal(replay.newXiaoyuIdentityBindingCount, 0);
   assert.equal(replay.newXiaoyuCanonicalOwnershipRepairCount, 0);
+  assert.equal(replay.newXiaoyuContactOwnershipRepairCount, 0);
+  assert.equal(replayLockCount, 8);
   assert.equal(store.getRecord({ workspaceId, collectionName: "accounts", recordId: xiaoyuUserId }), null);
   assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId: `profile:${xiaoyuUserId}` }), null);
 });
@@ -214,6 +249,18 @@ test("fails dry-run for a non-null conflicting canonical owner", async () => {
   );
 });
 
+test("fails dry-run for a non-null conflicting reviewed contact owner", async () => {
+  const { dependencies } = createDependencies({ contactOwnerId: "account_conflicting" });
+
+  await assert.rejects(
+    buildOrganizerAccountBootstrapPlan({
+      dependencies,
+      xiaoyuAuthUserId: xiaoyuUserId,
+    }),
+    /reviewed Xiaoyu contact/i,
+  );
+});
+
 test("preserves a conflicting owner won by a concurrent repair writer", async () => {
   const { dependencies, store } = createDependencies();
   const plan = await buildOrganizerAccountBootstrapPlan({
@@ -221,6 +268,9 @@ test("preserves a conflicting owner won by a concurrent repair writer", async ()
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   dependencies.ownershipWriter = {
+    async lockForUpdate() {
+      return "locked";
+    },
     async setOwnerIfAbsent(input) {
       const existing = await store.getRecord({
         workspaceId,
@@ -237,7 +287,7 @@ test("preserves a conflicting owner won by a concurrent repair writer", async ()
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -335,7 +385,7 @@ test("fails closed when a deterministic Xiaoyu membership record exists but diff
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -364,7 +414,7 @@ test("fails closed when the deterministic Xiaoyu membership was deleted", async 
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -382,7 +432,7 @@ test("replays the deterministic membership after Postgres null normalization", a
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -397,7 +447,7 @@ test("replays the deterministic membership after Postgres null normalization", a
   });
 
   const replay = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -422,7 +472,7 @@ test("rejects a second active Xiaoyu membership profile", async () => {
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -446,7 +496,7 @@ test("rejects and preserves a deterministic membership inserted concurrently by 
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -481,7 +531,7 @@ test("repairs only absent organizer account/profile records", async () => {
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   const result = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
@@ -540,7 +590,7 @@ test("rejects a self-consistent forged organizer plan", async () => {
 
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
-      expectedCount: 22,
+      expectedCount: 28,
       expectedPlanHash: plan.hash,
       password: "organizer-password",
       plan,
@@ -580,7 +630,7 @@ test("reuses a matching organizer identity and rejects a conflicting existing on
     xiaoyuAuthUserId: xiaoyuUserId,
   });
   const result = await applyOrganizerAccountBootstrapPlan({
-    expectedCount: 22,
+    expectedCount: 28,
     expectedPlanHash: plan.hash,
     password: "organizer-password",
     plan,
