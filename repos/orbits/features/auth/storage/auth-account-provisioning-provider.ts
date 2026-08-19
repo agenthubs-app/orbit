@@ -18,6 +18,42 @@ export interface StorageAuthAccountProvisioningProviderOptions {
   workspaceId: string;
 }
 
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function accountIdFromMembership(
+  record: LiveRecord<Record<string, unknown>>,
+  userId: string,
+): string | null {
+  const payload = record.payload;
+
+  if (!isRecord(payload) || payload.id !== userId) {
+    return null;
+  }
+
+  if (!nonEmptyString(payload.accountId) || record.lifecycleState !== "active") {
+    throw new Error("Auth membership profile is incomplete.");
+  }
+
+  return payload.accountId;
+}
+
+function accountRecordMatches(
+  record: LiveRecord<Record<string, unknown>> | null,
+  accountId: string,
+): boolean {
+  return (
+    record?.lifecycleState === "active" &&
+    record.userId === accountId &&
+    record.payload.id === accountId
+  );
+}
+
 function accountRecord(
   user: AuthUserDTO,
   workspaceId: string,
@@ -88,6 +124,52 @@ export function createStorageAuthAccountProvisioningProvider({
 }: StorageAuthAccountProvisioningProviderOptions): AuthAccountProvisioningProvider {
   return {
     async ensureAccountForUser(user) {
+      const profiles = await store.listRecords({
+        workspaceId,
+        collectionName: "profiles",
+      });
+      const memberships = profiles
+        .map((profile) => ({
+          accountId: accountIdFromMembership(profile, user.id),
+          profile,
+        }))
+        .filter((candidate) => candidate.accountId !== null);
+
+      if (memberships.length > 1) {
+        throw new Error("Auth membership profile is ambiguous.");
+      }
+
+      const membership = memberships[0];
+      if (membership) {
+        const membershipAccountId = membership.accountId!;
+        const membershipAccount = await store.getRecord({
+          workspaceId,
+          collectionName: "accounts",
+          recordId: membershipAccountId,
+        });
+        const defaultAccount = await store.getRecord({
+          workspaceId,
+          collectionName: "accounts",
+          recordId: user.id,
+        });
+        const defaultProfile = await store.getRecord({
+          workspaceId,
+          collectionName: "profiles",
+          recordId: `profile:${user.id}`,
+        });
+
+        if (
+          membership.profile.userId !== membershipAccountId ||
+          !accountRecordMatches(membershipAccount, membershipAccountId) ||
+          (defaultAccount !== null && defaultAccount.recordId !== membershipAccountId) ||
+          (defaultProfile !== null && defaultProfile.payload.accountId !== membershipAccountId)
+        ) {
+          throw new Error("Auth membership profile conflicts with the account chain.");
+        }
+
+        return;
+      }
+
       const account = await store.getRecord({
         workspaceId,
         collectionName: "accounts",

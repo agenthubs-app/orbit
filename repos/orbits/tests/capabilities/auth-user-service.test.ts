@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { hash } from "bcryptjs";
 
 import { createAuthUserService } from "../../features/auth/auth-user-service";
 import { resolveAuthUserService } from "../../features/auth/service-factory";
@@ -96,6 +97,136 @@ test("live auth provisioning creates one account and profile and preserves them 
     store.listRecords({ workspaceId, collectionName: "profiles" }).length,
     1,
   );
+});
+
+test("existing auth membership is honored on repeated Google provisioning without a shadow account", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId = "workspace:auth-membership";
+  const userId = "user_mry5y200_58jpi8";
+  const accountId = "account_orbit_generated";
+  const timestamp = "2026-08-19T00:00:00.000Z";
+  const provider = createStorageAuthUserProvider({ store, workspaceId });
+  const provisioner = createStorageAuthAccountProvisioningProvider({ store, workspaceId });
+  await provider.saveUser({
+    id: userId,
+    email: "agenthubs@example.com",
+    displayName: "agenthubs",
+    provider: "google",
+    passwordHash: null,
+    providerAccountId: "google-agenthubs",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  store.upsertRecord({
+    workspaceId,
+    collectionName: "accounts",
+    recordId: accountId,
+    userId: accountId,
+    sourceType: "manual",
+    sourceId: "test:xiaoyu-account",
+    evidenceIds: ["evidence:test"],
+    lifecycleState: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    payload: { id: accountId, name: "Xiaoyu", createdAt: timestamp, updatedAt: timestamp },
+  });
+  store.upsertRecord({
+    workspaceId,
+    collectionName: "profiles",
+    recordId: "profile_orbit_generated_operator",
+    userId: accountId,
+    sourceType: "manual",
+    sourceId: "test:xiaoyu-profile",
+    evidenceIds: ["evidence:test"],
+    lifecycleState: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    payload: { id: "profile_orbit_generated_operator", accountId, displayName: "小雨", timezone: "Asia/Tokyo", createdAt: timestamp, updatedAt: timestamp },
+  });
+  store.upsertRecord({
+    workspaceId,
+    collectionName: "profiles",
+    recordId: `profile:auth-membership:${userId}`,
+    userId: accountId,
+    sourceType: "manual",
+    sourceId: `auth-membership:${userId}`,
+    evidenceIds: ["evidence:organizer-account-manifest:v1"],
+    lifecycleState: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    payload: { id: userId, accountId, displayName: "agenthubs", timezone: "Asia/Tokyo", createdAt: timestamp, updatedAt: timestamp },
+  });
+  const service = createAuthUserService({ accountProvisioner: provisioner, provider });
+
+  const first = await service.getOrCreateOAuthUser({
+    email: "agenthubs@example.com",
+    displayName: "agenthubs",
+    provider: "google",
+    providerAccountId: "google-agenthubs",
+  });
+  const second = await service.getOrCreateOAuthUser({
+    email: "agenthubs@example.com",
+    displayName: "agenthubs",
+    provider: "google",
+    providerAccountId: "google-agenthubs",
+  });
+
+  assert.equal(first.state, "success");
+  assert.equal(second.state, "success");
+  assert.equal(store.getRecord({ workspaceId, collectionName: "accounts", recordId: userId }), null);
+  assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId: `profile:${userId}` }), null);
+  assert.equal(store.getRecord({ workspaceId, collectionName: "accounts", recordId: accountId })?.payload.id, accountId);
+
+  const credentialUserId = "user_membership_credentials";
+  const credentialAccountId = "account_membership_credentials";
+  await provider.saveUser({
+    id: credentialUserId,
+    email: "credentials-membership@example.com",
+    displayName: "Credentials Membership",
+    provider: "credentials",
+    passwordHash: await hash("membership-password", 12),
+    providerAccountId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  store.upsertRecord({
+    workspaceId,
+    collectionName: "accounts",
+    recordId: credentialAccountId,
+    userId: credentialAccountId,
+    sourceType: "manual",
+    sourceId: "test:credential-membership-account",
+    evidenceIds: ["evidence:test"],
+    lifecycleState: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    payload: { id: credentialAccountId, name: "Credentials Membership", createdAt: timestamp, updatedAt: timestamp },
+  });
+  store.upsertRecord({
+    workspaceId,
+    collectionName: "profiles",
+    recordId: `profile:auth-membership:${credentialUserId}`,
+    userId: credentialAccountId,
+    sourceType: "manual",
+    sourceId: `auth-membership:${credentialUserId}`,
+    evidenceIds: ["evidence:test"],
+    lifecycleState: "active",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    payload: { id: credentialUserId, accountId: credentialAccountId, displayName: "Credentials Membership", timezone: "Asia/Tokyo", createdAt: timestamp, updatedAt: timestamp },
+  });
+  const credentialFirst = await service.verifyCredentials({
+    email: "credentials-membership@example.com",
+    password: "membership-password",
+  });
+  const credentialSecond = await service.verifyCredentials({
+    email: "credentials-membership@example.com",
+    password: "membership-password",
+  });
+  assert.equal(credentialFirst.state, "success");
+  assert.equal(credentialSecond.state, "success");
+  assert.equal(store.getRecord({ workspaceId, collectionName: "accounts", recordId: credentialUserId }), null);
+  assert.equal(store.getRecord({ workspaceId, collectionName: "profiles", recordId: `profile:${credentialUserId}` }), null);
 });
 
 test("duplicate email registration fails with AUTH_EMAIL_TAKEN", async () => {
