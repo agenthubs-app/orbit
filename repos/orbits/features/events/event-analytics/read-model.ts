@@ -12,6 +12,13 @@ import type {
   EventAnalyticsOrganizerAggregate,
   EventAnalyticsReadModel,
 } from "./contract";
+import {
+  EVENT_ANALYTICS_ROI_FORMULA_HASH,
+  EVENT_ANALYTICS_ROI_METRIC_VERSION,
+  EVENT_ANALYTICS_ROI_SQL,
+  eventAnalyticsLiveRoiFromRow,
+} from "./roi";
+import { readEventAnalyticsRoiSnapshot } from "./snapshot";
 
 type Row = Record<string, unknown>;
 
@@ -596,12 +603,33 @@ export function createEventAnalyticsReadModel(input: {
   return {
     async readOrganizerAggregate({ eventId: requestedEventId }) {
       const eventId = requiredScope(requestedEventId, "eventId");
-      const result = await input.runtime.client.query<Row>(
-        ORGANIZER_AGGREGATE_SQL,
-        [input.runtime.workspaceId, eventId],
-      );
-      const row = result.rows[0];
-      if (!row) throw new Error("Event analytics aggregate query returned no row.");
+      const aggregate = await input.runtime.client.transaction(async (transaction) => {
+        const result = await transaction.query<Row>(ORGANIZER_AGGREGATE_SQL, [
+          input.runtime.workspaceId,
+          eventId,
+        ]);
+        const roiResult = await transaction.query<Row>(EVENT_ANALYTICS_ROI_SQL, [
+          input.runtime.workspaceId,
+          eventId,
+        ]);
+        const storedRoi = await readEventAnalyticsRoiSnapshot(
+          transaction,
+          input.runtime.workspaceId,
+          eventId,
+        );
+        const row = result.rows[0];
+        const roiRow = roiResult.rows[0];
+        if (!row) {
+          throw new Error("Event analytics aggregate query returned no row.");
+        }
+        if (!roiRow) {
+          throw new Error(
+            "Event analytics ROI requires a canonical event configuration.",
+          );
+        }
+        return { liveRoi: eventAnalyticsLiveRoiFromRow(roiRow), row, storedRoi };
+      }, { isolation: "repeatable read" });
+      const { liveRoi, row, storedRoi } = aggregate;
 
       return {
         appointments: appointmentCounts(row),
@@ -616,6 +644,18 @@ export function createEventAnalyticsReadModel(input: {
         registrations: {
           active: nonNegativeInteger(row, "registrations_active"),
           cancelled: nonNegativeInteger(row, "registrations_cancelled"),
+        },
+        roi: storedRoi ?? {
+          metrics: liveRoi.metrics,
+          snapshot: {
+            finalizedAt: null,
+            formulaHash: EVENT_ANALYTICS_ROI_FORMULA_HASH,
+            metricVersion: EVENT_ANALYTICS_ROI_METRIC_VERSION,
+            revision: null,
+            sourceWatermark: liveRoi.sourceWatermark,
+            status: "live" as const,
+            windowEndsAt: liveRoi.windowEndsAt,
+          },
         },
       };
     },

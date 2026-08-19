@@ -34,6 +34,53 @@ test("organizer analytics reports explain rounded rates with their exact samples
         },
         kind: "organizer_aggregate",
         registrations: { active: 3, cancelled: 0 },
+        roi: {
+          metrics: {
+            attributionCoverage: {
+              declaredCompletedOperations: 2,
+              stronglyAttributedCompletedOperations: 1,
+              rate: { denominator: 2, numerator: 1, value: 0.5 },
+            },
+            checkedInParticipants: 2,
+            completedAttributedAgentOperations: 1,
+            effectiveConnectionPairs: 1,
+            effectiveConnectionParticipants: 2,
+            effectiveConnectionRate: { denominator: 2, numerator: 2, value: 1 },
+            mutualConnections: {
+              acceptedRelationshipPairs: 1,
+              distinctConnectedCheckIns: 2,
+              mutuallyCheckedInPairs: 1,
+              participationRate: { denominator: 2, numerator: 2, value: 1 },
+            },
+            strongActions: {
+              appointments: 1,
+              followupReminders: 1,
+              humanEncounterNotes: 1,
+              messageDrafts: 1,
+            },
+          },
+          snapshot: {
+            finalizedAt: null,
+            formulaHash: "formula:test",
+            metricVersion: "event-roi-v1",
+            revision: null,
+            sourceWatermark: {
+              appointmentCount: 0,
+              appointmentUpdatedAt: null,
+              checkInCount: 2,
+              checkInRevision: 1,
+              completedAgentReceiptCount: 2,
+              completedAgentReceiptUpdatedAt: null,
+              configurationVersion: 1,
+              membershipCount: 3,
+              membershipRevision: 1,
+              relationshipPairCount: 1,
+              relationshipAcceptedAt: null,
+            },
+            status: "live",
+            windowEndsAt: "2026-08-12T08:00:00.000Z",
+          },
+        },
       }}
     />,
   );
@@ -45,6 +92,15 @@ test("organizer analytics reports explain rounded rates with their exact samples
   assert.ok(html.includes(">11<"));
   assert.ok(html.includes("第一轮座位"));
   assert.ok(html.includes(">64<"));
+  for (const label of [
+    "有效连接率",
+    "强行动·交流记录",
+    "强行动·消息草稿",
+    "强行动·跟进提醒",
+    "强行动·非取消约谈",
+  ]) {
+    assert.ok(html.includes(label), label);
+  }
 });
 
 test("organizer analytics marks zero-denominator rates as no sample", () => {
@@ -76,12 +132,59 @@ test("organizer analytics marks zero-denominator rates as no sample", () => {
         },
         kind: "organizer_aggregate",
         registrations: { active: 0, cancelled: 0 },
+        roi: {
+          metrics: {
+            attributionCoverage: {
+              declaredCompletedOperations: 0,
+              stronglyAttributedCompletedOperations: 0,
+              rate: { denominator: 0, numerator: 0, value: null },
+            },
+            checkedInParticipants: 0,
+            completedAttributedAgentOperations: 0,
+            effectiveConnectionPairs: 0,
+            effectiveConnectionParticipants: 0,
+            effectiveConnectionRate: { denominator: 0, numerator: 0, value: null },
+            mutualConnections: {
+              acceptedRelationshipPairs: 0,
+              distinctConnectedCheckIns: 0,
+              mutuallyCheckedInPairs: 0,
+              participationRate: { denominator: 0, numerator: 0, value: null },
+            },
+            strongActions: {
+              appointments: 0,
+              followupReminders: 0,
+              humanEncounterNotes: 0,
+              messageDrafts: 0,
+            },
+          },
+          snapshot: {
+            finalizedAt: null,
+            formulaHash: "formula:test",
+            metricVersion: "event-roi-v1",
+            revision: null,
+            sourceWatermark: {
+              appointmentCount: 0,
+              appointmentUpdatedAt: null,
+              checkInCount: 0,
+              checkInRevision: 0,
+              completedAgentReceiptCount: 0,
+              completedAgentReceiptUpdatedAt: null,
+              configurationVersion: 1,
+              membershipCount: 0,
+              membershipRevision: 0,
+              relationshipPairCount: 0,
+              relationshipAcceptedAt: null,
+            },
+            status: "live",
+            windowEndsAt: "2026-08-12T08:00:00.000Z",
+          },
+        },
       }}
     />,
   );
 
-  assert.equal((html.match(/暂无样本/g) ?? []).length, 3);
-  assert.equal((html.match(/暂无可计算样本/g) ?? []).length, 3);
+  assert.equal((html.match(/暂无样本/g) ?? []).length, 6);
+  assert.equal((html.match(/暂无可计算样本/g) ?? []).length, 6);
 });
 
 test("a non-ready attendee artifact renders its real status without invented content", () => {

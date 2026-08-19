@@ -45,6 +45,71 @@ export interface EventAnalyticsAppointmentCounts {
   reschedulePending: number;
 }
 
+export interface EventAnalyticsRate {
+  denominator: number;
+  numerator: number;
+  /** A 0..1 ratio. Zero denominators are represented by null, never zero. */
+  value: number | null;
+}
+
+export interface EventAnalyticsMutualConnectionMetrics {
+  acceptedRelationshipPairs: number;
+  mutuallyCheckedInPairs: number;
+  distinctConnectedCheckIns: number;
+  participationRate: EventAnalyticsRate;
+}
+
+export interface EventAnalyticsAttributionCoverage {
+  declaredCompletedOperations: number;
+  stronglyAttributedCompletedOperations: number;
+  rate: EventAnalyticsRate;
+}
+
+export interface EventAnalyticsRoiMetrics {
+  attributionCoverage: EventAnalyticsAttributionCoverage;
+  checkedInParticipants: number;
+  completedAttributedAgentOperations: number;
+  effectiveConnectionPairs: number;
+  effectiveConnectionParticipants: number;
+  effectiveConnectionRate: EventAnalyticsRate;
+  mutualConnections: EventAnalyticsMutualConnectionMetrics;
+  strongActions: {
+    appointments: number;
+    followupReminders: number;
+    humanEncounterNotes: number;
+    messageDrafts: number;
+  };
+}
+
+export interface EventAnalyticsRoiSourceWatermark {
+  appointmentCount: number;
+  appointmentUpdatedAt: string | null;
+  checkInCount: number;
+  checkInRevision: number;
+  completedAgentReceiptCount: number;
+  completedAgentReceiptUpdatedAt: string | null;
+  configurationVersion: number;
+  membershipCount: number;
+  membershipRevision: number;
+  relationshipPairCount: number;
+  relationshipAcceptedAt: string | null;
+}
+
+export interface EventAnalyticsRoiSnapshotState {
+  finalizedAt: string | null;
+  formulaHash: string;
+  metricVersion: string;
+  revision: number | null;
+  sourceWatermark: EventAnalyticsRoiSourceWatermark;
+  status: "live" | "finalized";
+  windowEndsAt: string;
+}
+
+export interface EventAnalyticsRoiAggregate {
+  metrics: EventAnalyticsRoiMetrics;
+  snapshot: EventAnalyticsRoiSnapshotState;
+}
+
 /**
  * Organizer-facing data contains aggregate counts only. It intentionally has
  * no participant, actor, profile, contact, encounter, or appointment fields.
@@ -58,6 +123,7 @@ export interface EventAnalyticsOrganizerAggregate {
   grouping: EventAnalyticsPublishedGroupingAggregate;
   kind: "organizer_aggregate";
   registrations: EventAnalyticsRegistrationCounts;
+  roi: EventAnalyticsRoiAggregate;
 }
 
 export interface EventAnalyticsAttendeeCheckIn {
