@@ -9,6 +9,7 @@ import {
 import type { ContactActorLink } from "../../features/contacts/contact-actor-links/contract";
 import {
   createMemoryLiveRecordStore,
+  type LiveRecordStoreLike,
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
 
@@ -41,6 +42,29 @@ function input(overrides: Partial<ContactActorLink> = {}) {
     ownerActorId,
     ...overrides,
   };
+}
+
+function validRecord(overrides: Partial<LiveRecord<Record<string, unknown>>> = {}) {
+  return {
+    workspaceId,
+    collectionName: CONTACT_ACTOR_LINK_COLLECTION,
+    recordId: recordId(ownerActorId, "contact_090"),
+    userId: ownerActorId,
+    sourceType: "contact_actor_link",
+    sourceId: recordId(ownerActorId, "contact_090"),
+    evidenceIds: ["evidence:organizer-account-manifest:v1"],
+    createdAt: linkedAt,
+    updatedAt: linkedAt,
+    lifecycleState: "active" as const,
+    payload: {
+      contactId: "contact_090",
+      evidenceIds: ["evidence:organizer-account-manifest:v1"],
+      linkedActorId,
+      linkedAt,
+      state: "active",
+    },
+    ...overrides,
+  } satisfies LiveRecord<Record<string, unknown>>;
 }
 
 test("creates an active link with deterministic private ownership and payload shape", async () => {
@@ -168,4 +192,74 @@ test("rejects malformed link input instead of persisting partial records", async
     provider.ensureActive(input({ linkedAt: "not-a-timestamp" })),
     /invalid contact actor link/i,
   );
+});
+
+test("rejects a stored link whose record id is not derived from its owner and contact", async () => {
+  const { provider, store } = providerWithStore();
+
+  store.upsertRecord(
+    validRecord({ recordId: "contact-actor-link:not-the-deterministic-id" }),
+  );
+
+  await assert.rejects(
+    provider.listActiveForOwner(ownerActorId),
+    /invalid contact actor link/i,
+  );
+});
+
+test("rejects null and array payloads with the provider validation error", async () => {
+  for (const payload of [null, []]) {
+    const { provider, store } = providerWithStore();
+    store.upsertRecord(
+      validRecord({ payload: payload as unknown as Record<string, unknown> }),
+    );
+
+    await assert.rejects(
+      provider.listActiveForOwner(ownerActorId),
+      /invalid contact actor link/i,
+    );
+  }
+});
+
+test("serializes concurrent writes for one owner across provider instances", async () => {
+  const baseStore = createMemoryLiveRecordStore();
+  let listCalls = 0;
+  let releaseFirstList: (() => void) | undefined;
+  let firstListEntered: (() => void) | undefined;
+  const firstList = new Promise<void>((resolve) => {
+    firstListEntered = resolve;
+  });
+  const firstListRelease = new Promise<void>((resolve) => {
+    releaseFirstList = resolve;
+  });
+  const store: LiveRecordStoreLike<Record<string, unknown>> = {
+    deleteRecord: (input) => baseStore.deleteRecord(input),
+    getRecord: (query) => baseStore.getRecord(query),
+    async listRecords(query) {
+      listCalls += 1;
+      if (listCalls === 1) {
+        firstListEntered?.();
+        await firstListRelease;
+      }
+      return baseStore.listRecords(query);
+    },
+    upsertRecord: (record) => baseStore.upsertRecord(record),
+  };
+  const firstProvider = createStorageContactActorLinkProvider({ store, workspaceId });
+  const secondProvider = createStorageContactActorLinkProvider({ store, workspaceId });
+
+  const firstWrite = firstProvider.ensureActive(input());
+  await firstList;
+  const secondWrite = secondProvider.ensureActive(
+    input({ linkedActorId: "user:other" }),
+  );
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.equal(listCalls, 1);
+  releaseFirstList?.();
+
+  const results = await Promise.allSettled([firstWrite, secondWrite]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+  assert.equal((await firstProvider.listActiveForOwner(ownerActorId)).length, 1);
 });

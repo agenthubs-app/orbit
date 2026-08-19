@@ -12,8 +12,22 @@ export const CONTACT_ACTOR_LINK_COLLECTION = "contact_actor_links";
 
 const PROVIDER = "contact-actor-link-storage";
 
+const ownerLocks = new WeakMap<
+  object,
+  Map<string, Promise<void>>
+>();
+
 function nonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0 && value.trim() === value;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function isTimestamp(value: unknown): value is string {
@@ -77,6 +91,10 @@ function linkFromRecord(
     throw invalidLink();
   }
 
+  if (!isPlainObject(record.payload)) {
+    throw invalidLink();
+  }
+
   const payload = record.payload;
   const state = payload.state;
   const keys = state === "active"
@@ -92,6 +110,10 @@ function linkFromRecord(
     (state !== "active" && state !== "revoked") ||
     (state === "revoked" && !isTimestamp(payload.revokedAt))
   ) {
+    throw invalidLink();
+  }
+
+  if (record.recordId !== recordId(record.userId, payload.contactId)) {
     throw invalidLink();
   }
 
@@ -120,6 +142,43 @@ function sameLink(left: ContactActorLink, right: EnsureActiveContactActorLinkInp
   );
 }
 
+async function withOwnerLock<TResult>(
+  store: object,
+  workspaceId: string,
+  ownerActorId: string,
+  operation: () => Promise<TResult>,
+): Promise<TResult> {
+  let locks = ownerLocks.get(store);
+  if (!locks) {
+    locks = new Map();
+    ownerLocks.set(store, locks);
+  }
+
+  const key = `${workspaceId}\u0000${ownerActorId}`;
+  const previous = locks.get(key);
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  locks.set(key, current);
+
+  if (previous) {
+    await previous;
+  }
+
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (locks.get(key) === current) {
+      locks.delete(key);
+    }
+    if (locks.size === 0) {
+      ownerLocks.delete(store);
+    }
+  }
+}
+
 export function createStorageContactActorLinkProvider({
   store,
   workspaceId,
@@ -136,70 +195,77 @@ export function createStorageContactActorLinkProvider({
   return {
     async ensureActive(input) {
       assertInput(input);
-      const id = recordId(input.ownerActorId, input.contactId);
-      const existing = await store.getRecord({
+      return withOwnerLock(
+        store,
         workspaceId,
-        collectionName: CONTACT_ACTOR_LINK_COLLECTION,
-        recordId: id,
-        includeDeleted: true,
-      });
+        input.ownerActorId,
+        async () => {
+          const id = recordId(input.ownerActorId, input.contactId);
+          const existing = await store.getRecord({
+            workspaceId,
+            collectionName: CONTACT_ACTOR_LINK_COLLECTION,
+            recordId: id,
+            includeDeleted: true,
+          });
 
-      if (existing) {
-        const existingLink = linkFromRecord(existing);
-        if (existingLink.state === "revoked") {
-          throw new Error("A revoked link history cannot be reactivated.");
-        }
-        if (sameLink(existingLink, input)) {
-          return { state: "replayed", link: existingLink };
-        }
-        throw new Error("Contact is already linked to a different actor.");
-      }
+          if (existing) {
+            const existingLink = linkFromRecord(existing);
+            if (existingLink.state === "revoked") {
+              throw new Error("A revoked link history cannot be reactivated.");
+            }
+            if (sameLink(existingLink, input)) {
+              return { state: "replayed", link: existingLink };
+            }
+            throw new Error("Contact is already linked to a different actor.");
+          }
 
-      const records = await listOwnerRecords(input.ownerActorId);
-      for (const record of records) {
-        const link = linkFromRecord(record);
-        if (link.state !== "active") {
-          continue;
-        }
-        if (link.contactId === input.contactId) {
-          throw new Error("Contact is already linked to a different actor.");
-        }
-        if (link.linkedActorId === input.linkedActorId) {
-          throw new Error("Actor is already linked to a different contact.");
-        }
-      }
+          const records = await listOwnerRecords(input.ownerActorId);
+          for (const record of records) {
+            const link = linkFromRecord(record);
+            if (link.state !== "active") {
+              continue;
+            }
+            if (link.contactId === input.contactId) {
+              throw new Error("Contact is already linked to a different actor.");
+            }
+            if (link.linkedActorId === input.linkedActorId) {
+              throw new Error("Actor is already linked to a different contact.");
+            }
+          }
 
-      const link: ContactActorLink = {
-        ownerActorId: input.ownerActorId,
-        contactId: input.contactId,
-        linkedActorId: input.linkedActorId,
-        state: "active",
-        linkedAt: input.linkedAt,
-        evidenceIds: [...input.evidenceIds],
-      };
-      await store.upsertRecord({
-        workspaceId,
-        collectionName: CONTACT_ACTOR_LINK_COLLECTION,
-        recordId: id,
-        userId: input.ownerActorId,
-        sourceType: "contact_actor_link",
-        sourceId: id,
-        provider: PROVIDER,
-        providerRecordId: id,
-        evidenceIds: [...input.evidenceIds],
-        createdAt: input.linkedAt,
-        updatedAt: input.linkedAt,
-        lifecycleState: "active",
-        payload: {
-          contactId: input.contactId,
-          evidenceIds: [...input.evidenceIds],
-          linkedActorId: input.linkedActorId,
-          linkedAt: input.linkedAt,
-          state: "active",
-        },
-      });
+          const link: ContactActorLink = {
+            ownerActorId: input.ownerActorId,
+            contactId: input.contactId,
+            linkedActorId: input.linkedActorId,
+            state: "active",
+            linkedAt: input.linkedAt,
+            evidenceIds: [...input.evidenceIds],
+          };
+          await store.upsertRecord({
+            workspaceId,
+            collectionName: CONTACT_ACTOR_LINK_COLLECTION,
+            recordId: id,
+            userId: input.ownerActorId,
+            sourceType: "contact_actor_link",
+            sourceId: id,
+            provider: PROVIDER,
+            providerRecordId: id,
+            evidenceIds: [...input.evidenceIds],
+            createdAt: input.linkedAt,
+            updatedAt: input.linkedAt,
+            lifecycleState: "active",
+            payload: {
+              contactId: input.contactId,
+              evidenceIds: [...input.evidenceIds],
+              linkedActorId: input.linkedActorId,
+              linkedAt: input.linkedAt,
+              state: "active",
+            },
+          });
 
-      return { state: "created", link };
+          return { state: "created", link };
+        }
+      );
     },
 
     async listActiveForOwner(ownerActorId) {
