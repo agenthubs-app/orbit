@@ -11,6 +11,7 @@ import {
   XIAOYU_AUTH_USER_ID,
   XIAOYU_PUBLIC_PROFILE_ID,
 } from "./bootstrap";
+import { authUserRecordId } from "../../auth/storage/auth-user-live-record-provider";
 
 export const EVENT_ORGANIZER_OWNER_MANIFEST_VERSION = "event-organizers-v1" as const;
 export const XIAOYU_ACTOR_ID = XIAOYU_ACCOUNT_ID;
@@ -90,6 +91,15 @@ function canonicalJson(value: unknown): string {
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizedEmail(value: unknown): string | null {
+  const email = text(value);
+  return email ? email.toLowerCase() : null;
+}
+
+function validPayloadTimestamp(value: unknown): boolean {
+  return typeof value === "string" && text(value) !== null && timestamp(value) !== null;
 }
 
 function timestamp(value: unknown): string | null {
@@ -241,8 +251,18 @@ function assertXiaoyuIdentity(rows: readonly OrbitRecordRow[], xiaoyuActorId: st
     activeRecords(rows, "auth_users").filter((row) => isObject(row.payload) && row.payload.id === XIAOYU_AUTH_USER_ID),
     "Expected one active Google agenthubs Xiaoyu auth identity.",
   );
-  if (!isObject(user.payload) || user.payload.displayName !== "agenthubs" || user.payload.provider !== "google") {
-    throw new Error("Expected one active Google agenthubs Xiaoyu auth identity.");
+  if (
+    !isObject(user.payload) ||
+    user.record_id !== authUserRecordId(String(user.payload.email ?? "")) ||
+    user.user_id !== XIAOYU_AUTH_USER_ID ||
+    user.payload.id !== XIAOYU_AUTH_USER_ID ||
+    user.payload.displayName !== "agenthubs" ||
+    user.payload.provider !== "google" ||
+    !normalizedEmail(user.payload.email) ||
+    !validPayloadTimestamp(user.payload.createdAt) ||
+    !validPayloadTimestamp(user.payload.updatedAt)
+  ) {
+    throw new Error("Expected one noncanonical Xiaoyu auth user.");
   }
   const account = exactlyOne(
     activeRecords(rows, "accounts").filter((row) => row.record_id === XIAOYU_ACTOR_ID),
@@ -275,16 +295,27 @@ function resolveOrganizerAccounts(rows: readonly OrbitRecordRow[]): ReadonlyMap<
   const accounts = new Map<string, string>();
   const authUsers = activeRecords(rows, "auth_users");
   for (const organizer of EVENT_ORGANIZER_ACCOUNT_MANIFEST) {
-    const normalizedEmail = organizer.email.trim().toLowerCase();
+    const organizerEmail = normalizedEmail(organizer.email)!;
     const user = exactlyOne(
-      authUsers.filter((row) => isObject(row.payload) && text(row.payload.email)?.toLowerCase() === normalizedEmail),
+      authUsers.filter((row) => isObject(row.payload) && normalizedEmail(row.payload.email) === organizerEmail),
       `Expected one active auth user for ${organizer.email}.`,
     );
-    if (!isObject(user.payload) || user.payload.provider !== "credentials" || user.payload.displayName !== organizer.displayName) {
-      throw new Error(`Organizer identity is malformed for ${organizer.email}.`);
+    if (!isObject(user.payload)) {
+      throw new Error(`Organizer has a noncanonical auth user for ${organizer.email}.`);
     }
     const userId = text(user.payload.id);
-    if (!userId) throw new Error(`Organizer identity is malformed for ${organizer.email}.`);
+    if (
+      !userId ||
+      user.record_id !== authUserRecordId(organizerEmail) ||
+      user.user_id !== userId ||
+      normalizedEmail(user.payload.email) !== organizerEmail ||
+      user.payload.provider !== "credentials" ||
+      user.payload.displayName !== organizer.displayName ||
+      !validPayloadTimestamp(user.payload.createdAt) ||
+      !validPayloadTimestamp(user.payload.updatedAt)
+    ) {
+      throw new Error(`Organizer has a noncanonical auth user for ${organizer.email}.`);
+    }
     assertOrganizerChain(rows, { displayName: organizer.displayName, email: organizer.email, userId });
     accounts.set(organizer.key, userId);
   }
@@ -295,11 +326,12 @@ function resolveOrganizerAccounts(rows: readonly OrbitRecordRow[]): ReadonlyMap<
 async function readIdentityRows(
   client: EventOrganizerOwnerSqlClient,
   workspaceId: string,
+  lock: boolean,
 ): Promise<readonly OrbitRecordRow[]> {
   const result = await client.query<OrbitRecordRow>(
     `select * from orbit_records
      where workspace_id = $1
-       and collection_name in ('auth_users', 'accounts', 'profiles')`,
+       and collection_name in ('auth_users', 'accounts', 'profiles')${lock ? " for update" : ""}`,
     [workspaceId],
   );
   return result.rows;
@@ -322,7 +354,7 @@ async function readReviewedEvents(
   return result.rows;
 }
 
-function assertReviewedEvents(
+function assertReviewedEventSources(
   rows: readonly OrbitRecordRow[],
   expected: readonly EventOrganizerOwnerAssignment[],
 ): void {
@@ -342,11 +374,37 @@ function assertReviewedEvents(
   }
 }
 
+function assertFinalReviewedEventOwners(
+  rows: readonly OrbitRecordRow[],
+  expected: readonly EventOrganizerOwnerAssignment[],
+): void {
+  assertReviewedEventSources(rows, expected);
+  for (const row of rows) {
+    const target = expected.find((item) => item.eventId === row.record_id);
+    if (!target || row.user_id !== target.accountId) {
+      throw new Error(`Reviewed legacy event ${row.record_id} did not receive its reviewed owner.`);
+    }
+  }
+}
+
+function assertExactUpdatedPairs(
+  rows: readonly { record_id: string; user_id: string | null }[],
+  expected: readonly EventOrganizerOwnerAssignment[],
+): void {
+  if (rows.length !== 16 || new Set(rows.map((row) => row.record_id)).size !== 16) {
+    throw new Error("Migration must update exactly the 16 reviewed event owners.");
+  }
+  const targets = new Map(expected.map((item) => [item.eventId, item.accountId]));
+  if (targets.size !== 16 || rows.some((row) => targets.get(row.record_id) !== row.user_id)) {
+    throw new Error("Migration must update exactly the 16 reviewed event owners.");
+  }
+}
+
 async function buildPlan(
-  input: { client: EventOrganizerOwnerSqlClient; lockEventRows: boolean; workspaceId: string; xiaoyuActorId: string },
+  input: { client: EventOrganizerOwnerSqlClient; lockRows: boolean; workspaceId: string; xiaoyuActorId: string },
 ): Promise<EventOrganizerOwnerPlan> {
   const definitions = expectedAssignmentDefinitions();
-  const identities = await readIdentityRows(input.client, input.workspaceId);
+  const identities = await readIdentityRows(input.client, input.workspaceId, input.lockRows);
   assertXiaoyuIdentity(identities, input.xiaoyuActorId);
   const organizerAccounts = resolveOrganizerAccounts(identities);
   const assignments = definitions.map((assignment) => ({
@@ -361,9 +419,9 @@ async function buildPlan(
     input.client,
     input.workspaceId,
     canonicalAssignments.map((assignment) => assignment.eventId),
-    input.lockEventRows,
+    input.lockRows,
   );
-  assertReviewedEvents(events, canonicalAssignments);
+  assertReviewedEventSources(events, canonicalAssignments);
   const reviewedSourceHash = sourceHash(events);
   return {
     assignments: canonicalAssignments,
@@ -451,7 +509,7 @@ export async function buildEventOrganizerOwnerPlan(input: {
   workspaceId: string;
   xiaoyuActorId: string;
 }): Promise<EventOrganizerOwnerPlan> {
-  return buildPlan({ ...input, lockEventRows: false });
+  return buildPlan({ ...input, lockRows: false });
 }
 
 export async function applyEventOrganizerOwnerPlan(input: {
@@ -469,7 +527,7 @@ export async function applyEventOrganizerOwnerPlan(input: {
   try {
     const lockedPlan = await buildPlan({
       client: input.client,
-      lockEventRows: true,
+      lockRows: true,
       workspaceId: input.workspaceId,
       xiaoyuActorId: input.xiaoyuActorId,
     });
@@ -487,22 +545,24 @@ export async function applyEventOrganizerOwnerPlan(input: {
       values.push(assignment.eventId, assignment.accountId);
       return `($${eventIndex}, $${accountIndex})`;
     });
-    await input.client.query(
+    const updated = await input.client.query<{ record_id: string; user_id: string | null }>(
       `update orbit_records as events
        set user_id = assignments.account_id
        from (values ${rows.join(", ")}) as assignments(event_id, account_id)
        where events.workspace_id = $1
          and events.collection_name = 'events'
-         and events.record_id = assignments.event_id`,
+         and events.record_id = assignments.event_id
+       returning events.record_id, events.user_id`,
       values,
     );
+    assertExactUpdatedPairs(updated.rows, lockedPlan.assignments);
     const finalRows = await readReviewedEvents(
       input.client,
       input.workspaceId,
       lockedPlan.assignments.map((assignment) => assignment.eventId),
       true,
     );
-    assertReviewedEvents(finalRows, lockedPlan.assignments);
+    assertFinalReviewedEventOwners(finalRows, lockedPlan.assignments);
     await writeOrVerifyAudit(input.client, input.workspaceId, lockedPlan);
     await input.client.query("COMMIT");
     return {

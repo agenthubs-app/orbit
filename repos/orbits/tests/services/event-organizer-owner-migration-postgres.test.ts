@@ -14,6 +14,7 @@ import {
   EVENT_ORGANIZER_ACCOUNT_MANIFEST,
   EVENT_ORGANIZER_ASSIGNMENTS,
 } from "../../features/events/organizer-accounts/manifest";
+import { authUserRecordId } from "../../features/auth/storage/auth-user-live-record-provider";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -36,7 +37,7 @@ async function seedIdentity(
        ($1, 'profiles', $9, $3, 'manual', $10, '{}', 'active', '', $11::jsonb, $6, $6)`,
     [
       workspaceId,
-      `auth-user:${email}`,
+      authUserRecordId(email),
       userId,
       `auth:${userId}`,
       JSON.stringify({
@@ -142,8 +143,16 @@ test(
       );
       assert.ok((await pool.query<{ user_id: string | null }>(`select user_id from orbit_records where workspace_id = $1 and collection_name = 'events'`, [workspaceId])).rows.every((row) => row.user_id === null));
 
-      const first = await applyEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID, expectedCount: 16, expectedPlanHash: plan.hash, plan });
+      const applyQueries: string[] = [];
+      const lockingClient = {
+        query: async <TRow>(sql: string, values?: readonly unknown[]) => {
+          applyQueries.push(sql);
+          return pool.query<TRow>(sql, values ? [...values] : undefined);
+        },
+      };
+      const first = await applyEventOrganizerOwnerPlan({ client: lockingClient, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID, expectedCount: 16, expectedPlanHash: plan.hash, plan });
       assert.equal(first.count, 16);
+      assert.ok(applyQueries.some((sql) => /collection_name in \('auth_users', 'accounts', 'profiles'\)[\s\S]*for update/i.test(sql)));
       const assigned = await pool.query<{ record_id: string; user_id: string }>(`select record_id, user_id from orbit_records where workspace_id = $1 and collection_name = 'events' order by record_id`, [workspaceId]);
       assert.deepEqual(assigned.rows, [...EVENT_ORGANIZER_ASSIGNMENTS].sort((left, right) => left.eventId.localeCompare(right.eventId)).map((assignment) => ({ record_id: assignment.eventId, user_id: assignment.organizerKey === "xiaoyu" ? XIAOYU_ACTOR_ID : accountIds.get(assignment.organizerKey)! })));
       assert.equal((await pool.query(`select count(*)::int as count from orbit_records where workspace_id = $1 and record_id = 'contact:unchanged' and user_id = 'account:other'`, [workspaceId])).rows[0]?.count, 1);
@@ -202,6 +211,21 @@ test(
       await pool.query("ROLLBACK");
 
       await pool.query("BEGIN");
+      await pool.query(`update orbit_records set record_id = 'auth-user:noncanonical' where workspace_id = $1 and collection_name = 'auth_users' and record_id = $2`, [workspaceId, authUserRecordId("yuhang-wei@organizers.orbit.example.test")]);
+      await assert.rejects(buildEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID }), /noncanonical auth user/i);
+      await pool.query("ROLLBACK");
+
+      await pool.query("BEGIN");
+      await pool.query(`update orbit_records set user_id = 'user:wrong' where workspace_id = $1 and collection_name = 'auth_users' and record_id = $2`, [workspaceId, authUserRecordId("kaori-ito@organizers.orbit.example.test")]);
+      await assert.rejects(buildEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID }), /noncanonical auth user/i);
+      await pool.query("ROLLBACK");
+
+      await pool.query("BEGIN");
+      await pool.query(`update orbit_records set payload = jsonb_set(payload, '{createdAt}', 'null'::jsonb) where workspace_id = $1 and collection_name = 'auth_users' and record_id = $2`, [workspaceId, authUserRecordId("agenthubs@example.com")]);
+      await assert.rejects(buildEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID }), /noncanonical Xiaoyu auth user/i);
+      await pool.query("ROLLBACK");
+
+      await pool.query("BEGIN");
       await pool.query(`update orbit_records set user_id = 'account:unexpected' where workspace_id = $1 and collection_name = 'events' and record_id = 'event_01'`, [workspaceId]);
       await assert.rejects(buildEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID }), /drifted ownership/i);
       await pool.query("ROLLBACK");
@@ -222,6 +246,46 @@ test(
         applyEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID, expectedCount: 16, expectedPlanHash: plan.hash, plan: extraPlan }),
         /changed since review/i,
       );
+      assert.equal((await pool.query(`select count(*)::int as count from orbit_records where workspace_id = $1 and collection_name = 'event_organizer_owner_migrations'`, [workspaceId])).rows[0]?.count, 0);
+    } finally {
+      await pool.end();
+      await admin.query(`drop schema if exists ${schema} cascade`);
+      await admin.end();
+    }
+  },
+);
+
+test(
+  "owner migration rolls back a partial event update before writing an audit record",
+  { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured", timeout: 30_000 },
+  async () => {
+    assert.ok(databaseUrl);
+    const schema = `event_organizer_owner_partial_${randomUUID().replaceAll("-", "")}`;
+    const workspaceId = `workspace:owner-partial:${schema}`;
+    const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+    const pool = new Pool({ connectionString: databaseUrl, max: 1, options: `-c search_path=${schema}` });
+    try {
+      await admin.query(`create schema ${schema}`);
+      await runOrbitRecordsMigration(pool);
+      await seedReviewedState(pool, workspaceId);
+      const plan = await buildEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID });
+      await pool.query(
+        `create function suppress_reviewed_event_owner_update() returns trigger language plpgsql as $$
+           begin
+             if new.record_id = 'event_01' then return null; end if;
+             return new;
+           end;
+         $$;
+         create trigger suppress_reviewed_event_owner_update
+           before update of user_id on orbit_records
+           for each row execute function suppress_reviewed_event_owner_update();`,
+      );
+
+      await assert.rejects(
+        applyEventOrganizerOwnerPlan({ client: pool, workspaceId, xiaoyuActorId: XIAOYU_ACTOR_ID, expectedCount: 16, expectedPlanHash: plan.hash, plan }),
+        /update exactly the 16 reviewed event owners/i,
+      );
+      assert.equal((await pool.query(`select count(*)::int as count from orbit_records where workspace_id = $1 and collection_name = 'events' and user_id is not null`, [workspaceId])).rows[0]?.count, 0);
       assert.equal((await pool.query(`select count(*)::int as count from orbit_records where workspace_id = $1 and collection_name = 'event_organizer_owner_migrations'`, [workspaceId])).rows[0]?.count, 0);
     } finally {
       await pool.end();
