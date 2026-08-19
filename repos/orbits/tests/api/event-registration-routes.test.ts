@@ -57,8 +57,10 @@ const registrationEvent: EventRecord = {
 };
 const loadRegistrationEvent = async (id: string) =>
   id === eventId ? registrationEvent : null;
+const noPublishedQuestionSet = async () => null;
 const { GET: getRegistration, POST: register } =
   createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     registrationService,
     resolveActor: async () => actor,
@@ -177,6 +179,7 @@ test("cancelling without a registration returns a stable not-found envelope", as
 
 test("event registration route rejects requests without an authenticated actor", async () => {
   const { GET } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     resolveActor: async () => null,
   });
@@ -196,6 +199,7 @@ test("event registration closes exactly when the event starts", async () => {
     startsAt: "2030-03-14T09:30:00.000Z",
   };
   const guarded = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: async () => startedEvent,
     now: () => new Date("2030-03-14T09:30:00.000Z"),
     registrationService: {
@@ -242,6 +246,7 @@ test("legacy registration writes cannot bypass an admission-controlled event", a
     },
   };
   const guarded = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     registrationService: guardedService,
     resolveActor: async () => actor,
@@ -274,6 +279,7 @@ test("legacy registration writes cannot bypass an admission-controlled event", a
 
 test("legacy registration writes fail closed when admission control cannot be read", async () => {
   const guarded = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     registrationService,
     resolveActor: async () => actor,
@@ -301,6 +307,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     provider: createMemoryEventRegistrationProvider(),
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     registrationService: tokenService,
     resolveActor: async () => tokenActor,
@@ -373,6 +380,7 @@ test("registration accepts only a complete set of actor-bound AI interview respo
     );
 
     const replayedByAnotherActor = createEventRegistrationRouteHandlers({
+      getPublishedQuestionSet: noPublishedQuestionSet,
       loadEvent: loadRegistrationEvent,
       registrationService: tokenService,
       resolveActor: async () => ({ id: "user:token-replay" }),
@@ -404,6 +412,7 @@ test("registration merges unsigned seeded answers under verified responses", asy
     provider: createMemoryEventRegistrationProvider(),
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
     loadEvent: loadRegistrationEvent,
     registrationService: tokenService,
     resolveActor: async () => tokenActor,

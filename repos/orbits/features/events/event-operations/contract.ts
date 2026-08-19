@@ -79,6 +79,9 @@ export interface EventOperationsSnapshotSourceVersion {
   membershipVersion: number;
   participantId: string;
   profileVersion: number;
+  /** Present only for registrations submitted against a published question set. */
+  questionSetHash?: string;
+  questionSetVersion?: number;
 }
 
 export interface EventOperationsCapturedSnapshot {

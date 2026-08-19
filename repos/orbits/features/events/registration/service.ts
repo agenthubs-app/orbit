@@ -160,11 +160,29 @@ export function createEventRegistrationService(input: {
     list({ eventId }) {
       return input.provider.listRegistrations(eventId);
     },
-    async register({ answers, displayName, eventId, interviewResponses, userId }) {
+    async register({
+      answers,
+      displayName,
+      eventId,
+      interviewResponses,
+      questionSetHash,
+      questionSetVersion,
+      userId,
+    }) {
       const normalizedAnswers = normalizeAnswers(answers);
       const normalizedResponses = interviewResponses?.length
         ? clone(interviewResponses)
         : [];
+      const suppliedQuestionSetVersion =
+        typeof questionSetVersion === "number" &&
+        Number.isSafeInteger(questionSetVersion) &&
+        questionSetVersion > 0
+          ? questionSetVersion
+          : undefined;
+      const suppliedQuestionSetHash =
+        typeof questionSetHash === "string" && questionSetHash.trim()
+          ? questionSetHash.trim()
+          : undefined;
       const existing = await input.provider.getRegistration(eventId, userId);
       const answersChanged = existing
         ? !sameAnswers(existing.participantProfile.answers, normalizedAnswers)
@@ -173,11 +191,17 @@ export function createEventRegistrationService(input: {
         normalizedResponses.length > 0 &&
           !existing?.participantProfile.interviewResponses?.length,
       );
+      const questionSetUpgrade = Boolean(
+        (suppliedQuestionSetVersion !== undefined || suppliedQuestionSetHash) &&
+          (existing?.participantProfile.questionSetVersion !== suppliedQuestionSetVersion ||
+            existing?.participantProfile.questionSetHash !== suppliedQuestionSetHash),
+      );
 
       if (
         existing?.status === "rsvped" &&
         !answersChanged &&
-        !responseSnapshotUpgrade
+        !responseSnapshotUpgrade &&
+        !questionSetUpgrade
       ) {
         return existing;
       }
@@ -198,6 +222,10 @@ export function createEventRegistrationService(input: {
                 : answersChanged
                   ? undefined
                   : existing.participantProfile.interviewResponses,
+            questionSetHash:
+              suppliedQuestionSetHash ?? existing.participantProfile.questionSetHash,
+            questionSetVersion:
+              suppliedQuestionSetVersion ?? existing.participantProfile.questionSetVersion,
             updatedAt: timestamp,
           },
           reactivatedAt:
@@ -224,6 +252,8 @@ export function createEventRegistrationService(input: {
           id: participantProfileId,
           interviewResponses:
             normalizedResponses.length > 0 ? normalizedResponses : undefined,
+          questionSetHash: suppliedQuestionSetHash,
+          questionSetVersion: suppliedQuestionSetVersion,
           updatedAt: timestamp,
           userId,
         },

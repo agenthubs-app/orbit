@@ -69,20 +69,24 @@ test("eventRegistrationToView maps empty registration and questions", () => {
   assert.deepEqual(view, {
     canCancel: false,
     confirmLabel: "确认报名",
+    questionSetHash: null,
+    questionSetVersion: null,
     questions: [
       {
         answer: "",
         field: "targetAttendees",
         id: "target_attendees",
         options: ["投资人", "日本本地 SaaS 买方", "跨境渠道方"],
-        prompt: "这场活动里，你最想认识哪类人？"
+        prompt: "这场活动里，你最想认识哪类人？",
+        required: false
       },
       {
         answer: "",
         field: "valueOffered",
         id: "value_offered",
         options: ["AI 落地经验", "企业客户介绍"],
-        prompt: "你可以为别人提供什么？"
+        prompt: "你可以为别人提供什么？",
+        required: false
       }
     ],
     statusDetail: "确认后只保存这场活动的参与资料。",

@@ -31,6 +31,7 @@ test("registration route returns a clear 409 after the event starts", async () =
     },
   });
   const { POST } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: async () => null,
     loadEvent: async (eventId) =>
       mockEventRecords.find((event) => event.id === eventId) ?? null,
     registrationService,

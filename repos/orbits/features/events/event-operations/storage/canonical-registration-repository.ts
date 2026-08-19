@@ -449,15 +449,32 @@ async function lockRegistrationScope(
     `
       select
         statement_timestamp() as db_now,
-        event_row.starts_at as profile_edit_deadline_at,
-        event_row.starts_at as registration_cutoff_at
+        configuration.profile_edit_deadline_at,
+        coalesce(
+          admission_policy.registration_closes_at,
+          configuration.registration_cutoff_at
+        ) as registration_cutoff_at
       from event_ops_events event_row
+      join event_ops_configuration_heads configuration_head
+        on configuration_head.workspace_id = event_row.workspace_id
+        and configuration_head.event_id = event_row.event_id
+      join event_ops_configurations configuration
+        on configuration.workspace_id = configuration_head.workspace_id
+        and configuration.event_id = configuration_head.event_id
+        and configuration.configuration_version =
+          configuration_head.configuration_version
+      left join event_ops_admission_policy_heads admission_policy_head
+        on admission_policy_head.workspace_id = event_row.workspace_id
+        and admission_policy_head.event_id = event_row.event_id
+      left join event_ops_admission_policy_versions admission_policy
+        on admission_policy.workspace_id = admission_policy_head.workspace_id
+        and admission_policy.event_id = admission_policy_head.event_id
+        and admission_policy.policy_version = admission_policy_head.policy_version
       where event_row.workspace_id = $1
         and event_row.event_id = $2
         and event_row.lifecycle_state_v2 = 'published'
-        and event_row.starts_at is not null
         and event_row.registration_migration_state = 'canonical'
-      for share of event_row
+      for share of event_row, configuration_head, configuration
     `,
     [workspaceId, eventId],
   );
@@ -465,7 +482,7 @@ async function lockRegistrationScope(
   if (!row) {
     throw new EventRegistrationWindowError(
       "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
-      "The published event start time is unavailable; registration writes are unavailable.",
+      "The published registration configuration is unavailable; registration writes are unavailable.",
     );
   }
   return row;
@@ -928,6 +945,8 @@ export function createPostgresCanonicalRegistrationMethods({
       displayName,
       eventId,
       interviewResponses,
+      questionSetHash,
+      questionSetVersion,
       userId,
     }: RegisterForEventInput) {
       return client.transaction(async (transaction) => {
@@ -962,6 +981,16 @@ export function createPostgresCanonicalRegistrationMethods({
           );
         }
         const normalizedDisplayName = displayName?.trim() || undefined;
+        const suppliedQuestionSetVersion =
+          typeof questionSetVersion === "number" &&
+          Number.isSafeInteger(questionSetVersion) &&
+          questionSetVersion > 0
+            ? questionSetVersion
+            : undefined;
+        const suppliedQuestionSetHash =
+          typeof questionSetHash === "string" && questionSetHash.trim()
+            ? questionSetHash.trim()
+            : undefined;
         const responseSnapshotUpgrade = Boolean(
           interviewResponses?.length &&
             !existing?.participantProfile.interviewResponses?.length,
@@ -975,9 +1004,16 @@ export function createPostgresCanonicalRegistrationMethods({
               normalizedDisplayName &&
                 normalizedDisplayName !== existing.participantProfile.displayName,
             ) ||
-            responseSnapshotUpgrade
+            responseSnapshotUpgrade ||
+            Boolean(
+              (suppliedQuestionSetVersion !== undefined || suppliedQuestionSetHash) &&
+                (existing.participantProfile.questionSetVersion !== suppliedQuestionSetVersion ||
+                  existing.participantProfile.questionSetHash !== suppliedQuestionSetHash),
+            )
           : Object.keys(normalizedAnswers).length > 0 ||
-            Boolean(normalizedDisplayName);
+            Boolean(normalizedDisplayName) ||
+            suppliedQuestionSetVersion !== undefined ||
+            Boolean(suppliedQuestionSetHash);
         if (
           existing?.status === "rsvped" &&
           !profileChanged
@@ -1049,6 +1085,10 @@ export function createPostgresCanonicalRegistrationMethods({
                             )
                           ? existing.participantProfile.interviewResponses
                           : undefined,
+                    questionSetHash:
+                      suppliedQuestionSetHash ?? existing.participantProfile.questionSetHash,
+                    questionSetVersion:
+                      suppliedQuestionSetVersion ?? existing.participantProfile.questionSetVersion,
                     updatedAt: dbNow,
                   }
                 : existing.participantProfile,
@@ -1073,6 +1113,8 @@ export function createPostgresCanonicalRegistrationMethods({
                 interviewResponses: interviewResponses?.length
                   ? clone(interviewResponses)
                   : undefined,
+                questionSetHash: suppliedQuestionSetHash,
+                questionSetVersion: suppliedQuestionSetVersion,
                 updatedAt: dbNow,
                 userId,
               },

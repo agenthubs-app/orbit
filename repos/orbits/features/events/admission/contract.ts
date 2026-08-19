@@ -82,6 +82,8 @@ export interface EventAdmissionProfileSnapshot {
   answers: EventParticipantProfileAnswers;
   displayName?: string;
   interviewResponses?: readonly EventProfileResponseSnapshot[];
+  questionSetHash?: string;
+  questionSetVersion?: number;
 }
 
 export interface DecideEventAdmissionApplicationInput {

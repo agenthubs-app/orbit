@@ -36,7 +36,7 @@ export interface EventRegistrationQuestion {
   options: readonly string[];
   participantProfileField: EventParticipantProfileField;
   prompt: string;
-  required: true;
+  required: boolean;
 }
 
 export interface EventRegistrationQuestionSet {
@@ -53,6 +53,10 @@ export interface EventRegistrationQuestionSet {
     model: string | null;
     provider: string | null;
   };
+  /** Immutable published question-set identity, when organizer experience is active. */
+  questionSetHash?: string;
+  questionSetVersion?: number;
+  track?: "v1" | "v2";
   questions: readonly EventRegistrationQuestion[];
 }
 
@@ -64,6 +68,8 @@ export interface EventParticipantProfile {
   id: string;
   /** Verified immutable AI question/answer snapshots scoped to this event. */
   interviewResponses?: readonly import("./interview-response-contract").EventProfileResponseSnapshot[];
+  questionSetHash?: string;
+  questionSetVersion?: number;
   updatedAt: string;
   userId: string;
 }
@@ -95,6 +101,9 @@ export interface RegisterForEventInput {
   eventId: string;
   /** Server-verified immutable question/answer snapshots. Never accept these directly from an untrusted client. */
   interviewResponses?: import("./interview-response-contract").EventProfileResponseSnapshot[] | null;
+  /** Server-checked identity of the published organizer question set. */
+  questionSetHash?: string | null;
+  questionSetVersion?: number | null;
   userId: string;
 }
 

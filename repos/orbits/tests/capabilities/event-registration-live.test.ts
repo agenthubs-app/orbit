@@ -77,7 +77,7 @@ test("registration question generation uses the Orbit Agent model boundary and v
   assert.equal(result.provenance.model, "orbit-shared-model");
 });
 
-test("invalid or unavailable model output returns no substitute questions", async () => {
+test("invalid or unavailable model output falls back to deterministic questions", async () => {
   const result = await generateEventRegistrationQuestions({
     event: registerableEvent(),
     language: "en",
@@ -92,8 +92,8 @@ test("invalid or unavailable model output returns no substitute questions", asyn
     }),
   });
 
-  assert.equal(result.questions.length, 0);
-  assert.equal(result.provenance.generationMethod, "orbit-agent-model-failed");
+  assert.equal(result.questions.length, 2);
+  assert.equal(result.provenance.generationMethod, "deterministic-fallback");
   assert.equal(result.provenance.fallbackReason, "MODEL_REQUEST_FAILED");
   assert.equal(result.provenance.externalNetworkRequested, true);
 });

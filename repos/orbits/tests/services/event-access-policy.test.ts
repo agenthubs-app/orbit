@@ -22,6 +22,8 @@ const EXPECTED: Readonly<Record<EventAccessRole, readonly string[]>> = {
     "event.center.read",
     "operations.read_sensitive",
     "operations.configure",
+    "experience.configure",
+    "experience.publish",
     "attendees.read_full",
     "attendees.export",
     "check_in.roster.read_limited",

@@ -208,7 +208,14 @@ export function EventRegistrationScreen() {
 
     const result = await client.post<unknown>(eventRegistrationPath(eventId), {
       body: {
-        answers: buildEventRegistrationAnswers(registrationView.questions, answers)
+        answers: buildEventRegistrationAnswers(registrationView.questions, answers),
+        ...(registrationView.questionSetHash &&
+        registrationView.questionSetVersion !== null
+          ? {
+              questionSetHash: registrationView.questionSetHash,
+              questionSetVersion: registrationView.questionSetVersion
+            }
+          : {})
       }
     });
 
@@ -367,7 +374,7 @@ function RegistrationForm({
           <Text style={styles.secondaryButtonText}>返回活动</Text>
         </Pressable>
       </DataCard>
-      <DataCard detail="所有问题都可以跳过" title="参与资料">
+      <DataCard detail="标记为必答的问题需要回答，其余问题可以跳过" title="参与资料">
         {registration.questions.length === 0 ? (
           <EmptyState
             message="这场活动暂时没有需要补充的问题。"
@@ -569,6 +576,7 @@ function RegistrationQuestion({
   return (
     <View style={styles.questionBlock}>
       <Text style={styles.questionText}>{question.prompt}</Text>
+      <Text style={styles.evidenceText}>{question.required ? "必答" : "可选"}</Text>
       {question.options.length > 0 ? (
         <View style={styles.optionsRow}>
           {question.options.map((option) => (

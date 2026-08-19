@@ -7,7 +7,12 @@ import {
 } from "../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import { AppError } from "../../../../../shared/errors/app-error";
-import type { EventParticipantProfileAnswers } from "../../../../../features/events/registration/contract";
+import type {
+  EventParticipantProfileAnswers,
+  EventParticipantProfileField,
+} from "../../../../../features/events/registration/contract";
+import type { EventExperiencePublishedQuestionSet } from "../../../../../features/events/experience/contract";
+import { createConfiguredEventExperienceService } from "../../../../../features/events/experience/runtime";
 import {
   answersFromProfileResponses,
   legacyResponsesFromAnswers,
@@ -38,10 +43,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 async function readRegistrationPayload(
   request: Request,
-  input: { actorId: string; eventId: string },
+  input: {
+    actorId: string;
+    eventId: string;
+    requiredFields?: readonly EventParticipantProfileField[];
+  },
 ): Promise<{
   answers: EventParticipantProfileAnswers;
   interviewResponses: readonly EventProfileResponseSnapshot[];
+  questionSetHash?: string;
+  questionSetVersion?: number;
 }> {
   if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
     throw new InterviewQuestionTokenError(
@@ -107,16 +118,20 @@ async function readRegistrationPayload(
         ...legacyResponsesFromAnswers(seededAnswers, new Date().toISOString()),
         ...interviewResponses,
       ];
-      const missingCore = missingCoreProfileFields(mergedResponses);
-      if (missingCore.length > 0) {
+      const missingRequired = missingRequiredProfileFields(
+        mergedResponses,
+        input.requiredFields,
+      );
+      if (missingRequired.length > 0) {
         throw new InterviewQuestionTokenError(
           "INTERVIEW_CORE_FIELDS_REQUIRED",
-          `Core event profile fields are still unanswered: ${missingCore.join(", ")}.`,
+          `Required event profile fields are still unanswered: ${missingRequired.join(", ")}.`,
         );
       }
       return {
         answers: answersFromProfileResponses(mergedResponses),
         interviewResponses: mergedResponses,
+        ...questionSetMetadata(body),
       };
     }
     const answers = isRecord(body.answers)
@@ -126,16 +141,20 @@ async function readRegistrationPayload(
       answers,
       new Date().toISOString(),
     );
-    const missingCore = missingCoreProfileFields(answerSnapshots);
-    if (missingCore.length > 0) {
+    const missingRequired = missingRequiredProfileFields(
+      answerSnapshots,
+      input.requiredFields,
+    );
+    if (missingRequired.length > 0) {
       throw new InterviewQuestionTokenError(
         "INTERVIEW_CORE_FIELDS_REQUIRED",
-        `Required event-registration answers are still missing: ${missingCore.join(", ")}.`,
+        `Required event-registration answers are still missing: ${missingRequired.join(", ")}.`,
       );
     }
     return {
       answers: answersFromProfileResponses(answerSnapshots),
       interviewResponses: answerSnapshots,
+      ...questionSetMetadata(body),
     };
   } catch (error) {
     if (error instanceof InterviewQuestionTokenError) throw error;
@@ -144,6 +163,41 @@ async function readRegistrationPayload(
       "The event-registration payload is not valid JSON.",
     );
   }
+}
+
+function missingRequiredProfileFields(
+  responses: readonly Pick<EventProfileResponseSnapshot, "field">[],
+  requiredFields?: readonly EventParticipantProfileField[],
+): readonly EventParticipantProfileField[] {
+  const answered = new Set(responses.map((response) => response.field));
+  const required = requiredFields ?? missingCoreProfileFields(responses);
+  return required.filter((field) => !answered.has(field));
+}
+
+function questionSetMetadata(body: Record<string, unknown>): {
+  questionSetHash?: string;
+  questionSetVersion?: number;
+} {
+  const version = body.questionSetVersion;
+  const hash = body.questionSetHash;
+  if (version === undefined && hash === undefined) return {};
+  if (
+    (version !== undefined &&
+      (typeof version !== "number" ||
+        !Number.isSafeInteger(version) ||
+        version < 1)) ||
+    (hash !== undefined &&
+      (typeof hash !== "string" || !/^[a-f0-9]{64}$/u.test(hash)))
+  ) {
+    throw new InterviewQuestionTokenError(
+      "INTERVIEW_QUESTION_TOKEN_INVALID",
+      "The published question-set identity is invalid.",
+    );
+  }
+  return {
+    questionSetHash: typeof hash === "string" ? hash : undefined,
+    questionSetVersion: typeof version === "number" ? version : undefined,
+  };
 }
 
 function errorResponse(error: AppError, status: number): Response {
@@ -155,6 +209,9 @@ function errorResponse(error: AppError, status: number): Response {
 }
 
 export function createEventRegistrationRouteHandlers(input: {
+  getPublishedQuestionSet?: (
+    eventId: string,
+  ) => Promise<EventExperiencePublishedQuestionSet | null>;
   loadEvent?: typeof loadEventForRegistration;
   now?: () => Date;
   registrationService?: EventRegistrationService;
@@ -164,6 +221,12 @@ export function createEventRegistrationRouteHandlers(input: {
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
   const loadEvent = input.loadEvent ?? loadEventForRegistration;
+  const getPublishedQuestionSet =
+    input.getPublishedQuestionSet ??
+    (async (eventId: string) =>
+      (await createConfiguredEventExperienceService())?.getPublishedQuestionSet(
+        eventId,
+      ) ?? null);
   async function GET(
     request: Request,
     context: EventRegistrationRouteContext,
@@ -188,6 +251,9 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const searchParams = new URL(request.url).searchParams;
     const shouldGenerateQuestions = searchParams.get("questions") !== "false";
+    const publishedQuestionSet = shouldGenerateQuestions
+      ? await getPublishedQuestionSet(event.id)
+      : null;
     const registration = await registrationService.get({
       eventId: event.id,
       userId: actor.id,
@@ -196,6 +262,7 @@ export function createEventRegistrationRouteHandlers(input: {
       ? await generateEventRegistrationQuestions({
           event,
           language: searchParams.get("language") === "en" ? "en" : "zh",
+          publishedQuestionSet,
         })
       : {
           provenance: {
@@ -275,15 +342,39 @@ export function createEventRegistrationRouteHandlers(input: {
 
     let registration;
     try {
+      const publishedQuestionSet = await getPublishedQuestionSet(event.id);
+      const requiredFields = publishedQuestionSet
+        ? publishedQuestionSet.questions
+            .filter((question) => question.required)
+            .map((question) => question.participantProfileField)
+        : undefined;
       const payload = await readRegistrationPayload(request, {
         actorId: actor.id,
         eventId: event.id,
+        requiredFields,
       });
+      if (
+        publishedQuestionSet &&
+        ((payload.questionSetVersion !== undefined &&
+          payload.questionSetVersion !== publishedQuestionSet.questionSetVersion) ||
+          (payload.questionSetHash !== undefined &&
+            payload.questionSetHash !== publishedQuestionSet.hash) ||
+          (publishedQuestionSet.track === "v2" &&
+            (payload.questionSetVersion !== publishedQuestionSet.questionSetVersion ||
+              payload.questionSetHash !== publishedQuestionSet.hash)))
+      ) {
+        throw new AppError(
+          "CONFLICT",
+          "The registration questions changed. Refresh the form before submitting.",
+        );
+      }
       registration = await registrationService.register({
         answers: payload.answers,
         displayName: actor.name,
         eventId: event.id,
         interviewResponses: [...payload.interviewResponses],
+        questionSetHash: publishedQuestionSet?.hash,
+        questionSetVersion: publishedQuestionSet?.questionSetVersion,
         userId: actor.id,
       });
     } catch (error) {
@@ -305,6 +396,9 @@ export function createEventRegistrationRouteHandlers(input: {
           ),
           unavailable ? 503 : 409,
         );
+      }
+      if (error instanceof AppError) {
+        return errorResponse(error, error.code === "CONFLICT" ? 409 : 422);
       }
       throw error;
     }

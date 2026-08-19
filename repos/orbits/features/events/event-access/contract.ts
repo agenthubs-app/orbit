@@ -13,6 +13,8 @@ export const EVENT_ACCESS_CAPABILITIES = [
   "owner.transfer",
   "operations.read_sensitive",
   "operations.configure",
+  "experience.configure",
+  "experience.publish",
   "attendees.read_full",
   "attendees.export",
   "check_in.roster.read_limited",

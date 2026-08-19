@@ -244,6 +244,8 @@ test("frozen snapshot hash changes when a typed profile answer changes", async (
                     },
                     registrationProfile: {
                       answers: answersFor(desiredOutcome),
+                      questionSetHash: "question-set-hash-v2",
+                      questionSetVersion: 7,
                     },
                   },
                   profile_version: "1",
@@ -267,6 +269,8 @@ test("frozen snapshot hash changes when a typed profile answer changes", async (
     Object.keys(first.snapshot.participants[0]?.profileAnswers ?? {}).length,
     8,
   );
+  assert.equal(first.sourceVersions[0]?.questionSetHash, "question-set-hash-v2");
+  assert.equal(first.sourceVersions[0]?.questionSetVersion, 7);
 });
 
 test(

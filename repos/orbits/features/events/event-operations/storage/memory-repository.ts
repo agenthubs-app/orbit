@@ -420,12 +420,30 @@ export function createMemoryEventOperationsRepository(
           hash: snapshotHash(participants),
           participants,
         },
-        sourceVersions: participants.map((participant) => ({
-          actorId: participant.actorId,
-          membershipVersion: 1,
-          participantId: participant.participantId,
-          profileVersion: 1,
-        })),
+        sourceVersions: participants.map((participant) => {
+          const registration = registrations.find(
+            (candidate) =>
+              candidate.participantProfileId === participant.participantId,
+          );
+          return {
+            actorId: participant.actorId,
+            membershipVersion: 1,
+            participantId: participant.participantId,
+            profileVersion: 1,
+            ...(registration?.participantProfile.questionSetHash
+              ? {
+                  questionSetHash:
+                    registration.participantProfile.questionSetHash,
+                }
+              : {}),
+            ...(registration?.participantProfile.questionSetVersion
+              ? {
+                  questionSetVersion:
+                    registration.participantProfile.questionSetVersion,
+                }
+              : {}),
+          };
+        }),
       };
     },
 

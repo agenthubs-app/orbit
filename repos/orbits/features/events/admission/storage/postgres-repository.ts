@@ -116,7 +116,17 @@ function normalizedProfile(
 ): EventAdmissionProfileSnapshot {
   const profile = jsonObject(value, "profilePayload") as Record<string, unknown>;
   validateJson(value, "profilePayload");
-  exactKeys(profile, ["answers", "displayName", "interviewResponses"], "profilePayload");
+  exactKeys(
+    profile,
+    [
+      "answers",
+      "displayName",
+      "interviewResponses",
+      "questionSetHash",
+      "questionSetVersion",
+    ],
+    "profilePayload",
+  );
   const answers = jsonObject(profile.answers, "profilePayload.answers") as Record<string, unknown>;
   exactKeys(answers, EVENT_PARTICIPANT_PROFILE_FIELDS, "profilePayload.answers");
   for (const [field, answer] of Object.entries(answers)) {
@@ -124,6 +134,21 @@ function normalizedProfile(
   }
   if (profile.displayName !== undefined) {
     requiredString(profile.displayName, "profilePayload.displayName");
+  }
+  const hasQuestionSetHash = profile.questionSetHash !== undefined;
+  const hasQuestionSetVersion = profile.questionSetVersion !== undefined;
+  if (hasQuestionSetHash !== hasQuestionSetVersion) {
+    invalid("Admission profilePayload question-set identity is incomplete.");
+  }
+  if (hasQuestionSetHash) {
+    requiredString(profile.questionSetHash, "profilePayload.questionSetHash");
+    if (
+      typeof profile.questionSetVersion !== "number" ||
+      !Number.isSafeInteger(profile.questionSetVersion) ||
+      profile.questionSetVersion < 1
+    ) {
+      invalid("Admission profilePayload.questionSetVersion is invalid.");
+    }
   }
   if (profile.interviewResponses !== undefined) {
     if (!Array.isArray(profile.interviewResponses)) {
@@ -686,6 +711,12 @@ async function projectCanonicalMembership(input: {
       id: participantProfileId,
       ...(input.application.profilePayload.interviewResponses
         ? { interviewResponses: input.application.profilePayload.interviewResponses }
+        : {}),
+      ...(input.application.profilePayload.questionSetHash
+        ? { questionSetHash: input.application.profilePayload.questionSetHash }
+        : {}),
+      ...(input.application.profilePayload.questionSetVersion
+        ? { questionSetVersion: input.application.profilePayload.questionSetVersion }
         : {}),
       updatedAt: input.application.submittedAt,
       userId: input.application.actorId,

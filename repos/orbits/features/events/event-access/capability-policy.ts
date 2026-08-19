@@ -27,6 +27,8 @@ const ROLE_CAPABILITIES: Readonly<
     "event.center.read",
     "operations.read_sensitive",
     "operations.configure",
+    "experience.configure",
+    "experience.publish",
     "attendees.read_full",
     "attendees.export",
     "check_in.roster.read_limited",
