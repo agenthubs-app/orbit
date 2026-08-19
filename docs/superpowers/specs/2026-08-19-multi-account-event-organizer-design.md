@@ -49,6 +49,8 @@ profile.accountId == account.id
 
 本地历史 Account 与公开 Profile 的 payload 已经正确，但两条 LiveRecord 的外层 `user_id` 为空。bootstrap 额外包含两项精确的 canonical ownership repair，只把这两个外层 `user_id` 设置为 `account_orbit_generated`；不得改变 Account/Profile payload、Profile 文案或其他元数据。冲突的非空 owner 必须 fail closed。
 
+同一批历史数据中，选定的 6 条小雨现有 Contact 也具有正确 payload、active lifecycle 和确定 ID，但外层 `user_id` 为空。bootstrap 额外包含 6 项精确的 Contact ownership repair，将它们归属到 `account_orbit_generated` 后再创建 ContactActorLink。该修复只适用于这 6 个已审核 Contact；已有非空 owner 一律视为冲突，不得接管。apply 在校验和修复前必须对 2 条 canonical 记录及 6 条 Contact 记录加事务行锁。
+
 account provisioner 必须先识别完整、无冲突的既有 membership，再决定是否创建默认 Account/Profile，避免后续 Google 登录为 `agenthubs` 生成第二个影子 Account。若 AuthUser、membership、Account 或小雨原 Profile 的链路与上述选择不一致，迁移 fail closed。
 
 ## 4. 账号与联系人关联
@@ -70,7 +72,7 @@ interface ContactActorLink {
 
 - 同一 `ownerActorId + contactId` 最多有一个 active link；
 - 同一 `ownerActorId + linkedActorId` 最多对应一个 active Contact；
-- 关联不改变 Contact 的归属，也不会把对方的私有 Profile 数据复制给小雨；
+- 对已有有效 owner 的 Contact，关联不改变其归属；本次仅修复 6 条历史 owner 为空的已审核 Contact，且不会复制对方的私有 Profile 数据；
 - 解除关联不删除用户账号、Contact 或历史活动；
 - 7 位非人脉主办方没有小雨侧 Contact，也没有 active ContactActorLink。
 
