@@ -53,5 +53,8 @@ tools/audit-progress-dashboard/
 # Local backups used while flattening nested git repos into this root repo
 .local-git-backups/
 
+# Local database migration backups
+.artifacts/db-backups/
+
 # Isolated feature worktrees
 .worktrees/
