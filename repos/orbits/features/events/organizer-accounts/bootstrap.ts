@@ -20,11 +20,18 @@ export const XIAOYU_AUTH_MEMBERSHIP_EVIDENCE_ID = "evidence:organizer-account-ma
 const XIAOYU_AUTH_MEMBERSHIP_TIMESTAMP = "2026-08-19T00:00:00.000Z";
 const XIAOYU_DISPLAY_NAME = "agenthubs";
 
+export interface OrganizerAccountBootstrapMembershipWriter {
+  insertIfAbsent: (
+    record: LiveRecord<Record<string, unknown>>,
+  ) => Promise<"inserted" | "existing">;
+}
+
 export interface OrganizerAccountBootstrapDependencies {
   accountProvisioner: AuthAccountProvisioningProvider;
   authUserProvider: AuthUserStorageProvider;
   authUserService: AuthUserService;
   contactActorLinkProvider: ContactActorLinkProvider;
+  membershipWriter: OrganizerAccountBootstrapMembershipWriter;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }
@@ -307,12 +314,18 @@ async function ensureXiaoyuMembership(
   if (matching.length > 0) {
     throw new Error("Xiaoyu auth membership is ambiguous.");
   }
-  if (deterministic) {
-    return false;
+  const state = await dependencies.membershipWriter.insertIfAbsent(expected);
+  const afterInsert = await dependencies.store.getRecord({
+    workspaceId: dependencies.workspaceId,
+    collectionName: "profiles",
+    recordId: expected.recordId,
+    includeDeleted: true,
+  });
+  if (!afterInsert || !sameMembershipRecord(afterInsert, expected)) {
+    throw new Error("Xiaoyu auth membership conflicts with the reviewed binding.");
   }
 
-  await dependencies.store.upsertRecord(expected);
-  return true;
+  return state === "inserted";
 }
 
 function isValidOrganizerAccount(

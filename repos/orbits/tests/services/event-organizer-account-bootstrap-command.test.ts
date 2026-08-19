@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createPostgresOrganizerMembershipWriter,
   parseEventOrganizerAccountBootstrapCommand,
   runEventOrganizerAccountBootstrapCommand,
 } from "../../scripts/bootstrap-event-organizer-accounts";
@@ -9,6 +10,7 @@ import type {
   OrganizerAccountBootstrapDependencies,
   OrganizerAccountBootstrapPlan,
 } from "../../features/events/organizer-accounts/bootstrap";
+import type { LiveRecord } from "../../shared/storage/live-record-store";
 
 const userId = "user_mry5y200_58jpi8";
 const hash = "a".repeat(64);
@@ -180,4 +182,37 @@ test("runner rolls back failed apply without commit or success log", async () =>
 
   assert.deepEqual(harness.operations, ["load-env", "BEGIN", "ROLLBACK", "runtime-close"]);
   assert.deepEqual(harness.logs, []);
+});
+
+test("Postgres membership writer uses insert-if-absent without updates", async () => {
+  const calls: Array<{ text: string; values: readonly unknown[] | undefined }> = [];
+  const writer = createPostgresOrganizerMembershipWriter({
+    client: {
+      close: async () => {},
+      query: async <TRow>(text: string, values?: readonly unknown[]) => {
+        calls.push({ text, values });
+        return { rows: [{ record_id: "profile:auth-membership:user_mry5y200_58jpi8" }] as TRow[] };
+      },
+    },
+  });
+  const record: LiveRecord<Record<string, unknown>> = {
+    workspaceId: "workspace:test",
+    collectionName: "profiles",
+    recordId: "profile:auth-membership:user_mry5y200_58jpi8",
+    userId: "account_orbit_generated",
+    sourceType: "manual",
+    sourceId: "auth-membership:user_mry5y200_58jpi8",
+    evidenceIds: ["evidence:organizer-account-manifest:v1"],
+    lifecycleState: "active",
+    createdAt: "2026-08-19T00:00:00.000Z",
+    updatedAt: "2026-08-19T00:00:00.000Z",
+    payload: { id: "user_mry5y200_58jpi8", accountId: "account_orbit_generated" },
+  };
+
+  assert.equal(await writer.insertIfAbsent(record), "inserted");
+  assert.match(calls[0]!.text, /insert into orbit_records/i);
+  assert.match(calls[0]!.text, /on conflict \(workspace_id, collection_name, record_id\)\s+do nothing/i);
+  assert.match(calls[0]!.text, /returning record_id/i);
+  assert.doesNotMatch(calls[0]!.text, /do update/i);
+  assert.equal(calls[0]!.values?.[2], record.recordId);
 });

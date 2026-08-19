@@ -79,6 +79,19 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
   ]);
   const authUserProvider = createStorageAuthUserProvider({ store, workspaceId });
   const accountProvisioner = createStorageAuthAccountProvisioningProvider({ store, workspaceId });
+  const membershipWriter = {
+    async insertIfAbsent(next: LiveRecord<Record<string, unknown>>) {
+      const existing = await store.getRecord({
+        workspaceId,
+        collectionName: next.collectionName,
+        recordId: next.recordId,
+        includeDeleted: true,
+      });
+      if (existing) return "existing" as const;
+      await store.upsertRecord(next);
+      return "inserted" as const;
+    },
+  };
 
   return {
     dependencies: {
@@ -90,6 +103,7 @@ function createDependencies(options: { xiaoyuProvider?: "credentials" | "google"
         now: () => new Date(timestamp),
       }),
       contactActorLinkProvider: createStorageContactActorLinkProvider({ store, workspaceId }),
+      membershipWriter,
       store,
       workspaceId,
     } satisfies OrganizerAccountBootstrapDependencies,
@@ -322,6 +336,39 @@ test("rejects a second active Xiaoyu membership profile", async () => {
       plan,
     }, dependencies),
     /membership is ambiguous/i,
+  );
+});
+
+test("rejects and preserves a deterministic membership inserted concurrently by the writer", async () => {
+  const { dependencies, store } = createDependencies();
+  const plan = await buildOrganizerAccountBootstrapPlan({
+    dependencies,
+    xiaoyuAuthUserId: xiaoyuUserId,
+  });
+  dependencies.membershipWriter = {
+    async insertIfAbsent(next) {
+      await store.upsertRecord({ ...next, sourceId: "race:conflicting-membership" });
+      return "existing";
+    },
+  };
+
+  await assert.rejects(
+    applyOrganizerAccountBootstrapPlan({
+      expectedCount: 20,
+      expectedPlanHash: plan.hash,
+      password: "organizer-password",
+      plan,
+    }, dependencies),
+    /membership conflicts/i,
+  );
+  assert.equal(
+    store.getRecord({
+      workspaceId,
+      collectionName: "profiles",
+      recordId: `profile:auth-membership:${xiaoyuUserId}`,
+      includeDeleted: true,
+    })?.sourceId,
+    "race:conflicting-membership",
   );
 });
 

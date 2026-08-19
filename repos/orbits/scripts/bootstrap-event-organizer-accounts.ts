@@ -7,6 +7,7 @@ import {
   type OrganizerAccountBootstrapPlan,
   type OrganizerAccountBootstrapVerification,
   type OrganizerAccountBootstrapDependencies,
+  type OrganizerAccountBootstrapMembershipWriter,
 } from "../features/events/organizer-accounts/bootstrap";
 import { createAuthUserService } from "../features/auth/auth-user-service";
 import { createStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
@@ -14,6 +15,7 @@ import { createStorageAuthAccountProvisioningProvider } from "../features/auth/s
 import { createStorageContactActorLinkProvider } from "../features/contacts/contact-actor-links/storage-provider";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import type { ClosableLiveRecordSqlClient } from "../shared/storage/postgres-live-record-store";
+import type { LiveRecord } from "../shared/storage/live-record-store";
 import { loadLocalEnv } from "./load-local-env";
 
 export type EventOrganizerAccountBootstrapCommand =
@@ -111,6 +113,62 @@ export interface EventOrganizerAccountBootstrapRunnerOptions {
   log?: (value: string) => void;
 }
 
+function membershipRecordValues(
+  record: LiveRecord<Record<string, unknown>>,
+): readonly unknown[] {
+  return [
+    record.workspaceId,
+    record.collectionName,
+    record.recordId,
+    record.userId ?? null,
+    record.sourceType,
+    record.sourceId,
+    record.sourceLabel ?? null,
+    record.provider ?? null,
+    record.providerRecordId ?? null,
+    [...record.evidenceIds],
+    record.targetType ?? null,
+    record.targetId ?? null,
+    record.occurredAt ?? null,
+    record.lifecycleState,
+    record.searchText ?? "",
+    record.payload,
+    record.createdAt,
+    record.updatedAt,
+    record.deletedAt ?? null,
+  ];
+}
+
+export function createPostgresOrganizerMembershipWriter({
+  client,
+}: {
+  client: ClosableLiveRecordSqlClient;
+}): OrganizerAccountBootstrapMembershipWriter {
+  return {
+    async insertIfAbsent(record) {
+      const result = await client.query<{ record_id: string }>(
+        `
+          insert into orbit_records (
+            workspace_id, collection_name, record_id, user_id, source_type,
+            source_id, source_label, provider, provider_record_id, evidence_ids,
+            target_type, target_id, occurred_at, lifecycle_state, search_text,
+            payload, created_at, updated_at, deleted_at
+          ) values (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18, $19
+          )
+          on conflict (workspace_id, collection_name, record_id)
+          do nothing
+          returning record_id
+        `,
+        membershipRecordValues(record),
+      );
+
+      return result.rows.length === 1 ? "inserted" : "existing";
+    },
+  };
+}
+
 function createDependencies(): EventOrganizerAccountBootstrapRuntime {
   const configured = createConfiguredPostgresLiveRecordStore({ max: 1 });
   if (!configured) {
@@ -135,6 +193,9 @@ function createDependencies(): EventOrganizerAccountBootstrapRuntime {
       contactActorLinkProvider: createStorageContactActorLinkProvider({
         store: configured.store,
         workspaceId: configured.workspaceId,
+      }),
+      membershipWriter: createPostgresOrganizerMembershipWriter({
+        client: configured.client,
       }),
       store: configured.store,
       workspaceId: configured.workspaceId,
