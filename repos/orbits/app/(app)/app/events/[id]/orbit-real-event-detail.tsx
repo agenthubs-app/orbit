@@ -203,7 +203,7 @@ function primaryAction(
   }
   if (registrationStatus === "cancelled") {
     if (registrationAvailability !== "open") {
-      return <RegistrationUnavailableAction availability={registrationAvailability} flex={flex} t={t} />;
+      return <RegistrationUnavailableAction availability={registrationAvailability} event={event} flex={flex} showReminder t={t} />;
     }
     return (
       <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
@@ -212,7 +212,7 @@ function primaryAction(
     );
   }
   if (registrationAvailability !== "open") {
-    return <RegistrationUnavailableAction availability={registrationAvailability} flex={flex} t={t} />;
+    return <RegistrationUnavailableAction availability={registrationAvailability} event={event} flex={flex} showReminder t={t} />;
   }
   return (
     <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
@@ -236,11 +236,15 @@ function registrationAvailabilityCopy(
 
 function RegistrationUnavailableAction({
   availability,
+  event,
   flex,
+  showReminder = false,
   t,
 }: {
   availability: Exclude<EventRegistrationAvailability, "open">;
+  event?: OrbitLandingEventView;
   flex: CSSProperties["flex"];
+  showReminder?: boolean;
   t: Translate;
 }) {
   const detail =
@@ -255,8 +259,8 @@ function RegistrationUnavailableAction({
             zh: "报名所需的活动画像编辑窗口已冻结，本场不会重新开放完整报名流程。",
           })
         : t({
-            en: "The registration window is missing or cannot be read. A next opening time has not been published, and no reminder was created.",
-            zh: "报名窗口尚未配置或当前无法读取；下一次开放时间未公布，也没有创建开放提醒。",
+            en: "The registration window is missing or cannot be read. A next opening time has not been published.",
+            zh: "报名窗口尚未配置或当前无法读取；下一次开放时间尚未公布。",
           });
 
   return (
@@ -269,6 +273,110 @@ function RegistrationUnavailableAction({
         <a href={productHref("/events")}>
           {t({ en: "View other events accepting registration", zh: "查看其他可报名活动" })}
         </a>
+      </span>
+      {showReminder && availability === "unavailable" && event ? (
+        <RegistrationOpeningReminderButton event={event} t={t} />
+      ) : null}
+    </div>
+  );
+}
+
+type OpeningReminderUiState =
+  | "error"
+  | "loading"
+  | "not_subscribed"
+  | "subscribed";
+
+function RegistrationOpeningReminderButton({
+  event,
+  t,
+}: {
+  event: OrbitLandingEventView;
+  t: Translate;
+}) {
+  const [state, setState] = useState<OpeningReminderUiState>("loading");
+  const [saving, setSaving] = useState(false);
+  const endpoint = `/api/events/${encodeURIComponent(event.id)}/registration-opening-reminder`;
+
+  useEffect(() => {
+    if (!event.stats.authed) {
+      setState("not_subscribed");
+      return;
+    }
+    const controller = new AbortController();
+    void fetch(endpoint, { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json() as {
+          data?: { state?: "not_subscribed" | "notified" | "subscribed" };
+          success?: boolean;
+        };
+        if (!response.ok || body.success !== true) throw new Error("Reminder state unavailable");
+        setState(body.data?.state === "subscribed" ? "subscribed" : "not_subscribed");
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setState("error");
+      });
+    return () => controller.abort();
+  }, [endpoint, event.stats.authed]);
+
+  if (!event.stats.authed) {
+    return (
+      <a
+        className="btn btn-ghost btn-sm"
+        href={`/app/account/login?next=${encodeURIComponent(`/app/events/${event.code || event.id}`)}`}
+      >
+        {t({ en: "Sign in to remind me", zh: "登录后提醒我" })}
+      </a>
+    );
+  }
+
+  const subscribed = state === "subscribed";
+  const update = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(endpoint, {
+        body: JSON.stringify({ eventTitle: event.name || event.code || "Event" }),
+        headers: { "content-type": "application/json" },
+        method: subscribed ? "DELETE" : "POST",
+      });
+      const body = await response.json() as {
+        data?: { state?: "not_subscribed" | "subscribed" };
+        error?: { message?: string };
+        success?: boolean;
+      };
+      if (!response.ok || body.success !== true) {
+        throw new Error(body.error?.message ?? "Reminder update failed");
+      }
+      setState(body.data?.state === "subscribed" ? "subscribed" : "not_subscribed");
+    } catch {
+      setState("error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <button
+        aria-busy={saving || state === "loading"}
+        aria-pressed={subscribed}
+        className="btn btn-ghost btn-sm"
+        disabled={saving || state === "loading"}
+        onClick={() => void update()}
+        type="button"
+      >
+        {saving
+          ? t({ en: "Saving…", zh: "保存中…" })
+          : subscribed
+            ? t({ en: "Reminder subscribed · Cancel", zh: "已订阅提醒 · 取消" })
+            : t({ en: "Remind me when registration opens", zh: "开放报名时提醒我" })}
+      </button>
+      <span aria-live="polite" style={{ color: state === "error" ? "var(--danger)" : "var(--text-3)", fontSize: 12 }}>
+        {state === "error"
+          ? t({ en: "The reminder could not be saved. Try again.", zh: "提醒未保存，请重试。" })
+          : subscribed
+            ? t({ en: "Saved to this account. Orbit will create an in-app notification when the window opens.", zh: "已保存到当前账号；窗口开放后会生成站内通知。" })
+            : t({ en: "Account-scoped and cancellable at any time.", zh: "仅绑定当前账号，可随时取消。" })}
       </span>
     </div>
   );

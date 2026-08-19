@@ -44,6 +44,7 @@ test("the global composer collapses after explicit send and suggestion chips onl
   assert.match(context, /const \[open, setOpen\] = useState\(false\)/);
   assert.match(context, /useEffect\(\(\) => \{\s*setOpen\(false\);\s*\}, \[pathname\]\)/);
   assert.match(context, /target\.onAsk\(trimmed\);\s*setOpen\(false\)/);
+  assert.match(dock, /!isOrbitAskHome\(pathname\)/);
 });
 
 test("Agent waiting, timeout recovery, and trust summaries state their real boundaries", () => {
@@ -116,13 +117,21 @@ test("Today only accepts actor-authorized records as schedule truth", () => {
   assert.doesNotMatch(page, /OrbitTodayArrangements/);
 });
 
-test("unavailable registration explains the known reason and shortens samples", () => {
+test("unavailable registration explains the known reason, offers a durable reminder, and shortens samples", () => {
   const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
+  const reminder = source("features/events/registration/opening-reminder-service.ts");
+  const handler = source("app/api/events/[id]/registration-opening-reminder/handler.ts");
 
-  assert.match(detail, /下一次开放时间未公布，也没有创建开放提醒/);
+  assert.match(detail, /下一次开放时间尚未公布/);
+  assert.match(detail, /开放报名时提醒我/);
+  assert.match(detail, /仅绑定当前账号，可随时取消/);
   assert.match(detail, /查看其他可报名活动/);
   assert.match(detail, /SAMPLE_MATCHES\.slice\(0, 1\)/);
   assert.match(detail, /当前无法报名，因此这里只保留一条明确标注的简短预览/);
+  assert.match(reminder, /event_registration_opening_reminders/);
+  assert.match(reminder, /userId: actorId/);
+  assert.match(reminder, /collectionName: "notifications"/);
+  assert.match(handler, /availability !== "unavailable"/);
 });
 
 test("long result surfaces expose skip and list semantics for keyboard and screen-reader navigation", () => {
@@ -144,4 +153,14 @@ test("small Agent and contact status copy use readable foreground tokens", () =>
   assert.match(agent, /"--text-3": "#687078"/);
   assert.match(agent, /"--text-4": "#687078"/);
   assert.match(contacts, /status === "to_contact" \? "var\(--amber-text\)" : meta\.color/);
+});
+
+test("All arrangements keeps machine traces folded and localizes known source labels", () => {
+  const allArrangements = source("app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx");
+
+  assert.match(allArrangements, /iOrbit 对话中的明确请求/);
+  assert.match(allArrangements, /保存到智能记忆/);
+  assert.doesNotMatch(allArrangements, /\{entry\.workflowKey \? `工作流/);
+  assert.match(allArrangements, /Action：\{entry\.entryId\}/);
+  assert.match(allArrangements, /Run：\{entry\.runId \?\? "—"\}/);
 });

@@ -287,10 +287,10 @@ export function OrbitRealToday({
                   style={{ marginTop: 10 }}
                 >
                   {language === "zh"
-                    ? `另外 ${viewModel.hiddenDecisionCount} 项已按联系人收进全部操作`
+                    ? `另外 ${viewModel.hiddenDecisionCount} 项已按联系人收进全部安排`
                     : language === "ja"
-                      ? `残り ${viewModel.hiddenDecisionCount} 件は連絡先ごとに「すべての操作」へ整理済み`
-                      : `${viewModel.hiddenDecisionCount} more grouped by contact in All actions`}
+                      ? `残り ${viewModel.hiddenDecisionCount} 件は連絡先ごとに「すべての予定」へ整理済み`
+                      : `${viewModel.hiddenDecisionCount} more grouped by contact in All arrangements`}
                 </a>
               ) : null}
             </section>

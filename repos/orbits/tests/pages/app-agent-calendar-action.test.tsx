@@ -81,7 +81,7 @@ test("external calendar actions remain reviewable but cannot be confirmed inside
   assert.match(html, /data-agent-run-id="run:external-calendar"/);
   assert.match(html, /data-agent-action-id="action:external-calendar"/);
   assert.match(html, /在 Today 查看/);
-  assert.match(html, /全部操作/);
+  assert.match(html, /全部安排/);
   assert.doesNotMatch(html, /确认执行/);
 });
 

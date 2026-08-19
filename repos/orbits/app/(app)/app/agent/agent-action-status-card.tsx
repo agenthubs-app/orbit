@@ -661,7 +661,7 @@ export function AgentActionStatusCard({
                 }
                 type="button"
               >
-                {language === "zh" ? "全部操作" : "All actions"}
+                {language === "zh" ? "全部安排" : "All arrangements"}
               </button>
               {confirmableInChat ? (
                 <button

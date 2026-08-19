@@ -144,6 +144,7 @@ test("unavailable registration windows disable every detail-page registration en
   );
 
   assert.match(html, /报名暂不可用|Registration unavailable/);
+  assert.match(html, /开放报名时提醒我|Remind me when registration opens/);
   assert.match(html, /disabled=""/);
   assert.doesNotMatch(html, /href="\/app\/events\/[^"]+\/register"/);
   assert.doesNotMatch(html, /报名中|Registration open/);

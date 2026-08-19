@@ -346,7 +346,7 @@ test("chat action card exposes the shared action id and canonical Today and ledg
   assert.match(html, /本次 Agent 过程/);
   assert.match(html, /正在同步/);
   assert.match(html, /在 Today 查看/);
-  assert.match(html, /全部操作/);
+  assert.match(html, /全部安排/);
 });
 
 test("Agent chat keeps run and action ids in persisted assistant messages", async () => {

@@ -513,7 +513,7 @@ test("?entry= expands exactly that card, with exactly one 确认执行 in it and
   assert.equal((html.match(/建议基于什么信息/g) ?? []).length, 1);
   assert.equal((html.match(/确认后将会/g) ?? []).length, 1);
   assert.equal(
-    (html.match(/只保存为草稿，不会自动发送；已执行的操作可在「操作记录」里撤销。/g) ?? [])
+    (html.match(/只保存为草稿，不会自动发送；已执行的操作可在「全部安排」里撤销。/g) ?? [])
       .length,
     1,
   );

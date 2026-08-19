@@ -8,6 +8,8 @@ import {
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
 import type { ReminderScheduleNotificationListInput } from "../../../features/notifications/contract";
+import { createConfiguredEventRegistrationOpeningReminderService } from "../../../features/events/registration/opening-reminder-service";
+import { readRuntimeEventRegistrationAvailability } from "../../../features/events/registration/runtime";
 import { createReminderScheduleNotificationService } from "../../../features/notifications/service-factory";
 import { createConfiguredNotificationInteractionService, type NotificationInteractionService } from "../../../features/notifications/interaction-service";
 import {
@@ -51,6 +53,15 @@ export function createNotificationsGetHandler(
     const mode = resolveFeatureMode();
     const actor = await resolveActor();
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
+
+    const openingReminders =
+      createConfiguredEventRegistrationOpeningReminderService();
+    if (openingReminders) {
+      await openingReminders.reconcileActor({
+        actorId: actor.id,
+        readAvailability: readRuntimeEventRegistrationAvailability,
+      });
+    }
 
     const notificationService = createReminderScheduleNotificationService();
     const result = await notificationService.listNotifications({

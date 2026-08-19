@@ -38,6 +38,25 @@ const STATUS_LABELS: Record<AgentLedgerEntry["status"], string> = {
   undone: "已撤销",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  "Explicit user request in Agent chat": "iOrbit 对话中的明确请求",
+  "Orbit Agent confirmed reminder": "经确认的 Orbit 提醒",
+  "Orbit Agent confirmed action": "经确认的 Orbit 操作",
+};
+
+const ENTRY_TITLE_LABELS: Record<string, string> = {
+  "Save to Agent Memory": "保存到智能记忆",
+  "保存到 Agent Memory": "保存到智能记忆",
+};
+
+function sourceLabel(value: string): string {
+  return SOURCE_LABELS[value] ?? value;
+}
+
+function entryTitle(value: string): string {
+  return ENTRY_TITLE_LABELS[value] ?? value;
+}
+
 function textFromPayload(
   payload: Readonly<Record<string, unknown>> | undefined,
   field: string,
@@ -66,7 +85,7 @@ function EntryRow({
   entry: AgentLedgerEntry;
   expanded: boolean;
 }) {
-  const sourceLabels = entry.sourceRefs.map((ref) => ref.label).join("、");
+  const sourceLabels = entry.sourceRefs.map((ref) => sourceLabel(ref.label)).join("、");
   const updatedLabel = new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -98,14 +117,12 @@ function EntryRow({
             textDecoration: "none",
           }}
         >
-          {entry.title}
+          {entryTitle(entry.title)}
         </a>
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 3 }}>
           来源：{sourceLabels}
         </div>
         <div style={{ color: "var(--text-4)", fontSize: 12, marginTop: 3 }}>
-          {entry.workflowKey ? `工作流：${entry.workflowKey} · ` : ""}
-          {entry.runId ? `Run：${entry.runId} · ` : ""}
           风险：{RISK_LABELS[entry.riskLevel ?? "write"] ?? entry.riskLevel} · 更新：{updatedLabel}
         </div>
       </div>
@@ -228,8 +245,8 @@ export function OrbitRealAllActions({
   if (viewModel.state === "failure") {
     return (
       <div data-orbit-route="app-all-actions-route-state">
-        <div className="eyebrow">操作记录</div>
-        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>账本暂时读不出来</h1>
+        <div className="eyebrow">全部安排</div>
+        <h1 style={{ fontSize: 22, margin: "8px 0 12px" }}>安排账本暂时读不出来</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14 }}>{viewModel.failureMessage}</p>
       </div>
     );
@@ -239,9 +256,9 @@ export function OrbitRealAllActions({
     return (
       <div data-orbit-route="app-all-actions-route-empty">
         <div className="eyebrow">人脉</div>
-        <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作记录</h1>
+        <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>全部安排</h1>
         <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
-          账本还没有任何操作记录。Orbit 执行的每一次写操作都会出现在这里。
+          还没有任何安排。待决定、稍后处理和已执行的操作都会在这里统一留痕。
         </p>
       </div>
     );
@@ -250,9 +267,9 @@ export function OrbitRealAllActions({
   return (
     <div data-orbit-all-actions>
       <div className="eyebrow">人脉</div>
-      <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>操作记录</h1>
+      <h1 style={{ fontSize: 28, margin: "10px 0 6px" }}>全部安排</h1>
       <p style={{ color: "var(--text-2)", fontSize: 14, margin: "0 0 20px" }}>
-        每一次写操作都记录在这里，可追溯、可撤销。
+        日程首页只保留最重要的 3–5 项；其余决定、草稿和执行记录都在这里，可追溯、可撤销。
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
