@@ -11,7 +11,9 @@ import {
 } from "react-native";
 import {
   ORBIT_API_ENDPOINTS,
+  agentSignalPath,
   chatPrivacyControlsPath,
+  notificationDeliveryPath,
   relationshipInboxPath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -58,6 +60,11 @@ type ClientPost = (endpoint: string, body: unknown) => Promise<{
   error?: { message: string };
   success: boolean;
 }>;
+type ClientPatch = (endpoint: string, body: unknown) => Promise<{
+  data?: unknown;
+  error?: { message: string };
+  success: boolean;
+}>;
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -65,6 +72,37 @@ function firstParam(value: string | string[] | undefined): string {
   }
 
   return value ?? "";
+}
+
+interface DeliveryView {
+  body: string;
+  signalId: string;
+  status: string;
+  targetKind: string;
+  title: string;
+}
+
+function notificationDeliveryToView(value: unknown): DeliveryView | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const title = typeof record.title === "string" ? record.title : "Orbit 提醒";
+  const body = typeof record.body === "string" ? record.body : "你有一条待处理提醒。";
+  const rawSignalId = typeof record.signalId === "string" ? record.signalId : "";
+  // Only AgentSignal ids support the PATCH lifecycle. Event-derived delivery
+  // ids are intentionally inbox-only until a real task/action target exists.
+  const signalId = rawSignalId.startsWith("signal:") ? rawSignalId : "";
+  const status = typeof record.status === "string" ? record.status : "scheduled";
+  const target =
+    record.target && typeof record.target === "object" && !Array.isArray(record.target)
+      ? (record.target as Record<string, unknown>)
+      : null;
+  return {
+    body,
+    signalId,
+    status,
+    targetKind: typeof target?.kind === "string" ? target.kind : "inbox",
+    title
+  };
 }
 
 function uniqueConversations(
@@ -83,10 +121,12 @@ function uniqueConversations(
 export function RelationshipInboxScreen() {
   const params = useLocalSearchParams<{
     contactId?: string | string[];
+    deliveryId?: string | string[];
     organization?: string | string[];
     participantName?: string | string[];
   }>();
   const seedContactId = firstParam(params.contactId);
+  const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const client = useOrbitApiClient();
@@ -98,6 +138,16 @@ export function RelationshipInboxScreen() {
     (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
     [client]
   );
+  const clientPatch = useCallback(
+    (endpoint: string, body: unknown) => client.patch<unknown>(endpoint, { body }),
+    [client]
+  );
+  const [deliveryState, setDeliveryState] = useState<
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "failure"; message: string }
+    | { data: DeliveryView; kind: "success" }
+  >({ kind: "idle" });
   const [createdThread, setCreatedThread] =
     useState<RelationshipCreatedThreadView | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -121,6 +171,39 @@ export function RelationshipInboxScreen() {
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
   );
+
+  useEffect(() => {
+    if (!deliveryId) {
+      setDeliveryState({ kind: "idle" });
+      return;
+    }
+    let active = true;
+    setDeliveryState({ kind: "loading" });
+    void client.get<unknown>(notificationDeliveryPath(deliveryId)).then((result) => {
+      if (!active) return;
+      if (!result.success) {
+        setDeliveryState({
+          kind: "failure",
+          message: result.error?.message ?? "这条提醒暂时无法读取。"
+        });
+        return;
+      }
+      const view = notificationDeliveryToView(result.data);
+      setDeliveryState(
+        view ? { data: view, kind: "success" } : {
+          kind: "failure",
+          message: "提醒内容暂时无法识别。"
+        }
+      );
+    }).catch(() => {
+      if (active) {
+        setDeliveryState({ kind: "failure", message: "这条提醒暂时无法读取。" });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [client, deliveryId]);
 
   useEffect(() => {
     if (seedContactId) {
@@ -157,6 +240,15 @@ export function RelationshipInboxScreen() {
       }
       title="关系收件箱"
     >
+      {deliveryState.kind === "loading" ? (
+        <LoadingState />
+      ) : null}
+      {deliveryState.kind === "failure" ? (
+        <ErrorState message={deliveryState.message} title="提醒暂时打不开" />
+      ) : null}
+      {deliveryState.kind === "success" ? (
+        <NotificationDeliveryCard clientPatch={clientPatch} view={deliveryState.data} />
+      ) : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
@@ -201,6 +293,83 @@ export function RelationshipInboxScreen() {
         />
       ) : null}
     </AppScreen>
+  );
+}
+
+function NotificationDeliveryCard({
+  clientPatch,
+  view
+}: {
+  clientPatch: ClientPatch;
+  view: DeliveryView;
+}) {
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+  const [actionStatus, setActionStatus] = useState("");
+
+  async function updateSignal(status: "acknowledged" | "dismissed" | "snoozed") {
+    if (!view.signalId) return;
+    setPendingAction(status);
+    setActionError("");
+    const result = await clientPatch(agentSignalPath(view.signalId), {
+      status,
+      ...(status === "snoozed"
+        ? { snoozedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+        : {})
+    });
+    if (result.success) {
+      setActionStatus(
+        status === "acknowledged"
+          ? "已记录为查看建议。"
+          : status === "snoozed"
+            ? "已稍后提醒。"
+            : "已忽略这条建议。"
+      );
+    } else {
+      setActionError(result.error?.message ?? "提醒状态暂时没有更新。");
+    }
+    setPendingAction(null);
+  }
+
+  return (
+    <DataCard
+      detail="已在登录后的收件箱安全读取；查看不会自动完成任务。"
+      title={view.title}
+    >
+      <Text style={styles.bodyText}>{view.body}</Text>
+      <Text style={styles.safetyText}>
+        {view.targetKind === "inbox"
+          ? "这是一条 Orbit 主动提醒，后续动作仍需你在应用内确认。"
+          : "Orbit 已定位到提醒目标，后续动作仍需你在应用内确认。"}
+      </Text>
+      {view.signalId ? (
+        <View style={styles.buttonRow}>
+          <ActionButton
+            disabled={pendingAction !== null}
+            icon="eye-outline"
+            label={pendingAction === "acknowledged" ? "处理中" : "查看建议"}
+            onPress={() => void updateSignal("acknowledged")}
+            variant="secondary"
+          />
+          <ActionButton
+            disabled={pendingAction !== null}
+            icon="time-outline"
+            label={pendingAction === "snoozed" ? "处理中" : "稍后"}
+            onPress={() => void updateSignal("snoozed")}
+            variant="secondary"
+          />
+          <ActionButton
+            disabled={pendingAction !== null}
+            icon="close-outline"
+            label={pendingAction === "dismissed" ? "处理中" : "忽略"}
+            onPress={() => void updateSignal("dismissed")}
+            variant="secondary"
+          />
+        </View>
+      ) : null}
+      {actionStatus ? <Text style={styles.safetyText}>{actionStatus}</Text> : null}
+      {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
+    </DataCard>
   );
 }
 

@@ -7,6 +7,7 @@ import {
   AppErrorScreen
 } from "../src/components/AppErrorBoundary";
 import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
+import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
 
 // expo-router 会把这个导出当作根段的错误边界：出错时只重置这一段，
 // 导航器保持挂载，retry() 之后跳转仍然可用。
@@ -28,6 +29,7 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
+            <OrbitNotificationLifecycle />
             <OrbitRouteAccessBoundary />
             <StatusBar style="dark" />
           </OrbitAuthSessionProvider>

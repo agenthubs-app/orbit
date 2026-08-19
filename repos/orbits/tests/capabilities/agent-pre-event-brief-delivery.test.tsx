@@ -19,6 +19,7 @@ import { createStorageEventActionWriter } from "../../features/events/action-wri
 import { createEventMatchmakingService } from "../../features/events/matchmaking/service";
 import { createStorageFollowupActionWriter } from "../../features/followups/action-writer";
 import { shouldSendPreEventNudge } from "../../features/notifications/push-adapter";
+import { createStorageNotificationDeliveryService } from "../../features/notifications/delivery-service";
 import { createStorageReminderActionWriter } from "../../features/notifications/action-writer";
 import { readPreEventBriefFromAction } from "../../features/agent/ledger/pre-event-brief";
 import {
@@ -126,7 +127,7 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
     runtime: harness.runtime,
     push: {
       async send(message) {
-        sent.push(message.data.eventId);
+        sent.push(message.data.deliveryId);
         return { receiptId: `receipt-${sent.length}` };
       },
     },
@@ -172,7 +173,7 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
 
   const second = await scheduler.tick();
   assert.equal(second.pushed.length, 0);
-  assert.deepEqual(sent, ["event-brief-delivery"]);
+  assert.deepEqual(sent, ["legacy:event:event-brief-delivery"]);
 
   const html = renderToStaticMarkup(<OrbitTodayPreEventBrief brief={brief} />);
   assert.match(html, /本场目标/);
@@ -260,6 +261,60 @@ test("quiet hours use minute precision in the user's IANA time zone", () => {
     }),
     false,
   );
+});
+
+test("scheduler materializes a durable delivery when a delivery service is supplied", async () => {
+  const harness = createHarness();
+  const delivery = createStorageNotificationDeliveryService({
+    actorId: "actor:brief-delivery",
+    now: () => "2026-07-25T01:00:00.000Z",
+    store: harness.store as never,
+    workspaceId: harness.workspaceId,
+  });
+  const sent: string[] = [];
+  const scheduler = createAgentWorkflowScheduler({
+    collector: fixedCollector([candidate()]),
+    delivery,
+    runtime: harness.runtime,
+    push: {
+      async send() {
+        sent.push("inline");
+        return { receiptId: "must-not-send-inline" };
+      },
+    },
+    now: () => "2026-07-25T01:00:00.000Z",
+    preferences: {
+      preEventBriefPushEnabled: true,
+      quietHours: { end: "07:45", start: "22:15" },
+      timeZone: "Asia/Tokyo",
+    },
+  });
+  const result = await scheduler.tick();
+  assert.equal(result.pushed.length, 1);
+  assert.deepEqual(sent, []);
+  const deliveryId = result.pushed[0].deliveryId;
+  assert.ok(deliveryId);
+  assert.equal((await delivery.get(deliveryId))?.status, "scheduled");
+});
+
+test("pre-event scheduler honors the production proactive reminder allowlist", async () => {
+  const harness = createHarness();
+  const scheduler = createAgentWorkflowScheduler({
+    collector: fixedCollector([candidate()]),
+    env: {
+      NODE_ENV: "production",
+      ORBIT_EVENT_PILOT_ENABLED: "true",
+      ORBIT_EVENT_PILOT_PROACTIVE_REMINDERS_ENABLED: "true",
+      ORBIT_EVENT_PILOT_EVENT_IDS: "event:not-this-one",
+    },
+    runtime: harness.runtime,
+    push: null,
+    now: () => "2026-07-25T01:00:00.000Z",
+  });
+  const result = await scheduler.tick();
+  assert.deepEqual(result.generated, []);
+  assert.deepEqual(result.pushed, []);
+  assert.deepEqual(result.skipped, ["event-brief-delivery"]);
 });
 
 test("scheduler route collects server-owned candidates for its authenticated actor", async () => {

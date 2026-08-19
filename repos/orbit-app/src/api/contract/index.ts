@@ -69,3 +69,14 @@ export type {
   ContactsListProvenanceContract,
   ContactsListStateCode
 } from "./contacts";
+
+export type {
+  AgentReminderPreferencesContract,
+  NotificationDeliveryChannelCode,
+  NotificationDeliveryContract,
+  NotificationDeliveryPhaseCode,
+  NotificationDeliveryStatusCode,
+  PushDeviceContract,
+  PushDevicePlatformCode,
+  PushPermissionStateCode
+} from "./notifications";

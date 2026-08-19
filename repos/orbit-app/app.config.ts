@@ -14,6 +14,7 @@ const config: ExpoConfig = {
   plugins: [
     "./plugins/with-ios-build-settings",
     "expo-secure-store",
+    "expo-notifications",
     "expo-web-browser",
     [
       "expo-image-picker",

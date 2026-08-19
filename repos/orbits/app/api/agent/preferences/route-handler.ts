@@ -95,6 +95,10 @@ export function createAgentPreferencesRouteHandlers(
             typeof body.preEventBriefPushEnabled === "boolean"
               ? body.preEventBriefPushEnabled
               : undefined,
+          followupDuePushEnabled:
+            typeof body.followupDuePushEnabled === "boolean"
+              ? body.followupDuePushEnabled
+              : undefined,
           quietHours,
           timeZone:
             typeof body.timeZone === "string"

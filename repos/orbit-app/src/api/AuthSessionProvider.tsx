@@ -29,6 +29,7 @@ import {
   type MobileAuthUser
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
+import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 
 interface AuthActionResult {
   message?: string;
@@ -278,6 +279,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
     if (user !== null) {
+      await revokeRegisteredPushDevice({ baseUrl, cookieHeader });
       const result = await signOutOrbitSession({ baseUrl, cookieHeader });
 
       if (!result.success) {

@@ -28,6 +28,16 @@ test("relationship inbox does not GET the POST-only proactive signal endpoint", 
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.notifications/u);
 });
 
+test("notification deep links fetch an authenticated delivery and expose signal actions", () => {
+  assert.match(screenSource, /notificationDeliveryPath\(deliveryId\)/u);
+  assert.match(screenSource, /agentSignalPath\(view\.signalId\)/u);
+  assert.match(screenSource, /updateSignal\("acknowledged"\)/u);
+  assert.match(screenSource, /updateSignal\("snoozed"\)/u);
+  assert.match(screenSource, /updateSignal\("dismissed"\)/u);
+  assert.match(screenSource, /label=\{pendingAction === "snoozed"/u);
+  assert.doesNotMatch(screenSource, /mark.*delivery.*complete/u);
+});
+
 test("relationship inbox can rewrite reply drafts through the web assist boundary", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite/u);
   assert.match(screenSource, /buildRelationshipRewriteRequest/u);
