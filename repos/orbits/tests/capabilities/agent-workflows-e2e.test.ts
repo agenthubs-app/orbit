@@ -101,6 +101,7 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
     eventTitle: "Tokyo Founder Dinner",
     contactId: "contact-1",
     contactName: "Maya",
+    relationshipPairId: "event-relationship-pair:1",
     conversationId: "conversation-1",
     noteText: "Maya wants a Japan launch partner next week.",
     noteSource: "voice_transcript",
@@ -134,6 +135,13 @@ test("post-event workflow persists only a confirmed transcript, draft, task, and
   assert.equal(draft?.status, "completed");
   assert.equal(task?.status, "awaiting_confirmation");
   assert.equal(reminder?.status, "awaiting_confirmation");
+  for (const action of [note, draft, task, reminder]) {
+    assert.deepEqual(action?.operations[0].payload.eventOrigin, {
+      eventId: "event-1",
+      relationshipPairId: "event-relationship-pair:1",
+      sourceActionId: action?.actionId,
+    });
+  }
 
   const originalTaskHash = task!.immutablePayloadHash;
   await harness.runtime.updateDraft({

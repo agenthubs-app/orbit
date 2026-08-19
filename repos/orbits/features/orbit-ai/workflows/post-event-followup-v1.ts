@@ -4,6 +4,7 @@ import type {
   OrbitKnownWorkflow,
   PostEventFollowupArtifact,
 } from "./contract";
+import { eventOrigin } from "../../../shared/domain/event-origin";
 import { workflowId } from "./id";
 
 export interface PostEventFollowupInput {
@@ -13,6 +14,7 @@ export interface PostEventFollowupInput {
   contactName?: string;
   organization?: string;
   connectionId?: string;
+  relationshipPairId?: string;
   encounterId?: string;
   noteText: string;
   conversationId?: string;
@@ -179,6 +181,11 @@ export function createPostEventFollowupWorkflow(
                   noteText: input.noteText.trim(),
                   noteSource: input.noteSource ?? "typed",
                   evidenceIds,
+                  eventOrigin: eventOrigin({
+                    eventId: input.eventId,
+                    relationshipPairId: input.relationshipPairId,
+                    sourceActionId: noteActionId,
+                  }),
                 },
                 preview: "保存已确认的会面笔记",
                 riskLevel: "write",
@@ -254,6 +261,11 @@ export function createPostEventFollowupWorkflow(
               contactId: input.contactId,
               draftText: artifact.messageDraft,
               evidenceIds,
+              eventOrigin: eventOrigin({
+                eventId: input.eventId,
+                relationshipPairId: input.relationshipPairId,
+                sourceActionId: draftActionId,
+              }),
             },
             preview: artifact.messageDraft,
             riskLevel: "draft",
@@ -330,6 +342,11 @@ export function createPostEventFollowupWorkflow(
               dueAt: input.followupDueAt,
               evidenceIds,
               messageDraft: artifact.messageDraft,
+              eventOrigin: eventOrigin({
+                eventId: input.eventId,
+                relationshipPairId: input.relationshipPairId,
+                sourceActionId: taskActionId,
+              }),
             },
             preview: `创建「${input.eventTitle} 会后跟进」任务`,
             riskLevel: "write",
@@ -384,6 +401,11 @@ export function createPostEventFollowupWorkflow(
               taskId: `task:${taskActionId}`,
               contactId: input.contactId,
               evidenceIds,
+              eventOrigin: eventOrigin({
+                eventId: input.eventId,
+                relationshipPairId: input.relationshipPairId,
+                sourceActionId: reminderActionId,
+              }),
             },
             preview: `到期时在 Orbit 内提醒跟进`,
             riskLevel: "write",
