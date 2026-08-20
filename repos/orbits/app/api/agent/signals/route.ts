@@ -8,6 +8,10 @@ import {
   agentSignalUnauthorizedResponse,
   resolveAgentSignalRequest,
 } from "./request";
+import {
+  agentSignalRefreshForView,
+  listAgentSignalsForView,
+} from "./view";
 
 export const dynamic = "force-dynamic";
 
@@ -18,22 +22,25 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
     return NextResponse.json({
       data: {
-        signals: await context.service.list({
-          includeResolved: url.searchParams.get("includeResolved") === "true",
-          limit: Number(url.searchParams.get("limit") ?? 30),
-        }),
+        signals: await listAgentSignalsForView(context.service, url),
       },
+      success: true,
     });
   } catch (error) {
     return agentSignalErrorResponse(error);
   }
 }
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
   try {
     const context = await resolveAgentSignalRequest();
     if (!context) return agentSignalUnauthorizedResponse();
     const result = await context.service.refresh();
+    const viewResult = await agentSignalRefreshForView(
+      context.service,
+      new URL(request.url),
+      result,
+    );
     const actionableSignals = result.signals.filter(
       (signal) => signal.status === "new",
     );
@@ -55,12 +62,13 @@ export async function POST(): Promise<Response> {
     );
     return NextResponse.json({
       data: {
-        ...result,
+        ...viewResult,
         automationRuns: automationRuns.map((automation) => ({
           automationId: automation.automationId,
           status: automation.lastRun?.status ?? automation.status,
         })),
       },
+      success: true,
     });
   } catch (error) {
     return agentSignalErrorResponse(error);
