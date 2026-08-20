@@ -38,6 +38,15 @@ test("Orbit AI home pins the composer to the bottom of the chat", () => {
   assert.ok(transcriptIndex < composerIndex);
 });
 
+test("Orbit AI composer controls keep the 44 point touch baseline", () => {
+  for (const styleName of ["composerPlusButton", "composerSendButton"]) {
+    assert.match(
+      screenSource,
+      new RegExp(`${styleName}:[\\s\\S]*?height: 44[\\s\\S]*?width: 44`, "u")
+    );
+  }
+});
+
 test("Orbit AI home opens conversation history from the top right", () => {
   assert.match(screenSource, /accessibilityLabel="对话历史"/u);
   assert.match(screenSource, /OrbitAiHistoryPanel/u);

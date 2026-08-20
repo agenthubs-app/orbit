@@ -1275,17 +1275,17 @@ const styles = StyleSheet.create({
   },
   composerPlusButton: {
     alignItems: "center",
-    height: 34,
+    height: 44,
     justifyContent: "center",
-    width: 34
+    width: 44
   },
   composerSendButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
     borderRadius: radius.pill,
-    height: 34,
+    height: 44,
     justifyContent: "center",
-    width: 34
+    width: 44
   },
   composerSendButtonIdle: {
     backgroundColor: colors.surface3
