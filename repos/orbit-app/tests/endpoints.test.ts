@@ -4,6 +4,8 @@ import {
   agentActionAcceptPath,
   agentActionDismissPath,
   agentLedgerTransitionPath,
+  agentSignalPath,
+  agentSignalsHomePath,
   aiRunPath,
   externalActionSandboxAuditPath,
   externalActionSandboxSendMessagePath,
@@ -57,6 +59,15 @@ import * as endpoints from "../src/api/endpoints";
 
 test("Orbit API endpoints expose the proactive Orbit AI chat turn route", () => {
   assert.equal(ORBIT_API_ENDPOINTS.proactiveTurns, "/api/ai/proactive-turns");
+});
+
+test("Orbit API endpoints expose the compact Agent signals home feed", () => {
+  assert.equal(ORBIT_API_ENDPOINTS.agentSignals, "/api/agent/signals");
+  assert.equal(agentSignalsHomePath(), "/api/agent/signals?view=home");
+  assert.equal(
+    agentSignalPath("signal:followup/1"),
+    "/api/agent/signals/signal%3Afollowup%2F1"
+  );
 });
 
 test("Orbit API endpoints expose web Orbit AI history sessions", () => {
