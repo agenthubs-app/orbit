@@ -36,8 +36,11 @@ export function AppScreen({
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
       >
         <View style={styles.header}>
