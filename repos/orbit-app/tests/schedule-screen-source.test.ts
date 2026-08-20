@@ -9,6 +9,11 @@ const screenSource = readFileSync(
   "utf8"
 );
 
+test("schedule screen reads the same public event collection as event discovery", () => {
+  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.events\b/u);
+});
+
 test("schedule screen renders event timeline items as compact event modules", () => {
   assert.match(screenSource, /ImageBackground/u);
   assert.match(screenSource, /useOrbitApiBaseUrl/u);

@@ -46,7 +46,7 @@ export function ScheduleScreen() {
     () => false
   );
   const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
+    ORBIT_API_ENDPOINTS.publicEvents,
     () => false
   );
 
