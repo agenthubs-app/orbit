@@ -48,6 +48,8 @@ const eventDiscoveryStatusFilters: EventDiscoveryStatusFilter[] = [
   "ended"
 ];
 
+const eventPageSize = 4;
+
 const eventDiscoveryStatusLabels: Record<EventDiscoveryStatusFilter, string> = {
   active: "进行中",
   all: "全部",
@@ -312,6 +314,7 @@ export function EventsScreen() {
   const [statusFilter, setStatusFilter] =
     useState<EventDiscoveryStatusFilter>("all");
   const [topicFilter, setTopicFilter] = useState("");
+  const [visibleEventCount, setVisibleEventCount] = useState(eventPageSize);
   const refreshing = state.refreshing;
   const events = state.kind === "success" ? eventsToSummaries(state.data) : [];
   const filteredEvents = filterEventSummaries(events, {
@@ -319,6 +322,8 @@ export function EventsScreen() {
     status: statusFilter,
     topic: topicFilter
   });
+  const visibleEvents = filteredEvents.slice(0, visibleEventCount);
+  const allFilteredEventsVisible = visibleEventCount >= filteredEvents.length;
   const discoveryTopics = eventDiscoveryTopics(events);
   const discoveryCounts = eventDiscoveryFilterCounts(events);
   const resultLabel =
@@ -340,6 +345,21 @@ export function EventsScreen() {
 
   function openEventRegistration(id: string) {
     router.push(`/events/${encodeURIComponent(id)}/register` as Href);
+  }
+
+  function changeQuery(nextQuery: string) {
+    setQuery(nextQuery);
+    setVisibleEventCount(eventPageSize);
+  }
+
+  function changeStatusFilter(nextStatus: EventDiscoveryStatusFilter) {
+    setStatusFilter(nextStatus);
+    setVisibleEventCount(eventPageSize);
+  }
+
+  function changeTopicFilter(nextTopic: string) {
+    setTopicFilter(nextTopic);
+    setVisibleEventCount(eventPageSize);
   }
 
   return (
@@ -364,23 +384,51 @@ export function EventsScreen() {
       {state.kind === "empty" ? (
         <EmptyState message="报名、导入或推荐的活动会出现在这里。" title="暂无活动" />
       ) : null}
-      <EventImageList
-        baseUrl={baseUrl}
-        events={filteredEvents}
-        onOpenEvent={openEvent}
-      />
       {events.length > 0 ? (
         <EventDiscoveryControls
           counts={discoveryCounts}
-          onQueryChange={setQuery}
-          onStatusChange={setStatusFilter}
-          onTopicChange={setTopicFilter}
+          onQueryChange={changeQuery}
+          onStatusChange={changeStatusFilter}
+          onTopicChange={changeTopicFilter}
           query={query}
           resultLabel={resultLabel}
           statusFilter={statusFilter}
           topicFilter={topicFilter}
           topics={discoveryTopics}
         />
+      ) : null}
+      <EventImageList
+        baseUrl={baseUrl}
+        events={visibleEvents}
+        onOpenEvent={openEvent}
+      />
+      {filteredEvents.length > eventPageSize ? (
+        <Pressable
+          accessibilityLabel={
+            allFilteredEventsVisible ? "收起活动" : "查看更多活动"
+          }
+          accessibilityRole="button"
+          onPress={() =>
+            setVisibleEventCount((current) =>
+              allFilteredEventsVisible
+                ? eventPageSize
+                : Math.min(current + eventPageSize, filteredEvents.length)
+            )
+          }
+          style={({ pressed }) => [
+            styles.showMoreEventsButton,
+            pressed ? styles.eventCardPressed : null
+          ]}
+        >
+          <Text style={styles.showMoreEventsText}>
+            {allFilteredEventsVisible ? "收起活动" : "查看更多活动"}
+          </Text>
+          <Ionicons
+            color={colors.accent}
+            name={allFilteredEventsVisible ? "chevron-up" : "chevron-down"}
+            size={18}
+          />
+        </Pressable>
       ) : null}
       {events.length > 0 && filteredEvents.length === 0 ? (
         <EmptyState
@@ -792,6 +840,20 @@ const styles = StyleSheet.create({
   },
   eventImageList: {
     gap: spacing.lg
+  },
+  showMoreEventsButton: {
+    alignItems: "center",
+    alignSelf: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: spacing.lg
+  },
+  showMoreEventsText: {
+    color: colors.accent,
+    fontSize: typography.body,
+    fontWeight: "700"
   },
   eventImageCard: {
     backgroundColor: colors.surface,

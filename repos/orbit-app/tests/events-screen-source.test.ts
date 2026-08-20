@@ -82,7 +82,7 @@ test("events screen presents the event home as an image-first list", () => {
   assert.ok(listIndex < recommendationsIndex);
 });
 
-test("events screen keeps the image list ahead of discovery controls", () => {
+test("events screen keeps discovery controls ahead of the image list", () => {
   assert.match(screenSource, /TextInput/u);
   assert.match(screenSource, /filterEventSummaries/u);
   assert.match(screenSource, /eventDiscoveryFilterCounts/u);
@@ -96,7 +96,7 @@ test("events screen keeps the image list ahead of discovery controls", () => {
   assert.match(screenSource, /即将/u);
   assert.match(screenSource, /进行中/u);
   assert.match(screenSource, /历史/u);
-  assert.match(screenSource, /events=\{filteredEvents\}/u);
+  assert.match(screenSource, /events=\{visibleEvents\}/u);
   assert.match(screenSource, /没有匹配的活动/u);
 
   const controlsIndex = screenSource.indexOf("<EventDiscoveryControls");
@@ -104,7 +104,15 @@ test("events screen keeps the image list ahead of discovery controls", () => {
 
   assert.ok(controlsIndex > -1);
   assert.ok(listIndex > -1);
-  assert.ok(listIndex < controlsIndex);
+  assert.ok(controlsIndex < listIndex);
+});
+
+test("events screen progressively reveals a long image list", () => {
+  assert.match(screenSource, /const eventPageSize = 4/u);
+  assert.match(screenSource, /visibleEventCount/u);
+  assert.match(screenSource, /filteredEvents\.slice\(0, visibleEventCount\)/u);
+  assert.match(screenSource, /查看更多活动/u);
+  assert.match(screenSource, /收起活动/u);
 });
 
 test("events image cards keep time and location labels readable", () => {
