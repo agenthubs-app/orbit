@@ -245,6 +245,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "Aoba follow-up task": "Aoba 跟进任务",
   "Calendar hold from Orbit schedule context": "日程预留",
   "Event attendance record": "活动记录",
+  "Generated relationship conversation": "关系上下文",
   "Mock asynchronous relationship correspondence": "关系收件箱预览",
   "Mock staged conversation created from a reviewed draft": "待复核草稿",
   "Robotics investor intro note": "机器人投资人介绍记录",
@@ -416,9 +417,13 @@ function localizePreview(conversationId: string, value: string): string {
 }
 
 function localizeSummary(conversationId: string, value: string): string {
+  const fallback = "先复核这段关系背景，再准备跟进。";
+
   return (
     KNOWN_THREAD_COPY[conversationId]?.summary ??
-    userFacingText(value, "先复核这段关系背景，再准备跟进。")
+    (/\b(?:community_events|matches)\b/iu.test(value)
+      ? fallback
+      : userFacingText(value, fallback))
   );
 }
 
@@ -518,6 +523,28 @@ function selectedConversationItem(
   );
 }
 
+function deduplicateMessages(
+  messages: RelationshipMessageView[]
+): RelationshipMessageView[] {
+  const seen = new Set<string>();
+
+  return messages.filter((message) => {
+    const signature = [
+      message.fromMe ? "mine" : "theirs",
+      message.sender,
+      message.body,
+      message.time
+    ].join("\u001f");
+
+    if (seen.has(signature)) {
+      return false;
+    }
+
+    seen.add(signature);
+    return true;
+  });
+}
+
 function threadDetailView(
   thread: UnknownRecord,
   currentUser: string,
@@ -526,29 +553,30 @@ function threadDetailView(
 ): RelationshipThreadDetailView {
   const conversationId = stringField(thread, "conversationId", "conversation");
   const messages = listField(thread, "messages").filter(isRecord);
+  const localizedMessages = messages.map((message) => {
+    const fromMe = stringField(message, "senderRole") === "orbit_user";
+    const messageId = stringField(message, "messageId", "message");
+
+    return {
+      body: localizeMessageBody(
+        conversationId,
+        messageId,
+        stringField(message, "body")
+      ),
+      fromMe,
+      id: messageId,
+      sender: fromMe
+        ? "我"
+        : stringField(message, "senderName", fallbackParticipantName || "联系人"),
+      time: formatDateTime(stringField(message, "occurredAt"))
+    };
+  });
 
   return {
     conversationId,
     currentUserName: currentUserName(currentUser),
     draftReply: "",
-    messages: messages.map((message) => {
-      const fromMe = stringField(message, "senderRole") === "orbit_user";
-      const messageId = stringField(message, "messageId", "message");
-
-      return {
-        body: localizeMessageBody(
-          conversationId,
-          messageId,
-          stringField(message, "body")
-        ),
-        fromMe,
-        id: messageId,
-        sender: fromMe
-          ? "我"
-          : stringField(message, "senderName", fallbackParticipantName || "联系人"),
-        time: formatDateTime(stringField(message, "occurredAt"))
-      };
-    }),
+    messages: deduplicateMessages(localizedMessages),
     participantName: fallbackParticipantName || "联系人",
     safetyText: safetyText(sideEffects),
     sourceLabels: localizeSourceLabels(listField(thread, "sourceContextLabels")),

@@ -153,6 +153,67 @@ test("relationshipInboxToView localizes async inbox payloads for mobile", () => 
   ]);
 });
 
+test("relationshipInboxToView removes exact duplicate messages and implementation copy", () => {
+  const view = relationshipInboxToView({
+    selectedThread: {
+      conversationId: "conversation_live_1",
+      messages: [
+        {
+          body: "下周可以约时间继续聊。",
+          messageId: "message_1",
+          occurredAt: "2026-08-20T10:30:04+09:00",
+          senderName: "曾伟",
+          senderRole: "contact"
+        },
+        {
+          body: "下周可以约时间继续聊。",
+          messageId: "message_1_duplicate",
+          occurredAt: "2026-08-20T10:30:49+09:00",
+          senderName: "曾伟",
+          senderRole: "contact"
+        },
+        {
+          body: "下周可以约时间继续聊。",
+          messageId: "message_2",
+          occurredAt: "2026-08-20T10:31:00+09:00",
+          senderName: "曾伟",
+          senderRole: "contact"
+        }
+      ],
+      sourceContextLabels: ["Generated relationship conversation"],
+      subject: "活动后的合作跟进",
+      summary:
+        "曾伟 matches community_events through shared event participation."
+    },
+    currentUser: { displayName: "小雨" },
+    draftReply: { body: "" },
+    inbox: {
+      conversations: [
+        {
+          contactId: "contact_1",
+          conversationId: "conversation_live_1",
+          participantName: "曾伟"
+        }
+      ]
+    },
+    sideEffects: {
+      calendarEntryCreated: false,
+      externalMessageSent: false,
+      networkRequestMade: false,
+      notificationDelivered: false,
+      savedRecordCreated: false
+    }
+  });
+
+  assert.equal(view.selected?.messages.length, 2);
+  assert.deepEqual(
+    view.selected?.messages.map((message) => message.id),
+    ["message_1", "message_2"]
+  );
+  assert.deepEqual(view.selected?.sourceLabels, ["关系上下文"]);
+  assert.equal(view.selected?.summary, "先复核这段关系背景，再准备跟进。");
+});
+
 test("createdRelationshipThreadToView maps a confirmed draft without implementation copy", () => {
   const view = createdRelationshipThreadToView({
     state: "staged_created",
