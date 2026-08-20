@@ -52,6 +52,11 @@ export interface OrbitApiClient {
 
 type OrbitApiMethod = "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 
+const inFlightGetsByFetch = new WeakMap<
+  FetchLike,
+  Map<string, Promise<ApiResult<unknown>>>
+>();
+
 const INVALID_ENVELOPE_MESSAGE =
   "Orbit 服务返回的数据格式暂时无法识别，请稍后重试。";
 const INVALID_JSON_MESSAGE = "Orbit 服务返回的数据暂时无法解析，请稍后重试。";
@@ -312,6 +317,65 @@ async function request<TData>(
   };
 }
 
+function concurrentGetKey(
+  baseUrl: string,
+  authCookieHeader: string,
+  path: string,
+  options: OrbitApiRequestOptions
+): string {
+  const headers = Object.entries(options.headers ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right)
+  );
+
+  return JSON.stringify([baseUrl, authCookieHeader.trim(), path, headers]);
+}
+
+function coalescedGet<TData>(
+  baseUrl: string,
+  authCookieHeader: string,
+  fetchImpl: FetchLike,
+  path: string,
+  options: OrbitApiRequestOptions = {}
+): Promise<ApiResult<TData>> {
+  if (options.body !== undefined) {
+    return request<TData>(
+      baseUrl,
+      authCookieHeader,
+      fetchImpl,
+      "GET",
+      path,
+      options
+    );
+  }
+
+  const requests = inFlightGetsByFetch.get(fetchImpl) ?? new Map();
+  inFlightGetsByFetch.set(fetchImpl, requests);
+  const key = concurrentGetKey(baseUrl, authCookieHeader, path, options);
+  const existing = requests.get(key) as Promise<ApiResult<TData>> | undefined;
+
+  if (existing) {
+    return existing;
+  }
+
+  const pending = request<TData>(
+    baseUrl,
+    authCookieHeader,
+    fetchImpl,
+    "GET",
+    path,
+    options
+  );
+  requests.set(key, pending as Promise<ApiResult<unknown>>);
+  const clear = () => {
+    if (requests.get(key) === pending) {
+      requests.delete(key);
+    }
+  };
+  void pending.then(clear, clear);
+
+  return pending;
+}
+
 export function createOrbitApiClient({
   authCookieHeader = "",
   baseUrl = configuredBaseUrl(),
@@ -332,11 +396,10 @@ export function createOrbitApiClient({
       );
     },
     get<TData>(path: string, options?: OrbitApiRequestOptions) {
-      return request<TData>(
+      return coalescedGet<TData>(
         normalizedBaseUrl,
         authCookieHeader,
         fetchImpl,
-        "GET",
         path,
         options
       );

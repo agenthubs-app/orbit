@@ -40,6 +40,38 @@ test("Orbit API client unwraps success envelopes and runtime headers", async () 
   assert.equal(String(calls[0]), "http://localhost:3000/api/health");
 });
 
+test("Orbit API client coalesces identical concurrent GET requests", async () => {
+  let fetchCount = 0;
+  let resolveFetch!: (value: Response) => void;
+  const deferredResponse = new Promise<Response>((resolve) => {
+    resolveFetch = resolve;
+  });
+  const fetchImpl: FetchLike = async () => {
+    fetchCount += 1;
+    if (fetchCount > 1) {
+      return response(JSON.stringify({ success: true, data: { ok: true } }));
+    }
+    return await deferredResponse;
+  };
+  const client = createOrbitApiClient({
+    authCookieHeader: "authjs.session-token=session-token",
+    baseUrl: "http://localhost:3000",
+    fetchImpl
+  });
+
+  const first = client.get<{ ok: boolean }>("/api/profile");
+  const second = client.get<{ ok: boolean }>("/api/profile");
+
+  assert.equal(fetchCount, 1);
+  resolveFetch(response(JSON.stringify({ success: true, data: { ok: true } })));
+
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.deepEqual(firstResult, secondResult);
+
+  await client.get<{ ok: boolean }>("/api/profile");
+  assert.equal(fetchCount, 2);
+});
+
 test("Orbit API client returns failure envelopes without throwing", async () => {
   const client = createOrbitApiClient({
     baseUrl: "http://localhost:3000",
