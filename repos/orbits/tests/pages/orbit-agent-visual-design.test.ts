@@ -19,6 +19,9 @@ const agentSource = readProjectFile(
 const dashboardSource = readProjectFile(
   "app/(app)/app/agent/orbit-agent-dashboard.tsx",
 );
+const nextActionsSource = readProjectFile(
+  "app/(app)/app/agent/orbit-agent-today-workspace.tsx",
+);
 const styles = readProjectFile(
   "app/(app)/app/orbit-reference-styles.tsx",
 );
@@ -65,4 +68,35 @@ test("Orbit agent dashboard renders the console-green sections", () => {
   assert.match(dashboardSource, /className="brief"/);
   assert.match(dashboardSource, /className="card journeys"/);
   assert.match(dashboardSource, /className="glass brief-input"/);
+  assert.match(dashboardSource, /surface="desktop"/);
+  assert.match(dashboardSource, /surface="mobile"/);
+});
+
+test("Orbit agent brief renders a concise numbered action list", () => {
+  assert.match(nextActionsSource, /className="brief-action-list"/);
+  assert.match(nextActionsSource, /className=\{`glass brief-action-row/);
+  assert.match(nextActionsSource, /className="brief-action-index"/);
+  assert.match(nextActionsSource, /className="brief-action-copy"/);
+  assert.match(nextActionsSource, /className="brief-action-buttons"/);
+  assert.match(nextActionsSource, /className="brief-action-more"/);
+  assert.doesNotMatch(nextActionsSource, /className="glass brief-suggest"/);
+  assert.match(nextActionsSource, /agentSignalsToNextActionRows/);
+  assert.match(nextActionsSource, /signals\?view=home/);
+});
+
+test("Orbit agent brief aligns actions without changing the visual system", () => {
+  assert.match(
+    agentSource,
+    /\.brief-action-row \{[\s\S]*?grid-template-columns:\s*32px minmax\(0, 1fr\) minmax\(220px, 268px\) 32px/,
+  );
+  assert.match(
+    agentSource,
+    /\.brief-action-buttons \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    agentSource,
+    /\.brief-action-context \{[\s\S]*?text-overflow:\s*ellipsis/,
+  );
+  assert.match(agentSource, /@media \(max-width: 720px\)/);
+  assert.match(agentSource, /background:\s*radial-gradient\(64% 100%/);
 });

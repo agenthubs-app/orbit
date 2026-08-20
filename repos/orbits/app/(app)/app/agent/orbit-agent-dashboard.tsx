@@ -206,7 +206,12 @@ export function OrbitAgentDashboard({
         </div>
 
         {/* 真实信号：/api/agent/signals（lede + 现在最值得做）*/}
-        <OrbitAgentTodayWorkspace navigate={navigate} onAsk={onAsk} surface="desktop" />
+        <div className="orbit-desktop-only">
+          <OrbitAgentTodayWorkspace navigate={navigate} onAsk={onAsk} surface="desktop" />
+        </div>
+        <div className="orbit-mobile-only">
+          <OrbitAgentTodayWorkspace navigate={navigate} onAsk={onAsk} surface="mobile" />
+        </div>
 
         {/* 简报内的玻璃输入（真实对话管线）*/}
         <form

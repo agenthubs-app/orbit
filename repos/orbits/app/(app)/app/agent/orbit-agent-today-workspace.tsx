@@ -4,48 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
+import {
+  agentSignalsToNextActionRows,
+  type AgentSignalStatus,
+  type AgentTodaySignalView,
+} from "./orbit-agent-next-actions";
 
-type SignalStatus =
-  | "new"
-  | "acknowledged"
-  | "snoozed"
-  | "dismissed"
-  | "resolved";
-type SignalStatusUpdate = Exclude<SignalStatus, "new" | "resolved">;
-
-interface AgentTodaySignalView {
-  signalId: string;
-  type: "followup_due" | "event_upcoming" | "relationship_stale";
-  title: string;
-  summary: string;
-  reason: string;
-  severity: "critical" | "high" | "medium" | "low";
-  confidence: number;
-  status: SignalStatus;
-  lastObservedAt: string;
-  changes: readonly { field: string; before?: string; after?: string }[];
-  sources: readonly {
-    sourceLabel: string;
-    capturedAt: string;
-  }[];
-  actions: readonly {
-    actionId: "open" | "ask_agent" | "mark_done";
-    label: string;
-    href: string;
-    prompt?: string;
-  }[];
-}
+type SignalStatusUpdate = Exclude<AgentSignalStatus, "new" | "resolved">;
 
 interface OrbitAgentTodayWorkspaceProps {
   navigate: (href: string) => void;
   onAsk: (query: string) => void;
   surface: "desktop" | "mobile";
-}
-
-function signalIcon(signal: AgentTodaySignalView): string {
-  if (signal.type === "event_upcoming") return "calendar";
-  if (signal.type === "followup_due") return "clock";
-  return "users";
 }
 
 function snoozeUntilTomorrow(): string {
@@ -101,7 +71,7 @@ export function OrbitAgentTodayWorkspace({
     else setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/agent/signals", {
+      const response = await fetch("/api/agent/signals?view=home", {
         method: "POST",
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -134,15 +104,9 @@ export function OrbitAgentTodayWorkspace({
     if (activeSurface) void refresh();
   }, [activeSurface, refresh]);
 
-  const visibleSignals = useMemo(
-    () =>
-      signals
-        .filter(
-          (signal) =>
-            signal.status === "new" || signal.status === "acknowledged",
-        )
-        .slice(0, 8),
-    [signals],
+  const actionRows = useMemo(
+    () => agentSignalsToNextActionRows(signals, activeLanguage),
+    [activeLanguage, signals],
   );
 
   const updateStatus = async (
@@ -196,8 +160,6 @@ export function OrbitAgentTodayWorkspace({
 
   if (!activeSurface) return null;
 
-  // 渲染成 iOrbit 简报卡（.brief）内部的 lede + 「现在最值得做」玻璃行，
-  // 视觉照 docs/designs/journey/home-console-green.html；数据仍是真实信号。
   return (
     <div className="brief-signals" data-orbit-agent-today-workspace>
       {error ? (
@@ -220,71 +182,100 @@ export function OrbitAgentTodayWorkspace({
         <p aria-live="polite" className="brief-lede">
           {t({ en: "Checking relationship changes…", zh: "正在核对关系变化…" })}
         </p>
-      ) : visibleSignals.length > 0 ? (
+      ) : actionRows.length > 0 ? (
         <>
-          <p className="brief-lede">{visibleSignals[0].summary}</p>
-          {visibleSignals.slice(0, 3).map((signal) => {
-            const primary = signal.actions[0];
-            const askAction = signal.actions.find(
-              (action) => action.actionId === "ask_agent",
-            );
-            return (
+          <p className="brief-lede">
+            {t({
+              en: "Based on what changed, start with these next steps.",
+              zh: "根据你的真实状态，先处理这几件事。",
+            })}
+          </p>
+          <div className="brief-action-list">
+            {actionRows.map((row) => (
               <div
-                className="glass brief-suggest"
-                data-orbit-agent-signal={signal.signalId}
-                key={signal.signalId}
+                className={`glass brief-action-row${row.completed ? " is-complete" : ""}`}
+                data-orbit-agent-signal={row.signal.signalId}
+                key={row.signal.signalId}
               >
-                <Icon color="var(--accent)" name={signalIcon(signal)} size={19} />
-                <div className="txt">
-                  <b>{signal.title}</b>
-                  <span>{signal.reason}</span>
+                <span className="brief-action-index" aria-hidden="true">
+                  {row.completed ? <Icon name="check" size={15} /> : row.index}
+                </span>
+                <div className="brief-action-copy">
+                  <b>{row.title}</b>
+                  <span className="brief-action-context" title={row.context}>
+                    {row.context}
+                  </span>
                 </div>
-                {primary ? (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => navigate(primary.href)}
-                    type="button"
-                  >
-                    {primary.label}
-                    <Icon name="arrow" size={14} />
-                  </button>
-                ) : null}
-                {askAction?.prompt ? (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => onAsk(askAction.prompt!)}
-                    type="button"
-                  >
-                    {askAction.label}
-                  </button>
-                ) : null}
-                <button
-                  aria-label={t({
-                    en: `Snooze ${signal.title}`,
-                    zh: `稍后处理 ${signal.title}`,
+                <div className="brief-action-buttons">
+                  {[0, 1].map((actionIndex) => {
+                    const action = row.actions[actionIndex];
+                    if (!action) {
+                      return (
+                        <span
+                          aria-hidden="true"
+                          className="brief-action-button-spacer"
+                          key={actionIndex}
+                        />
+                      );
+                    }
+                    return (
+                      <button
+                        className={`btn ${actionIndex === 0 ? "btn-primary" : "btn-ghost"} btn-sm`}
+                        key={`${action.kind}:${action.label}`}
+                        onClick={() => {
+                          if (action.kind === "ask" && action.prompt) {
+                            onAsk(action.prompt);
+                          } else if (action.href) {
+                            navigate(action.href);
+                          }
+                        }}
+                        type="button"
+                      >
+                        <span>{action.label}</span>
+                        {actionIndex === 0 ? (
+                          <Icon name="arrow" size={14} />
+                        ) : null}
+                      </button>
+                    );
                   })}
-                  className="brief-signal-quiet"
-                  disabled={updatingId === signal.signalId}
-                  onClick={() => void updateStatus(signal, "snoozed")}
-                  type="button"
-                >
-                  {t({ en: "Tomorrow", zh: "明天提醒" })}
-                </button>
-                <button
-                  aria-label={t({
-                    en: `Dismiss ${signal.title}`,
-                    zh: `忽略 ${signal.title}`,
-                  })}
-                  className="brief-signal-quiet"
-                  disabled={updatingId === signal.signalId}
-                  onClick={() => void updateStatus(signal, "dismissed")}
-                  type="button"
-                >
-                  {t({ en: "Dismiss", zh: "忽略" })}
-                </button>
+                </div>
+                {!row.completed ? (
+                  <details className="brief-action-more">
+                    <summary
+                      aria-label={t({
+                        en: `More options for ${row.title}`,
+                        zh: `${row.title}的更多操作`,
+                      })}
+                    >
+                      <Icon name="more" size={17} />
+                    </summary>
+                    <div>
+                      <button
+                        disabled={updatingId === row.signal.signalId}
+                        onClick={() =>
+                          void updateStatus(row.signal, "snoozed")
+                        }
+                        type="button"
+                      >
+                        {t({ en: "Remind tomorrow", zh: "明天提醒" })}
+                      </button>
+                      <button
+                        disabled={updatingId === row.signal.signalId}
+                        onClick={() =>
+                          void updateStatus(row.signal, "dismissed")
+                        }
+                        type="button"
+                      >
+                        {t({ en: "Dismiss", zh: "忽略" })}
+                      </button>
+                    </div>
+                  </details>
+                ) : (
+                  <span className="brief-action-more" aria-hidden="true" />
+                )}
               </div>
-            );
-          })}
+            ))}
+          </div>
         </>
       ) : (
         <p className="brief-lede" data-orbit-agent-signals-empty>
