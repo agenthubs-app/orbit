@@ -48,6 +48,26 @@ test("profile screen can save manual public profile edits through the API", () =
   assert.match(screenSource, /保存资料/u);
 });
 
+test("profile editor exposes labelled 44pt controls to assistive technology", () => {
+  const inputStart = screenSource.indexOf("function ProfileTextInput");
+  const inputEnd = screenSource.indexOf("function BusinessCardTagRow");
+  const inputSource = screenSource.slice(inputStart, inputEnd);
+
+  assert.match(inputSource, /accessibilityLabel=\{label\}/u);
+  assert.match(
+    screenSource,
+    /profileInput:\s*\{[^}]*minHeight:\s*44/su
+  );
+  assert.match(
+    screenSource,
+    /profileExtractionButton:\s*\{[^}]*minHeight:\s*44/su
+  );
+  assert.match(
+    screenSource,
+    /profileSaveButton:\s*\{[^}]*minHeight:\s*44/su
+  );
+});
+
 test("profile screen prioritizes the signed-in public profile editor", () => {
   assert.match(screenSource, /profileSummaryForMobileUser/u);
   assert.match(screenSource, /authUser=\{auth\.user\}/u);

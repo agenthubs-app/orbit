@@ -840,6 +840,7 @@ function ProfileTextInput({
     <View style={styles.profileInputGroup}>
       <Text style={styles.profileInputLabel}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -1233,7 +1234,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 38,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -1250,7 +1251,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     minWidth: 116,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
@@ -1342,7 +1343,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.small,
     lineHeight: 20,
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -1366,7 +1367,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -1384,7 +1385,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -1405,7 +1406,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 38,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },

@@ -29,6 +29,18 @@ test("schedule screen renders event timeline items as compact event modules", ()
   assert.doesNotMatch(screenSource, /isEvent \? "calendar-outline"/u);
 });
 
+test("schedule event modules expose a useful VoiceOver action label", () => {
+  const moduleStart = screenSource.indexOf("function EventTimelineModule");
+  const moduleEnd = screenSource.indexOf("const styles");
+  const moduleSource = screenSource.slice(moduleStart, moduleEnd);
+
+  assert.match(
+    moduleSource,
+    /accessibilityLabel=\{`\$\{item\.title\}，\$\{item\.timeLabel \|\| "时间待定"\}，\$\{item\.actionLabel\}`\}/u
+  );
+  assert.match(moduleSource, /accessibilityHint="打开活动详情"/u);
+});
+
 test("schedule screen surfaces upcoming events before the full timeline", () => {
   assert.match(screenSource, /function ScheduleEventHighlights/u);
   assert.match(screenSource, /view\.eventHighlights/u);

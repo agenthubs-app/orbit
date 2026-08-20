@@ -170,6 +170,8 @@ function TimelineItemRow({ item }: { item: ScheduleTimelineItem }) {
 
   return (
     <Pressable
+      accessibilityHint="打开跟进详情"
+      accessibilityLabel={`${item.title}，${item.timeLabel || "时间待定"}，${item.actionLabel}`}
       accessibilityRole="button"
       onPress={() => router.push(item.href as Href)}
       style={({ pressed }) => [
@@ -237,6 +239,8 @@ function EventTimelineModule({
 
   return (
     <Pressable
+      accessibilityHint="打开活动详情"
+      accessibilityLabel={`${item.title}，${item.timeLabel || "时间待定"}，${item.actionLabel}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
