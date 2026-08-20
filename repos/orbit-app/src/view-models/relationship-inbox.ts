@@ -524,16 +524,16 @@ function selectedConversationItem(
 }
 
 function deduplicateMessages(
-  messages: RelationshipMessageView[]
-): RelationshipMessageView[] {
+  messages: UnknownRecord[]
+): UnknownRecord[] {
   const seen = new Set<string>();
 
   return messages.filter((message) => {
     const signature = [
-      message.fromMe ? "mine" : "theirs",
-      message.sender,
-      message.body,
-      message.time
+      stringField(message, "senderRole"),
+      stringField(message, "senderName"),
+      stringField(message, "body"),
+      stringField(message, "occurredAt")
     ].join("\u001f");
 
     if (seen.has(signature)) {
@@ -552,7 +552,9 @@ function threadDetailView(
   fallbackParticipantName = ""
 ): RelationshipThreadDetailView {
   const conversationId = stringField(thread, "conversationId", "conversation");
-  const messages = listField(thread, "messages").filter(isRecord);
+  const messages = deduplicateMessages(
+    listField(thread, "messages").filter(isRecord)
+  );
   const localizedMessages = messages.map((message) => {
     const fromMe = stringField(message, "senderRole") === "orbit_user";
     const messageId = stringField(message, "messageId", "message");
@@ -576,7 +578,7 @@ function threadDetailView(
     conversationId,
     currentUserName: currentUserName(currentUser),
     draftReply: "",
-    messages: deduplicateMessages(localizedMessages),
+    messages: localizedMessages,
     participantName: fallbackParticipantName || "联系人",
     safetyText: safetyText(sideEffects),
     sourceLabels: localizeSourceLabels(listField(thread, "sourceContextLabels")),

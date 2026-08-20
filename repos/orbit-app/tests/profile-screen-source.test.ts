@@ -71,6 +71,16 @@ test("profile editor exposes labelled 44pt controls to assistive technology", ()
 test("profile screen prioritizes the signed-in public profile editor", () => {
   assert.match(screenSource, /profileSummaryForMobileUser/u);
   assert.match(screenSource, /authUser=\{auth\.user\}/u);
+  assert.match(screenSource, /const storedProfile = profileToSummary\(data\)/u);
+  assert.match(
+    screenSource,
+    /const displayProfile = profileSummaryForMobileUser\(\s*storedProfile,/u
+  );
+  assert.match(screenSource, /<OrbitBusinessCard profile=\{displayProfile\}/u);
+  assert.match(
+    screenSource,
+    /<ProfileManualEditCard[\s\S]*?profile=\{storedProfile\}/u
+  );
 
   const cardStart = screenSource.indexOf("function ProfileCard");
   const extractionStart = screenSource.indexOf(

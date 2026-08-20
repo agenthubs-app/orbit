@@ -289,6 +289,7 @@ function StatusFilterChip({
 }) {
   return (
     <Pressable
+      accessibilityState={{ selected: option.selected }}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -336,6 +337,7 @@ function ContactSearchFilterSection({
       >
         {section.options.map((option) => (
           <Pressable
+            accessibilityState={{ selected: option.selected }}
             accessibilityRole="button"
             key={option.value}
             onPress={() => onToggle(section.key, option.value)}
@@ -394,6 +396,7 @@ function RelationshipFilterSection({
 
           return (
             <Pressable
+              accessibilityState={{ selected }}
               accessibilityRole="button"
               key={option.value}
               onPress={() => onSelect(option.value)}

@@ -61,3 +61,24 @@ test("scheduleEventPreviewToView keeps failure states useful", () => {
     { href: "/events", label: "查看活动列表" }
   ]);
 });
+
+test("scheduleEventPreviewToView hides live implementation labels", () => {
+  const view = scheduleEventPreviewToView({
+    event: {
+      id: "event_live_1",
+      nextAction: "Sign in and register before viewing the attendee list.",
+      sourceMetadata: { label: "event-core-postgres" },
+      startsAt: "2026-09-01T05:00:00.000Z",
+      status: "imported",
+      title: "东京 AI 落地伙伴对接会",
+      venue: "东京"
+    }
+  });
+
+  assert.equal(view.event?.statusLabel, "待复核");
+  assert.equal(view.event?.sourceContext, "来源：活动记录，证据 0 条");
+  assert.equal(
+    view.event?.nextAction,
+    "先查看活动详情，再决定报名或准备事项。"
+  );
+});

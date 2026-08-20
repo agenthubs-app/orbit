@@ -92,6 +92,10 @@ export function RelationshipInboxScreen() {
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const client = useOrbitApiClient();
+  const clientGet = useCallback(
+    (endpoint: string) => client.get<unknown>(endpoint),
+    [client]
+  );
   const clientPost = useCallback(
     (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
     [client]
@@ -111,6 +115,8 @@ export function RelationshipInboxScreen() {
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
   );
+  const [createdThread, setCreatedThread] =
+    useState<RelationshipCreatedThreadView | null>(null);
 
   useEffect(() => {
     if (seedContactId) {
@@ -158,12 +164,15 @@ export function RelationshipInboxScreen() {
       ) : null}
       {state.kind === "success" || state.kind === "empty" ? (
         <InboxContent
+          clientGet={clientGet}
           clientPost={clientPost}
+          createdThread={createdThread}
           data={state.kind === "success" ? state.data : null}
           notificationsData={
             notificationsState.kind === "success" ? notificationsState.data : null
           }
           onOpenConversation={openConversation}
+          onSetCreatedThread={setCreatedThread}
           onRefreshSignals={signalsState.refresh}
           seed={{
             contactId: seedContactId,
@@ -253,11 +262,14 @@ export function RelationshipInboxThreadScreen() {
 }
 
 function InboxContent({
+  clientGet,
   clientPost,
   composing,
+  createdThread,
   data,
   notificationsData,
   onOpenConversation,
+  onSetCreatedThread,
   onRefreshSignals,
   seed,
   signalsData,
@@ -265,11 +277,14 @@ function InboxContent({
   signalsLoading,
   setComposing
 }: {
+  clientGet: ClientGet;
   clientPost: ClientPost;
   composing: boolean;
+  createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
   notificationsData: unknown;
   onOpenConversation: (conversationId: string) => void;
+  onSetCreatedThread: (thread: RelationshipCreatedThreadView | null) => void;
   onRefreshSignals: () => void;
   seed: { contactId: string; organization: string; participantName: string };
   signalsData: unknown;
@@ -380,7 +395,10 @@ function InboxContent({
           <ActionButton
             icon="create-outline"
             label="写一段新跟进"
-            onPress={() => setComposing(true)}
+            onPress={() => {
+              onSetCreatedThread(null);
+              setComposing(true);
+            }}
           />
 
           {composing ? (
@@ -388,10 +406,19 @@ function InboxContent({
               clientPost={clientPost}
               onCancel={() => setComposing(false)}
               onCreated={(thread) => {
-                onOpenConversation(thread.conversation.id);
+                onSetCreatedThread(thread);
                 setComposing(false);
               }}
               seed={seed}
+            />
+          ) : null}
+
+          {createdThread ? (
+            <ThreadDetail
+              clientGet={clientGet}
+              clientPost={clientPost}
+              detail={createdThread.detail}
+              previewOnly
             />
           ) : null}
 
@@ -777,11 +804,13 @@ function ConversationList({
 function ThreadDetail({
   clientGet,
   clientPost,
-  detail
+  detail,
+  previewOnly = false
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
   detail: RelationshipThreadDetailView;
+  previewOnly?: boolean;
 }) {
   return (
     <DataCard detail={detail.summary} title={detail.subject}>
@@ -808,12 +837,18 @@ function ThreadDetail({
           </View>
         ))}
       </View>
-      <PrivacyControlsPanel
-        clientGet={clientGet}
-        clientPost={clientPost}
-        detail={detail}
-      />
-      <ReplyComposer clientPost={clientPost} detail={detail} />
+      {previewOnly ? (
+        <Text style={styles.safetyText}>{detail.safetyText}</Text>
+      ) : (
+        <>
+          <PrivacyControlsPanel
+            clientGet={clientGet}
+            clientPost={clientPost}
+            detail={detail}
+          />
+          <ReplyComposer clientPost={clientPost} detail={detail} />
+        </>
+      )}
     </DataCard>
   );
 }

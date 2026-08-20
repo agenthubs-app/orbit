@@ -320,3 +320,15 @@ test("recent relationship searches sit below search actions before relationship 
   assert.ok(recentIndex > actionRowIndex);
   assert.ok(intentFilterIndex > recentIndex);
 });
+
+test("contact filters expose their selected state to VoiceOver", () => {
+  const filtersStart = screenSource.indexOf("function StatusFilterChip");
+  const filtersEnd = screenSource.indexOf("function ContactCard");
+  const filtersSource = screenSource.slice(filtersStart, filtersEnd);
+
+  assert.match(
+    filtersSource,
+    /accessibilityState=\{\{ selected: option\.selected \}\}/u
+  );
+  assert.match(filtersSource, /accessibilityState=\{\{ selected \}\}/u);
+});

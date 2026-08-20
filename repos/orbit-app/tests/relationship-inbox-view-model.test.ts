@@ -168,14 +168,14 @@ test("relationshipInboxToView removes exact duplicate messages and implementatio
         {
           body: "下周可以约时间继续聊。",
           messageId: "message_1_duplicate",
-          occurredAt: "2026-08-20T10:30:49+09:00",
+          occurredAt: "2026-08-20T10:30:04+09:00",
           senderName: "曾伟",
           senderRole: "contact"
         },
         {
           body: "下周可以约时间继续聊。",
           messageId: "message_2",
-          occurredAt: "2026-08-20T10:31:00+09:00",
+          occurredAt: "2026-08-20T10:30:49+09:00",
           senderName: "曾伟",
           senderRole: "contact"
         }

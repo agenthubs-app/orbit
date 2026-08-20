@@ -214,6 +214,7 @@ function EventDiscoveryControls({
 
           return (
             <Pressable
+              accessibilityState={{ selected }}
               accessibilityRole="button"
               key={filter}
               onPress={() => onStatusChange(filter)}
@@ -243,6 +244,7 @@ function EventDiscoveryControls({
 
             return (
               <Pressable
+                accessibilityState={{ selected }}
                 accessibilityRole="button"
                 key={topic}
                 onPress={() => onTopicChange(selected ? "" : topic)}

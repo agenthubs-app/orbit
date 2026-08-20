@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { eventDetailPath } from "../../api/endpoints";
+import { publicEventDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
@@ -25,7 +25,10 @@ function firstParam(value: string | string[] | undefined): string {
 export function ScheduleEventPreviewScreen() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
-  const state = useApiResource<unknown>(eventDetailPath(eventId), () => false);
+  const state = useApiResource<unknown>(
+    publicEventDetailPath(eventId),
+    () => false
+  );
 
   return (
     <AppScreen

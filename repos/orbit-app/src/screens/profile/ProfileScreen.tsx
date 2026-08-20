@@ -334,17 +334,18 @@ function ProfileCard({
   savingProfile: boolean;
   suggestionsState: ApiResourceState<unknown>;
 }) {
-  const profile = profileSummaryForMobileUser(
-    profileToSummary(data),
+  const storedProfile = profileToSummary(data);
+  const displayProfile = profileSummaryForMobileUser(
+    storedProfile,
     authUser
   );
 
   return (
     <>
-      <OrbitBusinessCard profile={profile} />
-      {profile.bio ? (
+      <OrbitBusinessCard profile={displayProfile} />
+      {displayProfile.bio ? (
         <DataCard detail="别人会先看到这段介绍" title="一句话简介">
-          <Text style={styles.bodyText}>{profile.bio}</Text>
+          <Text style={styles.bodyText}>{displayProfile.bio}</Text>
         </DataCard>
       ) : null}
       <ProfileManualEditCard
@@ -353,7 +354,7 @@ function ProfileCard({
         acceptedPatch={acceptedProfilePatch}
         appliedProfileExtraction={appliedProfileExtraction}
         onSave={onSaveProfile}
-        profile={profile}
+        profile={storedProfile}
         saving={savingProfile}
       />
       <ProfileDocumentExtractionCard
@@ -379,11 +380,11 @@ function ProfileCard({
         onAcceptSuggestion={onAcceptSuggestion}
         state={suggestionsState}
       />
-      <ProfileTagSection items={profile.offering} title="我能提供" />
-      <ProfileTagSection items={profile.seeking} title="我想寻求" />
-      <ProfileTagSection items={profile.topics} title="想聊的话题" />
-      {profile.relationshipGoal ? (
-        <DataCard detail={profile.relationshipGoal} title="关系目标" />
+      <ProfileTagSection items={displayProfile.offering} title="我能提供" />
+      <ProfileTagSection items={displayProfile.seeking} title="我想寻求" />
+      <ProfileTagSection items={displayProfile.topics} title="想聊的话题" />
+      {displayProfile.relationshipGoal ? (
+        <DataCard detail={displayProfile.relationshipGoal} title="关系目标" />
       ) : null}
     </>
   );

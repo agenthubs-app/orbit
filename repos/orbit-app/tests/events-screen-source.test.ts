@@ -115,6 +115,17 @@ test("events screen progressively reveals a long image list", () => {
   assert.match(screenSource, /收起活动/u);
 });
 
+test("event discovery filters expose their selected state to VoiceOver", () => {
+  const controlsStart = screenSource.indexOf("function EventDiscoveryControls");
+  const controlsEnd = screenSource.indexOf("function EventImageList");
+  const controlsSource = screenSource.slice(controlsStart, controlsEnd);
+
+  assert.equal(
+    controlsSource.match(/accessibilityState=\{\{ selected \}\}/gu)?.length,
+    2
+  );
+});
+
 test("events image cards keep time and location labels readable", () => {
   assert.match(
     screenSource,

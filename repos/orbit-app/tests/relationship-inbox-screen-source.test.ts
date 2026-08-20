@@ -156,8 +156,20 @@ test("relationship inbox opens threads on a dedicated detail route", () => {
   const listEnd = screenSource.indexOf("function RelationshipSignalsCard");
   const listSource = screenSource.slice(listStart, listEnd);
 
-  assert.doesNotMatch(listSource, /<ThreadDetail/u);
+  assert.doesNotMatch(listSource, /detail=\{view\.selected\}/u);
   assert.match(listSource, /onOpenConversation/u);
+});
+
+test("relationship inbox keeps non-persisted created threads as local previews", () => {
+  assert.match(screenSource, /createdThread/u);
+  assert.match(screenSource, /onSetCreatedThread\(thread\)/u);
+  assert.match(screenSource, /previewOnly/u);
+
+  const onCreatedStart = screenSource.indexOf("onCreated={(thread) => {");
+  const onCreatedEnd = screenSource.indexOf("seed={seed}", onCreatedStart);
+  const onCreatedSource = screenSource.slice(onCreatedStart, onCreatedEnd);
+
+  assert.doesNotMatch(onCreatedSource, /onOpenConversation/u);
 });
 
 test("relationship inbox opens to searchable conversation history like the web inbox panel", () => {
