@@ -1,24 +1,38 @@
 import { NextResponse } from "next/server";
-import { auth } from "../../../../auth";
 import type { AgentSignalService } from "../../../../features/agent/signals/contract";
 import { createAgentSignalService } from "../../../../features/agent/signals/service-factory";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
+import {
+  resolveAuthenticatedApiActor,
+  type AuthenticatedApiActor,
+} from "../../_shared/authenticated-actor";
 
 export interface AgentSignalRequestContext {
   actorId: string;
   service: AgentSignalService;
 }
 
-export async function resolveAgentSignalRequest(): Promise<AgentSignalRequestContext | null> {
-  const session = await auth();
-  const actorId = session?.user?.id?.trim();
+export interface AgentSignalRequestDependencies {
+  resolveActor?: () => Promise<Pick<AuthenticatedApiActor, "id"> | null>;
+  serviceForActor?: (actorId: string) => AgentSignalService;
+}
+
+export async function resolveAgentSignalRequest(
+  dependencies: AgentSignalRequestDependencies = {},
+): Promise<AgentSignalRequestContext | null> {
+  const actor = await (
+    dependencies.resolveActor ?? resolveAuthenticatedApiActor
+  )();
+  const actorId = actor?.id.trim();
   if (!actorId) return null;
   return {
     actorId,
-    service: createAgentSignalService({
-      actorId,
-      mode: resolveModuleMode(),
-    }),
+    service:
+      dependencies.serviceForActor?.(actorId) ??
+      createAgentSignalService({
+        actorId,
+        mode: resolveModuleMode(),
+      }),
   };
 }
 
