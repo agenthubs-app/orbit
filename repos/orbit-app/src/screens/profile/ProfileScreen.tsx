@@ -12,6 +12,7 @@ import {
   View
 } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import type { MobileAuthUser } from "../../api/mobile-auth";
 import {
   ORBIT_API_ENDPOINTS,
   profileUpdateSuggestionAcceptPath
@@ -27,6 +28,7 @@ import {
   useApiResource
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { profileSummaryForMobileUser } from "../../view-models/mobile-profile";
 import {
   applyProfileAcceptedPatchToDraft,
   applyProfileDocumentExtractionToDraft,
@@ -268,6 +270,7 @@ export function ProfileScreen() {
           actionMessage={suggestionActionMessage}
           acceptedProfilePatch={acceptedProfilePatch}
           appliedProfileExtraction={appliedProfileExtraction}
+          authUser={auth.user}
           data={state.data}
           onAcceptSuggestion={onAcceptSuggestion}
           onApplyExtraction={onApplyProfileExtraction}
@@ -293,6 +296,7 @@ function ProfileCard({
   actionMessage,
   acceptedProfilePatch,
   appliedProfileExtraction,
+  authUser,
   data,
   onAcceptSuggestion,
   onApplyExtraction,
@@ -312,6 +316,7 @@ function ProfileCard({
   actionMessage: string | null;
   acceptedProfilePatch: unknown;
   appliedProfileExtraction: unknown;
+  authUser: MobileAuthUser | null;
   data: unknown;
   onAcceptSuggestion: (id: string) => void;
   onApplyExtraction: () => void;
@@ -329,7 +334,10 @@ function ProfileCard({
   savingProfile: boolean;
   suggestionsState: ApiResourceState<unknown>;
 }) {
-  const profile = profileToSummary(data);
+  const profile = profileSummaryForMobileUser(
+    profileToSummary(data),
+    authUser
+  );
 
   return (
     <>
@@ -339,13 +347,6 @@ function ProfileCard({
           <Text style={styles.bodyText}>{profile.bio}</Text>
         </DataCard>
       ) : null}
-      <ProfileDocumentExtractionCard
-        actionError={profileExtractionError}
-        extractingKind={profileDocumentExtractionKind}
-        onApplyExtraction={onApplyExtraction}
-        onExtract={onExtractProfileDocument}
-        result={profileExtractionResult}
-      />
       <ProfileManualEditCard
         actionError={profileActionError}
         actionMessage={profileActionMessage}
@@ -354,6 +355,13 @@ function ProfileCard({
         onSave={onSaveProfile}
         profile={profile}
         saving={savingProfile}
+      />
+      <ProfileDocumentExtractionCard
+        actionError={profileExtractionError}
+        extractingKind={profileDocumentExtractionKind}
+        onApplyExtraction={onApplyExtraction}
+        onExtract={onExtractProfileDocument}
+        result={profileExtractionResult}
       />
       <DataCard
         detail="登录状态、工作区、身份"

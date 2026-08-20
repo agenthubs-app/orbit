@@ -184,6 +184,25 @@ test("accountSessionToView prefers the validated mobile session identity", () =>
   assert.deepEqual(view.authActions, []);
 });
 
+test("accountSessionToView names the canonical agenthubs identity Xiaoyu", () => {
+  const view = accountSessionToView(
+    {
+      account: { workspaceName: "Orbit" },
+      session: { status: "signed-in" }
+    },
+    {
+      authenticated: true,
+      authUser: {
+        email: "agenthubs@example.com",
+        id: "user_mry5y200_58jpi8",
+        name: "agenthubs"
+      }
+    }
+  );
+
+  assert.equal(view.displayName, "小雨");
+});
+
 test("account screen renders the signed-out boundary before API failure states", () => {
   assert.match(accountScreenSource, /auth\.ready && !auth\.signedIn/u);
   assert.match(

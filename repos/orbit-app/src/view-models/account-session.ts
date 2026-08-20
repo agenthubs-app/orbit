@@ -1,3 +1,5 @@
+import { mobileUserDisplayName } from "./mobile-profile";
+
 export interface AccountSessionView {
   authActions: {
     href: "/account/login" | "/account/signup";
@@ -148,10 +150,11 @@ export function accountSessionToView(
 
   return {
     displayName:
-      options.authUser?.name.trim() ||
-      stringField(user, "displayName") ||
-      stringField(account, "displayName") ||
-      "未填写姓名",
+      mobileUserDisplayName(
+        options.authUser,
+        stringField(user, "displayName") ||
+          stringField(account, "displayName")
+      ) || "未填写姓名",
     emptyMessage: "当前账号接口没有返回可展示的登录信息。",
     emptyTitle: "账号状态不可用",
     goal: stringField(profile, "relationshipGoal", "尚未填写关系目标。"),

@@ -48,6 +48,22 @@ test("profile screen can save manual public profile edits through the API", () =
   assert.match(screenSource, /保存资料/u);
 });
 
+test("profile screen prioritizes the signed-in public profile editor", () => {
+  assert.match(screenSource, /profileSummaryForMobileUser/u);
+  assert.match(screenSource, /authUser=\{auth\.user\}/u);
+
+  const cardStart = screenSource.indexOf("function ProfileCard");
+  const extractionStart = screenSource.indexOf(
+    "function ProfileDocumentExtractionCard"
+  );
+  const cardSource = screenSource.slice(cardStart, extractionStart);
+  const editorIndex = cardSource.indexOf("<ProfileManualEditCard");
+  const extractionIndex = cardSource.indexOf("<ProfileDocumentExtractionCard");
+
+  assert.ok(editorIndex > -1);
+  assert.ok(extractionIndex > editorIndex);
+});
+
 test("profile screen can extract profile drafts from pasted card or resume text", () => {
   assert.match(screenSource, /buildProfileDocumentExtractionRequest/u);
   assert.match(screenSource, /profileDocumentExtractionToView/u);
