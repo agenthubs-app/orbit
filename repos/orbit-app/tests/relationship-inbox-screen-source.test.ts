@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -8,6 +8,7 @@ const screenSource = readFileSync(
   join(repoRoot, "src", "screens", "inbox", "RelationshipInboxScreen.tsx"),
   "utf8"
 );
+const detailRoutePath = join(repoRoot, "app", "inbox", "[id].tsx");
 
 test("relationship inbox screen presents mobile inbox sections for alerts and threads", () => {
   assert.match(screenSource, /type InboxSection = "alerts" \| "threads"/u);
@@ -137,8 +138,26 @@ test("relationship inbox shows and confirms email or calendar relationship signa
 test("relationship inbox opens an existing thread before composing from a contact seed", () => {
   assert.match(screenSource, /relationshipConversationIdForContact/u);
   assert.match(screenSource, /seededConversationId/u);
-  assert.match(screenSource, /onSelectConversation\(seededConversationId\)/u);
+  assert.match(screenSource, /onOpenConversation\(seededConversationId\)/u);
   assert.match(screenSource, /setComposing\(false\)/u);
+});
+
+test("relationship inbox opens threads on a dedicated detail route", () => {
+  assert.ok(existsSync(detailRoutePath), "inbox detail route should exist");
+  assert.match(screenSource, /useRouter/u);
+  assert.match(
+    screenSource,
+    /router\.push\(`\/inbox\/\$\{encodeURIComponent\(conversationId\)\}` as Href\)/u
+  );
+  assert.match(screenSource, /export function RelationshipInboxThreadScreen/u);
+  assert.match(screenSource, /relationshipInboxPath\(conversationId\)/u);
+
+  const listStart = screenSource.indexOf("function InboxContent");
+  const listEnd = screenSource.indexOf("function RelationshipSignalsCard");
+  const listSource = screenSource.slice(listStart, listEnd);
+
+  assert.doesNotMatch(listSource, /<ThreadDetail/u);
+  assert.match(listSource, /onOpenConversation/u);
 });
 
 test("relationship inbox opens to searchable conversation history like the web inbox panel", () => {

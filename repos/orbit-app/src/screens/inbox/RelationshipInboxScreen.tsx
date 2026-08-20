@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   Pressable,
@@ -16,6 +16,7 @@ import {
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
+import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
@@ -81,6 +82,7 @@ function uniqueConversations(
 }
 
 export function RelationshipInboxScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     contactId?: string | string[];
     organization?: string | string[];
@@ -90,24 +92,12 @@ export function RelationshipInboxScreen() {
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const client = useOrbitApiClient();
-  const clientGet = useCallback(
-    (endpoint: string) => client.get<unknown>(endpoint),
-    [client]
-  );
   const clientPost = useCallback(
     (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
     [client]
   );
-  const [createdThread, setCreatedThread] =
-    useState<RelationshipCreatedThreadView | null>(null);
-  const [selectedConversationId, setSelectedConversationId] = useState<
-    string | null
-  >(null);
-  const selectedIsCreated =
-    Boolean(createdThread) &&
-    createdThread?.conversation.id === selectedConversationId;
   const state = useApiResource<unknown>(
-    relationshipInboxPath(selectedIsCreated ? null : selectedConversationId),
+    relationshipInboxPath(null),
     (data) => relationshipInboxToView(data).conversations.length === 0
   );
   const notificationsState = useApiResource<unknown>(
@@ -124,8 +114,6 @@ export function RelationshipInboxScreen() {
 
   useEffect(() => {
     if (seedContactId) {
-      setCreatedThread(null);
-      setSelectedConversationId(null);
       setComposing(false);
       return;
     }
@@ -139,6 +127,10 @@ export function RelationshipInboxScreen() {
     state.refresh();
     notificationsState.refresh();
     signalsState.refresh();
+  }
+
+  function openConversation(conversationId: string) {
+    router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href);
   }
 
   return (
@@ -166,17 +158,13 @@ export function RelationshipInboxScreen() {
       ) : null}
       {state.kind === "success" || state.kind === "empty" ? (
         <InboxContent
-          clientGet={clientGet}
           clientPost={clientPost}
-          createdThread={createdThread}
           data={state.kind === "success" ? state.data : null}
           notificationsData={
             notificationsState.kind === "success" ? notificationsState.data : null
           }
-          onCreateThread={setCreatedThread}
-          onSelectConversation={setSelectedConversationId}
+          onOpenConversation={openConversation}
           onRefreshSignals={signalsState.refresh}
-          selectedConversationId={selectedConversationId}
           seed={{
             contactId: seedContactId,
             organization: seedOrganization,
@@ -204,34 +192,86 @@ export function RelationshipInboxScreen() {
   );
 }
 
+export function RelationshipInboxThreadScreen() {
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const conversationId = firstParam(params.id);
+  const client = useOrbitApiClient();
+  const clientGet = useCallback(
+    (endpoint: string) => client.get<unknown>(endpoint),
+    [client]
+  );
+  const clientPost = useCallback(
+    (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
+    [client]
+  );
+  const state = useApiResource<unknown>(
+    relationshipInboxPath(conversationId),
+    (data) => relationshipInboxToView(data).selected === null
+  );
+  const view =
+    state.kind === "success" || state.kind === "empty"
+      ? relationshipInboxToView(state.data)
+      : null;
+
+  return (
+    <AppScreen
+      eyebrow="关系收件箱"
+      refreshControl={
+        <RefreshControl
+          onRefresh={state.refresh}
+          refreshing={state.refreshing}
+          tintColor={colors.accent}
+        />
+      }
+      title="对话详情"
+    >
+      {!conversationId ? (
+        <ErrorState message="缺少对话 ID。" title="打不开对话" />
+      ) : null}
+      {conversationId && state.kind === "loading" ? <LoadingState /> : null}
+      {conversationId && state.kind === "offline" ? (
+        <ErrorState message={state.error.message} title="服务器连不上" />
+      ) : null}
+      {conversationId && state.kind === "failure" ? (
+        <ErrorState message={state.error.message} />
+      ) : null}
+      {conversationId && view?.selected ? (
+        <ThreadDetail
+          clientGet={clientGet}
+          clientPost={clientPost}
+          detail={view.selected}
+        />
+      ) : null}
+      {conversationId && state.kind === "empty" ? (
+        <EmptyState
+          message="这段关系对话还没有可显示的内容。"
+          title="暂无对话"
+        />
+      ) : null}
+    </AppScreen>
+  );
+}
+
 function InboxContent({
-  clientGet,
   clientPost,
   composing,
-  createdThread,
   data,
   notificationsData,
-  onCreateThread,
-  onSelectConversation,
+  onOpenConversation,
   onRefreshSignals,
   seed,
-  selectedConversationId,
   signalsData,
   signalsError,
   signalsLoading,
   setComposing
 }: {
-  clientGet: ClientGet;
   clientPost: ClientPost;
   composing: boolean;
-  createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
   notificationsData: unknown;
-  onCreateThread: (thread: RelationshipCreatedThreadView | null) => void;
-  onSelectConversation: (conversationId: string | null) => void;
+  onOpenConversation: (conversationId: string) => void;
   onRefreshSignals: () => void;
   seed: { contactId: string; organization: string; participantName: string };
-  selectedConversationId: string | null;
   signalsData: unknown;
   signalsError: string;
   signalsLoading: boolean;
@@ -244,16 +284,9 @@ function InboxContent({
   const pendingSignalCount = signalsView.signals.filter(
     (signal) => signal.canConfirm
   ).length;
-  const conversations = uniqueConversations([
-    ...(createdThread ? [createdThread.conversation] : []),
-    ...view.conversations
-  ]);
-  const selected =
-    createdThread?.conversation.id === selectedConversationId
-      ? createdThread.detail
-      : view.selected;
-  const activeId = selected?.conversationId ?? null;
+  const conversations = uniqueConversations(view.conversations);
   const [activeSection, setActiveSection] = useState<InboxSection>("threads");
+  const [seedHandled, setSeedHandled] = useState(false);
   const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -273,31 +306,32 @@ function InboxContent({
   );
 
   useEffect(() => {
-    if (!seed.contactId || selectedConversationId || createdThread) {
+    if (!seed.contactId || seedHandled) {
       return;
     }
 
+    setSeedHandled(true);
+
     if (seededConversationId) {
-      onSelectConversation(seededConversationId);
+      onOpenConversation(seededConversationId);
       setComposing(false);
       return;
     }
 
     setComposing(true);
   }, [
-    createdThread,
-    onSelectConversation,
+    onOpenConversation,
     seed.contactId,
+    seedHandled,
     seededConversationId,
-    selectedConversationId,
     setComposing
   ]);
 
   useEffect(() => {
-    if (composing || selectedConversationId) {
+    if (composing) {
       setActiveSection("threads");
     }
-  }, [composing, selectedConversationId]);
+  }, [composing]);
 
   return (
     <>
@@ -354,8 +388,7 @@ function InboxContent({
               clientPost={clientPost}
               onCancel={() => setComposing(false)}
               onCreated={(thread) => {
-                onCreateThread(thread);
-                onSelectConversation(thread.conversation.id);
+                onOpenConversation(thread.conversation.id);
                 setComposing(false);
               }}
               seed={seed}
@@ -364,9 +397,8 @@ function InboxContent({
 
           {conversations.length > 0 ? (
             <ConversationList
-              activeId={activeId}
               conversations={conversations}
-              onSelect={onSelectConversation}
+              onSelect={onOpenConversation}
             />
           ) : (
             <DataCard detail="新的关系往来会显示在这里" title="暂无对话">
@@ -376,13 +408,6 @@ function InboxContent({
             </DataCard>
           )}
 
-          {selected ? (
-            <ThreadDetail
-              clientGet={clientGet}
-              clientPost={clientPost}
-              detail={selected}
-            />
-          ) : null}
         </>
       ) : null}
     </>
@@ -668,11 +693,9 @@ function AlertsCard({
 }
 
 function ConversationList({
-  activeId,
   conversations,
   onSelect
 }: {
-  activeId: string | null;
   conversations: RelationshipConversationView[];
   onSelect: (conversationId: string) => void;
 }) {
@@ -714,7 +737,6 @@ function ConversationList({
               onPress={() => onSelect(conversation.id)}
               style={({ pressed }) => [
                 styles.threadRow,
-                conversation.id === activeId ? styles.threadRowActive : null,
                 pressed ? styles.pressed : null
               ]}
             >
