@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   Modal,
@@ -21,6 +21,8 @@ import {
 } from "react-native-safe-area-context";
 import {
   ORBIT_API_ENDPOINTS,
+  agentSignalPath,
+  agentSignalsHomePath,
   aiConversationSessionPath
 } from "../../api/endpoints";
 import { ErrorState } from "../../components/ErrorState";
@@ -34,11 +36,17 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { agentHistorySessionsToSummaries } from "../../view-models/agent-history";
 import {
+  agentSignalsToNextActions,
+  type AgentSignalActionView,
+  type AgentSignalNextActionView
+} from "../../view-models/agent-signals";
+import {
   conversationsToSummaries,
   orbitAiHomeChatWindow,
   type ChatMessageView,
   type OrbitAiHomeChatWindow
 } from "../../view-models/conversations";
+import { OrbitNextActions } from "./OrbitNextActions";
 
 const suggestedPrompts: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -180,6 +188,13 @@ function optionalParam(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+function snoozeUntilTomorrow(): string {
+  const next = new Date();
+  next.setDate(next.getDate() + 1);
+  next.setHours(9, 0, 0, 0);
+  return next.toISOString();
+}
+
 type KeyboardFrame = {
   height: number;
   screenY: number;
@@ -259,6 +274,12 @@ export function AiScreen() {
     ORBIT_API_ENDPOINTS.aiConversationSessions,
     (data) => agentHistorySessionsToSummaries(data).length === 0
   );
+  const signalState = useApiResource<unknown>(
+    agentSignalsHomePath(),
+    (data) => agentSignalsToNextActions(data).length === 0
+  );
+  const refreshSignalResource = signalState.refresh;
+  const signalsPrimedRef = useRef(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
@@ -269,6 +290,14 @@ export function AiScreen() {
     null
   );
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
+  const [signalRefreshPending, setSignalRefreshPending] = useState(false);
+  const [signalMutationError, setSignalMutationError] = useState<string | null>(
+    null
+  );
+  const [suppressedSignalIds, setSuppressedSignalIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [updatingSignalId, setUpdatingSignalId] = useState<string | null>(null);
   const homeChat = orbitAiHomeChatWindow(
     startedNewChat || state.kind !== "success" ? null : state.data
   );
@@ -300,6 +329,18 @@ export function AiScreen() {
     ...sessionHistoryItems,
     ...conversationHistoryItems
   ];
+  const signalPayload =
+    signalState.kind === "success" || signalState.kind === "empty"
+      ? signalState.data
+      : null;
+  const nextActions = agentSignalsToNextActions(signalPayload).filter(
+    (item) => !suppressedSignalIds.has(item.id)
+  );
+  const signalError =
+    signalMutationError ??
+    (signalState.kind === "offline" || signalState.kind === "failure"
+      ? signalState.error.message
+      : null);
   const drawerPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -324,9 +365,71 @@ export function AiScreen() {
     }
   }, [params.drawer]);
 
+  const refreshAgentSignals = useCallback(async () => {
+    setSignalMutationError(null);
+    setSignalRefreshPending(true);
+    const result = await client.post<unknown>(agentSignalsHomePath());
+
+    if (result.success) {
+      setSuppressedSignalIds(new Set());
+      refreshSignalResource();
+    } else {
+      setSignalMutationError(result.error.message);
+    }
+    setSignalRefreshPending(false);
+  }, [client, refreshSignalResource]);
+
+  useEffect(() => {
+    if (signalsPrimedRef.current) {
+      return;
+    }
+    signalsPrimedRef.current = true;
+    void refreshAgentSignals();
+  }, [refreshAgentSignals]);
+
   function refresh() {
     state.refresh();
     historyState.refresh();
+    void refreshAgentSignals();
+  }
+
+  async function updateAgentSignal(
+    id: string,
+    status: "dismissed" | "snoozed"
+  ) {
+    setUpdatingSignalId(id);
+    setSignalMutationError(null);
+    const result = await client.patch<unknown>(agentSignalPath(id), {
+      body: {
+        snoozedUntil:
+          status === "snoozed" ? snoozeUntilTomorrow() : undefined,
+        status
+      }
+    });
+
+    if (result.success) {
+      setSuppressedSignalIds((current) => new Set(current).add(id));
+      refreshSignalResource();
+    } else {
+      setSignalMutationError(result.error.message);
+    }
+    setUpdatingSignalId(null);
+  }
+
+  function openAgentSignalAction(
+    _item: AgentSignalNextActionView,
+    action: AgentSignalActionView
+  ) {
+    if (action.kind === "ask" && action.prompt) {
+      router.push({
+        params: { id: "new", initialMessage: action.prompt },
+        pathname: "/ai/[id]"
+      });
+      return;
+    }
+    if (action.route) {
+      router.push(action.route as Href);
+    }
   }
 
   function sendMessage() {
@@ -412,8 +515,23 @@ export function AiScreen() {
           <ChatTranscript
             chat={homeChat}
             onRefresh={refresh}
-            refreshing={state.refreshing || historyState.refreshing}
+            refreshing={
+              state.refreshing ||
+              historyState.refreshing ||
+              signalState.refreshing ||
+              signalRefreshPending
+            }
           >
+            <OrbitNextActions
+              actions={nextActions}
+              error={signalError}
+              loading={signalState.kind === "loading"}
+              onAction={openAgentSignalAction}
+              onDismiss={(id) => void updateAgentSignal(id, "dismissed")}
+              onRefresh={() => void refreshAgentSignals()}
+              onSnooze={(id) => void updateAgentSignal(id, "snoozed")}
+              updatingId={updatingSignalId}
+            />
             {state.kind === "loading" ? <LoadingState /> : null}
             {state.kind === "offline" ? (
               <ErrorState message={state.error.message} title="服务器连不上" />
@@ -547,13 +665,9 @@ function ChatTranscript({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
-  const scrollRef = useRef<ScrollView | null>(null);
-
   return (
     <ScrollView
       contentContainerStyle={styles.transcriptContent}
-      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-      ref={scrollRef}
       refreshControl={
         <RefreshControl
           onRefresh={onRefresh}

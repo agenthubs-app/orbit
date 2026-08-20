@@ -17,6 +17,10 @@ const helpersDir = dirname(fileURLToPath(import.meta.url));
 const REDIRECTS = new Map([
   ["react-native", "react-native-web"],
   [
+    "@expo/vector-icons",
+    join(helpersDir, "stubs", "expo-vector-icons.js")
+  ],
+  [
     "react-native-safe-area-context",
     join(helpersDir, "stubs", "react-native-safe-area-context.js")
   ]

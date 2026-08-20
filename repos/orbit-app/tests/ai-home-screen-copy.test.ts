@@ -191,6 +191,31 @@ test("Orbit AI home keeps empty conversation guidance above the composer", () =>
   assert.match(screenSource, /onPress=\{\(\) => setDraftMessage\(prompt\.label\)\}/u);
 });
 
+test("Orbit AI home renders real next actions before chat messages", () => {
+  assert.match(screenSource, /OrbitNextActions/u);
+  assert.match(screenSource, /agentSignalsHomePath/u);
+  assert.match(screenSource, /agentSignalPath/u);
+  assert.match(screenSource, /agentSignalsToNextActions/u);
+  assert.match(screenSource, /client\.post<unknown>\(agentSignalsHomePath\(\)\)/u);
+  assert.match(screenSource, /client\.patch<unknown>\(agentSignalPath\(id\)/u);
+
+  const actionsIndex = screenSource.indexOf("<OrbitNextActions");
+  const messagesIndex = screenSource.indexOf("chat.messages.map");
+
+  assert.notEqual(actionsIndex, -1);
+  assert.notEqual(messagesIndex, -1);
+  assert.ok(actionsIndex < messagesIndex);
+});
+
+test("Orbit AI home does not auto-scroll past next actions", () => {
+  const transcriptStart = screenSource.indexOf("function ChatTranscript");
+  const composerStart = screenSource.indexOf("function ChatComposer");
+  const transcriptSource = screenSource.slice(transcriptStart, composerStart);
+
+  assert.doesNotMatch(transcriptSource, /onContentSizeChange/u);
+  assert.doesNotMatch(transcriptSource, /scrollToEnd/u);
+});
+
 test("Orbit AI drawer gives every destination its own icon and tone", () => {
   assert.match(screenSource, /const toneStyles: Record<CapabilityTone/u);
   assert.match(screenSource, /FeaturedCapabilityTile/u);
