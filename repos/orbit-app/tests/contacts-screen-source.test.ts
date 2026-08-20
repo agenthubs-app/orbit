@@ -123,6 +123,21 @@ test("contacts screen renders real avatar images when contacts provide them", ()
   assert.match(screenSource, /styles\.avatarImage/u);
 });
 
+test("contact cards keep dense relationship context scannable", () => {
+  assert.match(screenSource, /accessibilityLabel=\{contactAccessibilityLabel\}/u);
+  assert.match(screenSource, /const visibleValueLabels = contact\.valueLabels\.slice\(0, 3\)/u);
+  assert.match(screenSource, /const remainingValueLabelCount/u);
+  assert.match(
+    screenSource,
+    /numberOfLines=\{2\} style=\{styles\.relationshipText\}/u
+  );
+  assert.match(
+    screenSource,
+    /numberOfLines=\{2\} style=\{styles\.nextActionText\}/u
+  );
+  assert.match(screenSource, /styles\.valuePill/u);
+});
+
 test("contacts search results keep the same avatar identity treatment as contact cards", () => {
   assert.match(screenSource, /function SearchResultAvatar/u);
   assert.match(screenSource, /contactAvatarFor\(\{[\s\S]*id:[\s\S]*name:/u);

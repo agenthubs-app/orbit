@@ -431,9 +431,17 @@ function ContactCard({
 }) {
   const avatar = contactAvatarFor(contact);
   const toneStyle = avatarToneStyles[avatar.tone];
+  const detail = contactDetail(contact);
+  const contactAccessibilityLabel = `${contact.name}，${detail}，打开联系人详情`;
+  const visibleValueLabels = contact.valueLabels.slice(0, 3);
+  const remainingValueLabelCount = Math.max(
+    0,
+    contact.valueLabels.length - visibleValueLabels.length
+  );
 
   return (
     <Pressable
+      accessibilityLabel={contactAccessibilityLabel}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -465,24 +473,33 @@ function ContactCard({
             {contact.name}
           </Text>
           <Text numberOfLines={2} style={styles.contactDetail}>
-            {contactDetail(contact)}
+            {detail}
           </Text>
         </View>
+        {contact.valueScore === null ? null : (
+          <View style={styles.valuePill}>
+            <Text style={styles.valueText}>{contact.valueScore}</Text>
+          </View>
+        )}
       </View>
-      <Text style={styles.relationshipText}>{contact.relationship}</Text>
+      <Text numberOfLines={2} style={styles.relationshipText}>
+        {contact.relationship}
+      </Text>
       {contact.valueLabels.length > 0 ? (
         <View style={styles.tagsRow}>
-          {contact.valueLabels.map((label) => (
+          {visibleValueLabels.map((label) => (
             <Text key={label} style={styles.tagText}>
               {label}
             </Text>
           ))}
+          {remainingValueLabelCount > 0 ? (
+            <Text style={styles.tagText}>+{remainingValueLabelCount}</Text>
+          ) : null}
         </View>
       ) : null}
-      <Text style={styles.nextActionText}>{contact.nextAction}</Text>
-      {contact.valueScore === null ? null : (
-        <Text style={styles.valueText}>价值分 {contact.valueScore}</Text>
-      )}
+      <Text numberOfLines={2} style={styles.nextActionText}>
+        {contact.nextAction}
+      </Text>
     </Pressable>
   );
 }
@@ -1739,8 +1756,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.card,
     borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg
+    gap: spacing.sm,
+    padding: spacing.md
   },
   contactCardPressed: {
     opacity: 0.86,
@@ -2315,7 +2332,17 @@ const styles = StyleSheet.create({
   valueText: {
     color: colors.accent,
     fontSize: typography.caption,
-    fontWeight: "700",
-    textTransform: "uppercase"
+    fontWeight: "900"
+  },
+  valuePill: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 32,
+    minWidth: 42,
+    paddingHorizontal: spacing.sm
   }
 });
