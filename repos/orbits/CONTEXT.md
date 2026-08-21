@@ -16,6 +16,22 @@ _Avoid_: Contact, saved contact
 A person record the user has explicitly accepted into their relationship workspace.
 _Avoid_: OCR result, contact draft
 
+**Relationship Connection**:
+One account's actor-scoped relationship to one Confirmed Contact. It owns that account's relationship stage; another account represents the same real person with its own Confirmed Contact and Connection.
+_Avoid_: Contact status, global relationship state
+
+**Relationship Stage**:
+The current maintenance state of a Relationship Connection: needs follow-up, active, nurture, or archived.
+_Avoid_: Contact Draft review state, task due state, partnership type
+
+**Follow-up Task**:
+A user-confirmed, persistent action linked to a Relationship Connection, optionally scheduled with a due time.
+_Avoid_: Suggested follow-up, relationship stage
+
+**Suggested Follow-up**:
+A reviewable AI- or rule-generated proposal that becomes a Follow-up Task only after user confirmation.
+_Avoid_: Task, reminder, completed action
+
 **Orbit Invitation**:
 An optional, separately confirmed email that invites a confirmed contact to join Orbit after the recipient address and message have been reviewed.
 _Avoid_: Contact confirmation, automatic welcome email
