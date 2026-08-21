@@ -64,6 +64,15 @@ function optionalString(value: unknown): string | undefined {
   return nonEmptyString(value) ? value : undefined;
 }
 
+function recordBelongsToAccount(
+  record: LiveRecord<Record<string, unknown>>,
+  accountId: string,
+): boolean {
+  return nonEmptyString(record.userId)
+    ? record.userId === accountId
+    : record.payload.accountId === accountId;
+}
+
 function stringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => nonEmptyString(item))
@@ -257,12 +266,17 @@ async function readFocusedConnectionGraph(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): Promise<LiveConnectionEvidenceGraph> {
-  const connectionRecords = await input.store.listRecords({
+  const accountId = input.accountId?.trim();
+  const candidateConnectionRecords = await input.store.listRecords({
     workspaceId: input.workspaceId,
     collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
     recordIds: [input.connectionId],
-    ...(input.accountId ? { userId: input.accountId } : {}),
   });
+  const connectionRecords = accountId
+    ? candidateConnectionRecords.filter((record) =>
+        recordBelongsToAccount(record, accountId),
+      )
+    : candidateConnectionRecords;
   const connections = connectionRecords
     .map(connectionFromRecord)
     .filter((connection): connection is ConnectionDTO => connection !== null);
@@ -332,11 +346,13 @@ export function createStorageConnectionEvidenceProvider({
     async readConnectionEvidenceGraphForAccount(
       accountId: string,
     ): Promise<LiveConnectionEvidenceGraph> {
-      const connectionRecords = await store.listRecords({
+      const allConnectionRecords = await store.listRecords({
         workspaceId,
         collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
-        userId: accountId,
       });
+      const connectionRecords = allConnectionRecords.filter((record) =>
+        recordBelongsToAccount(record, accountId),
+      );
       const connections = connectionRecords
         .map(connectionFromRecord)
         .filter((connection): connection is ConnectionDTO => connection !== null);
@@ -352,7 +368,6 @@ export function createStorageConnectionEvidenceProvider({
               workspaceId,
               collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
               recordIds: contactIds,
-              userId: accountId,
             })
           : [],
         evidenceRecordIds.length > 0
@@ -360,7 +375,6 @@ export function createStorageConnectionEvidenceProvider({
               workspaceId,
               collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
               recordIds: evidenceRecordIds,
-              userId: accountId,
             })
           : [],
       ]);

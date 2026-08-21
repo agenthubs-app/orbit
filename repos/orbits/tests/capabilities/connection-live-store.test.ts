@@ -20,7 +20,7 @@ function activeRecord(input: {
   payload: Record<string, unknown> & { id: string };
   searchText: string;
   targetType: string;
-  userId: string;
+  userId: string | null;
   workspaceId: string;
 }): LiveRecord<Record<string, unknown>> {
   const now = "2026-07-02T10:00:00.000Z";
@@ -149,6 +149,117 @@ test("live connection evidence service reads generated relationship graph from s
   if (!missingResult.success) {
     assert.equal(missingResult.error.code, "CONNECTION_NOT_FOUND");
     assert.equal(missingResult.error.provenance.generationMethod, "live-store-query");
+  }
+});
+
+test("live connection evidence reads legacy payload-owned records without crossing accounts", async () => {
+  const workspaceId = "workspace:legacy-payload-owned-connections";
+  const primaryAccountId = "account:legacy-primary";
+  const secondaryAccountId = "account:legacy-secondary";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const source = {
+    type: "manual",
+    id: "source:legacy-connection",
+    label: "Legacy connection source",
+  };
+
+  for (const [accountId, suffix] of [
+    [primaryAccountId, "primary"],
+    [secondaryAccountId, "secondary"],
+  ] as const) {
+    const contactId = `contact:legacy-${suffix}`;
+    const connectionId = `connection:legacy-${suffix}`;
+    const evidenceId = `evidence:legacy-${suffix}`;
+    const now = "2026-08-21T00:00:00.000Z";
+
+    store.upsertRecord(
+      activeRecord({
+        collectionName: "contacts",
+        payload: {
+          id: contactId,
+          displayName: `Legacy ${suffix}`,
+          stage: "active",
+          source,
+          evidenceIds: [evidenceId],
+          createdAt: now,
+          updatedAt: now,
+        },
+        searchText: `Legacy ${suffix}`,
+        targetType: "contact",
+        userId: null,
+        workspaceId,
+      }),
+    );
+    store.upsertRecord(
+      activeRecord({
+        collectionName: "connections",
+        payload: {
+          id: connectionId,
+          accountId,
+          contactId,
+          stage: "active",
+          valueTypes: ["strategic_fit"],
+          summary: `Legacy ${suffix} connection`,
+          relationshipStrength: 70,
+          source,
+          evidenceIds: [evidenceId],
+          createdAt: now,
+          updatedAt: now,
+        },
+        searchText: `Legacy ${suffix} connection`,
+        targetType: "connection",
+        userId: null,
+        workspaceId,
+      }),
+    );
+    store.upsertRecord(
+      activeRecord({
+        collectionName: "evidence",
+        payload: {
+          id: evidenceId,
+          sourceType: "manual",
+          sourceId: `source:${evidenceId}`,
+          summary: `Legacy ${suffix} evidence`,
+          occurredAt: now,
+          confidence: 0.9,
+          createdBy: accountId,
+        },
+        searchText: `Legacy ${suffix} evidence`,
+        targetType: "evidence",
+        userId: null,
+        workspaceId,
+      }),
+    );
+  }
+
+  const service = createLiveConnectionEvidenceService({
+    provider: createStorageConnectionEvidenceProvider({ store, workspaceId }),
+  });
+  const primaryList = await service.listConnections({ actorId: primaryAccountId });
+  const primaryDetail = await service.getConnection({
+    actorId: primaryAccountId,
+    connectionId: "connection:legacy-primary",
+  });
+  const crossAccountDetail = await service.getConnection({
+    actorId: primaryAccountId,
+    connectionId: "connection:legacy-secondary",
+  });
+
+  assert.equal(primaryList.success, true);
+  assert.deepEqual(
+    primaryList.success
+      ? primaryList.data.connections.map((connection) => connection.id)
+      : [],
+    ["connection:legacy-primary"],
+  );
+  assert.equal(
+    primaryList.success ? primaryList.data.connections[0]?.displayName : "",
+    "Legacy primary",
+  );
+  assert.equal(primaryDetail.success, true);
+  assert.equal(crossAccountDetail.success, false);
+  if (!crossAccountDetail.success) {
+    assert.equal(crossAccountDetail.error.code, "CONNECTION_NOT_FOUND");
   }
 });
 
