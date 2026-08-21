@@ -320,6 +320,48 @@ function StatusFilterChip({
   );
 }
 
+function CollapsibleFilterSection({
+  children,
+  selectedCount,
+  title
+}: {
+  children: ReactNode;
+  selectedCount: number;
+  title: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={styles.collapsibleFilterSection}>
+      <Pressable
+        accessibilityLabel={`${title}筛选${
+          selectedCount > 0 ? `，已选 ${selectedCount} 项` : ""
+        }`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((current) => !current)}
+        style={({ pressed }) => [
+          styles.collapsibleFilterButton,
+          pressed ? styles.collapsibleFilterButtonPressed : null
+        ]}
+      >
+        <Text numberOfLines={1} style={styles.collapsibleFilterLabel}>
+          {title}
+        </Text>
+        {selectedCount > 0 ? (
+          <Text style={styles.collapsibleFilterCount}>{selectedCount}</Text>
+        ) : null}
+        <Ionicons
+          color={colors.text3}
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={16}
+        />
+      </Pressable>
+      {expanded ? children : null}
+    </View>
+  );
+}
+
 function ContactSearchFilterSection({
   onToggle,
   section
@@ -327,9 +369,15 @@ function ContactSearchFilterSection({
   onToggle: (kind: ContactSearchFilterKind, value: string) => void;
   section: ContactSearchFilterSectionView;
 }) {
+  const selectedCount = section.options.filter(
+    (option) => option.selected
+  ).length;
+
   return (
-    <View style={styles.advancedFilterSection}>
-      <Text style={styles.advancedFilterTitle}>{section.title}</Text>
+    <CollapsibleFilterSection
+      selectedCount={selectedCount}
+      title={section.title}
+    >
       <ScrollView
         contentContainerStyle={styles.filterList}
         horizontal
@@ -368,7 +416,7 @@ function ContactSearchFilterSection({
           </Pressable>
         ))}
       </ScrollView>
-    </View>
+    </CollapsibleFilterSection>
   );
 }
 
@@ -384,8 +432,10 @@ function RelationshipFilterSection({
   title: string;
 }) {
   return (
-    <View style={styles.advancedFilterSection}>
-      <Text style={styles.advancedFilterTitle}>{title}</Text>
+    <CollapsibleFilterSection
+      selectedCount={selectedValues.length}
+      title={title}
+    >
       <ScrollView
         contentContainerStyle={styles.filterList}
         horizontal
@@ -419,7 +469,7 @@ function RelationshipFilterSection({
           );
         })}
       </ScrollView>
-    </View>
+    </CollapsibleFilterSection>
   );
 }
 
@@ -1131,7 +1181,6 @@ function ContactsListContent({
   onClearQuery,
   onOpenContact,
   onQueryChange,
-  onRelationshipIntentChange,
   onRunDeepSearch,
   onRunRelationshipSearch,
   onSelectRecentRelationshipSearch,
@@ -1149,7 +1198,6 @@ function ContactsListContent({
   searchResult,
   searching,
   selectedRelationshipIndustries,
-  selectedRelationshipIntent,
   selectedStatus,
   state,
   statusOptions
@@ -1161,7 +1209,6 @@ function ContactsListContent({
   onClearQuery: () => void;
   onOpenContact: (id: string) => void;
   onQueryChange: (text: string) => void;
-  onRelationshipIntentChange: (value: string) => void;
   onRunDeepSearch: () => void;
   onRunRelationshipSearch: () => void;
   onSelectRecentRelationshipSearch: (search: RecentRelationshipSearch) => void;
@@ -1184,7 +1231,6 @@ function ContactsListContent({
   searchResult: ContactsSearchView | null;
   searching: boolean;
   selectedRelationshipIndustries: string[];
-  selectedRelationshipIntent: string | null;
   selectedStatus: ContactListStatusFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
   statusOptions: ContactStatusFilterOption[];
@@ -1261,14 +1307,6 @@ function ContactsListContent({
         <RecentRelationshipSearchesRow
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
-        />
-        <RelationshipFilterSection
-          onSelect={onRelationshipIntentChange}
-          options={relationshipIntentOptions}
-          selectedValues={
-            selectedRelationshipIntent ? [selectedRelationshipIntent] : []
-          }
-          title="要找什么"
         />
         <RelationshipFilterSection
           onSelect={onToggleRelationshipIndustry}
@@ -1397,9 +1435,6 @@ function ContactsListScreen() {
   const [selectedValueFilters, setSelectedValueFilters] = useState<string[]>(
     initialListFilterValues(valueParam)
   );
-  const [selectedRelationshipIntent, setSelectedRelationshipIntent] = useState<
-    string | null
-  >(null);
   const [selectedRelationshipIndustries, setSelectedRelationshipIndustries] =
     useState<string[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -1502,13 +1537,6 @@ function ContactsListScreen() {
     );
   }
 
-  function selectRelationshipIntent(value: string) {
-    setSelectedRelationshipIntent((current) =>
-      current === value ? null : value
-    );
-    setRelationshipSearchError(null);
-  }
-
   function toggleRelationshipIndustryFilter(value: string) {
     setSelectedRelationshipIndustries((current) =>
       toggleContactSearchFilter(current, value)
@@ -1520,7 +1548,6 @@ function ContactsListScreen() {
     suggestion: RelationshipSearchSuggestionView
   ) {
     setQuery(suggestion.query);
-    setSelectedRelationshipIntent(suggestion.request.body.businessIntent ?? null);
     setSelectedRelationshipIndustries(
       suggestion.request.body.industryFilters ?? []
     );
@@ -1534,7 +1561,6 @@ function ContactsListScreen() {
 
   function onSelectRecentRelationshipSearch(search: RecentRelationshipSearch) {
     setQuery(search.body.query ?? "");
-    setSelectedRelationshipIntent(search.body.businessIntent ?? null);
     setSelectedRelationshipIndustries(search.body.industryFilters ?? []);
     setSearchError(null);
     setRelationshipSearchError(null);
@@ -1574,7 +1600,6 @@ function ContactsListScreen() {
   ) {
     const request = buildRelationshipSearchRequest(
       input ?? {
-        businessIntent: selectedRelationshipIntent,
         followUpStatusFilters: relationshipFollowUpStatusFilters(),
         industryFilters: selectedRelationshipIndustries,
         query,
@@ -1680,7 +1705,6 @@ function ContactsListScreen() {
           setQuery(text);
           setRelationshipSearchError(null);
         }}
-        onRelationshipIntentChange={selectRelationshipIntent}
         onRunDeepSearch={() => {
           void runDeepSearch();
         }}
@@ -1704,7 +1728,6 @@ function ContactsListScreen() {
         searchResult={searchResult}
         searching={searching}
         selectedRelationshipIndustries={selectedRelationshipIndustries}
-        selectedRelationshipIntent={selectedRelationshipIntent}
         selectedStatus={selectedStatus}
         state={state}
         statusOptions={statusOptions}
@@ -1722,15 +1745,6 @@ export function ContactsScreen({
 }
 
 const styles = StyleSheet.create({
-  advancedFilterSection: {
-    gap: spacing.xs
-  },
-  advancedFilterTitle: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
   avatar: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -1753,6 +1767,36 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: "center",
     width: 32
+  },
+  collapsibleFilterButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    minHeight: 44,
+    paddingHorizontal: spacing.md
+  },
+  collapsibleFilterButtonPressed: {
+    backgroundColor: colors.surface2
+  },
+  collapsibleFilterCount: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 17,
+    marginRight: spacing.sm
+  },
+  collapsibleFilterLabel: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  collapsibleFilterSection: {
+    gap: spacing.xs
   },
   contactCard: {
     backgroundColor: colors.surface,

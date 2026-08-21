@@ -46,18 +46,16 @@ test("contacts screen loads relationship natural search suggestions", () => {
   assert.match(screenSource, /推荐搜索/u);
 });
 
-test("contacts screen exposes web relationship search intent and industry filters", () => {
-  assert.match(screenSource, /relationshipIntentOptions/u);
+test("contacts screen keeps industry filters without a persistent intent picker", () => {
   assert.match(screenSource, /relationshipIndustryOptions/u);
-  assert.match(screenSource, /selectedRelationshipIntent/u);
   assert.match(screenSource, /selectedRelationshipIndustries/u);
   assert.match(screenSource, /toggleRelationshipIndustryFilter/u);
-  assert.match(screenSource, /businessIntent: selectedRelationshipIntent/u);
   assert.match(screenSource, /industryFilters: selectedRelationshipIndustries/u);
-  assert.match(screenSource, /title="要找什么"/u);
   assert.match(screenSource, /title="行业"/u);
-  assert.match(screenSource, /"找暖介绍"/u);
   assert.match(screenSource, /"企业 SaaS"/u);
+  assert.doesNotMatch(screenSource, /selectedRelationshipIntent/u);
+  assert.doesNotMatch(screenSource, /onRelationshipIntentChange/u);
+  assert.doesNotMatch(screenSource, /title="要找什么"/u);
 });
 
 test("contacts screen keeps relationship search suggestions readable on mobile", () => {
@@ -308,17 +306,30 @@ test("contacts list keeps recent relationship searches as local reusable chips",
   assert.doesNotMatch(screenSource, /AsyncStorage|SecureStore|savedSearchesApi/u);
 });
 
-test("recent relationship searches sit below search actions before relationship filters", () => {
+test("recent relationship searches sit below search actions before collapsed filters", () => {
   const listStart = screenSource.indexOf("function ContactsListContent");
   const listEnd = screenSource.indexOf("export function ContactsScreen");
   const listSource = screenSource.slice(listStart, listEnd);
   const actionRowIndex = listSource.indexOf("styles.searchActionRow");
   const recentIndex = listSource.indexOf("<RecentRelationshipSearchesRow");
-  const intentFilterIndex = listSource.indexOf('title="要找什么"');
+  const industryFilterIndex = listSource.indexOf('title="行业"');
 
   assert.ok(actionRowIndex > -1);
   assert.ok(recentIndex > actionRowIndex);
-  assert.ok(intentFilterIndex > recentIndex);
+  assert.ok(industryFilterIndex > recentIndex);
+});
+
+test("contact filter groups collapse into accessible dropdown buttons", () => {
+  assert.match(screenSource, /function CollapsibleFilterSection/u);
+  assert.match(screenSource, /useState\(false\)/u);
+  assert.match(screenSource, /accessibilityState=\{\{ expanded \}\}/u);
+  assert.match(screenSource, /expanded \? "chevron-up" : "chevron-down"/u);
+  assert.match(screenSource, /selectedCount/u);
+
+  const advancedStart = screenSource.indexOf("function ContactSearchFilterSection");
+  const advancedEnd = screenSource.indexOf("function RelationshipFilterSection");
+  const advancedSource = screenSource.slice(advancedStart, advancedEnd);
+  assert.match(advancedSource, /<CollapsibleFilterSection/u);
 });
 
 test("contact filters expose their selected state to VoiceOver", () => {

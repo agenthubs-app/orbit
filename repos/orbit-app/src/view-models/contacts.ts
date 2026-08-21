@@ -610,7 +610,7 @@ export function contactSearchFilterSections(
     contactSearchFilterSection(
       data,
       "source",
-      "来源",
+      "添加方式",
       "sources",
       normalizedFilterValues(selection.sourceFilters),
       sourceFilterLabel

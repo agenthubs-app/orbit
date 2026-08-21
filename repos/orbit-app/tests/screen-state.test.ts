@@ -569,7 +569,7 @@ test("contactSearchFilterSections maps web source tag and value filters into Chi
         { count: 2, label: "手动记录", selected: true, value: "manual" },
         { count: 1, label: "邮件线索", selected: false, value: "email_signal" }
       ],
-      title: "来源"
+      title: "添加方式"
     },
     {
       key: "tag",
