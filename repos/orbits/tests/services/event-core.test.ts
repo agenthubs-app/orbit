@@ -374,6 +374,18 @@ test("backfill command runs Event Core migrations before reading candidates", ()
   assert.ok(candidateRead > migrationCall);
 });
 
+test("backfill command defaults to v2 and permits only reviewed manifests", () => {
+  const source = readFileSync(
+    new URL("../../scripts/backfill-event-core.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /EVENT_CANONICAL_V2_MANIFEST/);
+  assert.match(source, /EVENT_CANONICAL_V1_MANIFEST/);
+  assert.match(source, /EVENT_CORE_BACKFILL_MANIFEST/);
+  assert.match(source, /event-canonical-v2/);
+});
+
 test("backfill source reader excludes deleted orbit event records", async () => {
   const queries: string[] = [];
   await readEventCoreBackfillCandidates({

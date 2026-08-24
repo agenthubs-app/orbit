@@ -58,7 +58,10 @@ test(
           }),
         ],
       );
-      const runCommand = (args: readonly string[]) =>
+      const runCommand = (
+        args: readonly string[],
+        manifest = "event-canonical-v1",
+      ) =>
         spawnSync(
           "npm",
           ["run", "db:backfill:event-core", "--", ...args],
@@ -67,6 +70,7 @@ test(
           encoding: "utf8",
           env: {
             ...process.env,
+            EVENT_CORE_BACKFILL_MANIFEST: manifest,
             EVENT_CORE_BACKFILL_TIMEZONE: "Asia/Tokyo",
             EVENT_CORE_PUBLIC_OWNER_ACTOR_ID: "account:command-test-owner",
             ORBIT_EVENT_DATABASE_URL: databaseUrl,
@@ -104,6 +108,7 @@ test(
 
       const rejectedCommands = [
         runCommand([]),
+        runCommand(["--dry-run"], "event-canonical-unknown"),
         runCommand(["--dry-run", "--unknown-option"]),
         runCommand(["--apply"]),
         runCommand([

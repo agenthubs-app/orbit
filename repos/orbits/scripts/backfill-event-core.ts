@@ -1,7 +1,8 @@
 import { buildEventCoreBackfillPlan, applyEventCoreBackfillPlan } from "../features/events/core/backfill";
 import { readEventCoreBackfillCandidates } from "../features/events/core/backfill-sources";
-import { runEventCoreMigrations } from "../features/events/core/storage/migrations";
 import { EVENT_CANONICAL_V1_MANIFEST } from "../features/events/core/migration/manifests/event-canonical-v1";
+import { runEventCoreMigrations } from "../features/events/core/storage/migrations";
+import { EVENT_CANONICAL_V2_MANIFEST } from "../features/events/core/migration/manifests/event-canonical-v2";
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { runOrbitRecordsMigration } from "../shared/storage/migrations";
@@ -11,6 +12,19 @@ import { Pool } from "pg";
 type BackfillCommandMode =
   | { kind: "dry-run" }
   | { expectedCount: number; expectedPlanHash: string; kind: "apply" };
+
+function reviewedManifest(value: string | undefined) {
+  switch (value?.trim() || "event-canonical-v2") {
+    case "event-canonical-v1":
+      return EVENT_CANONICAL_V1_MANIFEST;
+    case "event-canonical-v2":
+      return EVENT_CANONICAL_V2_MANIFEST;
+    default:
+      throw new Error(
+        "EVENT_CORE_BACKFILL_MANIFEST must be event-canonical-v1 or event-canonical-v2.",
+      );
+  }
+}
 
 function optionValue(args: readonly string[], name: string): string | null {
   const inline = args.find((arg) => arg.startsWith(`${name}=`));
@@ -76,6 +90,7 @@ async function main(): Promise<void> {
   }
   const defaultTimezone = process.env.EVENT_CORE_BACKFILL_TIMEZONE?.trim();
   const publicOwnerActorId = process.env.EVENT_CORE_PUBLIC_OWNER_ACTOR_ID?.trim();
+  const manifest = reviewedManifest(process.env.EVENT_CORE_BACKFILL_MANIFEST);
   if (!defaultTimezone || !publicOwnerActorId) {
     throw new Error(
       "Set EVENT_CORE_BACKFILL_TIMEZONE and EVENT_CORE_PUBLIC_OWNER_ACTOR_ID explicitly; the backfill does not guess missing timezone or ownership.",
@@ -106,7 +121,7 @@ async function main(): Promise<void> {
     });
     const plan = buildEventCoreBackfillPlan(
       candidates,
-      EVENT_CANONICAL_V1_MANIFEST,
+      manifest,
     );
     if (command.kind === "dry-run") {
       console.log(JSON.stringify({
