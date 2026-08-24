@@ -11,16 +11,6 @@
       "profileEditDeadlineAt": "2026-07-01T09:00:00.000Z",
       "source": "operator_manifest"
     },
-    "event:live-record:20260729": {
-      "evidenceId": "operator:orbit-dev:event-live-record-20260729:profile-deadline-policy-v1",
-      "profileEditDeadlineAt": "2026-09-28T09:00:00.000Z",
-      "source": "operator_manifest"
-    },
-    "event:live-record:runtime-evidence-forum": {
-      "evidenceId": "operator:orbit-dev:runtime-evidence-forum:profile-deadline-policy-v1",
-      "profileEditDeadlineAt": "2026-08-14T09:00:00.000Z",
-      "source": "operator_manifest"
-    },
     "event:manual:founder-investor-salon": {
       "evidenceId": "operator:orbit-dev:founder-investor-salon:profile-deadline-policy-v1",
       "profileEditDeadlineAt": "2026-07-08T09:00:00.000Z",
@@ -74,6 +64,11 @@
     "event_10": {
       "evidenceId": "operator:orbit-dev:event-10:profile-deadline-policy-v1",
       "profileEditDeadlineAt": "2026-05-14T09:00:00.000Z",
+      "source": "operator_manifest"
+    },
+    "event_signup_01": {
+      "evidenceId": "operator:orbit-dev:event-signup-01:profile-deadline-policy-v1",
+      "profileEditDeadlineAt": "2026-08-17T09:00:00.000Z",
       "source": "operator_manifest"
     },
     "event_signup_02": {
