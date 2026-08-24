@@ -16,6 +16,7 @@ import {
 import { OrbitRealCardsPipelineView } from "../orbit-real-cards-pipeline-view";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 
 interface AppContactsPipelinePageProps {
   searchParams?: Promise<AppContactsSearchParams>;
@@ -28,10 +29,18 @@ export default async function AppContactsPipelinePage({
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fpipeline");
   }
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
 
   const routeModel = await loadAppContactsRouteViewModel(
     await searchParams,
-    session.user.id,
+    actor.id,
   );
 
   return (

@@ -59,7 +59,8 @@ test("Today server route authenticates once and passes that actor through every 
 
   assert.match(routeSource, /const session = await auth\(\)/);
   assert.match(routeSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Ftoday"\)/);
-  assert.match(routeSource, /actorId,/);
+  assert.match(routeSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.match(routeSource, /actorId:\s*actor\.id/);
   assert.match(
     contentSource,
     /createAppTodayMergedLoaders\(\s*resolvedLedgerService,\s*actorId,\s*routeControls,\s*\)/,

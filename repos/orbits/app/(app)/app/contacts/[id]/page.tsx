@@ -22,6 +22,7 @@ import {
 import { OrbitRealCardConnection } from "../orbit-real-card-connection";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { AppointmentMemoCapture } from "./appointment-memo-capture";
 import { OrbitAppointmentNegotiation } from "../../events/[id]/orbit-appointment-negotiation";
 
@@ -98,16 +99,23 @@ export default async function AppContactDetailPage({
   const appointmentRequested = appointmentQueryPresent && Boolean(appointmentId && eventId);
   const invalidAppointmentRequest = appointmentQueryPresent && !appointmentRequested;
   const session = await auth();
-  const actorId = session?.user?.id;
-  if (!actorId) {
+  if (!session?.user?.id) {
     redirect(
       `/app/account/login?next=${encodeURIComponent(`/app/contacts/${contactId}`)}`,
     );
   }
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
 
   const language = await getContactDetailPageLanguage();
   const routeModel = await loadAppContactDetailRoute({
-    actorId,
+    actorId: actor.id,
     contactId,
   });
 

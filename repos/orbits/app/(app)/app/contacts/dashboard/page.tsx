@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { StateView } from "../../../../../shared/ui/state-view";
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
@@ -43,10 +44,18 @@ export default async function AppContactsDashboardPage() {
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fdashboard");
   }
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
 
   const [language, routeModel] = await Promise.all([
     getOrbitServerLanguage(),
-    loadAppContactsRouteViewModel(undefined, session.user.id),
+    loadAppContactsRouteViewModel(undefined, actor.id),
   ]);
 
   return (

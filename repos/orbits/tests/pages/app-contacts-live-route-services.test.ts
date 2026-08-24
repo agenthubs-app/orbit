@@ -110,8 +110,28 @@ test("/app/contacts page renders the live-capable product contacts UI", async ()
   assert.match(pageSource, /contactsRouteToOrbitContactsViewModel/);
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /redirect\("\/app\/account\/login/);
-  assert.match(pageSource, /session\.user\.id/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.match(pageSource, /actor\.id/);
+  assert.doesNotMatch(
+    pageSource,
+    /loadAppContactsRouteViewModel\([\s\S]*?session\.user\.id/,
+  );
   assert.doesNotMatch(pageSource, /AppContactsCommandCenter/);
+});
+
+test("all contacts server pages resolve the Auth user to its account actor", () => {
+  for (const filePath of [
+    "app/(app)/app/contacts/[id]/page.tsx",
+    "app/(app)/app/contacts/dashboard/page.tsx",
+    "app/(app)/app/contacts/graph/page.tsx",
+    "app/(app)/app/contacts/intros/page.tsx",
+    "app/(app)/app/contacts/pipeline/page.tsx",
+  ]) {
+    const pageSource = source(filePath);
+
+    assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/, filePath);
+    assert.match(pageSource, /actor\.id/, filePath);
+  }
 });
 
 test("captured source-only contacts remain pending, unscored, and are not counted as events", () => {
