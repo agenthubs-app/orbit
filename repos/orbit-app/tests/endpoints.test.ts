@@ -37,6 +37,17 @@ import {
   dashboardProvenanceAuditRunPath,
   dashboardOpportunitiesRecomputePath,
   eventEncountersPath,
+  eventAdmissionReviewDecisionPath,
+  eventAdmissionReviewDetailPath,
+  eventAdmissionReviewsPath,
+  eventOperationsCheckInsPath,
+  eventOperationsAdminPath,
+  eventOperationsGenerationActionPath,
+  eventOperationsGenerationsPath,
+  eventAnalyticsAggregatePath,
+  eventAnalyticsAttendeePath,
+  eventAccessAssignmentPath,
+  eventAccessRolesPath,
   eventAttendeesImportPath,
   eventGoalPath,
   eventPostEventConfirmPath,
@@ -290,6 +301,63 @@ test("Orbit API endpoints expose event value recommendation acceptance", () => {
   assert.equal(
     eventValueRecommendationAcceptPath("demo-event-1", "pending"),
     "/api/recommendations/events/demo-event-1/accept?scenario=pending"
+  );
+});
+
+test("Orbit API endpoints expose canonical event admission review routes", () => {
+  assert.equal(
+    eventAdmissionReviewsPath("event demo/1"),
+    "/api/events/event%20demo%2F1/admission/reviews?limit=30&view=pending"
+  );
+  assert.equal(
+    eventAdmissionReviewsPath("event demo/1", "processed", "opaque cursor"),
+    "/api/events/event%20demo%2F1/admission/reviews?limit=30&view=processed&cursor=opaque+cursor"
+  );
+  assert.equal(
+    eventAdmissionReviewDetailPath("event demo/1", "actor:aiko/1"),
+    "/api/events/event%20demo%2F1/admission/reviews/actor%3Aaiko%2F1"
+  );
+  assert.equal(
+    eventAdmissionReviewDecisionPath("event demo/1", "actor:aiko/1"),
+    "/api/events/event%20demo%2F1/admission/reviews/actor%3Aaiko%2F1/decision"
+  );
+});
+
+test("Orbit API endpoints expose the limited event check-in roster", () => {
+  assert.equal(
+    eventOperationsCheckInsPath("event demo/1"),
+    "/api/events/event%20demo%2F1/operations/admin/check-ins"
+  );
+});
+
+test("Orbit API endpoints expose event operations generation commands", () => {
+  assert.equal(
+    eventOperationsAdminPath("event demo/1"),
+    "/api/events/event%20demo%2F1/operations/admin"
+  );
+  assert.equal(
+    eventOperationsGenerationsPath("event demo/1"),
+    "/api/events/event%20demo%2F1/operations/admin/generations"
+  );
+  assert.equal(
+    eventOperationsGenerationActionPath("event demo/1", "generation:a/1", "publish"),
+    "/api/events/event%20demo%2F1/operations/admin/generations/generation%3Aa%2F1/publish"
+  );
+});
+
+test("Orbit API endpoints expose both event analytics privacy views", () => {
+  assert.equal(eventAnalyticsAggregatePath("event demo/1"), "/api/events/event%20demo%2F1/analytics/aggregate");
+  assert.equal(eventAnalyticsAttendeePath("event demo/1"), "/api/events/event%20demo%2F1/analytics/attendee");
+});
+
+test("Orbit API endpoints expose owner-only event role routes", () => {
+  assert.equal(
+    eventAccessRolesPath("event demo/1"),
+    "/api/events/event%20demo%2F1/access/roles"
+  );
+  assert.equal(
+    eventAccessAssignmentPath("event demo/1", "actor:staff/1"),
+    "/api/events/event%20demo%2F1/access/assignments/actor%3Astaff%2F1"
   );
 });
 

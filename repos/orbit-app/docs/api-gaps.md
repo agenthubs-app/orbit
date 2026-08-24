@@ -229,6 +229,104 @@ the same web static cover assets.
 The event API should expose a stable `coverUrl` or locale-ready display image
 field for every event so mobile does not need id/title fallback mappings.
 
+## Event Operations Center
+
+Mobile now has a private activity operations center backed by:
+
+- `GET /api/events/center`
+
+The Events screen exposes the center only for signed-in users. The center shows
+the activities the current actor owns or can operate, validates every returned
+role before displaying access, and derives the next task from the canonical
+lifecycle, schedule, and event-scoped role. Loading, empty, offline, malformed
+payload, migration-pending, draft, cancelled, archived, and published states
+remain explicit. Pull to refresh, the public activity-detail link, and admission
+review, check-in, role management, operations, and analytics now use native
+routes backed by the same capability-guarded Web APIs.
+
+Native admission review is backed by the same capability-guarded Web routes:
+
+- `GET /api/events/:id/admission/reviews`
+- `GET /api/events/:id/admission/reviews/:actorId`
+- `POST /api/events/:id/admission/reviews/:actorId/decision`
+
+It preserves the pending/processed buckets, opaque cursor pagination, all eight
+submitted profile fields, adaptive interview answers, and optimistic
+`expectedApplicationVersion`. Approval and rejection require an explicit native
+confirmation. A `409` conflict clears stale detail, refreshes the queue, and
+never claims that the decision succeeded. Simulator acceptance used Xiaoyu's
+real `event_signup_02` access; both queues were genuinely empty, so mutation UI
+was covered by render/unit tests without creating production-like fixture data.
+
+Native on-site check-in now uses the Web limited-roster boundary:
+
+- `GET /api/events/:id/operations/admin/check-ins`
+- `POST /api/events/:id/operations/admin/check-ins`
+
+The screen accepts only `displayName`, `participantId`, `checkedIn`, and
+`checkedInAt` for each participant. Any expanded or malformed participant
+record fails visibly instead of being rendered or mistaken for an empty list.
+Search, all/pending/done filters, progress, one-tap arrival recording, pull to
+refresh, and per-participant pending state are native. `409` responses refresh
+the server-owned time-window state. Simulator acceptance confirmed genuine
+empty limited rosters for Xiaoyu's `event_signup_02` and `event_02`; no arrival
+records were created during acceptance.
+
+Native owner-only role management is backed by:
+
+- `GET /api/events/:id/access/roles`
+- `GET /api/events/:id/access/assignments/:subjectActorId`
+- `PUT /api/events/:id/access/assignments/:subjectActorId`
+- `DELETE /api/events/:id/access/assignments/:subjectActorId`
+
+Every grant, change, and revoke reads the latest durable revision first. The
+client sends the Web route's exact command bodies, requires an audit reason,
+protects the Event Core owner, refreshes on `409`, and validates successful
+mutation responses before claiming success. Simulator acceptance confirmed
+Xiaoyu's owner-only roster without creating or changing assignments.
+
+Native event operations is backed by:
+
+- `GET /api/events/:id/operations/admin`
+- `POST /api/events/:id/operations/admin/generations`
+- `POST /api/events/:id/operations/admin/generations/:generationId/retry`
+- `POST /api/events/:id/operations/admin/generations/:generationId/publish`
+
+The mobile control surface shows aggregate operating metrics, durable AI
+generation progress, explicit retry/publish controls, published two-round table
+summaries, and configured time gates. Starting, retrying, and publishing require
+native confirmation and response-contract validation. The sensitive participant
+directory is not duplicated here; the limited check-in screen remains the
+mobile roster boundary.
+
+All three Xiaoyu-operated activities currently return
+`EVENT_OPERATIONS_NOT_CONFIGURED`. Mobile presents that as a business setup
+state instead of a generic outage. Initial editing of all twelve operations
+configuration fields remains on Web. `event_signup_02` also has identical
+canonical start and end timestamps, which violates the backend configuration
+rule and must be corrected in Event Core before that activity can be configured.
+
+Native event analytics reads both privacy views independently:
+
+- `GET /api/events/:id/analytics/aggregate`
+- `GET /api/events/:id/analytics/attendee`
+
+The organizer report remains aggregate-only and shows registrations, arrivals,
+contact consent, encounter evidence, grouping, appointments, and rates with the
+real numerator and denominator. Zero denominators render as no sample instead
+of false precision. The attendee report remains self-scoped and includes only
+the current attendee's status and already persisted AI artifact. If both views
+are authorized, mobile exposes a segmented switch. Xiaoyu's real acceptance
+data authorized the aggregate report and correctly denied all three attendee
+reports because her actor has no active registration.
+
+Simulator acceptance on 2026-08-19 exposed one cross-domain contract gap. For
+`event_02`, the operations center returned canonical `lifecycleState:
+"published"`, while the public event detail route rendered the same activity as
+`已取消`. The backend needs one authoritative lifecycle/display-state contract
+across `GET /api/events/center`, `GET /api/events/public/:id`, and the protected
+event detail APIs. Mobile must not guess which status is correct.
+
 The event list now also reads the global event-value recommendation boundary:
 
 - `GET /api/recommendations/events`
@@ -377,10 +475,9 @@ Mobile now has event party surfaces backed by:
 - `GET /api/events/:id/matches`
 
 The screens show a venue-ready access code, attendee counts, priority people,
-mutual-interest matches, and relationship groups. They intentionally do not
-record check-in writes or create attendance records. Full parity with the web
-party/check-in flow needs a mobile-safe check-in contract with staff
-confirmation, status refresh, and audit history.
+mutual-interest matches, and relationship groups. Staff arrival writes now use
+the separate limited check-in contract documented above; attendee self check-in
+and party matching retain their existing registered-attendee boundaries.
 
 ## Followups
 

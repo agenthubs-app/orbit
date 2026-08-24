@@ -49,6 +49,7 @@ export const ORBIT_API_ENDPOINTS = {
   dashboardProvenanceAuditRun: "/api/audit/provenance/run",
   dashboardSummary: "/api/dashboard/summary",
   eventRecommendations: "/api/recommendations/event",
+  eventCenter: "/api/events/center",
   eventValueRecommendations: "/api/recommendations/events",
   messageDrafts: "/api/message-drafts",
   notifications: "/api/notifications",
@@ -316,6 +317,71 @@ export function eventAttendeesPath(id: string): string {
 
 export function eventAttendeesImportPath(id: string): string {
   return `${eventAttendeesPath(id)}/import`;
+}
+
+export function eventAdmissionReviewsPath(
+  id: string,
+  view: "pending" | "processed" = "pending",
+  cursor?: string | null
+): string {
+  const searchParams = new URLSearchParams({ limit: "30", view });
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+  return `${eventDetailPath(id)}/admission/reviews?${searchParams.toString()}`;
+}
+
+export function eventAdmissionReviewDetailPath(
+  eventId: string,
+  actorId: string
+): string {
+  return `${eventDetailPath(eventId)}/admission/reviews/${encodeURIComponent(actorId)}`;
+}
+
+export function eventAdmissionReviewDecisionPath(
+  eventId: string,
+  actorId: string
+): string {
+  return `${eventAdmissionReviewDetailPath(eventId, actorId)}/decision`;
+}
+
+export function eventOperationsCheckInsPath(id: string): string {
+  return `${eventDetailPath(id)}/operations/admin/check-ins`;
+}
+
+export function eventOperationsAdminPath(id: string): string {
+  return `${eventDetailPath(id)}/operations/admin`;
+}
+
+export function eventOperationsGenerationsPath(id: string): string {
+  return `${eventOperationsAdminPath(id)}/generations`;
+}
+
+export function eventOperationsGenerationActionPath(
+  eventId: string,
+  generationId: string,
+  action: "publish" | "retry"
+): string {
+  return `${eventOperationsGenerationsPath(eventId)}/${encodeURIComponent(generationId)}/${action}`;
+}
+
+export function eventAnalyticsAggregatePath(id: string): string {
+  return `${eventDetailPath(id)}/analytics/aggregate`;
+}
+
+export function eventAnalyticsAttendeePath(id: string): string {
+  return `${eventDetailPath(id)}/analytics/attendee`;
+}
+
+export function eventAccessRolesPath(id: string): string {
+  return `${eventDetailPath(id)}/access/roles`;
+}
+
+export function eventAccessAssignmentPath(
+  eventId: string,
+  subjectActorId: string
+): string {
+  return `${eventDetailPath(eventId)}/access/assignments/${encodeURIComponent(subjectActorId)}`;
 }
 
 export function eventMatchesPath(id: string): string {

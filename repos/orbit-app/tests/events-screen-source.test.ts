@@ -30,6 +30,12 @@ test("events screen loads global event value recommendations", () => {
   assert.match(screenSource, /"去报名"/u);
 });
 
+test("signed-in users can open the event operations center", () => {
+  assert.match(screenSource, /signedIn/u);
+  assert.match(screenSource, /\/events\/center/u);
+  assert.match(screenSource, /运营中心/u);
+});
+
 test("events screen presents the event home as an image-first list", () => {
   assert.match(screenSource, /function EventImageList/u);
   assert.match(screenSource, /function EventImageCard/u);

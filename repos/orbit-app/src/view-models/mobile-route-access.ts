@@ -30,6 +30,7 @@ const STATIC_CONTACT_ROUTES = new Set([
   "new",
   "pipeline"
 ]);
+const STATIC_EVENT_ROUTES = new Set(["center"]);
 
 function appRelativePath(pathname: string): string {
   const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
@@ -65,9 +66,15 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   if (
     root === "events" &&
     detail !== undefined &&
+    !STATIC_EVENT_ROUTES.has(detail) &&
     (segments.length === 2 ||
       (segments.length === 3 &&
-        (leaf === "attendees" || leaf === "register")))
+        (leaf === "analytics" || leaf === "attendees" || leaf === "register" || leaf === "operations")) ||
+      (segments.length === 4 &&
+        segments[2] === "operations" &&
+        (segments[3] === "admission" ||
+          segments[3] === "check-in" ||
+          segments[3] === "roles")))
   ) {
     return ID_PATH_PARAM_KEYS;
   }
@@ -102,7 +109,7 @@ export function isPrivateMobileRoute(pathname: string): boolean {
   if (matchesPrefix(route, "/events")) {
     // The catalogue and one public event detail are discovery surfaces.
     // Every deeper event workspace reads or writes actor-owned records.
-    return !/^\/events(?:\/[^/]+)?$/u.test(route);
+    return route === "/events/center" || !/^\/events(?:\/[^/]+)?$/u.test(route);
   }
 
   return PRIVATE_ROUTE_PREFIXES.some((prefix) =>

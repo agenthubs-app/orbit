@@ -303,6 +303,31 @@ function eventSummaryById(events: EventSummary[]): Map<string, EventSummary> {
   return new Map(events.map((event) => [event.id, event]));
 }
 
+function EventCenterEntry({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="打开活动运营中心"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.eventCenterEntry,
+        pressed ? styles.eventCardPressed : null
+      ]}
+    >
+      <View style={styles.eventCenterEntryIcon}>
+        <Ionicons color={colors.accent} name="options-outline" size={20} />
+      </View>
+      <View style={styles.eventCenterEntryCopy}>
+        <Text style={styles.eventCenterEntryTitle}>运营中心</Text>
+        <Text numberOfLines={1} style={styles.eventCenterEntryDetail}>
+          查看负责的活动与下一步任务
+        </Text>
+      </View>
+      <Ionicons color={colors.text3} name="chevron-forward" size={19} />
+    </Pressable>
+  );
+}
+
 export function EventsScreen() {
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
@@ -385,6 +410,11 @@ export function EventsScreen() {
       ) : null}
       {state.kind === "empty" ? (
         <EmptyState message="报名、导入或推荐的活动会出现在这里。" title="暂无活动" />
+      ) : null}
+      {signedIn ? (
+        <EventCenterEntry
+          onPress={() => router.push("/events/center" as Href)}
+        />
       ) : null}
       {events.length > 0 ? (
         <EventDiscoveryControls
@@ -838,6 +868,42 @@ const styles = StyleSheet.create({
   eventDetail: {
     color: colors.text3,
     fontSize: typography.small,
+    lineHeight: 20
+  },
+  eventCenterEntry: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 64,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  eventCenterEntryCopy: {
+    flex: 1,
+    gap: spacing.xxs,
+    minWidth: 0
+  },
+  eventCenterEntryDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  eventCenterEntryIcon: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.control,
+    height: 40,
+    justifyContent: "center",
+    width: 40
+  },
+  eventCenterEntryTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
     lineHeight: 20
   },
   eventImageList: {

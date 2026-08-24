@@ -26,7 +26,13 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/home/events",
     "/inbox",
     "/events/event-1/attendees",
+    "/events/event-1/operations/admission",
+    "/events/event-1/operations/check-in",
+    "/events/event-1/operations/roles",
+    "/events/event-1/operations",
+    "/events/event-1/analytics",
     "/events/event-1/register",
+    "/events/center",
     "/party/checkin",
     "/platform",
     "/profile",
@@ -60,6 +66,10 @@ test("mobile discovery, account and admin entry routes stay public", () => {
 
 test("auth return href preserves query controls without duplicating route params", () => {
   assert.equal(
+    mobileAuthReturnHref("/events/center", { id: "owned" }),
+    "/events/center?id=owned"
+  );
+  assert.equal(
     mobileAuthReturnHref("/contacts/contact-1", {
       id: "contact-1",
       q: "林 美咲",
@@ -89,6 +99,9 @@ test("auth return parameter ownership follows the matched route instead of globa
     ["/chat/thread-1", { id: "thread-1", tab: "details" }, "/chat/thread-1?tab=details"],
     ["/contacts/contact-1", { id: "contact-1", q: "林" }, "/contacts/contact-1?q=%E6%9E%97"],
     ["/events/event-1/register", { id: "event-1", step: "questions" }, "/events/event-1/register?step=questions"],
+    ["/events/event-1/operations/admission", { id: "event-1", view: "processed" }, "/events/event-1/operations/admission?view=processed"],
+    ["/events/event-1/operations/check-in", { id: "event-1", mode: "pending" }, "/events/event-1/operations/check-in?mode=pending"],
+    ["/events/event-1/operations/roles", { id: "event-1", member: "actor:staff" }, "/events/event-1/operations/roles?member=actor%3Astaff"],
     ["/schedule/events/event-1", { id: "event-1", view: "day" }, "/schedule/events/event-1?view=day"],
     ["/register/invite-1", { code: "invite-1", source: "qr" }, "/register/invite-1?source=qr"],
     ["/o/orbit", { slug: "orbit", source: "share" }, "/o/orbit?source=share"]
@@ -200,7 +213,13 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",
+    "events/[id]/operations/admission.tsx",
+    "events/[id]/operations/check-in.tsx",
+    "events/[id]/operations/roles.tsx",
+    "events/[id]/operations.tsx",
+    "events/[id]/analytics.tsx",
     "events/[id]/register.tsx",
+    "events/center.tsx",
     "followups.tsx",
     "home.tsx",
     "home/events.tsx",
