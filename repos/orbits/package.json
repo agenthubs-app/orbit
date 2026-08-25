@@ -7,6 +7,7 @@
     "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",
     "db:seed:live-events": "tsx scripts/seed-live-events.ts",
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
+    "db:seed:primary-test-account": "tsx scripts/seed-primary-test-account.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
     "db:backfill:event-core": "tsx scripts/backfill-event-core.ts",
