@@ -110,11 +110,14 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /生成跟进草稿/);
   assert.match(agentSource, /panel\.items\.slice\(0, initialLimit\)/);
   assert.match(agentSource, /data-agent-recommendations-toggle/);
-  assert.match(agentSource, /查看完整处理过程/);
-  assert.match(agentSource, /<details data-agent-run-details/);
-  assert.match(agentSource, /<AgentEvidenceSources/);
-  assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
-  assert.match(agentSource, /details\.open = !details\.open/);
+  const peopleRowSource = agentSource.slice(
+    agentSource.indexOf("function AgentPeopleRow"),
+    agentSource.indexOf("function AgentEventRow"),
+  );
+  assert.doesNotMatch(peopleRowSource, /item\.reason|item\.opener/);
+  assert.doesNotMatch(agentSource, /查看完整处理过程/);
+  assert.doesNotMatch(agentSource, /data-agent-run-details/);
+  assert.doesNotMatch(agentSource, /AgentEvidenceSources/);
 });
 
 test("contact artifact mapping preserves actor-scoped contact ids", async () => {

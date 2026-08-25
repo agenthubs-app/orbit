@@ -54,7 +54,8 @@ test("Agent waiting, timeout recovery, and trust summaries state their real boun
   assert.match(agent, /AGENT_REQUEST_TIMEOUT_MS = 30_000/);
   assert.match(agent, /controller\.abort\(\)/);
   assert.match(agent, /retryRequest: query/);
-  assert.match(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
+  assert.doesNotMatch(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
+  assert.doesNotMatch(agent, /查看完整处理过程/);
   assert.match(agent, /不会把泛化回答展示成真实推荐/);
 });
 

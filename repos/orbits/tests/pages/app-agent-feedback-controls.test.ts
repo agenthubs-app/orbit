@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("Agent chat and Settings expose explicit result-learning controls", async () => {
+test("Settings retain result-learning controls without exposing them in chat", async () => {
   const [chat, feedback, settings, settingsContent] = await Promise.all([
     readFile(
       new URL(
@@ -34,7 +34,7 @@ test("Agent chat and Settings expose explicit result-learning controls", async (
     ),
   ]);
 
-  assert.match(chat, /<AgentOutcomeFeedback/);
+  assert.doesNotMatch(chat, /<AgentOutcomeFeedback/);
   assert.match(feedback, /data-agent-feedback-rating/);
   assert.match(feedback, /data-agent-feedback-outcome/);
   assert.match(feedback, /encodeURIComponent\(runId\)/);

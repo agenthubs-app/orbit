@@ -99,8 +99,8 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 包括 `contacted`、`meeting_booked`、`goal_advanced`。同一 Run 只有一条 actor-scoped
 记录，后续结果会和先前评价合并，并保留本轮真实来源模块与 evidence ids。
 
-聊天结果下方可以记录评价和业务结果；设置页可以检查或删除任意记录。最近记录会由
-服务端压缩为独立的 `userRecordedOutcomes` 上下文交给 planner 和 synthesis。它只能
+普通用户对话不展示评价、业务结果、证据编号或 Run 处理过程；设置页仍可检查或删除
+已有记录。最近记录会由服务端压缩为独立的 `userRecordedOutcomes` 上下文交给 planner 和 synthesis。它只能
 作为弱个性化信号，不能覆盖当前请求、工具证据、安全规则、权限、确认策略和工具
 allowlist。客户端不能在对话请求中伪造这份上下文。
 

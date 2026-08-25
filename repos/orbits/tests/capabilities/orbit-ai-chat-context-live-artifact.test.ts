@@ -683,7 +683,7 @@ test("default Orbit Agent API resolves Aoba relationship context for product dee
   }
 });
 
-test("/app/agent product route keeps technical provenance secondary and prevents overflow", () => {
+test("/app/agent keeps technical provenance out of the user conversation", () => {
   const pageSource = source("app/(app)/app/agent/page.tsx");
   const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
 
@@ -691,10 +691,8 @@ test("/app/agent product route keeps technical provenance secondary and prevents
   assert.match(agentSource, /<h1/);
   assert.match(agentSource, /<AccountTopNav active="agent"/);
   assert.doesNotMatch(agentSource, /function AgentTopNav/);
-  assert.match(agentSource, /function AgentEvidenceSources/);
-  assert.match(agentSource, /data-agent-evidence-sources/);
-  assert.match(agentSource, /<details/);
-  assert.match(agentSource, /overflowWrap:\s*"anywhere"/);
+  assert.doesNotMatch(agentSource, /function AgentEvidenceSources/);
+  assert.doesNotMatch(agentSource, /data-agent-evidence-sources/);
   assert.match(agentSource, /minWidth:\s*0/);
   // 工作台改版后固定 444px 的结果侧栏没有了，结果改为内联 .panel 渲染
   // （AgentPeopleRow / AgentEventRow / AgentTodoRow）。这里改盯这个容器，
@@ -702,8 +700,8 @@ test("/app/agent product route keeps technical provenance secondary and prevents
   assert.match(agentSource, /className="panel-body"/);
   assert.match(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
   assert.match(agentSource, /cursor: "col-resize"/);
-  assert.match(agentSource, /<AgentOutcomeFeedback/);
-  assert.match(agentSource, /<AgentActionStatusCard/);
+  assert.doesNotMatch(agentSource, /<AgentOutcomeFeedback/);
+  assert.doesNotMatch(agentSource, /<AgentActionStatusCard/);
   assert.match(agentSource, /evidenceRefsFromArtifacts/);
   assert.match(pageSource, /data-orbit-route="app-agent-route"/);
 });

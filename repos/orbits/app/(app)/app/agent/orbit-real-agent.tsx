@@ -23,8 +23,6 @@ import { productHref } from "../orbit-public-shell";
 import { Avatar, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
-import { AgentActionStatusCard } from "./agent-action-status-card";
-import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
@@ -942,82 +940,6 @@ function AgentMessageCopyButton({ text }: { text: string }) {
   );
 }
 
-function toggleAgentEvidenceSourcesFromKeyboard(
-  event: ReactKeyboardEvent<HTMLElement>,
-) {
-  if (event.key !== "Enter" && event.key !== " ") {
-    return;
-  }
-
-  const details = event.currentTarget.parentElement;
-  if (!(details instanceof HTMLDetailsElement)) {
-    return;
-  }
-
-  event.preventDefault();
-  details.open = !details.open;
-}
-
-function AgentEvidenceSources({
-  references,
-}: {
-  references: readonly AgentEvidenceRef[];
-}) {
-  const { t } = useOrbitLanguage();
-  if (references.length === 0) return null;
-  const totalItems = references.reduce(
-    (total, reference) => total + reference.itemCount,
-    0,
-  );
-
-  return (
-    <details
-      data-agent-evidence-sources
-      style={{
-        borderTop: "1px solid var(--border)",
-        color: "var(--text-3)",
-        fontSize: 11,
-        marginTop: 10,
-        paddingTop: 8,
-      }}
-    >
-      <summary
-        onKeyDown={toggleAgentEvidenceSourcesFromKeyboard}
-        style={{ cursor: "pointer", fontWeight: 600 }}
-      >
-        {t({
-          en: `Evidence from ${totalItems} records · no external action taken`,
-          zh: `依据 ${totalItems} 条 · 未执行外部动作`,
-        })}
-      </summary>
-      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-        {references.map((reference, index) => (
-          <div
-            key={`${reference.label}:${reference.generatedAt}:${index}`}
-            style={{ display: "grid", gap: 4 }}
-          >
-            <span style={{ color: "var(--text-2)" }}>
-              {reference.label} · {reference.itemCount}
-            </span>
-            <span>
-              {t({ en: "Source", zh: "来源" })}:{" "}
-              {reference.sourceModules.join(" · ") || "Orbit"}
-              {reference.generatedAt
-                ? ` · ${new Date(reference.generatedAt).toLocaleString()}`
-                : ""}
-            </span>
-            {reference.evidenceIds.length > 0 ? (
-              <span className="mono" style={{ overflowWrap: "anywhere" }}>
-                {reference.evidenceIds.slice(0, 3).join(" · ")}
-              </span>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 function AgentHistoryList({
   activeQ,
   activeSessionId,
@@ -1669,8 +1591,6 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
             : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
         </button>
       </span>
-      {item.reason ? <span className="why">{item.reason}</span> : null}
-      {item.opener ? <span className="why">{item.opener}</span> : null}
       <AgentInlineDraftResult contactId={connection.id} draft={draft} organization={connection.company} recipientName={connection.displayName} t={t} />
     </div>
   );
@@ -2029,12 +1949,6 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .p-person .w span { font-size: 12.5px; color: var(--text-2); }
 [data-orbit-real-page="agent"] .p-person .why { flex-basis: 100%; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-left: 2px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 [data-orbit-real-page="agent"] .p-acts { display: flex; gap: 8px; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] { border-top: 0; margin-top: 11px; padding-top: 0; font-size: 12.5px; color: var(--text-3); }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); padding: 5px 10px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 500; list-style: none; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary::-webkit-details-marker { display: none; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary:hover { color: var(--ink); border-color: var(--border-2); }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div { margin-top: 8px; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div > div { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-2); padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
 [data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
 
 [data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
@@ -2715,43 +2629,6 @@ export function OrbitRealAgent({
               <AgentMarkdown text={message.text} />
               {message.items.length > 0 ? (
                 <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
-              ) : null}
-              <AgentEvidenceSources references={message.evidenceRefs ?? []} />
-              {message.runId ? (
-                <AgentOutcomeFeedback
-                  evidenceIds={(message.evidenceRefs ?? []).flatMap(
-                    (reference) => reference.evidenceIds,
-                  )}
-                  language={language === "zh" ? "zh" : "en"}
-                  runId={message.runId}
-                  sourceModules={(message.evidenceRefs ?? []).flatMap(
-                    (reference) => reference.sourceModules,
-                  )}
-                />
-              ) : null}
-              {message.runId ? (
-                <details data-agent-run-details style={{ marginTop: 10 }}>
-                  <summary
-                    className="btn btn-ghost btn-sm"
-                    style={{ cursor: "pointer", display: "inline-flex", listStyle: "none" }}
-                  >
-                    <Icon name="chevR" size={14} />
-                    {language === "zh" ? "查看完整处理过程" : "View full processing trace"}
-                  </summary>
-                  <AgentActionStatusCard
-                    actionIds={message.actionIds ?? []}
-                    language={language === "zh" ? "zh" : "en"}
-                    navigate={navigate}
-                    onRetryRequest={async () => {
-                      const request = agentRetryRequestForAssistant(
-                        messages,
-                        index,
-                      );
-                      if (request) await ask(request);
-                    }}
-                    runId={message.runId}
-                  />
-                </details>
               ) : null}
               {message.retryRequest ? (
                 <button

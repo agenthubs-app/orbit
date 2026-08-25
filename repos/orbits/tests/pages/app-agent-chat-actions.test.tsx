@@ -349,7 +349,7 @@ test("chat action card exposes the shared action id and canonical Today and ledg
   assert.match(html, /全部安排/);
 });
 
-test("Agent chat keeps run and action ids in persisted assistant messages", async () => {
+test("Agent chat persists run ids without rendering internal tracking UI", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(
       new URL(
@@ -364,10 +364,8 @@ test("Agent chat keeps run and action ids in persisted assistant messages", asyn
   assert.match(source, /runId\?: string/);
   assert.match(source, /payload\.data\.actionIds/);
   assert.match(source, /evidenceRefsFromArtifacts/);
-  assert.match(source, /data-agent-evidence-sources/);
-  assert.match(source, /<AgentActionStatusCard/);
-  assert.match(source, /onRetryRequest=/);
-  assert.match(source, /agentRetryRequestForAssistant/);
+  assert.doesNotMatch(source, /data-agent-evidence-sources/);
+  assert.doesNotMatch(source, /<AgentActionStatusCard/);
 });
 
 test("Agent run cancellation uses user-facing request language", async () => {
