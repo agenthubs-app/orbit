@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   while (true) {
     const result = await worker.runOnce({ now: new Date().toISOString(), workerId });
 
-    if (result.claimed > 0 || result.swept > 0) {
+    if (result.claimed > 0 || result.swept > 0 || result.notifyFailures > 0) {
       process.stdout.write(`${JSON.stringify({ result, workerId })}\n`);
     }
 

@@ -48,6 +48,9 @@ const nextConfig = {
     ];
   },
   poweredByHeader: false,
+  // 批量名片导入的 PDF 拆页/HEIC 转码依赖原生二进制；必须留在 Node 运行时
+  // 由 require 加载，不能进 webpack bundle。
+  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "heic-convert", "sharp"],
 };
 
 module.exports = nextConfig;

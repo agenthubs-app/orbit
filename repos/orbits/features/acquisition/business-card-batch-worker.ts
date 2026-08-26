@@ -12,6 +12,7 @@ export interface BusinessCardBatchWorkerRunResult {
   claimed: number;
   completed: number;
   failed: number;
+  notifyFailures: number;
   swept: number;
 }
 
@@ -55,6 +56,7 @@ export function createBusinessCardBatchWorker({
       });
       let completed = 0;
       let failed = 0;
+      let notifyFailures = 0;
 
       await Promise.all(
         claimed.map(async (item) => {
@@ -97,12 +99,17 @@ export function createBusinessCardBatchWorker({
           }
 
           if (outcome.batchBecameReady) {
-            await notify({ actorId: item.actorId, batchId: item.batchId, now: input.now });
+            // 通知是尽力而为：投递配置缺失不能击穿批处理本身。
+            try {
+              await notify({ actorId: item.actorId, batchId: item.batchId, now: input.now });
+            } catch {
+              notifyFailures += 1;
+            }
           }
         }),
       );
 
-      return { claimed: claimed.length, completed, failed, swept };
+      return { claimed: claimed.length, completed, failed, notifyFailures, swept };
     },
   };
 }
