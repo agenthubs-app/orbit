@@ -6,3 +6,4 @@ npm-debug.log*
 orbit-local-backup.sql
 tsconfig.tsbuildinfo
 .superpowers/
+.orbit-batch-uploads/
