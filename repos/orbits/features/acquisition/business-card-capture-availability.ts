@@ -36,7 +36,9 @@ export function resolveBusinessCardCaptureAvailability(
     env.ORBIT_MODULE_MODE ?? env.ORBIT_FEATURE_MODE,
   );
   const ocrProviderConfigured =
-    configured(env.GEMINI_API_KEY) || configured(env.GOOGLE_API_KEY);
+    configured(env.DEEPSEEK_API_KEY) ||
+    configured(env.GEMINI_API_KEY) ||
+    configured(env.GOOGLE_API_KEY);
   const contactStorageConfigured =
     resolveLiveDatabaseConnectionConfig(env) !== null;
 

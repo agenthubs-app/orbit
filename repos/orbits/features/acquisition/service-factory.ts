@@ -18,7 +18,7 @@ import { createLiveReferralRecommendationService } from "./live-referral-service
 import { createLiveBusinessCardReviewService } from "./live-business-card-review-service";
 import { createLiveQrScanConnectService } from "./live-qr-service";
 import { createLiveBusinessCardScanOcrService } from "./live-business-card-scan-service";
-import { createConfiguredGeminiBusinessCardOcrProvider } from "./gemini-business-card-ocr-provider";
+import { createConfiguredBusinessCardCloudOcrProvider } from "./business-card-ocr-provider-selection";
 import { createMockBusinessCardReviewService } from "./mock-business-card-review-service";
 import { createMockBusinessCardScanOcrService } from "./mock-business-card-service";
 import { createMockEmailCalendarSignalService } from "./mock-email-calendar-service";
@@ -114,7 +114,7 @@ export const businessCardScanOcrServiceFactory =
     implementations: {
       live: () =>
         createLiveBusinessCardScanOcrService({
-          cloudOcrProvider: createConfiguredGeminiBusinessCardOcrProvider(),
+          cloudOcrProvider: createConfiguredBusinessCardCloudOcrProvider(),
           provider: createConfiguredStorageBusinessCardScanOcrProvider(),
         }),
       mock: () => createMockBusinessCardScanOcrService(),
