@@ -1,12 +1,20 @@
 import {
   BUSINESS_CARD_IMAGE_MIME_TYPES,
   type BusinessCardCloudOcrProvider,
-  type BusinessCardContactPoint,
-  type BusinessCardContactPointType,
   type BusinessCardImageMimeType,
-  type BusinessCardLabeledValue,
   type BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
+import {
+  BUSINESS_CARD_EXTRACTION_JSON_SCHEMA,
+  BusinessCardCloudOcrProviderError,
+  parseBusinessCardStructuredExtraction,
+} from "./business-card-ocr-validation";
+
+export {
+  BUSINESS_CARD_EXTRACTION_JSON_SCHEMA,
+  BusinessCardCloudOcrProviderError,
+  type BusinessCardCloudOcrProviderErrorCode,
+} from "./business-card-ocr-validation";
 
 const GEMINI_INTERACTIONS_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/interactions";
@@ -21,101 +29,6 @@ export const BUSINESS_CARD_EXTRACTION_PROMPT = [
   "Label every phone, mobile, fax, email, and address with its printed office label when visible.",
   "Never infer or invent missing values. Return null or an empty array when absent.",
 ].join(" ");
-
-const nullableStringSchema = {
-  type: ["string", "null"],
-} as const;
-
-const labeledValueSchema = {
-  additionalProperties: false,
-  properties: {
-    label: nullableStringSchema,
-    value: { type: "string" },
-  },
-  required: ["label", "value"],
-  type: "object",
-} as const;
-
-export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
-  additionalProperties: false,
-  properties: {
-    addresses: {
-      items: labeledValueSchema,
-      type: "array",
-    },
-    certifications: {
-      items: { type: "string" },
-      type: "array",
-    },
-    contactPoints: {
-      items: {
-        additionalProperties: false,
-        properties: {
-          label: nullableStringSchema,
-          type: {
-            enum: ["phone", "mobile", "fax"],
-            type: "string",
-          },
-          value: { type: "string" },
-        },
-        required: ["label", "type", "value"],
-        type: "object",
-      },
-      type: "array",
-    },
-    departments: {
-      items: { type: "string" },
-      type: "array",
-    },
-    detectedLanguages: {
-      items: { type: "string" },
-      type: "array",
-    },
-    emails: {
-      items: labeledValueSchema,
-      type: "array",
-    },
-    fullName: nullableStringSchema,
-    nativeFullName: nullableStringSchema,
-    organization: nullableStringSchema,
-    romanizedFullName: nullableStringSchema,
-    title: nullableStringSchema,
-    website: nullableStringSchema,
-  },
-  required: [
-    "fullName",
-    "nativeFullName",
-    "romanizedFullName",
-    "organization",
-    "departments",
-    "title",
-    "emails",
-    "contactPoints",
-    "website",
-    "addresses",
-    "certifications",
-    "detectedLanguages",
-  ],
-  type: "object",
-} as const;
-
-export type BusinessCardCloudOcrProviderErrorCode =
-  | "INVALID_STRUCTURED_OUTPUT"
-  | "PROVIDER_REQUEST_FAILED"
-  | "PROVIDER_TIMEOUT";
-
-export class BusinessCardCloudOcrProviderError extends Error {
-  readonly code: BusinessCardCloudOcrProviderErrorCode;
-
-  constructor(
-    code: BusinessCardCloudOcrProviderErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = "BusinessCardCloudOcrProviderError";
-    this.code = code;
-  }
-}
 
 type BusinessCardOcrEnv = Record<string, string | undefined>;
 
@@ -134,142 +47,6 @@ function readString(value: unknown): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function stringArray(value: unknown): readonly string[] | null {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
-    return null;
-  }
-
-  return value;
-}
-
-function nullableString(value: unknown): string | null | undefined {
-  if (value === null) {
-    return null;
-  }
-
-  return typeof value === "string" ? value : undefined;
-}
-
-function labeledValues(value: unknown): readonly BusinessCardLabeledValue[] | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const parsed: BusinessCardLabeledValue[] = [];
-
-  for (const item of value) {
-    if (!isRecord(item)) {
-      return null;
-    }
-
-    const label = nullableString(item.label);
-
-    if (label === undefined || typeof item.value !== "string") {
-      return null;
-    }
-
-    parsed.push({
-      label,
-      value: item.value,
-    });
-  }
-
-  return parsed;
-}
-
-function isContactPointType(value: unknown): value is BusinessCardContactPointType {
-  return value === "phone" || value === "mobile" || value === "fax";
-}
-
-function contactPoints(value: unknown): readonly BusinessCardContactPoint[] | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  const parsed: BusinessCardContactPoint[] = [];
-
-  for (const item of value) {
-    if (!isRecord(item)) {
-      return null;
-    }
-
-    const label = nullableString(item.label);
-
-    if (
-      label === undefined ||
-      !isContactPointType(item.type) ||
-      typeof item.value !== "string"
-    ) {
-      return null;
-    }
-
-    parsed.push({
-      label,
-      type: item.type,
-      value: item.value,
-    });
-  }
-
-  return parsed;
-}
-
-function structuredExtraction(value: unknown): BusinessCardStructuredExtraction {
-  if (!isRecord(value)) {
-    throw new BusinessCardCloudOcrProviderError(
-      "INVALID_STRUCTURED_OUTPUT",
-      "The OCR provider returned an invalid structured business-card result.",
-    );
-  }
-
-  const fullName = nullableString(value.fullName);
-  const nativeFullName = nullableString(value.nativeFullName);
-  const romanizedFullName = nullableString(value.romanizedFullName);
-  const organization = nullableString(value.organization);
-  const title = nullableString(value.title);
-  const website = nullableString(value.website);
-  const departments = stringArray(value.departments);
-  const emails = labeledValues(value.emails);
-  const points = contactPoints(value.contactPoints);
-  const addresses = labeledValues(value.addresses);
-  const certifications = stringArray(value.certifications);
-  const detectedLanguages = stringArray(value.detectedLanguages);
-
-  if (
-    fullName === undefined ||
-    nativeFullName === undefined ||
-    romanizedFullName === undefined ||
-    organization === undefined ||
-    title === undefined ||
-    website === undefined ||
-    !departments ||
-    !emails ||
-    !points ||
-    !addresses ||
-    !certifications ||
-    !detectedLanguages
-  ) {
-    throw new BusinessCardCloudOcrProviderError(
-      "INVALID_STRUCTURED_OUTPUT",
-      "The OCR provider returned an invalid structured business-card result.",
-    );
-  }
-
-  return {
-    fullName,
-    nativeFullName,
-    romanizedFullName,
-    organization,
-    departments,
-    title,
-    emails,
-    contactPoints: points,
-    website,
-    addresses,
-    certifications,
-    detectedLanguages,
-  };
 }
 
 function responseText(payload: unknown): string | null {
@@ -331,7 +108,7 @@ function parseProviderPayload(payload: unknown): {
     const usage = usageFor(payload);
 
     return {
-      extraction: structuredExtraction(JSON.parse(text) as unknown),
+      extraction: parseBusinessCardStructuredExtraction(JSON.parse(text) as unknown),
       ...usage,
     };
   } catch (error) {
