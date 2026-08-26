@@ -12,6 +12,7 @@ import {
   businessCardScanOcrFailureToAppError,
   type BusinessCardScanOcrInput,
 } from "../../../../../features/acquisition/business-card-contract";
+import { resolveBusinessCardUploadMimeType } from "../../../../../features/acquisition/business-card-image-normalization";
 import { createBusinessCardScanOcrService } from "../../../../../features/acquisition/service-factory";
 import {
   authenticatedApiActorRequiredResponse,
@@ -53,7 +54,10 @@ async function readBusinessCardScanInput(
         imageBase64: Buffer.from(await image.arrayBuffer()).toString("base64"),
         imageName: image.name,
         imageSizeBytes: image.size,
-        mimeType: image.type,
+        mimeType: resolveBusinessCardUploadMimeType({
+          declaredType: image.type,
+          fileName: image.name,
+        }),
       };
     }
 

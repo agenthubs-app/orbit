@@ -8,6 +8,7 @@ import type {
   BusinessCardReviewIssue,
   BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
+import type { BusinessCardUploadMimeType } from "./business-card-image-normalization";
 
 // Business Card OCR contract 描述名片扫描到联系人草稿的流程。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
@@ -194,7 +195,7 @@ export interface BusinessCardCapture {
     | "rule-based-image-text"
     | "uploaded-business-card";
   imageName: string;
-  imageMimeType: BusinessCardImageMimeType | "text/plain";
+  imageMimeType: BusinessCardUploadMimeType | "text/plain";
   imageDigest: string;
   deviceCameraAccessed: false;
   uploadStorageExecuted: false;

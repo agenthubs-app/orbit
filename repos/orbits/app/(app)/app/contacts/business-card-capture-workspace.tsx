@@ -644,7 +644,7 @@ export function BusinessCardCaptureWorkspace({
             </button>
           </div>
           <input
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             aria-label="上传名片图片"
             capture="environment"
             className="bcc-file"
@@ -693,7 +693,7 @@ export function BusinessCardCaptureWorkspace({
           </button>
         </div>
         <input
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
           aria-label="上传名片图片"
           capture="environment"
           className="bcc-file"
