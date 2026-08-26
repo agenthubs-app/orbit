@@ -17,10 +17,8 @@ export async function paginatePdfToCardImages(input: {
   let document;
 
   try {
-    document = await getDocument({
-      data: new Uint8Array(input.pdfBytes),
-      disableWorker: true,
-    }).promise;
+    // The legacy build falls back to a same-thread fake worker under Node.
+    document = await getDocument({ data: new Uint8Array(input.pdfBytes) }).promise;
   } catch {
     throw new Error("BUSINESS_CARD_PDF_UNREADABLE");
   }
