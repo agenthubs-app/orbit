@@ -70,7 +70,10 @@
 
 - 路由 `/app/contacts/new/batch/[id]`：服务端组件拉初始状态，客户端每 3s 轮询详情 API；展示 已处理/失败/总数 进度、逐卡状态网格（含缩略图，来自 image API）、失败卡的错误说明。任意时刻关闭/重开/换设备，凭 URL 恢复。
 - `ready_for_review` 后页面切换为确认模式（组件 5）。
-- 导入中心 `/app/contacts/new`：「名片扫描」来源卡旁新增「批量导入」入口（多选文件对话框，file input `multiple` + accept 含 `.pdf`）；下方列出进行中/待确认批次（来自列表 API）。桌面与移动布局都要接。
+- 导入中心 `/app/contacts/new`：「名片扫描」来源卡旁新增「批量导入」区块，内含**两个并排按钮入口**（用户明确要求）：
+  - **「批量上传照片」**：file input `multiple`，accept 仅图片（`image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif`），一次多选多张单卡照片；
+  - **「上传 PDF」**：file input 单选，accept 仅 `application/pdf,.pdf`，一次一个多页 PDF（每页一张名片）。
+  两个按钮各自触发独立的 file input，样式与现有「拍照扫描/上传图片」按钮对（primary + ghost）保持同一设计语言；选择完成即调用同一个批次创建 API（照片走 `files[]` 多文件，PDF 走单文件）。下方列出进行中/待确认批次（来自列表 API）。桌面与移动布局都要接。
 
 ## 组件 5：逐张确认与备注聚合
 
