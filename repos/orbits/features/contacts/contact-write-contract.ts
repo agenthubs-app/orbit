@@ -22,12 +22,14 @@ export type BusinessCardContactWriteErrorCode =
 export interface ConfirmBusinessCardContactInput {
   actorId: string;
   actorLabel: string;
+  allowDuplicate?: boolean;
   confirmed: boolean;
   displayName: string;
   draftId: string;
   email: string;
   evidenceIds: readonly string[];
   imageDigest: string;
+  notes?: string;
   organization: string;
   phone: string;
   relationshipContext: string;

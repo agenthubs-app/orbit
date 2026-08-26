@@ -112,6 +112,7 @@ function contactFromRecord(
     primaryEmail: optionalString(payload.primaryEmail),
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
+    notes: optionalString(payload.notes),
     stage: payload.stage,
     source,
     evidenceIds: ids,

@@ -201,6 +201,7 @@ function contactFromRecord(
     primaryEmail: optionalString(payload.primaryEmail),
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
+    notes: optionalString(payload.notes),
     handles: isRecord(payload.handles)
       ? {
           email: optionalString(payload.handles.email),

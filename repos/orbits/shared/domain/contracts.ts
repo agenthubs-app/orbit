@@ -141,6 +141,8 @@ export interface ContactDTO {
   primaryEmail?: string;
   primaryPhone?: string;
   profileSnippet?: string;
+  /** 名片确认时未进固定字段的抽取信息聚合（逐行、带原标签）。 */
+  notes?: string;
   stage: RelationshipStage;
   // 名片夹扩展（全部可选，容忍稀疏数据）。
   handles?: ContactHandlesDTO;

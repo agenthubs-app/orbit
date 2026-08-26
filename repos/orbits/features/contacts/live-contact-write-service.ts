@@ -119,6 +119,7 @@ function contactFor(input: {
   const email = nonEmpty(input.request.email);
   const phone = nonEmpty(input.request.phone);
   const profileSnippet = nonEmpty(input.request.relationshipContext);
+  const notes = nonEmpty(input.request.notes ?? "");
 
   return {
     id: input.contactId,
@@ -128,6 +129,7 @@ function contactFor(input: {
     ...(email ? { primaryEmail: email } : {}),
     ...(phone ? { primaryPhone: phone } : {}),
     ...(profileSnippet ? { profileSnippet } : {}),
+    ...(notes ? { notes } : {}),
     stage: "captured",
     source: {
       id: input.request.imageDigest.trim(),
@@ -186,10 +188,10 @@ export function createLiveBusinessCardContactWriteService({
           });
         }
 
-        const duplicate = findDuplicate(
-          await provider.listContacts(actorId),
-          input,
-        );
+        const duplicate =
+          input.allowDuplicate === true
+            ? null
+            : findDuplicate(await provider.listContacts(actorId), input);
 
         if (duplicate) {
           return success({

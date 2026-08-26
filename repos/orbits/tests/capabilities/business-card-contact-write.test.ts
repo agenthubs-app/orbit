@@ -33,6 +33,55 @@ function restoreEnv(key: string, value: string | undefined): void {
   process.env[key] = value;
 }
 
+test("confirm persists notes and allowDuplicate bypasses duplicate review", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveBusinessCardContactWriteService({
+    now: () => NOW,
+    provider: createStorageBusinessCardContactWriteProvider({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const first = await service.confirmBusinessCardContact({
+    ...INPUT,
+    email: "dup@example.test",
+    notes: "部门: 事業開発室\n传真(本社): 03-0000-2222",
+  });
+  assert.equal(first.success, true);
+  assert.equal(first.data.state, "created");
+
+  const contactRecords = store.listRecords({
+    collectionName: "contacts",
+    workspaceId: WORKSPACE_ID,
+  });
+  assert.equal(
+    contactRecords[0]?.payload.notes,
+    "部门: 事業開発室\n传真(本社): 03-0000-2222",
+  );
+
+  const duplicated = await service.confirmBusinessCardContact({
+    ...INPUT,
+    draftId: "business-card-review:cloud:another-card",
+    email: "dup@example.test",
+  });
+  assert.equal(duplicated.success, true);
+  assert.equal(duplicated.data.state, "duplicate_review");
+
+  const forced = await service.confirmBusinessCardContact({
+    ...INPUT,
+    allowDuplicate: true,
+    draftId: "business-card-review:cloud:another-card",
+    email: "dup@example.test",
+  });
+  assert.equal(forced.success, true);
+  assert.equal(forced.data.state, "created");
+  assert.equal(
+    store.listRecords({ collectionName: "contacts", workspaceId: WORKSPACE_ID }).length,
+    2,
+  );
+});
+
 test("confirmed business card contact writes once and is idempotent by draft", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const service = createLiveBusinessCardContactWriteService({

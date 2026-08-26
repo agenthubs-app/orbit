@@ -420,6 +420,21 @@ function notesFor(input: {
   relationshipContext: string;
   source: ContactDetailSourceReference;
 }): ContactDetailNote[] {
+  // 名片确认时聚合的「备注」字符串以一条置顶笔记进入时间线，保证零信息丢失可见。
+  const cardNotes = input.contact.notes?.trim()
+    ? [
+        {
+          authorLabel: "名片备注",
+          body: input.contact.notes,
+          createdAt: input.contact.updatedAt,
+          evidenceIds: input.contact.evidenceIds,
+          noteId: `note:business-card-notes:${input.contact.id}`,
+          noteWriteExecuted: false as const,
+          productionAuditLogWriteExecuted: false as const,
+          source: input.source,
+        },
+      ]
+    : [];
   const notes = [...input.evidence]
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
     .map((evidence) => ({
@@ -434,6 +449,10 @@ function notesFor(input: {
       noteWriteExecuted: false as const,
       productionAuditLogWriteExecuted: false as const,
     }));
+
+  if (cardNotes.length || notes.length) {
+    return [...cardNotes, ...notes];
+  }
 
   return notes.length
     ? notes

@@ -5,6 +5,8 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createBusinessCardBatchCollectionHandlers } from "../../app/api/contact-drafts/business-card/batches/handler";
+import { createBusinessCardBatchItemConfirmHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/confirm/handler";
+import type { BusinessCardContactWriteService } from "../../features/contacts/contact-write-contract";
 import { createBusinessCardBatchDetailHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/handler";
 import { createBusinessCardBatchItemImageHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/image/handler";
 import { createBusinessCardBatchService } from "../../features/acquisition/business-card-batch-service";
@@ -97,6 +99,108 @@ test("an upload with no usable files is rejected as empty", async () => {
     uploadRequest([{ bytes: Buffer.from("nope"), name: "junk.txt", type: "text/plain" }]),
   );
   assert.equal(response.status, 400);
+});
+
+test("item confirm writes the contact and advances the item; duplicates leave the item untouched", async () => {
+  const { service } = await setup();
+  const handlers = createBusinessCardBatchCollectionHandlers(resolveActor, service);
+  const created = await handlers.POST(
+    uploadRequest([
+      { bytes: TINY_JPEG, name: "card-1.jpg", type: "image/jpeg" },
+      { bytes: TINY_JPEG, name: "card-2.jpg", type: "image/jpeg" },
+    ]),
+  );
+  const { batch } = ((await created.json()) as { data: { batch: { id: string } } }).data;
+  const now = new Date().toISOString();
+  const claimed = await service.claimPendingItems({ limit: 2, now, workerId: "w" });
+  for (const item of claimed) {
+    await service.completeItem({
+      batchId: batch.id,
+      extraction: EXTRACTION,
+      itemId: item.id,
+      now,
+      reviewIssues: [],
+      usage: USAGE,
+      workerId: "w",
+    });
+  }
+
+  const writes: unknown[] = [];
+  const stubWrite = (state: "created" | "duplicate_review"): BusinessCardContactWriteService => ({
+    async confirmBusinessCardContact(input) {
+      writes.push(input);
+      return {
+        success: true,
+        data: {
+          confirmedAt: now,
+          contactId: "contact:new",
+          contactWriteExecuted: state === "created",
+          duplicateContactId: state === "duplicate_review" ? "contact:existing" : null,
+          evidenceIds: input.evidenceIds,
+          state,
+        },
+      };
+    },
+  });
+
+  const confirmBody = {
+    displayName: "青空 太郎",
+    email: "taro@example.test",
+    notes: "部门: 事業開発室",
+    organization: "架空技研株式会社",
+    phone: "03-0000-1111",
+    relationshipContext: "批量导入 · card-1.jpg",
+    role: "室長",
+  };
+
+  const confirm = createBusinessCardBatchItemConfirmHandler(
+    resolveActor,
+    service,
+    stubWrite("created"),
+  );
+  const confirmed = await confirm(
+    new Request("http://localhost", {
+      body: JSON.stringify(confirmBody),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: batch.id, itemId: claimed[0]!.id }) },
+  );
+  assert.equal(confirmed.status, 200);
+  const confirmedBody = (await confirmed.json()) as {
+    data: { contactId: string; state: string };
+  };
+  assert.equal(confirmedBody.data.state, "created");
+  const afterConfirm = await service.getBatch(ACTOR.id, batch.id);
+  assert.equal(
+    afterConfirm?.items.find((entry) => entry.id === claimed[0]!.id)?.status,
+    "confirmed",
+  );
+  assert.equal(
+    (writes[0] as { notes?: string }).notes,
+    "部门: 事業開発室",
+  );
+
+  const duplicate = createBusinessCardBatchItemConfirmHandler(
+    resolveActor,
+    service,
+    stubWrite("duplicate_review"),
+  );
+  const duplicated = await duplicate(
+    new Request("http://localhost", {
+      body: JSON.stringify(confirmBody),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: batch.id, itemId: claimed[1]!.id }) },
+  );
+  const duplicatedBody = (await duplicated.json()) as { data: { state: string } };
+  assert.equal(duplicatedBody.data.state, "duplicate_review");
+  const afterDuplicate = await service.getBatch(ACTOR.id, batch.id);
+  assert.equal(
+    afterDuplicate?.items.find((entry) => entry.id === claimed[1]!.id)?.status,
+    "extracted",
+  );
 });
 
 test("batch detail hides extraction while processing and the image route serves then 404s", async () => {
