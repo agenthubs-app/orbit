@@ -34,8 +34,12 @@ export interface OrbitAgentEventResultView {
 
 // 跟进/待办面板项：来自 followup_queue artifact 的行程复核卡。
 export interface OrbitAgentTodoResultView {
+  // artifact 的可选机器字段：分组直达用 contactId，「承诺/线索」分区用
+  // triggerKind，到期展示与排序用原始 dueAt（due 是本地化后的展示串）。
+  contactId?: string;
   contactName: string;
   due: string;
+  dueAt?: string;
   id: string;
   organization: string;
   priority: string;
@@ -43,6 +47,7 @@ export interface OrbitAgentTodoResultView {
   sourceLabel: string;
   task: string;
   title: string;
+  triggerKind?: string;
 }
 
 export interface OrbitAgentScenarioView {

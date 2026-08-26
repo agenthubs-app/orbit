@@ -239,11 +239,14 @@ function isTodoResult(item: AgentResultItem): item is OrbitAgentTodoResultView {
 interface AgentArtifactViewItem {
   body?: string;
   confidenceLabel?: string;
+  contactId?: string;
+  dueAt?: string;
   id?: string;
   metadata?: readonly { label?: string; value?: string }[];
   reason?: string;
   subtitle?: string;
   title?: string;
+  triggerKind?: string;
 }
 
 interface AgentArtifactRecord {
@@ -331,7 +334,7 @@ function peopleItemsFromArtifact(
       (section) => section.items ?? [],
     ) ?? [];
 
-  return items.map((item) => {
+  const mapped = items.map((item) => {
     const contactId = contactIdFromArtifactItemId(item.id);
     const displayName = item.title?.trim() || contactId || "Orbit";
     const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
@@ -352,6 +355,28 @@ function peopleItemsFromArtifact(
       reason: item.reason ?? "",
     };
   });
+
+  // artifact 的 sections 可能把同一个联系人分到多段（例如「强匹配」与「同场活动」），
+  // flatMap 之后就会在面板里出现两张一模一样的卡和两个「生成跟进草稿」按钮——
+  // 用户无法判断点哪个、会不会发两封。这里按 contact id 收敛成一条，保留最先出现
+  // 的排序位置，并把后续重复项里非空的理由/证据补进来，避免丢证据。
+  const byContact = new Map<string, OrbitAgentPeopleResultView>();
+  for (const entry of mapped) {
+    const key = entry.connection.id || entry.connection.displayName;
+    const kept = byContact.get(key);
+    if (!kept) {
+      byContact.set(key, entry);
+      continue;
+    }
+    byContact.set(key, {
+      ...kept,
+      match: Math.max(kept.match, entry.match),
+      opener: kept.opener || entry.opener,
+      reason: kept.reason || entry.reason,
+    });
+  }
+
+  return [...byContact.values()];
 }
 
 // event_recommendations artifact → 活动卡片视图。startsAt 优先取 Start(ISO)，
@@ -427,8 +452,10 @@ function todoItemsFromArtifact(
     ) ?? [];
 
   return items.map((item, index) => ({
+    contactId: item.contactId,
     contactName: item.subtitle ?? "",
     due: artifactMetadataValue(item, ["到期", "Due"]),
+    dueAt: item.dueAt,
     id: String(item.id ?? `todo-${index}`),
     organization: artifactMetadataValue(item, ["组织", "Organization"]),
     priority: artifactMetadataValue(item, ["优先级", "Priority"]) || item.confidenceLabel || "",
@@ -436,6 +463,7 @@ function todoItemsFromArtifact(
     sourceLabel: artifactMetadataValue(item, ["来源", "Source"]),
     task: item.body ?? "",
     title: item.title ?? "",
+    triggerKind: item.triggerKind,
   }));
 }
 
@@ -1469,11 +1497,14 @@ function useAgentInlineDraft(input: {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  // 记住这份草稿生成时覆盖的事项。用户生成后又改了勾选时，UI 据此提示「重新生成」，
+  // 而不是让「写进 3 件事」的标注和只写了 2 件事的正文悄悄不一致。
+  const [generatedPurpose, setGeneratedPurpose] = useState<string | null>(null);
 
-  const generate = async () => {
+  const generate = async (purpose?: string) => {
     setState("generating");
     setErrorCode(null);
-    const result = await requestMessageDraft(input);
+    const result = await requestMessageDraft({ ...input, purpose });
     if (result.success === false) {
       setErrorCode(result.error.code);
       setState("error");
@@ -1481,20 +1512,23 @@ function useAgentInlineDraft(input: {
     }
     setSubject(result.data.subject);
     setBody(result.data.body);
+    setGeneratedPurpose(purpose ?? null);
     setState("ready");
   };
 
-  return { body, errorCode, generate, setBody, setSubject, state, subject };
+  return { body, errorCode, generate, generatedPurpose, setBody, setSubject, state, subject };
 }
 
 function AgentInlineDraftResult({
   contactId,
+  currentPurpose,
   draft,
   organization,
   recipientName,
   t,
 }: {
   contactId?: string;
+  currentPurpose?: string;
   draft: ReturnType<typeof useAgentInlineDraft>;
   organization: string;
   recipientName: string;
@@ -1503,63 +1537,96 @@ function AgentInlineDraftResult({
   const [copied, setCopied] = useState(false);
 
   if (draft.state === "error") {
+    // 实测最常见的失败是 provider 20s 超时（MODEL_REQUEST_FAILED），重试一次即可。
+    // 错误必须自带出路：说清发生了什么、该怎么办，并把「怎么办」做成旁边的按钮。
+    const timedOut = draft.errorCode === "MODEL_REQUEST_FAILED";
     return (
-      <div data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode ?? undefined} role="alert" style={{ color: "var(--danger)", flexBasis: "100%", fontSize: 13 }}>
-        {t({ en: "The draft could not be generated. Try again.", zh: "草稿生成失败，请重试。" })}
+      <div className="draft-error" data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode ?? undefined} role="alert">
+        <span className="w">
+          <b>
+            {timedOut
+              ? t({ en: "Generation timed out — no draft was written", zh: "生成超时，草稿没有写出来" })
+              : t({ en: "The draft could not be generated", zh: "草稿生成失败" })}
+          </b>
+          <span>
+            {timedOut
+              ? t({ en: "The model did not answer in time; retrying usually works. No external action was taken.", zh: "模型没有按时返回，通常重试一次即可。未执行任何外部动作。" })
+              : t({ en: "Try again. No external action was taken.", zh: "请重试。未执行任何外部动作。" })}
+          </span>
+        </span>
+        <button className="btn btn-ghost btn-sm" onClick={() => void draft.generate(currentPurpose)} type="button">
+          {t({ en: "Retry", zh: "重试" })}
+        </button>
       </div>
     );
   }
   if (draft.state !== "ready") return null;
 
+  const stale = (draft.generatedPurpose ?? "") !== (currentPurpose ?? "");
+  // 标注反映这份草稿**生成时**覆盖的事项数（从 purpose 的编号行数出来），
+  // 不是当前勾选数——取消勾选后显示「写进 0 件事」就是在说假话。
+  const writes = (draft.generatedPurpose?.match(/^\d+\./gm) ?? []).length;
+
   return (
-    <div data-agent-inline-draft style={{ background: "var(--accent-softer)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", display: "grid", flexBasis: "100%", gap: 8, padding: 12 }}>
-      <strong style={{ fontSize: 13 }}>{t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}</strong>
-      <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
-        {t({ en: "Subject", zh: "主题" })}
-        <input className="field" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
-      </label>
-      <label style={{ color: "var(--text-3)", display: "grid", fontSize: 12, gap: 4 }}>
-        {t({ en: "Message", zh: "正文" })}
-        <textarea className="field" onChange={(event) => draft.setBody(event.target.value)} rows={5} value={draft.body} />
-      </label>
-      <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
-        <span style={{ color: "var(--text-3)", fontSize: 12 }}>
-          {t({ en: "Draft only. Nothing is sent without confirmation.", zh: "仅生成草稿；未经确认不会发送。" })}
-        </span>
-        <span style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <button
-            className="btn btn-ghost btn-sm"
-            disabled={!draft.subject.trim() || !draft.body.trim()}
-            onClick={async () => setCopied(await copyAgentMessageText(`${draft.subject}\n\n${draft.body}`))}
-            type="button"
-          >
-            <Icon name={copied ? "check" : "copy"} size={14} />
-            {copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy draft", zh: "复制草稿" })}
+    <div className="draft" data-agent-inline-draft>
+      <p className="draft-label">
+        {writes > 0
+          ? t({ en: `Draft · covers ${writes} item(s)`, zh: `草稿 · 写进 ${writes} 件事` })
+          : t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}
+      </p>
+      {stale ? (
+        <p className="draft-stale">
+          <span>{t({ en: "Your selection changed after this draft was written.", zh: "生成这份草稿后你改过勾选。" })}</span>
+          <button className="linkish" onClick={() => void draft.generate(currentPurpose)} type="button">
+            {t({ en: "Regenerate", zh: "重新生成" })}
           </button>
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={!draft.subject.trim() || !draft.body.trim()}
-            onClick={() =>
-              openRelationshipInboxCompose({
-                body: draft.body,
-                contactId,
-                organization,
-                recipient: recipientName,
-                subject: draft.subject,
-              })
-            }
-            type="button"
-          >
-            {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
-          </button>
-        </span>
+        </p>
+      ) : null}
+      <input aria-label={t({ en: "Subject", zh: "主题" })} className="draft-subj" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
+      <textarea aria-label={t({ en: "Message", zh: "正文" })} className="draft-body" onChange={(event) => draft.setBody(event.target.value)} rows={7} value={draft.body} />
+      <div className="draft-foot">
+        {/* 「邮件止于草稿」是产品红线：承诺和主按钮同级同框，不做灰色脚注。 */}
+        <p className="draft-guard">
+          <Icon name="lock" size={13} />
+          <span>
+            <b>{t({ en: "Draft only — not sent", zh: "仅草稿 · 未发送" })}</b>
+            {t({ en: "Orbit never sends on your behalf. You confirm the send in your drafts.", zh: "Orbit 不会代你发送，发送由你在草稿箱确认。" })}
+          </span>
+        </p>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={!draft.subject.trim() || !draft.body.trim()}
+          onClick={async () => setCopied(await copyAgentMessageText(`${draft.subject}\n\n${draft.body}`))}
+          type="button"
+        >
+          <Icon name={copied ? "check" : "copy"} size={14} />
+          {copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy draft", zh: "复制草稿" })}
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!draft.subject.trim() || !draft.body.trim()}
+          onClick={() =>
+            openRelationshipInboxCompose({
+              body: draft.body,
+              contactId,
+              organization,
+              recipient: recipientName,
+              subject: draft.subject,
+            })
+          }
+          type="button"
+        >
+          {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
+        </button>
       </div>
     </div>
   );
 }
 
 // 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
-function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
+// rank=0 是本次排序里的首选：只有它拿填充主按钮，其余降为次级按钮。一屏一个主 CTA
+// 既是设计规范（primary-action），也让「为什么这条排第一」在视觉上可读。
+function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const connection = item.connection;
   const draft = useAgentInlineDraft({
     contactId: connection.id,
@@ -1567,12 +1634,16 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
     organization: connection.company,
     recipientName: connection.displayName,
   });
+  const confidenceLabel = connection.industry?.trim() ?? "";
 
   return (
     <div className="p-person">
       <Avatar g={connection.g} letter={connection.initial} size={38} />
       <span className="w">
-        <b>{connection.displayName}</b>
+        <b>
+          {connection.displayName}
+          {confidenceLabel ? <em className="p-conf">{confidenceLabel}</em> : null}
+        </b>
         <span>{[connection.title, connection.company].filter(Boolean).join(" · ")}</span>
       </span>
       <span className="p-acts">
@@ -1580,7 +1651,7 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
           {t({ en: "View", zh: "查看" })}
         </button>
         <button
-          className="btn btn-primary btn-sm"
+          className={rank === 0 ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
           disabled={draft.state === "generating"}
           onClick={() => void draft.generate()}
           type="button"
@@ -1591,6 +1662,11 @@ function AgentPeopleRow({ item, language, navigate, t }: { item: OrbitAgentPeopl
             : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
         </button>
       </span>
+      {/* whyThisPerson：面向用户的「为什么是这个人」。c0835aff 收内部诊断时把它和
+          item.opener 一起删了，卡片就退化成没有信息的按钮架子，依据只活在上方那段
+          散文里，不可核也不可跳转。item.opener 是「证据片段：来源标签：原文」的原始
+          拼接，属于 DESIGN.md 里明确不对普通用户展示的那一类，保持隐藏。 */}
+      {item.reason ? <span className="why">{item.reason}</span> : null}
       <AgentInlineDraftResult contactId={connection.id} draft={draft} organization={connection.company} recipientName={connection.displayName} t={t} />
     </div>
   );
@@ -1622,35 +1698,230 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
   );
 }
 
-function AgentTodoRow({ item, language, navigate, t }: { item: OrbitAgentTodoResultView; language: "en" | "zh"; navigate: (href: string) => void; t: Translate }) {
-  const draft = useAgentInlineDraft({
-    language,
-    organization: item.organization,
-    recipientName: item.contactName,
+// 跟进队列的主体是**人**，不是任务句子：一个人一张卡，起草是对人的动作。
+// 卡片默认收起——用户问的是「谁值得跟进」，答案是名单（是谁 · 为什么是现在 ·
+// 下一步），任务看板级的细节等展开再给；常见路径（默认勾选 → 起草）不需要展开。
+const TODO_LEAD_KINDS = new Set(["new_connection", "event_encounter", "dormant_relationship"]);
+
+// 「你答应过的事」（真实 task 记录）和「系统推导的关系线索」性质不同，靠
+// triggerKind 区分；旧 artifact 没有该字段时按承诺处理（宁可多勾不静默丢）。
+function isTodoLead(item: OrbitAgentTodoResultView): boolean {
+  return TODO_LEAD_KINDS.has(item.triggerKind ?? "");
+}
+
+interface AgentTodoGroup {
+  contactId?: string;
+  contactName: string;
+  items: readonly OrbitAgentTodoResultView[];
+  key: string;
+  organization: string;
+}
+
+export function groupTodosByContact(
+  items: readonly OrbitAgentTodoResultView[],
+): AgentTodoGroup[] {
+  const groups = new Map<string, AgentTodoGroup>();
+
+  for (const item of items) {
+    const key = item.contactName.trim() || item.id;
+    const existing = groups.get(key);
+
+    if (existing) {
+      groups.set(key, {
+        ...existing,
+        contactId: existing.contactId || item.contactId,
+        items: [...existing.items, item],
+        organization: existing.organization || item.organization,
+      });
+      continue;
+    }
+
+    groups.set(key, {
+      contactId: item.contactId,
+      contactName: item.contactName.trim(),
+      items: [item],
+      key,
+      organization: item.organization,
+    });
+  }
+
+  // 同一人名下文案一字不差的重复线索（例如两场活动各生成一条「跟进这次双方都已
+  // 确认的活动连接」）对用户是一件事：合并成一条，证据说明拼在一起。
+  return [...groups.values()].map((group) => {
+    const merged = new Map<string, OrbitAgentTodoResultView>();
+    for (const item of group.items) {
+      const mergeKey = `${isTodoLead(item) ? "lead" : "task"}|${item.title.trim()}`;
+      const kept = merged.get(mergeKey);
+      if (!kept) {
+        merged.set(mergeKey, item);
+        continue;
+      }
+      merged.set(mergeKey, {
+        ...kept,
+        dueAt: [kept.dueAt, item.dueAt].filter(Boolean).sort()[0],
+        reason: [kept.reason, item.reason].filter(Boolean).join(" "),
+        task: kept.task || item.task,
+      });
+    }
+    return { ...group, items: [...merged.values()] };
   });
+}
+
+export function earliestTodoDueAt(
+  items: readonly OrbitAgentTodoResultView[],
+): string | undefined {
+  return items
+    .map((item) => item.dueAt)
+    .filter((value): value is string => Boolean(value) && Number.isFinite(new Date(value as string).getTime()))
+    .sort()[0];
+}
+
+// 到期展示在客户端按真实时钟算。artifact 里那套「今天/N 天后」的参照系是
+// 「最新记录的 updatedAt」而不是当前时间（见 orbit-followup-queue-clock-bug），
+// 这里有原始 dueAt 就不再信它。
+function todoDueLabel(dueAt: string, language: "en" | "zh"): { label: string; soon: boolean } | null {
+  const due = new Date(dueAt);
+  if (!Number.isFinite(due.getTime())) return null;
+
+  const days = Math.ceil((due.getTime() - Date.now()) / 86_400_000);
+  const date = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+    day: "numeric",
+    month: language === "zh" ? "long" : "short",
+    timeZone: "Asia/Tokyo",
+  }).format(due);
+  const relative =
+    days < 0
+      ? language === "zh" ? `已逾期 ${-days} 天` : `overdue ${-days}d`
+      : days === 0
+        ? language === "zh" ? "今天" : "today"
+        : days === 1
+          ? language === "zh" ? "明天" : "tomorrow"
+          : language === "zh" ? `${days} 天后` : `in ${days}d`;
+
+  return { label: `${date} · ${relative}`, soon: days <= 3 };
+}
+
+// 勾选的事项序列化成 purpose 传给草稿服务——按钮和列表的因果就在这里：
+// 你选什么，信里就写什么。
+function draftPurposeFor(
+  items: readonly OrbitAgentTodoResultView[],
+  language: "en" | "zh",
+): string {
+  if (items.length === 0) return "";
+  const lines = items.map((item, index) => {
+    const detail =
+      item.task && item.task !== item.title ? `${item.title}：${item.task}` : item.title;
+    return `${index + 1}. ${detail}`;
+  });
+  return language === "zh"
+    ? `这封跟进邮件需要覆盖以下事项：\n${lines.join("\n")}`
+    : `Cover these follow-up items in the email:\n${lines.join("\n")}`;
+}
+
+function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodoGroup; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
+  const promised = group.items.filter((item) => !isTodoLead(item));
+  const leads = group.items.filter(isTodoLead);
+  const [open, setOpen] = useState(false);
+  // 默认勾选 = 按钮会写的事：有承诺勾承诺；只有线索时勾线索（否则按钮没有意义）。
+  // 这个默认值因人而异，所以不写死在任何标签文案里——勾选框自己陈述。
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set((promised.length > 0 ? promised : group.items).map((item) => item.id)),
+  );
+  const draft = useAgentInlineDraft({
+    contactId: group.contactId,
+    language,
+    organization: group.organization,
+    recipientName: group.contactName,
+  });
+  const chosen = group.items.filter((item) => selected.has(item.id));
+  const purpose = draftPurposeFor(chosen, language);
+  const dueAt = earliestTodoDueAt(group.items);
+  const due = dueAt ? todoDueLabel(dueAt, language) : null;
+  const summary = [
+    promised.length > 0 ? t({ en: `${promised.length} to-do(s)`, zh: `${promised.length} 件待办` }) : "",
+    leads.length > 0 ? t({ en: `${leads.length} lead(s)`, zh: `${leads.length} 条线索` }) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const viewContact = () => {
+    if (group.contactId) {
+      navigate(`/app/contacts/${group.contactId}`);
+      return;
+    }
+    navigate(`/app/contacts?query=${encodeURIComponent(group.contactName)}`);
+  };
+
+  const toggleItem = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const renderItem = (item: OrbitAgentTodoResultView) => {
+    const checked = selected.has(item.id);
+    const lead = isTodoLead(item);
+    // 承诺项的第二行是任务说明；线索项的第二行是证据文本（活动名等，文本退化，
+    // 可点跳转排到 evidenceId→href 映射建好之后）。
+    const detail = lead ? item.reason || item.task : item.task !== item.title ? item.task : "";
+    const inputId = `agent-todo-${item.id.replace(/[^\w-]/g, "-")}`;
+
+    return (
+      <li className="todo-item" key={item.id}>
+        <input checked={checked} className="todo-check" id={inputId} onChange={() => toggleItem(item.id)} type="checkbox" />
+        <label className={checked ? "t" : "t t-off"} htmlFor={inputId}>{item.title}</label>
+        {detail ? <span className="d">{detail}</span> : null}
+      </li>
+    );
+  };
 
   return (
-    <div className="p-person">
-      <Avatar g={gradientFromString(item.contactName || item.id)} letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} size={38} />
-      <span className="w">
-        <b>{item.title}</b>
-        <span>{[item.contactName, item.organization, item.due].filter(Boolean).join(" · ")}</span>
-      </span>
-      <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts?query=${encodeURIComponent(item.contactName)}`)} type="button">
-          {t({ en: "View contact", zh: "查看联系人" })}
-        </button>
-        <button className="btn btn-primary btn-sm" disabled={draft.state === "generating"} onClick={() => void draft.generate()} type="button">
-          <Icon name="sparkle" size={14} />
-          {draft.state === "generating"
-            ? t({ en: "Drafting…", zh: "正在生成…" })
-            : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
-        </button>
-      </span>
-      {item.reason ? <span className="why">{item.reason}</span> : null}
-      {item.task ? <span className="why">{item.task}</span> : null}
-      <AgentInlineDraftResult draft={draft} organization={item.organization} recipientName={item.contactName} t={t} />
-    </div>
+    <article className="todo-card">
+      <div className="todo-head">
+        <Avatar g={gradientFromString(group.contactName || group.key)} letter={(group.contactName || group.key).slice(0, 1).toUpperCase()} size={34} />
+        <span className="todo-who">
+          <b>{group.contactName}</b>
+          <span className="todo-sub">{group.organization}</span>
+          <button aria-controls={`agent-todo-detail-${rank}`} aria-expanded={open} className="todo-peek" onClick={() => setOpen((value) => !value)} type="button">
+            <svg aria-hidden="true" className="todo-tri" fill="currentColor" height="9" viewBox="0 0 12 12" width="9"><path d="M4 2l5 4-5 4z" /></svg>
+            {open ? t({ en: "Collapse", zh: "收起" }) : summary}
+          </button>
+        </span>
+        <span className="todo-side">
+          {due ? <span className={due.soon ? "todo-due soon" : "todo-due"}>{due.label}</span> : null}
+          <button
+            className={rank === 0 ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+            disabled={draft.state === "generating" || chosen.length === 0}
+            onClick={() => void draft.generate(purpose)}
+            type="button"
+          >
+            <Icon name="sparkle" size={14} />
+            {draft.state === "generating"
+              ? t({ en: "Drafting…", zh: "正在生成…" })
+              : chosen.length === 0
+                ? t({ en: "Select items first", zh: "先选要写的事" })
+                : t({ en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` })}
+          </button>
+        </span>
+      </div>
+      {open ? (
+        <div className="todo-detail" id={`agent-todo-detail-${rank}`}>
+          {promised.length > 0 ? <ul className="todo-items">{promised.map(renderItem)}</ul> : null}
+          {leads.length > 0 ? (
+            <>
+              <p className="todo-zone">{t({ en: "Leads the system found", zh: "系统发现的线索" })}</p>
+              <ul className="todo-items">{leads.map(renderItem)}</ul>
+            </>
+          ) : null}
+          <button className="linkish todo-view" onClick={viewContact} type="button">
+            {t({ en: "View contact", zh: "查看联系人" })}
+          </button>
+        </div>
+      ) : null}
+      <AgentInlineDraftResult contactId={group.contactId} currentPurpose={purpose} draft={draft} organization={group.organization} recipientName={group.contactName} t={t} />
+    </article>
   );
 }
 
@@ -1659,27 +1930,46 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
   const initialLimit = panel.kind === "people" ? 3 : panel.items.length;
   const visibleItems = showAll ? panel.items : panel.items.slice(0, initialLimit);
   const hiddenCount = panel.items.length - visibleItems.length;
+
+  if (panel.kind === "todos") {
+    // 跟进队列不再套「面板标题栏 + 计数」外壳：结论行由即将渲染的卡片数据直接
+    // 生成（永远不会和卡片打架），卡片按最早到期排序——模型的判断以排序体现，
+    // 不以「建议先推进谁」的句子体现。
+    const groups = [...groupTodosByContact(panel.items.filter(isTodoResult))].sort((a, b) =>
+      (earliestTodoDueAt(a.items) ?? "9999").localeCompare(earliestTodoDueAt(b.items) ?? "9999"),
+    );
+    return (
+      <div className="todo-stack" data-agent-todo-stack>
+        <p className="todo-verdict">
+          {t({
+            en: `${groups.length} contact(s) have follow-ups waiting on you.`,
+            zh: `${groups.length} 位联系人有待跟进的事。`,
+          })}
+        </p>
+        {groups.map((group, index) => (
+          <AgentTodoRow group={group} key={group.key} language={language} navigate={navigate} rank={index} t={t} />
+        ))}
+      </div>
+    );
+  }
+
   const meta =
     panel.kind === "people"
       ? t({ en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
-      : panel.kind === "events"
-        ? t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` })
-        : t({ en: `${panel.items.length} items`, zh: `${panel.items.length} 条` });
+      : t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` });
 
   return (
     <div className="panel">
       <div className="panel-head">
-        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : panel.kind === "events" ? "calendar" : "clock"} size={14} />
+        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : "calendar"} size={14} />
         <b>{panel.panelTitle}</b>
         <span className="meta">{meta}</span>
       </div>
       <div className="panel-body">
         {visibleItems.map((item, index) =>
           isPeopleResult(item) ? (
-            <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} language={language} navigate={navigate} t={t} />
-          ) : isTodoResult(item) ? (
-            <AgentTodoRow key={`${item.id}-${index}`} item={item} language={language} navigate={navigate} t={t} />
-          ) : (
+            <AgentPeopleRow key={item.connection.id || `${item.connection.displayName}-${index}`} item={item} language={language} navigate={navigate} rank={index} t={t} />
+          ) : isTodoResult(item) ? null : (
             <AgentEventRow key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ),
         )}
@@ -1948,7 +2238,64 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .p-person .w b { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
 [data-orbit-real-page="agent"] .p-person .w span { font-size: 12.5px; color: var(--text-2); }
 [data-orbit-real-page="agent"] .p-person .why { flex-basis: 100%; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-left: 2px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+[data-orbit-real-page="agent"] .p-person .w b .p-conf { font-style: normal; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-softer); border-radius: var(--r-pill); padding: 2px 7px; margin-left: 7px; vertical-align: 1px; }
 [data-orbit-real-page="agent"] .p-acts { display: flex; gap: 8px; }
+/* ═══ 跟进队列（按人分组卡片）与内联草稿 ═══
+   产品字号只有三级：--t-lead 人名/结论/主题，--t-base 事项/说明/正文/按钮，
+   --t-meta 一切次级。层级由字重（600/400）和颜色（ink/muted）承担，
+   不允许出现第四个字号数值。 */
+[data-orbit-real-page="agent"] { --t-lead: 15px; --t-base: 13px; --t-meta: 12px; }
+
+[data-orbit-real-page="agent"] .todo-stack { margin-top: 13px; display: grid; gap: 8px; }
+[data-orbit-real-page="agent"] .todo-verdict { color: var(--ink); font-size: var(--t-lead); font-weight: 600; line-height: 1.5; margin: 0 0 4px; }
+[data-orbit-real-page="agent"] .todo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 13px 15px; }
+[data-orbit-real-page="agent"] .todo-head { display: flex; align-items: flex-start; gap: 11px; }
+[data-orbit-real-page="agent"] .todo-who { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+[data-orbit-real-page="agent"] .todo-who b { color: var(--ink); font-size: var(--t-lead); font-weight: 600; line-height: 1.4; }
+[data-orbit-real-page="agent"] .todo-sub { color: var(--text-2); font-size: var(--t-meta); }
+[data-orbit-real-page="agent"] .todo-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .todo-due { color: var(--text-3); font-size: var(--t-meta); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-orbit-real-page="agent"] .todo-due.soon { color: var(--amber-text, #8A5A00); font-weight: 600; }
+/* 展开钮既是摘要也是开关；内容宽度，focus 轮廓贴文字，不横穿整卡。 */
+[data-orbit-real-page="agent"] .todo-peek { align-items: center; background: none; border: 0; color: var(--text-2); cursor: pointer; display: inline-flex; font: inherit; font-size: var(--t-meta); gap: 6px; margin-top: 6px; padding: 3px 2px; }
+[data-orbit-real-page="agent"] .todo-peek:hover { color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-tri { transition: transform .18s ease; }
+[data-orbit-real-page="agent"] .todo-peek[aria-expanded="true"] .todo-tri { transform: rotate(90deg); }
+[data-orbit-real-page="agent"] .todo-detail { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 4px; }
+[data-orbit-real-page="agent"] .todo-zone { color: var(--text-3); font-size: var(--t-meta); margin: 12px 0 2px; }
+[data-orbit-real-page="agent"] .todo-items { list-style: none; margin: 0; padding: 0; }
+[data-orbit-real-page="agent"] .todo-item { display: grid; gap: 0 11px; grid-template-columns: auto 1fr; padding: 9px 0; }
+[data-orbit-real-page="agent"] .todo-item + .todo-item { border-top: 1px solid var(--border); }
+/* 勾选框描边化：未选空盒，选中浅底 + 勾。选中态由控件自己承载，不给整行铺底。 */
+[data-orbit-real-page="agent"] .todo-check { appearance: none; -webkit-appearance: none; background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 4px; cursor: pointer; display: grid; grid-row: 1 / span 2; height: 16px; margin: 2px 0 0; place-items: center; transition: border-color .15s, background .15s; width: 16px; }
+[data-orbit-real-page="agent"] .todo-check:hover { border-color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-check:checked { background: var(--accent-softer); border-color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-check:checked::before { border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); content: ""; height: 4px; margin-top: -2px; transform: rotate(-45deg); width: 8px; }
+[data-orbit-real-page="agent"] .todo-item .t { color: var(--ink); cursor: pointer; font-size: var(--t-base); font-weight: 600; line-height: 1.55; }
+[data-orbit-real-page="agent"] .todo-item .t.t-off { color: var(--text-2); font-weight: 400; }
+[data-orbit-real-page="agent"] .todo-item .d { color: var(--text-2); font-size: var(--t-base); grid-column: 2; line-height: 1.55; margin-top: 1px; }
+[data-orbit-real-page="agent"] .todo-view { margin-top: 10px; }
+[data-orbit-real-page="agent"] .linkish { background: none; border: 0; color: var(--text-2); cursor: pointer; font: inherit; font-size: var(--t-meta); padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+[data-orbit-real-page="agent"] .linkish:hover { color: var(--accent); }
+
+/* 内联草稿：卡片的下半部分，不是第二张卡。主题/正文无框，像一封信而不是表单。 */
+[data-orbit-real-page="agent"] .draft { border-top: 1px solid var(--border); display: grid; flex-basis: 100%; gap: 9px; margin-top: 12px; padding-top: 13px; }
+[data-orbit-real-page="agent"] .draft-label { color: var(--text-3); font-size: var(--t-meta); margin: 0; }
+[data-orbit-real-page="agent"] .draft-stale { align-items: center; background: var(--amber-soft); border-radius: var(--r-sm); color: var(--amber-text, #8A5A00); display: flex; flex-wrap: wrap; font-size: var(--t-meta); gap: 8px; margin: 0; padding: 7px 10px; }
+[data-orbit-real-page="agent"] .draft-stale .linkish { color: inherit; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-subj { background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--ink); font: inherit; font-size: var(--t-lead); font-weight: 600; padding: 0 0 9px; width: 100%; }
+[data-orbit-real-page="agent"] .draft-subj:focus { border-bottom-color: var(--accent); outline: none; }
+[data-orbit-real-page="agent"] .draft-body { background: none; border: 0; color: var(--text); font: inherit; font-size: var(--t-base); line-height: 1.75; min-height: 150px; padding: 2px 0 0; resize: vertical; width: 100%; }
+[data-orbit-real-page="agent"] .draft-body:focus { outline: none; }
+[data-orbit-real-page="agent"] .draft-foot { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; }
+[data-orbit-real-page="agent"] .draft-guard { align-items: flex-start; color: var(--text-2); display: flex; flex: 1; font-size: var(--t-meta); gap: 7px; line-height: 1.5; margin: 0; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-guard > svg { color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
+[data-orbit-real-page="agent"] .draft-guard b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+[data-orbit-real-page="agent"] .draft-error { align-items: center; background: rgba(179, 38, 30, .06); border: 1px solid rgba(179, 38, 30, .25); border-radius: var(--r-sm); display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding: 10px 12px; }
+[data-orbit-real-page="agent"] .draft-error .w { flex: 1; font-size: var(--t-base); line-height: 1.5; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-error .w b { color: var(--danger); display: block; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-error .w span { color: var(--text-2); font-size: var(--t-meta); }
+
 [data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
 
 [data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
@@ -2142,13 +2489,24 @@ export function OrbitRealAgent({
           assistantMessage?: string;
           runId?: unknown;
         };
-        error?: { message?: string };
+        error?: { code?: string; message?: string };
         success?: boolean;
       } | null;
 
       if (!response.ok || payload?.success !== true || !payload.data) {
-        const errorText = payload?.error?.message
-          ? `${failureText}（${payload.error.message}）`
+        // 服务端错误原文是内部诊断（provider 名、英文超时串），不拼进用户文案——
+        // 这里只做归类：超时给「通常重试一次即可」的可操作说法，其余走通用文案。
+        // 原文进 console 供排查，与「普通用户对话不展示内部诊断」的边界一致。
+        if (payload?.error?.message) {
+          console.warn("[agent] conversation request failed:", payload.error.code, payload.error.message);
+        }
+        const providerTimedOut =
+          payload?.error?.code === "MODEL_REQUEST_FAILED" ||
+          /timed out/i.test(payload?.error?.message ?? "");
+        const errorText = providerTimedOut
+          ? locale === "zh"
+            ? "iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。"
+            : "The model did not answer in time — this is usually temporary. Resubmit the request. No external action was taken."
           : failureText;
 
         setMessages((current) => [

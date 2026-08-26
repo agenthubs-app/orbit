@@ -64,9 +64,13 @@ test("both recommendation and follow-up queue cards generate an editable draft i
 
   assert.match(agent, /function AgentPeopleRow[\s\S]*?useAgentInlineDraft/);
   assert.match(agent, /function AgentTodoRow[\s\S]*?useAgentInlineDraft[\s\S]*?Generate follow-up draft/);
-  assert.match(agent, /\/app\/contacts\?query=\$\{encodeURIComponent\(item\.contactName\)\}/);
+  assert.match(agent, /\/app\/contacts\?query=\$\{encodeURIComponent\(group\.contactName\)\}/);
   assert.match(agent, /data-agent-inline-draft/);
-  assert.match(agent, /仅生成草稿；未经确认不会发送。/);
+  // 「邮件止于草稿」这条承诺从左下角的灰色脚注升级成了和按钮同级的状态条，
+  // 断言跟着改成新文案，同时钉住它是 .draft-guard 而不是又退回脚注。
+  assert.match(agent, /className="draft-guard"/);
+  assert.match(agent, /仅草稿 · 未发送/);
+  assert.match(agent, /Orbit 不会代你发送，发送由你在草稿箱确认。/);
   assert.match(agent, /复制草稿/);
 });
 

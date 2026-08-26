@@ -157,6 +157,10 @@ export type MessageDraftRequestResult =
 export async function requestMessageDraft(input: {
   contactId?: string;
   language: OrbitLanguage;
+  // purpose 是这封草稿要覆盖的具体事项（用户勾选的跟进内容）。路由和
+  // ai-email-draft-service 一直支持这个参数，此前没有调用方传——结果生成的
+  // 信和卡片上列的事项毫无关系。
+  purpose?: string;
   recipientName: string;
   organization: string;
 }): Promise<MessageDraftRequestResult> {
@@ -167,6 +171,7 @@ export async function requestMessageDraft(input: {
       body: JSON.stringify({
         contactId: input.contactId,
         language: input.language,
+        purpose: input.purpose,
         recipientName: input.recipientName,
         organization: input.organization,
       }),

@@ -166,10 +166,49 @@ test("/app/agent source exposes to-do prompt affordances without owning business
   assert.match(agentSource, /onPick\(suggest\.q\)/);
   assert.match(agentSource, /"followup_queue"/);
   assert.match(agentSource, /function todoItemsFromArtifact/);
+  // 跟进队列改成按人聚合后，「查看联系人」的导航参数从单条待办的 item.contactName
+  // 换成了这一组的 group.contactName；目标路由不变。
+  assert.match(agentSource, /function groupTodosByContact/);
   assert.match(
     agentSource,
-    /navigate\(`\/app\/contacts\?query=\$\{encodeURIComponent\(item\.contactName\)\}`\)/,
+    /navigate\(`\/app\/contacts\?query=\$\{encodeURIComponent\(group\.contactName\)\}`\)/,
   );
+});
+
+test("follow-up queue groups tasks under one card per contact", async () => {
+  const { groupTodosByContact } = await import(
+    pathToFileURL(
+      path.join(projectRoot, "app/(app)/app/agent/orbit-real-agent.tsx"),
+    ).href
+  );
+
+  const task = (id: string, contactName: string) => ({
+    contactName,
+    due: "今天",
+    id,
+    organization: contactName === "Aiko Mori" ? "LoopMatter" : "RelayAI",
+    priority: "今天",
+    reason: "",
+    sourceLabel: "",
+    task: "",
+    title: `task ${id}`,
+  });
+
+  // 用户看到的正是这个形状：同一个人的多条跟进被拆成多张卡、多个同样的头像和按钮。
+  const groups = groupTodosByContact([
+    task("t1", "Aiko Mori"),
+    task("t2", "Maya Chen"),
+    task("t3", "Aiko Mori"),
+    task("t4", "Aiko Mori"),
+  ]);
+
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0]?.contactName, "Aiko Mori");
+  assert.equal(groups[0]?.items.length, 3);
+  assert.equal(groups[0]?.organization, "LoopMatter");
+  // 先出现的人排在前面：聚合不能打乱服务端给的优先级顺序。
+  assert.equal(groups[1]?.contactName, "Maya Chen");
+  assert.equal(groups[1]?.items.length, 1);
 });
 
 test("/app/agent input has an explicit to-do capable accessible name", () => {

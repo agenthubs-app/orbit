@@ -173,6 +173,25 @@ const EXEMPTIONS: {
   {
     count: 1,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"todo-peek\"",
+    reason:
+      "follow-up card disclosure toggle: the summary line doubles as the expand control; a boxed .btn would read as an action, not a fold",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "className=\"linkish todo-view\"",
+    reason: "secondary text link inside the expanded follow-up card; dedicated .linkish CSS",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "void draft.generate(currentPurpose)}",
+    reason: "inline regenerate link inside the stale-draft hint bar; dedicated .linkish CSS",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
     marker: "className=\"orbit-agent-message-copy\"",
     reason: "message-copy control with dedicated focus and status behavior",
   },

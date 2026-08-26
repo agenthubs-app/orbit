@@ -114,7 +114,12 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
     agentSource.indexOf("function AgentPeopleRow"),
     agentSource.indexOf("function AgentEventRow"),
   );
-  assert.doesNotMatch(peopleRowSource, /item\.reason|item\.opener/);
+  // c0835aff 收内部诊断时把 reason 和 opener 一起挡了，但两者性质不同：
+  // reason 是 whyThisPerson（面向用户的「为什么是这个人」），必须展示，否则卡片
+  // 没有任何依据；opener 是「证据片段：来源标签：原文」的原始拼接，属于 DESIGN.md
+  // 里不对普通用户展示的内部产物，继续挡住。
+  assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
+  assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
   assert.doesNotMatch(agentSource, /查看完整处理过程/);
   assert.doesNotMatch(agentSource, /data-agent-run-details/);
   assert.doesNotMatch(agentSource, /AgentEvidenceSources/);

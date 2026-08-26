@@ -1703,6 +1703,20 @@ html[data-theme] [data-orbit-real-page="starfield-home"] .orbit-top-nav.is-starf
   width: 100%;
 }
 
+/* .field 的 height:48px / padding:0 14px 是给单行 input 定的，但选择器同样命中
+   textarea：rows={n} 被彻底压成一个 48px 的洞，用户只能靠内部滚动条写多行内容，
+   而且没有纵向 padding，文字贴顶。这里把 textarea 从固定行高里放出来。
+   min-height 取 72px（低于现存的 height:88 内联样式），所以不会顶掉那些已经
+   自己绕过这个 bug 的调用点；.nc-sheet-body textarea.field 同特异度且在后面，
+   它的 min-height:150px 仍然生效。 */
+[data-orbit-real-page] textarea.field {
+  height: auto;
+  line-height: 1.55;
+  min-height: 72px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
 [data-orbit-real-page] .field::placeholder {
   color: var(--text-4);
 }
