@@ -6,12 +6,27 @@ import {
   normalizeBusinessCardExtraction,
   reviewIssuesForBusinessCard,
   type BusinessCardCloudOcrUsage,
-  type BusinessCardImageMimeType,
 } from "../features/acquisition/business-card-cloud-ocr";
-import { createConfiguredGeminiBusinessCardOcrProvider } from "../features/acquisition/gemini-business-card-ocr-provider";
+import {
+  normalizeBusinessCardUploadImage,
+  type BusinessCardUploadMimeType,
+} from "../features/acquisition/business-card-image-normalization";
+import { createConfiguredBusinessCardCloudOcrProvider } from "../features/acquisition/business-card-ocr-provider-selection";
 
-const INPUT_PRICE_PER_MILLION_TOKENS_USD = 0.3;
-const OUTPUT_PRICE_PER_MILLION_TOKENS_USD = 2.5;
+function priceFromEnv(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const INPUT_PRICE_PER_MILLION_TOKENS_USD = priceFromEnv(
+  "ORBIT_OCR_EVAL_INPUT_PRICE_PER_MTOK_USD",
+  0.3,
+);
+const OUTPUT_PRICE_PER_MILLION_TOKENS_USD = priceFromEnv(
+  "ORBIT_OCR_EVAL_OUTPUT_PRICE_PER_MTOK_USD",
+  2.5,
+);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 interface RedactedEvaluationRecordInput {
@@ -73,7 +88,7 @@ function inputDirectoryFrom(argv: readonly string[]): string {
   return resolve(inputDir);
 }
 
-function mimeTypeFor(fileName: string): BusinessCardImageMimeType | null {
+function mimeTypeFor(fileName: string): BusinessCardUploadMimeType | null {
   switch (extname(fileName).toLowerCase()) {
     case ".jpg":
     case ".jpeg":
@@ -82,6 +97,10 @@ function mimeTypeFor(fileName: string): BusinessCardImageMimeType | null {
       return "image/png";
     case ".webp":
       return "image/webp";
+    case ".heic":
+      return "image/heic";
+    case ".heif":
+      return "image/heif";
     default:
       return null;
   }
@@ -89,11 +108,12 @@ function mimeTypeFor(fileName: string): BusinessCardImageMimeType | null {
 
 async function runEvaluation(argv: readonly string[]): Promise<void> {
   const inputDirectory = inputDirectoryFrom(argv);
-  const provider = createConfiguredGeminiBusinessCardOcrProvider();
+  const showExtraction = argv.includes("--show-extraction");
+  const provider = createConfiguredBusinessCardCloudOcrProvider();
 
   if (!provider) {
     throw new Error(
-      "Business card OCR evaluation requires GEMINI_API_KEY or GOOGLE_API_KEY.",
+      "Business card OCR evaluation requires DEEPSEEK_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY.",
     );
   }
 
@@ -127,22 +147,26 @@ async function runEvaluation(argv: readonly string[]): Promise<void> {
         continue;
       }
 
-      const result = await provider.extract({
+      const normalized = await normalizeBusinessCardUploadImage({
         imageBase64: imageBytes.toString("base64"),
         mimeType,
+      });
+      const result = await provider.extract({
+        imageBase64: normalized.imageBase64,
+        mimeType: normalized.mimeType,
       });
       const extraction = normalizeBusinessCardExtraction(result.extraction);
       const issues = reviewIssuesForBusinessCard(extraction);
 
-      records.push(
-        createRedactedBusinessCardEvaluationRecord({
-          fileName,
-          issueCodes: issues.map((issue) => issue.code),
-          model: provider.model,
-          usage: result.usage,
-          valid: true,
-        }),
-      );
+      const record = createRedactedBusinessCardEvaluationRecord({
+        fileName,
+        issueCodes: issues.map((issue) => issue.code),
+        model: provider.model,
+        usage: result.usage,
+        valid: true,
+      });
+
+      records.push(showExtraction ? { ...record, extraction } : record);
     } catch {
       records.push({
         errorCode: "BUSINESS_CARD_OCR_EVALUATION_FAILED",
