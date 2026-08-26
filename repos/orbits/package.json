@@ -44,11 +44,13 @@
     "db:backup:local": "pg_dump \"$ORBIT_EVENT_DATABASE_URL\" -t orbit_records --data-only -f orbit-local-backup.sql && echo backed up to orbit-local-backup.sql"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.8",
     "bcryptjs": "^3.0.3",
     "heic-convert": "^2.1.0",
     "jose": "^6.0.6",
     "next": "16.2.9",
     "next-auth": "^5.0.0-beta.32",
+    "pdfjs-dist": "^6.2.108",
     "pg": "^8.22.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
