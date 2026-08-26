@@ -84,8 +84,10 @@ test("DeepSeek business card provider runs the two-stage transcribe-then-structu
     ),
   );
   assert.equal(requests[0]?.headers.Authorization, "Bearer test-deepseek-key");
+  assert.deepEqual(requests[0]?.body.thinking, { type: "disabled" });
   assert.equal(requests[1]?.body.model, "deepseek-v4-flash");
   assert.deepEqual(requests[1]?.body.response_format, { type: "json_object" });
+  assert.deepEqual(requests[1]?.body.thinking, { type: "disabled" });
   const structuringMessages = requests[1]?.body.messages as {
     content: string;
     role: string;

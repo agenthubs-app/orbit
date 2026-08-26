@@ -13,13 +13,20 @@ const DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT =
   "https://api.deepseek.com/chat/completions";
 export const DEFAULT_BUSINESS_CARD_VISION_MODEL = "deepseek-v4-flash-vision-exp";
 export const DEFAULT_BUSINESS_CARD_TEXT_MODEL = "deepseek-v4-flash";
-const DEFAULT_TIMEOUT_MS = 20_000;
+// Measured 2026-08-26: the vision stage takes ~25s on a real card photo even
+// with thinking disabled; 20s (the Gemini default) times out reliably.
+const DEFAULT_TIMEOUT_MS = 60_000;
+
+/** Both stages run with reasoning disabled; latency, not depth, is the constraint. */
+const THINKING_DISABLED = { type: "disabled" } as const;
 
 export const BUSINESS_CARD_TRANSCRIPTION_PROMPT = [
   "Transcribe every piece of text visibly printed on this business card.",
   "The photographed card may be rotated; read it in its natural orientation.",
   "Preserve the original wording, line breaks, and office or contact labels.",
   "Keep native-script and romanized spellings separately when both are printed.",
+  "If more than one business card appears in the photo, transcribe each card as a separate block.",
+  "When a character, digit, or word is too small or blurry to read with confidence, omit it entirely instead of guessing.",
   "Do not translate, summarize, or invent text that is not on the card.",
 ].join(" ");
 
@@ -29,7 +36,8 @@ export function businessCardStructuringPrompt(): string {
     "Use only text present in the transcription. Never infer or invent missing values.",
     "Keep native-script and romanized names separate when both are transcribed.",
     "Keep printed office labels on phones, faxes, emails, and addresses.",
-    "Return null or an empty array for absent fields.",
+    "If the transcription contains multiple business cards, structure only the single card with the most complete details, and never merge values from different cards.",
+    "Return null or an empty array for absent fields; never fabricate a value the transcription does not contain.",
     "Respond with a single JSON object matching this JSON schema exactly:",
     JSON.stringify(BUSINESS_CARD_EXTRACTION_JSON_SCHEMA),
   ].join(" ");
@@ -203,6 +211,7 @@ export function createConfiguredDeepseekBusinessCardOcrProvider({
             },
           ],
           model: visionModel,
+          thinking: THINKING_DISABLED,
         },
         fetchImplementation,
         timeoutMs,
@@ -217,6 +226,7 @@ export function createConfiguredDeepseekBusinessCardOcrProvider({
           ],
           model: textModel,
           response_format: { type: "json_object" },
+          thinking: THINKING_DISABLED,
         },
         fetchImplementation,
         timeoutMs,

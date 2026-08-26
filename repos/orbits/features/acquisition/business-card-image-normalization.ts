@@ -1,9 +1,18 @@
 import convert from "heic-convert";
+import sharp from "sharp";
 
 import {
   BUSINESS_CARD_IMAGE_MIME_TYPES,
   type BusinessCardImageMimeType,
 } from "./business-card-cloud-ocr";
+
+/**
+ * Longest-edge cap for transcoded uploads. iPhone HEIC originals decode to
+ * multi-megabyte JPEGs that overflow provider request timeouts; business-card
+ * OCR needs nowhere near that resolution.
+ */
+const TRANSCODED_IMAGE_MAX_EDGE_PX = 3072;
+const TRANSCODED_JPEG_QUALITY = 88;
 
 export const BUSINESS_CARD_HEIF_MIME_TYPES = ["image/heic", "image/heif"] as const;
 
@@ -79,9 +88,17 @@ export async function normalizeBusinessCardUploadImage(input: {
     format: "JPEG",
     quality: 0.9,
   });
+  const resizedBytes = await sharp(Buffer.from(jpegBytes))
+    .rotate()
+    .resize(TRANSCODED_IMAGE_MAX_EDGE_PX, TRANSCODED_IMAGE_MAX_EDGE_PX, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: TRANSCODED_JPEG_QUALITY })
+    .toBuffer();
 
   return {
-    imageBase64: Buffer.from(jpegBytes).toString("base64"),
+    imageBase64: resizedBytes.toString("base64"),
     mimeType: "image/jpeg",
   };
 }
