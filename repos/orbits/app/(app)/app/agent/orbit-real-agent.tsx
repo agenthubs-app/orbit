@@ -27,6 +27,7 @@ import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
 import {
+  openRelationshipInbox,
   openRelationshipInboxCompose,
   requestMessageDraft,
 } from "../inbox/relationship-inbox-panel";
@@ -1493,10 +1494,14 @@ function useAgentInlineDraft(input: {
   organization: string;
   recipientName: string;
 }) {
-  const [state, setState] = useState<"idle" | "generating" | "ready" | "error">("idle");
+  // handed = 用户点过「继续到草稿箱」。系统里没有真实的「已发送」信号（草稿箱
+  // 只暂存、不发送），所以卡片能诚实记录的最远状态就是这次交接——没有它，
+  // 主按钮会永远停在「起草跟进 N 件」，看起来像什么都没发生过。
+  const [state, setState] = useState<"idle" | "generating" | "ready" | "handed" | "error">("idle");
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [handedAt, setHandedAt] = useState<string | null>(null);
   // 记住这份草稿生成时覆盖的事项。用户生成后又改了勾选时，UI 据此提示「重新生成」，
   // 而不是让「写进 3 件事」的标注和只写了 2 件事的正文悄悄不一致。
   const [generatedPurpose, setGeneratedPurpose] = useState<string | null>(null);
@@ -1504,6 +1509,7 @@ function useAgentInlineDraft(input: {
   const generate = async (purpose?: string) => {
     setState("generating");
     setErrorCode(null);
+    setHandedAt(null);
     const result = await requestMessageDraft({ ...input, purpose });
     if (result.success === false) {
       setErrorCode(result.error.code);
@@ -1516,7 +1522,15 @@ function useAgentInlineDraft(input: {
     setState("ready");
   };
 
-  return { body, errorCode, generate, generatedPurpose, setBody, setSubject, state, subject };
+  const markHanded = () => {
+    setHandedAt(new Date().toISOString());
+    setState("handed");
+  };
+
+  // 回执上的「查看草稿」：本地副本还在 state 里，翻回可编辑面板即可。
+  const reopen = () => setState("ready");
+
+  return { body, errorCode, generate, generatedPurpose, handedAt, markHanded, reopen, setBody, setSubject, state, subject };
 }
 
 function AgentInlineDraftResult({
@@ -1557,6 +1571,32 @@ function AgentInlineDraftResult({
         <button className="btn btn-ghost btn-sm" onClick={() => void draft.generate(currentPurpose)} type="button">
           {t({ en: "Retry", zh: "重试" })}
         </button>
+      </div>
+    );
+  }
+  if (draft.state === "handed") {
+    // 交接回执：只声称实际发生的事（草稿转入了草稿箱），发送与否由用户在
+    // 草稿箱决定——这里若写「已发送」就是在替系统撒谎。
+    const handedTime = draft.handedAt
+      ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(draft.handedAt))
+      : "";
+    return (
+      <div className="draft-receipt" data-agent-inline-draft-receipt role="status">
+        <span aria-hidden="true" className="draft-receipt-check">
+          <Icon name="check" size={13} />
+        </span>
+        <span className="w">
+          <b>{t({ en: `Moved to drafts${handedTime ? ` · ${handedTime}` : ""}`, zh: `已转入草稿箱${handedTime ? ` · ${handedTime}` : ""}` })}</b>
+          <span>{t({ en: "Nothing was sent — you confirm the send in your drafts.", zh: "尚未发送任何内容，发送由你在草稿箱确认。" })}</span>
+        </span>
+        <span className="draft-receipt-acts">
+          <button className="linkish" onClick={() => openRelationshipInbox()} type="button">
+            {t({ en: "Open drafts", zh: "打开草稿箱" })}
+          </button>
+          <button className="linkish" onClick={() => draft.reopen()} type="button">
+            {t({ en: "View draft", zh: "查看草稿" })}
+          </button>
+        </span>
       </div>
     );
   }
@@ -1605,15 +1645,17 @@ function AgentInlineDraftResult({
         <button
           className="btn btn-primary btn-sm"
           disabled={!draft.subject.trim() || !draft.body.trim()}
-          onClick={() =>
+          onClick={() => {
             openRelationshipInboxCompose({
               body: draft.body,
               contactId,
               organization,
               recipient: recipientName,
               subject: draft.subject,
-            })
-          }
+            });
+            // 交接即记录：卡片翻到回执态，主按钮同步降级为「重新起草」。
+            draft.markHanded();
+          }}
           type="button"
         >
           {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
@@ -1650,17 +1692,27 @@ function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgen
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts/${connection.id}`)} type="button">
           {t({ en: "View", zh: "查看" })}
         </button>
-        <button
-          className={rank === 0 ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
-          disabled={draft.state === "generating"}
-          onClick={() => void draft.generate()}
-          type="button"
-        >
-          <Icon name="sparkle" size={14} />
-          {draft.state === "generating"
-            ? t({ en: "Drafting…", zh: "正在生成…" })
-            : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" })}
-        </button>
+        {(() => {
+          const drafted = draft.state === "ready" || draft.state === "handed";
+          const label =
+            draft.state === "generating"
+              ? t({ en: "Drafting…", zh: "正在生成…" })
+              : drafted
+                ? t({ en: "Redraft", zh: "重新起草" })
+                : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" });
+          return (
+            <button
+              className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+              data-draft-state={draft.state}
+              disabled={draft.state === "generating"}
+              onClick={() => void draft.generate()}
+              type="button"
+            >
+              <Icon name="sparkle" size={14} />
+              <span className="swap" key={label}>{label}</span>
+            </button>
+          );
+        })()}
       </span>
       {/* whyThisPerson：面向用户的「为什么是这个人」。c0835aff 收内部诊断时把它和
           item.opener 一起删了，卡片就退化成没有信息的按钮架子，依据只活在上方那段
@@ -1891,19 +1943,31 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
         </span>
         <span className="todo-side">
           {due ? <span className={due.soon ? "todo-due soon" : "todo-due"}>{due.label}</span> : null}
-          <button
-            className={rank === 0 ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
-            disabled={draft.state === "generating" || chosen.length === 0}
-            onClick={() => void draft.generate(purpose)}
-            type="button"
-          >
-            <Icon name="sparkle" size={14} />
-            {draft.state === "generating"
-              ? t({ en: "Drafting…", zh: "正在生成…" })
-              : chosen.length === 0
-                ? t({ en: "Select items first", zh: "先选要写的事" })
-                : t({ en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` })}
-          </button>
+          {(() => {
+            // 起草之后按钮必须换脸：一是回答「刚才发生了什么」（已有草稿/已交接），
+            // 二是把主按钮让给面板里的「继续到草稿箱」——一张卡只留一个主 CTA。
+            const drafted = draft.state === "ready" || draft.state === "handed";
+            const label =
+              draft.state === "generating"
+                ? t({ en: "Drafting…", zh: "正在生成…" })
+                : drafted
+                  ? t({ en: "Redraft", zh: "重新起草" })
+                  : chosen.length === 0
+                    ? t({ en: "Select items first", zh: "先选要写的事" })
+                    : t({ en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` });
+            return (
+              <button
+                className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+                data-draft-state={draft.state}
+                disabled={draft.state === "generating" || chosen.length === 0}
+                onClick={() => void draft.generate(purpose)}
+                type="button"
+              >
+                <Icon name="sparkle" size={14} />
+                <span className="swap" key={label}>{label}</span>
+              </button>
+            );
+          })()}
         </span>
       </div>
       {open ? (
@@ -2295,6 +2359,23 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .draft-error .w { flex: 1; font-size: var(--t-base); line-height: 1.5; min-width: 200px; }
 [data-orbit-real-page="agent"] .draft-error .w b { color: var(--danger); display: block; font-weight: 600; }
 [data-orbit-real-page="agent"] .draft-error .w span { color: var(--text-2); font-size: var(--t-meta); }
+
+/* 状态动效：面板/回执进场 4px 上浮淡入，check 轻弹一下，按钮换字交叉淡入。
+   全部 transform/opacity（不引起回流），时长 180-250ms；页面末尾的
+   prefers-reduced-motion 规则会整体关掉这些动画。 */
+[data-orbit-real-page="agent"] .draft { animation: agent-draft-in .22s ease-out; }
+[data-orbit-real-page="agent"] .btn .swap { animation: agent-label-in .18s ease-out; }
+/* 交接回执：记录「草稿已转入草稿箱」这一件已发生的事。用 accent 软底而不是
+   success 绿——发送尚未发生，这里不是完成态；且 --live-text 在浅色主题下没有
+   重绑，直接用会对比度不足。 */
+[data-orbit-real-page="agent"] .draft-receipt { align-items: flex-start; animation: agent-draft-in .22s ease-out; background: var(--accent-softer); border-radius: var(--r-sm); display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 10px; margin-top: 12px; padding: 11px 13px; }
+[data-orbit-real-page="agent"] .draft-receipt-check { align-items: center; animation: agent-check-pop .25s ease-out; background: var(--accent); border-radius: 50%; color: var(--on-accent); display: inline-flex; flex: 0 0 auto; height: 20px; justify-content: center; margin-top: 1px; width: 20px; }
+[data-orbit-real-page="agent"] .draft-receipt .w { color: var(--text-2); flex: 1; font-size: var(--t-meta); line-height: 1.5; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-receipt .w b { color: var(--ink); display: block; font-size: var(--t-base); font-variant-numeric: tabular-nums; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-receipt-acts { align-items: center; align-self: center; display: flex; gap: 12px; }
+@keyframes agent-draft-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes agent-check-pop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes agent-label-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
 [data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
 

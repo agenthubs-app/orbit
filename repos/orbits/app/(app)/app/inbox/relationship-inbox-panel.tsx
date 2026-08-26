@@ -80,6 +80,17 @@ export function openRelationshipInboxCompose(seed: NewThreadSeed): void {
   );
 }
 
+// 只打开面板看线程列表，不进入新建 compose 流程——供「已转入草稿箱」回执类
+// 入口回访已暂存的草稿；复用 compose 事件会重新预填一份新草稿，误导用户。
+export const RELATIONSHIP_INBOX_OPEN_EVENT = "orbit:relationship-inbox-open";
+
+export function openRelationshipInbox(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(RELATIONSHIP_INBOX_OPEN_EVENT));
+}
+
 // 拉取 async correspondence workspace。传 conversationId 选中某条线程。
 // 面板只经这里的 view model 消费数据，不直接依赖 feature 契约的运行时代码。
 async function fetchInboxWorkspace(
@@ -1484,6 +1495,22 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
     }
     window.addEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);
     return () => window.removeEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);
+  }, []);
+
+  // 「打开草稿箱」类入口：只开面板到线程列表，不带 compose 种子。
+  useEffect(() => {
+    function onOpen() {
+      if (
+        !triggerRef.current ||
+        !hasRenderedComposeTriggerArea(triggerRef.current)
+      ) {
+        return;
+      }
+      setSeed(null);
+      setOpen(true);
+    }
+    window.addEventListener(RELATIONSHIP_INBOX_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(RELATIONSHIP_INBOX_OPEN_EVENT, onOpen);
   }, []);
 
   const displayCount = count;

@@ -192,6 +192,18 @@ const EXEMPTIONS: {
   {
     count: 1,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "openRelationshipInbox()}",
+    reason: "open-drafts text link inside the handed-off draft receipt; dedicated .linkish CSS",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
+    marker: "draft.reopen()}",
+    reason: "view-draft text link inside the handed-off draft receipt; dedicated .linkish CSS",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/orbit-real-agent.tsx",
     marker: "className=\"orbit-agent-message-copy\"",
     reason: "message-copy control with dedicated focus and status behavior",
   },
