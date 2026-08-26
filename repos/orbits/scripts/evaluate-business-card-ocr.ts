@@ -6,6 +6,7 @@ import {
   normalizeBusinessCardExtraction,
   reviewIssuesForBusinessCard,
   type BusinessCardCloudOcrUsage,
+  type BusinessCardStructuredExtraction,
 } from "../features/acquisition/business-card-cloud-ocr";
 import {
   normalizeBusinessCardUploadImage,
@@ -121,11 +122,14 @@ async function runEvaluation(argv: readonly string[]): Promise<void> {
     .filter((fileName) => mimeTypeFor(fileName) !== null)
     .sort();
   const records: Array<
-    RedactedBusinessCardEvaluationRecord | {
-      errorCode: string;
-      fileName: string;
-      valid: false;
-    }
+    | (RedactedBusinessCardEvaluationRecord & {
+        extraction?: BusinessCardStructuredExtraction;
+      })
+    | {
+        errorCode: string;
+        fileName: string;
+        valid: false;
+      }
   > = [];
 
   for (const fileName of fileNames) {

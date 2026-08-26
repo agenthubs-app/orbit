@@ -624,7 +624,7 @@ export function BusinessCardCaptureWorkspace({
         <div className="bcc-dropzone">
           <span className="bcc-scan-mark"><Icon name="scan" size={30} /></span>
           <strong>{t({ en: "Ready when the card is", zh: "让名片正对镜头或选择图片" })}</strong>
-          <span>JPEG · PNG · WebP · ≤ 10 MiB</span>
+          <span>JPEG · PNG · WebP · HEIC · ≤ 10 MiB</span>
           <div className="bcc-actions">
             <button
               className="btn btn-primary"
