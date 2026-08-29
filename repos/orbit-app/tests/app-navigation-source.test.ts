@@ -27,14 +27,18 @@ test("app destinations live in a stack group without bottom tabs", () => {
 });
 
 test("the Orbit AI drawer exposes the relationship inbox with its unread badge", () => {
-  assert.match(aiScreenSource, /href: "\/inbox" as Href/u);
-  assert.match(aiScreenSource, /title: "关系收件箱"/u);
+  assert.match(aiScreenSource, /accessibilityLabel="打开收件箱"/u);
+  assert.match(aiScreenSource, /onOpenCapability\("\/inbox" as Href\)/u);
   assert.match(aiScreenSource, /file-tray-full-outline/u);
   assert.match(aiScreenSource, /useRelationshipInboxBadgeCount/u);
-  assert.match(
-    aiScreenSource,
-    /badge=\{entry\.href === "\/inbox" \? inboxBadge : undefined\}/u
-  );
+  assert.match(aiScreenSource, /inboxBadge \? <View style=\{styles\.drawerInboxDot\}/u);
+});
+
+test("the Orbit AI drawer links Today to its canonical open task count", () => {
+  assert.match(aiScreenSource, /href: "\/today" as Href/u);
+  assert.match(aiScreenSource, /todayBadge=\{todaySummary\.openTaskCount\}/u);
+  assert.match(aiScreenSource, /badge=\{entry\.href === "\/today" \? todayBadge : undefined\}/u);
+  assert.doesNotMatch(aiScreenSource, /entry\.href === "\/schedule"/u);
 });
 
 test("the inbox badge count reads only durable inbox and notification sources", () => {

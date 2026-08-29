@@ -140,42 +140,40 @@ test("Orbit AI drawer can search long history lists", () => {
   assert.ok(searchIndex < listIndex);
 });
 
-test("Orbit AI home exposes the primary app destinations", () => {
+test("Orbit AI drawer exposes three workspace goals and keeps inbox in the header", () => {
   for (const href of [
-    'href: "/events" as Href',
+    'href: "/today" as Href',
     'href: "/contacts" as Href',
-    'href: "/schedule" as Href',
-    'href: "/profile" as Href',
-    'href: "/dashboard" as Href',
-    'href: "/agent" as Href'
+    'href: "/events" as Href'
   ]) {
     assert.match(
       screenSource,
       new RegExp(href.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u")
     );
   }
-});
-
-test("Orbit AI drawer exposes every defined app destination", () => {
-  assert.doesNotMatch(screenSource, /capabilityEntries\.slice\(/u);
 
   for (const href of [
-    'href: "/events" as Href',
-    'href: "/contacts" as Href',
-    'href: "/schedule" as Href',
-    'href: "/profile" as Href',
     'href: "/dashboard" as Href',
-    'href: "/inbox" as Href',
     'href: "/followups" as Href',
     'href: "/chat" as Href',
     'href: "/party" as Href',
-    'href: "/agent" as Href'
+    'href: "/agent" as Href',
+    'href: "/profile" as Href'
   ]) {
-    assert.match(
+    assert.doesNotMatch(
       screenSource,
       new RegExp(href.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u")
     );
   }
+
+  for (const title of ["今天", "人脉", "活动"]) {
+    assert.match(screenSource, new RegExp(`title: "${title}"`, "u"));
+  }
+  assert.doesNotMatch(screenSource, /title: "收件箱"/u);
+  assert.doesNotMatch(
+    screenSource,
+    /关系仪表盘|关系对话|活动现场|动作中心|更多入口/u
+  );
 });
 
 test("Orbit AI home does not describe the personal profile inline", () => {
@@ -200,13 +198,12 @@ test("Orbit AI home keeps empty conversation guidance above the composer", () =>
   assert.match(screenSource, /onPress=\{\(\) => setDraftMessage\(prompt\.label\)\}/u);
 });
 
-test("Orbit AI home renders real next actions before chat messages", () => {
+test("Orbit AI home renders Today tasks and schedule before chat messages", () => {
   assert.match(screenSource, /OrbitNextActions/u);
-  assert.match(screenSource, /agentSignalsHomePath/u);
-  assert.match(screenSource, /agentSignalPath/u);
-  assert.match(screenSource, /agentSignalsToNextActions/u);
-  assert.match(screenSource, /client\.post<unknown>\(agentSignalsHomePath\(\)\)/u);
-  assert.match(screenSource, /client\.patch<unknown>\(agentSignalPath\(id\)/u);
+  assert.match(screenSource, /todayPath\("Asia\/Tokyo"\)/u);
+  assert.match(screenSource, /todayHomeSummary/u);
+  assert.match(screenSource, /openTaskCount/u);
+  assert.doesNotMatch(screenSource, /agentSignalsHomePath|agentSignalPath|agentSignalsToNextActions/u);
 
   const actionsIndex = screenSource.indexOf("<OrbitNextActions");
   const messagesIndex = screenSource.indexOf("chat.messages.map");
@@ -214,6 +211,12 @@ test("Orbit AI home renders real next actions before chat messages", () => {
   assert.notEqual(actionsIndex, -1);
   assert.notEqual(messagesIndex, -1);
   assert.ok(actionsIndex < messagesIndex);
+});
+
+test("Orbit AI keeps suggestions separate from tasks and uses the Today count in the drawer", () => {
+  assert.match(screenSource, /onOpenSuggestions=\{\(\) => router\.push\("\/today" as Href\)\}/u);
+  assert.match(screenSource, /todayBadge=\{todaySummary\.openTaskCount\}/u);
+  assert.doesNotMatch(screenSource, /nextActionsBadge/u);
 });
 
 test("Orbit AI home does not auto-scroll past next actions", () => {
@@ -225,34 +228,44 @@ test("Orbit AI home does not auto-scroll past next actions", () => {
   assert.doesNotMatch(transcriptSource, /scrollToEnd/u);
 });
 
-test("Orbit AI drawer gives every destination its own icon and tone", () => {
+test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent history", () => {
   assert.match(screenSource, /const toneStyles: Record<CapabilityTone/u);
-  assert.match(screenSource, /FeaturedCapabilityTile/u);
   assert.match(screenSource, /CapabilityRow/u);
   assert.match(screenSource, /styles\.capabilityIcon, \{ backgroundColor: tone\.surface \}/u);
+  assert.match(screenSource, /styles\.drawerRowGroup/u);
+  assert.doesNotMatch(screenSource, /FeaturedCapabilityTile/u);
+  assert.doesNotMatch(screenSource, /drawerFeaturedGrid/u);
+  assert.match(screenSource, />Orbit AI</u);
+  assert.match(screenSource, /accessibilityLabel="打开收件箱"/u);
+  assert.match(screenSource, /placeholder="搜索对话"/u);
+  assert.match(screenSource, />最近对话</u);
+  assert.match(screenSource, /filteredHistoryItems\.slice/u);
+  assert.match(screenSource, /accessibilityLabel="新对话"/u);
 
   for (const icon of [
     "calendar-outline",
     "people-outline",
-    "time-outline",
-    "file-tray-full-outline",
-    "grid-outline",
-    "checkmark-done-outline",
-    "chatbubbles-outline",
-    "ticket-outline",
-    "sparkles-outline",
-    "person-circle-outline"
+    "ticket-outline"
   ]) {
     assert.match(screenSource, new RegExp(`icon: "${icon}"`, "u"));
   }
+  assert.doesNotMatch(screenSource, /title: "收件箱"/u);
 });
 
-test("Orbit AI drawer keeps a settings entry pinned at the bottom", () => {
-  assert.match(screenSource, /const settingsEntry/u);
-  assert.match(screenSource, /title: "设置"/u);
-  assert.match(screenSource, /href: "\/settings" as Href/u);
+test("Orbit AI drawer combines the signed-in account and settings in its footer", () => {
+  assert.match(screenSource, /useOrbitAuthSession/u);
+  assert.match(screenSource, /mobileUserDisplayName/u);
+  assert.match(
+    screenSource,
+    /accountName=\{mobileUserDisplayName\(auth\.user, "小雨"\)\}/u
+  );
   assert.match(screenSource, /styles\.drawerFooter/u);
-  assert.match(screenSource, /entry=\{settingsEntry\}/u);
+  assert.match(screenSource, /styles\.drawerAccount/u);
+  assert.match(screenSource, /onOpenCapability\("\/profile" as Href\)/u);
+  assert.match(screenSource, /onOpenCapability\("\/settings" as Href\)/u);
+  assert.match(screenSource, /accessibilityLabel="打开个人档案"/u);
+  assert.match(screenSource, /accessibilityLabel="打开设置"/u);
+  assert.doesNotMatch(screenSource, /const settingsEntry/u);
 });
 
 test("Orbit AI home leaves proactive check-ins to the relationship inbox", () => {

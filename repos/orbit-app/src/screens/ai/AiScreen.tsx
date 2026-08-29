@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Keyboard,
   Modal,
@@ -21,10 +21,10 @@ import {
 } from "react-native-safe-area-context";
 import {
   ORBIT_API_ENDPOINTS,
-  agentSignalPath,
-  agentSignalsHomePath,
-  aiConversationSessionPath
+  aiConversationSessionPath,
+  todayPath
 } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
@@ -35,139 +35,64 @@ import {
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { agentHistorySessionsToSummaries } from "../../view-models/agent-history";
-import {
-  agentSignalsToNextActions,
-  type AgentSignalActionView,
-  type AgentSignalNextActionView
-} from "../../view-models/agent-signals";
+import { mobileUserDisplayName } from "../../view-models/mobile-profile";
 import {
   conversationsToSummaries,
   orbitAiHomeChatWindow,
   type ChatMessageView,
   type OrbitAiHomeChatWindow
 } from "../../view-models/conversations";
+import {
+  todayHomeSummary,
+  type TodayHomeActionView
+} from "../../view-models/today-tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
 
 const suggestedPrompts: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
 }[] = [
-  { icon: "people-outline", label: "今天该先跟进谁" },
+  { icon: "people-outline", label: "今天该先联系谁" },
   { icon: "calendar-outline", label: "帮我挑下一场活动" },
   { icon: "checkmark-done-outline", label: "这周的准备清单" }
 ];
 
-type CapabilityTone = "accent" | "amber" | "live" | "rose" | "sky";
+type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
 const capabilityEntries: {
-  detail?: string;
-  featured: boolean;
+  detail: string;
   href: Href;
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   tone: CapabilityTone;
 }[] = [
   {
-    detail: "找活动、看报名和准备事项",
-    featured: true,
-    href: "/events" as Href,
+    detail: "待办与日程",
+    href: "/today" as Href,
     icon: "calendar-outline",
-    title: "活动",
+    title: "今天",
     tone: "accent"
   },
   {
-    detail: "联系人、引荐和关系背景",
-    featured: true,
+    detail: "联系人、关系进展与分析",
     href: "/contacts" as Href,
     icon: "people-outline",
     title: "人脉",
     tone: "sky"
   },
   {
-    detail: "约见、跟进和活动时间",
-    featured: true,
-    href: "/schedule" as Href,
-    icon: "time-outline",
-    title: "日程",
-    tone: "live"
-  },
-  {
-    detail: "待回复、提醒和草稿",
-    featured: true,
-    href: "/inbox" as Href,
-    icon: "file-tray-full-outline",
-    title: "关系收件箱",
-    tone: "amber"
-  },
-  {
-    detail: "看机会、缺口和优先级",
-    featured: false,
-    href: "/dashboard" as Href,
-    icon: "grid-outline",
-    title: "关系仪表盘",
-    tone: "accent"
-  },
-  {
-    detail: "今天该处理的人",
-    featured: false,
-    href: "/followups" as Href,
-    icon: "checkmark-done-outline",
-    title: "跟进队列",
-    tone: "live"
-  },
-  {
-    detail: "一对一上下文",
-    featured: false,
-    href: "/chat" as Href,
-    icon: "chatbubbles-outline",
-    title: "关系对话",
-    tone: "sky"
-  },
-  {
-    detail: "签到、匹配和分组",
-    featured: false,
-    href: "/party" as Href,
+    detail: "发现、报名与现场",
+    href: "/events" as Href,
     icon: "ticket-outline",
-    title: "活动现场",
-    tone: "rose"
-  },
-  {
-    detail: "确认建议动作",
-    featured: false,
-    href: "/agent" as Href,
-    icon: "sparkles-outline",
-    title: "动作中心",
-    tone: "accent"
-  },
-  {
-    detail: "别人看到的你",
-    featured: false,
-    href: "/profile" as Href,
-    icon: "person-circle-outline",
-    title: "档案",
-    tone: "amber"
+    title: "活动",
+    tone: "live"
   }
 ];
-
-const settingsEntry: (typeof capabilityEntries)[number] = {
-  detail: "账号、权限和服务器",
-  featured: false,
-  href: "/settings" as Href,
-  icon: "settings-outline",
-  title: "设置",
-  tone: "sky"
-};
-
-const featuredCapabilities = capabilityEntries.filter((entry) => entry.featured);
-const secondaryCapabilities = capabilityEntries.filter(
-  (entry) => !entry.featured
-);
 
 const toneStyles: Record<CapabilityTone, { icon: string; surface: string }> = {
   accent: { icon: colors.accent, surface: colors.accentSofter },
   amber: { icon: colors.amber, surface: colors.amberSoft },
   live: { icon: colors.live, surface: colors.liveSoft },
-  rose: { icon: colors.rose, surface: colors.roseSoft },
   sky: { icon: colors.sky, surface: colors.skySoft }
 };
 
@@ -186,13 +111,6 @@ function optionalParam(value: string | string[] | undefined): string {
   }
 
   return value ?? "";
-}
-
-function snoozeUntilTomorrow(): string {
-  const next = new Date();
-  next.setDate(next.getDate() + 1);
-  next.setHours(9, 0, 0, 0);
-  return next.toISOString();
 }
 
 type KeyboardFrame = {
@@ -262,6 +180,7 @@ function useStableKeyboardBottomInset(): number {
 
 export function AiScreen() {
   const router = useRouter();
+  const auth = useOrbitAuthSession();
   const params = useLocalSearchParams<{ drawer?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const client = useOrbitApiClient();
@@ -274,12 +193,10 @@ export function AiScreen() {
     ORBIT_API_ENDPOINTS.aiConversationSessions,
     (data) => agentHistorySessionsToSummaries(data).length === 0
   );
-  const signalState = useApiResource<unknown>(
-    agentSignalsHomePath(),
-    (data) => agentSignalsToNextActions(data).length === 0
+  const todayState = useApiResource<unknown>(
+    todayPath("Asia/Tokyo"),
+    (data) => todayHomeSummary(data).items.length === 0
   );
-  const refreshSignalResource = signalState.refresh;
-  const signalsPrimedRef = useRef(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
@@ -290,14 +207,6 @@ export function AiScreen() {
     null
   );
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
-  const [signalRefreshPending, setSignalRefreshPending] = useState(false);
-  const [signalMutationError, setSignalMutationError] = useState<string | null>(
-    null
-  );
-  const [suppressedSignalIds, setSuppressedSignalIds] = useState<Set<string>>(
-    () => new Set()
-  );
-  const [updatingSignalId, setUpdatingSignalId] = useState<string | null>(null);
   const homeChat = orbitAiHomeChatWindow(
     startedNewChat || state.kind !== "success" ? null : state.data
   );
@@ -329,18 +238,15 @@ export function AiScreen() {
     ...sessionHistoryItems,
     ...conversationHistoryItems
   ];
-  const signalPayload =
-    signalState.kind === "success" || signalState.kind === "empty"
-      ? signalState.data
+  const todayPayload =
+    todayState.kind === "success" || todayState.kind === "empty"
+      ? todayState.data
       : null;
-  const nextActions = agentSignalsToNextActions(signalPayload).filter(
-    (item) => !suppressedSignalIds.has(item.id)
-  );
-  const signalError =
-    signalMutationError ??
-    (signalState.kind === "offline" || signalState.kind === "failure"
-      ? signalState.error.message
-      : null);
+  const todaySummary = todayHomeSummary(todayPayload);
+  const todayError =
+    todayState.kind === "offline" || todayState.kind === "failure"
+      ? todayState.error.message
+      : null;
   const drawerPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -365,71 +271,14 @@ export function AiScreen() {
     }
   }, [params.drawer]);
 
-  const refreshAgentSignals = useCallback(async () => {
-    setSignalMutationError(null);
-    setSignalRefreshPending(true);
-    const result = await client.post<unknown>(agentSignalsHomePath());
-
-    if (result.success) {
-      setSuppressedSignalIds(new Set());
-      refreshSignalResource();
-    } else {
-      setSignalMutationError(result.error.message);
-    }
-    setSignalRefreshPending(false);
-  }, [client, refreshSignalResource]);
-
-  useEffect(() => {
-    if (signalsPrimedRef.current) {
-      return;
-    }
-    signalsPrimedRef.current = true;
-    void refreshAgentSignals();
-  }, [refreshAgentSignals]);
-
   function refresh() {
     state.refresh();
     historyState.refresh();
-    void refreshAgentSignals();
+    todayState.refresh();
   }
 
-  async function updateAgentSignal(
-    id: string,
-    status: "dismissed" | "snoozed"
-  ) {
-    setUpdatingSignalId(id);
-    setSignalMutationError(null);
-    const result = await client.patch<unknown>(agentSignalPath(id), {
-      body: {
-        snoozedUntil:
-          status === "snoozed" ? snoozeUntilTomorrow() : undefined,
-        status
-      }
-    });
-
-    if (result.success) {
-      setSuppressedSignalIds((current) => new Set(current).add(id));
-      refreshSignalResource();
-    } else {
-      setSignalMutationError(result.error.message);
-    }
-    setUpdatingSignalId(null);
-  }
-
-  function openAgentSignalAction(
-    _item: AgentSignalNextActionView,
-    action: AgentSignalActionView
-  ) {
-    if (action.kind === "ask" && action.prompt) {
-      router.push({
-        params: { id: "new", initialMessage: action.prompt },
-        pathname: "/ai/[id]"
-      });
-      return;
-    }
-    if (action.route) {
-      router.push(action.route as Href);
-    }
+  function openTodayAction(item: TodayHomeActionView) {
+    router.push(item.href as Href);
   }
 
   function sendMessage() {
@@ -451,6 +300,7 @@ export function AiScreen() {
   function startNewChat() {
     setComposerMenuOpen(false);
     setHistoryOpen(false);
+    setDrawerOpen(false);
     setStartedNewChat(true);
     setDraftMessage("");
     setSendError(null);
@@ -464,6 +314,7 @@ export function AiScreen() {
 
   function openHistoryItem(item: AiDrawerHistoryItem) {
     setHistoryOpen(false);
+    setDrawerOpen(false);
 
     if (item.source === "session") {
       router.push({
@@ -518,19 +369,16 @@ export function AiScreen() {
             refreshing={
               state.refreshing ||
               historyState.refreshing ||
-              signalState.refreshing ||
-              signalRefreshPending
+              todayState.refreshing
             }
           >
             <OrbitNextActions
-              actions={nextActions}
-              error={signalError}
-              loading={signalState.kind === "loading"}
-              onAction={openAgentSignalAction}
-              onDismiss={(id) => void updateAgentSignal(id, "dismissed")}
-              onRefresh={() => void refreshAgentSignals()}
-              onSnooze={(id) => void updateAgentSignal(id, "snoozed")}
-              updatingId={updatingSignalId}
+              error={todayError}
+              loading={todayState.kind === "loading"}
+              onOpen={openTodayAction}
+              onOpenSuggestions={() => router.push("/today" as Href)}
+              onRefresh={todayState.refresh}
+              summary={todaySummary}
             />
             {state.kind === "loading" ? <LoadingState /> : null}
             {state.kind === "offline" ? (
@@ -574,9 +422,14 @@ export function AiScreen() {
         </View>
       </View>
       <OrbitAiDrawer
+        accountName={mobileUserDisplayName(auth.user, "小雨")}
         inboxBadge={inboxBadge}
+        historyItems={historyItems}
+        todayBadge={todaySummary.openTaskCount}
         onClose={() => setDrawerOpen(false)}
+        onNewChat={startNewChat}
         onOpenCapability={openCapability}
+        onOpenHistoryItem={openHistoryItem}
         visible={drawerOpen}
       />
       <OrbitAiHistoryPanel
@@ -832,16 +685,34 @@ function ComposerMenuSheet({
 }
 
 function OrbitAiDrawer({
+  accountName,
+  historyItems,
   inboxBadge,
+  todayBadge,
   onClose,
+  onNewChat,
   onOpenCapability,
+  onOpenHistoryItem,
   visible
 }: {
+  accountName: string;
+  historyItems: AiDrawerHistoryItem[];
   inboxBadge: number | undefined;
+  todayBadge: number;
   onClose: () => void;
+  onNewChat: () => void;
   onOpenCapability: (href: Href) => void;
+  onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
   visible: boolean;
 }) {
+  const [historyQuery, setHistoryQuery] = useState("");
+  const normalizedQuery = historyQuery.trim().toLocaleLowerCase();
+  const filteredHistoryItems = normalizedQuery
+    ? historyItems.filter((item) =>
+        `${item.title} ${item.preview}`.toLocaleLowerCase().includes(normalizedQuery)
+      )
+    : historyItems;
+
   return (
     <Modal
       animationType="fade"
@@ -857,50 +728,113 @@ function OrbitAiDrawer({
         />
         <View style={styles.drawerPanel}>
           <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>人脉入口</Text>
-            <Pressable
-              accessibilityLabel="关闭侧栏"
-              accessibilityRole="button"
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.drawerIconButton,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Ionicons color={colors.text2} name="close" size={20} />
-            </Pressable>
+            <Text style={styles.drawerTitle}>Orbit AI</Text>
+            <View style={styles.drawerHeaderActions}>
+              <Pressable
+                accessibilityLabel="打开收件箱"
+                accessibilityRole="button"
+                onPress={() => onOpenCapability("/inbox" as Href)}
+                style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
+              >
+                <Ionicons color={colors.text2} name="file-tray-full-outline" size={19} />
+                {inboxBadge ? <View style={styles.drawerInboxDot} /> : null}
+              </Pressable>
+              <Pressable
+                accessibilityLabel="关闭侧栏"
+                accessibilityRole="button"
+                onPress={onClose}
+                style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
+              >
+                <Ionicons color={colors.text2} name="close" size={20} />
+              </Pressable>
+            </View>
           </View>
           <ScrollView
             contentContainerStyle={styles.drawerBody}
             showsVerticalScrollIndicator={false}
             style={styles.drawerScroll}
           >
-            <View style={styles.drawerFeaturedGrid}>
-              {featuredCapabilities.map((entry) => (
-                <FeaturedCapabilityTile
-                  badge={entry.href === "/inbox" ? inboxBadge : undefined}
+            <Pressable
+              accessibilityLabel="新对话"
+              accessibilityRole="button"
+              onPress={onNewChat}
+              style={({ pressed }) => [styles.drawerNewChat, pressed ? styles.pressed : null]}
+            >
+              <Ionicons color={colors.onAccent} name="create-outline" size={19} />
+              <Text style={styles.drawerNewChatText}>新对话</Text>
+            </Pressable>
+            <View style={styles.drawerSearchBox}>
+              <Ionicons color={colors.text3} name="search-outline" size={17} />
+              <TextInput
+                onChangeText={setHistoryQuery}
+                placeholder="搜索对话"
+                placeholderTextColor={colors.text4}
+                style={styles.drawerSearchInput}
+                value={historyQuery}
+              />
+            </View>
+            <Text style={styles.drawerSectionTitle}>常用入口</Text>
+            <View style={styles.drawerRowGroup}>
+              {capabilityEntries.map((entry, index) => (
+                <CapabilityRow
+                  badge={entry.href === "/today" ? todayBadge : undefined}
+                  badgeTone="accent"
                   entry={entry}
                   key={String(entry.href)}
+                  last={index === capabilityEntries.length - 1}
                   onPress={() => onOpenCapability(entry.href)}
                 />
               ))}
             </View>
-            <Text style={styles.drawerSectionTitle}>更多入口</Text>
-            <View style={styles.drawerRowGroup}>
-              {secondaryCapabilities.map((entry) => (
-                <CapabilityRow
-                  entry={entry}
-                  key={String(entry.href)}
-                  onPress={() => onOpenCapability(entry.href)}
-                />
+            <Text style={styles.drawerSectionTitle}>最近对话</Text>
+            <View style={styles.drawerRecentList}>
+              {filteredHistoryItems.slice(0, 8).map((item) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={`${item.source}:${item.id}`}
+                  onPress={() => onOpenHistoryItem(item)}
+                  style={({ pressed }) => [styles.drawerRecentRow, pressed ? styles.pressed : null]}
+                >
+                  <Ionicons color={colors.text3} name="chatbubble-outline" size={17} />
+                  <View style={styles.drawerRecentCopy}>
+                    <Text numberOfLines={1} style={styles.drawerRecentTitle}>{item.title}</Text>
+                    <Text numberOfLines={1} style={styles.drawerRecentPreview}>{item.preview}</Text>
+                  </View>
+                </Pressable>
               ))}
+              {filteredHistoryItems.length === 0 ? (
+                <Text style={styles.drawerEmptyText}>还没有匹配的对话。</Text>
+              ) : null}
             </View>
           </ScrollView>
           <View style={styles.drawerFooter}>
-            <CapabilityRow
-              entry={settingsEntry}
-              onPress={() => onOpenCapability(settingsEntry.href)}
-            />
+            <Pressable
+              accessibilityLabel="打开个人档案"
+              accessibilityRole="button"
+              onPress={() => onOpenCapability("/profile" as Href)}
+              style={({ pressed }) => [
+                styles.drawerAccount,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <View style={styles.drawerAvatar}>
+                <Ionicons color={colors.amber} name="person-outline" size={21} />
+              </View>
+              <Text numberOfLines={1} style={styles.drawerAccountName}>
+                {accountName}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="打开设置"
+              accessibilityRole="button"
+              onPress={() => onOpenCapability("/settings" as Href)}
+              style={({ pressed }) => [
+                styles.drawerSettingsButton,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <Ionicons color={colors.text3} name="settings-outline" size={22} />
+            </Pressable>
           </View>
         </View>
       </View>
@@ -908,53 +842,17 @@ function OrbitAiDrawer({
   );
 }
 
-function FeaturedCapabilityTile({
+function CapabilityRow({
   badge,
+  badgeTone,
   entry,
+  last,
   onPress
 }: {
   badge: number | undefined;
+  badgeTone: "accent" | "rose";
   entry: (typeof capabilityEntries)[number];
-  onPress: () => void;
-}) {
-  const tone = toneStyles[entry.tone];
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.featuredTile,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <View style={styles.featuredTileTop}>
-        <View style={[styles.capabilityIcon, { backgroundColor: tone.surface }]}>
-          <Ionicons color={tone.icon} name={entry.icon} size={22} />
-        </View>
-        {badge ? (
-          <View style={styles.capabilityBadge}>
-            <Text style={styles.capabilityBadgeText}>{badge}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text numberOfLines={1} style={styles.capabilityTitle}>
-        {entry.title}
-      </Text>
-      {entry.detail ? (
-        <Text numberOfLines={2} style={styles.capabilityDetail}>
-          {entry.detail}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function CapabilityRow({
-  entry,
-  onPress
-}: {
-  entry: (typeof capabilityEntries)[number];
+  last: boolean;
   onPress: () => void;
 }) {
   const tone = toneStyles[entry.tone];
@@ -965,6 +863,7 @@ function CapabilityRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.capabilityRow,
+        last ? styles.capabilityRowLast : null,
         pressed ? styles.pressed : null
       ]}
     >
@@ -981,6 +880,16 @@ function CapabilityRow({
           </Text>
         ) : null}
       </View>
+      {badge ? (
+        <View
+          style={[
+            styles.capabilityBadge,
+            badgeTone === "accent" ? styles.capabilityBadgeAccent : null
+          ]}
+        >
+          <Text style={styles.capabilityBadgeText}>{badge}</Text>
+        </View>
+      ) : null}
       <Ionicons color={colors.text4} name="chevron-forward" size={17} />
     </Pressable>
   );
@@ -1200,6 +1109,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2
   },
+  capabilityBadgeAccent: {
+    backgroundColor: colors.accent
+  },
   capabilityBadgeText: {
     color: colors.onAccent,
     fontSize: 11,
@@ -1208,22 +1120,28 @@ const styles = StyleSheet.create({
   },
   capabilityDetail: {
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
+    fontSize: typography.small,
+    lineHeight: 18
   },
   capabilityIcon: {
     alignItems: "center",
-    borderRadius: radius.control,
-    height: 40,
+    borderRadius: radius.md,
+    height: 52,
     justifyContent: "center",
-    width: 40
+    width: 52
   },
   capabilityRow: {
     alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 56,
-    paddingHorizontal: spacing.xs
+    minHeight: 82,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.md
+  },
+  capabilityRowLast: {
+    borderBottomWidth: 0
   },
   capabilityRowText: {
     flex: 1,
@@ -1232,9 +1150,9 @@ const styles = StyleSheet.create({
   },
   capabilityTitle: {
     color: colors.ink,
-    fontSize: typography.body,
+    fontSize: typography.section,
     fontWeight: "700",
-    lineHeight: 20
+    lineHeight: 22
   },
   chatBody: {
     flex: 1
@@ -1294,8 +1212,29 @@ const styles = StyleSheet.create({
     opacity: 0.54
   },
   drawerBody: {
-    gap: spacing.lg,
     paddingBottom: spacing.xxl
+  },
+  drawerAccount: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 52,
+    minWidth: 0
+  },
+  drawerAccountName: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: typography.section,
+    fontWeight: "700"
+  },
+  drawerAvatar: {
+    alignItems: "center",
+    backgroundColor: colors.amberSoft,
+    borderRadius: radius.pill,
+    height: 44,
+    justifyContent: "center",
+    width: 44
   },
   drawerEmptyBox: {
     backgroundColor: colors.surface2,
@@ -1316,20 +1255,30 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 18
   },
-  drawerFeaturedGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
   drawerFooter: {
+    alignItems: "center",
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    paddingTop: spacing.sm
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingTop: spacing.md
   },
   drawerHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between"
+  },
+  drawerHeaderActions: { flexDirection: "row", gap: spacing.xs },
+  drawerInboxDot: {
+    backgroundColor: colors.rose,
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    height: 9,
+    position: "absolute",
+    right: 5,
+    top: 5,
+    width: 9
   },
   drawerHistoryList: {
     gap: spacing.xs,
@@ -1391,6 +1340,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36
   },
+  drawerNewChat: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    minHeight: 46
+  },
+  drawerNewChatText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "800" },
   drawerModalRoot: {
     flex: 1,
     justifyContent: "flex-start"
@@ -1410,8 +1369,13 @@ const styles = StyleSheet.create({
     width: "86%"
   },
   drawerRowGroup: {
-    gap: spacing.xxs
+    gap: 0
   },
+  drawerRecentCopy: { flex: 1, gap: 2, minWidth: 0 },
+  drawerRecentList: { gap: spacing.xs },
+  drawerRecentPreview: { color: colors.text3, fontSize: typography.caption },
+  drawerRecentRow: { alignItems: "center", borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.sm },
+  drawerRecentTitle: { color: colors.text, fontSize: typography.small, fontWeight: "700" },
   drawerScrim: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(22,22,26,0.34)"
@@ -1441,32 +1405,26 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "700",
     letterSpacing: 0.4,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.xs
   },
   drawerTitle: {
     color: colors.ink,
-    fontSize: typography.title,
+    fontSize: typography.display,
     fontWeight: "800",
-    lineHeight: 25
+    lineHeight: 30
   },
   errorText: {
     color: colors.rose,
     fontSize: typography.small,
     lineHeight: 20
   },
-  featuredTile: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.card,
-    flexBasis: "47%",
-    flexGrow: 1,
-    gap: spacing.xs,
-    minWidth: 0,
-    padding: spacing.md
-  },
-  featuredTileTop: {
+  drawerSettingsButton: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
+    borderRadius: radius.pill,
+    height: 44,
+    justifyContent: "center",
+    width: 44
   },
   historyDeleteButton: {
     alignItems: "center",
