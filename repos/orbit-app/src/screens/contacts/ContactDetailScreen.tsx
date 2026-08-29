@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Image,
   Pressable,
@@ -18,7 +18,6 @@ import {
   relationshipValueRecomputePath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
@@ -236,7 +235,6 @@ export function ContactDetailScreen() {
 
   return (
     <AppScreen
-      eyebrow="联系人详情"
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -244,7 +242,7 @@ export function ContactDetailScreen() {
           tintColor={colors.accent}
         />
       }
-      title="联系人"
+      title="联系人详情"
     >
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
@@ -316,146 +314,396 @@ function ContactDetailCard({
   const contact = contactDetailToSummary(data);
   const hero = contactDetailHeroToView(contact);
   const toneStyle = avatarToneStyles[hero.avatar.tone];
-  const publicTags = [
-    ...contact.publicOffering,
-    ...contact.publicSeeking,
-    ...contact.publicTopics
-  ];
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [editingExpanded, setEditingExpanded] = useState(false);
   const inboxHref =
     `/inbox?contactId=${encodeURIComponent(contact.id)}&participantName=${encodeURIComponent(
       contact.name
     )}&organization=${encodeURIComponent(contact.organization)}` as Href;
+
+  return (
+    <>
+      <ContactIdentityHeader
+        baseUrl={baseUrl}
+        hero={hero}
+        toneStyle={toneStyle}
+      />
+      <NextStepCard
+        action={contact.nextAction}
+        onPress={() => router.push(inboxHref)}
+      />
+      <ContactOverview contact={contact} />
+      <DisclosureSection
+        detail="公开介绍、关系价值和来源记录"
+        expanded={detailsExpanded}
+        onPress={() => setDetailsExpanded((current) => !current)}
+        title="完整资料"
+      >
+        <FullDetailsPanel
+          contact={contact}
+          onRecompute={onRecompute}
+          relationshipValueOverride={relationshipValueOverride}
+          relationshipValuePending={relationshipValuePending}
+          relationshipValueState={relationshipValueState}
+        />
+      </DisclosureSection>
+      <DisclosureSection
+        detail="状态、标签、互动和私人记录"
+        expanded={editingExpanded}
+        onPress={() => setEditingExpanded((current) => !current)}
+        title="更新联系人"
+      >
+        <UpdateContactPanel
+          contact={contact}
+          metadataDraft={metadataDraft}
+          metadataPending={metadataPending}
+          noteDraft={noteDraft}
+          notePending={notePending}
+          onChangeMetadataDraft={onChangeMetadataDraft}
+          onChangeNoteDraft={onChangeNoteDraft}
+          onSaveMetadata={onSaveMetadata}
+          onSaveNote={onSaveNote}
+          onStatusAction={onStatusAction}
+          statusPending={statusPending}
+        />
+      </DisclosureSection>
+    </>
+  );
+}
+
+function ContactIdentityHeader({
+  baseUrl,
+  hero,
+  toneStyle
+}: {
+  baseUrl: string;
+  hero: ReturnType<typeof contactDetailHeroToView>;
+  toneStyle: { backgroundColor: string; color: string };
+}) {
+  return (
+    <View style={styles.contactHero}>
+      <View style={styles.contactHeroHeader}>
+        <View
+          style={[
+            styles.heroAvatar,
+            { backgroundColor: toneStyle.backgroundColor }
+          ]}
+        >
+          {hero.avatar.imageUrl ? (
+            <Image
+              resizeMode="cover"
+              source={{ uri: assetUrl(baseUrl, hero.avatar.imageUrl) }}
+              style={styles.heroAvatarImage}
+            />
+          ) : (
+            <Text style={[styles.heroAvatarText, { color: toneStyle.color }]}>
+              {hero.avatar.initial}
+            </Text>
+          )}
+        </View>
+        <View style={styles.contactHeroTitleBlock}>
+          <Text numberOfLines={2} style={styles.contactHeroName}>
+            {hero.name}
+          </Text>
+          <Text numberOfLines={2} style={styles.contactHeroDetail}>
+            {hero.detailLine}
+          </Text>
+          <View style={styles.heroMetaRow}>
+            <Text style={styles.statusPill}>{hero.status}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function NextStepCard({
+  action,
+  onPress
+}: {
+  action: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.nextStepCard}>
+      <View style={styles.nextStepHeader}>
+        <View style={styles.nextStepIcon}>
+          <Ionicons color={colors.accent} name="arrow-forward" size={17} />
+        </View>
+        <View style={styles.nextStepCopy}>
+          <Text style={styles.nextStepEyebrow}>下一步</Text>
+          <Text numberOfLines={3} style={styles.nextStepText}>
+            {action}
+          </Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.primaryActionButton,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="mail-outline" size={17} />
+        <Text style={styles.primaryActionButtonText}>起草消息</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ContactOverview({ contact }: { contact: ContactDetailSummary }) {
+  const exchange = relationshipExchangeFor(contact);
+
+  return (
+    <View style={styles.overviewSurface}>
+      <DetailSection title="关系摘要">
+        <Text numberOfLines={3} style={styles.bodyText}>
+          {relationshipSummaryFor(contact)}
+        </Text>
+      </DetailSection>
+      <SectionDivider />
+      <DetailSection title="合作切入点">
+        <View style={styles.exchangeRows}>
+          <ExchangeValueRow label="对方在找" values={exchange.seeking} />
+          <ExchangeValueRow label="对方能提供" values={exchange.offering} />
+        </View>
+      </DetailSection>
+      <SectionDivider />
+      <LatestActivityPreview contact={contact} />
+    </View>
+  );
+}
+
+function ExchangeValueRow({
+  label,
+  values
+}: {
+  label: string;
+  values: string[];
+}) {
+  const visibleValues = values.slice(0, 2);
+  const remaining = values.length - visibleValues.length;
+
+  return (
+    <View style={styles.exchangeRow}>
+      <Text style={styles.exchangeLabel}>{label}</Text>
+      <Text numberOfLines={2} style={styles.exchangeValue}>
+        {visibleValues.length > 0 ? visibleValues.join(" · ") : "暂未记录"}
+        {remaining > 0 ? `  +${remaining}` : ""}
+      </Text>
+    </View>
+  );
+}
+
+function LatestActivityPreview({
+  contact
+}: {
+  contact: ContactDetailSummary;
+}) {
+  const hasInteraction = contact.lastInteractionAt !== "暂无记录";
+  const latest = hasInteraction ? contact.noteSummaries[0] : undefined;
+  const meta = compactInteractionDate(contact.lastInteractionAt);
+
+  return (
+    <DetailSection detail={meta} title="最近动态">
+      <View style={styles.activityRow}>
+        <View style={styles.activityIcon}>
+          <Ionicons color={colors.text3} name="time-outline" size={16} />
+        </View>
+        <Text numberOfLines={2} style={latest ? styles.activityText : styles.emptyText}>
+          {latest ?? "还没有记录互动。"}
+        </Text>
+      </View>
+    </DetailSection>
+  );
+}
+
+function DisclosureSection({
+  children,
+  detail,
+  expanded,
+  onPress,
+  title
+}: {
+  children: ReactNode;
+  detail: string;
+  expanded: boolean;
+  onPress: () => void;
+  title: string;
+}) {
+  return (
+    <View style={styles.disclosureSurface}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.disclosureHeader,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <View style={styles.disclosureCopy}>
+          <Text style={styles.disclosureTitle}>{title}</Text>
+          <Text numberOfLines={2} style={styles.disclosureDetail}>
+            {detail}
+          </Text>
+        </View>
+        <Ionicons
+          color={colors.text3}
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={19}
+        />
+      </Pressable>
+      {expanded ? <View style={styles.disclosureContent}>{children}</View> : null}
+    </View>
+  );
+}
+
+function FullDetailsPanel({
+  contact,
+  onRecompute,
+  relationshipValueOverride,
+  relationshipValuePending,
+  relationshipValueState
+}: {
+  contact: ContactDetailSummary;
+  onRecompute: () => void;
+  relationshipValueOverride: unknown | null;
+  relationshipValuePending: boolean;
+  relationshipValueState: ApiResourceState<unknown>;
+}) {
+  const publicTags = uniqueDisplayItems([
+    ...contact.publicTopics,
+    ...contact.valueLabels
+  ]).filter(
+    (tag) =>
+      tag.length <= 20 &&
+      tag !== contact.publicBio &&
+      tag !== contact.relationship
+  );
+  const profileBio =
+    contact.publicBio.trim() === contact.relationship.trim()
+      ? ""
+      : contact.publicBio;
+
+  return (
+    <>
+      <DetailSection detail="对外可见的信息" title="公开介绍">
+        <Text style={profileBio ? styles.bodyText : styles.emptyText}>
+          {profileBio || "公开介绍与关系摘要一致。"}
+        </Text>
+        {publicTags.length > 0 ? <TagList items={publicTags} /> : null}
+      </DetailSection>
+      <SectionDivider />
+      <DetailSection title="关系价值">
+        <RelationshipValueCard
+          onRecompute={onRecompute}
+          overrideData={relationshipValueOverride}
+          pending={relationshipValuePending}
+          state={relationshipValueState}
+        />
+      </DetailSection>
+      <SectionDivider />
+      <DetailSection detail={contact.sourceLabel} title="来源记录">
+        <EvidenceList contact={contact} />
+      </DetailSection>
+      {contact.noteSummaries.length > 1 ? (
+        <>
+          <SectionDivider />
+          <DetailSection detail={contact.lastInteractionAt} title="更多记录">
+            <PromptList prompts={contact.noteSummaries.slice(1)} />
+          </DetailSection>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function UpdateContactPanel({
+  contact,
+  metadataDraft,
+  metadataPending,
+  noteDraft,
+  notePending,
+  onChangeMetadataDraft,
+  onChangeNoteDraft,
+  onSaveMetadata,
+  onSaveNote,
+  onStatusAction,
+  statusPending
+}: {
+  contact: ContactDetailSummary;
+  metadataDraft: ContactDetailMetadataDraft;
+  metadataPending: boolean;
+  noteDraft: string;
+  notePending: boolean;
+  onChangeMetadataDraft: (patch: Partial<ContactDetailMetadataDraft>) => void;
+  onChangeNoteDraft: (value: string) => void;
+  onSaveMetadata: () => void;
+  onSaveNote: () => void;
+  onStatusAction: (action: ContactDetailStatusActionView) => void;
+  statusPending: boolean;
+}) {
   const statusCardDetail = "关系阶段和处理动作";
 
   return (
     <>
-      <View style={styles.contactHero}>
-        <View style={styles.contactHeroHeader}>
-          <View
-            style={[
-              styles.heroAvatar,
-              { backgroundColor: toneStyle.backgroundColor }
-            ]}
-          >
-            {hero.avatar.imageUrl ? (
-              <Image
-                resizeMode="cover"
-                source={{ uri: assetUrl(baseUrl, hero.avatar.imageUrl) }}
-                style={styles.heroAvatarImage}
-              />
-            ) : (
-              <Text style={[styles.heroAvatarText, { color: toneStyle.color }]}>
-                {hero.avatar.initial}
-              </Text>
-            )}
-          </View>
-          <View style={styles.contactHeroTitleBlock}>
-            <Text numberOfLines={2} style={styles.contactHeroName}>
-              {hero.name}
-            </Text>
-            <Text numberOfLines={2} style={styles.contactHeroDetail}>
-              {hero.detailLine}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.contactHeroRelationship}>{hero.relationship}</Text>
-        <View style={styles.heroMetaRow}>
-          <Text style={styles.statusPill}>{hero.status}</Text>
-          {hero.valueScoreLabel ? (
-            <Text style={styles.scorePill}>{hero.valueScoreLabel}</Text>
-          ) : null}
-        </View>
-        {contact.valueLabels.length > 0 ? (
-          <View style={styles.tagsRow}>
-            {contact.valueLabels.map((label) => (
-              <Text key={label} style={styles.tagText}>
-                {label}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push(inboxHref)}
-          style={({ pressed }) => [
-            styles.primaryHeroButton,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.onAccent} name="mail-outline" size={17} />
-          <Text style={styles.primaryHeroButtonText}>起草跟进</Text>
-        </Pressable>
-      </View>
-      {contact.publicBio || publicTags.length > 0 || contact.publicPrompts.length > 0 ? (
-        <DataCard detail="别人会先看到这段介绍" title="公开资料">
-          {contact.publicBio ? (
-            <Text style={styles.bodyText}>{contact.publicBio}</Text>
-          ) : null}
-          {publicTags.length > 0 ? <TagList items={publicTags} /> : null}
-          {contact.publicPrompts.length > 0 ? (
-            <PromptList prompts={contact.publicPrompts} />
-          ) : null}
-        </DataCard>
-      ) : null}
-      {contact.sourceLabel || contact.evidenceExcerpts.length > 0 ? (
-        <DataCard detail={contact.sourceLabel} title="来源证据">
-          <EvidenceList contact={contact} />
-        </DataCard>
-      ) : null}
-      <RelationshipValueCard
-        onRecompute={onRecompute}
-        overrideData={relationshipValueOverride}
-        pending={relationshipValuePending}
-        state={relationshipValueState}
-      />
-      <DataCard detail={statusCardDetail} title="当前状态">
+      <DetailSection detail={statusCardDetail} title="当前状态">
         <Text style={styles.bodyText}>{contact.status}</Text>
-        {contact.statusAction ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={statusPending}
-            onPress={() => onStatusAction(contact.statusAction!)}
-            style={({ pressed }) => [
-              styles.statusButton,
-              statusPending ? styles.disabled : null,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Ionicons color={colors.accent} name="swap-horizontal-outline" size={16} />
-            <Text style={styles.statusButtonText}>
-              {statusPending
-                ? contact.statusAction.pendingLabel
-                : contact.statusAction.label}
-            </Text>
-          </Pressable>
-        ) : null}
-        {contact.archiveAction ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={statusPending}
-            onPress={() => onStatusAction(contact.archiveAction!)}
-            style={({ pressed }) => [
-              styles.archiveButton,
-              statusPending ? styles.disabled : null,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Ionicons color={colors.rose} name="archive-outline" size={16} />
-            <Text style={styles.archiveButtonText}>
-              {statusPending
-                ? contact.archiveAction.pendingLabel
-                : contact.archiveAction.label}
-            </Text>
-          </Pressable>
-        ) : null}
-      </DataCard>
-      <DataCard detail="标签和最近互动一起复核" title="编辑标签和互动">
+        <View style={styles.managementActionRow}>
+          {contact.statusAction ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={statusPending}
+              onPress={() => onStatusAction(contact.statusAction!)}
+              style={({ pressed }) => [
+                styles.statusButton,
+                statusPending ? styles.disabled : null,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <Ionicons
+                color={colors.accent}
+                name="swap-horizontal-outline"
+                size={16}
+              />
+              <Text style={styles.statusButtonText}>
+                {statusPending
+                  ? contact.statusAction.pendingLabel
+                  : contact.statusAction.label}
+              </Text>
+            </Pressable>
+          ) : null}
+          {contact.archiveAction ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={statusPending}
+              onPress={() => onStatusAction(contact.archiveAction!)}
+              style={({ pressed }) => [
+                styles.archiveButton,
+                statusPending ? styles.disabled : null,
+                pressed ? styles.pressed : null
+              ]}
+            >
+              <Ionicons color={colors.rose} name="archive-outline" size={16} />
+              <Text style={styles.archiveButtonText}>
+                {statusPending
+                  ? contact.archiveAction.pendingLabel
+                  : contact.archiveAction.label}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </DetailSection>
+      <SectionDivider />
+      <DetailSection detail="标签和最近互动一起保存" title="编辑标签和互动">
         {contact.detailTags.length > 0 ? <TagList items={contact.detailTags} /> : null}
         <View style={styles.metadataStack}>
           <Text style={styles.inputLabel}>标签</Text>
           <TextInput
             onChangeText={(value) => onChangeMetadataDraft({ tagsText: value })}
-            placeholder="AI, 关西渠道, 待跟进"
+            placeholder="AI, 关西渠道, 待联系"
             placeholderTextColor={colors.text4}
             style={styles.metadataInput}
             value={metadataDraft.tagsText}
@@ -508,8 +756,9 @@ function ContactDetailCard({
             {metadataPending ? "保存中" : "保存标签和互动"}
           </Text>
         </Pressable>
-      </DataCard>
-      <DataCard detail="只保存到这条关系记录" title="添加记录">
+      </DetailSection>
+      <SectionDivider />
+      <DetailSection detail="只保存到这条关系记录" title="添加记录">
         <TextInput
           multiline
           onChangeText={onChangeNoteDraft}
@@ -534,21 +783,85 @@ function ContactDetailCard({
             {notePending ? "保存中" : "保存记录"}
           </Text>
         </Pressable>
-      </DataCard>
-      {contact.noteSummaries.length > 0 ? (
-        <DataCard detail={contact.lastInteractionAt} title="最近记录">
-          {contact.noteSummaries.map((note) => (
-            <Text key={note} style={styles.bodyText}>
-              {note}
-            </Text>
-          ))}
-        </DataCard>
-      ) : null}
-      <DataCard detail={contact.lastInteractionAt} title="下一步">
-        <Text style={styles.bodyText}>{contact.nextAction}</Text>
-      </DataCard>
+      </DetailSection>
     </>
   );
+}
+
+function DetailSection({
+  children,
+  detail,
+  title
+}: {
+  children: ReactNode;
+  detail?: string;
+  title: string;
+}) {
+  return (
+    <View style={styles.detailSection}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {detail ? (
+          <Text numberOfLines={2} style={styles.sectionDetail}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.sectionBody}>{children}</View>
+    </View>
+  );
+}
+
+function SectionDivider() {
+  return <View style={styles.sectionDivider} />;
+}
+
+function uniqueDisplayItems(items: string[]): string[] {
+  return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+function relationshipSummaryFor(contact: ContactDetailSummary): string {
+  const identity = contact.organization && contact.role
+    ? `${contact.organization}的${contact.role}`
+    : contact.organization || contact.role || contact.name;
+  const location = contact.location ? `，常驻${contact.location}` : "";
+
+  return `${identity}${location}，目前处于${contact.status}。`;
+}
+
+function relationshipExchangeFor(contact: ContactDetailSummary): {
+  offering: string[];
+  seeking: string[];
+} {
+  const structuredMatch =
+    /(?:本次关注|正在寻找)[「“"]([^」”"]+)[」”"].*?可提供[「“"]([^」”"]+)[」”"]/u.exec(
+      contact.relationship
+    );
+
+  if (structuredMatch?.[1] && structuredMatch[2]) {
+    return {
+      offering: [structuredMatch[2].trim()],
+      seeking: [structuredMatch[1].trim()]
+    };
+  }
+
+  return {
+    offering: uniqueDisplayItems(contact.publicOffering),
+    seeking: uniqueDisplayItems([
+      ...contact.publicSeeking,
+      ...contact.publicPrompts
+    ])
+  };
+}
+
+function compactInteractionDate(value: string): string {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/u.exec(value);
+
+  if (!dateMatch) {
+    return value;
+  }
+
+  return `${Number(dateMatch[2])}月${Number(dateMatch[3])}日`;
 }
 
 const avatarToneStyles: Record<
@@ -615,21 +928,23 @@ function RelationshipValueCard({
 }) {
   if (!overrideData && state.kind === "loading") {
     return (
-      <DataCard detail="正在读取关系证据" title="关系价值">
+      <View style={styles.relationshipValueContent}>
+        <Text style={styles.sectionDetail}>正在读取关系记录</Text>
         <Text style={styles.bodyText}>正在看这条关系是否值得优先推进。</Text>
         <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
-      </DataCard>
+      </View>
     );
   }
 
   if (!overrideData && (state.kind === "failure" || state.kind === "offline")) {
     return (
-      <DataCard detail="暂时不可用" title="关系价值">
+      <View style={styles.relationshipValueContent}>
+        <Text style={styles.sectionDetail}>暂时不可用</Text>
         <Text style={styles.bodyText}>
           这条关系的价值分析暂时取不到，联系人资料仍可继续编辑。
         </Text>
         <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
-      </DataCard>
+      </View>
     );
   }
 
@@ -639,15 +954,15 @@ function RelationshipValueCard({
 
   if (view.kind !== "ready") {
     return (
-      <DataCard detail={view.nextAction} title="关系价值">
+      <View style={styles.relationshipValueContent}>
         <Text style={styles.bodyText}>{view.body}</Text>
         <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
-      </DataCard>
+      </View>
     );
   }
 
   return (
-    <DataCard detail={view.nextAction} title="关系价值">
+    <View style={styles.relationshipValueContent}>
       <View style={styles.relationshipHeaderRow}>
         <View style={styles.relationshipScoreBlock}>
           <Text style={styles.relationshipScore}>{view.scoreLabel}</Text>
@@ -657,28 +972,7 @@ function RelationshipValueCard({
       </View>
       <Text style={styles.bodyText}>{view.summary}</Text>
       <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
-      {view.factors.length > 0 ? (
-        <View style={styles.promptStack}>
-          <Text style={styles.relationshipSectionTitle}>加分原因</Text>
-          {view.factors.map((factor) => (
-            <View key={factor.label} style={styles.relationshipFactorRow}>
-              <Text style={styles.bodyText}>{factor.label}</Text>
-              <Text style={styles.factorPoint}>{factor.pointsLabel}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {view.evidenceLines.length > 0 ? (
-        <View style={styles.promptStack}>
-          <Text style={styles.relationshipSectionTitle}>依据</Text>
-          {view.evidenceLines.map((line) => (
-            <Text key={line} style={styles.bodyText}>
-              {line}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-    </DataCard>
+    </View>
   );
 }
 
@@ -1018,5 +1312,187 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
+  },
+  activityIcon: {
+    alignItems: "center",
+    backgroundColor: colors.surface3,
+    borderRadius: radius.pill,
+    height: 32,
+    justifyContent: "center",
+    width: 32
+  },
+  activityRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  activityText: {
+    color: colors.text,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 20,
+    minWidth: 0
+  },
+  detailSection: {
+    gap: spacing.md
+  },
+  disclosureContent: {
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.lg,
+    padding: spacing.lg
+  },
+  disclosureCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  disclosureDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  disclosureHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 68,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md
+  },
+  disclosureSurface: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    overflow: "hidden"
+  },
+  disclosureTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 20
+  },
+  emptyText: {
+    color: colors.text3,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 20,
+    minWidth: 0
+  },
+  exchangeLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
+    width: 76
+  },
+  exchangeRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  exchangeRows: {
+    gap: spacing.md
+  },
+  exchangeValue: {
+    color: colors.text,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 20,
+    minWidth: 0
+  },
+  managementActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  nextStepCard: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentRing,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.lg
+  },
+  nextStepCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  nextStepEyebrow: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  nextStepHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  nextStepIcon: {
+    alignItems: "center",
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    height: 36,
+    justifyContent: "center",
+    width: 36
+  },
+  nextStepText: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "600",
+    lineHeight: 22
+  },
+  overviewSurface: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.lg,
+    padding: spacing.lg
+  },
+  primaryActionButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 42,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm
+  },
+  primaryActionButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  relationshipValueContent: {
+    gap: spacing.md
+  },
+  sectionBody: {
+    gap: spacing.sm
+  },
+  sectionDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  sectionDivider: {
+    backgroundColor: colors.border,
+    height: StyleSheet.hairlineWidth,
+    width: "100%"
+  },
+  sectionHeader: {
+    gap: spacing.xs
+  },
+  sectionTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 20
   }
 });

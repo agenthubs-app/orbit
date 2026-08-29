@@ -35,6 +35,18 @@ export type ContactListStatusFilter =
   | "needs_follow_up"
   | "nurture";
 
+export type ContactRelationshipProgressFilter =
+  | "active"
+  | "archived"
+  | "nurture";
+
+export type ContactActionStateFilter = "needs_follow_up";
+
+export interface ContactDimensionFilterSelection {
+  actionState?: ContactActionStateFilter | null;
+  relationshipProgress?: ContactRelationshipProgressFilter | null;
+}
+
 export interface ContactStatusFilterOption {
   count: number;
   label: string;
@@ -46,6 +58,7 @@ export interface ContactsSearchRequestInput {
   query: string;
   sourceFilters?: readonly string[] | null;
   status?: ContactListStatusFilter | null;
+  statusFilters?: readonly ContactListStatusFilter[] | null;
   tagFilters?: readonly string[] | null;
   valueFilters?: readonly string[] | null;
 }
@@ -162,18 +175,19 @@ export type ContactDetailMetadataRequestResult =
       success: false;
     };
 
-const CONTACT_STATUS_FILTER_ORDER: readonly ContactListStatusFilter[] = [
-  "needs_follow_up",
+const CONTACT_RELATIONSHIP_PROGRESS_FILTER_ORDER: readonly ContactRelationshipProgressFilter[] = [
   "active",
   "nurture",
   "archived"
 ];
 
-const CONTACT_STATUS_FILTER_LABELS: Record<ContactListStatusFilter, string> = {
-  active: "在推进",
-  archived: "已归档",
-  needs_follow_up: "待联系",
-  nurture: "培养中"
+const CONTACT_RELATIONSHIP_PROGRESS_FILTER_LABELS: Record<
+  ContactRelationshipProgressFilter,
+  string
+> = {
+  active: "推进中",
+  archived: "暂不推进",
+  nurture: "长期维护"
 };
 
 export interface ContactDetailSummary extends ContactSummary {
@@ -249,6 +263,17 @@ function segmentLooksChinese(value: string): boolean {
   return /[\u4e00-\u9fff]/u.test(value) && !/[\u3040-\u30ff]/u.test(value);
 }
 
+function looksLikeChineseDisplayText(value: string): boolean {
+  if (!segmentLooksChinese(value)) {
+    return false;
+  }
+
+  const chineseCharacterCount = value.match(/[\u4e00-\u9fff]/gu)?.length ?? 0;
+  const latinWordCount = value.match(/[A-Za-z]+/gu)?.length ?? 0;
+
+  return chineseCharacterCount >= Math.max(4, latinWordCount);
+}
+
 function preferredChineseSegment(value: string): string {
   const markerMatch = /ZH:\s*([^/]+?)(?:\s+EN:|\s+JA:|$)/u.exec(value);
   if (markerMatch?.[1]?.trim()) {
@@ -313,15 +338,15 @@ function uniqueStrings(values: string[]): string[] {
 function statusLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
   const labels: Record<string, string> = {
-    active: "在推进",
-    archived: "已归档",
+    active: "推进中",
+    archived: "暂不推进",
     dormant: "待唤醒",
-    needs_follow_up: "待联系",
-    nurture: "培养中",
+    needs_follow_up: "需要联系",
+    nurture: "长期维护",
     weak: "弱关系"
   };
 
-  return labels[normalized] ?? labelFromToken(value, "在推进");
+  return labels[normalized] ?? labelFromToken(value, "推进中");
 }
 
 export function contactAvatarFor(
@@ -385,7 +410,9 @@ function statusFilterCounts(data: unknown): Map<ContactListStatusFilter, number>
     const count = numberField(option, "count");
 
     if (
-      CONTACT_STATUS_FILTER_ORDER.includes(value as ContactListStatusFilter) &&
+      (CONTACT_RELATIONSHIP_PROGRESS_FILTER_ORDER.includes(
+        value as ContactRelationshipProgressFilter
+      ) || value === "needs_follow_up") &&
       count !== null
     ) {
       counts.set(value as ContactListStatusFilter, count);
@@ -395,32 +422,104 @@ function statusFilterCounts(data: unknown): Map<ContactListStatusFilter, number>
   return counts;
 }
 
-export function contactStatusFilterOptions(
+export function contactDimensionFilterOptions(
   data: unknown,
-  selectedStatus: ContactListStatusFilter | null = null
-): ContactStatusFilterOption[] {
+  selection: ContactDimensionFilterSelection = {}
+): {
+  actionState: ContactStatusFilterOption[];
+  relationshipProgress: ContactStatusFilterOption[];
+} {
   const counts = statusFilterCounts(data);
+  const countedStatuses: readonly ContactListStatusFilter[] = [
+    ...CONTACT_RELATIONSHIP_PROGRESS_FILTER_ORDER,
+    "needs_follow_up"
+  ];
   const allCount = counts.size > 0
-    ? CONTACT_STATUS_FILTER_ORDER.reduce(
+    ? countedStatuses.reduce(
         (total, status) => total + (counts.get(status) ?? 0),
         0
       )
     : listFromPayload(data, "contacts").length;
+  const activeCount =
+    (counts.get("active") ?? 0) + (counts.get("needs_follow_up") ?? 0);
 
-  return [
-    {
-      count: allCount,
-      label: "全部",
-      selected: selectedStatus === null,
-      value: null
-    },
-    ...CONTACT_STATUS_FILTER_ORDER.map((status) => ({
-      count: counts.get(status) ?? 0,
-      label: CONTACT_STATUS_FILTER_LABELS[status],
-      selected: selectedStatus === status,
-      value: status
-    }))
-  ];
+  return {
+    actionState: [
+      {
+        count: allCount,
+        label: "全部",
+        selected: !selection.actionState,
+        value: null
+      },
+      {
+        count: counts.get("needs_follow_up") ?? 0,
+        label: "需要联系",
+        selected: selection.actionState === "needs_follow_up",
+        value: "needs_follow_up"
+      }
+    ],
+    relationshipProgress: [
+      {
+        count: allCount,
+        label: "全部",
+        selected: !selection.relationshipProgress,
+        value: null
+      },
+      ...CONTACT_RELATIONSHIP_PROGRESS_FILTER_ORDER.map((status) => ({
+        count: status === "active" ? activeCount : (counts.get(status) ?? 0),
+        label: CONTACT_RELATIONSHIP_PROGRESS_FILTER_LABELS[status],
+        selected: selection.relationshipProgress === status,
+        value: status
+      }))
+    ]
+  };
+}
+
+export function contactDimensionStatusFilters(
+  selection: ContactDimensionFilterSelection
+): ContactListStatusFilter[] {
+  if (selection.actionState === "needs_follow_up") {
+    return selection.relationshipProgress &&
+      selection.relationshipProgress !== "active"
+      ? []
+      : ["needs_follow_up"];
+  }
+
+  if (selection.relationshipProgress === "active") {
+    return ["active", "needs_follow_up"];
+  }
+
+  return selection.relationshipProgress ? [selection.relationshipProgress] : [];
+}
+
+export function filterContactListPayloadByDimensions(
+  data: unknown,
+  selection: ContactDimensionFilterSelection
+): unknown {
+  if (
+    !isRecord(data) ||
+    !Array.isArray(data.contacts) ||
+    (!selection.actionState && !selection.relationshipProgress)
+  ) {
+    return data;
+  }
+
+  const contacts = data.contacts.filter((contact) => {
+    if (!isRecord(contact)) {
+      return false;
+    }
+
+    const status = stringField(contact, "status").toLowerCase();
+    const progressMatches = !selection.relationshipProgress ||
+      (selection.relationshipProgress === "active"
+        ? status === "active" || status === "needs_follow_up"
+        : status === selection.relationshipProgress);
+    const actionMatches = !selection.actionState || status === "needs_follow_up";
+
+    return progressMatches && actionMatches;
+  });
+
+  return { ...data, contacts };
 }
 
 export function buildContactsSearchRequest(
@@ -428,11 +527,14 @@ export function buildContactsSearchRequest(
 ): ContactsSearchRequestResult {
   const query = input.query.trim();
   const sourceFilters = normalizedFilterValues(input.sourceFilters);
+  const statusFilters = normalizedFilterValues(
+    input.statusFilters ?? (input.status ? [input.status] : [])
+  ) as ContactListStatusFilter[];
   const tagFilters = normalizedFilterValues(input.tagFilters);
   const valueFilters = normalizedFilterValues(input.valueFilters);
   const hasFilters =
     sourceFilters.length > 0 ||
-    !!input.status ||
+    statusFilters.length > 0 ||
     tagFilters.length > 0 ||
     valueFilters.length > 0;
 
@@ -459,8 +561,8 @@ export function buildContactsSearchRequest(
     body.sourceFilters = sourceFilters;
   }
 
-  if (input.status) {
-    body.statusFilters = [input.status];
+  if (statusFilters.length > 0) {
+    body.statusFilters = statusFilters;
   }
 
   if (tagFilters.length > 0) {
@@ -528,7 +630,7 @@ function tagFilterLabel(value: string): string {
   const labels: Record<string, string> = {
     "event:climate-founders-dinner": "气候创始人晚宴",
     "priority:nurture": "长期培养",
-    "priority:warm-follow-up": "温线索跟进",
+    "priority:warm-follow-up": "近期联系",
     "source:event-import": "活动导入",
     "source:external-import": "外部联系人",
     "topic:community": "社群资源",
@@ -804,7 +906,7 @@ function contactsSearchNextAction(data: unknown, count: number): string {
     }
   }
 
-  return "先看匹配到的人和来源证据，再决定要不要跟进。";
+  return "先看匹配到的人和关系背景，再决定要不要联系。";
 }
 
 export function contactsSearchToView(data: unknown): ContactsSearchView {
@@ -837,10 +939,10 @@ function statusAction(
 
   if (normalized === "needs_follow_up") {
     return {
-      label: "标记为在推进",
+      label: "标记为推进中",
       nextStatus: "active",
       pendingLabel: "更新中",
-      successMessage: `已把 ${name} 标记为在推进。`
+      successMessage: `已把 ${name} 标记为推进中。`
     };
   }
 
@@ -899,7 +1001,7 @@ function nextActionText(contact: Record<string, unknown>, name: string): string 
     !value ||
     /\b(review|agent|source evidence|before agent use)\b/i.test(value)
   ) {
-    return `查看来源证据后再跟进 ${name}。`;
+    return `查看来源证据后再联系 ${name}。`;
   }
 
   return localizedNextActionText(value, name);
@@ -1020,7 +1122,7 @@ function localizedRelationshipText(
 function localizedNoteText(value: string): string {
   const chinese = preferredChineseSegment(value);
 
-  if (segmentLooksChinese(chinese)) {
+  if (looksLikeChineseDisplayText(chinese)) {
     return chinese;
   }
 
@@ -1049,7 +1151,7 @@ function localizedNextActionText(value: string, name: string): string {
   const lower = value.toLowerCase();
 
   if (lower.includes("intro")) {
-    return `给 ${name} 补一条引荐跟进。`;
+    return `给 ${name} 补一条引荐待办。`;
   }
 
   if (lower.includes("roundtable")) {
@@ -1061,10 +1163,10 @@ function localizedNextActionText(value: string, name: string): string {
   }
 
   if (lower.includes("brief")) {
-    return `把合作背景整理好后再跟进 ${name}。`;
+    return `把合作背景整理好后再联系 ${name}。`;
   }
 
-  return `跟进 ${name} 的关系进展。`;
+  return `联系 ${name}，确认下一步。`;
 }
 
 function listFromPayload(value: unknown, fieldName: string): readonly unknown[] {
@@ -1094,6 +1196,46 @@ function contactImageUrl(contact: Record<string, unknown>): string {
     stringField(avatar, "url") ||
     stringField(avatar, "imageUrl")
   );
+}
+
+function analysisLocationLabel(value: string): string {
+  const trimmed = value.trim();
+  const normalized = trimmed.toLowerCase();
+
+  if (!trimmed || normalized === "unknown location" || normalized === "unknown") {
+    return "";
+  }
+
+  const localizedLocations: [RegExp, string][] = [
+    [/shibuya|渋谷|涩谷/iu, "东京·涩谷"],
+    [/tokyo|東京|东京/iu, "东京"],
+    [/osaka|大阪/iu, "大阪"],
+    [/kyoto|京都/iu, "京都"],
+    [/kansai|関西|关西/iu, "关西"],
+    [/yokohama|横浜|横滨/iu, "横滨"],
+    [/kobe|神戸|神户/iu, "神户"],
+    [/nagoya|名古屋/iu, "名古屋"],
+    [/fukuoka|福岡|福冈/iu, "福冈"],
+    [/sapporo|札幌/iu, "札幌"],
+    [/singapore|新加坡/iu, "新加坡"],
+    [/san francisco|旧金山/iu, "旧金山"],
+    [/shanghai|上海/iu, "上海"],
+    [/beijing|北京/iu, "北京"]
+  ];
+  const match = localizedLocations.find(([pattern]) => pattern.test(trimmed));
+
+  if (match) {
+    return match[1];
+  }
+
+  return /[a-z]{3,}/iu.test(trimmed) ? "其他地区" : trimmed;
+}
+
+export function contactLocationsToValues(data: unknown): string[] {
+  return listFromPayload(data, "contacts")
+    .filter(isRecord)
+    .map((contact) => analysisLocationLabel(stringField(contact, "location")))
+    .filter((location) => location.length > 0);
 }
 
 export function contactsToSummaries(data: unknown): ContactSummary[] {
@@ -1155,13 +1297,14 @@ function sourceLabel(contact: Record<string, unknown>): string {
   const publicSource = nestedRecord(publicProfile, "source");
   const label = stringField(source, "label") || stringField(publicSource, "label");
   const normalized = label.trim().toLowerCase();
-  const qrMatch = /^QR scan for (.+)$/iu.exec(label);
+  const qrMatch = /^QR scan (?:at|for) (.+)$/iu.exec(label);
   const labels: Record<string, string> = {
     "manual note": "手动记录"
   };
 
   if (qrMatch?.[1]?.trim()) {
-    return `QR 扫码：${qrMatch[1].trim()}`;
+    const detail = qrMatch[1].trim();
+    return /^(?:二维码|扫码)/u.test(detail) ? detail : `QR 扫码：${detail}`;
   }
 
   if (labels[normalized]) {
@@ -1202,7 +1345,7 @@ function localizedPublicProfileItem(value: string): string {
     "founder diligence context": "创始人尽调背景",
     "operator introductions": "运营方引荐",
     "operator partnerships": "运营方合作",
-    "review evidence before follow-up": "查看证据后跟进",
+    "review evidence before follow-up": "查看背景后联系",
     "storage pilot operator access": "储能试点运营方资源",
     "storage pilots": "储能试点"
   };
@@ -1254,7 +1397,7 @@ function publicProfileList(
 function localizedEvidenceText(value: string): string {
   const chinese = preferredChineseSegment(value);
 
-  if (segmentLooksChinese(chinese)) {
+  if (looksLikeChineseDisplayText(chinese)) {
     return chinese;
   }
 
@@ -1275,7 +1418,7 @@ function localizedEvidenceText(value: string): string {
   }
 
   if (normalized.includes("follow-up note keeps the source context")) {
-    return "跟进记录会保留这次来源背景。";
+    return "联系记录会保留这次来源背景。";
   }
 
   return "";
@@ -1315,7 +1458,7 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
       lastInteractionAt: "暂无记录",
       location: "",
       name: "Contact",
-      nextAction: "查看来源证据后再跟进 Contact。",
+      nextAction: "查看来源证据后再联系 Contact。",
       noteSummaries: [],
       organization: "Independent",
       publicBio: "",
@@ -1326,7 +1469,7 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
       relationship: "Relationship context pending",
       role: "",
       sourceLabel: "",
-      status: "在推进",
+      status: "推进中",
       statusAction: null,
       valueLabels: [],
       valueScore: null

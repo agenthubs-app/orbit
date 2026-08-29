@@ -27,7 +27,7 @@ test("contact detail screen can update tags and last interaction metadata", () =
   assert.match(screenSource, /onChangeMetadataDraft/u);
   assert.match(screenSource, /title="编辑标签和互动"/u);
   assert.match(screenSource, /channel: "手动记录"/u);
-  assert.match(screenSource, /placeholder="AI, 关西渠道, 待跟进"/u);
+  assert.match(screenSource, /placeholder="AI, 关西渠道, 待联系"/u);
   assert.match(screenSource, /placeholder="今天下午或 2026-07-24 09:30"/u);
   assert.match(screenSource, /placeholder="微信、邮件、活动现场"/u);
   assert.match(screenSource, /placeholder="刚确认了什么，下一步卡在哪里"/u);
@@ -84,4 +84,73 @@ test("contact detail status card does not use location as its status subtitle", 
     screenSource,
     /<DataCard detail=\{contact\.location\} title="当前状态">/u
   );
+});
+
+test("contact detail screen prioritizes identity, next step, and relationship context", () => {
+  assert.match(screenSource, /title="联系人详情"/u);
+  assert.doesNotMatch(screenSource, /eyebrow="联系人详情"/u);
+  assert.match(screenSource, /ContactIdentityHeader/u);
+  assert.match(screenSource, /NextStepCard/u);
+  assert.match(screenSource, /ContactOverview/u);
+  assert.match(screenSource, /numberOfLines=\{3\}/u);
+
+  const identityIndex = screenSource.indexOf("<ContactIdentityHeader");
+  const nextStepIndex = screenSource.indexOf("<NextStepCard");
+  const overviewIndex = screenSource.indexOf("<ContactOverview");
+
+  assert.ok(identityIndex >= 0);
+  assert.ok(nextStepIndex > identityIndex);
+  assert.ok(overviewIndex > nextStepIndex);
+});
+
+test("contact detail screen structures exchange value and recent activity as compact rows", () => {
+  assert.match(screenSource, /title="合作切入点"/u);
+  assert.match(screenSource, /label="对方在找"/u);
+  assert.match(screenSource, /label="对方能提供"/u);
+  assert.match(screenSource, /relationshipExchangeFor/u);
+  assert.match(screenSource, /LatestActivityPreview/u);
+  assert.match(
+    screenSource,
+    /const hasInteraction = contact\.lastInteractionAt !== "暂无记录"/u
+  );
+  assert.match(
+    screenSource,
+    /const latest = hasInteraction \? contact\.noteSummaries\[0\] : undefined/u
+  );
+  assert.doesNotMatch(
+    screenSource,
+    /contact\.noteSummaries\[0\] \?\? contact\.evidenceExcerpts\[0\]/u
+  );
+  assert.match(screenSource, /numberOfLines=\{2\}/u);
+  assert.doesNotMatch(screenSource, /title="公开资料"/u);
+  assert.doesNotMatch(screenSource, /title="来源证据"/u);
+});
+
+test("contact detail summary does not repeat exchange values or scores", () => {
+  const latestActivitySource = screenSource.slice(
+    screenSource.indexOf("function LatestActivityPreview"),
+    screenSource.indexOf("function DisclosureSection")
+  );
+
+  assert.match(screenSource, /relationshipSummaryFor/u);
+  assert.match(screenSource, /目前处于\$\{contact\.status\}/u);
+  assert.doesNotMatch(latestActivitySource, /contact\.sourceLabel/u);
+});
+
+test("contact detail screen progressively discloses full data and editing controls", () => {
+  assert.match(screenSource, /useState\(false\)/u);
+  assert.match(screenSource, /title="完整资料"/u);
+  assert.match(screenSource, /title="更新联系人"/u);
+  assert.match(screenSource, /DisclosureSection/u);
+  assert.match(screenSource, /accessibilityState=\{\{ expanded \}\}/u);
+  assert.match(screenSource, /name=\{expanded \? "chevron-up" : "chevron-down"\}/u);
+});
+
+test("expanded relationship value stays concise and does not repeat raw evidence", () => {
+  assert.match(screenSource, /view\.scoreLabel/u);
+  assert.match(screenSource, /view\.priorityLabel/u);
+  assert.match(screenSource, /view\.summary/u);
+  assert.doesNotMatch(screenSource, /view\.factors\.map/u);
+  assert.doesNotMatch(screenSource, /view\.evidenceLines\.map/u);
+  assert.doesNotMatch(screenSource, /<Text style=\{styles\.sectionDetail\}>\{view\.nextAction\}<\/Text>/u);
 });

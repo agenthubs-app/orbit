@@ -334,7 +334,7 @@ test("contactDetailToSummary maps contact detail payloads", () => {
     lastInteractionAt: "2026-07-01T09:00:00.000Z",
     location: "Tokyo",
     name: "Maya Chen",
-    nextAction: "给 Maya Chen 补一条引荐跟进。",
+    nextAction: "给 Maya Chen 补一条引荐待办。",
     noteSummaries: ["在创始人晚宴上聊过，对方希望介绍合作伙伴。"],
     organization: "Northstar",
     publicBio: "气候基础设施投资人，正在寻找日本市场合作伙伴。",
@@ -345,12 +345,12 @@ test("contactDetailToSummary maps contact detail payloads", () => {
     relationship: "气候基础设施投资人，正在寻找日本市场合作伙伴。",
     role: "合伙人",
     sourceLabel: "QR 扫码：Maya Chen",
-    status: "待联系",
+    status: "需要联系",
     statusAction: {
-      label: "标记为在推进",
+      label: "标记为推进中",
       nextStatus: "active",
       pendingLabel: "更新中",
-      successMessage: "已把 Maya Chen 标记为在推进。"
+      successMessage: "已把 Maya Chen 标记为推进中。"
     },
     evidenceExcerpts: ["气候基础设施投资人，正在寻找日本市场合作伙伴。"],
     valueLabels: ["战略契合", "引荐路径"],
@@ -386,9 +386,27 @@ test("contactDetailHeroToView prepares an avatar-led mobile detail hero", () => 
     detailLine: "Northstar · 合伙人",
     name: "Maya Chen",
     relationship: "Northstar 的投资人，正在寻找日本市场合作伙伴。",
-    status: "待联系",
+    status: "需要联系",
     valueScoreLabel: "价值分 88"
   });
+});
+
+test("contactDetailToSummary strips an English QR prefix from a Chinese source label", () => {
+  const summary = contactDetailToSummary({
+    contact: {
+      displayName: "佐藤健一",
+      id: "contact_001",
+      organization: "北星餐饮",
+      profileSnippet: "北星餐饮的门店经营者。",
+      role: "门店经营者",
+      source: {
+        label: "QR scan at 二维码交换记录：佐藤健一"
+      },
+      status: "active"
+    }
+  });
+
+  assert.equal(summary.sourceLabel, "二维码交换记录：佐藤健一");
 });
 
 test("contactDetailToSummary exposes safe status actions", () => {
@@ -597,12 +615,45 @@ test("contactDetailToSummary cleans live contact implementation copy", () => {
     "红桥科技的市场负责人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。"
   );
   assert.deepEqual(summary.publicOffering, ["社群资源"]);
-  assert.deepEqual(summary.publicSeeking, ["查看证据后跟进"]);
-  assert.deepEqual(summary.publicPrompts, ["查看证据后跟进"]);
+  assert.deepEqual(summary.publicSeeking, ["查看背景后联系"]);
+  assert.deepEqual(summary.publicPrompts, ["查看背景后联系"]);
   assert.deepEqual(summary.publicTopics, []);
   assert.deepEqual(summary.noteSummaries, []);
   assert.equal(summary.sourceLabel, "QR 扫码：岡田 隼人");
-  assert.equal(summary.status, "培养中");
+  assert.equal(summary.status, "长期维护");
+});
+
+test("contactDetailToSummary does not treat names inside English records as Chinese copy", () => {
+  const summary = contactDetailToSummary({
+    contact: {
+      displayName: "佐藤健一",
+      evidence: [
+        {
+          excerpt:
+            "北星餐饮的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。"
+        },
+        {
+          excerpt:
+            "Relationship context for 山田 千尋: ai saas, AI workflow PoC buyer in Japanese SMB manufacturing."
+        }
+      ],
+      id: "contact_001",
+      notes: [
+        {
+          body:
+            "Relationship context for 山田 千尋: ai saas, AI workflow PoC buyer in Japanese SMB manufacturing."
+        }
+      ],
+      organization: "北星餐饮",
+      role: "门店经营者",
+      status: "active"
+    }
+  });
+
+  assert.deepEqual(summary.evidenceExcerpts, [
+    "北星餐饮的门店经营者。本次关注「可在日本中小制造业试点 AI 业务自动化的买方」，可提供「日中双语社群营销渠道」。"
+  ]);
+  assert.deepEqual(summary.noteSummaries, []);
 });
 
 test("contactDetailToSummary localizes live business-card placeholders", () => {

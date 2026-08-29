@@ -8,8 +8,7 @@ export type ContactPipelineStageId =
   | "to_contact"
   | "in_progress"
   | "nurture"
-  | "archived"
-  | "partnered";
+  | "archived";
 
 export type ContactPipelineRelationshipStage =
   | "active"
@@ -25,6 +24,7 @@ export interface ContactPipelineMetricView {
 export interface ContactPipelineCardView {
   detail: string;
   id: string;
+  imageUrl?: string;
   name: string;
   nextAction: string;
   relationship: string;
@@ -32,6 +32,19 @@ export interface ContactPipelineCardView {
   stageActions: ContactPipelineStageActionView[];
   valueLabels: string[];
   valueScoreLabel: string | null;
+}
+
+export type ContactPipelineActionDueTone = "overdue" | "today" | "upcoming";
+
+export interface ContactPipelineActionItemView {
+  contactId: string;
+  contactName: string;
+  detail: string;
+  dueLabel: string;
+  dueTone: ContactPipelineActionDueTone;
+  imageUrl: string | undefined;
+  taskId: string;
+  title: string;
 }
 
 export interface ContactPipelineStageActionView {
@@ -69,6 +82,7 @@ export interface ContactIntroReadinessView {
 }
 
 export interface ContactPipelineView {
+  actionItems: ContactPipelineActionItemView[];
   introReadiness: ContactIntroReadinessView;
   metrics: ContactPipelineMetricView[];
   stages: ContactPipelineStageView[];
@@ -127,6 +141,8 @@ export type ContactInvitationConfirmRequestResult =
 interface ContactPipelineInput {
   connectionsPayload: unknown;
   contactsPayload: unknown;
+  now?: string;
+  tasksPayload?: unknown;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -139,12 +155,12 @@ const STAGES: Array<{
   {
     detail: "需要先发起或重新确认下一步。",
     id: "to_contact",
-    label: "待联系"
+    label: "待跟进"
   },
   {
     detail: "已经有明确交流或合作线索。",
     id: "in_progress",
-    label: "在推进"
+    label: "推进中"
   },
   {
     detail: "适合低频维护，先保留关系温度。",
@@ -154,12 +170,7 @@ const STAGES: Array<{
   {
     detail: "当前不用继续推进，可后续恢复。",
     id: "archived",
-    label: "暂不跟进"
-  },
-  {
-    detail: "已经形成合作或稳定互助。",
-    id: "partnered",
-    label: "已合作"
+    label: "已归档"
   }
 ];
 
@@ -246,7 +257,7 @@ function stageFromToken(value: string): ContactPipelineStageId | null {
   const normalized = value.trim().toLowerCase();
 
   if (["partnered", "partner", "合作", "已合作"].includes(normalized)) {
-    return "partnered";
+    return "in_progress";
   }
 
   if (
@@ -279,7 +290,11 @@ function stageFromToken(value: string): ContactPipelineStageId | null {
     return "nurture";
   }
 
-  if (["archived", "archive", "已归档", "暂不跟进"].includes(normalized)) {
+  if (
+    ["archived", "archive", "已归档", "暂不跟进", "暂不推进"].includes(
+      normalized
+    )
+  ) {
     return "archived";
   }
 
@@ -483,6 +498,7 @@ function contactCard(
   return {
     detail: contactDetail(contact),
     id: contact.id,
+    ...(contact.imageUrl ? { imageUrl: contact.imageUrl } : {}),
     name: contact.name,
     nextAction: contact.nextAction,
     relationship: contact.relationship,
@@ -546,12 +562,12 @@ function stageActions(
 
   if (stage === "to_contact") {
     return [
-      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入在推进。`),
+      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入推进中。`),
       action(
-        "暂不跟进",
+        "暂不推进",
         "archived",
         "归档中",
-        (name) => `已把 ${name} 标记为暂不跟进。`
+        (name) => `已把 ${name} 标记为暂不推进。`
       )
     ];
   }
@@ -559,10 +575,10 @@ function stageActions(
   if (stage === "in_progress") {
     return [
       action(
-        "放回待联系",
+        "转为待跟进",
         "needs_follow_up",
         "更新中",
-        (name) => `已把 ${name} 放回待联系。`
+        (name) => `已把 ${name} 转为待跟进。`
       ),
       action(
         "转长期维护",
@@ -575,12 +591,12 @@ function stageActions(
 
   if (stage === "nurture") {
     return [
-      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入在推进。`),
+      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入推进中。`),
       action(
-        "暂不跟进",
+        "暂不推进",
         "archived",
         "归档中",
-        (name) => `已把 ${name} 标记为暂不跟进。`
+        (name) => `已把 ${name} 标记为暂不推进。`
       )
     ];
   }
@@ -588,24 +604,114 @@ function stageActions(
   if (stage === "archived") {
     return [
       action(
-        "恢复待联系",
+        "恢复待跟进",
         "needs_follow_up",
         "恢复中",
-        (name) => `已把 ${name} 恢复到待联系。`
+        (name) => `已把 ${name} 恢复到待跟进。`
       )
     ];
   }
 
-  return [
-    action("放回在推进", "active", "更新中", (name) => `已把 ${name} 放回在推进。`)
-  ];
+  return [];
+}
+
+function actionDueView(
+  dueAt: string,
+  now: string
+): Pick<ContactPipelineActionItemView, "dueLabel" | "dueTone"> | null {
+  const dueDate = new Date(dueAt);
+  const nowDate = new Date(now);
+
+  if (!Number.isFinite(dueDate.getTime()) || !Number.isFinite(nowDate.getTime())) {
+    return null;
+  }
+
+  const dueDay = new Date(
+    dueDate.getFullYear(),
+    dueDate.getMonth(),
+    dueDate.getDate()
+  ).getTime();
+  const today = new Date(
+    nowDate.getFullYear(),
+    nowDate.getMonth(),
+    nowDate.getDate()
+  ).getTime();
+  const difference = Math.round((dueDay - today) / 86_400_000);
+
+  if (difference < 0) {
+    return { dueLabel: "逾期", dueTone: "overdue" };
+  }
+
+  if (difference === 0) {
+    return { dueLabel: "今天", dueTone: "today" };
+  }
+
+  if (difference === 1) {
+    return { dueLabel: "明天", dueTone: "upcoming" };
+  }
+
+  return {
+    dueLabel: `${dueDate.getMonth() + 1}月${dueDate.getDate()}日`,
+    dueTone: "upcoming"
+  };
+}
+
+function relationshipActionTitle(value: string): string {
+  return value.replace(/复核/gu, "确认");
+}
+
+function pipelineActionItems(
+  tasksPayload: unknown,
+  contacts: readonly ContactSummary[],
+  now: string
+): ContactPipelineActionItemView[] {
+  const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+
+  return listFromPayload(tasksPayload, "tasks")
+    .flatMap((task) => {
+      const taskId = stringField(task, "taskId");
+      const contactId = stringField(task, "contactId");
+      const dueAt = stringField(task, "dueAt");
+      const title = stringField(task, "title");
+      const contact = contactsById.get(contactId);
+      const due = actionDueView(dueAt, now);
+
+      if (
+        !taskId ||
+        taskId.startsWith("relationship-suggestion:") ||
+        !contact ||
+        !title ||
+        !due
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          contactId,
+          contactName: contact.name,
+          detail: contactDetail(contact),
+          dueLabel: due.dueLabel,
+          dueTone: due.dueTone,
+          imageUrl: contact.imageUrl,
+          taskId,
+          title: relationshipActionTitle(title),
+          dueAt
+        }
+      ];
+    })
+    .sort((left, right) => left.dueAt.localeCompare(right.dueAt))
+    .map(({ dueAt: _dueAt, ...item }) => item);
 }
 
 export function contactsPipelineToView({
   connectionsPayload,
-  contactsPayload
+  contactsPayload,
+  now = new Date().toISOString(),
+  tasksPayload = { tasks: [] }
 }: ContactPipelineInput): ContactPipelineView {
   const contacts = contactsToSummaries(contactsPayload);
+  const actionItems = pipelineActionItems(tasksPayload, contacts, now);
   const rawContacts = listFromPayload(contactsPayload, "contacts");
   const connectionByContactId = connectionsByContactId(connectionsPayload);
   const grouped = new Map<ContactPipelineStageId, ContactPipelineCardView[]>(
@@ -635,6 +741,7 @@ export function contactsPipelineToView({
   const inProgressCount = grouped.get("in_progress")?.length ?? 0;
 
   return {
+    actionItems,
     introReadiness: {
       apiGap: "本次只准备引荐草稿，真正发送前还会再确认。",
       candidates: introCandidates.slice(0, 5),
@@ -646,8 +753,8 @@ export function contactsPipelineToView({
     },
     metrics: [
       { label: "联系人", value: String(contacts.length) },
-      { label: "待联系", value: String(toContactCount) },
-      { label: "在推进", value: String(inProgressCount) },
+      { label: "待跟进", value: String(toContactCount) },
+      { label: "推进中", value: String(inProgressCount) },
       { label: "可引荐", value: String(introCandidates.length) }
     ],
     stages: STAGES.map((stage) => {
@@ -663,8 +770,8 @@ export function contactsPipelineToView({
     }),
     summary:
       contacts.length > 0
-        ? `${contacts.length} 位联系人，先处理待联系和可引荐的人。`
-        : "还没有联系人进入管线。",
-    title: "跟进管线"
+        ? `${contacts.length} 位联系人，${actionItems.length} 项待处理。`
+        : "还没有可展示的关系进展。",
+    title: "关系进展"
   };
 }

@@ -41,6 +41,7 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
         {
           displayName: "Maya Chen",
           id: "contact_001",
+          imageUrl: "/media/contacts/maya.jpg",
           nextAction: "Review source evidence before agent use.",
           organization: "Northstar",
           profileSnippet:
@@ -79,15 +80,73 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
           }
         }
       ]
+    },
+    now: "2026-08-25T02:00:00.000Z",
+    tasksPayload: {
+      tasks: [
+        {
+          contactId: "contact_001",
+          contactName: "Maya Chen",
+          dueAt: "2026-08-25T08:00:00.000Z",
+          organization: "Northstar",
+          taskId: "task_maya_scope",
+          title: "复核与 Maya Chen 的下一步"
+        },
+        {
+          contactId: "contact_002",
+          contactName: "佐藤 健",
+          dueAt: "2026-08-24T08:00:00.000Z",
+          organization: "Kansai Community",
+          taskId: "task_sato_reply",
+          title: "回复上次活动后的消息"
+        },
+        {
+          contactId: "contact_003",
+          contactName: "李娜",
+          dueAt: "2026-08-26T08:00:00.000Z",
+          organization: "Orbit",
+          taskId: "relationship-suggestion:connection_003",
+          title: "系统建议的跟进"
+        },
+        {
+          contactId: "contact_003",
+          contactName: "李娜",
+          organization: "Orbit",
+          taskId: "task_without_due_date",
+          title: "尚未安排日期"
+        }
+      ]
     }
   });
 
-  assert.equal(view.title, "跟进管线");
-  assert.equal(view.summary, "3 位联系人，先处理待联系和可引荐的人。");
+  assert.equal(view.title, "关系进展");
+  assert.equal(view.summary, "3 位联系人，2 项待处理。");
+  assert.deepEqual(view.actionItems, [
+    {
+      contactId: "contact_002",
+      contactName: "佐藤 健",
+      detail: "Kansai Community · 社群负责人",
+      dueLabel: "逾期",
+      dueTone: "overdue",
+      imageUrl: undefined,
+      taskId: "task_sato_reply",
+      title: "回复上次活动后的消息"
+    },
+    {
+      contactId: "contact_001",
+      contactName: "Maya Chen",
+      detail: "Northstar · 合伙人",
+      dueLabel: "今天",
+      dueTone: "today",
+      imageUrl: "/media/contacts/maya.jpg",
+      taskId: "task_maya_scope",
+      title: "确认与 Maya Chen 的下一步"
+    }
+  ]);
   assert.deepEqual(view.metrics, [
     { label: "联系人", value: "3" },
-    { label: "待联系", value: "1" },
-    { label: "在推进", value: "1" },
+    { label: "待跟进", value: "1" },
+    { label: "推进中", value: "2" },
     { label: "可引荐", value: "1" }
   ]);
   assert.deepEqual(
@@ -97,11 +156,10 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
       label: stage.label
     })),
     [
-      { count: 1, id: "to_contact", label: "待联系" },
-      { count: 1, id: "in_progress", label: "在推进" },
+      { count: 1, id: "to_contact", label: "待跟进" },
+      { count: 2, id: "in_progress", label: "推进中" },
       { count: 0, id: "nurture", label: "长期维护" },
-      { count: 0, id: "archived", label: "暂不跟进" },
-      { count: 1, id: "partnered", label: "已合作" }
+      { count: 0, id: "archived", label: "已归档" }
     ]
   );
   const firstStage = view.stages[0];
@@ -109,15 +167,16 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
   assert.deepEqual(firstStage.contacts[0], {
     detail: "Northstar · 合伙人",
     id: "contact_001",
+    imageUrl: "/media/contacts/maya.jpg",
     name: "Maya Chen",
-    nextAction: "查看来源证据后再跟进 Maya Chen。",
+    nextAction: "查看来源证据后再联系 Maya Chen。",
     relationship: "正在找日本市场合作伙伴，也能介绍税务顾问。",
     stageAction: {
       connectionId: "connection_001",
       label: "开始推进",
       nextRelationshipStage: "active",
       pendingLabel: "推进中",
-      successMessage: "已把 Maya Chen 放入在推进。"
+      successMessage: "已把 Maya Chen 放入推进中。"
     },
     stageActions: [
       {
@@ -125,14 +184,14 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
         label: "开始推进",
         nextRelationshipStage: "active",
         pendingLabel: "推进中",
-        successMessage: "已把 Maya Chen 放入在推进。"
+        successMessage: "已把 Maya Chen 放入推进中。"
       },
       {
         connectionId: "connection_001",
-        label: "暂不跟进",
+        label: "暂不推进",
         nextRelationshipStage: "archived",
         pendingLabel: "归档中",
-        successMessage: "已把 Maya Chen 标记为暂不跟进。"
+        successMessage: "已把 Maya Chen 标记为暂不推进。"
       }
     ],
     valueLabels: ["战略契合", "引荐路径"],
@@ -225,7 +284,8 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
           status: "partnered"
         }
       ]
-    }
+    },
+    tasksPayload: { tasks: [] }
   });
 
   assert.deepEqual(
@@ -235,11 +295,10 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
       label: stage.label
     })),
     [
-      { count: 1, id: "to_contact", label: "待联系" },
-      { count: 1, id: "in_progress", label: "在推进" },
+      { count: 1, id: "to_contact", label: "待跟进" },
+      { count: 2, id: "in_progress", label: "推进中" },
       { count: 1, id: "nurture", label: "长期维护" },
-      { count: 1, id: "archived", label: "暂不跟进" },
-      { count: 1, id: "partnered", label: "已合作" }
+      { count: 1, id: "archived", label: "已归档" }
     ]
   );
   assert.deepEqual(view.stages[0]?.contacts[0]?.stageAction, {
@@ -247,7 +306,7 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
     label: "开始推进",
     nextRelationshipStage: "active",
     pendingLabel: "推进中",
-    successMessage: "已把 Maya Chen 放入在推进。"
+    successMessage: "已把 Maya Chen 放入推进中。"
   });
   assert.deepEqual(
     view.stages[1]?.contacts[0]?.stageActions.map((action) => ({
@@ -255,7 +314,7 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
       nextRelationshipStage: action.nextRelationshipStage
     })),
     [
-      { label: "放回待联系", nextRelationshipStage: "needs_follow_up" },
+      { label: "转为待跟进", nextRelationshipStage: "needs_follow_up" },
       { label: "转长期维护", nextRelationshipStage: "nurture" }
     ]
   );
@@ -266,39 +325,39 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
     })),
     [
       { label: "开始推进", nextRelationshipStage: "active" },
-      { label: "暂不跟进", nextRelationshipStage: "archived" }
+      { label: "暂不推进", nextRelationshipStage: "archived" }
     ]
   );
   assert.deepEqual(view.stages[3]?.contacts[0]?.stageActions, [
     {
       connectionId: "connection_004",
-      label: "恢复待联系",
+      label: "恢复待跟进",
       nextRelationshipStage: "needs_follow_up",
       pendingLabel: "恢复中",
-      successMessage: "已把 Hana Sato 恢复到待联系。"
+      successMessage: "已把 Hana Sato 恢复到待跟进。"
     }
   ]);
-  assert.equal(view.stages[4]?.contacts[0]?.stageAction, null);
-  assert.deepEqual(view.stages[4]?.contacts[0]?.stageActions, []);
 });
 
 test("contactsPipelineToView keeps empty pipeline and intros explicit", () => {
   const view = contactsPipelineToView({
     connectionsPayload: { connections: [] },
-    contactsPayload: { contacts: [] }
+    contactsPayload: { contacts: [] },
+    tasksPayload: { tasks: [] }
   });
 
-  assert.equal(view.summary, "还没有联系人进入管线。");
+  assert.equal(view.summary, "还没有可展示的关系进展。");
   assert.deepEqual(view.metrics, [
     { label: "联系人", value: "0" },
-    { label: "待联系", value: "0" },
-    { label: "在推进", value: "0" },
+    { label: "待跟进", value: "0" },
+    { label: "推进中", value: "0" },
     { label: "可引荐", value: "0" }
   ]);
   assert.deepEqual(
     view.stages.map((stage) => stage.count),
-    [0, 0, 0, 0, 0]
+    [0, 0, 0, 0]
   );
+  assert.deepEqual(view.actionItems, []);
   assert.deepEqual(view.introReadiness.candidates, []);
   assert.equal(view.introReadiness.summary, "还没有适合发起引荐的候选。");
 });

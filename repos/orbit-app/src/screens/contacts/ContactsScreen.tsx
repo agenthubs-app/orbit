@@ -31,12 +31,16 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   buildContactsSearchRequest,
   contactAvatarFor,
+  contactDimensionFilterOptions,
+  contactDimensionStatusFilters,
   contactSearchFilterSections,
-  contactStatusFilterOptions,
   contactsSearchToView,
   contactsToSummaries,
+  filterContactListPayloadByDimensions,
+  type ContactActionStateFilter,
   type ContactAvatarTone,
   type ContactListStatusFilter,
+  type ContactRelationshipProgressFilter,
   type ContactSearchFilterKind,
   type ContactSearchFilterSectionView,
   type ContactSearchResultView,
@@ -57,8 +61,9 @@ import {
 } from "../../view-models/relationship-search";
 
 type ContactsScreenMode = "list" | "overview";
+type ContactFilterMenuId = "action" | "industry" | "more" | "progress";
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
-type NetworkPriorityRoute = "/contacts/graph" | "/contacts/dashboard";
+type NetworkPriorityRoute = "/contacts/dashboard";
 type OverviewToolTone = "accent" | "amber" | "live" | "sky";
 
 type RecentRelationshipSearch = {
@@ -80,7 +85,7 @@ type RelationshipFilterOption = {
 const relationshipIntentOptions: RelationshipFilterOption[] = [
   { label: "找暖介绍", value: "find_warm_intro" },
   { label: "找合作机会", value: "explore_partnership" },
-  { label: "找会后跟进", value: "recover_event_follow_up" },
+  { label: "找会后联系", value: "recover_event_follow_up" },
   { label: "找客户参考", value: "source_customer_reference" }
 ];
 
@@ -240,10 +245,9 @@ function hasContactData(
 
 function emptyMessage(
   query: string,
-  status: ContactListStatusFilter | null,
-  hasAdvancedFilters: boolean
+  hasFilters: boolean
 ): string {
-  if (query.trim() || status || hasAdvancedFilters) {
+  if (query.trim() || hasFilters) {
     return "换个关键词或清空筛选后再看。";
   }
 
@@ -320,177 +324,263 @@ function StatusFilterChip({
   );
 }
 
-function CollapsibleFilterSection({
-  children,
-  selectedCount,
-  title
+function ContactFilterToolbar({
+  actionStateOptions,
+  advancedFilterSections,
+  onActionStateChange,
+  onRelationshipProgressChange,
+  onToggleAdvancedFilter,
+  onToggleRelationshipIndustry,
+  relationshipProgressOptions,
+  selectedActionState,
+  selectedRelationshipIndustries,
+  selectedRelationshipProgress
 }: {
-  children: ReactNode;
-  selectedCount: number;
-  title: string;
+  actionStateOptions: ContactStatusFilterOption[];
+  advancedFilterSections: ContactSearchFilterSectionView[];
+  onActionStateChange: (status: ContactActionStateFilter | null) => void;
+  onRelationshipProgressChange: (
+    status: ContactRelationshipProgressFilter | null
+  ) => void;
+  onToggleAdvancedFilter: (
+    kind: ContactSearchFilterKind,
+    value: string
+  ) => void;
+  onToggleRelationshipIndustry: (value: string) => void;
+  relationshipProgressOptions: ContactStatusFilterOption[];
+  selectedActionState: ContactActionStateFilter | null;
+  selectedRelationshipIndustries: string[];
+  selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <View style={styles.collapsibleFilterSection}>
-      <Pressable
-        accessibilityLabel={`${title}筛选${
-          selectedCount > 0 ? `，已选 ${selectedCount} 项` : ""
-        }`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
-        style={({ pressed }) => [
-          styles.collapsibleFilterButton,
-          pressed ? styles.collapsibleFilterButtonPressed : null
-        ]}
-      >
-        <Text numberOfLines={1} style={styles.collapsibleFilterLabel}>
-          {title}
-        </Text>
-        {selectedCount > 0 ? (
-          <Text style={styles.collapsibleFilterCount}>{selectedCount}</Text>
-        ) : null}
-        <Ionicons
-          color={colors.text3}
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={16}
-        />
-      </Pressable>
-      {expanded ? children : null}
-    </View>
+  const [activeMenu, setActiveMenu] = useState<ContactFilterMenuId | null>(null);
+  const advancedCount = advancedFilterSections.reduce(
+    (total, section) =>
+      total + section.options.filter((option) => option.selected).length,
+    0
   );
-}
-
-function ContactSearchFilterSection({
-  onToggle,
-  section
-}: {
-  onToggle: (kind: ContactSearchFilterKind, value: string) => void;
-  section: ContactSearchFilterSectionView;
-}) {
-  const selectedCount = section.options.filter(
-    (option) => option.selected
-  ).length;
+  const menuItems: Array<{
+    count: number;
+    id: ContactFilterMenuId;
+    label: string;
+  }> = [
+    { count: selectedRelationshipIndustries.length, id: "industry", label: "行业" },
+    {
+      count: selectedRelationshipProgress ? 1 : 0,
+      id: "progress",
+      label: "进展"
+    },
+    { count: selectedActionState ? 1 : 0, id: "action", label: "行动" },
+    { count: advancedCount, id: "more", label: "更多" }
+  ];
 
   return (
-    <CollapsibleFilterSection
-      selectedCount={selectedCount}
-      title={section.title}
-    >
-      <ScrollView
-        contentContainerStyle={styles.filterList}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {section.options.map((option) => (
-          <Pressable
-            accessibilityState={{ selected: option.selected }}
-            accessibilityRole="button"
-            key={option.value}
-            onPress={() => onToggle(section.key, option.value)}
-            style={({ pressed }) => [
-              styles.filterChip,
-              option.selected ? styles.filterChipSelected : null,
-              pressed ? styles.filterChipPressed : null
-            ]}
-          >
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.filterChipText,
-                option.selected ? styles.filterChipTextSelected : null
-              ]}
-            >
-              {option.label}
-            </Text>
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.filterChipCount,
-                option.selected ? styles.filterChipTextSelected : null
-              ]}
-            >
-              {option.count}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </CollapsibleFilterSection>
-  );
-}
-
-function RelationshipFilterSection({
-  onSelect,
-  options,
-  selectedValues,
-  title
-}: {
-  onSelect: (value: string) => void;
-  options: RelationshipFilterOption[];
-  selectedValues: string[];
-  title: string;
-}) {
-  return (
-    <CollapsibleFilterSection
-      selectedCount={selectedValues.length}
-      title={title}
-    >
-      <ScrollView
-        contentContainerStyle={styles.filterList}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {options.map((option) => {
-          const selected = selectedValues.includes(option.value);
+    <View style={styles.filterToolbar}>
+      <View style={styles.filterToolbarRow}>
+        {menuItems.map((item) => {
+          const active = activeMenu === item.id;
+          const selected = item.count > 0;
 
           return (
             <Pressable
-              accessibilityState={{ selected }}
+              accessibilityLabel={`${item.label}筛选${
+                selected ? `，已选 ${item.count} 项` : ""
+              }`}
               accessibilityRole="button"
-              key={option.value}
-              onPress={() => onSelect(option.value)}
+              accessibilityState={{ expanded: activeMenu === item.id }}
+              key={item.id}
+              onPress={() =>
+                setActiveMenu((current) => (current === item.id ? null : item.id))
+              }
               style={({ pressed }) => [
-                styles.filterChip,
-                selected ? styles.filterChipSelected : null,
-                pressed ? styles.filterChipPressed : null
+                styles.filterToolbarButton,
+                active ? styles.filterToolbarButtonActive : null,
+                pressed ? styles.filterToolbarButtonPressed : null
               ]}
             >
               <Text
                 numberOfLines={1}
                 style={[
-                  styles.filterChipText,
-                  selected ? styles.filterChipTextSelected : null
+                  styles.filterToolbarButtonText,
+                  active || selected ? styles.filterToolbarButtonTextActive : null
                 ]}
               >
-                {option.label}
+                {item.label}
               </Text>
+              {selected ? (
+                <Text style={styles.filterToolbarCount}>{item.count}</Text>
+              ) : null}
+              <Ionicons
+                color={active || selected ? colors.accent : colors.text4}
+                name={active ? "chevron-up" : "chevron-down"}
+                size={13}
+              />
             </Pressable>
           );
         })}
-      </ScrollView>
-    </CollapsibleFilterSection>
+      </View>
+
+      {activeMenu ? (
+        <View style={styles.filterToolbarPanel}>
+          {activeMenu === "industry" ? (
+            <ScrollView
+              contentContainerStyle={styles.filterList}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {relationshipIndustryOptions.map((option) => {
+                const selected = selectedRelationshipIndustries.includes(
+                  option.value
+                );
+
+                return (
+                  <Pressable
+                    accessibilityState={{ selected }}
+                    accessibilityRole="button"
+                    key={option.value}
+                    onPress={() => onToggleRelationshipIndustry(option.value)}
+                    style={({ pressed }) => [
+                      styles.filterChip,
+                      selected ? styles.filterChipSelected : null,
+                      pressed ? styles.filterChipPressed : null
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.filterChipText,
+                        selected ? styles.filterChipTextSelected : null
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          {activeMenu === "progress" ? (
+            <ScrollView
+              contentContainerStyle={styles.filterList}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {relationshipProgressOptions.map((option) => (
+                <StatusFilterChip
+                  key={option.value ?? "all"}
+                  onPress={() =>
+                    onRelationshipProgressChange(
+                      option.value === "active" ||
+                        option.value === "archived" ||
+                        option.value === "nurture"
+                        ? option.value
+                        : null
+                    )
+                  }
+                  option={option}
+                />
+              ))}
+            </ScrollView>
+          ) : null}
+
+          {activeMenu === "action" ? (
+            <ScrollView
+              contentContainerStyle={styles.filterList}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {actionStateOptions.map((option) => (
+                <StatusFilterChip
+                  key={option.value ?? "all"}
+                  onPress={() =>
+                    onActionStateChange(
+                      option.value === "needs_follow_up" ? option.value : null
+                    )
+                  }
+                  option={option}
+                />
+              ))}
+            </ScrollView>
+          ) : null}
+
+          {activeMenu === "more" ? (
+            <View style={styles.filterToolbarMoreSections}>
+              {advancedFilterSections.map((section) => (
+                <View key={section.key} style={styles.filterToolbarMoreSection}>
+                  <Text style={styles.filterToolbarPanelTitle}>
+                    {section.title}
+                  </Text>
+                  <ScrollView
+                    contentContainerStyle={styles.filterList}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    {section.options.map((option) => (
+                      <Pressable
+                        accessibilityState={{ selected: option.selected }}
+                        accessibilityRole="button"
+                        key={option.value}
+                        onPress={() =>
+                          onToggleAdvancedFilter(section.key, option.value)
+                        }
+                        style={({ pressed }) => [
+                          styles.filterChip,
+                          option.selected ? styles.filterChipSelected : null,
+                          pressed ? styles.filterChipPressed : null
+                        ]}
+                      >
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.filterChipText,
+                            option.selected
+                              ? styles.filterChipTextSelected
+                              : null
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.filterChipCount,
+                            option.selected
+                              ? styles.filterChipTextSelected
+                              : null
+                          ]}
+                        >
+                          {option.count}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 function ContactCard({
   baseUrl,
   contact,
+  isLast,
   onPress
 }: {
   baseUrl: string;
   contact: ContactSummary;
+  isLast: boolean;
   onPress: () => void;
 }) {
   const avatar = contactAvatarFor(contact);
   const toneStyle = avatarToneStyles[avatar.tone];
   const detail = contactDetail(contact);
+  const identityDetail = [contact.organization, contact.role]
+    .filter(Boolean)
+    .join(" · ");
   const contactAccessibilityLabel = `${contact.name}，${detail}，打开联系人详情`;
-  const visibleValueLabels = contact.valueLabels.slice(0, 3);
-  const remainingValueLabelCount = Math.max(
-    0,
-    contact.valueLabels.length - visibleValueLabels.length
-  );
 
   return (
     <Pressable
@@ -499,6 +589,7 @@ function ContactCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.contactCard,
+        isLast ? styles.contactCardLast : null,
         pressed ? styles.contactCardPressed : null
       ]}
     >
@@ -525,34 +616,17 @@ function ContactCard({
           <Text numberOfLines={1} style={styles.contactName}>
             {contact.name}
           </Text>
-          <Text numberOfLines={2} style={styles.contactDetail}>
-            {detail}
-          </Text>
-        </View>
-        {contact.valueScore === null ? null : (
-          <View style={styles.valuePill}>
-            <Text style={styles.valueText}>{contact.valueScore}</Text>
-          </View>
-        )}
-      </View>
-      <Text numberOfLines={2} style={styles.relationshipText}>
-        {contact.relationship}
-      </Text>
-      {contact.valueLabels.length > 0 ? (
-        <View style={styles.tagsRow}>
-          {visibleValueLabels.map((label) => (
-            <Text key={label} style={styles.tagText}>
-              {label}
+          {identityDetail ? (
+            <Text numberOfLines={1} style={styles.contactDetail}>
+              {identityDetail}
             </Text>
-          ))}
-          {remainingValueLabelCount > 0 ? (
-            <Text style={styles.tagText}>+{remainingValueLabelCount}</Text>
           ) : null}
         </View>
-      ) : null}
-      <Text numberOfLines={2} style={styles.nextActionText}>
-        {contact.nextAction}
-      </Text>
+        {contact.valueScore === null ? null : (
+          <Text style={styles.contactMatchScore}>{contact.valueScore}</Text>
+        )}
+        <Ionicons color={colors.text4} name="chevron-forward" size={16} />
+      </View>
     </Pressable>
   );
 }
@@ -970,10 +1044,13 @@ function ContactsLibraryEntry({
         pressed ? styles.contactCardPressed : null
       ]}
     >
+      <View style={styles.contactsLibraryIcon}>
+        <Ionicons color={colors.accent} name="people-outline" size={24} />
+      </View>
       <View style={styles.contactsLibraryText}>
         <Text style={styles.contactsLibraryTitle}>联系人库</Text>
-        <Text numberOfLines={1} style={styles.contactsLibraryDetail}>
-          {contactsLabel}，藏在更深一层
+        <Text numberOfLines={2} style={styles.contactsLibraryDetail}>
+          {contactsLabel}
         </Text>
       </View>
       <View style={styles.contactsLibraryAction}>
@@ -988,140 +1065,54 @@ function NetworkPriorityCard({
   action,
   detail,
   iconName,
-  inverted = false,
-  metric,
   route,
-  signal,
-  title,
-  tone
+  title
 }: {
   action: string;
   detail: string;
   iconName: IoniconName;
-  inverted?: boolean;
-  metric: string;
   route: NetworkPriorityRoute;
-  signal: string;
   title: string;
-  tone: OverviewToolTone;
 }) {
   const router = useRouter();
-  const toneStyle = overviewToolTone(tone);
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push(route as Href)}
       style={({ pressed }) => [
-        styles.networkPriorityCard,
-        inverted ? styles.networkPriorityCardInverted : null,
+        styles.contactsLibraryEntry,
         pressed ? styles.contactCardPressed : null
       ]}
     >
-      <View style={styles.networkPriorityTopRow}>
-        <View
-          style={[
-            styles.networkPriorityIcon,
-            { backgroundColor: toneStyle.backgroundColor },
-            inverted ? styles.networkPriorityIconInverted : null
-          ]}
-        >
-          <Ionicons color={toneStyle.color} name={iconName} size={21} />
-        </View>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.networkPriorityMetric,
-            inverted ? styles.networkPriorityMetricInverted : null
-          ]}
-        >
-          {metric}
-        </Text>
+      <View style={styles.contactsLibraryIcon}>
+        <Ionicons color={colors.accent} name={iconName} size={24} />
       </View>
-      <View style={styles.networkPriorityCopy}>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.networkPriorityTitle,
-            inverted ? styles.networkPriorityTitleInverted : null
-          ]}
-        >
+      <View style={styles.contactsLibraryText}>
+        <Text numberOfLines={1} style={styles.contactsLibraryTitle}>
           {title}
         </Text>
-        <Text
-          numberOfLines={3}
-          style={[
-            styles.networkPriorityDetail,
-            inverted ? styles.networkPriorityDetailInverted : null
-          ]}
-        >
+        <Text numberOfLines={2} style={styles.contactsLibraryDetail}>
           {detail}
         </Text>
       </View>
-      <View style={styles.networkPriorityFooter}>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.networkPrioritySignal,
-            inverted ? styles.networkPrioritySignalInverted : null
-          ]}
-        >
-          {signal}
-        </Text>
-        <View style={styles.networkPriorityAction}>
-          <Text
-            style={[
-              styles.networkPriorityActionText,
-              inverted ? styles.networkPriorityActionTextInverted : null
-            ]}
-          >
-            {action}
-          </Text>
-          <Ionicons
-            color={inverted ? colors.onAccent : colors.text3}
-            name="chevron-forward"
-            size={16}
-          />
-        </View>
+      <View style={styles.contactsLibraryAction}>
+        <Text style={styles.contactsLibraryActionText}>{action}</Text>
+        <Ionicons color={colors.text3} name="chevron-forward" size={15} />
       </View>
     </Pressable>
   );
 }
 
-function PriorityNetworkTools({
-  contactsCount
-}: {
-  contactsCount?: number | null;
-}) {
-  const contactsSignal =
-    typeof contactsCount === "number" && contactsCount > 0
-      ? `${contactsCount} 位关系节点`
-      : "进入图谱查看关系节点";
-
+function PriorityNetworkTools() {
   return (
-    <View style={styles.networkPriorityStage}>
-      <NetworkPriorityCard
-        action="打开图谱"
-        detail="先看谁能连接谁，以及哪些关键关系还缺证据。"
-        iconName="git-network-outline"
-        inverted
-        metric="结构"
-        route="/contacts/graph"
-        signal={contactsSignal}
-        title="人脉图谱"
-        tone="live"
-      />
-      <NetworkPriorityCard
-        action="看表盘"
-        detail="看强弱覆盖、高价值关系和下一批要唤醒的人。"
-        iconName="analytics-outline"
-        metric="经营"
-        route="/contacts/dashboard"
-        signal="覆盖、价值、缺口"
-        title="人脉表盘"
-        tone="sky"
-      />
-    </View>
+    <NetworkPriorityCard
+      action="查看"
+      detail="结构、机会与关系质量"
+      iconName="analytics-outline"
+      route="/contacts/dashboard"
+      title="人脉分析"
+    />
   );
 }
 
@@ -1138,26 +1129,22 @@ function ContactsOverviewContent({
 
   return (
     <>
-      <PriorityNetworkTools contactsCount={contactsCount} />
+      <ContactsLibraryEntry
+        contactsLabel={contactsLabel}
+        onPress={() => router.push("/contacts/list" as Href)}
+      />
+      <PriorityNetworkTools />
       <OverviewToolGrid>
         <OverviewToolCard
           action="看下一步"
-          detail="待联系、推进中、已合作"
+          detail="推进中、长期维护、已合作"
           iconName="list-outline"
           onPress={() => router.push("/contacts/pipeline" as Href)}
-          title="跟进管线"
+          title="关系进展"
           tone="amber"
         />
         <OverviewToolCard
-          action="准备介绍"
-          detail="可牵线的人和重点"
-          iconName="git-compare-outline"
-          onPress={() => router.push("/contacts/intros" as Href)}
-          title="引荐准备"
-          tone="live"
-        />
-        <OverviewToolCard
-          action="添加来源"
+          action="开始添加"
           detail="名片、QR、手动记录"
           iconName="add-circle-outline"
           onPress={() => router.push("/contacts/new")}
@@ -1165,19 +1152,17 @@ function ContactsOverviewContent({
           tone="accent"
         />
       </OverviewToolGrid>
-      <ContactsLibraryEntry
-        contactsLabel={contactsLabel}
-        onPress={() => router.push("/contacts/list" as Href)}
-      />
     </>
   );
 }
 
 function ContactsListContent({
+  actionStateOptions,
   advancedFilterSections,
   baseUrl,
   contacts,
-  hasAdvancedFilters,
+  hasListFilters,
+  onActionStateChange,
   onClearQuery,
   onOpenContact,
   onQueryChange,
@@ -1185,7 +1170,7 @@ function ContactsListContent({
   onRunRelationshipSearch,
   onSelectRecentRelationshipSearch,
   onSelectRelationshipSuggestion,
-  onStatusChange,
+  onRelationshipProgressChange,
   onToggleAdvancedFilter,
   onToggleRelationshipIndustry,
   query,
@@ -1194,18 +1179,21 @@ function ContactsListContent({
   relationshipSearchResult,
   relationshipSearching,
   relationshipSuggestions,
+  relationshipProgressOptions,
   searchError,
   searchResult,
   searching,
+  selectedActionState,
   selectedRelationshipIndustries,
-  selectedStatus,
-  state,
-  statusOptions
+  selectedRelationshipProgress,
+  state
 }: {
+  actionStateOptions: ContactStatusFilterOption[];
   advancedFilterSections: ContactSearchFilterSectionView[];
   baseUrl: string;
   contacts: ContactSummary[];
-  hasAdvancedFilters: boolean;
+  hasListFilters: boolean;
+  onActionStateChange: (status: ContactActionStateFilter | null) => void;
   onClearQuery: () => void;
   onOpenContact: (id: string) => void;
   onQueryChange: (text: string) => void;
@@ -1215,7 +1203,9 @@ function ContactsListContent({
   onSelectRelationshipSuggestion: (
     suggestion: RelationshipSearchSuggestionView
   ) => void;
-  onStatusChange: (status: ContactListStatusFilter | null) => void;
+  onRelationshipProgressChange: (
+    status: ContactRelationshipProgressFilter | null
+  ) => void;
   onToggleAdvancedFilter: (
     kind: ContactSearchFilterKind,
     value: string
@@ -1227,14 +1217,19 @@ function ContactsListContent({
   relationshipSearchResult: RelationshipSearchView | null;
   relationshipSearching: boolean;
   relationshipSuggestions: RelationshipSearchSuggestionsView | null;
+  relationshipProgressOptions: ContactStatusFilterOption[];
   searchError: string | null;
   searchResult: ContactsSearchView | null;
   searching: boolean;
+  selectedActionState: ContactActionStateFilter | null;
   selectedRelationshipIndustries: string[];
-  selectedStatus: ContactListStatusFilter | null;
+  selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
-  statusOptions: ContactStatusFilterOption[];
 }) {
+  const loadedWithoutContacts =
+    (state.kind === "empty" || state.kind === "success") &&
+    contacts.length === 0;
+
   return (
     <>
       <View style={styles.searchPanel}>
@@ -1308,32 +1303,18 @@ function ContactsListContent({
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
         />
-        <RelationshipFilterSection
-          onSelect={onToggleRelationshipIndustry}
-          options={relationshipIndustryOptions}
-          selectedValues={selectedRelationshipIndustries}
-          title="行业"
+        <ContactFilterToolbar
+          actionStateOptions={actionStateOptions}
+          advancedFilterSections={advancedFilterSections}
+          onActionStateChange={onActionStateChange}
+          onRelationshipProgressChange={onRelationshipProgressChange}
+          onToggleAdvancedFilter={onToggleAdvancedFilter}
+          onToggleRelationshipIndustry={onToggleRelationshipIndustry}
+          relationshipProgressOptions={relationshipProgressOptions}
+          selectedActionState={selectedActionState}
+          selectedRelationshipIndustries={selectedRelationshipIndustries}
+          selectedRelationshipProgress={selectedRelationshipProgress}
         />
-        <ScrollView
-          contentContainerStyle={styles.filterList}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {statusOptions.map((option) => (
-            <StatusFilterChip
-              key={option.value ?? "all"}
-              onPress={() => onStatusChange(option.value)}
-              option={option}
-            />
-          ))}
-        </ScrollView>
-        {advancedFilterSections.map((section) => (
-          <ContactSearchFilterSection
-            key={section.key}
-            onToggle={onToggleAdvancedFilter}
-            section={section}
-          />
-        ))}
       </View>
       {searchResult ? (
         <ContactSearchResultCard
@@ -1356,26 +1337,29 @@ function ContactsListContent({
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "empty" ? (
+      {loadedWithoutContacts ? (
         <EmptyState
-          message={emptyMessage(query, selectedStatus, hasAdvancedFilters)}
+          message={emptyMessage(query, hasListFilters)}
           title={
-            query.trim() || selectedStatus || hasAdvancedFilters
+            query.trim() || hasListFilters
               ? "没有匹配的人脉"
               : "暂无联系人"
           }
         />
       ) : null}
-      {contacts.length > 0
-        ? contacts.map((contact) => (
+      {contacts.length > 0 ? (
+        <View style={styles.contactList}>
+          {contacts.map((contact, index) => (
             <ContactCard
               baseUrl={baseUrl}
               contact={contact}
+              isLast={index === contacts.length - 1}
               key={contact.id}
               onPress={() => onOpenContact(contact.id)}
             />
-          ))
-        : null}
+          ))}
+        </View>
+      ) : null}
       {relationshipSuggestions ? (
         <RelationshipSearchSuggestionsRow
           onSelectRelationshipSuggestion={onSelectRelationshipSuggestion}
@@ -1388,7 +1372,7 @@ function ContactsListContent({
 
 function ContactsOverviewScreen() {
   return (
-    <AppScreen eyebrow="人脉总览" title="人脉">
+    <AppScreen title="人脉">
       <ContactsOverviewContent />
     </AppScreen>
   );
@@ -1419,12 +1403,21 @@ function ContactsListScreen() {
     ? refreshToken[0]
     : refreshToken;
   const previousContactRefreshToken = useRef(contactRefreshToken);
+  const initialStatus = initialStatusFilter(statusParam);
   const [query, setQuery] = useState(
     firstRouteParam(queryParam) || firstRouteParam(queryAliasParam)
   );
-  const [selectedStatus, setSelectedStatus] =
-    useState<ContactListStatusFilter | null>(
-      initialStatusFilter(statusParam)
+  const [selectedRelationshipProgress, setSelectedRelationshipProgress] =
+    useState<ContactRelationshipProgressFilter | null>(
+      initialStatus === "active" ||
+        initialStatus === "archived" ||
+        initialStatus === "nurture"
+        ? initialStatus
+        : null
+    );
+  const [selectedActionState, setSelectedActionState] =
+    useState<ContactActionStateFilter | null>(
+      initialStatus === "needs_follow_up" ? initialStatus : null
     );
   const [selectedSourceFilters, setSelectedSourceFilters] = useState<string[]>(
     initialListFilterValues(sourceParam)
@@ -1451,19 +1444,23 @@ function ContactsListScreen() {
   const [recentRelationshipSearches, setRecentRelationshipSearches] = useState<
     RecentRelationshipSearch[]
   >([]);
+  const dimensionStatusFilters = contactDimensionStatusFilters({
+    actionState: selectedActionState,
+    relationshipProgress: selectedRelationshipProgress
+  });
   const contactsPath = useMemo(
     () =>
       contactsListPath({
         query,
         sourceFilters: selectedSourceFilters,
-        status: selectedStatus,
+        statusFilters: dimensionStatusFilters,
         tagFilters: selectedTagFilters,
         valueFilters: selectedValueFilters
       }),
     [
       query,
+      dimensionStatusFilters.join(","),
       selectedSourceFilters,
-      selectedStatus,
       selectedTagFilters,
       selectedValueFilters
     ]
@@ -1481,7 +1478,10 @@ function ContactsListScreen() {
     hasContactData(relationshipSuggestionsState)
       ? relationshipSearchSuggestionsToView(relationshipSuggestionsState.data)
       : null;
-  const statusOptions = contactStatusFilterOptions(contactData, selectedStatus);
+  const dimensionFilterOptions = contactDimensionFilterOptions(contactData, {
+    actionState: selectedActionState,
+    relationshipProgress: selectedRelationshipProgress
+  });
   const advancedFilterSections = contactSearchFilterSections(contactData, {
     sourceFilters: selectedSourceFilters,
     tagFilters: selectedTagFilters,
@@ -1491,7 +1491,15 @@ function ContactsListScreen() {
     selectedSourceFilters.length > 0 ||
     selectedTagFilters.length > 0 ||
     selectedValueFilters.length > 0;
-  const contacts = state.kind === "success" ? contactsToSummaries(state.data) : [];
+  const hasListFilters =
+    hasAdvancedFilters ||
+    selectedActionState !== null ||
+    selectedRelationshipProgress !== null;
+  const filteredContactData = filterContactListPayloadByDimensions(contactData, {
+    actionState: selectedActionState,
+    relationshipProgress: selectedRelationshipProgress
+  });
+  const contacts = contactData ? contactsToSummaries(filteredContactData) : [];
   const openContact = (id: string) =>
     router.push({
       params: { id },
@@ -1583,11 +1591,15 @@ function ContactsListScreen() {
   }
 
   function relationshipFollowUpStatusFilters(): string[] {
-    if (selectedStatus === "active" || selectedStatus === "needs_follow_up") {
-      return [selectedStatus];
+    if (selectedActionState === "needs_follow_up") {
+      return ["needs_follow_up"];
     }
 
-    if (selectedStatus === "nurture") {
+    if (selectedRelationshipProgress === "active") {
+      return ["active"];
+    }
+
+    if (selectedRelationshipProgress === "nurture") {
       return ["dormant"];
     }
 
@@ -1642,7 +1654,7 @@ function ContactsListScreen() {
     const request = buildContactsSearchRequest({
       query,
       sourceFilters: selectedSourceFilters,
-      status: selectedStatus,
+      statusFilters: dimensionStatusFilters,
       tagFilters: selectedTagFilters,
       valueFilters: selectedValueFilters
     });
@@ -1663,7 +1675,14 @@ function ContactsListScreen() {
       });
 
       if (result.success) {
-        setSearchResult(contactsSearchToView(result.data));
+        setSearchResult(
+          contactsSearchToView(
+            filterContactListPayloadByDimensions(result.data, {
+              actionState: selectedActionState,
+              relationshipProgress: selectedRelationshipProgress
+            })
+          )
+        );
         return;
       }
 
@@ -1690,10 +1709,12 @@ function ContactsListScreen() {
       title="联系人列表"
     >
       <ContactsListContent
+        actionStateOptions={dimensionFilterOptions.actionState}
         advancedFilterSections={advancedFilterSections}
         baseUrl={baseUrl}
         contacts={contacts}
-        hasAdvancedFilters={hasAdvancedFilters}
+        hasListFilters={hasListFilters}
+        onActionStateChange={setSelectedActionState}
         onClearQuery={() => {
           setQuery("");
           setSearchError(null);
@@ -1715,7 +1736,7 @@ function ContactsListScreen() {
         }}
         onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
         onSelectRelationshipSuggestion={onSelectRelationshipSuggestion}
-        onStatusChange={setSelectedStatus}
+        onRelationshipProgressChange={setSelectedRelationshipProgress}
         onToggleAdvancedFilter={toggleAdvancedFilter}
         onToggleRelationshipIndustry={toggleRelationshipIndustryFilter}
         query={query}
@@ -1724,13 +1745,14 @@ function ContactsListScreen() {
         relationshipSearchResult={relationshipSearchResult}
         relationshipSearching={relationshipSearching}
         relationshipSuggestions={relationshipSuggestions}
+        relationshipProgressOptions={dimensionFilterOptions.relationshipProgress}
         searchError={searchError}
         searchResult={searchResult}
         searching={searching}
+        selectedActionState={selectedActionState}
         selectedRelationshipIndustries={selectedRelationshipIndustries}
-        selectedStatus={selectedStatus}
+        selectedRelationshipProgress={selectedRelationshipProgress}
         state={state}
-        statusOptions={statusOptions}
       />
     </AppScreen>
   );
@@ -1748,19 +1770,19 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: "center",
     borderRadius: radius.pill,
-    height: 52,
+    height: 44,
     justifyContent: "center",
     overflow: "hidden",
-    width: 52
+    width: 44
   },
   avatarImage: {
     height: "100%",
     width: "100%"
   },
   avatarText: {
-    fontSize: typography.title,
+    fontSize: typography.section,
     fontWeight: "800",
-    lineHeight: 25
+    lineHeight: 22
   },
   clearButton: {
     alignItems: "center",
@@ -1768,63 +1790,113 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 32
   },
-  collapsibleFilterButton: {
+  filterToolbar: {
+    gap: spacing.sm
+  },
+  filterToolbarButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
     borderRadius: radius.control,
     borderWidth: 1,
-    flexDirection: "row",
-    minHeight: 44,
-    paddingHorizontal: spacing.md
-  },
-  collapsibleFilterButtonPressed: {
-    backgroundColor: colors.surface2
-  },
-  collapsibleFilterCount: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17,
-    marginRight: spacing.sm
-  },
-  collapsibleFilterLabel: {
-    color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19
+    flexDirection: "row",
+    gap: 3,
+    justifyContent: "center",
+    minHeight: 42,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs
   },
-  collapsibleFilterSection: {
+  filterToolbarButtonActive: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accent
+  },
+  filterToolbarButtonPressed: {
+    opacity: 0.8
+  },
+  filterToolbarButtonText: {
+    color: colors.text2,
+    flexShrink: 1,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 17
+  },
+  filterToolbarButtonTextActive: {
+    color: colors.accent,
+  },
+  filterToolbarCount: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "800",
+    lineHeight: 15
+  },
+  filterToolbarMoreSection: {
+    gap: spacing.xs
+  },
+  filterToolbarMoreSections: {
+    gap: spacing.md
+  },
+  filterToolbarPanel: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.sm
+  },
+  filterToolbarPanelTitle: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 17
+  },
+  filterToolbarRow: {
+    flexDirection: "row",
     gap: spacing.xs
   },
   contactCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md
+    borderBottomColor: colors.border2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 68,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  contactCardLast: {
+    borderBottomWidth: 0
   },
   contactCardPressed: {
-    opacity: 0.86,
-    transform: [{ translateY: 0.5 }]
+    backgroundColor: colors.surface2
   },
   contactDetail: {
     color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    fontSize: typography.caption,
+    lineHeight: 17
   },
   contactHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md
+    gap: spacing.sm
+  },
+  contactList: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    overflow: "hidden"
+  },
+  contactMatchScore: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    lineHeight: 17,
+    minWidth: 24,
+    textAlign: "right"
   },
   contactName: {
     color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 20
   },
   contactTitleBlock: {
     flex: 1,
@@ -1837,25 +1909,34 @@ const styles = StyleSheet.create({
     gap: 2
   },
   contactsLibraryActionText: {
-    color: colors.text3,
+    color: colors.accent,
     fontSize: typography.caption,
     fontWeight: "800",
     lineHeight: 17
   },
   contactsLibraryDetail: {
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    fontSize: typography.small,
+    lineHeight: 19
   },
   contactsLibraryEntry: {
     alignItems: "center",
-    borderTopColor: colors.border2,
-    borderTopWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 48,
-    paddingHorizontal: spacing.xs,
-    paddingTop: spacing.sm
+    gap: spacing.md,
+    minHeight: 88,
+    padding: spacing.md
+  },
+  contactsLibraryIcon: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.control,
+    height: 46,
+    justifyContent: "center",
+    width: 46
   },
   contactsLibraryText: {
     flex: 1,
@@ -1864,9 +1945,9 @@ const styles = StyleSheet.create({
   },
   contactsLibraryTitle: {
     color: colors.text,
-    fontSize: typography.caption,
+    fontSize: typography.body,
     fontWeight: "800",
-    lineHeight: 17
+    lineHeight: 22
   },
   deepSearchButton: {
     alignItems: "center",
@@ -1931,98 +2012,6 @@ const styles = StyleSheet.create({
     color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20
-  },
-  networkPriorityAction: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 3
-  },
-  networkPriorityActionText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17
-  },
-  networkPriorityActionTextInverted: {
-    color: colors.onAccent
-  },
-  networkPriorityCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexBasis: 158,
-    flexGrow: 1,
-    gap: spacing.md,
-    minHeight: 174,
-    padding: spacing.lg
-  },
-  networkPriorityCardInverted: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink
-  },
-  networkPriorityCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  networkPriorityDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
-  },
-  networkPriorityDetailInverted: {
-    color: "rgba(255,255,255,0.72)"
-  },
-  networkPriorityFooter: {
-    gap: spacing.xs
-  },
-  networkPriorityIcon: {
-    alignItems: "center",
-    borderRadius: radius.control,
-    height: 42,
-    justifyContent: "center",
-    width: 42
-  },
-  networkPriorityIconInverted: {
-    backgroundColor: "rgba(255,255,255,0.12)"
-  },
-  networkPriorityMetric: {
-    color: colors.ink,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    lineHeight: 17
-  },
-  networkPriorityMetricInverted: {
-    color: colors.onAccent
-  },
-  networkPrioritySignal: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
-  },
-  networkPrioritySignalInverted: {
-    color: "rgba(255,255,255,0.62)"
-  },
-  networkPriorityStage: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  networkPriorityTitle: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 22
-  },
-  networkPriorityTitleInverted: {
-    color: colors.onAccent
-  },
-  networkPriorityTopRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
   },
   overviewToolActionRow: {
     alignItems: "center",

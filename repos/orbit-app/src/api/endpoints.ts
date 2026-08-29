@@ -597,6 +597,7 @@ export interface ContactsListPathInput {
   query?: string | null;
   sourceFilters?: readonly string[] | null;
   status?: string | null;
+  statusFilters?: readonly string[] | null;
   tagFilters?: readonly string[] | null;
   valueFilters?: readonly string[] | null;
 }
@@ -624,6 +625,7 @@ export function contactsListPath(input: ContactsListPathInput = {}): string {
     searchParams.set("status", input.status);
   }
 
+  appendListFilters(searchParams, "status", input.statusFilters);
   appendListFilters(searchParams, "source", input.sourceFilters);
   appendListFilters(searchParams, "tag", input.tagFilters);
   appendListFilters(searchParams, "value", input.valueFilters);

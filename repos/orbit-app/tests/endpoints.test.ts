@@ -390,6 +390,10 @@ test("Orbit API endpoints compose contact list search filters", () => {
     "/api/contacts?status=active"
   );
   assert.equal(
+    contactsListPath({ statusFilters: ["active", "needs_follow_up"] }),
+    "/api/contacts?status=active&status=needs_follow_up"
+  );
+  assert.equal(
     contactsListPath({
       query: " storage ",
       sourceFilters: ["manual"],

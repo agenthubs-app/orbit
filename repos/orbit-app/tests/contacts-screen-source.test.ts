@@ -51,7 +51,7 @@ test("contacts screen keeps industry filters without a persistent intent picker"
   assert.match(screenSource, /selectedRelationshipIndustries/u);
   assert.match(screenSource, /toggleRelationshipIndustryFilter/u);
   assert.match(screenSource, /industryFilters: selectedRelationshipIndustries/u);
-  assert.match(screenSource, /title="行业"/u);
+  assert.match(screenSource, /label: "行业"/u);
   assert.match(screenSource, /"企业 SaaS"/u);
   assert.doesNotMatch(screenSource, /selectedRelationshipIntent/u);
   assert.doesNotMatch(screenSource, /onRelationshipIntentChange/u);
@@ -108,7 +108,8 @@ test("contacts screen accepts dashboard drill-down route filters", () => {
   assert.match(screenSource, /queryParam/u);
   assert.match(screenSource, /initialStatusFilter/u);
   assert.match(screenSource, /initialListFilterValues/u);
-  assert.match(screenSource, /useState<ContactListStatusFilter \| null>\(\s*initialStatusFilter/u);
+  assert.match(screenSource, /useState<ContactRelationshipProgressFilter \| null>/u);
+  assert.match(screenSource, /useState<ContactActionStateFilter \| null>/u);
   assert.match(screenSource, /useState<string\[\]>\(\s*initialListFilterValues\(sourceParam\)/u);
 });
 
@@ -121,19 +122,22 @@ test("contacts screen renders real avatar images when contacts provide them", ()
   assert.match(screenSource, /styles\.avatarImage/u);
 });
 
-test("contact cards keep dense relationship context scannable", () => {
-  assert.match(screenSource, /accessibilityLabel=\{contactAccessibilityLabel\}/u);
-  assert.match(screenSource, /const visibleValueLabels = contact\.valueLabels\.slice\(0, 3\)/u);
-  assert.match(screenSource, /const remainingValueLabelCount/u);
-  assert.match(
-    screenSource,
-    /numberOfLines=\{2\} style=\{styles\.relationshipText\}/u
-  );
-  assert.match(
-    screenSource,
-    /numberOfLines=\{2\} style=\{styles\.nextActionText\}/u
-  );
-  assert.match(screenSource, /styles\.valuePill/u);
+test("contact rows keep only identity and match score visible", () => {
+  const cardStart = screenSource.indexOf("function ContactCard");
+  const cardEnd = screenSource.indexOf("function SearchResultAvatar");
+  const cardSource = screenSource.slice(cardStart, cardEnd);
+
+  assert.ok(cardStart > -1);
+  assert.ok(cardEnd > cardStart);
+  assert.match(cardSource, /accessibilityLabel=\{contactAccessibilityLabel\}/u);
+  assert.match(cardSource, /numberOfLines=\{1\} style=\{styles\.contactDetail\}/u);
+  assert.match(cardSource, /contact\.valueScore/u);
+  assert.match(cardSource, /name="chevron-forward"/u);
+  assert.doesNotMatch(cardSource, /contact\.relationship/u);
+  assert.doesNotMatch(cardSource, /contact\.valueLabels/u);
+  assert.doesNotMatch(cardSource, /contact\.nextAction/u);
+  assert.match(screenSource, /styles\.contactList/u);
+  assert.match(screenSource, /contactList:[\s\S]*borderRadius: radius\.card/u);
 });
 
 test("contacts search results keep the same avatar identity treatment as contact cards", () => {
@@ -161,9 +165,8 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   const priorityToolsStart = screenSource.indexOf("function PriorityNetworkTools");
   const overviewSource = screenSource.slice(overviewStart, listStart);
   const listSource = screenSource.slice(listStart);
-  const graphIndex = screenSource.indexOf('title="人脉图谱"', priorityToolsStart);
-  const dashboardIndex = screenSource.indexOf(
-    'title="人脉表盘"',
+  const analysisIndex = screenSource.indexOf(
+    'title="人脉分析"',
     priorityToolsStart
   );
   const listEntryIndex = overviewSource.indexOf("<ContactsLibraryEntry");
@@ -171,21 +174,24 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   assert.match(contactsTabSource, /ContactsScreen/u);
   assert.doesNotMatch(contactsTabSource, /mode="list"/u);
   assert.match(contactsListRouteSource, /<ContactsScreen mode="list" \/>/u);
-  assert.match(screenSource, /<AppScreen eyebrow="人脉总览" title="人脉">/u);
+  assert.match(screenSource, /<AppScreen title="人脉">/u);
+  assert.doesNotMatch(screenSource, /<AppScreen eyebrow="人脉总览" title="人脉">/u);
   assert.match(screenSource, /eyebrow="联系人"/u);
   assert.match(screenSource, /联系人库/u);
   assert.doesNotMatch(screenSource, /人脉工作台/u);
   assert.ok(overviewStart > -1);
   assert.ok(listStart > overviewStart);
   assert.ok(priorityToolsStart > -1);
-  assert.ok(graphIndex > priorityToolsStart);
-  assert.ok(dashboardIndex > graphIndex);
+  assert.ok(analysisIndex > priorityToolsStart);
+  assert.doesNotMatch(overviewSource, /title="人脉图谱"/u);
+  assert.doesNotMatch(overviewSource, /title="人脉表盘"/u);
+  assert.doesNotMatch(overviewSource, /title="引荐准备"/u);
   assert.ok(listEntryIndex > -1);
-  assert.doesNotMatch(overviewSource, /contacts\.map\(\(contact\)/u);
-  assert.match(listSource, /contacts\.map\(\(contact\)/u);
+  assert.doesNotMatch(overviewSource, /contacts\.map\(\(contact/u);
+  assert.match(listSource, /contacts\.map\(\(contact/u);
 });
 
-test("contacts overview opens directly on network tools before the raw list entry", () => {
+test("contacts overview opens with the contacts library before analysis tools", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
@@ -193,22 +199,12 @@ test("contacts overview opens directly on network tools before the raw list entr
   const listDrilldownIndex = overviewSource.indexOf("<ContactsLibraryEntry");
 
   assert.doesNotMatch(overviewSource, /<RelationshipWorkbenchHero/u);
-  assert.ok(toolGridIndex > -1, "contacts overview should open with tool cards");
-  assert.match(overviewSource, /<PriorityNetworkTools contactsCount=\{contactsCount\} \/>/u);
-  assert.match(
-    screenSource,
-    /<NetworkPriorityCard[\s\S]*title="人脉图谱"/u
-  );
-  assert.match(
-    screenSource,
-    /<NetworkPriorityCard[\s\S]*title="人脉表盘"/u
-  );
-  assert.ok(
-    listDrilldownIndex > toolGridIndex,
-    "contacts library should be demoted below the network tools"
-  );
+  assert.ok(toolGridIndex > -1, "contacts overview should include tool cards");
+  assert.match(overviewSource, /<PriorityNetworkTools \/>/u);
+  assert.match(screenSource, /<NetworkPriorityCard[\s\S]*title="人脉分析"/u);
+  assert.ok(listDrilldownIndex > -1);
+  assert.ok(listDrilldownIndex < toolGridIndex);
   assert.match(screenSource, /router\.push\(route as Href\)/u);
-  assert.match(screenSource, /route="\/contacts\/graph"/u);
   assert.match(screenSource, /route="\/contacts\/dashboard"/u);
   assert.match(overviewSource, /router\.push\("\/contacts\/pipeline" as Href\)/u);
   assert.match(overviewSource, /router\.push\("\/contacts\/list" as Href\)/u);
@@ -217,7 +213,7 @@ test("contacts overview opens directly on network tools before the raw list entr
   assert.match(screenSource, /styles\.contactsLibraryEntry/u);
 });
 
-test("contacts overview treats graph and dashboard as the primary first screen", () => {
+test("contacts overview places merged analysis below the primary library", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
@@ -225,31 +221,27 @@ test("contacts overview treats graph and dashboard as the primary first screen",
   const secondaryToolsIndex = overviewSource.indexOf("<OverviewToolGrid");
   const listDrilldownIndex = overviewSource.indexOf("<ContactsLibraryEntry");
 
-  assert.ok(primaryToolsIndex > -1, "primary network tools should render first");
+  assert.ok(primaryToolsIndex > listDrilldownIndex);
   assert.ok(
     secondaryToolsIndex > primaryToolsIndex,
-    "secondary tools should sit below graph and dashboard"
-  );
-  assert.ok(
-    listDrilldownIndex > secondaryToolsIndex,
-    "the contacts library should remain the deepest entry on the overview"
+    "relationship tools should sit below relationship analysis"
   );
   assert.match(screenSource, /function PriorityNetworkTools/u);
   assert.match(screenSource, /function NetworkPriorityCard/u);
-  assert.match(screenSource, /styles\.networkPriorityStage/u);
-  assert.match(screenSource, /styles\.networkPriorityCard/u);
-  assert.match(screenSource, /styles\.networkPriorityMetric/u);
   assert.match(
     screenSource,
-    /<NetworkPriorityCard[\s\S]*route="\/contacts\/graph"[\s\S]*title="人脉图谱"/u
+    /function NetworkPriorityCard[\s\S]*styles\.contactsLibraryEntry[\s\S]*function PriorityNetworkTools/u
   );
+  assert.doesNotMatch(screenSource, /networkPriorityCardInverted/u);
   assert.match(
     screenSource,
-    /<NetworkPriorityCard[\s\S]*route="\/contacts\/dashboard"[\s\S]*title="人脉表盘"/u
+    /<NetworkPriorityCard[\s\S]*route="\/contacts\/dashboard"[\s\S]*title="人脉分析"/u
   );
+  assert.match(screenSource, /detail="结构、机会与关系质量"/u);
+  assert.doesNotMatch(overviewSource, /\/contacts\/graph/u);
 });
 
-test("contacts overview demotes raw contacts into a compact library entry", () => {
+test("contacts overview promotes the contacts library as the primary entry", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
@@ -262,10 +254,20 @@ test("contacts overview demotes raw contacts into a compact library entry", () =
   assert.match(overviewSource, /<ContactsLibraryEntry/u);
   assert.match(overviewSource, /router\.push\("\/contacts\/list" as Href\)/u);
   assert.match(librarySource, /联系人库/u);
-  assert.match(librarySource, /藏在更深一层/u);
-  assert.match(screenSource, /contactsLibraryEntry:[\s\S]*minHeight: 48/u);
+  assert.doesNotMatch(librarySource, /藏在更深一层/u);
+  assert.match(librarySource, /people-outline/u);
+  assert.match(screenSource, /contactsLibraryEntry:[\s\S]*minHeight: 88/u);
   assert.doesNotMatch(librarySource, /contactsListDrilldown/u);
   assert.doesNotMatch(overviewSource, /title="联系人列表"/u);
+});
+
+test("contacts list separates progress and action filters and hides acquisition filters", () => {
+  const listStart = screenSource.indexOf("function ContactsListContent");
+  const listScreenStart = screenSource.indexOf("function ContactsListScreen");
+  const listSource = screenSource.slice(listStart, listScreenStart);
+
+  assert.match(listSource, /<ContactFilterToolbar/u);
+  assert.doesNotMatch(listSource, /advancedFilterSections\.map/u);
 });
 
 test("contacts overview does not initialize the deep contact list data sources", () => {
@@ -306,30 +308,33 @@ test("contacts list keeps recent relationship searches as local reusable chips",
   assert.doesNotMatch(screenSource, /AsyncStorage|SecureStore|savedSearchesApi/u);
 });
 
-test("recent relationship searches sit below search actions before collapsed filters", () => {
+test("recent relationship searches sit below search actions before the filter toolbar", () => {
   const listStart = screenSource.indexOf("function ContactsListContent");
   const listEnd = screenSource.indexOf("export function ContactsScreen");
   const listSource = screenSource.slice(listStart, listEnd);
   const actionRowIndex = listSource.indexOf("styles.searchActionRow");
   const recentIndex = listSource.indexOf("<RecentRelationshipSearchesRow");
-  const industryFilterIndex = listSource.indexOf('title="行业"');
+  const filterToolbarIndex = listSource.indexOf("<ContactFilterToolbar");
 
   assert.ok(actionRowIndex > -1);
   assert.ok(recentIndex > actionRowIndex);
-  assert.ok(industryFilterIndex > recentIndex);
+  assert.ok(filterToolbarIndex > recentIndex);
 });
 
-test("contact filter groups collapse into accessible dropdown buttons", () => {
-  assert.match(screenSource, /function CollapsibleFilterSection/u);
-  assert.match(screenSource, /useState\(false\)/u);
-  assert.match(screenSource, /accessibilityState=\{\{ expanded \}\}/u);
-  assert.match(screenSource, /expanded \? "chevron-up" : "chevron-down"/u);
-  assert.match(screenSource, /selectedCount/u);
+test("contact filters share one compact four-button toolbar", () => {
+  const toolbarStart = screenSource.indexOf("function ContactFilterToolbar");
+  const toolbarEnd = screenSource.indexOf("function ContactCard");
+  const toolbarSource = screenSource.slice(toolbarStart, toolbarEnd);
 
-  const advancedStart = screenSource.indexOf("function ContactSearchFilterSection");
-  const advancedEnd = screenSource.indexOf("function RelationshipFilterSection");
-  const advancedSource = screenSource.slice(advancedStart, advancedEnd);
-  assert.match(advancedSource, /<CollapsibleFilterSection/u);
+  assert.match(toolbarSource, /useState<ContactFilterMenuId \| null>/u);
+  assert.match(toolbarSource, /label: "行业"/u);
+  assert.match(toolbarSource, /label: "进展"/u);
+  assert.match(toolbarSource, /label: "行动"/u);
+  assert.match(toolbarSource, /label: "更多"/u);
+  assert.match(toolbarSource, /accessibilityState=\{\{ expanded: activeMenu === item\.id \}\}/u);
+  assert.match(screenSource, /filterToolbarRow:[\s\S]*flexDirection: "row"/u);
+  assert.match(screenSource, /filterToolbarButton:[\s\S]*flex: 1/u);
+  assert.doesNotMatch(toolbarSource, /CollapsibleFilterSection/u);
 });
 
 test("contact filters expose their selected state to VoiceOver", () => {
