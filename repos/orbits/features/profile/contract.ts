@@ -1,5 +1,6 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { ContactHandlesDTO } from "../../shared/domain/contracts";
+import type { OrbitLanguage } from "../../shared/contract/language";
 import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { ContractMatches } from "../../shared/contract-check";
 import type {
@@ -102,6 +103,7 @@ export interface ManualProfileUpdateInput {
   relationshipGoal?: string;
   targetRelationshipTypes?: readonly string[];
   preferredFollowUpWindow?: string;
+  preferredLanguage?: OrbitLanguage;
   preferredIntroChannels?: readonly string[];
   handles?: ContactHandlesDTO;
   industry?: string;

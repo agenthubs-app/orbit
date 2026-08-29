@@ -246,6 +246,7 @@ function sessionPayload(
       relationshipGoal: profile.relationshipGoal ?? "",
       homeMarket: profile.homeMarket ?? profile.timezone ?? "",
       preferredFollowUpWindow: profile.preferredFollowUpWindow ?? "",
+      preferredLanguage: profile.preferredLanguage ?? "zh",
     },
     provenance: {
       source: provider.source,

@@ -45,6 +45,7 @@ test("live profile service reads and upserts generated profile records", async (
   assert.equal(profile.data.profile?.role, fixtureProfile.role);
   assert.equal(profile.data.profile?.organization, fixtureAccount.name);
   assert.equal(profile.data.profile?.homeMarket, "");
+  assert.equal(profile.data.profile?.preferredLanguage, "zh");
   assert.equal(profile.data.provenance.source, `live-record-store:profiles:${workspaceId}`);
   assert.equal(profile.data.provenance.sourceLabel, "Profile memory live storage");
   assert.equal(profile.data.completeness.status, "action-needed");
@@ -56,6 +57,7 @@ test("live profile service reads and upserts generated profile records", async (
       homeMarket: "东京",
       organization: "Orbit 人脉实验室",
       preferredFollowUpWindow: "24 小时内",
+      preferredLanguage: "ja",
       preferredIntroChannels: ["共同联系人引荐", "活动后跟进"],
       relationshipGoal:
         "使用真实互动上下文判断下一步最值得推进的人脉。",
@@ -67,6 +69,7 @@ test("live profile service reads and upserts generated profile records", async (
 
   assert.equal(updated.success, true);
   assert.equal(updated.data.profile?.headline, "基于来源证据运营高质量人脉跟进");
+  assert.equal(updated.data.profile?.preferredLanguage, "ja");
   assert.equal(updated.data.profile?.updatedAt, "2026-07-02T04:05:00.000Z");
   assert.equal(updated.data.editor.lastSavedAt, "2026-07-02T04:05:00.000Z");
   assert.equal(updated.data.completeness.status, "ready");
@@ -86,8 +89,18 @@ test("live profile service reads and upserts generated profile records", async (
     "共同联系人引荐",
     "活动后跟进",
   ]);
+  assert.equal(stored?.payload.preferredLanguage, "ja");
   assert.equal(stored?.userId, actorId);
   assert.match(stored?.searchText ?? "", /来源证据|人脉跟进/);
+
+  const languageOnlyUpdate = await service.updateProfile(
+    { preferredLanguage: "en" },
+    { actorId },
+  );
+
+  assert.equal(languageOnlyUpdate.success, true);
+  assert.equal(languageOnlyUpdate.data.profile?.displayName, "结城航太郎");
+  assert.equal(languageOnlyUpdate.data.profile?.preferredLanguage, "en");
 });
 
 test("live profile service requires an actor and cannot read another actor's profile", async () => {

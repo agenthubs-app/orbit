@@ -122,6 +122,7 @@ export const mockContactDetailPublicProfile: ContactDetailPublicProfile = {
 
 export const mockContactDetail: ContactDetail = {
   id: "demo-contact-1",
+  contentLanguage: "en",
   displayName: "Kenji Watanabe",
   role: "Founder",
   organization: "Aster Grid",

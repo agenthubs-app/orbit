@@ -53,6 +53,7 @@ export const mockAccountSessionFixture: AccountSessionPayload = {
       "Prioritize source-backed demo workspace follow-up with clear context.",
     homeMarket: "Tokyo",
     preferredFollowUpWindow: "48 hours",
+    preferredLanguage: "en",
   },
   provenance: mockAccountSessionProvenance,
   nextAction:

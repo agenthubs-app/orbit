@@ -6,6 +6,7 @@ import type {
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
 import type { SourceType } from "../../shared/domain/source-types";
+import type { OrbitLanguage } from "../../shared/contract/language";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
@@ -35,6 +36,13 @@ import type {
   LiveContactDetailState,
   LiveContactsGraphProvider,
 } from "./live-service";
+import {
+  contactDetailCopy,
+  contactSourceTypeLabel,
+  localizeContactSourceLabel,
+  localizeRelationshipText,
+  selectContactEvidenceText,
+} from "./contact-detail-localization";
 
 export interface LiveContactDetailTagStatusServiceOptions {
   now?: () => string;
@@ -61,31 +69,6 @@ const contactDetailSourceTypes = new Set<ContactDetailSourceType>([
   "qr_scan",
 ]);
 
-const sourceTypeLabels: Record<ContactDetailSourceType, string> = {
-  business_card_ocr: "Business card scan",
-  calendar_signal: "Calendar signal",
-  email_signal: "Email signal",
-  event_import: "Event import",
-  external_contacts: "Imported contact",
-  manual: "Manual note",
-  qr_scan: "QR scan",
-  referral: "Referral",
-};
-
-const relationshipTokenLabels: Record<string, string> = {
-  commercial_opportunity: "commercial opportunity",
-  community_context: "community context",
-  cross_border_ecommerce: "cross-border ecommerce",
-  education_training: "education and training",
-  knowledge_exchange: "knowledge exchange",
-  legal_accounting: "legal and accounting",
-  referral_path: "referral path",
-  retail_omnichannel: "retail omnichannel",
-  strategic_fit: "strategic fit",
-  tourism_hospitality: "tourism and hospitality",
-  venture_capital: "investment interest",
-};
-
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
@@ -101,51 +84,34 @@ function uniqueStrings(values: readonly (string | undefined)[]): string[] {
   );
 }
 
-function labelRelationshipToken(value: string): string {
-  const normalized = value.trim();
-  return (
-    relationshipTokenLabels[normalized] ??
-    normalized.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim()
-  );
+function labelRelationshipText(
+  value: string,
+  language: OrbitLanguage,
+): string {
+  return localizeRelationshipText(value, language);
 }
 
-function labelRelationshipText(value: string): string {
-  return value.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
-    labelRelationshipToken(token),
+function labelRelationshipValues(
+  values: readonly string[],
+  language: OrbitLanguage,
+): string[] {
+  return uniqueStrings(
+    values.map((value) => localizeRelationshipText(value, language)),
   );
-}
-
-function labelRelationshipValues(values: readonly string[]): string[] {
-  return uniqueStrings(values.map((value) => labelRelationshipToken(value)));
 }
 
 function sourceLabelFor(input: {
   displayName: string;
+  language: OrbitLanguage;
   source: ContactDTO["source"];
   sourceType: ContactDetailSourceType;
 }): string {
-  const label = input.source.label?.trim();
-
-  if (input.sourceType === "qr_scan") {
-    if (!label) {
-      return "QR scan";
-    }
-
-    const namedEvent = label.replace(/\s*QR scan$/i, "").trim();
-    const directPerson = label.replace(/^Direct QR scan for\s+/i, "").trim();
-
-    if (namedEvent && namedEvent !== label && namedEvent !== input.displayName) {
-      return `QR scan at ${namedEvent}`;
-    }
-
-    if (directPerson && directPerson !== label) {
-      return `QR scan for ${directPerson}`;
-    }
-
-    return label.includes("QR scan") ? label : `QR scan at ${label}`;
-  }
-
-  return label || sourceTypeLabels[input.sourceType];
+  return localizeContactSourceLabel({
+    displayName: input.displayName,
+    label: input.source.label,
+    language: input.language,
+    sourceType: input.sourceType,
+  });
 }
 
 function failure<TCode extends ContactDetailTagStatusErrorCode>(
@@ -212,6 +178,7 @@ function contactDetailSourceTypeFor(
 function sourceFor(input: {
   contact: ContactDTO;
   evidenceId: string;
+  language: OrbitLanguage;
 }): ContactDetailSourceReference {
   const sourceType = contactDetailSourceTypeFor(input.contact.source.type);
 
@@ -220,6 +187,7 @@ function sourceFor(input: {
     id: input.contact.source.id,
     label: sourceLabelFor({
       displayName: input.contact.displayName,
+      language: input.language,
       source: input.contact.source,
       sourceType,
     }),
@@ -312,47 +280,59 @@ function publicProfileFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
   evidenceIds: readonly string[];
+  language: OrbitLanguage;
   source: ContactDetailSourceReference;
 }): ContactDetailPublicProfile {
   const profile = input.contact.publicProfile;
-  const sharedTopics = labelRelationshipValues(input.connection?.sharedTopics ?? []);
+  const copy = contactDetailCopy(input.language);
+  const sharedTopics = labelRelationshipValues(
+    input.connection?.sharedTopics ?? [],
+    input.language,
+  );
   const suggestedActions = (input.connection?.suggestedActions ?? []).map(
-    (action) => labelRelationshipText(action),
+    (action) => labelRelationshipText(action, input.language),
   );
   const relationshipOffering = labelRelationshipValues(
     input.connection?.valueTypes ?? [],
+    input.language,
   );
 
   return {
     bio:
-      labelRelationshipText(profile?.bio ?? "") ||
-      labelRelationshipText(input.contact.profileSnippet ?? "") ||
-      labelRelationshipText(input.connection?.summary ?? "") ||
-      "Live contact profile is available from shared relationship records.",
+      labelRelationshipText(profile?.bio ?? "", input.language) ||
+      labelRelationshipText(input.contact.profileSnippet ?? "", input.language) ||
+      labelRelationshipText(input.connection?.summary ?? "", input.language) ||
+      copy.liveProfile,
     selfIntroduction:
-      labelRelationshipText(profile?.selfIntroduction ?? "") ||
-      labelRelationshipText(input.contact.profileSnippet ?? "") ||
-      "Generated from live contact and relationship context.",
+      labelRelationshipText(profile?.selfIntroduction ?? "", input.language) ||
+      labelRelationshipText(input.contact.profileSnippet ?? "", input.language) ||
+      copy.generatedContext,
     industry:
-      labelRelationshipText(profile?.industry ?? "") ||
+      labelRelationshipText(profile?.industry ?? "", input.language) ||
       sharedTopics[0] ||
-      "relationship context",
+      copy.relationshipContext,
     offering:
       profile?.offering?.length
-        ? profile.offering.map((value) => labelRelationshipText(value))
+        ? profile.offering.map((value) =>
+            labelRelationshipText(value, input.language),
+          )
         : relationshipOffering,
     seeking:
       profile?.seeking?.length
-        ? profile.seeking.map((value) => labelRelationshipText(value))
+        ? profile.seeking.map((value) =>
+            labelRelationshipText(value, input.language),
+          )
         : suggestedActions,
     topics:
       profile?.topics?.length
-        ? profile.topics.map((value) => labelRelationshipText(value))
+        ? profile.topics.map((value) =>
+            labelRelationshipText(value, input.language),
+          )
         : sharedTopics,
     conversationPrompts:
       profile?.conversationPrompts?.length
         ? profile.conversationPrompts.map((value) =>
-            labelRelationshipText(value),
+            labelRelationshipText(value, input.language),
           )
         : suggestedActions.slice(0, 2),
     source: input.source,
@@ -398,6 +378,7 @@ function noteFor(input: {
 function sourceForEvidence(
   evidence: RelationshipEvidenceDTO,
   fallback: ContactDetailSourceReference,
+  language: OrbitLanguage,
 ): ContactDetailSourceReference {
   const sourceType = contactDetailSourceTypeFor(evidence.sourceType);
 
@@ -407,7 +388,7 @@ function sourceForEvidence(
     label:
       sourceType === fallback.type
         ? fallback.label
-        : sourceTypeLabels[sourceType],
+        : contactSourceTypeLabel(language, sourceType),
     evidenceId: evidence.id,
   };
 }
@@ -417,23 +398,30 @@ function notesFor(input: {
   contact: ContactDTO;
   evidence: readonly RelationshipEvidenceDTO[];
   evidenceIds: readonly string[];
+  language: OrbitLanguage;
   relationshipContext: string;
   source: ContactDetailSourceReference;
 }): ContactDetailNote[] {
   const notes = [...input.evidence]
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
-    .map((evidence) => ({
-      noteId: `note:relationship-evidence:${input.contact.id}:${evidence.id}`,
-      body: labelRelationshipText(evidence.summary),
-      authorLabel: sourceTypeLabels[
-        contactDetailSourceTypeFor(evidence.sourceType)
-      ],
-      createdAt: evidence.occurredAt,
-      source: sourceForEvidence(evidence, input.source),
-      evidenceIds: [evidence.id],
-      noteWriteExecuted: false as const,
-      productionAuditLogWriteExecuted: false as const,
-    }));
+    .map((evidence) => {
+      const localized = selectContactEvidenceText(
+        evidence.summary,
+        input.language,
+      );
+      const sourceType = contactDetailSourceTypeFor(evidence.sourceType);
+
+      return {
+        noteId: `note:relationship-evidence:${input.contact.id}:${evidence.id}`,
+        body: localized.text,
+        authorLabel: contactSourceTypeLabel(input.language, sourceType),
+        createdAt: evidence.occurredAt,
+        source: sourceForEvidence(evidence, input.source, input.language),
+        evidenceIds: [evidence.id],
+        noteWriteExecuted: false as const,
+        productionAuditLogWriteExecuted: false as const,
+      };
+    });
 
   return notes.length
     ? notes
@@ -452,21 +440,25 @@ function lastInteractionFor(input: {
   contact: ContactDTO;
   evidence?: RelationshipEvidenceDTO;
   evidenceIds: readonly string[];
+  language: OrbitLanguage;
   occurredAt: string;
   relationshipContext: string;
   source: ContactDetailSourceReference;
 }): ContactDetailLastInteractionMetadata {
   const evidenceSource = input.evidence
-    ? sourceForEvidence(input.evidence, input.source)
+    ? sourceForEvidence(input.evidence, input.source, input.language)
     : input.source;
 
   return {
     interactionId: `interaction:live-contact-detail:${input.contact.id}`,
     channel: channelFor(evidenceSource.type),
     occurredAt: input.evidence?.occurredAt ?? input.occurredAt,
-    summary:
-      labelRelationshipText(input.evidence?.summary ?? "") ||
-      input.relationshipContext,
+    summary: input.evidence
+      ? selectContactEvidenceText(
+          input.evidence.summary,
+          input.language,
+        ).text
+      : input.relationshipContext,
     source: evidenceSource,
     evidenceIds: input.evidence ? [input.evidence.id] : input.evidenceIds,
     calendarProviderRequested: false,
@@ -482,6 +474,7 @@ function detailFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
   evidence: readonly RelationshipEvidenceDTO[];
+  language: OrbitLanguage;
   persistedState?: LiveContactDetailState | null;
 }): ContactDetail {
   const evidenceIds = uniqueStrings([
@@ -492,20 +485,22 @@ function detailFor(input: {
   const source = sourceFor({
     contact: input.contact,
     evidenceId: firstEvidenceId,
+    language: input.language,
   });
   const evidenceRecords = evidenceFor(evidenceIds, input.evidence);
   const latestEvidence = [...evidenceRecords].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt),
   )[0];
   const relationshipContext =
-    labelRelationshipText(input.connection?.summary ?? "") ||
-    labelRelationshipText(input.contact.profileSnippet ?? "") ||
-    "Live relationship context is available for this contact.";
+    labelRelationshipText(input.connection?.summary ?? "", input.language) ||
+    labelRelationshipText(input.contact.profileSnippet ?? "", input.language) ||
+    contactDetailCopy(input.language).generatedContext;
   const baseNotes = notesFor({
     collectedAt: input.collectedAt,
     contact: input.contact,
     evidence: evidenceRecords,
     evidenceIds,
+    language: input.language,
     relationshipContext,
     source,
   });
@@ -520,6 +515,7 @@ function detailFor(input: {
     contact: input.contact,
     evidence: latestEvidence,
     evidenceIds,
+    language: input.language,
     occurredAt: input.connection?.updatedAt ?? input.contact.updatedAt,
     relationshipContext,
     source,
@@ -529,9 +525,12 @@ function detailFor(input: {
   return {
     id: input.contact.id,
     displayName: input.contact.displayName,
-    role: input.contact.role ?? "Relationship contact",
-    organization: input.contact.organization ?? "Unknown organization",
-    location: input.contact.location ?? "Unknown location",
+    contentLanguage: input.language,
+    role: input.contact.role ?? contactDetailCopy(input.language).relationshipContact,
+    organization:
+      input.contact.organization ?? contactDetailCopy(input.language).unknownOrganization,
+    location:
+      input.contact.location ?? contactDetailCopy(input.language).unknownLocation,
     primaryEmail:
       input.contact.primaryEmail ?? input.contact.handles?.email ?? "",
     primaryPhone:
@@ -544,17 +543,26 @@ function detailFor(input: {
       contact: input.contact,
       connection: input.connection,
       evidenceIds,
+      language: input.language,
       source,
     }),
     source,
-    evidence: evidenceRecords.map((record) => ({
-      evidenceId: record.id,
-      source: sourceForEvidence(record, source),
-      field: "relationship_context",
-      excerpt: labelRelationshipText(record.summary),
-      capturedAt: record.occurredAt,
-      createdBy: "mock-contact-detail-tag-status-service",
-    })),
+    evidence: evidenceRecords.map((record) => {
+      const localized = selectContactEvidenceText(
+        record.summary,
+        input.language,
+      );
+
+      return {
+        evidenceId: record.id,
+        source: sourceForEvidence(record, source, input.language),
+        field: "relationship_context" as const,
+        excerpt: localized.text,
+        contentLanguage: localized.contentLanguage,
+        capturedAt: record.occurredAt,
+        createdBy: "mock-contact-detail-tag-status-service" as const,
+      };
+    }),
     tags: input.persistedState
       ? (input.persistedState.tags.filter((tag) =>
           supportedTags.has(tag as ContactDetailTagOption),
@@ -582,8 +590,10 @@ function detailFor(input: {
         }
       : baseLastInteraction,
     nextAction:
-      labelRelationshipText(input.connection?.suggestedActions[0] ?? "") ||
-      "Review the live contact detail before taking action.",
+      labelRelationshipText(
+        input.connection?.suggestedActions[0] ?? "",
+        input.language,
+      ) || contactDetailCopy(input.language).reviewBeforeAction,
     updatedAt: input.persistedState?.updatedAt ?? input.contact.updatedAt,
     tagWriteExecuted: false,
     statusWriteExecuted: false,

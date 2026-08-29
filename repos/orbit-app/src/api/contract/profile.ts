@@ -2,6 +2,8 @@
 // 对应 GET/PUT /api/profile 的 data 字段。
 // 常量与校验留在 features/profile/contract.ts，那边有类型断言保证一致。
 
+import type { OrbitLanguage } from "./language";
+
 export type SeniorityLevelCode =
   | "individual_contributor"
   | "manager"
@@ -46,6 +48,7 @@ export interface ManualProfileContract {
   relationshipGoal: string;
   targetRelationshipTypes: readonly string[];
   preferredFollowUpWindow: string;
+  preferredLanguage: OrbitLanguage;
   preferredIntroChannels: readonly string[];
   handles?: ContactHandlesContract;
   industry?: string;

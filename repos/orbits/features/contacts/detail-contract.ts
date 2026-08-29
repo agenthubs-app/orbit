@@ -3,6 +3,7 @@ import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
 import type { AppErrorCode } from "../../shared/errors/app-error";
+import type { OrbitLanguage } from "../../shared/contract/language";
 import { AppError } from "../../shared/errors/app-error";
 import type { ContactStatusFilter, ContactTagFilter } from "./contract";
 
@@ -168,6 +169,7 @@ export interface ContactDetailEvidence {
   source: ContactDetailSourceReference;
   field: ContactDetailEvidenceField;
   excerpt: string;
+  contentLanguage?: OrbitLanguage | "original";
   capturedAt: string;
   createdBy: "mock-contact-detail-tag-status-service";
 }
@@ -224,6 +226,7 @@ export interface ContactDetailPublicProfile {
 // 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 export interface ContactDetail {
   id: string;
+  contentLanguage: OrbitLanguage;
   displayName: string;
   role: string;
   organization: string;
@@ -295,6 +298,7 @@ export interface ContactDetailTagStatusPayload {
 export interface ContactDetailLookupInput {
   actorId?: string | null;
   contactId: string;
+  language?: OrbitLanguage;
   scenario?: ContactDetailTagStatusScenario | string | null;
 }
 

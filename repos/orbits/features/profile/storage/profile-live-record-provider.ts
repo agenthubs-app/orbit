@@ -1,4 +1,6 @@
 import type { AccountDTO, PublicProfileDTO, UserProfileDTO } from "../../../shared/domain/contracts";
+import type { OrbitLanguage } from "../../../shared/contract/language";
+import { parseOrbitLanguage } from "../../../shared/i18n/orbit-language";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -15,6 +17,7 @@ export interface LiveProfileRecord extends UserProfileDTO {
   organization?: string;
   preferredFollowUpWindow?: string;
   preferredIntroChannels?: readonly string[];
+  preferredLanguage?: OrbitLanguage;
   relationshipGoal?: string;
   targetRelationshipTypes?: readonly string[];
   evidenceIds: readonly string[];
@@ -133,6 +136,11 @@ function profileFromRecord(
     organization: optionalString(payload.organization),
     preferredFollowUpWindow: optionalString(payload.preferredFollowUpWindow),
     preferredIntroChannels: stringArray(payload.preferredIntroChannels),
+    preferredLanguage: parseOrbitLanguage(
+      typeof payload.preferredLanguage === "string"
+        ? payload.preferredLanguage
+        : null,
+    ) ?? "zh",
     relationshipGoal: optionalString(payload.relationshipGoal),
     targetRelationshipTypes: stringArray(payload.targetRelationshipTypes),
     publicProfile: (payload.publicProfile ?? undefined) as

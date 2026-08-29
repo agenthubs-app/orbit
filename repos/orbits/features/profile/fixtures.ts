@@ -38,6 +38,7 @@ export const mockManualProfile: ManualProfile = {
     "Turn event context into source-backed follow-up decisions.",
   targetRelationshipTypes: ["founders", "BD partners", "event hosts"],
   preferredFollowUpWindow: "48 hours",
+  preferredLanguage: "en",
   preferredIntroChannels: [],
   updatedAt: "2026-06-24T11:05:00.000Z",
 };
@@ -139,5 +140,6 @@ export const mockProfileUpdateInput: ManualProfileUpdateInput = {
     "Use relationship context to decide which follow-up matters next.",
   targetRelationshipTypes: ["founders", "BD partners", "event hosts"],
   preferredFollowUpWindow: "48 hours",
+  preferredLanguage: "en",
   preferredIntroChannels: ["warm intro", "event follow-up"],
 };

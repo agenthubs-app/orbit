@@ -7,6 +7,8 @@ import type {
 } from "../shared/domain/contracts";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import { createConfiguredStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
+import { resolveCanonicalAccountOwnerId } from "../features/account/canonical-account-owner";
+import { createConfiguredStorageAccountSessionProvider } from "../features/account/storage/account-live-record-provider";
 import { loadLocalEnv } from "./load-local-env";
 
 interface FixtureDefinition {
@@ -430,17 +432,22 @@ async function main(): Promise<void> {
   }
 
   const authProvider = createConfiguredStorageAuthUserProvider();
+  const accountProvider = createConfiguredStorageAccountSessionProvider();
   const configuredStore = createConfiguredPostgresLiveRecordStore();
-  if (!authProvider || !configuredStore) {
+  if (!authProvider || !accountProvider || !configuredStore) {
     throw new Error("The configured live store is unavailable.");
   }
 
-  const actor = await authProvider.getUserByEmail(email);
-  if (!actor) {
+  const authUser = await authProvider.getUserByEmail(email);
+  if (!authUser) {
     throw new Error(`No account exists for ${email}.`);
   }
+  const accountId = resolveCanonicalAccountOwnerId({
+    authUserId: authUser.id,
+    graph: await accountProvider.readAccountSessionGraph(),
+  });
 
-  const key = actorKey(actor.id);
+  const key = actorKey(accountId);
   for (const [index, fixture] of fixtures.entries()) {
     const suffix = String(index + 1).padStart(2, "0");
     const contactId = `orbit-contact-${key}-${suffix}`;
@@ -465,7 +472,7 @@ async function main(): Promise<void> {
           summary,
           occurredAt: interactionTimestamp(index, interactionIndex),
           confidence: 0.9 - interactionIndex * 0.04,
-          createdBy: actor.id,
+          createdBy: accountId,
         };
       });
     const evidenceIds = evidenceRecords.map((evidence) => evidence.id) as [
@@ -507,7 +514,7 @@ async function main(): Promise<void> {
     };
     const connection: ConnectionDTO = {
       id: connectionId,
-      accountId: actor.id,
+      accountId,
       contactId,
       stage: fixture.stage,
       valueTypes: fixture.valueTypes,
@@ -528,7 +535,7 @@ async function main(): Promise<void> {
         workspaceId: configuredStore.workspaceId,
         collectionName: "evidence",
         recordId: evidence.id,
-        userId: actor.id,
+        userId: accountId,
         sourceType: evidence.sourceType,
         sourceId: evidence.sourceId,
         sourceLabel: fixture.sourceLabel,
@@ -545,7 +552,7 @@ async function main(): Promise<void> {
       workspaceId: configuredStore.workspaceId,
       collectionName: "contacts",
       recordId: contactId,
-      userId: actor.id,
+      userId: accountId,
       sourceType: fixture.sourceType,
       sourceId: source.id,
       sourceLabel: fixture.sourceLabel,
@@ -577,7 +584,7 @@ async function main(): Promise<void> {
       workspaceId: configuredStore.workspaceId,
       collectionName: "connections",
       recordId: connectionId,
-      userId: actor.id,
+      userId: accountId,
       sourceType: fixture.sourceType,
       sourceId: source.id,
       sourceLabel: fixture.sourceLabel,
@@ -610,9 +617,9 @@ async function main(): Promise<void> {
         recordId,
       });
       const isOwnedFixture =
-        legacyRecord?.userId === actor.id &&
+        legacyRecord?.userId === accountId &&
         (collectionName === "evidence"
-          ? legacyRecord.payload.createdBy === actor.id
+          ? legacyRecord.payload.createdBy === accountId
           : legacyRecord.provider === "orbit-account-contact-fixtures");
 
       if (legacyRecord && isOwnedFixture) {
@@ -637,7 +644,7 @@ async function main(): Promise<void> {
     "林玫熟悉日本早期投资，佐藤健司正在推进机器人视觉项目。建议双方先交流产品路线、试点需求与融资节奏，再确认是否安排后续合作讨论。";
   for (const record of introductionRecords) {
     if (
-      record.userId !== actor.id ||
+      record.userId !== accountId ||
       record.payload.contactAId !== `test-contact-${key}-01` ||
       record.payload.contactBId !== `test-contact-${key}-02` ||
       record.payload.blurb !==
@@ -665,7 +672,8 @@ async function main(): Promise<void> {
 
   console.log(
     JSON.stringify({
-      accountId: actor.id,
+      accountId,
+      authUserId: authUser.id,
       contactsUpserted: fixtures.length,
       interactionEvidenceUpserted: fixtures.reduce(
         (count, fixture) => count + fixture.interactionHistory.length,

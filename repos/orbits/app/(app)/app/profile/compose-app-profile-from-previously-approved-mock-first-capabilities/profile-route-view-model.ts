@@ -375,6 +375,7 @@ function actorOnboardingProfile(
     organization: "",
     preferredFollowUpWindow: "",
     preferredIntroChannels: [],
+    preferredLanguage: "zh",
     relationshipGoal: "",
     role: "",
     seeking: [],

@@ -97,6 +97,7 @@ test("account live store maps remote account and profile records into a current 
   assert.equal(session.data.profile?.relationshipGoal, "");
   assert.equal(session.data.profile?.homeMarket, "Asia/Tokyo");
   assert.equal(session.data.profile?.preferredFollowUpWindow, "");
+  assert.equal(session.data.profile?.preferredLanguage, "zh");
   assert.doesNotMatch(
     JSON.stringify(session.data),
     /source-backed relationship workflows|auth tokens outside/iu,

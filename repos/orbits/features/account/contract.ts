@@ -1,4 +1,5 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
+import type { OrbitLanguage } from "../../shared/contract/language";
 
 // Account contract 描述账号会话在 mock-first 系统里的稳定形状。
 // UI 和 API route 只依赖这些类型，不需要知道底层是真认证还是演示会话。
@@ -92,6 +93,7 @@ export interface MockAccountProfile {
   relationshipGoal: string;
   homeMarket: string;
   preferredFollowUpWindow: string;
+  preferredLanguage: OrbitLanguage;
 }
 
 // MockAccountSession 只表示演示登录态，不包含真实 token 或 cookie。

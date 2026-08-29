@@ -136,6 +136,8 @@ function buildUpdatedProfile(input: ManualProfileUpdateInput): ManualProfile {
     preferredFollowUpWindow:
       input.preferredFollowUpWindow?.trim() ??
       mockManualProfile.preferredFollowUpWindow,
+    preferredLanguage:
+      input.preferredLanguage ?? mockManualProfile.preferredLanguage,
     preferredIntroChannels:
       input.preferredIntroChannels ?? mockManualProfile.preferredIntroChannels,
     updatedAt: "2026-06-24T11:15:00.000Z",

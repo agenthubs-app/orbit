@@ -1,4 +1,6 @@
-export type OrbitLanguage = "en" | "zh" | "ja";
+import type { OrbitLanguage } from "../../../shared/contract/language";
+
+export type { OrbitLanguage } from "../../../shared/contract/language";
 
 export function parseOrbitLanguage(
   value: string | null | undefined,

@@ -16,6 +16,7 @@ import type {
   LiveProfileProvider,
   LiveProfileRecord,
 } from "./storage/profile-live-record-provider";
+import { parseOrbitLanguage } from "../../shared/i18n/orbit-language";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -182,6 +183,7 @@ function manualProfileFor(input: {
     relationshipGoal: input.profile.relationshipGoal ?? "",
     targetRelationshipTypes: input.profile.targetRelationshipTypes,
     preferredFollowUpWindow: input.profile.preferredFollowUpWindow ?? "",
+    preferredLanguage: input.profile.preferredLanguage ?? "zh",
     preferredIntroChannels: input.profile.preferredIntroChannels,
     updatedAt: input.profile.updatedAt,
   };
@@ -325,6 +327,8 @@ function mergeProfile(input: {
       input.update.preferredIntroChannels,
       baseManual?.preferredIntroChannels ?? [],
     ),
+    preferredLanguage:
+      input.update.preferredLanguage ?? baseManual?.preferredLanguage ?? "zh",
     publicProfile: {
       bio: normalizeText(input.update.bio, baseManual?.bio ?? ""),
       industry: normalizeText(input.update.industry, baseManual?.industry ?? ""),
@@ -444,18 +448,24 @@ export function createLiveProfileService({
         });
       }
 
-      if (!input.displayName?.trim()) {
+      const loaded = await loadProfile({ actorId, collectedAt });
+
+      if (loaded.success === false) {
+        return loaded;
+      }
+
+      const displayName =
+        input.displayName?.trim() ?? loaded.profile?.displayName.trim() ?? "";
+      const languageIsValid =
+        input.preferredLanguage === undefined ||
+        parseOrbitLanguage(input.preferredLanguage) !== null;
+
+      if (!displayName || !languageIsValid) {
         return failure("PROFILE_VALIDATION_FAILED", {
           collectedAt,
           evidenceIds: ["evidence:profile-live-validation-failure"],
           provider,
         });
-      }
-
-      const loaded = await loadProfile({ actorId, collectedAt });
-
-      if (loaded.success === false) {
-        return loaded;
       }
 
       if (!provider) {

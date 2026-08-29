@@ -1,4 +1,6 @@
 import type { AccountDTO, UserProfileDTO } from "../../../shared/domain/contracts";
+import type { OrbitLanguage } from "../../../shared/contract/language";
+import { parseOrbitLanguage } from "../../../shared/i18n/orbit-language";
 import {
   createConfiguredPostgresLiveRecordStore,
 } from "../../../shared/storage/configured-live-record-store";
@@ -12,6 +14,7 @@ export interface LiveAccountProfileRecord extends UserProfileDTO {
   headline?: string;
   homeMarket?: string;
   preferredFollowUpWindow?: string;
+  preferredLanguage?: OrbitLanguage;
   relationshipGoal?: string;
 }
 
@@ -101,6 +104,11 @@ function profileFromRecord(
     headline: optionalString(payload.headline),
     homeMarket: optionalString(payload.homeMarket),
     preferredFollowUpWindow: optionalString(payload.preferredFollowUpWindow),
+    preferredLanguage: parseOrbitLanguage(
+      typeof payload.preferredLanguage === "string"
+        ? payload.preferredLanguage
+        : null,
+    ) ?? "zh",
     relationshipGoal: optionalString(payload.relationshipGoal),
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt,
