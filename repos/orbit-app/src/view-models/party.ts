@@ -234,7 +234,7 @@ function agenda(input: {
     {
       detail: "离场前记录一个明确的下一步，别把关系留在寒暄里。",
       time: "离场前",
-      title: "跟进记录"
+      title: "联系记录"
     }
   ];
 }

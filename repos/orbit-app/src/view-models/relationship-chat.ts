@@ -99,7 +99,7 @@ type UnknownRecord = Record<string, unknown>;
 
 const STATUS_LABELS: Record<string, string> = {
   active: "进行中",
-  needs_followup: "待跟进",
+  needs_followup: "待联系",
   paused: "已暂停"
 };
 
@@ -114,8 +114,8 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const TITLE_LABELS: Record<string, string> = {
-  "Case study request": "案例资料跟进",
-  "Pilot timing follow-up": "试点时间跟进"
+  "Case study request": "案例资料待办",
+  "Pilot timing follow-up": "试点时间待办"
 };
 
 const DELIVERY_LABELS: Record<string, string> = {
@@ -295,7 +295,7 @@ function messageBodyText(value: string): string {
   const followupMatch =
     /^Follow up about (.+?) with a concrete next step\.?$/iu.exec(value);
   if (followupMatch?.[1]?.trim()) {
-    return `围绕「${topicText(followupMatch[1])}」准备一版具体跟进。`;
+    return `围绕「${topicText(followupMatch[1])}」准备一版具体联系方案。`;
   }
 
   if (/breakfast discussion.+pilot timing comparison/iu.test(value)) {
@@ -415,7 +415,7 @@ export function relationshipChatListToView(
 ): RelationshipChatListView {
   const conversations = conversationsFromPayload(data).map(conversationToView);
   const followupCount = conversations.filter((conversation) =>
-    conversation.detail.includes("待跟进")
+    /待联系|待跟进/u.test(conversation.detail)
   ).length;
   const unreadCount = conversations.reduce((sum, conversation) => {
     const match = /^(\d+)/u.exec(conversation.unreadLabel);
@@ -426,12 +426,12 @@ export function relationshipChatListToView(
     conversations,
     metrics: [
       { label: "对话", value: String(conversations.length) },
-      { label: "待跟进", value: String(followupCount) },
+      { label: "待联系", value: String(followupCount) },
       { label: "未读", value: String(unreadCount) }
     ],
     summary:
       conversations.length > 0
-        ? `${conversations.length} 段关系对话，先看需要跟进的人。`
+        ? `${conversations.length} 段关系对话，先看需要联系的人。`
         : "还没有关系对话。",
     title: "关系对话"
   };

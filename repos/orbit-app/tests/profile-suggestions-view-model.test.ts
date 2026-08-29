@@ -138,7 +138,7 @@ test("profileDocumentExtractionToView maps business-card drafts into Chinese rev
       id: "profile-document-draft_business_card_mina_sato",
       kindLabel: "名片",
       metaLine: "Northstar Events · 合作负责人 · 东京",
-      relationshipGoal: "活动后带着明确来源和双方上下文跟进。",
+      relationshipGoal: "活动后带着明确背景联系对方。",
       suggestedFields: [
         {
           label: "主要市场",
@@ -146,7 +146,7 @@ test("profileDocumentExtractionToView maps business-card drafts into Chinese rev
         },
         {
           label: "介绍渠道",
-          value: "活动后跟进、邮件"
+          value: "活动后联系、邮件"
         }
       ]
     },
@@ -320,7 +320,7 @@ test("applyProfileAcceptedPatchToDraft seeds supported profile fields into the e
     {
       ...draft,
       headline: "围绕活动场景做人脉关系工作流的创始人",
-      relationshipGoal: "活动后带着明确来源和双方上下文跟进。",
+      relationshipGoal: "活动后带着明确背景联系对方。",
       timezone: "东京和新加坡"
     }
   );
@@ -365,7 +365,7 @@ test("applyProfileDocumentExtractionToDraft seeds extracted profile fields into 
       ...draft,
       displayName: "赵翔",
       headline: "Orbit founder helping companies adopt practical AI",
-      relationshipGoal: "把活动上下文变成有来源依据的跟进决策。",
+      relationshipGoal: "把活动背景变成有依据的联系判断。",
       seekingText: "创始人、商务合作伙伴"
     }
   );

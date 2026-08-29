@@ -104,14 +104,14 @@ test("relationshipValueToView maps a success payload into a Chinese card", () =>
     evidenceLines: ["活动见过：气候创始人晚宴", "业务背景：储能试点记录"],
     factors: [
       { label: "适合做运营方引荐", pointsLabel: "+11" },
-      { label: "跟进窗口还开着", pointsLabel: "+8" }
+      { label: "联系时机还合适", pointsLabel: "+8" }
     ],
     kind: "ready",
     nextAction: "发一条储能试点运营方引荐 · 周五合作方复盘前 · 把握较高",
     priorityLabel: "优先处理",
     safetyText: "只读分析，未发送消息。",
     scoreLabel: "93 分",
-    summary: "Kenji Watanabe 适合优先跟进。当前证据支持战略引荐。"
+    summary: "Kenji Watanabe 适合优先联系。当前记录支持战略引荐。"
   });
 });
 

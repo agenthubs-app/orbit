@@ -30,7 +30,7 @@ const payload: AgentLedgerListPayloadContract = {
           operationType: "create_followup_task",
           selectedByDefault: true,
           status: "pending",
-          title: "创建会后跟进任务"
+          title: "创建会后待办事项"
         }
       ],
       organization: "Aster Grid",
@@ -45,10 +45,10 @@ const payload: AgentLedgerListPayloadContract = {
         }
       ],
       status: "awaiting_confirmation",
-      title: "建立跟进任务 — Kenji Watanabe",
+      title: "建立待办事项 — Kenji Watanabe",
       undoable: true,
       updatedAt: "2026-07-26T01:05:00.000Z",
-      whyNow: "活动结束后的跟进窗口正在缩短。",
+      whyNow: "活动结束后的联系时机正在缩短。",
       workflowKey: "post_event_followup_v1"
     }
   ],
@@ -72,7 +72,7 @@ test("native ledger content renders the shared Action identity, audit and contro
   assert.match(text, /action:followup-task:native/u);
   assert.match(text, /run:post-event-followup:native/u);
   assert.match(text, /post_event_followup_v1/u);
-  assert.match(text, /创建会后跟进任务/u);
+  assert.match(text, /创建会后待办事项/u);
   assert.match(text, /确认执行/u);
   assert.match(text, /稍后处理/u);
   assert.match(text, /忽略/u);

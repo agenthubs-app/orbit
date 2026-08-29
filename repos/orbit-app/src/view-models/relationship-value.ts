@@ -102,7 +102,7 @@ export function relationshipConnectionIdForContact(
 function relationshipValueTypeLabel(value: string): string {
   const labels: Record<string, string> = {
     community_bridge: "社群连接",
-    event_follow_up: "活动跟进",
+    event_follow_up: "活动后联系",
     low_context: "背景补充",
     strategic_intro: "战略引荐"
   };
@@ -127,7 +127,7 @@ function factorLabel(value: string): string {
     "clear operator-introduction fit": "适合做运营方引荐",
     "selected evidence confirms business context": "证据能说明业务背景",
     "suggested action remains time-sensitive": "下一步有时间窗口",
-    "time-sensitive follow-up path": "跟进窗口还开着"
+    "time-sensitive follow-up path": "联系时机还合适"
   };
 
   return labels[normalized] ?? value.trim();
@@ -137,7 +137,7 @@ function evidenceLabel(value: string): string {
   const normalized = value.trim().toLowerCase();
   const labels: Record<string, string> = {
     "climate founders dinner": "气候创始人晚宴",
-    "follow-up path identified": "已确认跟进路径",
+    "follow-up path identified": "已确认联系路径",
     "partner review email context": "合作方复盘邮件线索",
     "storage pilot note": "储能试点记录"
   };
@@ -149,7 +149,7 @@ function contributionLabel(value: string): string {
   const labels: Record<string, string> = {
     business_context: "业务背景",
     decision_window: "决策窗口",
-    follow_up_urgency: "跟进窗口",
+    follow_up_urgency: "联系时机",
     met_at_event: "活动见过"
   };
 
@@ -196,7 +196,7 @@ function readySummary(assessment: UnknownRecord): string {
   const highPriority = score === null || score >= 70;
 
   return highPriority
-    ? `${name} 适合优先跟进。当前证据支持${valueType}。`
+    ? `${name} 适合优先联系。当前记录支持${valueType}。`
     : `${name} 可以先低频维护。当前证据更适合${valueType}。`;
 }
 

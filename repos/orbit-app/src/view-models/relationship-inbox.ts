@@ -231,7 +231,7 @@ const KNOWN_THREAD_COPY: Record<
         "可以。我会写短一点，并对齐场地方后续最关心的问题。"
     },
     preview: "我会把内容压短，并对齐场地方的问题。",
-    subject: "代代木早餐会跟进",
+    subject: "代代木早餐会后续沟通",
     summary: "Aoba 想在和场地方沟通前，先拿到早餐会的两点复盘。"
   },
   conversation_demo_lina: {
@@ -242,7 +242,7 @@ const KNOWN_THREAD_COPY: Record<
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  "Aoba follow-up task": "Aoba 跟进任务",
+  "Aoba follow-up task": "Aoba 待办事项",
   "Calendar hold from Orbit schedule context": "日程预留",
   "Event attendance record": "活动记录",
   "Generated relationship conversation": "关系上下文",
@@ -405,7 +405,7 @@ function localizeSourceLabels(values: unknown[]): string[] {
 function localizeSubject(conversationId: string, value: string): string {
   return (
     KNOWN_THREAD_COPY[conversationId]?.subject ??
-    userFacingText(value, "关系跟进")
+    userFacingText(value, "后续沟通")
   );
 }
 
@@ -417,7 +417,7 @@ function localizePreview(conversationId: string, value: string): string {
 }
 
 function localizeSummary(conversationId: string, value: string): string {
-  const fallback = "先复核这段关系背景，再准备跟进。";
+  const fallback = "先确认这段关系背景，再准备联系。";
 
   return (
     KNOWN_THREAD_COPY[conversationId]?.summary ??
@@ -922,7 +922,7 @@ function relationshipSignalContextText(value: string, sourceKind: string): strin
   }
 
   if (/metadata fixture links|partner follow-up thread|calendar overlap/iu.test(value)) {
-    return "邮件和日程里出现了同一个合作跟进对象。";
+    return "邮件和日程里出现了同一个合作联系人。";
   }
 
   return userFacingText(
@@ -935,15 +935,15 @@ function relationshipSignalContextText(value: string, sourceKind: string): strin
 
 function relationshipSignalNextActionText(value: string): string {
   if (/context from the introducer/iu.test(value)) {
-    return "先向介绍人确认背景，再决定要不要跟进。";
+    return "先向介绍人确认背景，再决定要不要联系。";
   }
 
   if (/calendar signal|post-breakfast note/iu.test(value)) {
-    return "先确认这次会面，再写一版简短跟进。";
+    return "先确认这次会面，再写一版简短消息。";
   }
 
   if (/metadata-only signal|partnership follow-ups/iu.test(value)) {
-    return "先确认来源，再决定是否加入合作跟进。";
+    return "先确认背景，再决定是否创建合作待办。";
   }
 
   return userFacingText(value, "先确认来源，再决定下一步。");
@@ -1062,7 +1062,7 @@ export function relationshipSignalConfirmToView(
     ]
       .filter(Boolean)
       .join(" · "),
-    detail: "已作为后续跟进证据保留。",
+    detail: "已作为后续联系记录保留。",
     safetyText:
       record.externalActionExecuted === false &&
       record.relationshipWriteExecuted === false
@@ -1081,8 +1081,8 @@ export function defaultRelationshipDraft(input: {
   const organization = input.organization?.trim() || "这件事";
 
   return {
-    body: `${greeting}\n\n我想继续跟进${organization}相关的沟通。为了避免信息遗漏，我先把背景和下一步写成草稿，确认后再发送。\n\n如果您方便，我们可以约 15 分钟把重点对齐一下。`,
-    subject: `关于${organization}的跟进`
+    body: `${greeting}\n\n我想继续聊聊${organization}相关的事情。为了避免信息遗漏，我先把背景和下一步写成草稿，确认后再发送。\n\n如果您方便，我们可以约 15 分钟把重点对齐一下。`,
+    subject: `关于${organization}的后续沟通`
   };
 }
 
@@ -1105,10 +1105,10 @@ function reminderTitle(reminder: UnknownRecord): string {
   const title = stringField(reminder, "title");
 
   if (/^review follow-up for /iu.test(title)) {
-    return `跟进${contactName}`;
+    return `联系${contactName}`;
   }
 
-  return userFacingText(title, `跟进${contactName}`);
+  return userFacingText(title, `联系${contactName}`);
 }
 
 function reminderAlert(reminder: UnknownRecord): RelationshipAlertView {

@@ -54,7 +54,7 @@ function startupSummaryCopy(
   pendingFollowupCount: number,
   upcomingEventCount: number
 ): string {
-  return `你有 ${pendingFollowupCount} 个跟进事项和 ${upcomingEventCount} 场活动需要看。`;
+  return `你有 ${pendingFollowupCount} 项待办和 ${upcomingEventCount} 场活动需要看。`;
 }
 
 function userFacingSummaryCopy(
@@ -139,7 +139,7 @@ export function bootstrapMetrics(
 ): BootstrapMetric[] {
   return [
     { label: "活动", value: summary.upcomingEventCount },
-    { label: "跟进", value: summary.pendingFollowupCount },
+    { label: "待办", value: summary.pendingFollowupCount },
     { label: "人脉", value: summary.relationshipAssetCount },
     { label: "待确认", value: summary.assistantActionCount }
   ];

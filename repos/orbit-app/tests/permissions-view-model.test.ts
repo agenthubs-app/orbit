@@ -85,7 +85,7 @@ test("permissionStatesToView maps staged permission states into Chinese cards", 
   assert.deepEqual(view, {
     canRequestCalendar: true,
     emptyText: "",
-    nextAction: "先处理待复核的权限，再继续活动准备或跟进。",
+    nextAction: "先确认权限，再继续活动准备或处理待办。",
     permissions: [
       {
         actionLabel: "使用联系人资料",
@@ -103,7 +103,7 @@ test("permissionStatesToView maps staged permission states into Chinese cards", 
         evidence: ["日历复核：活动准备可以先复核日历访问意图。"],
         id: "calendar",
         reason: "日历访问正在等你确认。",
-        requiredFor: "活动准备、会议上下文和跟进时间判断。",
+        requiredFor: "活动准备、会议背景和联系时间判断。",
         stageLabel: "待复核",
         statusLabel: "待复核",
         title: "日历",
@@ -142,7 +142,7 @@ test("permissionStatesToView keeps empty permission states useful", async () => 
   assert.deepEqual(view, {
     canRequestCalendar: true,
     emptyText: "还没有需要处理的权限。",
-    nextAction: "先从活动准备、跟进或名片录入里选择一个要继续的任务。",
+    nextAction: "先从活动准备、待办或名片录入里选择一项继续处理。",
     permissions: [],
     summary: "0 项权限需要处理",
     title: "权限中心"
@@ -182,7 +182,7 @@ test("calendar permission helpers keep the request inside staged review", async 
   });
 
   assert.deepEqual(view, {
-    detail: "活动准备、会议上下文和跟进时间判断。",
+    detail: "活动准备、会议背景和联系时间判断。",
     evidenceIds: ["evidence:calendar-request-review"],
     nextAction: "留在 Orbit 里复核，不会打开系统日历或外部账号授权。",
     requestId: "permission-request:calendar:event-readiness",

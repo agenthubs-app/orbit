@@ -23,7 +23,7 @@ export function RelationshipChatScreen() {
 
   return (
     <AppScreen
-      eyebrow="关系与跟进"
+      eyebrow="人脉消息"
       refreshControl={
         <RefreshControl
           onRefresh={state.refresh}
@@ -67,7 +67,7 @@ function ChatListContent({ data }: { data: unknown }) {
           </Text>
         </View>
       </DataCard>
-      <DataCard detail="按待跟进和未读排序" title="对话列表">
+      <DataCard detail="按待联系和未读排序" title="对话列表">
         <View style={styles.listStack}>
           {view.conversations.map((conversation) => (
             <ConversationRow

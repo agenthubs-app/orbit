@@ -25,7 +25,7 @@ test("contacts graph screen can add reviewed manual evidence through the web API
   assert.match(screenSource, /addConnectionEvidence/u);
   assert.match(screenSource, /client\.post<unknown>\(request\.request\.endpoint/u);
   assert.match(screenSource, /body: request\.request\.body/u);
-  assert.match(screenSource, /placeholder="写清楚这条关系为什么值得跟进"/u);
+  assert.match(screenSource, /placeholder="写清楚这条关系为什么值得联系"/u);
   assert.match(screenSource, /添加证据/u);
 });
 

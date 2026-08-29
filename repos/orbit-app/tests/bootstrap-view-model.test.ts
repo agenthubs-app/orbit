@@ -88,7 +88,7 @@ test("bootstrapToSummary hides implementation labels from startup copy", () => {
 
   assert.equal(
     summary.summary,
-    "你有 7 个跟进事项和 2 场活动需要看。"
+    "你有 7 项待办和 2 场活动需要看。"
   );
   assert.equal(
     summary.nextAction,
@@ -113,7 +113,7 @@ test("bootstrapToSummary preserves the old Orbit main profile name", () => {
       displayName: "赵翔",
       organization: "Orbit"
     },
-    summary: "今天有 1 个跟进事项。",
+    summary: "今天有 1 个待办事项。",
     topAgentActions: [],
     upcomingEvents: []
   });
@@ -136,7 +136,7 @@ test("bootstrapMetrics creates compact home metrics", () => {
 
   assert.deepEqual(metrics, [
     { label: "活动", value: 2 },
-    { label: "跟进", value: 4 },
+    { label: "待办", value: 4 },
     { label: "人脉", value: 42 },
     { label: "待确认", value: 2 }
   ]);

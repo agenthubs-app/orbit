@@ -165,7 +165,7 @@ function requiredForText(capability: string, value: string): string {
     case "business-card-scan":
       return "名片 OCR 复核。";
     case "calendar":
-      return "活动准备、会议上下文和跟进时间判断。";
+      return "活动准备、会议背景和联系时间判断。";
     case "camera":
       return "名片拍摄。";
     case "chat-analysis":
@@ -173,11 +173,11 @@ function requiredForText(capability: string, value: string): string {
     case "contacts":
       return "导入联系人、合并复核和关系搜索。";
     case "email":
-      return "邮件线索和跟进上下文。";
+      return "邮件线索和联系背景。";
     case "event-data":
       return "活动参会者、目标和会前准备。";
     case "notifications":
-      return "跟进提醒和行动队列提示。";
+      return "联系提醒和待办提示。";
     default:
       return value.trim() || "关系工作。";
   }
@@ -253,7 +253,7 @@ function evidenceExcerpt(capability: string, value: string): string {
     case "event-data":
       return "活动参会者数据带有来源记录。";
     case "notifications":
-      return "跟进提醒先留在应用内。";
+      return "联系提醒先留在应用内。";
     default:
       return value.trim();
   }
@@ -311,11 +311,11 @@ function summaryFor(cards: readonly PermissionCardView[]): string {
 
 function nextActionFor(cards: readonly PermissionCardView[]): string {
   if (cards.length === 0) {
-    return "先从活动准备、跟进或名片录入里选择一个要继续的任务。";
+    return "先从活动准备、待办或名片录入里选择一项继续处理。";
   }
 
   if (cards.some((card) => card.tone === "pending")) {
-    return "先处理待复核的权限，再继续活动准备或跟进。";
+    return "先确认权限，再继续活动准备或处理待办。";
   }
 
   if (cards.some((card) => card.tone === "blocked")) {

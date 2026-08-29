@@ -86,18 +86,18 @@ test("connectionGraphToView maps live connection payloads into Chinese graph car
   });
 
   assert.equal(view.title, "人脉图谱");
-  assert.equal(view.summary, "3 段关系连接，先看需要跟进和强度最高的人。");
+  assert.equal(view.summary, "3 段关系连接，先看待联系且关系强度最高的人。");
   assert.equal(view.nextAction, "先复核关系证据，再推进下一步。");
   assert.deepEqual(view.metrics, [
     { label: "总连接", value: "3" },
-    { label: "待跟进", value: "1" },
+    { label: "待联系", value: "1" },
     { label: "强关系", value: "2" },
     { label: "有证据", value: "3" }
   ]);
   assert.deepEqual(view.stages, [
     { count: 1, id: "active", label: "推进中" },
     { count: 1, id: "captured", label: "已记录" },
-    { count: 1, id: "needs_follow_up", label: "待跟进" }
+    { count: 1, id: "needs_follow_up", label: "待联系" }
   ]);
   assert.deepEqual(view.priorityConnections[0], {
     contactId: "contact_078",
@@ -105,12 +105,12 @@ test("connectionGraphToView maps live connection payloads into Chinese graph car
     id: "connection_0007",
     lastTouchedAt: "6月30日 23:14",
     name: "曾伟",
-    nextAction: "先整理关系背景，再安排一次具体跟进。",
+    nextAction: "先整理关系背景，再安排一次具体联系。",
     organization: "Kansai Community",
     role: "Product Manager",
     scoreLabel: "88分",
     sourceLabel: "二维码记录",
-    stageLabel: "待跟进"
+    stageLabel: "待联系"
   });
   assert.deepEqual(view.priorityConnections[1], {
     contactId: "contact_003",
@@ -118,7 +118,7 @@ test("connectionGraphToView maps live connection payloads into Chinese graph car
     id: "connection_0003",
     lastTouchedAt: "6月29日 09:00",
     name: "高橋 智子",
-    nextAction: "跟进高橋 智子 的关系进展。",
+    nextAction: "联系高橋 智子，确认下一步。",
     organization: "Aoba Foods",
     role: "Investor Partner",
     scoreLabel: "72分",
@@ -134,7 +134,7 @@ test("connectionGraphToView handles empty connection payloads", () => {
   assert.equal(view.nextAction, "先补一条联系人来源，再建立关系连接。");
   assert.deepEqual(view.metrics, [
     { label: "总连接", value: "0" },
-    { label: "待跟进", value: "0" },
+    { label: "待联系", value: "0" },
     { label: "强关系", value: "0" },
     { label: "有证据", value: "0" }
   ]);
@@ -223,10 +223,10 @@ test("connectionEvidenceDetailToView maps connection detail evidence into a revi
       title: "关系来源"
     },
     {
-      detail: "跟进信号 · bad-date",
+      detail: "联系建议 · bad-date",
       excerpt: "这条证据需要打开原记录复核。",
       id: "evidence:002",
-      title: "跟进记录"
+      title: "联系记录"
     }
   ]);
 });
@@ -291,12 +291,12 @@ test("buildConnectionProfilePreviewRequest prepares a review-only relationship p
       id: " connection_0007 ",
       lastTouchedAt: "6月30日 23:14",
       name: "曾伟",
-      nextAction: "先整理关系背景，再安排一次具体跟进。",
+      nextAction: "先整理关系背景，再安排一次具体联系。",
       organization: "Kansai Community",
       role: "Product Manager",
       scoreLabel: "88分",
       sourceLabel: "二维码记录",
-      stageLabel: "待跟进"
+      stageLabel: "待联系"
     }),
     {
       request: {
@@ -309,7 +309,7 @@ test("buildConnectionProfilePreviewRequest prepares a review-only relationship p
             valueTypes: ["commercial_opportunity", "knowledge_exchange"]
           },
           nextAction: {
-            label: "复核曾伟的下一步跟进",
+            label: "确认曾伟的下一步",
             rationale: "先确认双方各自能获得什么，再决定是否发送消息或安排会面。"
           },
           relationshipType: "partner_candidate"
@@ -369,7 +369,7 @@ test("connectionProfileToView maps relationship profile previews into Chinese re
 
   assert.equal(view.kind, "ready");
   assert.equal(view.title, "曾伟的关系画像");
-  assert.equal(view.profileLine, "合作伙伴 · 待跟进");
+  assert.equal(view.profileLine, "合作伙伴 · 待联系");
   assert.equal(view.summary, "已生成关系画像预览，复核后再使用。");
   assert.equal(view.context, "曾伟正在寻找日本落地可信赖的税务与设立顾问。");
   assert.deepEqual(view.mutualValues, [

@@ -252,7 +252,7 @@ export function agentLedgerToSurfaceView(
   return {
     emptyMessage:
       mode === "today"
-        ? "Orbit 会在出现新的跟进窗口时，把需要决定的操作放到这里。"
+        ? "Orbit 会在出现新的联系时机时，把需要决定的操作放到这里。"
         : "Agent 执行或准备的每一次操作都会记录在这里。",
     emptyTitle:
       mode === "today" ? "今天没有需要处理的操作" : "操作账本还是空的",

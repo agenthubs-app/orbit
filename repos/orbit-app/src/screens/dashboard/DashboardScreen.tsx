@@ -169,7 +169,7 @@ export function DashboardScreen() {
       ) : null}
       {aggregateState.kind === "empty" ? (
         <EmptyState
-          message="先补一条联系人或跟进记录，仪表盘会开始显示关系覆盖。"
+          message="先补一位联系人或一项待办，仪表盘会开始显示关系覆盖。"
           title="暂无关系数据"
         />
       ) : null}

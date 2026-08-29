@@ -87,7 +87,7 @@ const entries: HomeEntryView[] = [
     title: "名片夹"
   },
   {
-    detail: "约见、跟进和活动时间。",
+    detail: "约见、待办和活动时间。",
     href: "/schedule",
     title: "日程安排"
   }
@@ -180,7 +180,7 @@ function homeEvents(
 }
 
 function inProgressCount(contacts: ReturnType<typeof contactsToSummaries>): number {
-  return contacts.filter((contact) => /在推进|待联系|培养中/iu.test(contact.status))
+  return contacts.filter((contact) => /推进中|在推进|待联系|培养中/iu.test(contact.status))
     .length;
 }
 
@@ -209,7 +209,7 @@ function homePipeline(stats: HomeView["stats"]): HomePipelineItemView[] {
     },
     {
       detail: "今天优先处理",
-      label: "在推进",
+      label: "推进中",
       tone: "live",
       value: stats.inProgress
     }
@@ -228,7 +228,7 @@ function homeHubLayout(): HomeHubLayoutView {
 
 function homeAssistant(): HomeAssistantView {
   return {
-    placeholder: "问人脉、活动、跟进或日程",
+    placeholder: "问人脉、活动、待办或日程",
     title: "有什么可以帮你？"
   };
 }

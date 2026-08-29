@@ -305,23 +305,23 @@ function contactName(record: UnknownRecord): string {
 }
 
 function followupTitle(record: UnknownRecord): string {
-  return `跟进 ${contactName(record)}`;
+  return `联系 ${contactName(record)}`;
 }
 
 function recommendedAction(record: UnknownRecord): string {
   const action = taskField(record, "recommendedAction");
 
   if (!action || /\bcontact[_:-]?\d+|review follow-up\b/i.test(action)) {
-    return `跟进 ${contactName(record)} 的关系进展。`;
+    return `联系 ${contactName(record)}，确认下一步。`;
   }
 
-  return userFacingText(action, `跟进 ${contactName(record)} 的关系进展。`);
+  return userFacingText(action, `联系 ${contactName(record)}，确认下一步。`);
 }
 
 function rationale(record: UnknownRecord): string {
   return userFacingText(
     taskField(record, "rationale"),
-    "这条跟进来自已记录的关系上下文，先复核再行动。"
+    "这项待办来自已记录的关系背景，确认后再行动。"
   );
 }
 
@@ -405,7 +405,7 @@ function messageDraftView(record: UnknownRecord): MessageDraftView {
       stringField(nestedRecord(record, "source"), "label"),
       "来源已记录"
     ),
-    subject: stringField(record, "subject", "跟进消息草稿"),
+    subject: stringField(record, "subject", "联系消息草稿"),
     windowLabel: messageDraftWindowLabel(
       stringField(record, "recommendedSendWindow")
     )
@@ -416,10 +416,10 @@ function chatFollowupDraftTitle(record: UnknownRecord): string {
   const kind = stringField(record, "kind").trim().toLowerCase();
 
   if (kind === "follow_up_draft") {
-    return "跟进草稿";
+    return "联系草稿";
   }
 
-  return userFacingText(stringField(record, "label"), "跟进草稿");
+  return userFacingText(stringField(record, "label"), "联系草稿");
 }
 
 function chatFollowupDraftView(record: UnknownRecord): ChatFollowupDraftView {
@@ -427,7 +427,7 @@ function chatFollowupDraftView(record: UnknownRecord): ChatFollowupDraftView {
     body: stringField(
       record,
       "suggestedText",
-      stringField(record, "originalText", "先写一版简短跟进，再决定是否保存。")
+      stringField(record, "originalText", "先写一版简短消息，再决定是否保存。")
     ),
     id: stringField(record, "assistId", stringField(record, "id", "assist")),
     reason: userFacingText(
@@ -454,10 +454,10 @@ function reminderTitle(record: UnknownRecord): string {
   const name = contactName(record);
 
   if (!title || /^review follow-up for /iu.test(title)) {
-    return `提醒跟进 ${name}`;
+    return `提醒联系 ${name}`;
   }
 
-  return userFacingText(title, `提醒跟进 ${name}`);
+  return userFacingText(title, `提醒联系 ${name}`);
 }
 
 function reminderQueueLabel(
@@ -469,7 +469,7 @@ function reminderQueueLabel(
     listField(entry, "reminderIds").includes(reminderId)
   ).length;
 
-  return count > 0 ? `${count} 条通知待复核` : "提醒待复核";
+  return count > 0 ? `${count} 条通知待确认` : "提醒待确认";
 }
 
 function reminderView(
@@ -564,19 +564,19 @@ export function followupsToView(input: FollowupsViewInput): FollowupsView {
 
   return {
     metrics: [
-      { label: "待跟进", value: String(tasks.length) },
+      { label: "待办", value: String(tasks.length) },
       { label: "今天", value: String(dueTodayCount) },
       { label: "提醒", value: String(reminders.length) }
     ],
     nextAction: nextAction(input.tasksPayload, tasks),
     priorityTask: topTask(tasks),
     reminders,
-    safetyText: "这里只做复核，不会发送消息、创建提醒或写入日程。",
+    safetyText: "这里只供你确认，不会发送消息、创建提醒或写入日程。",
     summary: tasks.length || reminders.length
-      ? `${tasks.length} 个跟进 · ${reminders.length} 条提醒`
-      : "暂无跟进",
+      ? `${tasks.length} 项待办 · ${reminders.length} 条提醒`
+      : "暂无待办",
     tasks,
-    title: "跟进队列"
+    title: "待办"
   };
 }
 
@@ -589,10 +589,10 @@ export function generatedFollowupTasksToView(
     nextAction: generatedNextAction(payload, tasks),
     safetyText: "这些只是候选，不会自动发送消息或写入日程。",
     summary: tasks.length
-      ? `生成了 ${tasks.length} 个候选跟进`
-      : "暂无可生成的跟进",
+      ? `生成了 ${tasks.length} 项待办建议`
+      : "暂无待办建议",
     tasks,
-    title: "新生成的跟进"
+    title: "待办建议"
   };
 }
 
@@ -677,7 +677,7 @@ export function chatFollowupDraftsToView(
     drafts,
     nextAction: nextActionText,
     summary: drafts.length ? `${drafts.length} 条 AI 草稿待复核` : "暂无 AI 草稿",
-    title: "AI 跟进草稿"
+    title: "AI 联系草稿"
   };
 }
 

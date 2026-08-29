@@ -45,22 +45,22 @@ test("relationshipChatListToView maps legacy chat conversations into Chinese car
   });
 
   assert.equal(view.title, "关系对话");
-  assert.equal(view.summary, "1 段关系对话，先看需要跟进的人。");
+  assert.equal(view.summary, "1 段关系对话，先看需要联系的人。");
   assert.deepEqual(view.metrics, [
     { label: "对话", value: "1" },
-    { label: "待跟进", value: "1" },
+    { label: "待联系", value: "1" },
     { label: "未读", value: "1" }
   ]);
   assert.deepEqual(view.conversations[0], {
     contactId: "demo-contact-maya",
-    detail: "Kumo Grid · 待跟进",
+    detail: "Kumo Grid · 待联系",
     id: "demo-conversation-1",
     lastAt: "6月25日 10:35",
     name: "Maya Chen",
     nextAction: "先写一版草稿，确认后再发。",
     preview: "对方在等一版具体回复。",
     sourceLabel: "对话摘要",
-    title: "试点时间跟进",
+    title: "试点时间待办",
     unreadLabel: "1 条未读"
   });
 });
@@ -115,7 +115,7 @@ test("relationshipChatThreadToView keeps message delivery as review-only", () =>
     summary: "The current thread has 2 messages."
   });
 
-  assert.equal(view.title, "试点时间跟进");
+  assert.equal(view.title, "试点时间待办");
   assert.equal(view.participant, "Maya Chen · Kumo Grid");
   assert.equal(view.context, "对方在等一版具体回复。");
   assert.equal(view.sendBoundary, "可以写草稿；真正发出前还要确认。");
@@ -296,7 +296,7 @@ test("relationship chat view models clean live generated chat wording", () => {
   );
   assert.equal(
     threadView.messages[0]?.body,
-    "围绕「日本中小制造业 AI 工作流 PoC 买方」准备一版具体跟进。"
+    "围绕「日本中小制造业 AI 工作流 PoC 买方」准备一版具体联系方案。"
   );
 });
 

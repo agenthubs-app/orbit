@@ -189,7 +189,7 @@ function GraphContent({ data }: { data: unknown }) {
       </DataCard>
       {view.stages.length > 0 ? <StageCard stages={view.stages} /> : null}
       {view.priorityConnections.length > 0 ? (
-        <DataCard detail="按待跟进和关系强度排序" title="优先关系">
+        <DataCard detail="按待联系和关系强度排序" title="优先关系">
           {evidenceError ? <Text style={styles.errorText}>{evidenceError}</Text> : null}
           {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
           <View style={styles.listStack}>
@@ -475,7 +475,7 @@ function ConnectionEvidenceCard({
           onChangeText={(value) =>
             setDraft((current) => ({ ...current, excerpt: value }))
           }
-          placeholder="写清楚这条关系为什么值得跟进"
+          placeholder="写清楚这条关系为什么值得联系"
           placeholderTextColor={colors.text4}
           style={styles.evidenceTextArea}
           textAlignVertical="top"

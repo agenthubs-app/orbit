@@ -22,7 +22,7 @@ test("defaultRelationshipDraft avoids duplicate generic greetings", () => {
   assert.equal(genericDraft.body.split("\n")[0], "您好：");
   assert.doesNotMatch(genericDraft.body, /您好，您好/);
   assert.equal(namedDraft.body.split("\n")[0], "李明，您好：");
-  assert.equal(namedDraft.subject, "关于Orbit的跟进");
+  assert.equal(namedDraft.subject, "关于Orbit的后续沟通");
 });
 
 test("relationshipInboxToView localizes async inbox payloads for mobile", () => {
@@ -119,13 +119,13 @@ test("relationshipInboxToView localizes async inbox payloads for mobile", () => 
     nextAction: "先准备一版回复，确认后再发送。",
     organization: "Yoyogi Climate Founders",
     preview: "我会把内容压短，并对齐场地方的问题。",
-    sourceLabels: ["代代木气候创业者早餐会", "Aoba 跟进任务"],
-    subject: "代代木早餐会跟进",
+    sourceLabels: ["代代木气候创业者早餐会", "Aoba 待办事项"],
+    subject: "代代木早餐会后续沟通",
     unreadCount: 1,
     unreadLabel: "1 条新消息"
   });
   assert.equal(view.selected?.currentUserName, "我");
-  assert.equal(view.selected?.subject, "代代木早餐会跟进");
+  assert.equal(view.selected?.subject, "代代木早餐会后续沟通");
   assert.equal(
     view.selected?.summary,
     "Aoba 想在和场地方沟通前，先拿到早餐会的两点复盘。"
@@ -211,7 +211,7 @@ test("relationshipInboxToView removes exact duplicate messages and implementatio
     ["message_1", "message_2"]
   );
   assert.deepEqual(view.selected?.sourceLabels, ["关系上下文"]);
-  assert.equal(view.selected?.summary, "先复核这段关系背景，再准备跟进。");
+  assert.equal(view.selected?.summary, "先确认这段关系背景，再准备联系。");
 });
 
 test("createdRelationshipThreadToView maps a confirmed draft without implementation copy", () => {
@@ -348,7 +348,7 @@ test("relationshipAlertsToView maps reminders and proactive turns without provid
         id: "notification_001",
         kind: "reminder",
         priorityLabel: "高优先级",
-        title: "跟进山崎 美穂"
+        title: "联系山崎 美穂"
       },
       {
         detail:
@@ -454,7 +454,7 @@ test("relationshipSignalsToView maps email and calendar signals into review card
         sourceLabel: "邮件线索",
         statusLabel: "待确认",
         title: "Aiko Watanabe",
-        nextAction: "先向介绍人确认背景，再决定要不要跟进。"
+        nextAction: "先向介绍人确认背景，再决定要不要联系。"
       },
       {
         canConfirm: false,
@@ -468,7 +468,7 @@ test("relationshipSignalsToView maps email and calendar signals into review card
         sourceLabel: "日程线索",
         statusLabel: "已确认",
         title: "Noah Silva",
-        nextAction: "先确认这次会面，再写一版简短跟进。"
+        nextAction: "先确认这次会面，再写一版简短消息。"
       }
     ],
     summary: "2 条邮件/日程线索，确认前不会写联系人。",
@@ -532,7 +532,7 @@ test("relationship signal confirmation stays inside the review boundary", () => 
   assert.deepEqual(view, {
     confirmedAt: "6月26日 02:12",
     contactLine: "Noah Silva · Southbank Climate Fund · Limited Partner",
-    detail: "已作为后续跟进证据保留。",
+    detail: "已作为后续联系记录保留。",
     safetyText: "没有发送消息，也没有写联系人。",
     title: "线索已确认"
   });

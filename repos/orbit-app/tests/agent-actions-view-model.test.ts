@@ -71,8 +71,8 @@ test("agentActionsToView maps action queue and safety settings into Chinese card
     "创建任务、提醒、日程或修改资料前，每次都需要你确认。",
     "消息和邮件只保存草稿，Orbit 永不自动发送。"
   ]);
-  assert.equal(view.actions[0]?.title, "复核 Maya Chen 的活动后跟进");
-  assert.equal(view.actions[0]?.actionTypeLabel, "活动后跟进");
+  assert.equal(view.actions[0]?.title, "复核 Maya Chen 的活动后联系");
+  assert.equal(view.actions[0]?.actionTypeLabel, "活动后联系");
   assert.equal(view.actions[0]?.priorityLabel, "高优先级");
   assert.equal(view.actions[0]?.dueLabel, "本周");
   assert.equal(view.actions[0]?.confirmationLabel, "需要你确认");

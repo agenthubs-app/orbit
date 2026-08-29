@@ -17,7 +17,7 @@ test("followups screen can generate review-only task candidates through the web 
     screenSource,
     /client\.post<unknown>\(\s*ORBIT_API_ENDPOINTS\.taskGeneration/u
   );
-  assert.match(screenSource, /"生成跟进建议"/u);
+  assert.match(screenSource, /"生成待办建议"/u);
   assert.match(screenSource, /GeneratedFollowupsCard/u);
   assert.match(screenSource, /title=\{view\.title\}/u);
 });
@@ -43,7 +43,7 @@ test("followups screen can create review-only message drafts through the web API
     screenSource,
     /client\.post<unknown>\(\s*ORBIT_API_ENDPOINTS\.messageDrafts/u
   );
-  assert.match(screenSource, /"起草跟进消息"/u);
+  assert.match(screenSource, /"起草联系消息"/u);
   assert.match(screenSource, /MessageDraftsCard/u);
 });
 

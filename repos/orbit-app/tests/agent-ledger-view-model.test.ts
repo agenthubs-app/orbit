@@ -34,10 +34,10 @@ function entry(
         operationType: "create_followup_task",
         selectedByDefault: true,
         status: "pending",
-        title: "创建跟进任务"
+        title: "创建待办事项"
       }
     ],
-    preview: "创建跟进任务：确认下周试点范围",
+    preview: "创建待办事项：确认下周试点范围",
     riskLevel: "write",
     runId: `run:${input.entryId}`,
     sourceRefs: [
@@ -51,7 +51,7 @@ function entry(
     title: input.title,
     undoable: input.undoable,
     updatedAt: "2026-07-26T01:05:00.000Z",
-    whyNow: "活动结束后的跟进窗口正在缩短。",
+    whyNow: "活动结束后的联系时机正在缩短。",
     workflowKey: "post_event_followup_v1"
   };
 }
@@ -62,7 +62,7 @@ function payload(): AgentLedgerListPayloadContract {
       entry({
         entryId: "action:followup-task:mobile",
         status: "awaiting_confirmation",
-        title: "建立跟进任务 — Kenji Watanabe",
+        title: "建立待办事项 — Kenji Watanabe",
         undoable: true
       }),
       entry({
@@ -74,7 +74,7 @@ function payload(): AgentLedgerListPayloadContract {
       entry({
         entryId: "action:message-draft:completed",
         status: "completed",
-        title: "准备跟进草稿 — Kenji Watanabe",
+        title: "准备联系草稿 — Kenji Watanabe",
         undoable: true
       }),
       entry({

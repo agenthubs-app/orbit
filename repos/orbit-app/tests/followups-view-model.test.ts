@@ -72,29 +72,29 @@ test("followupsToView maps tasks and reminders into a Chinese review queue", () 
     }
   });
 
-  assert.equal(view.title, "跟进队列");
-  assert.equal(view.summary, "2 个跟进 · 1 条提醒");
-  assert.equal(view.safetyText, "这里只做复核，不会发送消息、创建提醒或写入日程。");
+  assert.equal(view.title, "待办");
+  assert.equal(view.summary, "2 项待办 · 1 条提醒");
+  assert.equal(view.safetyText, "这里只供你确认，不会发送消息、创建提醒或写入日程。");
   assert.deepEqual(view.metrics, [
-    { label: "待跟进", value: "2" },
+    { label: "待办", value: "2" },
     { label: "今天", value: "1" },
     { label: "提醒", value: "1" }
   ]);
-  assert.equal(view.priorityTask?.title, "跟进 Maya Chen");
+  assert.equal(view.priorityTask?.title, "联系 Maya Chen");
   assert.equal(view.priorityTask?.dueLabel, "7月24日 周五 10:00");
   assert.equal(view.priorityTask?.priorityLabel, "今天");
   assert.equal(view.priorityTask?.triggerLabel, "活动后");
   assert.equal(view.priorityTask?.sourceLabel, "来源已记录");
   assert.equal(view.priorityTask?.evidenceLabel, "2 条来源");
-  assert.equal(view.priorityTask?.recommendedAction, "跟进 Maya Chen 的关系进展。");
+  assert.equal(view.priorityTask?.recommendedAction, "联系 Maya Chen，确认下一步。");
   assert.equal(
     view.priorityTask?.rationale,
-    "这条跟进来自已记录的关系上下文，先复核再行动。"
+    "这项待办来自已记录的关系背景，确认后再行动。"
   );
-  assert.equal(view.tasks[1]?.title, "跟进 王琳");
+  assert.equal(view.tasks[1]?.title, "联系 王琳");
   assert.equal(view.tasks[1]?.sourceLabel, "活动记录");
-  assert.equal(view.reminders[0]?.title, "提醒跟进 Maya Chen");
-  assert.equal(view.reminders[0]?.queueLabel, "1 条通知待复核");
+  assert.equal(view.reminders[0]?.title, "提醒联系 Maya Chen");
+  assert.equal(view.reminders[0]?.queueLabel, "1 条通知待确认");
 });
 
 test("followupsToView keeps an empty queue useful", () => {
@@ -103,7 +103,7 @@ test("followupsToView keeps an empty queue useful", () => {
     tasksPayload: {}
   });
 
-  assert.equal(view.summary, "暂无跟进");
+  assert.equal(view.summary, "暂无待办");
   assert.equal(view.priorityTask, null);
   assert.deepEqual(view.tasks, []);
   assert.deepEqual(view.reminders, []);
@@ -135,7 +135,7 @@ test("followupsToView hides imported relationship implementation wording", () =>
 
   assert.equal(
     view.priorityTask?.rationale,
-    "这条跟进来自已记录的关系上下文，先复核再行动。"
+    "这项待办来自已记录的关系背景，确认后再行动。"
   );
   assert.equal(view.priorityTask?.sourceLabel, "来源已记录");
 });
@@ -219,11 +219,11 @@ test("generatedFollowupTasksToView maps generated task candidates into review ca
     ]
   });
 
-  assert.equal(view?.title, "新生成的跟进");
-  assert.equal(view?.summary, "生成了 2 个候选跟进");
+  assert.equal(view?.title, "待办建议");
+  assert.equal(view?.summary, "生成了 2 项待办建议");
   assert.equal(view?.nextAction, "先复核候选任务，再决定是否写入任务列表。");
   assert.equal(view?.safetyText, "这些只是候选，不会自动发送消息或写入日程。");
-  assert.equal(view?.tasks[0]?.title, "跟进 林小雨");
+  assert.equal(view?.tasks[0]?.title, "联系 林小雨");
   assert.equal(view?.tasks[0]?.dueLabel, "明天");
   assert.equal(view?.tasks[0]?.sourceLabel, "活动记录");
   assert.equal(view?.tasks[0]?.recommendedAction, "发一条短消息约下周 demo 时间。");
@@ -282,10 +282,10 @@ test("generatedFollowupRemindersToView maps generated reminder candidates into r
     view?.safetyText,
     "这些只是提醒候选，不会发送推送、邮件或短信。"
   );
-  assert.equal(view?.reminders[0]?.title, "提醒跟进 王琳");
+  assert.equal(view?.reminders[0]?.title, "提醒联系 王琳");
   assert.equal(view?.reminders[0]?.dueLabel, "7月25日 周六 09:00");
   assert.equal(view?.reminders[0]?.windowLabel, "复核后明天上午提醒。");
-  assert.equal(view?.reminders[0]?.queueLabel, "1 条通知待复核");
+  assert.equal(view?.reminders[0]?.queueLabel, "1 条通知待确认");
 });
 
 test("buildReminderGenerationRequest prepares review-only reminder candidates", () => {
@@ -405,12 +405,12 @@ test("chat follow-up draft helpers use the web writing assist route", () => {
         recipientLine: "王琳 · 红桥科技",
         safetyText: "这里只生成文案，不会保存草稿或发送消息。",
         sourceLabel: "活动记录",
-        title: "跟进草稿"
+        title: "联系草稿"
       }
     ],
     nextAction: "先检查文案，再决定是否保存或发送。",
     summary: "1 条 AI 草稿待复核",
-    title: "AI 跟进草稿"
+    title: "AI 联系草稿"
   });
 });
 
@@ -447,7 +447,7 @@ test("messageDraftsToView maps generated message drafts into Chinese review card
         organization: "红桥科技",
         recipientName: "王琳",
         recommendedSendWindow: "24 小时内",
-        relationshipContext: "活动后跟进",
+        relationshipContext: "活动后联系",
         sendActionRequiresConfirmation: true,
         source: {
           label: "活动记录"

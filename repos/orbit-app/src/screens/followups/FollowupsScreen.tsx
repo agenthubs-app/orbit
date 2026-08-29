@@ -189,7 +189,7 @@ export function FollowupsScreen() {
           tintColor={colors.accent}
         />
       }
-      title="跟进队列"
+      title="待办"
     >
       {loading ? <LoadingState /> : null}
       {tasksState.kind === "offline" ? (
@@ -292,7 +292,7 @@ function FollowupsWorkspace({
         </View>
         <Text style={styles.safetyText}>{view.safetyText}</Text>
       </DataCard>
-      <DataCard detail="从现有关系上下文里找下一步" title="生成跟进建议">
+      <DataCard detail="从现有关系背景里找下一步" title="生成待办建议">
         <Text style={styles.bodyText}>生成后先复核，不会自动发消息。</Text>
         <Pressable
           accessibilityRole="button"
@@ -313,7 +313,7 @@ function FollowupsWorkspace({
           <Text style={styles.errorText}>{generationError}</Text>
         ) : null}
       </DataCard>
-      <DataCard detail="从到期跟进里准备提醒" title="生成提醒候选">
+      <DataCard detail="从到期待办里准备提醒" title="生成提醒候选">
         <Text style={styles.bodyText}>生成后先复核，不会发推送、邮件或短信。</Text>
         <Pressable
           accessibilityRole="button"
@@ -361,11 +361,11 @@ function FollowupsWorkspace({
       ) : (
         <EmptyState
           message="先从联系人、活动或对话里记录一个明确的下一步。"
-          title="暂无跟进"
+          title="暂无待办"
         />
       )}
       {view.tasks.length > 0 ? (
-        <DataCard detail={`${view.tasks.length} 个待复核动作`} title="全部跟进">
+        <DataCard detail={`${view.tasks.length} 项待确认`} title="全部待办">
           <View style={styles.stack}>
             {view.tasks.map((task) => (
               <TaskRow key={task.id} task={task} />
@@ -562,7 +562,7 @@ function PriorityTaskCard({
       >
         <Ionicons color={colors.onAccent} name="mail-outline" size={17} />
         <Text style={styles.primaryButtonText}>
-          {drafting ? "起草中" : "起草跟进消息"}
+          {drafting ? "起草中" : "起草联系消息"}
         </Text>
       </Pressable>
     </DataCard>

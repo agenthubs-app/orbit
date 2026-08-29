@@ -3,11 +3,14 @@ import test from "node:test";
 import type { ApiResult } from "../src/api/types";
 import {
   buildContactsSearchRequest,
-  contactStatusFilterOptions,
+  contactDimensionFilterOptions,
+  contactDimensionStatusFilters,
   contactSearchFilterSections,
   contactAvatarFor,
+  contactLocationsToValues,
   contactsSearchToView,
   contactsToSummaries,
+  filterContactListPayloadByDimensions,
   toggleContactSearchFilter
 } from "../src/view-models/contacts";
 import { conversationsToSummaries } from "../src/view-models/conversations";
@@ -306,16 +309,31 @@ test("contactsToSummaries maps contact list payloads", () => {
       imageUrl: "/orbit-demo-assets/avatars/contact-001.svg",
       id: "contact-1",
       name: "Maya Chen",
-      nextAction: "查看来源证据后再跟进 Maya Chen。",
+      nextAction: "查看来源证据后再联系 Maya Chen。",
       organization: "Northstar",
       relationship:
         "Northstar 的投资人。本次关注「日本落地可信赖的税务与设立顾问」，可提供「关西合作渠道介绍」。",
       role: "合伙人",
-      status: "待联系",
+      status: "需要联系",
       valueLabels: ["战略契合", "社群资源", "引荐路径"],
       valueScore: 91
     }
   ]);
+});
+
+test("contactLocationsToValues extracts localized analysis locations without changing contact summaries", () => {
+  assert.deepEqual(
+    contactLocationsToValues({
+      contacts: [
+        { location: "Tokyo" },
+        { location: "Osaka" },
+        { location: "Shibuya" },
+        { location: "Unknown location" },
+        { location: "San Francisco" }
+      ]
+    }),
+    ["东京", "大阪", "东京·涩谷", "旧金山"]
+  );
 });
 
 test("contactsToSummaries localizes English relationship copy for mobile", () => {
@@ -347,11 +365,11 @@ test("contactsToSummaries localizes English relationship copy for mobile", () =>
   assert.deepEqual(summaries[0], {
     id: "contact:kenji-watanabe",
     name: "Kenji Watanabe",
-    nextAction: "给 Kenji Watanabe 补一条引荐跟进。",
+    nextAction: "给 Kenji Watanabe 补一条引荐待办。",
     organization: "Aster Grid",
     relationship: "Aster Grid 的创始人，正在推进储能试点合作。",
     role: "创始人",
-    status: "待联系",
+    status: "需要联系",
     valueLabels: ["商业机会", "知识交流", "社群资源"],
     valueScore: 91
   });
@@ -487,7 +505,7 @@ test("buildContactsSearchRequest prepares the web contact deep search request", 
     buildContactsSearchRequest({
       query: "  ",
       sourceFilters: ["manual"],
-      status: "needs_follow_up",
+      statusFilters: ["active", "needs_follow_up"],
       tagFilters: ["topic:storage-pilots"],
       valueFilters: ["commercial_opportunity"]
     }),
@@ -495,7 +513,7 @@ test("buildContactsSearchRequest prepares the web contact deep search request", 
       request: {
         body: {
           sourceFilters: ["manual"],
-          statusFilters: ["needs_follow_up"],
+          statusFilters: ["active", "needs_follow_up"],
           tagFilters: ["topic:storage-pilots"],
           valueFilters: ["commercial_opportunity"]
         },
@@ -667,15 +685,15 @@ test("contactsSearchToView maps web deep search payload into Chinese search card
   assert.deepEqual(view, {
     emptyText: "",
     filtersLabel:
-      "关键词：storage · 来源：手动记录 · 状态：待联系 · 标签：储能试点 · 价值：商业机会",
-    nextAction: "先看匹配到的人和来源证据，再决定要不要跟进。",
+      "关键词：storage · 来源：手动记录 · 状态：需要联系 · 标签：储能试点 · 价值：商业机会",
+    nextAction: "先看匹配到的人和关系背景，再决定要不要联系。",
     results: [
       {
-        detail: "Aster Grid · 创始人 · 待联系",
+        detail: "Aster Grid · 创始人 · 需要联系",
         id: "contact-storage-1",
         imageUrl: "/orbit-demo-assets/avatars/contact-001.svg",
         name: "Kenji Watanabe",
-        nextAction: "给 Kenji Watanabe 补一条引荐跟进。",
+        nextAction: "给 Kenji Watanabe 补一条引荐待办。",
         relationship: "Aster Grid 的创始人，正在推进储能试点合作。",
         valueLabels: ["商业机会"],
         valueScore: 91
@@ -714,8 +732,8 @@ test("contactsSearchToView gives a direct Chinese empty state", () => {
   );
 });
 
-test("contactStatusFilterOptions maps backend status filters to Chinese chips", () => {
-  const options = contactStatusFilterOptions(
+test("contactDimensionFilterOptions separates relationship progress from action state", () => {
+  const options = contactDimensionFilterOptions(
     {
       availableFilters: {
         statuses: [
@@ -730,17 +748,61 @@ test("contactStatusFilterOptions maps backend status filters to Chinese chips", 
       },
       contacts: [{ id: "contact-1" }, { id: "contact-2" }]
     },
-    "needs_follow_up"
+    {
+      actionState: "needs_follow_up",
+      relationshipProgress: "active"
+    }
   );
 
-  assert.deepEqual(options, [
+  assert.deepEqual(options.relationshipProgress, [
     { count: 6, label: "全部", selected: false, value: null },
-    { count: 2, label: "待联系", selected: true, value: "needs_follow_up" },
-    { count: 4, label: "在推进", selected: false, value: "active" },
-    { count: 0, label: "培养中", selected: false, value: "nurture" },
-    { count: 0, label: "已归档", selected: false, value: "archived" }
+    { count: 6, label: "推进中", selected: true, value: "active" },
+    { count: 0, label: "长期维护", selected: false, value: "nurture" },
+    { count: 0, label: "暂不推进", selected: false, value: "archived" }
+  ]);
+  assert.deepEqual(options.actionState, [
+    { count: 6, label: "全部", selected: false, value: null },
+    {
+      count: 2,
+      label: "需要联系",
+      selected: true,
+      value: "needs_follow_up"
+    }
   ]);
   assert.doesNotMatch(JSON.stringify(options), /Active|Needs follow up/u);
+});
+
+test("contact dimension filters can intersect progress and action state", () => {
+  const payload = {
+    contacts: [
+      { id: "active", status: "active" },
+      { id: "needs-contact", status: "needs_follow_up" },
+      { id: "nurture", status: "nurture" }
+    ],
+    state: "success"
+  };
+
+  assert.deepEqual(
+    filterContactListPayloadByDimensions(payload, {
+      actionState: "needs_follow_up",
+      relationshipProgress: "active"
+    }),
+    {
+      contacts: [{ id: "needs-contact", status: "needs_follow_up" }],
+      state: "success"
+    }
+  );
+  assert.deepEqual(
+    contactDimensionStatusFilters({ relationshipProgress: "active" }),
+    ["active", "needs_follow_up"]
+  );
+  assert.deepEqual(
+    contactDimensionStatusFilters({
+      actionState: "needs_follow_up",
+      relationshipProgress: "nurture"
+    }),
+    []
+  );
 });
 
 test("tasksToScheduleItems maps follow-up task payloads", () => {
@@ -768,9 +830,9 @@ test("tasksToScheduleItems maps follow-up task payloads", () => {
       monthLabel: "2026年7月",
       organization: "Kumo Grid",
       priority: "待确认",
-      recommendedAction: "跟进 Maya Chen 的关系进展。",
+      recommendedAction: "联系 Maya Chen，确认下一步。",
       timeLabel: "10:00",
-      title: "跟进 Maya Chen"
+      title: "Review follow-up for contact_024"
     }
   ]);
 });

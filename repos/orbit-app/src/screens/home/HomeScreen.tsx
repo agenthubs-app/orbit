@@ -54,7 +54,7 @@ const homeEventFilterOrder: HomeEventFilter[] = [
 ];
 
 const homeAskPrompts = [
-  "今天我应该先跟进谁？",
+  "今天我应该先联系谁？",
   "帮我准备最近一场活动",
   "有哪些人适合互相介绍？"
 ] as const;

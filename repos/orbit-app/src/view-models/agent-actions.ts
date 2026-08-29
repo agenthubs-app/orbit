@@ -44,7 +44,7 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
   dormant_activation: "沉睡关系唤醒",
   event_reminder: "活动准备",
   message_draft_suggestion: "消息草稿",
-  post_event_followup: "活动后跟进"
+  post_event_followup: "活动后联系"
 };
 
 const PRIORITY_LABELS: Record<string, string> = {

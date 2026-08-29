@@ -141,7 +141,7 @@ export function RelationshipInboxScreen() {
 
   return (
     <AppScreen
-      eyebrow="关系与跟进"
+      eyebrow="人脉消息"
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -394,7 +394,7 @@ function InboxContent({
         <>
           <ActionButton
             icon="create-outline"
-            label="写一段新跟进"
+            label="写一条新消息"
             onPress={() => {
               onSetCreatedThread(null);
               setComposing(true);
@@ -430,7 +430,7 @@ function InboxContent({
           ) : (
             <DataCard detail="新的关系往来会显示在这里" title="暂无对话">
               <Text style={styles.bodyText}>
-                可以先写一段跟进草稿，确认后再放进收件箱复核。
+                可以先写一段消息草稿，确认后再放进收件箱。
               </Text>
             </DataCard>
           )}
@@ -710,7 +710,7 @@ function AlertsCard({
           <Ionicons color={colors.text3} name="notifications-outline" size={22} />
           <Text style={styles.emptyInboxTitle}>暂无提醒</Text>
           <Text style={styles.threadPreview}>
-            有需要准备的会面、跟进或 Orbit AI 提示时，会先出现在这里。
+            有需要准备的会面、待办或 Orbit AI 提示时，会先出现在这里。
           </Text>
         </View>
       )}
@@ -1184,7 +1184,7 @@ function NewThreadComposer({
   }
 
   return (
-    <DataCard detail="确认前不会发送给对方" title="新跟进草稿">
+    <DataCard detail="确认前不会发送给对方" title="新消息草稿">
       <View style={styles.composer}>
         <LabeledInput
           label="收件人"
@@ -1201,14 +1201,14 @@ function NewThreadComposer({
         <LabeledInput
           label="主题"
           onChangeText={setSubject}
-          placeholder="这次跟进的主题"
+          placeholder="这次联系的主题"
           value={subject}
         />
         <Text style={styles.fieldLabel}>正文</Text>
         <TextInput
           multiline
           onChangeText={setBody}
-          placeholder="写下第一条跟进内容。"
+          placeholder="写下第一条消息。"
           placeholderTextColor={colors.text4}
           style={styles.input}
           value={body}

@@ -272,7 +272,7 @@ function profileSignalFieldLabel(fieldName: string): string {
   const labels: Record<string, string> = {
     headline: "标题",
     homeMarket: "主要市场",
-    preferredFollowUpWindow: "跟进时间",
+    preferredFollowUpWindow: "联系时间",
     preferredIntroChannels: "介绍渠道",
     relationshipGoal: "关系目标",
     targetRelationshipTypes: "目标关系类型"
@@ -331,14 +331,14 @@ function profileDocumentKnownValue(value: string): string {
   const knownValues: Record<string, string> = {
     "BD partners": "商务合作伙伴",
     "Follow up after events with clear source evidence and mutual context.":
-      "活动后带着明确来源和双方上下文跟进。",
+      "活动后带着明确背景联系对方。",
     "Partnerships Lead": "合作负责人",
     "Tokyo": "东京",
     "Turn event context into source-backed follow-up decisions.":
-      "把活动上下文变成有来源依据的跟进决策。",
+      "把活动背景变成有依据的联系判断。",
     "community partners": "社群合作伙伴",
     "email": "邮件",
-    "event follow-up": "活动后跟进",
+    "event follow-up": "活动后联系",
     "event hosts": "活动主办方",
     "founders": "创始人",
     "warm intro": "熟人介绍"
@@ -584,7 +584,7 @@ function profileDocumentFieldLabel(fieldName: string): string {
     homeMarket: "主要市场",
     organization: "公司",
     phone: "电话",
-    preferredFollowUpWindow: "跟进时间",
+    preferredFollowUpWindow: "联系时间",
     preferredIntroChannels: "介绍渠道",
     relationshipGoal: "关系目标",
     role: "角色",

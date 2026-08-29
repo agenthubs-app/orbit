@@ -131,11 +131,11 @@ function queryText(value: string): string {
     case "Find warm introduction paths in my live relationship graph":
       return "找暖介绍路径";
     case "Which investors need an event follow-up this week?":
-      return "本周该跟进哪些投资人";
+      return "本周该联系哪些投资人";
     case "Who can introduce me to climate pilot operators?":
       return "谁能介绍气候试点运营方";
     case "Who needs a follow-up from my live relationship graph?":
-      return "找需要跟进的人";
+      return "找需要联系的人";
     default:
       return value.trim() || "搜索关系资源";
   }
@@ -148,7 +148,7 @@ function businessIntentLabel(value: string): string {
     case "find_warm_intro":
       return "找暖介绍";
     case "recover_event_follow_up":
-      return "找会后跟进";
+      return "找会后联系";
     case "source_customer_reference":
       return "找客户参考";
     default:
@@ -197,7 +197,7 @@ function followUpStatusLabel(value: string): string {
     case "dormant":
       return "沉睡关系";
     case "needs_follow_up":
-      return "待跟进";
+      return "待联系";
     case "waiting_on_them":
       return "等对方";
     case "nurture":
@@ -273,7 +273,7 @@ function evidenceHintText(value: string): string {
   }
 
   if (/event-import/i.test(value)) {
-    return "来自活动导入记录和跟进状态。";
+    return "来自活动记录和关系进展。";
   }
 
   if (/email signal/i.test(value)) {
@@ -294,7 +294,7 @@ function relationshipContextText(value: string): string {
     case "Met at the climate founders dinner and discussed storage pilot operators.":
       return "在气候创业者晚餐认识，聊过储能试点运营方。";
     default:
-      return value.trim() || "已有关系证据，适合先复核再跟进。";
+      return value.trim() || "已有关系记录，适合确认后再联系。";
   }
 }
 
@@ -303,7 +303,7 @@ function evidenceText(value: string): string {
     case "Email signal says Omar can broker fintech investor and partner referrals after a short context brief.":
       return "邮件线索：Omar 可在收到简短背景后介绍金融科技投资人与合作方。";
     case "Event roster fixture marks Mina as a climate storage distribution partner needing follow-up.":
-      return "活动名单：Mina 是气候储能分销合作负责人，需要跟进。";
+      return "活动名单：Mina 是气候储能分销合作负责人，需要联系。";
     case "External contacts fixture links Hana to climate community context and founder roundtable planning.":
       return "联系人导入记录：Hana 关联气候社群和创业者圆桌。";
     case "Manual dinner note says Kenji asked for a warm intro to climate pilot operators this week.":
@@ -316,7 +316,7 @@ function evidenceText(value: string): string {
 function recommendedActionText(value: string, name: string): string {
   switch (value) {
     case "Ask Hana whether the guild wants a founder roundtable follow-up.":
-      return "问 Hana 是否需要继续推进创业者圆桌的会后跟进。";
+      return "问 Hana 是否愿意继续聊创业者圆桌后的合作。";
     case "Send Kenji the climate pilot operator intro with the dinner context attached.":
       return "把气候试点运营方的引荐需求发给 Kenji，并附上晚餐背景。";
     case "Send Mina a post-event storage partnership recap and ask for the customer reference path.":
@@ -324,7 +324,7 @@ function recommendedActionText(value: string, name: string): string {
     case "Send Omar a concise fintech partner diligence brief before asking for referrals.":
       return "先给 Omar 一段金融科技合作背景，再请求引荐。";
     default:
-      return `打开 ${name} 的详情，确认证据后再跟进。`;
+      return `打开 ${name} 的详情，确认背景后再联系。`;
   }
 }
 
@@ -564,7 +564,7 @@ export function relationshipSearchToView(data: unknown): RelationshipSearchView 
     filtersLabel: appliedFiltersLabel(appliedFilters),
     nextAction:
       results.length > 0
-        ? "先看来源证据，再决定是否跟进。"
+        ? "先看关系背景，再决定是否联系。"
         : "换个问法，或先清空筛选。",
     queryLabel: `问题：${queryText(query)}`,
     results,

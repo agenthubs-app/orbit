@@ -86,10 +86,10 @@ test("relationshipSearchSuggestionsToView maps web suggestions into Chinese chip
         }
       },
       {
-        detail: "找会后跟进 · 待跟进",
-        evidenceHint: "来自活动导入记录和跟进状态。",
+        detail: "找会后联系 · 待联系",
+        evidenceHint: "来自活动记录和关系进展。",
         id: "relationship-search-suggestion:investor-event-follow-up",
-        query: "本周该跟进哪些投资人",
+        query: "本周该联系哪些投资人",
         request: {
           body: {
             businessIntent: "recover_event_follow_up",
@@ -173,7 +173,7 @@ test("relationshipSearchSuggestionsToView localizes live relationship graph prom
     (view as { suggestions: { query: string }[] }).suggestions.map(
       (suggestion) => suggestion.query
     ),
-    ["找需要跟进的人", "找暖介绍路径", "找客户参考机会"]
+    ["找需要联系的人", "找暖介绍路径", "找客户参考机会"]
   );
 });
 
@@ -290,8 +290,8 @@ test("relationshipSearchToView maps web natural search results into Chinese card
 
   assert.deepEqual(view, {
     emptyText: "",
-    filtersLabel: "意图：找暖介绍 · 行业：气候 · 来源：手动记录 · 价值：战略引荐 · 状态：待跟进",
-    nextAction: "先看来源证据，再决定是否跟进。",
+    filtersLabel: "意图：找暖介绍 · 行业：气候 · 来源：手动记录 · 价值：战略引荐 · 状态：待联系",
+    nextAction: "先看关系背景，再决定是否联系。",
     queryLabel: "问题：谁能介绍气候试点运营方",
     results: [
       {

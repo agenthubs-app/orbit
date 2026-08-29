@@ -88,7 +88,7 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     people: "2"
   });
   assert.deepEqual(view.assistant, {
-    placeholder: "问人脉、活动、跟进或日程",
+    placeholder: "问人脉、活动、待办或日程",
     title: "有什么可以帮你？"
   });
   assert.deepEqual(view.layout, {
@@ -113,7 +113,7 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
     },
     {
       detail: "今天优先处理",
-      label: "在推进",
+      label: "推进中",
       tone: "live",
       value: "1"
     }

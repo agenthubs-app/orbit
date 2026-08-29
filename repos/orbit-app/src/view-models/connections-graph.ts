@@ -134,7 +134,7 @@ type UnknownRecord = Record<string, unknown>;
 const STAGE_LABELS: Record<string, string> = {
   active: "推进中",
   captured: "已记录",
-  needs_follow_up: "待跟进",
+  needs_follow_up: "待联系",
   nurture: "长期维护",
   nurtured: "长期维护",
   partnered: "已合作",
@@ -294,7 +294,7 @@ function contributionLabel(value: string): string {
     case "context":
       return "背景";
     case "follow_up_signal":
-      return "跟进信号";
+      return "联系建议";
     case "introduced_by":
       return "引荐";
     case "user_note":
@@ -311,7 +311,7 @@ function contributionTitle(value: string): string {
     case "context":
       return "关系背景";
     case "follow_up_signal":
-      return "跟进记录";
+      return "联系记录";
     case "introduced_by":
       return "引荐来源";
     case "user_note":
@@ -342,14 +342,14 @@ function nextAction(item: UnknownRecord): string {
   const reviewMatch = /^review (?:the )?next follow-up for (.+?)\.?$/iu.exec(action);
 
   if (reviewMatch?.[1]?.trim()) {
-    return `跟进${reviewMatch[1].trim()} 的关系进展。`;
+    return `联系${reviewMatch[1].trim()}，确认下一步。`;
   }
 
   if (/^review .+ with source evidence before agent use\.?$/iu.test(action)) {
-    return `跟进${name} 的关系进展。`;
+    return `联系${name}，确认下一步。`;
   }
 
-  return userFacingText(action, "先整理关系背景，再安排一次具体跟进。");
+  return userFacingText(action, "先整理关系背景，再安排一次具体联系。");
 }
 
 function evidenceBacked(item: UnknownRecord): boolean {
@@ -530,7 +530,7 @@ export function buildConnectionProfilePreviewRequest(
           valueTypes: ["commercial_opportunity", "knowledge_exchange"]
         },
         nextAction: {
-          label: `复核${name}的下一步跟进`,
+          label: `确认${name}的下一步`,
           rationale: "先确认双方各自能获得什么，再决定是否发送消息或安排会面。"
         },
         relationshipType: "partner_candidate"
@@ -592,7 +592,7 @@ export function connectionProfileToView(data: unknown): ConnectionProfilePreview
     nextActionDue: formatDateTime(stringField(profileNextAction ?? {}, "dueAt")),
     nextActionTitle: userFacingText(
       stringField(profileNextAction ?? {}, "label"),
-      `复核${name}的下一步跟进`
+      `确认${name}的下一步`
     ),
     profileLine: [
       relationshipTypeLabel(stringField(profile, "relationshipType")),
@@ -630,7 +630,7 @@ export function connectionGraphToView(data: unknown): ConnectionGraphView {
   return {
     metrics: [
       { label: "总连接", value: String(total) },
-      { label: "待跟进", value: String(followupCount) },
+      { label: "待联系", value: String(followupCount) },
       { label: "强关系", value: String(strongCount) },
       { label: "有证据", value: String(evidenceCount) }
     ],
@@ -668,7 +668,7 @@ export function connectionGraphToView(data: unknown): ConnectionGraphView {
       })),
     summary:
       total > 0
-        ? `${total} 段关系连接，先看需要跟进和强度最高的人。`
+        ? `${total} 段关系连接，先看待联系且关系强度最高的人。`
         : "还没有关系连接。先从联系人或活动记录开始。",
     title: "人脉图谱"
   };
