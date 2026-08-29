@@ -2,13 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Image,
+  Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
   dashboardAggregatePath,
   dashboardOpportunitiesRecomputePath,
@@ -23,10 +27,29 @@ import { colors, radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
+  contactsAnalysisToView,
+  type ContactsAnalysisActivityView,
+  type ContactsAnalysisActionView,
+  type ContactsAnalysisBriefActionView,
+  type ContactsAnalysisCoverageSignalView,
+  type ContactsAnalysisDimensionView,
+  type ContactsAnalysisHealthView,
+  type ContactsAnalysisStructureDimensionId,
+  type ContactsAnalysisStructureDimensionView,
+  type ContactsAnalysisStructureItemView
+} from "../../view-models/contacts-analysis";
+import {
   contactsDashboardToView,
   type ContactsDashboardOverviewItem,
   type ContactsDashboardView
 } from "../../view-models/contacts-dashboard";
+import {
+  contactAvatarFor,
+  contactLocationsToValues,
+  contactsToSummaries,
+  type ContactAvatarTone,
+  type ContactSummary
+} from "../../view-models/contacts";
 import {
   dashboardOpportunitiesRecomputeToView,
   type DashboardOpportunitiesRecomputeView,
@@ -51,6 +74,8 @@ type ContactsDashboardOverviewFilter = {
   value?: string;
 };
 
+type AnalysisSegment = "opportunity" | "overview" | "structure";
+
 function overviewFilterFor(
   item: ContactsDashboardOverviewItem
 ): ContactsDashboardOverviewFilter {
@@ -71,6 +96,7 @@ function overviewFilterFor(
 
 export function ContactsDashboardScreen() {
   const client = useOrbitApiClient();
+  const { baseUrl } = useOrbitApiBaseUrl();
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] =
     useState<DashboardOpportunitiesRecomputeView | null>(null);
@@ -109,6 +135,10 @@ export function ContactsDashboardScreen() {
     ORBIT_API_ENDPOINTS.profile,
     () => false
   );
+  const contactsState = useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.contacts,
+    (data) => contactsToSummaries(data).length === 0
+  );
   const profile =
     profileState.kind === "success" || profileState.kind === "empty"
       ? profileToSummary(profileState.data)
@@ -129,6 +159,7 @@ export function ContactsDashboardScreen() {
     gapsState.refresh();
     distributionsState.refresh();
     profileState.refresh();
+    contactsState.refresh();
   }
 
   async function recomputeContactDashboardOpportunities() {
@@ -215,12 +246,13 @@ export function ContactsDashboardScreen() {
             opportunitiesState.refreshing ||
             gapsState.refreshing ||
             distributionsState.refreshing ||
-            profileState.refreshing
+            profileState.refreshing ||
+            contactsState.refreshing
           }
           tintColor={colors.accent}
         />
       }
-      title="人脉表盘"
+      title="人脉分析"
     >
       {aggregateState.kind === "loading" ? <LoadingState /> : null}
       {aggregateState.kind === "offline" ? (
@@ -231,13 +263,19 @@ export function ContactsDashboardScreen() {
       ) : null}
       {aggregateState.kind === "empty" ? (
         <EmptyState
-          message="先确认联系人，表盘会开始显示关系覆盖和下一步。"
+          message="先确认联系人，Orbit 才能判断关系覆盖和下一步。"
           title="暂无人脉资产"
         />
       ) : null}
       {aggregateState.kind === "success" ? (
         <ContactsDashboardContent
           aggregate={aggregateState.data}
+          baseUrl={baseUrl}
+          contactsPayload={
+            contactsState.kind === "success" || contactsState.kind === "empty"
+              ? contactsState.data
+              : null
+          }
           distributions={
             distributionsState.kind === "success" ? distributionsState.data : null
           }
@@ -273,6 +311,8 @@ export function ContactsDashboardScreen() {
 
 function ContactsDashboardContent({
   aggregate,
+  baseUrl,
+  contactsPayload,
   distributions,
   gaps,
   onRecompute,
@@ -289,6 +329,8 @@ function ContactsDashboardContent({
   summary
 }: {
   aggregate: unknown;
+  baseUrl: string;
+  contactsPayload: unknown;
   distributions: unknown;
   gaps: unknown;
   onRecompute: () => void;
@@ -305,60 +347,154 @@ function ContactsDashboardContent({
   summary: unknown;
 }) {
   const router = useRouter();
-  const view = contactsDashboardToView({
-    aggregate,
-    distributions,
-    gaps,
-    opportunities,
-    summary
-  });
+  const [analysisSegment, setAnalysisSegment] =
+    useState<AnalysisSegment>("overview");
+  const [structureDimension, setStructureDimension] =
+    useState<ContactsAnalysisStructureDimensionId>("industry");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [healthExpanded, setHealthExpanded] = useState(false);
+  const [selectedAction, setSelectedAction] =
+    useState<ContactsAnalysisActionView | null>(null);
+  const contacts = contactsToSummaries(contactsPayload);
+  const contactLocations = contactLocationsToValues(contactsPayload);
+  const view = contactsAnalysisToView(
+    {
+      aggregate,
+      distributions,
+      gaps,
+      opportunities,
+      summary
+    },
+    relationshipGoalDraft?.relationshipGoal ?? "",
+    contacts,
+    contactLocations
+  );
 
-  function openContactsDrilldown(filter: ContactsDashboardOverviewFilter) {
+  function openRecommendedAction(action: ContactsAnalysisActionView) {
+    if (action.brief) {
+      setSelectedAction(action);
+      return;
+    }
+
+    if (action.contactId) {
+      router.push(
+        `/contacts/${encodeURIComponent(action.contactId)}` as Href
+      );
+      return;
+    }
+
+    if (action.id === "complete-goal") {
+      setEditingGoal(true);
+      return;
+    }
+
+    router.push("/contacts/list" as Href);
+  }
+
+  function openBriefAction(
+    action: ContactsAnalysisBriefActionView,
+    primary: boolean
+  ) {
+    setSelectedAction(null);
+
+    if (action.kind === "open_pipeline") {
+      router.push("/contacts/pipeline" as Href);
+      return;
+    }
+
+    if (action.kind === "open_contacts") {
+      router.push("/contacts/list" as Href);
+      return;
+    }
+
+    if (action.contactId && primary) {
+      const contact = contacts.find((item) => item.id === action.contactId);
+      const inboxHref = `/inbox?contactId=${encodeURIComponent(
+        action.contactId
+      )}&participantName=${encodeURIComponent(
+        contact?.name ?? "联系人"
+      )}&organization=${encodeURIComponent(contact?.organization ?? "")}` as Href;
+
+      router.push(inboxHref);
+      return;
+    }
+
+    if (action.contactId) {
+      router.push(
+        `/contacts/${encodeURIComponent(action.contactId)}` as Href
+      );
+      return;
+    }
+
+    router.push("/contacts/list" as Href);
+  }
+
+  function openCoverageSignal(signal: ContactsAnalysisCoverageSignalView) {
+    if (signal.id === "high-value") {
+      router.push({
+        pathname: "/contacts/list",
+        params: { value: "strategic_fit" }
+      });
+      return;
+    }
+
+    if (signal.id === "referral") {
+      router.push({
+        pathname: "/contacts/list",
+        params: { value: "referral_path" }
+      });
+      return;
+    }
+
     router.push({
       pathname: "/contacts/list",
-      params: {
-        ...(filter.source ? { source: filter.source } : {}),
-        ...(filter.status ? { status: filter.status } : {}),
-        ...(filter.tag ? { tag: filter.tag } : {}),
-        ...(filter.value ? { value: filter.value } : {})
-      }
+      params: { status: "active" }
+    });
+  }
+
+  function openGoalPath() {
+    if (view.goalConfigured) {
+      router.push("/contacts/pipeline" as Href);
+    } else {
+      setEditingGoal(true);
+    }
+  }
+
+  function openStructureItem(item: ContactsAnalysisStructureItemView) {
+    router.push({
+      pathname: "/contacts/list",
+      params: { query: item.label }
     });
   }
 
   return (
     <>
-      <DataCard detail={view.subtitle} title="人脉星图">
-        <OrbitMap view={view} />
-        <OverviewGrid
-          items={view.overview}
-          onOpenFilter={openContactsDrilldown}
-        />
-      </DataCard>
+      <GoalBar
+        goal={view.goal}
+        onEdit={() => setEditingGoal((current) => !current)}
+      />
 
-      <DataCard detail={view.summary} title={view.diagnosis.label}>
-        <View style={styles.scoreRow}>
-          <View style={styles.scoreBadge}>
-            <Ionicons color={colors.accent} name="pulse-outline" size={18} />
-            <Text style={styles.scoreText}>{view.diagnosis.scoreLabel}</Text>
-          </View>
-          <Text style={styles.bodyText}>{view.diagnosis.detail}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          disabled={recomputing}
-          onPress={onRecompute}
-          style={({ pressed }) => [
-            styles.recomputeButton,
-            recomputing ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
-          <Text style={styles.recomputeButtonText}>
-            {recomputing ? "计算中" : "重新计算机会"}
-          </Text>
-        </Pressable>
-      </DataCard>
+      {editingGoal && relationshipGoalDraft ? (
+        <ContactDashboardGoalCard
+          draft={relationshipGoalDraft}
+          error={relationshipGoalError}
+          message={relationshipGoalMessage}
+          onChange={onRelationshipGoalChange}
+          onSave={onSaveRelationshipGoal}
+          saving={savingRelationshipGoal}
+        />
+      ) : null}
+
+      <AnalysisDiagnosisCard
+        diagnosis={view.diagnosis}
+        onRecompute={onRecompute}
+        recomputing={recomputing}
+      />
+
+      <AnalysisSegmentedControl
+        onSelect={setAnalysisSegment}
+        selected={analysisSegment}
+      />
 
       {recomputeResult ? (
         <DataCard
@@ -375,42 +511,1282 @@ function ContactsDashboardContent({
         <Text style={styles.errorText}>{recomputeError}</Text>
       ) : null}
 
-      {relationshipGoalDraft ? (
-        <ContactDashboardGoalCard
-          draft={relationshipGoalDraft}
-          error={relationshipGoalError}
-          message={relationshipGoalMessage}
-          onChange={onRelationshipGoalChange}
-          onSave={onSaveRelationshipGoal}
-          saving={savingRelationshipGoal}
+      {analysisSegment === "overview" ? (
+        <>
+          <AnalysisSnapshotCard dimensions={view.dimensions} />
+          <RecommendedActionsCard
+            actions={view.actions.slice(0, 2)}
+            baseUrl={baseUrl}
+            contacts={contacts}
+            onOpen={openRecommendedAction}
+            subtitle="最值得优先推进的关系路径"
+            title="关键机会"
+          />
+          <AnalysisActivityCard activity={view.activity} />
+        </>
+      ) : null}
+
+      {analysisSegment === "structure" ? (
+        <StructureAnalysisView
+          dimensions={view.structureDimensions}
+          health={view.health}
+          healthExpanded={healthExpanded}
+          onOpenItem={openStructureItem}
+          onSelectDimension={setStructureDimension}
+          onToggleHealth={() =>
+            setHealthExpanded((current) => !current)
+          }
+          selectedDimension={structureDimension}
         />
       ) : null}
 
-      {view.priority ? (
-        <PriorityCard
-          onOpenContact={() => {
-            if (view.priority?.contactId) {
-              router.push(
-                `/contacts/${encodeURIComponent(view.priority.contactId)}` as Href
-              );
-            }
-          }}
-          priority={view.priority}
+      {analysisSegment === "opportunity" ? (
+        <OpportunityAnalysisView
+          actions={view.actions}
+          baseUrl={baseUrl}
+          contacts={contacts}
+          coverage={view.coverage}
+          goalConfigured={view.goalConfigured}
+          onOpenAction={openRecommendedAction}
+          onOpenPath={openGoalPath}
+          onOpenSignal={openCoverageSignal}
+          onRecompute={onRecompute}
+          recomputing={recomputing}
         />
       ) : null}
 
-      {view.gaps.length > 0 ? <GapCard gaps={view.gaps} /> : null}
-      {view.industries.length > 0 ? (
-        <IndustryCard industries={view.industries} />
-      ) : null}
-      {view.valueTypes.length > 0 ? (
-        <ValueTypeCard valueTypes={view.valueTypes} />
-      ) : null}
-      {view.recentActivity.length > 0 ? (
-        <ActivityCard activities={view.recentActivity} />
-      ) : null}
+      <OpportunityActionBriefSheet
+        action={selectedAction}
+        onClose={() => setSelectedAction(null)}
+        onOpenPrimary={(action) => openBriefAction(action, true)}
+        onOpenSecondary={(action) => openBriefAction(action, false)}
+        visible={selectedAction !== null}
+      />
     </>
   );
+}
+
+function opportunityTypeLabel(
+  type: NonNullable<ContactsAnalysisActionView["brief"]>["type"]
+): string {
+  if (type === "coverage_gap") return "覆盖缺口";
+  if (type === "relationship_risk") return "关系维护";
+  if (type === "referral_path") return "引荐路径";
+  return "跟进行动";
+}
+
+function OpportunityActionBriefSheet({
+  action,
+  onClose,
+  onOpenPrimary,
+  onOpenSecondary,
+  visible
+}: {
+  action: ContactsAnalysisActionView | null;
+  onClose: () => void;
+  onOpenPrimary: (action: ContactsAnalysisBriefActionView) => void;
+  onOpenSecondary: (action: ContactsAnalysisBriefActionView) => void;
+  visible: boolean;
+}) {
+  const brief = action?.brief;
+
+  return (
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="overFullScreen"
+      transparent
+      visible={visible}
+    >
+      <View style={styles.actionBriefRoot}>
+        <Pressable
+          accessibilityLabel="关闭行动简报"
+          accessibilityRole="button"
+          onPress={onClose}
+          style={styles.actionBriefScrim}
+        />
+        <View style={styles.actionBriefSheet}>
+          {brief ? (
+            <>
+              <View style={styles.actionBriefHandle} />
+              <View style={styles.actionBriefHeader}>
+                <View style={styles.actionBriefHeaderCopy}>
+                  <Text style={styles.actionBriefType}>
+                    {opportunityTypeLabel(brief.type)} · {brief.priorityScore} 分
+                  </Text>
+                  <Text style={styles.actionBriefTitle}>{brief.title}</Text>
+                </View>
+                <Pressable
+                  accessibilityLabel="关闭行动简报"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={onClose}
+                  style={({ pressed }) => [
+                    styles.actionBriefClose,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <Ionicons color={colors.text2} name="close" size={21} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={styles.actionBriefContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.actionBriefSection}>
+                  <Text style={styles.actionBriefSectionLabel}>为什么现在</Text>
+                  <Text style={styles.actionBriefJudgment}>{brief.judgment}</Text>
+                </View>
+
+                <View style={styles.actionBriefSection}>
+                  <Text style={styles.actionBriefSectionLabel}>判断依据</Text>
+                  <View style={styles.actionBriefList}>
+                    {(brief.evidence.length > 0
+                      ? brief.evidence
+                      : ["现有记录不足，先补充联系人信息"]
+                    ).map((item) => (
+                      <View key={item} style={styles.actionBriefEvidenceRow}>
+                        <Ionicons
+                          color={colors.live}
+                          name="checkmark-circle-outline"
+                          size={18}
+                        />
+                        <Text style={styles.actionBriefListText}>{item}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.actionBriefSection}>
+                  <Text style={styles.actionBriefSectionLabel}>建议步骤</Text>
+                  <View style={styles.actionBriefList}>
+                    {(brief.steps.length > 0
+                      ? brief.steps
+                      : ["先查看联系人资料，再决定下一步"]
+                    ).map((item, index) => (
+                      <View key={`${index}:${item}`} style={styles.actionBriefStepRow}>
+                        <View style={styles.actionBriefStepIndex}>
+                          <Text style={styles.actionBriefStepIndexText}>
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <Text style={styles.actionBriefListText}>{item}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </ScrollView>
+
+              <View style={styles.actionBriefActions}>
+                {brief.secondaryAction ? (
+                  <Pressable
+                    accessibilityLabel={brief.secondaryAction.label}
+                    accessibilityRole="button"
+                    onPress={() => onOpenSecondary(brief.secondaryAction!)}
+                    style={({ pressed }) => [
+                      styles.actionBriefSecondaryButton,
+                      pressed ? styles.pressed : null
+                    ]}
+                  >
+                    <Text style={styles.actionBriefSecondaryText}>
+                      {brief.secondaryAction.label}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityLabel={brief.primaryAction.label}
+                  accessibilityRole="button"
+                  onPress={() => onOpenPrimary(brief.primaryAction)}
+                  style={({ pressed }) => [
+                    styles.actionBriefPrimaryButton,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <Text style={styles.actionBriefPrimaryText}>
+                    {brief.primaryAction.label}
+                  </Text>
+                  <Ionicons
+                    color={colors.onAccent}
+                    name="arrow-forward"
+                    size={17}
+                  />
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function GoalBar({ goal, onEdit }: { goal: string; onEdit: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel={`当前目标：${goal}，编辑目标`}
+      accessibilityRole="button"
+      onPress={onEdit}
+      style={({ pressed }) => [
+        styles.goalBar,
+        pressed ? styles.pressed : null
+      ]}
+    >
+      <View style={styles.goalBarCopy}>
+        <Text style={styles.goalBarLabel}>当前目标</Text>
+        <Text numberOfLines={2} style={styles.goalBarValue}>
+          {goal}
+        </Text>
+      </View>
+      <View style={styles.goalEditButton}>
+        <Ionicons color={colors.ink} name="pencil-outline" size={19} />
+      </View>
+    </Pressable>
+  );
+}
+
+function AnalysisDiagnosisCard({
+  diagnosis,
+  onRecompute,
+  recomputing
+}: {
+  diagnosis: ReturnType<typeof contactsAnalysisToView>["diagnosis"];
+  onRecompute: () => void;
+  recomputing: boolean;
+}) {
+  return (
+    <View style={styles.analysisDiagnosisCard}>
+      <View style={styles.analysisDiagnosisIcon}>
+        <Ionicons color={colors.accent} name="sparkles-outline" size={20} />
+      </View>
+      <Text style={styles.analysisDiagnosisText}>{diagnosis.detail}</Text>
+      <View style={styles.analysisDiagnosisScore}>
+        <Text style={styles.analysisDiagnosisLabel}>
+          {diagnosis.statusLabel}
+        </Text>
+        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.analysisDiagnosisValue}>
+          {diagnosis.scoreLabel}
+        </Text>
+      </View>
+      <Pressable
+        accessibilityLabel="重新计算人脉分析"
+        accessibilityRole="button"
+        disabled={recomputing}
+        onPress={onRecompute}
+        style={({ pressed }) => [
+          styles.analysisDiagnosisRefresh,
+          recomputing ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.text3} name="refresh-outline" size={17} />
+      </Pressable>
+    </View>
+  );
+}
+
+function AnalysisSegmentedControl({
+  onSelect,
+  selected
+}: {
+  onSelect: (segment: AnalysisSegment) => void;
+  selected: AnalysisSegment;
+}) {
+  const segments: { id: AnalysisSegment; label: string }[] = [
+    { id: "overview", label: "概览" },
+    { id: "structure", label: "结构" },
+    { id: "opportunity", label: "机会" }
+  ];
+
+  return (
+    <View style={styles.analysisSegmentedControl}>
+      {segments.map((segment) => {
+        const isSelected = selected === segment.id;
+
+        return (
+          <Pressable
+            accessibilityLabel={`${segment.label}分析`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            key={segment.id}
+            onPress={() => onSelect(segment.id)}
+            style={({ pressed }) => [
+              styles.analysisSegment,
+              isSelected ? styles.analysisSegmentSelected : null,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text
+              style={[
+                styles.analysisSegmentText,
+                isSelected ? styles.analysisSegmentTextSelected : null
+              ]}
+            >
+              {segment.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function AnalysisSnapshotCard({
+  dimensions
+}: {
+  dimensions: ContactsAnalysisDimensionView[];
+}) {
+  return (
+    <View style={styles.analysisSurface}>
+      <View style={styles.analysisSectionHeader}>
+        <View style={styles.analysisSectionTitleBlock}>
+          <Text style={styles.analysisSectionTitle}>结构摘要</Text>
+          <Text style={styles.analysisSectionDetail}>快速判断当前人脉构成</Text>
+        </View>
+      </View>
+      <AnalysisDimensionSummary dimensions={dimensions} />
+    </View>
+  );
+}
+
+function StructureDimensionControl({
+  dimensions,
+  onSelect,
+  selected
+}: {
+  dimensions: ContactsAnalysisStructureDimensionView[];
+  onSelect: (dimension: ContactsAnalysisStructureDimensionId) => void;
+  selected: ContactsAnalysisStructureDimensionId;
+}) {
+  return (
+    <View style={styles.structureDimensionControl}>
+      {dimensions.map((dimension) => {
+        const isSelected = selected === dimension.id;
+
+        return (
+          <Pressable
+            accessibilityLabel={`${dimension.label}结构分析`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+            key={dimension.id}
+            onPress={() => onSelect(dimension.id)}
+            style={({ pressed }) => [
+              styles.structureDimensionButton,
+              isSelected ? styles.structureDimensionButtonSelected : null,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Ionicons
+              color={isSelected ? colors.accent : colors.text3}
+              name={structureDimensionIcon(dimension.id)}
+              size={16}
+            />
+            <Text
+              style={[
+                styles.structureDimensionText,
+                isSelected ? styles.structureDimensionTextSelected : null
+              ]}
+            >
+              {dimension.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function StructureBreakdownCard({
+  dimension,
+  onOpenItem
+}: {
+  dimension: ContactsAnalysisStructureDimensionView;
+  onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
+}) {
+  return (
+    <View style={styles.analysisSurface}>
+      <View style={styles.analysisSectionHeader}>
+        <View style={styles.analysisSectionTitleBlock}>
+          <Text style={styles.analysisSectionTitle}>{dimension.title}</Text>
+          <Text style={styles.analysisSectionDetail}>{dimension.summary}</Text>
+        </View>
+        <Text style={styles.structureBreakdownHint}>选择维度查看构成</Text>
+      </View>
+
+      <StructureDistributionRows
+        dimension={dimension}
+        onOpenItem={onOpenItem}
+      />
+
+      <View style={styles.structureInsight}>
+        <View style={styles.structureInsightIcon}>
+          <Ionicons color={colors.amber} name="bulb-outline" size={18} />
+        </View>
+        <View style={styles.structureInsightCopy}>
+          <Text style={styles.structureInsightLabel}>结构洞察</Text>
+          <Text style={styles.structureInsightText}>{dimension.insight}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function StructureDistributionRows({
+  dimension,
+  onOpenItem
+}: {
+  dimension: ContactsAnalysisStructureDimensionView;
+  onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
+}) {
+  if (dimension.items.length === 0) {
+    return (
+      <View style={styles.analysisEmptyBlock}>
+        <Ionicons
+          color={colors.text4}
+          name={structureDimensionIcon(dimension.id)}
+          size={20}
+        />
+        <Text style={styles.analysisEmptyText}>
+          补充联系人{dimension.label}信息后，这里会显示分布。
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.structureItemList}>
+      {dimension.items.map((item, index) => {
+        const visual = structureItemVisual(dimension.id, item.label, index);
+        const barWidth = `${Math.max(4, Math.min(100, item.percentage))}%` as `${number}%`;
+
+        return (
+          <Pressable
+            accessibilityLabel={`${item.label}，${item.countLabel}，${item.percentage}%，查看联系人`}
+            accessibilityRole="button"
+            key={item.id}
+            onPress={() => onOpenItem(item)}
+            style={({ pressed }) => [
+              styles.structureItemRow,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <View
+              style={[
+                styles.structureItemIcon,
+                { backgroundColor: visual.backgroundColor }
+              ]}
+            >
+              <Ionicons color={visual.color} name={visual.icon} size={16} />
+            </View>
+            <Text numberOfLines={2} style={styles.structureItemLabel}>
+              {item.label}
+            </Text>
+            <View style={styles.structureItemBarTrack}>
+              <View
+                style={[
+                  styles.structureItemBarFill,
+                  { backgroundColor: visual.color, width: barWidth }
+                ]}
+              />
+            </View>
+            <Text style={styles.structureItemCount}>{item.countLabel}</Text>
+            <Text style={styles.structureItemPercentage}>
+              {item.percentage}%
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function AnalysisDimensionSummary({
+  dimensions
+}: {
+  dimensions: ContactsAnalysisDimensionView[];
+}) {
+  return (
+    <View style={styles.analysisDimensionGrid}>
+      {dimensions.map((dimension, index) => {
+        const visual = analysisToneVisual(dimension.tone);
+
+        return (
+          <View
+            key={dimension.id}
+            style={[
+              styles.analysisDimensionItem,
+              index > 0 ? styles.analysisDimensionDivider : null
+            ]}
+          >
+            <View style={styles.analysisDimensionHeading}>
+              <View
+                style={[
+                  styles.analysisDimensionIcon,
+                  { backgroundColor: visual.backgroundColor }
+                ]}
+              >
+                <Ionicons
+                  color={visual.color}
+                  name={dimensionIcon(dimension.id)}
+                  size={15}
+                />
+              </View>
+              <Text numberOfLines={1} style={styles.analysisDimensionLabel}>
+                {dimension.label}
+              </Text>
+            </View>
+            <Text numberOfLines={1} style={styles.analysisDimensionValue}>
+              {dimension.value}
+            </Text>
+            <Text numberOfLines={1} style={styles.analysisDimensionDetail}>
+              {dimension.detail}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function AnalysisActivityCard({
+  activity
+}: {
+  activity: ContactsAnalysisActivityView[];
+}) {
+  return (
+    <View style={styles.analysisSurface}>
+      <View style={styles.activityTitleRow}>
+        <Text style={styles.analysisSectionTitle}>人脉健康</Text>
+        <Text style={styles.analysisSectionDetail}>当前</Text>
+      </View>
+      <View style={styles.activityGrid}>
+        {activity.map((item, index) => {
+          const visual = analysisToneVisual(item.tone);
+
+          return (
+            <View
+              key={item.id}
+              style={[
+                styles.activityItem,
+                index > 0 ? styles.activityItemDivider : null
+              ]}
+            >
+              <View
+                style={[
+                  styles.activityIcon,
+                  { backgroundColor: visual.backgroundColor }
+                ]}
+              >
+                <Ionicons
+                  color={visual.color}
+                  name={activityIcon(item.id)}
+                  size={17}
+                />
+              </View>
+              <Text style={styles.activityValue}>{item.value}</Text>
+              <Text style={styles.activityLabel}>{item.label}</Text>
+              <Text
+                style={[styles.activityDetail, { color: visual.color }]}
+              >
+                {item.detail}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function StructureAnalysisView({
+  dimensions,
+  health,
+  healthExpanded,
+  onOpenItem,
+  onSelectDimension,
+  onToggleHealth,
+  selectedDimension
+}: {
+  dimensions: ContactsAnalysisStructureDimensionView[];
+  health: ContactsAnalysisHealthView[];
+  healthExpanded: boolean;
+  onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
+  onSelectDimension: (dimension: ContactsAnalysisStructureDimensionId) => void;
+  onToggleHealth: () => void;
+  selectedDimension: ContactsAnalysisStructureDimensionId;
+}) {
+  const activeDimension =
+    dimensions.find((dimension) => dimension.id === selectedDimension) ??
+    dimensions[0];
+
+  if (!activeDimension) {
+    return null;
+  }
+
+  return (
+    <>
+      <StructureDimensionControl
+        dimensions={dimensions}
+        onSelect={onSelectDimension}
+        selected={activeDimension.id}
+      />
+      <StructureBreakdownCard
+        dimension={activeDimension}
+        onOpenItem={onOpenItem}
+      />
+      <RelationshipHealthCard
+        expanded={healthExpanded}
+        health={health}
+        onToggle={onToggleHealth}
+      />
+    </>
+  );
+}
+
+function OpportunityAnalysisView({
+  actions,
+  baseUrl,
+  contacts,
+  coverage,
+  goalConfigured,
+  onOpenAction,
+  onOpenPath,
+  onOpenSignal,
+  onRecompute,
+  recomputing
+}: {
+  actions: ContactsAnalysisActionView[];
+  baseUrl: string;
+  contacts: ContactSummary[];
+  coverage: ReturnType<typeof contactsAnalysisToView>["coverage"];
+  goalConfigured: boolean;
+  onOpenAction: (action: ContactsAnalysisActionView) => void;
+  onOpenPath: () => void;
+  onOpenSignal: (signal: ContactsAnalysisCoverageSignalView) => void;
+  onRecompute: () => void;
+  recomputing: boolean;
+}) {
+  return (
+    <>
+      <GoalCoverageCard
+        coverage={coverage}
+        onOpenPath={onOpenPath}
+        onOpenSignal={onOpenSignal}
+        onRecompute={onRecompute}
+        primaryActionLabel={
+          goalConfigured ? "查看突破路径" : "设置关系目标"
+        }
+        recomputing={recomputing}
+      />
+      <RecommendedActionsCard
+        actions={actions}
+        baseUrl={baseUrl}
+        contacts={contacts}
+        onOpen={onOpenAction}
+        subtitle={
+          goalConfigured ? "按目标贡献和时效排序" : "根据当前关系状态排序"
+        }
+        title="建议动作"
+      />
+    </>
+  );
+}
+
+function structureItemVisual(
+  dimension: ContactsAnalysisStructureDimensionId,
+  label: string,
+  index: number
+): {
+  backgroundColor: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+} {
+  if (dimension === "industry" && /餐饮|食品/u.test(label)) {
+    return {
+      backgroundColor: colors.amberSoft,
+      color: colors.amber,
+      icon: "restaurant-outline"
+    };
+  }
+
+  if (dimension === "industry" && /科技|软件|AI/iu.test(label)) {
+    return {
+      backgroundColor: colors.liveSoft,
+      color: colors.live,
+      icon: "code-slash-outline"
+    };
+  }
+
+  if (dimension === "industry" && /资本|投资/u.test(label)) {
+    return {
+      backgroundColor: colors.accentSofter,
+      color: colors.accent,
+      icon: "analytics-outline"
+    };
+  }
+
+  if (dimension === "industry" && /社群|社区/u.test(label)) {
+    return {
+      backgroundColor: colors.skySoft,
+      color: colors.sky,
+      icon: "people-outline"
+    };
+  }
+
+  if (dimension === "industry" && /顾问|合作|专业/u.test(label)) {
+    return {
+      backgroundColor: colors.amberSoft,
+      color: colors.amber,
+      icon: "briefcase-outline"
+    };
+  }
+
+  if (dimension === "location") {
+    const locationColors = [
+      { backgroundColor: colors.skySoft, color: colors.sky },
+      { backgroundColor: colors.liveSoft, color: colors.live },
+      { backgroundColor: colors.amberSoft, color: colors.amber },
+      { backgroundColor: colors.accentSofter, color: colors.accent }
+    ];
+    const visual = locationColors[index % locationColors.length] ?? locationColors[0]!;
+
+    return { ...visual, icon: "location-outline" };
+  }
+
+  if (dimension === "role") {
+    if (/创始|决策/u.test(label)) {
+      return {
+        backgroundColor: colors.amberSoft,
+        color: colors.amber,
+        icon: "diamond-outline"
+      };
+    }
+
+    if (/管理/u.test(label)) {
+      return {
+        backgroundColor: colors.skySoft,
+        color: colors.sky,
+        icon: "briefcase-outline"
+      };
+    }
+
+    return {
+      backgroundColor: colors.liveSoft,
+      color: colors.live,
+      icon: "person-outline"
+    };
+  }
+
+  if (dimension === "strength") {
+    if (/强/u.test(label)) {
+      return {
+        backgroundColor: colors.liveSoft,
+        color: colors.live,
+        icon: "heart-outline"
+      };
+    }
+
+    if (/弱/u.test(label)) {
+      return {
+        backgroundColor: colors.amberSoft,
+        color: colors.amber,
+        icon: "alert-circle-outline"
+      };
+    }
+
+    return {
+      backgroundColor: colors.skySoft,
+      color: colors.sky,
+      icon: "flame-outline"
+    };
+  }
+
+  const visuals = [
+    { backgroundColor: colors.liveSoft, color: colors.live, icon: "code-slash-outline" as const },
+    { backgroundColor: colors.skySoft, color: colors.sky, icon: "storefront-outline" as const },
+    { backgroundColor: colors.amberSoft, color: colors.amber, icon: "briefcase-outline" as const },
+    { backgroundColor: colors.accentSofter, color: colors.accent, icon: "analytics-outline" as const },
+    { backgroundColor: colors.surface2, color: colors.text3, icon: "grid-outline" as const }
+  ];
+
+  return visuals[index % visuals.length] ?? visuals[0]!;
+}
+
+function structureDimensionIcon(
+  dimension: ContactsAnalysisStructureDimensionId
+): keyof typeof Ionicons.glyphMap {
+  if (dimension === "location") {
+    return "location-outline";
+  }
+
+  if (dimension === "role") {
+    return "people-outline";
+  }
+
+  if (dimension === "strength") {
+    return "heart-outline";
+  }
+
+  return "business-outline";
+}
+
+function analysisToneVisual(
+  tone: ContactsAnalysisActivityView["tone"] | ContactsAnalysisDimensionView["tone"]
+): { backgroundColor: string; color: string } {
+  if (tone === "live") {
+    return { backgroundColor: colors.liveSoft, color: colors.live };
+  }
+
+  if (tone === "sky") {
+    return { backgroundColor: colors.skySoft, color: colors.sky };
+  }
+
+  return { backgroundColor: colors.amberSoft, color: colors.amber };
+}
+
+function dimensionIcon(
+  id: ContactsAnalysisDimensionView["id"]
+): keyof typeof Ionicons.glyphMap {
+  if (id === "industry") {
+    return "layers-outline";
+  }
+
+  if (id === "role") {
+    return "people-outline";
+  }
+
+  return "heart-outline";
+}
+
+function activityIcon(
+  id: ContactsAnalysisActivityView["id"]
+): keyof typeof Ionicons.glyphMap {
+  if (id === "new") {
+    return "person-add-outline";
+  }
+
+  if (id === "strong") {
+    return "flame-outline";
+  }
+
+  return "notifications-outline";
+}
+
+function GoalCoverageCard({
+  coverage,
+  onOpenPath,
+  onOpenSignal,
+  onRecompute,
+  primaryActionLabel,
+  recomputing
+}: {
+  coverage: ReturnType<typeof contactsAnalysisToView>["coverage"];
+  onOpenPath: () => void;
+  onOpenSignal: (signal: ContactsAnalysisCoverageSignalView) => void;
+  onRecompute: () => void;
+  primaryActionLabel: string;
+  recomputing: boolean;
+}) {
+  return (
+    <View style={styles.analysisSurface}>
+      <View style={styles.analysisSectionHeader}>
+        <View style={styles.analysisSectionTitleBlock}>
+          <Text style={styles.analysisSectionTitle}>目标覆盖</Text>
+          <Text style={styles.analysisSectionDetail}>{coverage.statusLabel}</Text>
+        </View>
+        <Pressable
+          accessibilityLabel="重新计算机会"
+          accessibilityRole="button"
+          disabled={recomputing}
+          onPress={onRecompute}
+          style={({ pressed }) => [
+            styles.refreshAnalysisButton,
+            recomputing ? styles.disabled : null,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons
+            color={colors.text3}
+            name="refresh-outline"
+            size={18}
+          />
+        </Pressable>
+      </View>
+
+      <View style={styles.coverageBody}>
+        <CoverageOrbit scoreLabel={coverage.scoreLabel} />
+        <View style={styles.coverageSignals}>
+          {coverage.signals.map((signal) => (
+            <CoverageSignal
+              key={signal.id}
+              onPress={() => onOpenSignal(signal)}
+              signal={signal}
+            />
+          ))}
+        </View>
+      </View>
+
+      <Text style={styles.coverageDiagnosis}>{coverage.detail}</Text>
+      <Pressable
+        accessibilityLabel={primaryActionLabel}
+        accessibilityRole="button"
+        onPress={onOpenPath}
+        style={({ pressed }) => [
+          styles.analysisPrimaryButton,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <Ionicons color={colors.onAccent} name="navigate-outline" size={18} />
+        <Text style={styles.analysisPrimaryButtonText}>{primaryActionLabel}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function CoverageOrbit({ scoreLabel }: { scoreLabel: string }) {
+  return (
+    <View
+      accessibilityLabel={`目标覆盖 ${scoreLabel}`}
+      accessibilityRole="text"
+      accessible
+      style={styles.coverageOrbit}
+    >
+      <View style={[styles.coverageRing, styles.coverageRingOuter]} />
+      <View style={[styles.coverageRing, styles.coverageRingMiddle]} />
+      <View style={[styles.coverageRing, styles.coverageRingInner]} />
+      <View style={[styles.coverageDot, styles.coverageDotLive]} />
+      <View style={[styles.coverageDot, styles.coverageDotSky]} />
+      <View style={[styles.coverageDot, styles.coverageDotAmber]} />
+      <View style={styles.coverageCenter}>
+        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.coverageScore}>
+          {scoreLabel}
+        </Text>
+        <Text style={styles.coverageScoreLabel}>覆盖度</Text>
+      </View>
+    </View>
+  );
+}
+
+function CoverageSignal({
+  onPress,
+  signal
+}: {
+  onPress: () => void;
+  signal: ContactsAnalysisCoverageSignalView;
+}) {
+  const visual = coverageSignalVisual(signal.id);
+
+  return (
+    <Pressable
+      accessibilityLabel={`${signal.label} ${signal.value}，查看联系人`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.coverageSignalRow,
+        pressed ? styles.actionRowPressed : null
+      ]}
+    >
+      <View
+        style={[
+          styles.coverageSignalIcon,
+          { backgroundColor: visual.backgroundColor }
+        ]}
+      >
+        <Ionicons color={visual.color} name={visual.icon} size={17} />
+      </View>
+      <Text numberOfLines={1} style={styles.coverageSignalLabel}>
+        {signal.label}
+      </Text>
+      <Text style={[styles.coverageSignalValue, { color: visual.color }]}>
+        {signal.value}
+      </Text>
+      <Ionicons color={colors.text4} name="chevron-forward" size={15} />
+    </Pressable>
+  );
+}
+
+function coverageSignalVisual(
+  id: ContactsAnalysisCoverageSignalView["id"]
+): { backgroundColor: string; color: string; icon: keyof typeof Ionicons.glyphMap } {
+  if (id === "strong") {
+    return {
+      backgroundColor: colors.skySoft,
+      color: colors.sky,
+      icon: "people-outline"
+    };
+  }
+
+  if (id === "referral") {
+    return {
+      backgroundColor: colors.amberSoft,
+      color: colors.amber,
+      icon: "git-branch-outline"
+    };
+  }
+
+  return {
+    backgroundColor: colors.liveSoft,
+    color: colors.live,
+    icon: "diamond-outline"
+  };
+}
+
+function RecommendedActionsCard({
+  actions,
+  baseUrl,
+  contacts,
+  onOpen,
+  subtitle,
+  title = "建议动作"
+}: {
+  actions: ContactsAnalysisActionView[];
+  baseUrl: string;
+  contacts: ContactSummary[];
+  onOpen: (action: ContactsAnalysisActionView) => void;
+  subtitle: string;
+  title?: string;
+}) {
+  return (
+    <View style={styles.analysisSurface}>
+      <View style={styles.analysisSectionHeader}>
+        <View style={styles.analysisSectionTitleBlock}>
+          <Text style={styles.analysisSectionTitle}>{title}</Text>
+          <Text style={styles.analysisSectionDetail}>{subtitle}</Text>
+        </View>
+        <Text style={styles.analysisCount}>{actions.length} 项</Text>
+      </View>
+      <View style={styles.actionList}>
+        {actions.map((action, index) => (
+          <Pressable
+            accessibilityLabel={`${action.title}，${action.statusLabel}，${action.detail}`}
+            accessibilityRole="button"
+            key={action.id}
+            onPress={() => onOpen(action)}
+            style={({ pressed }) => [
+              styles.recommendedActionRow,
+              index === actions.length - 1
+                ? styles.recommendedActionRowLast
+                : null,
+              pressed ? styles.actionRowPressed : null
+            ]}
+          >
+            <ActionLeading
+              action={action}
+              baseUrl={baseUrl}
+              contact={contacts.find(
+                (candidate) => candidate.id === action.contactId
+              )}
+              rank={index + 1}
+            />
+            <View style={styles.actionCopy}>
+              <View style={styles.actionTitleRow}>
+                <Text numberOfLines={2} style={styles.actionTitle}>
+                  {action.title}
+                </Text>
+                <Text style={styles.actionStatus}>{action.statusLabel}</Text>
+              </View>
+              <Text numberOfLines={2} style={styles.actionDetail}>
+                {action.detail}
+              </Text>
+            </View>
+            <Ionicons color={colors.text4} name="chevron-forward" size={18} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ActionLeading({
+  action,
+  baseUrl,
+  contact,
+  rank
+}: {
+  action: ContactsAnalysisActionView;
+  baseUrl: string;
+  contact: ContactSummary | undefined;
+  rank: number;
+}) {
+  const avatar = contact ? contactAvatarFor(contact) : null;
+  const visual = avatar
+    ? contactAvatarVisual(avatar.tone)
+    : actionVisual(action.tone);
+
+  return (
+    <View style={styles.actionLeading}>
+      <View
+        style={[
+          styles.actionAvatar,
+          { backgroundColor: visual.backgroundColor }
+        ]}
+      >
+        {contact?.imageUrl ? (
+          <Image
+            resizeMode="cover"
+            source={{ uri: assetUrl(baseUrl, contact.imageUrl) }}
+            style={styles.actionAvatarImage}
+          />
+        ) : avatar ? (
+          <Text style={[styles.actionAvatarText, { color: visual.color }]}>
+            {avatar.initial}
+          </Text>
+        ) : (
+          <Ionicons
+            color={visual.color}
+            name={action.id === "complete-goal" ? "flag-outline" : "scan-outline"}
+            size={20}
+          />
+        )}
+      </View>
+      <View style={styles.actionRankBadge}>
+        <Text style={styles.actionRankBadgeText}>{rank}</Text>
+      </View>
+    </View>
+  );
+}
+
+function assetUrl(baseUrl: string, path: string): string {
+  if (/^https?:\/\//iu.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
+}
+
+function actionVisual(tone: ContactsAnalysisActionView["tone"]): {
+  backgroundColor: string;
+  color: string;
+} {
+  if (tone === "amber") {
+    return { backgroundColor: colors.amberSoft, color: colors.amber };
+  }
+
+  if (tone === "sky") {
+    return { backgroundColor: colors.skySoft, color: colors.sky };
+  }
+
+  return { backgroundColor: colors.accentSofter, color: colors.accent };
+}
+
+function contactAvatarVisual(tone: ContactAvatarTone): {
+  backgroundColor: string;
+  color: string;
+} {
+  const visuals: Record<
+    ContactAvatarTone,
+    { backgroundColor: string; color: string }
+  > = {
+    amber: { backgroundColor: colors.amberSoft, color: colors.amber },
+    emerald: { backgroundColor: colors.liveSoft, color: colors.live },
+    rose: { backgroundColor: colors.roseSoft, color: colors.rose },
+    sky: { backgroundColor: colors.skySoft, color: colors.sky },
+    violet: { backgroundColor: colors.accentSofter, color: colors.accent }
+  };
+
+  return visuals[tone];
+}
+
+function RelationshipHealthCard({
+  expanded,
+  health,
+  onToggle
+}: {
+  expanded: boolean;
+  health: ContactsAnalysisHealthView[];
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={`关系健康，${health
+        .map(
+          (item) => `${item.label} ${item.value}，${item.statusLabel}`
+        )
+        .join("；")}`}
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={onToggle}
+      style={({ pressed }) => [
+        styles.analysisSurface,
+        pressed ? styles.pressed : null
+      ]}
+    >
+      <View style={styles.analysisSectionHeader}>
+        <View style={styles.analysisSectionTitleBlock}>
+          <Text style={styles.analysisSectionTitle}>关系健康</Text>
+          {expanded ? (
+            <Text style={styles.analysisSectionDetail}>
+              强度由互动频率、最近联系和已确认关系综合判断
+            </Text>
+          ) : null}
+        </View>
+        <Ionicons
+          color={colors.text3}
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+        />
+      </View>
+      <View style={styles.healthGrid}>
+        {health.map((item, index) => (
+          <HealthItem
+            health={item}
+            key={item.id}
+            showDivider={index > 0}
+          />
+        ))}
+      </View>
+    </Pressable>
+  );
+}
+
+function HealthItem({
+  health,
+  showDivider
+}: {
+  health: ContactsAnalysisHealthView;
+  showDivider: boolean;
+}) {
+  const visual = healthVisual(health.tone);
+
+  return (
+    <View
+      style={[
+        styles.healthItem,
+        showDivider ? styles.healthItemDivider : null
+      ]}
+    >
+      <View
+        style={[
+          styles.healthIcon,
+          { backgroundColor: visual.backgroundColor }
+        ]}
+      >
+        <Ionicons color={visual.color} name="people-outline" size={17} />
+      </View>
+      <Text numberOfLines={1} style={styles.healthValue}>
+        {health.label} {health.value}
+      </Text>
+      <Text style={[styles.healthStatus, { color: visual.color }]}>
+        {health.statusLabel}
+      </Text>
+    </View>
+  );
+}
+
+function healthVisual(tone: ContactsAnalysisHealthView["tone"]): {
+  backgroundColor: string;
+  color: string;
+} {
+  if (tone === "live") {
+    return { backgroundColor: colors.liveSoft, color: colors.live };
+  }
+
+  if (tone === "sky") {
+    return { backgroundColor: colors.skySoft, color: colors.sky };
+  }
+
+  return { backgroundColor: colors.amberSoft, color: colors.amber };
 }
 
 function ContactDashboardGoalCard({
@@ -431,6 +1807,7 @@ function ContactDashboardGoalCard({
   return (
     <DataCard detail="会影响推荐和机会排序" title="关系目标">
       <TextInput
+        accessibilityLabel="关系目标"
         multiline
         onChangeText={onChange}
         placeholder="最近想认识什么人，或者想推进哪类合作"
@@ -439,6 +1816,7 @@ function ContactDashboardGoalCard({
         value={draft.relationshipGoal}
       />
       <Pressable
+        accessibilityLabel="保存关系目标"
         accessibilityRole="button"
         disabled={saving}
         onPress={onSave}
@@ -683,6 +2061,687 @@ function ActivityCard({
 }
 
 const styles = StyleSheet.create({
+  actionCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  actionDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  actionList: {
+    marginHorizontal: -spacing.md
+  },
+  actionAvatar: {
+    alignItems: "center",
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    height: 48,
+    justifyContent: "center",
+    overflow: "hidden",
+    width: 48
+  },
+  actionAvatarImage: {
+    height: "100%",
+    width: "100%"
+  },
+  actionAvatarText: {
+    fontSize: typography.section,
+    fontWeight: "800",
+    lineHeight: 22
+  },
+  actionLeading: {
+    height: 52,
+    position: "relative",
+    width: 52
+  },
+  actionRank: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  actionRankText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 18
+  },
+  actionRankBadge: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    bottom: -1,
+    height: 23,
+    justifyContent: "center",
+    position: "absolute",
+    right: -1,
+    width: 23
+  },
+  actionRankBadgeText: {
+    color: colors.onAccent,
+    fontSize: 10,
+    fontWeight: "900",
+    lineHeight: 13
+  },
+  actionRowPressed: {
+    backgroundColor: colors.surface2
+  },
+  actionStatus: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 17
+  },
+  actionTitle: {
+    color: colors.ink,
+    flex: 1,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 21
+  },
+  actionTitleRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  analysisCount: {
+    color: colors.accent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  analysisDiagnosisCard: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 86,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md
+  },
+  analysisDiagnosisIcon: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    height: 42,
+    justifyContent: "center",
+    width: 42
+  },
+  analysisDiagnosisLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16,
+    textAlign: "right"
+  },
+  analysisDiagnosisRefresh: {
+    alignItems: "center",
+    height: 36,
+    justifyContent: "center",
+    width: 32
+  },
+  analysisDiagnosisScore: {
+    alignItems: "flex-end",
+    gap: 2,
+    minWidth: 48
+  },
+  analysisDiagnosisText: {
+    color: colors.text,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 20,
+    minWidth: 0
+  },
+  analysisDiagnosisValue: {
+    color: colors.accent,
+    fontSize: typography.title,
+    fontWeight: "800",
+    lineHeight: 25,
+    maxWidth: 58,
+    textAlign: "right"
+  },
+  analysisDimensionDetail: {
+    color: colors.text3,
+    fontSize: 10,
+    lineHeight: 14,
+    textAlign: "center"
+  },
+  analysisDimensionDivider: {
+    borderLeftColor: colors.border,
+    borderLeftWidth: StyleSheet.hairlineWidth
+  },
+  analysisDimensionGrid: {
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    paddingTop: spacing.md
+  },
+  analysisDimensionHeading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minWidth: 0
+  },
+  analysisDimensionIcon: {
+    alignItems: "center",
+    borderRadius: radius.pill,
+    height: 26,
+    justifyContent: "center",
+    width: 26
+  },
+  analysisDimensionItem: {
+    alignItems: "center",
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
+    paddingHorizontal: spacing.sm
+  },
+  analysisDimensionLabel: {
+    color: colors.text3,
+    flexShrink: 1,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  analysisDimensionValue: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 18,
+    textAlign: "center"
+  },
+  analysisEmptyBlock: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 64,
+    paddingHorizontal: spacing.md
+  },
+  analysisEmptyText: {
+    color: colors.text3,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 19
+  },
+  analysisInlineAction: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 40,
+    paddingLeft: spacing.sm
+  },
+  analysisInlineActionText: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  analysisPrimaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "center",
+    minHeight: 48,
+    paddingHorizontal: spacing.lg
+  },
+  analysisPrimaryButtonText: {
+    color: colors.onAccent,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 21
+  },
+  analysisSectionDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  analysisSectionHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between"
+  },
+  analysisSectionTitle: {
+    color: colors.ink,
+    fontSize: typography.section,
+    fontWeight: "800",
+    lineHeight: 23
+  },
+  analysisSectionTitleBlock: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  analysisSegment: {
+    alignItems: "center",
+    borderRadius: radius.control,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: spacing.md
+  },
+  analysisSegmentedControl: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 50,
+    padding: 4
+  },
+  analysisSegmentSelected: {
+    backgroundColor: colors.accent
+  },
+  analysisSegmentText: {
+    color: colors.text3,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  analysisSegmentTextSelected: {
+    color: colors.onAccent
+  },
+  analysisSurface: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    gap: spacing.lg,
+    padding: spacing.lg
+  },
+  structureBreakdownHint: {
+    color: colors.text4,
+    fontSize: 10,
+    lineHeight: 14,
+    maxWidth: 96,
+    textAlign: "right"
+  },
+  structureDimensionButton: {
+    alignItems: "center",
+    borderColor: "transparent",
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: "row",
+    gap: 3,
+    justifyContent: "center",
+    minHeight: 42,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs
+  },
+  structureDimensionButtonSelected: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accent
+  },
+  structureDimensionControl: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 2,
+    padding: 4
+  },
+  structureDimensionText: {
+    color: colors.text3,
+    flexShrink: 1,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  structureDimensionTextSelected: {
+    color: colors.accent
+  },
+  activityDetail: {
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 14,
+    textAlign: "center"
+  },
+  activityGrid: {
+    flexDirection: "row"
+  },
+  activityIcon: {
+    alignItems: "center",
+    borderRadius: radius.pill,
+    height: 34,
+    justifyContent: "center",
+    width: 34
+  },
+  activityItem: {
+    alignItems: "center",
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+    paddingHorizontal: spacing.sm
+  },
+  activityItemDivider: {
+    borderLeftColor: colors.border,
+    borderLeftWidth: StyleSheet.hairlineWidth
+  },
+  activityLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    textAlign: "center"
+  },
+  activityTitleRow: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  activityValue: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 21
+  },
+  coverageBody: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md
+  },
+  coverageCenter: {
+    alignItems: "center",
+    backgroundColor: colors.ink,
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 3,
+    height: 66,
+    justifyContent: "center",
+    width: 66
+  },
+  coverageDiagnosis: {
+    color: colors.text2,
+    fontSize: typography.small,
+    lineHeight: 20
+  },
+  coverageDot: {
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    height: 12,
+    position: "absolute",
+    width: 12
+  },
+  coverageDotAmber: {
+    backgroundColor: colors.amber,
+    bottom: 18,
+    left: 16
+  },
+  coverageDotLive: {
+    backgroundColor: colors.live,
+    right: 20,
+    top: 12
+  },
+  coverageDotSky: {
+    backgroundColor: colors.sky,
+    left: 8,
+    top: 38
+  },
+  coverageOrbit: {
+    alignItems: "center",
+    aspectRatio: 1,
+    flexBasis: 136,
+    justifyContent: "center",
+    maxWidth: 142,
+    minWidth: 124,
+    position: "relative"
+  },
+  coverageRing: {
+    borderColor: colors.border2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    position: "absolute"
+  },
+  coverageRingInner: {
+    height: 82,
+    width: 82
+  },
+  coverageRingMiddle: {
+    height: 108,
+    width: 108
+  },
+  coverageRingOuter: {
+    height: 134,
+    width: 134
+  },
+  coverageScore: {
+    color: colors.onAccent,
+    fontSize: typography.title,
+    fontWeight: "800",
+    lineHeight: 24
+  },
+  coverageScoreLabel: {
+    color: colors.text4,
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 13
+  },
+  coverageSignalIcon: {
+    alignItems: "center",
+    borderRadius: radius.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  coverageSignalLabel: {
+    color: colors.text,
+    flex: 1,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  coverageSignalRow: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 43
+  },
+  coverageSignals: {
+    flex: 1,
+    minWidth: 0
+  },
+  coverageSignalValue: {
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 21,
+    minWidth: 22,
+    textAlign: "right"
+  },
+  goalBar: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 68,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md
+  },
+  goalBarCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  goalBarLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  goalBarValue: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "700",
+    lineHeight: 21
+  },
+  goalEditButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
+  healthGrid: {
+    alignItems: "stretch",
+    flexDirection: "row"
+  },
+  healthIcon: {
+    alignItems: "center",
+    borderRadius: radius.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  healthItem: {
+    alignItems: "center",
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
+    paddingHorizontal: spacing.sm
+  },
+  healthItemDivider: {
+    borderLeftColor: colors.border2,
+    borderLeftWidth: StyleSheet.hairlineWidth
+  },
+  healthStatus: {
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  healthValue: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 18
+  },
+  structureItemBarFill: {
+    borderRadius: radius.pill,
+    height: "100%"
+  },
+  structureItemBarTrack: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.pill,
+    flex: 1,
+    height: 6,
+    minWidth: 48,
+    overflow: "hidden"
+  },
+  structureItemCount: {
+    color: colors.text2,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16,
+    minWidth: 34,
+    textAlign: "right"
+  },
+  structureItemIcon: {
+    alignItems: "center",
+    borderRadius: radius.pill,
+    height: 30,
+    justifyContent: "center",
+    width: 30
+  },
+  structureItemLabel: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 17,
+    width: 100
+  },
+  structureItemList: {
+    gap: spacing.md
+  },
+  structureItemPercentage: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    minWidth: 30,
+    textAlign: "right"
+  },
+  structureItemRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 40
+  },
+  recommendedActionRow: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 78,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md
+  },
+  recommendedActionRowLast: {
+    borderBottomWidth: 0
+  },
+  structureInsight: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 66,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  structureInsightCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0
+  },
+  structureInsightIcon: {
+    alignItems: "center",
+    backgroundColor: colors.amberSoft,
+    borderRadius: radius.pill,
+    height: 34,
+    justifyContent: "center",
+    width: 34
+  },
+  structureInsightLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  structureInsightText: {
+    color: colors.text,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  refreshAnalysisButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: "center",
+    width: 40
+  },
   barFill: {
     backgroundColor: colors.live,
     borderRadius: radius.pill,
@@ -923,6 +2982,163 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     justifyContent: "space-between"
+  },
+  actionBriefActions: {
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md
+  },
+  actionBriefClose: {
+    alignItems: "center",
+    backgroundColor: colors.surface3,
+    borderRadius: radius.pill,
+    height: 36,
+    justifyContent: "center",
+    width: 36
+  },
+  actionBriefContent: {
+    gap: spacing.xl,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg
+  },
+  actionBriefEvidenceRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 24
+  },
+  actionBriefHandle: {
+    alignSelf: "center",
+    backgroundColor: colors.borderStrong,
+    borderRadius: radius.pill,
+    height: 4,
+    marginTop: spacing.sm,
+    width: 38
+  },
+  actionBriefHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md
+  },
+  actionBriefHeaderCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  actionBriefJudgment: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "600",
+    lineHeight: 23
+  },
+  actionBriefList: {
+    gap: spacing.md
+  },
+  actionBriefListText: {
+    color: colors.text2,
+    flex: 1,
+    fontSize: typography.small,
+    lineHeight: 20,
+    minWidth: 0
+  },
+  actionBriefPrimaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 48,
+    minWidth: 0,
+    paddingHorizontal: spacing.md
+  },
+  actionBriefPrimaryText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  actionBriefRoot: {
+    flex: 1,
+    justifyContent: "flex-end"
+  },
+  actionBriefScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(22,22,26,0.28)"
+  },
+  actionBriefSecondaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 48,
+    minWidth: 0,
+    paddingHorizontal: spacing.md
+  },
+  actionBriefSecondaryText: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  actionBriefSection: {
+    gap: spacing.sm
+  },
+  actionBriefSectionLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  actionBriefSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    maxHeight: "88%",
+    overflow: "hidden"
+  },
+  actionBriefStepIndex: {
+    alignItems: "center",
+    backgroundColor: colors.accentSofter,
+    borderRadius: radius.pill,
+    height: 22,
+    justifyContent: "center",
+    width: 22
+  },
+  actionBriefStepIndexText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: "800",
+    lineHeight: 14
+  },
+  actionBriefStepRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 24
+  },
+  actionBriefTitle: {
+    color: colors.ink,
+    fontSize: typography.title,
+    fontWeight: "800",
+    lineHeight: 26
+  },
+  actionBriefType: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
   },
   saveGoalButton: {
     alignItems: "center",

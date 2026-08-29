@@ -125,7 +125,7 @@ const METRIC_LABELS: Record<string, string> = {
   "dormant-contacts": "待唤醒",
   "high-value": "高价值关系",
   "new-contacts": "新增人脉",
-  "pending-followups": "待跟进",
+  "pending-followups": "待办",
   "relationship-assets": "关系资产"
 };
 
@@ -177,10 +177,10 @@ const SEVERITY_LABELS: Record<string, string> = {
 };
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  followup_completed: "完成跟进",
+  followup_completed: "完成待办",
   high_value_added: "高价值关系",
   new_contact: "新增人脉",
-  reminder_created: "跟进提醒",
+  reminder_created: "联系提醒",
   task_created: "新增任务"
 };
 
@@ -366,10 +366,10 @@ function priorityTitle(item: UnknownRecord): string {
   const title = stringField(item, "title");
 
   if (/^review follow-up for /iu.test(title)) {
-    return `跟进${contactName}`;
+    return `联系${contactName}`;
   }
 
-  return userFacingText(title, `跟进${contactName}`);
+  return userFacingText(title, `联系${contactName}`);
 }
 
 function priorityDetail(item: UnknownRecord): string {
@@ -388,7 +388,7 @@ function priorityDetail(item: UnknownRecord): string {
 }
 
 function priorityAction(value: string): string {
-  return userFacingText(value, "先复核关系背景，再决定怎么跟进。");
+  return userFacingText(value, "先确认关系背景，再决定怎么联系。");
 }
 
 function priorityView(opportunities: UnknownRecord): DashboardPriorityView | null {
@@ -691,8 +691,8 @@ export function dashboardToView(input: DashboardViewInput): DashboardView {
       stringField(distributions, "summary")
     ],
     hasDashboardContext
-      ? "先看关系覆盖，再处理最该推进的跟进。"
-      : "关系数据还不完整，先从待跟进开始。"
+      ? "先看关系覆盖，再处理最重要的待办。"
+      : "关系数据还不完整，先从待办开始。"
   );
   const nextAction = firstUserFacing(
     [
@@ -702,8 +702,8 @@ export function dashboardToView(input: DashboardViewInput): DashboardView {
       stringField(distributions, "nextAction")
     ],
     hasDashboardContext
-      ? "先处理最高分的跟进，再补齐覆盖最弱的人脉。"
-      : "先补一条联系人或跟进记录。"
+      ? "先处理最高分的待办，再补齐覆盖最弱的人脉。"
+      : "先补一位联系人或一项待办。"
   );
   const coverageScore = Math.max(0, Math.min(100, numberField(gaps, "coverageScore")));
 
@@ -762,7 +762,7 @@ export function dashboardOpportunitiesRecomputeToView(
   if (state === "empty") {
     return {
       detail: "当前没有可重算的联系人或目标。",
-      nextAction: "先补充联系人、跟进记录或当前目标。",
+      nextAction: "先补充联系人、待办事项或当前目标。",
       statusLabel: "没有可更新项",
       title: "机会提醒没有变化"
     };

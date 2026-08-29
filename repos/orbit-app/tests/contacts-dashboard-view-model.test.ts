@@ -120,7 +120,7 @@ test("contactsDashboardToView turns dashboard payloads into a contacts-focused C
   assert.deepEqual(view.overview, [
     { detail: "已确认联系人", id: "relationship-assets", label: "总人脉", value: "128" },
     { detail: "可优先推进", id: "high-value", label: "高价值", value: "34" },
-    { detail: "需要复核下一步", id: "pending-followups", label: "待跟进", value: "24" },
+    { detail: "需要确认下一步", id: "pending-followups", label: "待办", value: "24" },
     { detail: "超过一段时间没互动", id: "dormant-contacts", label: "沉睡关系", value: "9" }
   ]);
   assert.equal(view.map.centerValue, "128");
@@ -148,7 +148,7 @@ test("contactsDashboardToView turns dashboard payloads into a contacts-focused C
       riskLabel: "需要尽快处理"
     }
   ]);
-  assert.equal(view.diagnosis.detail, "先处理最高分的跟进，再补齐覆盖最弱的人脉。");
+  assert.equal(view.diagnosis.detail, "先处理最高分的待办，再补齐覆盖最弱的人脉。");
   assert.equal(view.priority?.contactName, "陈伟");
   assert.equal(view.priority?.detail, "陈伟有可复核的关系背景。");
   assert.equal(view.gaps[0]?.label, "待补齐的人脉覆盖");
@@ -178,6 +178,6 @@ test("contactsDashboardToView avoids exposing implementation labels", () => {
   assert.equal(serialized.includes("source-backed"), false);
   assert.equal(serialized.includes("live storage"), false);
   assert.equal(serialized.includes("workflow testing"), false);
-  assert.equal(view.summary, "关系数据还不完整，先从待跟进开始。");
-  assert.equal(view.diagnosis.detail, "先补一条联系人或跟进记录。");
+  assert.equal(view.summary, "关系数据还不完整，先从待办开始。");
+  assert.equal(view.diagnosis.detail, "先补一位联系人或一项待办。");
 });

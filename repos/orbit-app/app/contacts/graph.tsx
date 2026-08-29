@@ -1,4 +1,4 @@
-import { ContactsGraphScreen } from "../../src/screens/contacts/ContactsGraphScreen";
+import { ContactsDashboardScreen } from "../../src/screens/contacts/ContactsDashboardScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 
-export default withOrbitPrivateRoute(ContactsGraphScreen);
+export default withOrbitPrivateRoute(ContactsDashboardScreen);

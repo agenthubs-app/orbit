@@ -28,6 +28,46 @@ export type OpportunityReminderAnalyticsState =
 
 export type OpportunityPriority = "high" | "medium";
 
+export type OpportunityActionBriefType =
+  | "follow_up"
+  | "coverage_gap"
+  | "relationship_risk"
+  | "referral_path";
+
+export type OpportunityActionBriefActionKind =
+  | "open_contact"
+  | "open_contacts"
+  | "open_pipeline";
+
+export interface OpportunityActionBriefAction {
+  kind: OpportunityActionBriefActionKind;
+  label: string;
+  contactId?: string;
+}
+
+export interface OpportunityActionBriefPriority {
+  total: number;
+  urgency: number;
+  relationshipValue: number;
+  goalRelevance: number;
+  evidenceCompleteness: number;
+  dormantRisk: number;
+}
+
+export interface OpportunityActionBrief {
+  ruleVersion: "opportunity-brief-v1";
+  type: OpportunityActionBriefType;
+  title: string;
+  judgment: string;
+  evidence: readonly string[];
+  steps: readonly string[];
+  primaryAction: OpportunityActionBriefAction;
+  secondaryAction?: OpportunityActionBriefAction;
+  evaluatedAt: string;
+  evidenceIds: readonly string[];
+  priority: OpportunityActionBriefPriority;
+}
+
 export type SuggestedContactReasonType =
   | "goal_match"
   | "dormancy"
@@ -136,6 +176,7 @@ export interface HighPriorityOpportunity {
   dueLabel: string;
   sourceRefs: readonly OpportunityReminderAnalyticsSourceReference[];
   evidenceIds: readonly string[];
+  actionBrief?: OpportunityActionBrief;
 }
 
 export interface DormantHighValueContact {

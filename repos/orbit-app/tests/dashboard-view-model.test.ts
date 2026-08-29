@@ -128,26 +128,26 @@ test("dashboardToView maps live dashboard payloads into Chinese mobile cards", (
   });
 
   assert.equal(view.title, "关系仪表盘");
-  assert.equal(view.summary, "先看关系覆盖，再处理最该推进的跟进。");
-  assert.equal(view.nextAction, "先处理最高分的跟进，再补齐覆盖最弱的人脉。");
+  assert.equal(view.summary, "先看关系覆盖，再处理最重要的待办。");
+  assert.equal(view.nextAction, "先处理最高分的待办，再补齐覆盖最弱的人脉。");
   assert.equal(view.coverageScore, 78);
   assert.equal(view.coverageScoreLabel, "覆盖度 78%");
   assert.deepEqual(view.metrics, [
     { id: "relationship-assets", label: "关系资产", value: "18" },
-    { id: "pending-followups", label: "待跟进", value: "5" },
+    { id: "pending-followups", label: "待办", value: "5" },
     { id: "dormant-contacts", label: "待唤醒", value: "2" },
     { id: "high-value", label: "高价值关系", value: "12" },
     { id: "new-contacts", label: "新增人脉", value: "8" }
   ]);
   assert.deepEqual(view.priority, {
-    action: "先复核关系背景，再决定怎么跟进。",
+    action: "先确认关系背景，再决定怎么联系。",
     contactId: "contact_039",
     contactName: "西村 大地",
     detail: "西村 大地有可复核的关系背景。",
     dueLabel: "今日",
     organization: "Aoba Partners",
     scoreLabel: "94分",
-    title: "跟进西村 大地"
+    title: "联系西村 大地"
   });
   assert.deepEqual(view.gaps, [
     {
@@ -219,12 +219,12 @@ test("dashboardToView falls back to aggregate counts when summary metrics are mi
 
   assert.deepEqual(view.metrics, [
     { id: "relationship-assets", label: "关系资产", value: "7" },
-    { id: "pending-followups", label: "待跟进", value: "2" },
+    { id: "pending-followups", label: "待办", value: "2" },
     { id: "dormant-contacts", label: "待唤醒", value: "0" },
     { id: "high-value", label: "高价值关系", value: "3" },
     { id: "new-contacts", label: "新增人脉", value: "4" }
   ]);
-  assert.equal(view.summary, "关系数据还不完整，先从待跟进开始。");
+  assert.equal(view.summary, "关系数据还不完整，先从待办开始。");
 });
 
 test("dashboardOpportunitiesRecomputeToView maps safe recompute results", () => {

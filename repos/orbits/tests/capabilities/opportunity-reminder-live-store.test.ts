@@ -68,6 +68,17 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
       .map((opportunity) => opportunity.priorityScore)
       .sort((left, right) => right - left),
   );
+  assert.ok(
+    reminders.data.highPriorityOpportunities.every(
+      (opportunity) =>
+        opportunity.actionBrief?.ruleVersion === "opportunity-brief-v1" &&
+        opportunity.actionBrief.type === "follow_up" &&
+        opportunity.actionBrief.priority.total <= 100 &&
+        opportunity.actionBrief.evidence.length > 0 &&
+        opportunity.actionBrief.steps.length > 0 &&
+        opportunity.actionBrief.evaluatedAt === "2026-07-02T08:05:00.000Z",
+    ),
+  );
   assert.equal(reminders.data.dormantHighValueContacts.length, 3);
   assert.ok(
     reminders.data.dormantHighValueContacts.every((contact) =>

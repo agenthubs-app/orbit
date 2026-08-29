@@ -52,8 +52,8 @@ const OVERVIEW_COPY = {
     label: "高价值"
   },
   "pending-followups": {
-    detail: "需要复核下一步",
-    label: "待跟进"
+    detail: "需要确认下一步",
+    label: "待办"
   },
   "relationship-assets": {
     detail: "已确认联系人",

@@ -24,6 +24,7 @@ import {
 } from "./opportunity-contract";
 import type { LiveDashboardGraph } from "./storage/dashboard-live-record-provider";
 import type { LiveOpportunityReminderAnalyticsProvider } from "./storage/opportunity-live-record-provider";
+import { createOpportunityActionBrief } from "./opportunity-action-brief";
 
 export interface LiveOpportunityReminderAnalyticsServiceOptions {
   now?: () => string;
@@ -323,6 +324,12 @@ function opportunityFor(
       candidate.contact.source,
     ]),
     evidenceIds,
+    actionBrief: createOpportunityActionBrief({
+      connection: candidate.connection,
+      contact: candidate.contact,
+      now,
+      task: candidate.task,
+    }),
   };
 }
 
