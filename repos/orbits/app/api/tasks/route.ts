@@ -1,5 +1,7 @@
-import { createTasksGetHandler } from "./handler";
+import { createTaskCollectionHandlers } from "./collection-handler";
 
 export const dynamic = "force-dynamic";
 
-export const GET = createTasksGetHandler();
+const handlers = createTaskCollectionHandlers();
+export const GET = handlers.GET;
+export const POST = handlers.POST;

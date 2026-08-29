@@ -1,5 +1,5 @@
-import { createTasksGeneratePostHandler } from "./handler";
+import { createTaskSuggestionsGeneratePostHandler } from "./suggestion-handler";
 
 export const dynamic = "force-dynamic";
 
-export const POST = createTasksGeneratePostHandler();
+export const POST = createTaskSuggestionsGeneratePostHandler();

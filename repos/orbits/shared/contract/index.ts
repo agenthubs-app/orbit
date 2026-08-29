@@ -2,6 +2,8 @@
 // 网页版、API route 与 iOS App 都从这里（或它拷贝出去的副本）取响应形状。
 // 新增领域时在这里补一行 export，并同步 repos/orbit-app 的契约副本。
 
+export { ORBIT_LANGUAGES, type OrbitLanguage } from "./language";
+
 export type {
   ApiEnvelopeContract,
   ApiErrorBodyContract,
@@ -69,3 +71,19 @@ export type {
   ContactsListProvenanceContract,
   ContactsListStateCode
 } from "./contacts";
+
+export type {
+  ScheduleItemContract,
+  TaskCategory,
+  TaskItemContract,
+  TaskStatus,
+  TaskSuggestionContract
+} from "./tasks";
+
+export type {
+  DevicePushTokenContract,
+  NotificationPermission,
+  ReminderChannel,
+  ReminderPlanContract,
+  ReminderTargetType
+} from "./reminders";
