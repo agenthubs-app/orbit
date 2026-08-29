@@ -1,0 +1,218 @@
+# iOS 人脉行业分类与下钻分析设计
+
+日期：2026-08-29  
+状态：视觉与产品方向已确认，待实现
+
+## 目标
+
+把 iOS 人脉分析中的行业结构从公司名称推断的横向列表，升级为基于真实联系人字段的稳定分析能力：
+
+1. 每位联系人最多选择一个固定的主要行业。
+2. 用户可以为联系人添加多个自定义标签。
+3. 行业结构使用已选方案 2 的可交互饼图。
+4. 点击扇区、图例或“查看联系人”进入具体行业详情，查看该行业的人脉、关系质量、常见标签和确定性分析。
+
+本轮保留 Orbit 现有导航、颜色、圆角、图标与联系人详情结构。Web 端不做视觉重设计，但共享数据契约保持兼容。
+
+## 已选视觉
+
+- 行业分布：[方案 2](../../../design-previews/network-analysis-industry-options/option-2-interactive-pie-exec-8e33e801-6b6c-4991-a708-cd548d90c1c7.png)
+- 行业详情：[方案 2 下钻页](../../../design-previews/network-analysis-industry-options/option-2-selected-industry-detail-exec-320aa20d-d60d-4be7-b2b3-3743a4bb4dac.png)
+
+设计稿用于信息层级和视觉方向，不要求逐字采用生成图片中的统计数字、头像或日期。实现必须使用真实登录用户的数据。
+
+## 领域规则
+
+### 主要行业
+
+`主要行业` 是固定字典中的单选字段。联系人可以有一个主要行业，也可以暂时未分类。只有主要行业参与饼图、行业占比和行业下钻统计。
+
+首版固定行业字典使用稳定 ID，并提供中、英、日文标签：
+
+| ID | 中文标签 |
+| --- | --- |
+| `food_hospitality` | 餐饮与食品 |
+| `technology_internet` | 科技与互联网 |
+| `finance_investment` | 金融与投资 |
+| `professional_services` | 专业服务 |
+| `manufacturing_supply_chain` | 制造与供应链 |
+| `retail_consumer` | 零售与消费 |
+| `trade_logistics` | 贸易与物流 |
+| `real_estate_construction` | 房地产与建设 |
+| `healthcare_life_sciences` | 医疗与健康 |
+| `education_research` | 教育与研究 |
+| `media_creative` | 文化传媒与创意 |
+| `community_nonprofit` | 社群与非营利 |
+| `government_public_affairs` | 政府与公共事务 |
+| `other` | 其他 |
+
+`未分类` 是缺失状态，不是行业 ID。用户不能新增、删除或改名固定行业；后续修改字典必须通过版本化产品变更完成。
+
+### 自定义标签
+
+`自定义标签` 是联系人上的自由多选字段。用户可以创建、删除和复用标签，例如“日本市场”“连锁经营”“关西渠道”。标签可以重叠，因此行业详情中的标签人数不要求相加等于该行业总人数。
+
+标签继续兼容现有 `tags` 数据，不进行破坏性改名。新增标签会去除首尾空格并按不区分大小写的方式去重；单个联系人最多保存 20 个新标签，单个新标签最多 32 个字符。既有超限标签仍可读取和删除，迁移不会静默丢弃。
+
+## 数据模型与兼容
+
+共享联系人 DTO 增加可选字段：
+
+```ts
+type IndustryId =
+  | "food_hospitality"
+  | "technology_internet"
+  | "finance_investment"
+  | "professional_services"
+  | "manufacturing_supply_chain"
+  | "retail_consumer"
+  | "trade_logistics"
+  | "real_estate_construction"
+  | "healthcare_life_sciences"
+  | "education_research"
+  | "media_creative"
+  | "community_nonprofit"
+  | "government_public_affairs"
+  | "other";
+
+interface ContactDTO {
+  primaryIndustryId?: IndustryId;
+}
+```
+
+行业标签由固定字典和当前语言派生，不把中文标签写入联系人记录。现有 `publicProfile.industry` 保留为个人公开资料中的自由描述，不再作为结构统计字段。
+
+联系人详情状态继续保存 `tags`。主要行业写入联系人主记录，避免把行业伪装成 `industry:*` 标签，也避免标签修改意外清除行业。
+
+## API
+
+### 行业字典
+
+新增 `GET /api/industries`，返回固定行业 ID、当前语言标签和排序。接口不提供写操作。
+
+### 联系人读写
+
+`GET /api/contacts` 增加可选 `industryId` 筛选。筛选只匹配 `primaryIndustryId`，不搜索标签或公开资料的行业描述。
+
+`GET /api/contacts/:id` 返回 `primaryIndustryId`、本地化行业标签和现有 `tags`。
+
+`PATCH /api/contacts/:id` 增加白名单字段 `primaryIndustryId`：
+
+- 合法固定 ID：替换当前主要行业。
+- `null`：清除主要行业并进入未分类。
+- 未知 ID：返回验证错误，不写数据库。
+- `tags` 与 `primaryIndustryId` 可以同次保存，也可以独立保存。
+
+### 行业分布与详情
+
+`GET /api/dashboard/distributions` 改为按 `primaryIndustryId` 聚合，并增加未分类数量。所有行业扇区加未分类扇区必须等于当前登录用户的联系人总数；百分比取整误差由最后一个可见扇区吸收，视觉总和保持 100%。
+
+新增 `GET /api/dashboard/industries/:industryId`，返回：
+
+```ts
+interface IndustryDetailPayload {
+  industry: { id: IndustryId; label: string };
+  contactCount: number;
+  totalContactCount: number;
+  percentage: number;
+  relationshipQuality: readonly {
+    id: "strong" | "maintain" | "reconnect";
+    contactCount: number;
+    percentage: number;
+  }[];
+  commonTags: readonly { label: string; contactCount: number }[];
+  insight: string;
+  contacts: readonly ContactListItemContract[];
+  provenance: NetworkDistributionAnalyticsProvenance;
+}
+```
+
+接口必须按当前 actor 隔离数据，不接受客户端传入用户 ID。联系人列表默认按关系质量、最近互动和姓名稳定排序。
+
+## 分析规则
+
+行业详情首版不调用大模型，不消耗对话 token。分析由已有连接强度、互动时间和标签确定性计算：
+
+- `强关系`：已有连接被现有强度规则判定为 strong。
+- `保持联系`：已有连接被判定为 warm。
+- `待重新联系`：连接为 weak，或没有连接强度记录。
+- `常见标签`：统计该行业联系人自定义标签，按人数降序、标签名稳定排序，最多展示四个。
+- `分析结论`：使用确定性模板说明最强覆盖与最明显缺口；数据不足时明确显示“信息待完善”，不生成推测。
+
+分析结果包含来源和证据 ID。行业修改后，下次读取立即重新聚合，不维护独立的缓存计数。
+
+## 数据迁移
+
+迁移脚本只补充缺失的 `primaryIndustryId`，不覆盖用户已经设置的值。
+
+迁移顺序：
+
+1. 对当前小雨测试数据使用显式联系人到行业映射，保证现有演示数据稳定且可复核。
+2. 其他联系人先匹配经过审核的旧标签映射。
+3. 再匹配公开资料中的行业描述、组织和职位关键词；只有唯一高置信结果才写入。
+4. 无结果或多结果冲突时保持未分类。
+
+脚本输出已分类、保留、未分类和冲突联系人数量及 ID。任何跳过或冲突必须可见，不能继续使用公司名称后缀在读取时动态猜测。
+
+## iOS 交互
+
+### 行业分布
+
+- 保留“概览 / 结构 / 机会”和“行业 / 地区 / 角色 / 关系”两层导航。
+- 行业区使用方案 2 的可交互饼图；首次进入默认选择人数最多的行业。
+- 点击扇区或图例只更新当前选中行业和摘要，不立即离开页面。
+- 点击“查看联系人”进入 `/contacts/industries/[id]`。
+- “管理行业”进入联系人列表并优先显示未分类联系人，不提供修改固定字典的入口。
+- 未分类人数大于零时，以中性灰扇区进入饼图并提供完善入口；它不是固定行业，也不能出现在行业选择菜单中。
+
+饼图使用 Expo 兼容的成熟图形依赖，不手写扇区几何。图表必须提供可访问标签，并在颜色之外用图例文本表达分类。
+
+### 行业详情
+
+- 顶部显示行业名称、人数和总人脉占比。
+- 第一块显示关系质量分布和一条确定性结论。
+- 第二块显示最多四个常见标签，并注明标签可重叠。
+- 联系人列表使用紧凑行：头像、姓名、组织/职位、关系状态和进入箭头。
+- 单行筛选提供“全部 / 强关系 / 待联系”，搜索和更多筛选放在同一行的图标入口。
+- 点击联系人进入现有联系人详情。
+- 空行业显示空态和“为联系人设置行业”，不伪造分析。
+
+### 联系人详情编辑
+
+联系人详情的编辑区拆分为：
+
+1. `主要行业`：单选菜单，选项来自固定字典。
+2. `自定义标签`：已有标签以 chip 展示，支持删除；输入新标签后明确点击添加。
+3. `最近互动`：沿用现有输入和保存能力。
+
+保存失败必须保留用户草稿并显示可重试错误。行业和标签显示遵循用户当前语言，不能把多语言标签拼接在同一字段。
+
+## 错误与空状态
+
+- 行业字典加载失败：保留联系人其他编辑能力，行业控件显示重试。
+- 行业详情加载失败：显示页面级重试，不回退到全联系人列表。
+- 联系人没有主要行业：显示“未分类”，不使用组织名临时推断。
+- 联系人没有连接记录：计入“待重新联系”，并在分析依据中说明。
+- 标签为空：隐藏常见标签内容，显示“暂无常见标签”。
+
+## 非目标
+
+- 不允许用户自建行业分类或同时选择多个主要行业。
+- 不用 AI 自动生成整篇行业分析。
+- 不重做 Web 人脉分析界面。
+- 不改变关系进展、行动状态、联系人归属或权限模型。
+- 不把活动行业、个人主页行业描述与联系人主要行业合并成同一字段。
+
+## 验收标准
+
+1. 固定行业字典在中、英、日文下使用同一组稳定 ID。
+2. 联系人可以保存一个主要行业和多个自定义标签，刷新后仍存在。
+3. 饼图只统计主要行业，每位联系人最多计入一个扇区。
+4. 已分类、未分类数量之和与当前用户联系人总数一致。
+5. 点击饼图、图例和“查看联系人”行为符合方案 2。
+6. 行业详情只展示所选行业联系人，并可进入联系人详情。
+7. 关系质量、常见标签和结论均由真实数据确定性计算。
+8. 小雨现有联系人完成可复核迁移；冲突和未分类记录被明确报告。
+9. Web 现有联系人接口消费者不因新增可选字段而回归。
+10. 后端契约、服务、路由、迁移和 iOS view-model/UI 测试通过。
+11. iOS Simulator 在 390x844 等效视口完成行业分布、行业详情、空态和编辑流程截图验收。

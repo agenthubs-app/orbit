@@ -7,6 +7,7 @@ Visual proposals are grouped by feature. Each option keeps its original `exec` i
 | `agent-next-step-options/` | Orbit AI home and next-step presentation |
 | `network-analysis-overview-options/` | Network analysis overview concepts |
 | `network-analysis-detail-options/` | Network analysis structure and opportunity concepts |
+| `network-analysis-industry-options/` | Network analysis industry distribution and taxonomy concepts |
 | `relationship-progress-options/` | Relationship progress concepts |
 | `schedule-options/` | Calendar and schedule concepts |
 | `sidebar-options/` | Orbit AI sidebar concepts |
