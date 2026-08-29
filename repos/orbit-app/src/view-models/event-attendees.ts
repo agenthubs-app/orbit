@@ -278,7 +278,7 @@ function liveRelationshipStatusLabel(status: Record<string, unknown>): string {
   }
 
   if (code === "priority_follow_up") {
-    return "优先跟进";
+    return "优先联系";
   }
 
   if (code === "needs_context") {
@@ -484,7 +484,7 @@ export function eventEncounterNoteToView(data: unknown): EventEncounterNoteView 
     feedback: `已记录 ${participantName} 的现场记录。`,
     nextAction: userFacingText(
       stringField(record, "nextAction"),
-      "先检查这条记录，再决定是否转成跟进或联系人证据。"
+      "先检查这条记录，再决定是否转成待办或联系人记录。"
     ),
     noteText: userFacingText(
       stringField(note, "text"),
@@ -510,7 +510,7 @@ export function eventEncounterEvidenceToView(
     feedback: "关系证据已生成。",
     nextAction: userFacingText(
       stringField(record, "nextAction"),
-      "证据已生成，下一步再决定是否写跟进。"
+      "记录已生成，下一步再决定是否创建待办。"
     ),
     sourceExcerpt: userFacingText(
       stringField(evidence, "excerpt"),
@@ -609,7 +609,7 @@ export function eventAttendeeRosterImportToView(
     ],
     nextAction: userFacingText(
       stringField(record, "nextAction"),
-      "先看名单，再决定现场认识和会后跟进。"
+      "先看名单，再决定现场认识和会后联系。"
     ),
     safetyText: "没有写联系人，也没有发消息。",
     summary: `${eventTitle} · ${attendeeCount} 位参会者已进入活动上下文。`,
@@ -625,7 +625,7 @@ function contactDraftStatusLabel(status: Record<string, unknown>): string {
   }
 
   if (code === "priority_follow_up") {
-    return "优先跟进";
+    return "优先联系";
   }
 
   if (code === "needs_context") {
@@ -651,7 +651,7 @@ function contactDraftRelationshipText(value: string): string {
     value ===
     "Priya spoke about storage reliability and maps to the current storage pilot follow-up goal."
   ) {
-    return "Priya 分享过储能可靠性，和当前储能试点跟进目标相关。";
+    return "Priya 分享过储能可靠性，和当前储能试点目标相关。";
   }
 
   return userFacingText(value, "这位参会者和当前活动目标有关，适合先放入候选。");
@@ -669,7 +669,7 @@ function contactDraftNextActionText(value: string): string {
     value ===
     "Draft a post-event follow-up asking Priya about storage pilot operator introductions."
   ) {
-    return "给 Priya 准备会后跟进，确认储能试点运营方介绍。";
+    return "活动后联系 Priya，确认储能试点运营方介绍。";
   }
 
   return userFacingText(value, "先复核资料，再决定是否确认写入联系人。");

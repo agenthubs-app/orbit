@@ -115,6 +115,26 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
+function publicEventDetailStatus(status: string): string {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "imported" || normalized === "scheduled") {
+    return "可报名";
+  }
+
+  return status || "待确认";
+}
+
+function publicEventDetailSummary(summary: string): string {
+  const normalized = summary.trim();
+
+  if (!normalized || normalized === "Published event context.") {
+    return "查看活动安排、参会信息和会前准备。";
+  }
+
+  return normalized;
+}
+
 function EventActionButton({
   detail,
   icon,
@@ -160,6 +180,8 @@ function EventDetailCard({
   const router = useRouter();
   const event = eventDetailToSummary(data);
   const hero = eventDetailHeroToView(event);
+  const heroStatus = publicEventDetailStatus(hero.status);
+  const heroSummary = publicEventDetailSummary(hero.summary);
   const registerHref = `/events/${encodeURIComponent(event.id)}/register` as Href;
   const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
   const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
@@ -174,7 +196,7 @@ function EventDetailCard({
         >
           <View style={styles.eventHeroScrim} />
           <View style={styles.eventHeroTopRow}>
-            <Text style={styles.eventStatusBadge}>{hero.status}</Text>
+            <Text style={styles.eventStatusBadge}>{heroStatus}</Text>
           </View>
           <View style={styles.eventHeroText}>
             <Text numberOfLines={3} style={styles.eventHeroTitle}>
@@ -186,7 +208,7 @@ function EventDetailCard({
           </View>
         </ImageBackground>
         <View style={styles.eventHeroBody}>
-          <Text style={styles.bodyText}>{hero.summary}</Text>
+          <Text style={styles.bodyText}>{heroSummary}</Text>
         </View>
       </View>
       <EventRegistrationModule
@@ -268,7 +290,9 @@ function EventRegistrationModule({
   onRegister: () => void;
 }) {
   const registrationStatusLabel =
-    event.status === "已确认" ? "活动已确认" : event.status;
+    event.status === "已确认"
+      ? "活动已确认"
+      : publicEventDetailStatus(event.status);
 
   return (
     <View style={styles.registrationCard}>
@@ -920,7 +944,7 @@ function EventPostEventReviewModule({
           </Text>
         </Pressable>
         <Text style={styles.openingLineStatus}>
-          {confirmResult?.confirmedCountLabel ?? "确认后不会发送跟进"}
+          {confirmResult?.confirmedCountLabel ?? "确认后不会发送消息"}
         </Text>
       </View>
       {confirmResult ? (

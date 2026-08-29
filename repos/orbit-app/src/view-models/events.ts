@@ -929,7 +929,7 @@ function readinessChecklistTitle(value: string): string {
   const fallbackByLabel: Record<string, string> = {
     "calendar conflict checked locally": "确认日程没有冲突",
     "event goal selected": "确认这场活动的目标",
-    "follow-up owner confirmed": "确认会后跟进负责人",
+    "follow-up owner confirmed": "确认会后联系负责人",
     "relationship brief reviewed": "已看过重点关系背景"
   };
   const normalized = value.trim().toLowerCase();
@@ -1034,7 +1034,7 @@ export function eventReadinessToView(data: unknown): EventReadinessView {
     nextAction: chineseDisplayText(
       stringField(preparationState, "nextPreparationStep") ||
         stringField(record, "nextAction"),
-      "先确认会后跟进负责人，再带着目标入场。"
+      "先确认会后联系负责人，再带着目标入场。"
     ),
     scoreLabel: `${score}%`,
     selectedSuggestionId,
@@ -1148,7 +1148,7 @@ export function eventRecommendationsToView(
   return {
     nextAction: chineseDisplayText(
       stringField(record, "nextAction"),
-      "先挑 1-2 个最值得见的人，现场确认后再继续跟进。"
+      "先挑 1-2 个最值得见的人，现场确认后再继续联系。"
     ),
     people: recommendations,
     title: "推荐认识的人"
@@ -1213,7 +1213,7 @@ function eventValueAction(value: string): string {
   const normalized = value.trim().toLowerCase();
 
   if (normalized.includes("operator discovery")) {
-    return "适合用来找运营方。现场先记下来源，再决定要不要跟进。";
+    return "适合用来找运营方。现场先记下背景，再决定要不要联系。";
   }
 
   if (normalized.includes("secondary option")) {
@@ -1436,7 +1436,7 @@ export function eventPostEventReviewToView(
       return {
         followUpDraft: chineseDisplayText(
           stringField(followUp, "messageDraft"),
-          "先写一段简短跟进，确认对方是否愿意继续聊。"
+          "先写一段简短消息，确认对方是否愿意继续聊。"
         ),
         headline: chineseDisplayText(
           stringField(summary, "headline"),
@@ -1456,7 +1456,7 @@ export function eventPostEventReviewToView(
         ),
         whyNow: chineseDisplayText(
           stringField(summary, "whyNow"),
-          "趁活动背景还清楚，先判断是否值得继续跟进。"
+          "趁活动背景还清楚，先判断是否值得继续联系。"
         )
       };
     });
@@ -1469,7 +1469,7 @@ export function eventPostEventReviewToView(
       contacts.length > 0
         ? chineseDisplayText(
             stringField(record, "nextAction"),
-            "先复核这些联系人，再决定是否保留记录或写跟进草稿。"
+            "先确认这些联系人，再决定是否保留记录或写联系草稿。"
           )
         : "这场活动暂时没有需要复核的新联系人。",
     stateLabel: postEventStateLabel(stringField(record, "state", "success")),
@@ -1503,11 +1503,11 @@ export function eventPostEventConfirmToView(
     confirmedCountLabel: countLabel,
     feedback:
       count > 0
-        ? `已确认 ${count} 位候选。跟进发送仍需另外确认。`
-        : "候选已确认。跟进发送仍需另外确认。",
+        ? `已确认 ${count} 位候选。发送消息仍需另外确认。`
+        : "候选已确认。发送消息仍需另外确认。",
     nextAction: chineseDisplayText(
       stringField(record, "nextAction"),
-      "先检查确认记录，再决定是否写入联系人或发送跟进。"
+      "先检查确认记录，再决定是否写入联系人或发送消息。"
     ),
     reviewQueueHref: "/contacts/new",
     reviewQueueLabel: "去复核联系人",

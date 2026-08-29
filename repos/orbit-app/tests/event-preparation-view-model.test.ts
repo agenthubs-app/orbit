@@ -23,7 +23,7 @@ test("eventReadinessToView maps readiness payloads into Chinese preparation card
         "Confirm the follow-up owner before using this goal in product event prep.",
       preparationState: {
         nextPreparationStep:
-          "JA: 確認してください。 ZH: 先确认会后跟进负责人，再带着目标入场。 EN: Confirm owner.",
+          "JA: 確認してください。 ZH: 先确认会后联系负责人，再带着目标入场。 EN: Confirm owner.",
         readinessScore: 75
       },
       readinessChecklist: [
@@ -64,12 +64,12 @@ test("eventReadinessToView maps readiness payloads into Chinese preparation card
         id: "readiness:follow-up-owner",
         ownerLabel: "我来确认",
         statusLabel: "待确认",
-        title: "确认会后跟进负责人"
+        title: "确认会后联系负责人"
       }
     ],
     canConfirmGoal: true,
     goal: "会前锁定两位能聊 AI 降本试点的企业负责人。",
-    nextAction: "先确认会后跟进负责人，再带着目标入场。",
+    nextAction: "先确认会后联系负责人，再带着目标入场。",
     scoreLabel: "75%",
     selectedSuggestionId: "",
     stateLabel: "准备中",
@@ -257,7 +257,7 @@ test("eventRecommendationsToView maps recommended attendees and opening lines", 
   });
 
   assert.deepEqual(view, {
-    nextAction: "先挑 1-2 个最值得见的人，现场确认后再继续跟进。",
+    nextAction: "先挑 1-2 个最值得见的人，现场确认后再继续联系。",
     people: [
       {
         attendeeId: "attendee:mina-park",
@@ -373,14 +373,14 @@ test("eventPostEventReviewToView maps post-event contacts into Chinese review ca
     contactCountLabel: "2 位待复核",
     contacts: [
       {
-        followUpDraft: "先写一段简短跟进，确认对方是否愿意继续聊。",
+        followUpDraft: "先写一段简短消息，确认对方是否愿意继续聊。",
         headline: "活动后有一位新联系人需要复核。",
         id: "draft:post-event:priya",
         name: "Priya Shah",
         organizationRole: "Solace Battery · CEO",
         tags: ["活动后", "待复核"],
         urgencyLabel: "今天处理",
-        whyNow: "趁活动背景还清楚，先判断是否值得继续跟进。"
+        whyNow: "趁活动背景还清楚，先判断是否值得继续联系。"
       },
       {
         followUpDraft:
@@ -394,7 +394,7 @@ test("eventPostEventReviewToView maps post-event contacts into Chinese review ca
         whyNow: "趁活动背景还清楚，先确认是否值得继续引荐。"
       }
     ],
-    nextAction: "先复核这些联系人，再决定是否保留记录或写跟进草稿。",
+    nextAction: "先确认这些联系人，再决定是否保留记录或写联系草稿。",
     stateLabel: "会后待复核",
     title: "会后复核"
   });
@@ -475,10 +475,10 @@ test("eventPostEventConfirmToView maps confirmation payloads into guarded Chines
 
   assert.deepEqual(view, {
     confirmedCountLabel: "2 位已确认",
-    feedback: "已确认 2 位候选。跟进发送仍需另外确认。",
+    feedback: "已确认 2 位候选。发送消息仍需另外确认。",
     reviewQueueHref: "/contacts/new",
     reviewQueueLabel: "去复核联系人",
-    nextAction: "先检查确认记录，再决定是否写入联系人或发送跟进。",
+    nextAction: "先检查确认记录，再决定是否写入联系人或发送消息。",
     title: "会后复核已确认"
   });
 });

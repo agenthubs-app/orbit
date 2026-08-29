@@ -49,11 +49,11 @@ test("eventValueRecommendationsToView maps global event recommendations into Chi
 
   assert.deepEqual(view, {
     emptyText: "",
-    nextAction: "适合用来找运营方。现场先记下来源，再决定要不要跟进。",
+    nextAction: "适合用来找运营方。现场先记下背景，再决定要不要联系。",
     profileLine: "东京 · 气候科技 · 时间合适",
     recommendations: [
       {
-        action: "适合用来找运营方。现场先记下来源，再决定要不要跟进。",
+        action: "适合用来找运营方。现场先记下背景，再决定要不要联系。",
         detail: "6月29日 周一 09:00 · Tokyo · Nihonbashi Climate Table",
         id: "demo-event-1",
         reason: "参会者里有近期在看气候方案的运营方。",

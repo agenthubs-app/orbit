@@ -47,6 +47,17 @@ test("event detail registration card labels event status as event confirmation",
   );
 });
 
+test("event detail hides imported status and English storage placeholders", () => {
+  assert.match(screenSource, /function publicEventDetailStatus/u);
+  assert.match(screenSource, /normalized === "imported"/u);
+  assert.match(screenSource, /return "可报名"/u);
+  assert.match(screenSource, /function publicEventDetailSummary/u);
+  assert.match(screenSource, /Published event context/u);
+  assert.match(screenSource, /查看活动安排、参会信息和会前准备/u);
+  assert.match(screenSource, /publicEventDetailStatus\(hero\.status\)/u);
+  assert.match(screenSource, /publicEventDetailSummary\(hero\.summary\)/u);
+});
+
 test("event detail recommendations can refresh an opening line through the web API", () => {
   assert.match(screenSource, /eventOpeningLinePath/u);
   assert.match(screenSource, /useOrbitApiClient/u);

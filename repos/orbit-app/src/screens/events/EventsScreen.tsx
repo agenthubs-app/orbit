@@ -2,9 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
   ImageBackground,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,7 +20,6 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -30,7 +31,6 @@ import {
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   eventDiscoveryFilterCounts,
-  eventDiscoveryTopics,
   eventsToSummaries,
   eventValueRecommendationAcceptanceToView,
   eventValueRecommendationsToView,
@@ -42,13 +42,13 @@ import {
 } from "../../view-models/events";
 
 const eventDiscoveryStatusFilters: EventDiscoveryStatusFilter[] = [
-  "all",
   "upcoming",
   "active",
-  "ended"
+  "ended",
+  "all"
 ];
 
-const eventPageSize = 4;
+const eventPageSize = 8;
 
 const eventDiscoveryStatusLabels: Record<EventDiscoveryStatusFilter, string> = {
   active: "进行中",
@@ -75,7 +75,65 @@ function eventDateChip(startsAt: string): { date: string; detail: string } {
   };
 }
 
-function EventImageCard({
+function inferredEventTopic(title: string): string {
+  const normalized = title.toLowerCase();
+
+  if (/\bai\b|人工智能|自动化|poc/iu.test(normalized)) {
+    return "AI 科技";
+  }
+
+  if (/投资|创投|融资|种子轮|创业者/iu.test(normalized)) {
+    return "创投融资";
+  }
+
+  if (/跨境|海外|入境客|日中|中日/iu.test(normalized)) {
+    return "跨境商务";
+  }
+
+  if (/人脉|关系|社群|沙龙|对接|交流/iu.test(normalized)) {
+    return "人脉社群";
+  }
+
+  if (/工作坊|训练营|课程|诊断/iu.test(normalized)) {
+    return "工作坊";
+  }
+
+  if (/餐饮|门店|增长/iu.test(normalized)) {
+    return "餐饮增长";
+  }
+
+  return "商业交流";
+}
+
+function discoveryTopicsForEvent(event: EventSummary): string[] {
+  return event.topics.length > 0 ? event.topics : [inferredEventTopic(event.title)];
+}
+
+function eventDiscoveryLocations(events: EventSummary[]): string[] {
+  return [...new Set(events.map((event) => event.location.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, "zh-CN"))
+    .slice(0, 8);
+}
+
+function publicEventStatus(status: string): string {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "imported" || normalized === "confirmed" || normalized === "scheduled" || status === "已确认") {
+    return "可报名";
+  }
+
+  return status || "待确认";
+}
+
+function publicEventSubtitle(subtitle: string): string {
+  return subtitle
+    .split(" · ")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && !/^Organizer\s+#/iu.test(segment))
+    .join(" · ");
+}
+
+function CompactEventRow({
   baseUrl,
   event,
   onPress
@@ -84,104 +142,155 @@ function EventImageCard({
   event: EventSummary;
   onPress: () => void;
 }) {
-  const dateChip = eventDateChip(event.startsAt);
+  const subtitle = publicEventSubtitle(event.subtitle);
+  const status = publicEventStatus(event.status);
 
   return (
     <Pressable
+      accessibilityLabel={`${event.title}，${event.startsAt}，${event.location || "地点待定"}，${status}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.eventImageCard,
+        styles.eventRow,
         pressed ? styles.eventCardPressed : null
       ]}
     >
-      <ImageBackground
-        imageStyle={styles.eventImage}
+      <Image
+        resizeMode="cover"
         source={{ uri: assetUrl(baseUrl, event.coverPath) }}
-        style={styles.eventImageFrame}
-      >
-        <View style={styles.eventImageOverlay} />
-        <View style={styles.eventImageContent}>
-          <View style={styles.eventImageTopRow}>
-            <Text numberOfLines={1} style={styles.eventImageStatusPill}>
-              {event.status}
-            </Text>
-            <View style={styles.eventImageDateChip}>
-              <Text numberOfLines={1} style={styles.eventImageDateValue}>
-                {dateChip.date}
-              </Text>
-              {dateChip.detail ? (
-                <Text numberOfLines={1} style={styles.eventImageDateDetail}>
-                  {dateChip.detail}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          <View style={styles.eventImageBottom}>
-            <View style={styles.eventImageCopy}>
-              {event.subtitle ? (
-                <Text numberOfLines={1} style={styles.eventImageSubtitle}>
-                  {event.subtitle}
-                </Text>
-              ) : null}
-              <Text numberOfLines={2} style={styles.eventImageTitle}>
-                {event.title}
-              </Text>
-            </View>
-            <View style={styles.eventImageMetaRow}>
-              <View style={styles.eventImageMetaLine}>
-                <Ionicons color={colors.onAccent} name="time-outline" size={14} />
-                <Text numberOfLines={1} style={styles.eventImageDetail}>
-                  {event.startsAt}
-                </Text>
-              </View>
-              {event.location ? (
-                <View style={styles.eventImageMetaLine}>
-                  <Ionicons color={colors.onAccent} name="location-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.eventImageDetail}>
-                    {event.location}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-            <View style={styles.eventImageFooter}>
-              <Text numberOfLines={1} style={styles.eventImageDetail}>
-                {event.participantCountLabel}
-              </Text>
-              <Text style={styles.eventImageCta}>{event.actionLabel}</Text>
-            </View>
-          </View>
+        style={styles.eventRowImageFrame}
+      />
+      <View style={styles.eventRowContent}>
+        <Text numberOfLines={1} style={styles.eventRowDate}>
+          {event.startsAt}
+        </Text>
+        <Text numberOfLines={2} style={styles.eventRowTitle}>
+          {event.title}
+        </Text>
+        <View style={styles.eventRowMeta}>
+          <Ionicons color={colors.text3} name="location-outline" size={14} />
+          <Text numberOfLines={1} style={styles.eventRowLocation}>
+            {[event.location, subtitle].filter(Boolean).join(" · ") || "地点待定"}
+          </Text>
         </View>
-      </ImageBackground>
+        <View style={styles.eventRowFooter}>
+          <Text numberOfLines={1} style={styles.eventRowStatus}>
+            {status}
+          </Text>
+          <Ionicons color={colors.text4} name="chevron-forward" size={16} />
+        </View>
+      </View>
     </Pressable>
+  );
+}
+
+function EventFilterChip({
+  count,
+  label,
+  onPress,
+  selected
+}: {
+  count?: number;
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityState={{ selected }}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.discoveryChip,
+        selected ? styles.discoveryChipActive : null,
+        pressed ? styles.eventCardPressed : null
+      ]}
+    >
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.discoveryChipText,
+          selected ? styles.discoveryChipTextActive : null
+        ]}
+      >
+        {label}{typeof count === "number" ? ` ${count}` : ""}
+      </Text>
+    </Pressable>
+  );
+}
+
+function EventFilterRail({
+  activeValue,
+  label,
+  onChange,
+  values
+}: {
+  activeValue: string;
+  label: string;
+  onChange: (value: string) => void;
+  values: string[];
+}) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.filterRailGroup}>
+      <Text style={styles.filterRailLabel}>{label}</Text>
+      <ScrollView
+        contentContainerStyle={styles.filterRailContent}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        <EventFilterChip
+          label="全部"
+          onPress={() => onChange("")}
+          selected={!activeValue}
+        />
+        {values.map((value) => (
+          <EventFilterChip
+            key={value}
+            label={value}
+            onPress={() => onChange(activeValue === value ? "" : value)}
+            selected={activeValue === value}
+          />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 function EventDiscoveryControls({
   counts,
+  locations,
+  locationFilter,
+  onLocationChange,
   onQueryChange,
   onStatusChange,
   onTopicChange,
   query,
-  resultLabel,
   statusFilter,
   topicFilter,
   topics
 }: {
   counts: Record<EventDiscoveryStatusFilter, number>;
+  locations: string[];
+  locationFilter: string;
+  onLocationChange: (location: string) => void;
   onQueryChange: (query: string) => void;
   onStatusChange: (status: EventDiscoveryStatusFilter) => void;
   onTopicChange: (topic: string) => void;
   query: string;
-  resultLabel: string;
   statusFilter: EventDiscoveryStatusFilter;
   topicFilter: string;
   topics: string[];
 }) {
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const hasQuery = query.trim().length > 0;
+  const selectedFilterCount = Number(Boolean(locationFilter)) + Number(Boolean(topicFilter));
 
   return (
-    <View style={styles.discoveryPanel}>
+    <View style={styles.discoveryControls}>
       <View style={styles.discoverySearchRow}>
         <Ionicons color={colors.text3} name="search-outline" size={18} />
         <TextInput
@@ -199,80 +308,101 @@ function EventDiscoveryControls({
             accessibilityLabel="清空活动搜索"
             accessibilityRole="button"
             onPress={() => onQueryChange("")}
-            style={styles.discoveryClearButton}
+            style={styles.discoveryIconButton}
           >
             <Ionicons color={colors.text3} name="close-circle" size={19} />
           </Pressable>
         ) : null}
+        <Pressable
+          accessibilityLabel="筛选活动"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: filtersExpanded }}
+          onPress={() => setFiltersExpanded((current) => !current)}
+          style={[
+            styles.discoveryFilterButton,
+            selectedFilterCount > 0 ? styles.discoveryFilterButtonActive : null
+          ]}
+        >
+          <Ionicons
+            color={selectedFilterCount > 0 ? colors.onAccent : colors.text2}
+            name="options-outline"
+            size={17}
+          />
+          {selectedFilterCount > 0 ? (
+            <Text style={styles.discoveryFilterCount}>{selectedFilterCount}</Text>
+          ) : null}
+        </Pressable>
       </View>
-      <View style={styles.discoveryMetaRow}>
-        <Text style={styles.discoveryResultLabel}>{resultLabel}</Text>
-      </View>
-      <View style={styles.discoveryChipRow}>
-        {eventDiscoveryStatusFilters.map((filter) => {
-          const selected = statusFilter === filter;
-
-          return (
-            <Pressable
-              accessibilityState={{ selected }}
-              accessibilityRole="button"
-              key={filter}
-              onPress={() => onStatusChange(filter)}
-              style={({ pressed }) => [
-                styles.discoveryChip,
-                selected ? styles.discoveryChipActive : null,
-                pressed ? styles.eventCardPressed : null
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.discoveryChipText,
-                  selected ? styles.discoveryChipTextActive : null
-                ]}
-              >
-                {eventDiscoveryStatusLabels[filter]} {counts[filter]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      {topics.length > 0 ? (
-        <View style={styles.discoveryTopicRow}>
-          {topics.map((topic) => {
-            const selected = topicFilter === topic;
-
-            return (
-              <Pressable
-                accessibilityState={{ selected }}
-                accessibilityRole="button"
-                key={topic}
-                onPress={() => onTopicChange(selected ? "" : topic)}
-                style={({ pressed }) => [
-                  styles.discoveryTopicChip,
-                  selected ? styles.discoveryChipActive : null,
-                  pressed ? styles.eventCardPressed : null
-                ]}
-              >
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.discoveryTopicChipText,
-                    selected ? styles.discoveryChipTextActive : null
-                  ]}
-                >
-                  {topic}
-                </Text>
-              </Pressable>
-            );
-          })}
+      <ScrollView
+        contentContainerStyle={styles.statusRailContent}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {eventDiscoveryStatusFilters.map((filter) => (
+          <EventFilterChip
+            count={counts[filter]}
+            key={filter}
+            label={eventDiscoveryStatusLabels[filter]}
+            onPress={() => onStatusChange(filter)}
+            selected={statusFilter === filter}
+          />
+        ))}
+      </ScrollView>
+      {filtersExpanded ? (
+        <View style={styles.expandedFilters}>
+          <EventFilterRail
+            activeValue={locationFilter}
+            label="地点"
+            onChange={onLocationChange}
+            values={locations}
+          />
+          <EventFilterRail
+            activeValue={topicFilter}
+            label="主题"
+            onChange={onTopicChange}
+            values={topics}
+          />
         </View>
       ) : null}
     </View>
   );
 }
 
-function EventImageList({
+function SectionHeader({
+  action,
+  detail,
+  onAction,
+  title
+}: {
+  action?: string;
+  detail?: string;
+  onAction?: () => void;
+  title: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeaderCopy}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {detail ? <Text style={styles.sectionDetail}>{detail}</Text> : null}
+      </View>
+      {action && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.sectionAction,
+            pressed ? styles.eventCardPressed : null
+          ]}
+        >
+          <Text style={styles.sectionActionText}>{action}</Text>
+          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function CompactEventList({
   baseUrl,
   events,
   onOpenEvent
@@ -286,9 +416,9 @@ function EventImageList({
   }
 
   return (
-    <View style={styles.eventImageList}>
+    <View style={styles.eventList}>
       {events.map((event) => (
-        <EventImageCard
+        <CompactEventRow
           baseUrl={baseUrl}
           event={event}
           key={event.id}
@@ -314,16 +444,9 @@ function EventCenterEntry({ onPress }: { onPress: () => void }) {
         pressed ? styles.eventCardPressed : null
       ]}
     >
-      <View style={styles.eventCenterEntryIcon}>
-        <Ionicons color={colors.accent} name="options-outline" size={20} />
-      </View>
-      <View style={styles.eventCenterEntryCopy}>
-        <Text style={styles.eventCenterEntryTitle}>运营中心</Text>
-        <Text numberOfLines={1} style={styles.eventCenterEntryDetail}>
-          查看负责的活动与下一步任务
-        </Text>
-      </View>
-      <Ionicons color={colors.text3} name="chevron-forward" size={19} />
+      <Ionicons color={colors.accent} name="options-outline" size={17} />
+      <Text style={styles.eventCenterEntryTitle}>我负责的活动</Text>
+      <Ionicons color={colors.text3} name="chevron-forward" size={16} />
     </Pressable>
   );
 }
@@ -339,24 +462,44 @@ export function EventsScreen() {
   const [recommendationRefreshKey, setRecommendationRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] =
-    useState<EventDiscoveryStatusFilter>("all");
+    useState<EventDiscoveryStatusFilter>("upcoming");
   const [topicFilter, setTopicFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
   const [visibleEventCount, setVisibleEventCount] = useState(eventPageSize);
   const refreshing = state.refreshing;
   const events = state.kind === "success" ? eventsToSummaries(state.data) : [];
-  const filteredEvents = filterEventSummaries(events, {
+  const discoveryEvents = events.map((event) => ({
+    ...event,
+    topics: discoveryTopicsForEvent(event)
+  }));
+  const filteredEvents = filterEventSummaries(discoveryEvents, {
     query,
     status: statusFilter,
     topic: topicFilter
-  });
+  }).filter((event) => !locationFilter || event.location === locationFilter);
   const visibleEvents = filteredEvents.slice(0, visibleEventCount);
   const allFilteredEventsVisible = visibleEventCount >= filteredEvents.length;
-  const discoveryTopics = eventDiscoveryTopics(events);
-  const discoveryCounts = eventDiscoveryFilterCounts(events);
-  const resultLabel =
-    filteredEvents.length === events.length
-      ? `${events.length} 场活动`
-      : `${filteredEvents.length} / ${events.length} 场活动`;
+  const discoveryTopics = [
+    ...new Set(discoveryEvents.flatMap((event) => event.topics))
+  ].slice(0, 8);
+  const discoveryLocations = eventDiscoveryLocations(discoveryEvents);
+  const discoveryCounts = eventDiscoveryFilterCounts(discoveryEvents);
+  const resultLabel = `${filteredEvents.length} 场活动`;
+  const sectionTitle = query.trim()
+    ? "搜索结果"
+    : statusFilter === "upcoming"
+      ? "即将开始"
+      : statusFilter === "active"
+        ? "正在进行"
+        : statusFilter === "ended"
+          ? "历史活动"
+          : "全部活动";
+  const showRecommendations =
+    signedIn &&
+    !query.trim() &&
+    statusFilter === "upcoming" &&
+    !topicFilter &&
+    !locationFilter;
 
   function refreshAll() {
     state.refresh();
@@ -389,6 +532,11 @@ export function EventsScreen() {
     setVisibleEventCount(eventPageSize);
   }
 
+  function changeLocationFilter(nextLocation: string) {
+    setLocationFilter(nextLocation);
+    setVisibleEventCount(eventPageSize);
+  }
+
   return (
     <AppScreen
       eyebrow="发现活动"
@@ -411,25 +559,39 @@ export function EventsScreen() {
       {state.kind === "empty" ? (
         <EmptyState message="报名、导入或推荐的活动会出现在这里。" title="暂无活动" />
       ) : null}
-      {signedIn ? (
-        <EventCenterEntry
-          onPress={() => router.push("/events/center" as Href)}
-        />
-      ) : null}
       {events.length > 0 ? (
         <EventDiscoveryControls
           counts={discoveryCounts}
+          locationFilter={locationFilter}
+          locations={discoveryLocations}
+          onLocationChange={changeLocationFilter}
           onQueryChange={changeQuery}
           onStatusChange={changeStatusFilter}
           onTopicChange={changeTopicFilter}
           query={query}
-          resultLabel={resultLabel}
           statusFilter={statusFilter}
           topicFilter={topicFilter}
           topics={discoveryTopics}
         />
       ) : null}
-      <EventImageList
+      {showRecommendations ? (
+        <AuthenticatedEventValueRecommendations
+          baseUrl={baseUrl}
+          events={filteredEvents}
+          key={recommendationRefreshKey}
+          onOpenEvent={openEvent}
+          onRegisterEvent={openEventRegistration}
+        />
+      ) : null}
+      {events.length > 0 ? (
+        <SectionHeader detail={resultLabel} title={sectionTitle} />
+      ) : null}
+      {signedIn && events.length > 0 ? (
+        <EventCenterEntry
+          onPress={() => router.push("/events/center" as Href)}
+        />
+      ) : null}
+      <CompactEventList
         baseUrl={baseUrl}
         events={visibleEvents}
         onOpenEvent={openEvent}
@@ -464,17 +626,8 @@ export function EventsScreen() {
       ) : null}
       {events.length > 0 && filteredEvents.length === 0 ? (
         <EmptyState
-          message="换个关键词，或清掉状态和主题筛选。"
+          message="换个关键词，或清掉状态、地点和主题筛选。"
           title="没有匹配的活动"
-        />
-      ) : null}
-      {signedIn ? (
-        <AuthenticatedEventValueRecommendations
-          baseUrl={baseUrl}
-          events={events}
-          key={recommendationRefreshKey}
-          onOpenEvent={openEvent}
-          onRegisterEvent={openEventRegistration}
         />
       ) : null}
     </AppScreen>
@@ -569,11 +722,10 @@ function EventValueRecommendationsModule({
 }) {
   if (state.kind === "failure" || state.kind === "offline") {
     return (
-      <DataCard detail="暂时取不到推荐" title="推荐参加">
-        <Text style={styles.recommendationBody}>
-          活动列表还能正常看。推荐排序稍后再刷新。
-        </Text>
-      </DataCard>
+      <View style={styles.recommendationNotice}>
+        <Text style={styles.recommendationNoticeTitle}>暂时取不到推荐</Text>
+        <Text style={styles.recommendationBody}>活动列表还能正常看，稍后再刷新推荐。</Text>
+      </View>
     );
   }
 
@@ -583,35 +735,28 @@ function EventValueRecommendationsModule({
 
   const view = eventValueRecommendationsToView(state.data);
   const eventById = eventSummaryById(events);
+  const currentRecommendations = view.recommendations.filter((recommendation) =>
+    eventById.has(recommendation.id)
+  );
 
-  if (view.recommendations.length === 0) {
-    return (
-      <DataCard detail={view.profileLine} title="推荐参加">
-        <Text style={styles.recommendationBody}>{view.emptyText}</Text>
-        <Text style={styles.recommendationNextAction}>{view.nextAction}</Text>
-      </DataCard>
-    );
+  if (currentRecommendations.length === 0) {
+    return null;
   }
 
   return (
-    <DataCard detail={view.profileLine || view.nextAction} title="推荐参加">
-      {view.recommendations.map((recommendation) => {
-        const recommendationCoverPath = eventById.get(
-          recommendation.id
-        )?.coverPath;
-
-        return (
-          <EventValueRecommendationRow
-            baseUrl={baseUrl}
-            coverPath={recommendationCoverPath}
-            key={recommendation.id}
-            onAccept={() => onAcceptEvent(recommendation)}
-            onOpen={() => onOpenEvent(recommendation.id)}
-            pending={pendingAcceptEventId === recommendation.id}
-            recommendation={recommendation}
-          />
-        );
-      })}
+    <View style={styles.recommendationSection}>
+      <SectionHeader
+        detail="根据你的目标和时间安排"
+        title="为你推荐"
+      />
+      <EventRecommendationRail
+        baseUrl={baseUrl}
+        eventById={eventById}
+        onAcceptEvent={onAcceptEvent}
+        onOpenEvent={onOpenEvent}
+        pendingAcceptEventId={pendingAcceptEventId}
+        recommendations={currentRecommendations}
+      />
       {acceptError ? <Text style={styles.recommendationError}>{acceptError}</Text> : null}
       {acceptedRecommendation ? (
         <EventValueRecommendationAcceptedCard
@@ -620,14 +765,57 @@ function EventValueRecommendationsModule({
           view={acceptedRecommendation}
         />
       ) : null}
-      <Text style={styles.recommendationNextAction}>{view.nextAction}</Text>
-    </DataCard>
+    </View>
   );
 }
 
-function EventValueRecommendationRow({
+function EventRecommendationRail({
+  baseUrl,
+  eventById,
+  onAcceptEvent,
+  onOpenEvent,
+  pendingAcceptEventId,
+  recommendations
+}: {
+  baseUrl: string;
+  eventById: Map<string, EventSummary>;
+  onAcceptEvent: (recommendation: EventValueRecommendationCardView) => void;
+  onOpenEvent: (id: string) => void;
+  pendingAcceptEventId: string | null;
+  recommendations: EventValueRecommendationCardView[];
+}) {
+  return (
+    <ScrollView
+      contentContainerStyle={styles.recommendationRailContent}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+    >
+      {recommendations.map((recommendation) => {
+        const event = eventById.get(recommendation.id);
+        const recommendationCoverPath =
+          event?.coverPath ?? "/orbit-covers/meeting.jpg";
+
+        return (
+          <EventRecommendationCard
+            baseUrl={baseUrl}
+            coverPath={recommendationCoverPath}
+            event={event}
+            key={recommendation.id}
+            onAccept={() => onAcceptEvent(recommendation)}
+            onOpen={() => onOpenEvent(recommendation.id)}
+            pending={pendingAcceptEventId === recommendation.id}
+            recommendation={recommendation}
+          />
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function EventRecommendationCard({
   baseUrl,
   coverPath,
+  event,
   onAccept,
   onOpen,
   pending,
@@ -635,13 +823,14 @@ function EventValueRecommendationRow({
 }: {
   baseUrl: string;
   coverPath?: string | undefined;
+  event?: EventSummary | undefined;
   onAccept: () => void;
   onOpen: () => void;
   pending: boolean;
   recommendation: EventValueRecommendationCardView;
 }) {
   return (
-    <View style={styles.recommendationRow}>
+    <View style={styles.recommendationCard}>
       {coverPath ? (
         <ImageBackground
           imageStyle={styles.recommendationCoverImage}
@@ -659,14 +848,14 @@ function EventValueRecommendationRow({
               </Text>
             </View>
             <Text numberOfLines={2} style={styles.recommendationCoverTitle}>
-              {recommendation.title}
+              {event?.title ?? recommendation.title}
             </Text>
           </View>
         </ImageBackground>
       ) : (
         <View style={styles.recommendationTopRow}>
           <Text numberOfLines={2} style={styles.recommendationTitle}>
-            {recommendation.title}
+            {event?.title ?? recommendation.title}
           </Text>
           <View style={styles.recommendationScoreBlock}>
             <Text style={styles.recommendationScore}>
@@ -678,36 +867,41 @@ function EventValueRecommendationRow({
           </View>
         </View>
       )}
-      <Text numberOfLines={1} style={styles.eventDetail}>
-        {recommendation.detail}
-      </Text>
-      <Text style={styles.recommendationBody}>{recommendation.reason}</Text>
-      <Text style={styles.recommendationAction}>{recommendation.action}</Text>
-      <View style={styles.recommendationActionRow}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpen}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            pressed ? styles.eventCardPressed : null
-          ]}
-        >
-          <Text style={styles.secondaryButtonText}>查看活动</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          disabled={pending}
-          onPress={onAccept}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pending ? styles.disabled : null,
-            pressed ? styles.eventCardPressed : null
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>
-            {pending ? "记录中" : "接受推荐"}
-          </Text>
-        </Pressable>
+      <View style={styles.recommendationCardBody}>
+        <Text numberOfLines={1} style={styles.eventDetail}>
+          {event
+            ? [event.startsAt, event.location].filter(Boolean).join(" · ")
+            : recommendation.detail}
+        </Text>
+        <Text numberOfLines={2} style={styles.recommendationBody}>
+          {recommendation.reason}
+        </Text>
+        <View style={styles.recommendationActionRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpen}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed ? styles.eventCardPressed : null
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>查看活动</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={pending}
+            onPress={onAccept}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pending ? styles.disabled : null,
+              pressed ? styles.eventCardPressed : null
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {pending ? "记录中" : "记下推荐"}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -769,13 +963,16 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.54
   },
+  discoveryControls: {
+    gap: spacing.md
+  },
   discoveryChip: {
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
     borderRadius: radius.pill,
     borderWidth: 1,
-    minHeight: 34,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     justifyContent: "center"
   },
@@ -796,6 +993,31 @@ const styles = StyleSheet.create({
   },
   discoveryChipTextActive: {
     color: colors.onAccent
+  },
+  discoveryFilterButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface3,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    height: 44,
+    justifyContent: "center",
+    minWidth: 44,
+    paddingHorizontal: spacing.sm
+  },
+  discoveryFilterButtonActive: {
+    backgroundColor: colors.accent
+  },
+  discoveryFilterCount: {
+    color: colors.onAccent,
+    fontSize: 10,
+    fontWeight: "900",
+    marginLeft: spacing.xs
+  },
+  discoveryIconButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 44
   },
   discoveryClearButton: {
     alignItems: "center",
@@ -840,6 +1062,29 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: spacing.md
   },
+  expandedFilters: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    gap: spacing.md,
+    paddingTop: spacing.md
+  },
+  filterRailContent: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg
+  },
+  filterRailGroup: {
+    gap: spacing.sm
+  },
+  filterRailLabel: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 17
+  },
+  statusRailContent: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg
+  },
   discoveryTopicChip: {
     alignItems: "center",
     backgroundColor: colors.surface2,
@@ -878,7 +1123,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 64,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
@@ -902,6 +1147,7 @@ const styles = StyleSheet.create({
   },
   eventCenterEntryTitle: {
     color: colors.ink,
+    flex: 1,
     fontSize: typography.body,
     fontWeight: "800",
     lineHeight: 20
@@ -935,7 +1181,7 @@ const styles = StyleSheet.create({
   },
   eventImageFrame: {
     backgroundColor: colors.surface3,
-    height: 300,
+    height: 240,
     overflow: "hidden",
     width: "100%"
   },
@@ -1043,6 +1289,72 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     lineHeight: 30
   },
+  eventList: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    overflow: "hidden"
+  },
+  eventRow: {
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 108,
+    padding: spacing.md
+  },
+  eventRowContent: {
+    flex: 1,
+    gap: spacing.xxs,
+    justifyContent: "center",
+    minWidth: 0
+  },
+  eventRowDate: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16
+  },
+  eventRowFooter: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between"
+  },
+  eventRowImageFrame: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.control,
+    height: 84,
+    width: 112
+  },
+  eventRowLocation: {
+    color: colors.text3,
+    flex: 1,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    minWidth: 0
+  },
+  eventRowMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minWidth: 0
+  },
+  eventRowStatus: {
+    color: colors.text2,
+    flex: 1,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16
+  },
+  eventRowTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 20
+  },
   recommendationAction: {
     color: colors.text,
     fontSize: typography.caption,
@@ -1067,6 +1379,18 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
+  recommendationCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    overflow: "hidden",
+    width: 280
+  },
+  recommendationCardBody: {
+    gap: spacing.sm,
+    padding: spacing.md
+  },
   recommendationCoverBandText: {
     color: colors.text2,
     fontSize: 10,
@@ -1080,8 +1404,7 @@ const styles = StyleSheet.create({
   },
   recommendationCoverFrame: {
     backgroundColor: colors.surface3,
-    borderRadius: radius.control,
-    height: 150,
+    height: 132,
     overflow: "hidden",
     width: "100%"
   },
@@ -1119,6 +1442,27 @@ const styles = StyleSheet.create({
     color: colors.rose,
     fontSize: typography.caption,
     lineHeight: 17
+  },
+  recommendationNotice: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.md
+  },
+  recommendationNoticeTitle: {
+    color: colors.ink,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 20
+  },
+  recommendationRailContent: {
+    gap: spacing.md,
+    paddingRight: spacing.lg
+  },
+  recommendationSection: {
+    gap: spacing.md
   },
   recommendationNextAction: {
     color: colors.text3,
@@ -1162,7 +1506,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: colors.accent,
     borderRadius: radius.control,
-    minHeight: 36,
+    justifyContent: "center",
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs
   },
@@ -1183,7 +1528,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: colors.accentSofter,
     borderRadius: radius.control,
-    minHeight: 36,
+    justifyContent: "center",
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs
   },
@@ -1191,6 +1537,39 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: typography.caption,
     fontWeight: "800"
+  },
+  sectionAction: {
+    alignItems: "center",
+    flexDirection: "row",
+    minHeight: 44,
+    paddingLeft: spacing.md
+  },
+  sectionActionText: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800"
+  },
+  sectionDetail: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 17
+  },
+  sectionHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between"
+  },
+  sectionHeaderCopy: {
+    flex: 1,
+    gap: spacing.xxs,
+    minWidth: 0
+  },
+  sectionTitle: {
+    color: colors.ink,
+    fontSize: typography.section,
+    fontWeight: "900",
+    lineHeight: 22
   },
   statusBadge: {
     alignSelf: "flex-start",
