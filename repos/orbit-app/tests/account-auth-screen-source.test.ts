@@ -8,6 +8,10 @@ const screenSource = readFileSync(
   join(repoRoot, "src", "screens", "profile", "AccountAuthScreen.tsx"),
   "utf8"
 );
+const authProviderSource = readFileSync(
+  join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
+  "utf8"
+);
 const mobileGoogleRoutePath = join(
   repoRoot,
   "app",
@@ -24,6 +28,17 @@ test("account auth screen can start the mobile Google login bridge", () => {
   assert.match(screenSource, /googleEnabled/u);
   assert.match(screenSource, /startGoogleSignIn/u);
   assert.match(screenSource, /oauthActions/u);
+});
+
+test("mobile Google PKCE hashes a native typed array", () => {
+  assert.match(
+    authProviderSource,
+    /const bytes = new Uint8Array\(value\.byteLength\);/u
+  );
+  assert.match(
+    authProviderSource,
+    /Crypto\.digest\(Crypto\.CryptoDigestAlgorithm\.SHA256, bytes\)/u
+  );
 });
 
 test("account auth screen normalizes next before every post-auth navigation", () => {

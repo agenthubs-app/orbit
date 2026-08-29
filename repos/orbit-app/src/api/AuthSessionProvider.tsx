@@ -29,6 +29,8 @@ import {
   type MobileAuthUser
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
+import { createOrbitApiClient } from "./client";
+import { revokeNotificationDevice } from "../notifications/native-notifications";
 
 interface AuthActionResult {
   message?: string;
@@ -65,8 +67,8 @@ const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const usesBrowserManagedSession = Platform.OS === "web";
 
 async function sha256(value: Uint8Array): Promise<Uint8Array> {
-  const bytes = new ArrayBuffer(value.byteLength);
-  new Uint8Array(bytes).set(value);
+  const bytes = new Uint8Array(value.byteLength);
+  bytes.set(value);
 
   return new Uint8Array(
     await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes)
@@ -248,7 +250,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
 
         return acceptSession(exchange.data);
-      } catch {
+      } catch (error) {
+        console.error("Orbit Google 登录启动失败", error);
         return {
           message: "Google 登录没有完成，请重新登录。",
           success: false
@@ -278,6 +281,11 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
     if (user !== null) {
+      const client = createOrbitApiClient({ authCookieHeader: cookieHeader, baseUrl });
+      const revoked = await revokeNotificationDevice(client).catch(() => false);
+      if (!revoked) {
+        console.warn("Orbit 无法在登出前解绑这台设备的推送令牌");
+      }
       const result = await signOutOrbitSession({ baseUrl, cookieHeader });
 
       if (!result.success) {
