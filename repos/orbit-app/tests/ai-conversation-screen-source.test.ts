@@ -37,6 +37,17 @@ test("AI conversation persists a consumed initial message before canonical navig
   );
 });
 
+test("AI conversation keeps a pending task suggestion visible before canonical navigation", () => {
+  assert.match(
+    screenSource,
+    /if \(thread\.taskInteraction\?\.state === "suggested"\) \{\s*return true;\s*\}/u
+  );
+  assert.match(
+    screenSource,
+    /if \(savedSessionId\) \{\s*router\.replace/u
+  );
+});
+
 test("AI conversation screen renders markdown markers and quotes distinctly", () => {
   assert.match(screenSource, /block\.marker \?\? "•"/u);
   assert.match(screenSource, /styles\.markdownQuoteBlock/u);

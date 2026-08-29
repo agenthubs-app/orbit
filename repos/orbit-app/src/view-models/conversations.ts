@@ -40,11 +40,22 @@ export interface ProposedToolIntentView {
   requiresUserConfirmation: boolean;
 }
 
+export interface TaskInteractionView {
+  category: string;
+  dueAt?: string;
+  reason: string;
+  state: "created" | "suggested" | "failed";
+  suggestionId: string;
+  taskId: string;
+  title: string;
+}
+
 export interface ConversationChatView {
   activeConversationId: string | null;
   assistantMessage: string;
   messages: ChatMessageView[];
   proposedToolIntents: ProposedToolIntentView[];
+  taskInteraction?: TaskInteractionView | null;
 }
 
 export interface OrbitAiHomeChatWindow extends ConversationChatView {
@@ -435,6 +446,12 @@ export function conversationPayloadToChatView(
     ? payload.proposedToolIntents
     : [];
   const activeConversationId = stringField(payload, "activeConversationId");
+  const taskInteraction = isRecord(payload.taskInteraction)
+    ? payload.taskInteraction
+    : null;
+  const taskInteractionState = taskInteraction
+    ? stringField(taskInteraction, "state")
+    : "";
 
   return {
     activeConversationId: activeConversationId || null,
@@ -460,7 +477,22 @@ export function conversationPayloadToChatView(
       label: intentField(intent, "label", "建议动作"),
       reason: stringField(intent, "reason"),
       requiresUserConfirmation: actionRequiresConfirmation(intent)
-    }))
+    })),
+    taskInteraction:
+      taskInteraction &&
+      ["created", "suggested", "failed"].includes(taskInteractionState)
+        ? {
+            category: stringField(taskInteraction, "category", "other"),
+            ...(stringField(taskInteraction, "dueAt")
+              ? { dueAt: stringField(taskInteraction, "dueAt") }
+              : {}),
+            reason: stringField(taskInteraction, "reason"),
+            state: taskInteractionState as TaskInteractionView["state"],
+            suggestionId: stringField(taskInteraction, "suggestionId"),
+            taskId: stringField(taskInteraction, "taskId"),
+            title: stringField(taskInteraction, "title")
+          }
+        : null
   };
 }
 
@@ -511,6 +543,7 @@ export function pendingConversationThreadView(
     ],
     nextAction: "正在处理你的问题。",
     proposedToolIntents: [],
+    taskInteraction: null,
     title: "正在处理"
   };
 }
@@ -771,10 +804,10 @@ export function conversationInlinePanelsForThread(
   ) {
     panels.push({
       actionHref: "/followups",
-      actionLabel: "查看全部跟进",
-      detail: "根据你的问题，先把今天需要复核的跟进事项放在对话里。",
+      actionLabel: "查看全部待办",
+      detail: "根据你的问题，先把今天的待办放在对话里。",
       kind: "followups",
-      title: "待跟进"
+      title: "待办"
     });
   }
 
@@ -850,9 +883,9 @@ export function conversationQuickRoutes(): ConversationQuickRouteView[] {
       title: "人脉"
     },
     {
-      detail: "处理今天该跟进的人",
+      detail: "处理今天该联系的人",
       href: "/followups",
-      title: "跟进"
+      title: "待办"
     },
     {
       detail: "查看约见和待办时间",
@@ -933,6 +966,7 @@ export function proactiveTurnPayloadToChatView(
       label: stringField(action, "label", "建议动作"),
       reason: stringField(action, "reason", "Orbit AI 建议先处理这一步。"),
       requiresUserConfirmation: actionRequiresConfirmation(action)
-    }))
+    })),
+    taskInteraction: null
   };
 }

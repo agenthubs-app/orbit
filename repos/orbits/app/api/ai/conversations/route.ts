@@ -34,6 +34,7 @@ import {
   createChatKnownWorkflowOrchestrator,
   isChatKnownWorkflowInput,
 } from "../../../../features/orbit-ai/chat-known-workflow";
+import { createConfiguredOrbitAiTaskInteractionService } from "../../../../features/orbit-ai/task-interaction-service-factory";
 import {
   agentRequestUnauthorizedResponse,
   resolveAgentRequestContext,
@@ -365,6 +366,44 @@ async function persistNaturalLanguageActionProposals(
   }
 }
 
+async function applyTaskInteraction(
+  result: OrbitAgentConversationResult,
+  input: OrbitAgentSendMessageInput,
+  actorId: string | null,
+): Promise<OrbitAgentConversationResult> {
+  if (result.success === false || !actorId) return result;
+  const conversationId = result.data.activeConversationId?.trim() ?? "";
+  const message = input.message?.trim() ?? "";
+  if (!conversationId || !message) return result;
+
+  const handled = await createConfiguredOrbitAiTaskInteractionService().handle({
+    actorId,
+    conversationId,
+    message,
+    now: new Date().toISOString(),
+    proposedActionRequests: result.data.proposedActionRequests ?? [],
+  });
+  const interaction = handled.interaction;
+  const assistantMessage =
+    interaction?.state === "created"
+      ? `已创建待办：${interaction.title}`
+      : interaction?.state === "suggested"
+        ? `${result.data.assistantMessage}\n\n要把“${interaction.title}”加入待办吗？`
+        : interaction?.state === "failed"
+          ? `我整理出了待办“${interaction.title}”，但暂时没有写入成功，请稍后重试。`
+          : result.data.assistantMessage;
+
+  return {
+    success: true,
+    data: {
+      ...result.data,
+      assistantMessage,
+      proposedActionRequests: handled.remainingActionRequests,
+      ...(interaction ? { taskInteraction: interaction } : {}),
+    },
+  };
+}
+
 async function persistConversationRunTrace(
   result: OrbitAgentConversationResult,
   runtime: AgentRuntimeService,
@@ -509,7 +548,11 @@ export async function POST(request: Request): Promise<Response> {
     // 这里不能按 conversationId 回查“最近一次”历史 run，否则本轮无动作或
     // 权限拒绝时会错误挂上前一轮卡片。
     result = await persistNaturalLanguageActionProposals(
-      await service.sendMessage(trustedInput),
+      await applyTaskInteraction(
+        await service.sendMessage(trustedInput),
+        trustedInput,
+        agentContext.actorId,
+      ),
       trustedInput,
       agentContext.runtime,
       agentContext.actorId

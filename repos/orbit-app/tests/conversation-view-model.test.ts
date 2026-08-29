@@ -65,7 +65,8 @@ test("conversationPayloadToChatView maps assistant reply messages and proposed t
       {
         intentId: "intent-2"
       }
-    ]
+    ],
+    taskInteraction: null
   });
 
   assert.deepEqual(view, {
@@ -98,7 +99,8 @@ test("conversationPayloadToChatView maps assistant reply messages and proposed t
         reason: "",
         requiresUserConfirmation: true
       }
-    ]
+    ],
+    taskInteraction: null
   });
   assert.doesNotMatch(JSON.stringify(view), /Suggested action/u);
 });
@@ -108,7 +110,29 @@ test("conversationPayloadToChatView uses safe defaults for empty payloads", () =
     activeConversationId: null,
     assistantMessage: "",
     messages: [],
-    proposedToolIntents: []
+    proposedToolIntents: [],
+    taskInteraction: null
+  });
+});
+
+test("conversationPayloadToChatView exposes a confirmable task suggestion", () => {
+  const view = conversationPayloadToChatView({
+    taskInteraction: {
+      category: "work",
+      reason: "你在对话中提到了一项明确的后续行动。",
+      state: "suggested",
+      suggestionId: "task-suggestion:one",
+      title: "整理关西交流会的参会名单"
+    }
+  });
+
+  assert.deepEqual(view.taskInteraction, {
+    category: "work",
+    reason: "你在对话中提到了一项明确的后续行动。",
+    state: "suggested",
+    suggestionId: "task-suggestion:one",
+    taskId: "",
+    title: "整理关西交流会的参会名单"
   });
 });
 
@@ -161,6 +185,7 @@ test("pendingConversationThreadView shows the user prompt before the model retur
     ],
     nextAction: "正在处理你的问题。",
     proposedToolIntents: [],
+    taskInteraction: null,
     title: "正在处理"
   });
 });
@@ -168,14 +193,14 @@ test("pendingConversationThreadView shows the user prompt before the model retur
 test("markdownBlocksFor converts common assistant markdown into native blocks", () => {
   assert.deepEqual(
     markdownBlocksFor(
-      "根据工具返回，今天有 **5 个待跟进的人脉**。\n\n- **山崎 美穗** — 先跟进\n- `橋本 夏美` — 补资料"
+      "根据工具返回，今天有 **5 个待联系的人脉**。\n\n- **山崎 美穗** — 先跟进\n- `橋本 夏美` — 补资料"
     ),
     [
       {
         kind: "paragraph",
         segments: [
           { kind: "text", text: "根据工具返回，今天有 " },
-          { kind: "strong", text: "5 个待跟进的人脉" },
+          { kind: "strong", text: "5 个待联系的人脉" },
           { kind: "text", text: "。" }
         ]
       },
@@ -345,7 +370,8 @@ test("prioritizeConversationContacts puts mentioned contacts first", () => {
         messageId: "message-2",
         role: "assistant"
       }
-    ]
+    ],
+    taskInteraction: null
   });
   const contacts = [
     {
@@ -355,7 +381,7 @@ test("prioritizeConversationContacts puts mentioned contacts first", () => {
       organization: "红桥科技",
       relationship: "活动认识",
       role: "市场负责人",
-      status: "在推进",
+      status: "推进中",
       valueLabels: [],
       valueScore: null
     },
@@ -395,10 +421,10 @@ test("conversationInlinePanelsForThread opens a followups panel for follow-up qu
   assert.deepEqual(conversationInlinePanelsForThread(thread), [
     {
       actionHref: "/followups",
-      actionLabel: "查看全部跟进",
-      detail: "根据你的问题，先把今天需要复核的跟进事项放在对话里。",
+      actionLabel: "查看全部待办",
+      detail: "根据你的问题，先把今天的待办放在对话里。",
       kind: "followups",
-      title: "待跟进"
+      title: "待办"
     }
   ]);
 });
@@ -523,7 +549,7 @@ test("conversationQuickRoutes keeps bottom AI shortcuts stable", () => {
     [
       ["/events", "活动"],
       ["/contacts", "人脉"],
-      ["/followups", "跟进"],
+      ["/followups", "待办"],
       ["/schedule", "日程"],
       ["/profile", "档案"]
     ]
@@ -646,7 +672,8 @@ test("proactiveTurnPayloadToChatView maps in-chat proactive turns", () => {
         reason: "Orbit AI 建议先处理这一步。",
         requiresUserConfirmation: true
       }
-    ]
+    ],
+    taskInteraction: null
   });
 });
 
@@ -661,7 +688,7 @@ test("proactiveTurnPayloadToChatView avoids English fallback action reasons", ()
     suggestedActions: [
       {
         actionId: "review-followup",
-        label: "复核跟进"
+        label: "查看待办"
       },
       {
         actionId: "open-schedule"

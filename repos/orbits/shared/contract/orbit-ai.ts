@@ -40,3 +40,21 @@ export interface OrbitAiProposedToolIntentContract {
   reason: string;
   requiresUserConfirmation: boolean;
 }
+
+export type OrbitAiTaskCategoryCode =
+  | "relationship"
+  | "meeting"
+  | "event"
+  | "work"
+  | "personal"
+  | "other";
+
+export interface OrbitAiTaskInteractionContract {
+  state: "created" | "suggested" | "failed";
+  title: string;
+  category: OrbitAiTaskCategoryCode;
+  reason?: string;
+  dueAt?: string;
+  taskId?: string;
+  suggestionId?: string;
+}

@@ -15,7 +15,9 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
   ORBIT_API_ENDPOINTS,
   aiConversationPath,
-  aiConversationSessionPath
+  aiConversationSessionPath,
+  taskSuggestionAcceptPath,
+  taskSuggestionDismissPath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
@@ -48,7 +50,8 @@ import {
   type ConversationQuickRouteView,
   type ConversationThreadView,
   type MarkdownBlockView,
-  type MarkdownInlineView
+  type MarkdownInlineView,
+  type TaskInteractionView
 } from "../../view-models/conversations";
 import {
   contactAvatarFor,
@@ -138,12 +141,17 @@ export function AiConversationScreen() {
   const [resolvedConversationId, setResolvedConversationId] = useState<
     string | null
   >(null);
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [aiRunError, setAiRunError] = useState<string | null>(null);
   const [aiRunDetailView, setAiRunDetailView] =
     useState<AiRunDetailView | null>(null);
   const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
+  const [taskInteractionResolution, setTaskInteractionResolution] = useState<
+    "accepted" | "dismissed" | null
+  >(null);
   const submittedInitialPrompt = useRef<string | null>(null);
 
   function refresh() {
@@ -204,6 +212,11 @@ export function AiConversationScreen() {
       return true;
     }
 
+    setSavedSessionId(sessionId);
+    if (thread.taskInteraction?.state === "suggested") {
+      return true;
+    }
+
     router.replace({
       params: { id: sessionId, source: "session" },
       pathname: "/ai/[id]"
@@ -239,6 +252,7 @@ export function AiConversationScreen() {
 
     if (result.success) {
       const nextThread = conversationPayloadToThreadView(result.data);
+      setTaskInteractionResolution(null);
       setLatestData(result.data);
       setResolvedConversationId(nextThread.activeConversationId);
       setDraftMessage("");
@@ -293,6 +307,7 @@ export function AiConversationScreen() {
       .then(async (result) => {
         if (result.success) {
           const nextThread = conversationPayloadToThreadView(result.data);
+          setTaskInteractionResolution(null);
           setLatestData(result.data);
           setResolvedConversationId(nextThread.activeConversationId);
           await persistAndCanonicalizeDraftConversation(result.data, nextThread);
@@ -328,6 +343,39 @@ export function AiConversationScreen() {
     }
 
     setPendingAiRunId(null);
+  }
+
+  async function resolveTaskSuggestion(action: "accept" | "dismiss") {
+    const suggestionId = thread?.taskInteraction?.suggestionId;
+    if (!suggestionId || taskInteractionBusy) return;
+
+    setTaskInteractionBusy(true);
+    setSendError(null);
+    const endpoint =
+      action === "accept"
+        ? taskSuggestionAcceptPath(suggestionId)
+        : taskSuggestionDismissPath(suggestionId);
+    const result = await client.post<unknown>(endpoint, {
+      body: {
+        idempotencyKey: `ios:agent-task-${action}:${suggestionId}:${Date.now()}`
+      }
+    });
+
+    if (result.success) {
+      setTaskInteractionResolution(
+        action === "accept" ? "accepted" : "dismissed"
+      );
+      if (action === "accept") tasksState.refresh();
+      if (savedSessionId) {
+        router.replace({
+          params: { id: savedSessionId, source: "session" },
+          pathname: "/ai/[id]"
+        });
+      }
+    } else {
+      setSendError(result.error.message);
+    }
+    setTaskInteractionBusy(false);
   }
 
   const loadedData =
@@ -415,6 +463,7 @@ export function AiConversationScreen() {
             router.push(`/events/${encodeURIComponent(eventId)}` as Href)
           }
           onOpenHref={(href) => router.push(href as Href)}
+          onResolveTaskSuggestion={resolveTaskSuggestion}
           profile={profile}
           profileStateKind={profileState.kind}
           pendingAiRunId={pendingAiRunId}
@@ -424,6 +473,8 @@ export function AiConversationScreen() {
           onSend={sendMessage}
           sendError={sendError}
           sending={sending}
+          taskInteractionBusy={taskInteractionBusy}
+          taskInteractionResolution={taskInteractionResolution}
           thread={thread}
         />
       ) : null}
@@ -449,6 +500,7 @@ function ConversationThread({
   onOpenContact,
   onOpenEvent,
   onOpenHref,
+  onResolveTaskSuggestion,
   profile,
   profileStateKind,
   pendingAiRunId,
@@ -458,6 +510,8 @@ function ConversationThread({
   onSend,
   sendError,
   sending,
+  taskInteractionBusy,
+  taskInteractionResolution,
   thread
 }: {
   aiRunDetailView: AiRunDetailView | null;
@@ -477,6 +531,7 @@ function ConversationThread({
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
+  onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
   pendingAiRunId: string | null;
@@ -486,6 +541,8 @@ function ConversationThread({
   onSend: () => void;
   sendError: string | null;
   sending: boolean;
+  taskInteractionBusy: boolean;
+  taskInteractionResolution: "accepted" | "dismissed" | null;
   thread: ConversationThreadView;
 }) {
   const inlinePanelAnchorIndex = thread.messages.reduce(
@@ -550,6 +607,14 @@ function ConversationThread({
           </View>
         )}
       </View>
+      {thread.taskInteraction ? (
+        <TaskInteractionCard
+          busy={taskInteractionBusy}
+          interaction={thread.taskInteraction}
+          onResolve={onResolveTaskSuggestion}
+          resolution={taskInteractionResolution}
+        />
+      ) : null}
       {thread.proposedToolIntents.length > 0 ? (
         <View style={styles.intentPanel}>
           <Text style={styles.panelTitle}>建议动作</Text>
@@ -596,6 +661,79 @@ function ConversationThread({
         </Pressable>
       </View>
       <QuickRouteDock onOpenHref={onOpenHref} />
+    </View>
+  );
+}
+
+function TaskInteractionCard({
+  busy,
+  interaction,
+  onResolve,
+  resolution
+}: {
+  busy: boolean;
+  interaction: TaskInteractionView;
+  onResolve: (action: "accept" | "dismiss") => void;
+  resolution: "accepted" | "dismissed" | null;
+}) {
+  const completed = interaction.state === "created" || resolution === "accepted";
+  const dismissed = resolution === "dismissed";
+  const failed = interaction.state === "failed";
+
+  return (
+    <View style={[styles.taskInteractionCard, failed ? styles.taskInteractionFailed : null]}>
+      <View style={styles.taskInteractionHeader}>
+        <View style={styles.taskInteractionIcon}>
+          <Ionicons
+            color={failed ? colors.rose : completed ? colors.live : colors.accent}
+            name={failed ? "alert-circle-outline" : completed ? "checkmark" : "sparkles-outline"}
+            size={18}
+          />
+        </View>
+        <View style={styles.taskInteractionCopy}>
+          <Text style={styles.taskInteractionEyebrow}>
+            {failed
+              ? "待办未创建"
+              : completed
+                ? "已加入待办"
+                : dismissed
+                  ? "已暂不处理"
+                  : "待办建议"}
+          </Text>
+          <Text style={styles.taskInteractionTitle}>{interaction.title}</Text>
+          {!completed && !dismissed && interaction.reason ? (
+            <Text style={styles.taskInteractionReason}>{interaction.reason}</Text>
+          ) : null}
+        </View>
+      </View>
+      {interaction.state === "suggested" && !resolution ? (
+        <View style={styles.taskInteractionActions}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => onResolve("dismiss")}
+            style={({ pressed }) => [
+              styles.taskInteractionSecondary,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text style={styles.taskInteractionSecondaryText}>暂不需要</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => onResolve("accept")}
+            style={({ pressed }) => [
+              styles.taskInteractionPrimary,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text style={styles.taskInteractionPrimaryText}>
+              {busy ? "处理中" : "加入待办"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1035,10 +1173,10 @@ function FollowupsInlinePanel({
         </Pressable>
       </View>
       {followupsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取跟进事项。</Text>
+        <Text style={styles.inlinePanelDetail}>正在读取待办。</Text>
       ) : null}
       {followupsStateKind === "offline" || followupsStateKind === "failure" ? (
-        <Text style={styles.errorText}>跟进事项暂时不可用。</Text>
+        <Text style={styles.errorText}>待办暂时不可用。</Text>
       ) : null}
       {followupTasks.length > 0 ? (
         <View style={styles.followupCardStack}>
@@ -1738,6 +1876,74 @@ const styles = StyleSheet.create({
   },
   intentPanel: {
     gap: spacing.sm
+  },
+  taskInteractionActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "flex-end"
+  },
+  taskInteractionCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.md
+  },
+  taskInteractionCopy: { flex: 1, gap: 4, minWidth: 0 },
+  taskInteractionEyebrow: {
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "800"
+  },
+  taskInteractionFailed: { borderColor: colors.rose },
+  taskInteractionHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  taskInteractionIcon: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderRadius: radius.pill,
+    height: 34,
+    justifyContent: "center",
+    width: 34
+  },
+  taskInteractionPrimary: {
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.control,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: spacing.md
+  },
+  taskInteractionPrimaryText: {
+    color: colors.onAccent,
+    fontSize: typography.small,
+    fontWeight: "800"
+  },
+  taskInteractionReason: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
+  taskInteractionSecondary: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: spacing.sm
+  },
+  taskInteractionSecondaryText: {
+    color: colors.text2,
+    fontSize: typography.small,
+    fontWeight: "700"
+  },
+  taskInteractionTitle: {
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: "800",
+    lineHeight: 22
   },
   intentBlock: {
     backgroundColor: colors.accentSofter,

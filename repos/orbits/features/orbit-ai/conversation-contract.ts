@@ -8,6 +8,7 @@ import type {
   OrbitAiMessageContract,
   OrbitAiMessageRoleCode,
   OrbitAiProposedToolIntentContract,
+  OrbitAiTaskInteractionContract,
 } from "../../shared/contract/orbit-ai";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
 
@@ -181,6 +182,7 @@ export interface OrbitAgentConversationPayload {
   assistantMessage: string;
   artifacts: readonly OrbitAgentArtifactPayload[];
   proposedToolIntents: readonly OrbitAiProposedToolIntentContract[];
+  taskInteraction?: OrbitAiTaskInteractionContract;
   /**
    * Model-planned, schema-validated write proposals. The API consumes and
    * removes these after persisting runtime actions; clients never execute them.
