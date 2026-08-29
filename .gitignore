@@ -55,6 +55,8 @@ tools/audit-progress-dashboard/
 
 # Local database migration backups
 .artifacts/db-backups/
+.artifacts/screenshots/
+.superpowers/
 
 # Isolated feature worktrees
 .worktrees/
