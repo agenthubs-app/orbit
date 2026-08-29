@@ -4,6 +4,46 @@ import test from "node:test";
 import * as schedule from "../src/view-models/schedule";
 
 type ScheduleTimelineModule = typeof schedule & {
+  japanCalendarDateInfo?: (dateKey: string) => {
+    holidayName?: string;
+    isHoliday: boolean;
+    isSaturday: boolean;
+    isSunday: boolean;
+  };
+  shiftScheduleMonthDateKey?: (dateKey: string, months: number) => string;
+  scheduleToCalendarView?: (input: {
+    events: unknown;
+    now?: Date;
+    scheduleItems?: unknown;
+    selectedDateKey?: string;
+    tasks: unknown;
+  }) => {
+    allDayItems: Array<{ id: string }>;
+    days: Array<{
+      dateKey: string;
+      dayNumber: string;
+      holidayName?: string;
+      isHoliday: boolean;
+      isSelected: boolean;
+      isSaturday: boolean;
+      isSunday: boolean;
+      isToday: boolean;
+      items: Array<{ id: string }>;
+      weekdayLabel: string;
+    }>;
+    monthLabel: string;
+    selectedDateKey: string;
+    selectedDayLabel: string;
+    timedItems: Array<{
+      dateKey: string;
+      durationMinutes: number;
+      id: string;
+      kind: "event" | "followup";
+      timeLabel: string;
+      title: string;
+    }>;
+    weekLabel: string;
+  };
   scheduleToTimelineView?: (input: {
     events: unknown;
     now?: Date;
@@ -46,6 +86,18 @@ type ScheduleTimelineModule = typeof schedule & {
     summary: string;
   };
 };
+
+function scheduleCalendar() {
+  const scheduleModule = schedule as ScheduleTimelineModule;
+
+  assert.equal(
+    typeof scheduleModule.scheduleToCalendarView,
+    "function",
+    "scheduleToCalendarView should exist"
+  );
+
+  return scheduleModule.scheduleToCalendarView;
+}
 
 function scheduleTimeline() {
   const scheduleModule = schedule as ScheduleTimelineModule;
@@ -102,9 +154,9 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
     }
   });
 
-  assert.equal(view.summary, "今天有 1 个跟进和 1 场活动需要判断。");
+  assert.equal(view.summary, "今天有 1 项待办和 1 场活动需要判断。");
   assert.deepEqual(view.stats, [
-    { label: "跟进", value: "1" },
+    { label: "待办", value: "1" },
     { label: "活动", value: "1" },
     { label: "日期", value: "1" }
   ]);
@@ -122,12 +174,12 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
     })),
     [
       {
-        actionLabel: "处理跟进",
+        actionLabel: "处理待办",
         href: "/followups",
         kind: "followup",
         statusLabel: "待确认",
         timeLabel: "10:00",
-        title: "跟进 Maya Chen"
+        title: "联系 Maya Chen"
       },
       {
         actionLabel: "查看活动安排",
@@ -202,7 +254,7 @@ test("scheduleToTimelineView keeps an empty schedule useful", () => {
   assert.equal(view.emptyTitle, "暂无安排");
   assert.equal(
     view.emptyMessage,
-    "跟进、活动和需要提前准备的关系事项会出现在这里。"
+    "待办、活动和需要提前准备的人脉事项会出现在这里。"
   );
   assert.deepEqual(view.sections, []);
 });
@@ -237,9 +289,9 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
     tasks: { tasks }
   });
 
-  assert.equal(view.summary, "今天有 4 个跟进和 1 场活动需要判断。");
+  assert.equal(view.summary, "今天有 4 项待办和 1 场活动需要判断。");
   assert.deepEqual(view.stats, [
-    { label: "跟进", value: "4" },
+    { label: "待办", value: "4" },
     { label: "活动", value: "1" },
     { label: "日期", value: "2" }
   ]);
@@ -247,7 +299,7 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
   assert.equal(view.sections[0]?.detail, "4 项安排");
   assert.deepEqual(
     view.sections[0]?.items.map((item) => item.title),
-    ["跟进 联系人 1", "跟进 联系人 2", "跟进 联系人 3", "跟进 联系人 4"]
+    ["联系 联系人 1", "联系 联系人 2", "联系 联系人 3", "联系 联系人 4"]
   );
   assert.equal(view.sections[1]?.title, "8月4日 周二");
   assert.equal(view.sections[1]?.items[0]?.kind, "event");
@@ -270,5 +322,255 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
         title: "东京 AI 落地伙伴报名会"
       }
     ]
+  );
+});
+
+test("scheduleToCalendarView builds a Sunday-first week and selected-day time blocks", () => {
+  const toCalendar = scheduleCalendar();
+  const view = toCalendar({
+    events: {
+      events: [
+        {
+          endsAt: "2026-08-25T20:00:00+09:00",
+          id: "event_dinner",
+          startsAt: "2026-08-25T18:30:00+09:00",
+          status: "confirmed",
+          title: "关西创业者晚餐会",
+          venue: "大阪"
+        },
+        {
+          endsAt: "2026-08-26T12:00:00+09:00",
+          id: "event_lunch",
+          startsAt: "2026-08-26T11:00:00+09:00",
+          status: "confirmed",
+          title: "与林美月午餐",
+          venue: "梅田"
+        }
+      ]
+    },
+    now: new Date("2026-08-25T08:00:00+09:00"),
+    tasks: {
+      tasks: [
+        {
+          contactName: "佐藤健一",
+          dueAt: "2026-08-25T09:30:00+09:00",
+          dueInDays: 0,
+          organization: "北星餐饮",
+          priority: "today",
+          taskId: "task-contact"
+        }
+      ]
+    }
+  });
+
+  assert.equal(view.monthLabel, "2026年8月");
+  assert.equal(view.weekLabel, "8月23日 - 8月29日");
+  assert.equal(view.selectedDateKey, "2026-08-25");
+  assert.equal(view.selectedDayLabel, "8月25日 周二");
+  assert.deepEqual(
+    view.days.map((day) => ({
+      dateKey: day.dateKey,
+      isSelected: day.isSelected,
+      isToday: day.isToday,
+      weekdayLabel: day.weekdayLabel
+    })),
+    [
+      { dateKey: "2026-08-23", isSelected: false, isToday: false, weekdayLabel: "周日" },
+      { dateKey: "2026-08-24", isSelected: false, isToday: false, weekdayLabel: "周一" },
+      { dateKey: "2026-08-25", isSelected: true, isToday: true, weekdayLabel: "周二" },
+      { dateKey: "2026-08-26", isSelected: false, isToday: false, weekdayLabel: "周三" },
+      { dateKey: "2026-08-27", isSelected: false, isToday: false, weekdayLabel: "周四" },
+      { dateKey: "2026-08-28", isSelected: false, isToday: false, weekdayLabel: "周五" },
+      { dateKey: "2026-08-29", isSelected: false, isToday: false, weekdayLabel: "周六" }
+    ]
+  );
+  assert.deepEqual(
+    view.timedItems.map((item) => ({
+      durationMinutes: item.durationMinutes,
+      id: item.id,
+      kind: item.kind,
+      timeLabel: item.timeLabel
+    })),
+    [
+      {
+        durationMinutes: 30,
+        id: "task-contact",
+        kind: "followup",
+        timeLabel: "09:30"
+      },
+      {
+        durationMinutes: 90,
+        id: "event_dinner",
+        kind: "event",
+        timeLabel: "18:30"
+      }
+    ]
+  );
+  assert.equal(view.days[3]?.items[0]?.id, "event_lunch");
+  assert.deepEqual(view.allDayItems, []);
+});
+
+test("scheduleToCalendarView includes canonical meetings and personal schedule items", () => {
+  const toCalendar = scheduleCalendar();
+  const view = toCalendar({
+    events: { events: [] },
+    now: new Date("2026-08-29T08:00:00+09:00"),
+    scheduleItems: {
+      scheduleItems: [
+        {
+          category: "personal",
+          endsAt: "2026-08-29T18:30:00+09:00",
+          id: "schedule:review",
+          kind: "personal",
+          location: "Orbit 办公室",
+          sourceId: "schedule:review",
+          startsAt: "2026-08-29T17:30:00+09:00",
+          state: "upcoming",
+          title: "本周经营复盘与下周优先级",
+        },
+      ],
+    },
+    tasks: { tasks: [] },
+  });
+
+  assert.deepEqual(view.timedItems.map((item) => ({ kind: item.kind, title: item.title })), [
+    { kind: "personal", title: "本周经营复盘与下周优先级" },
+  ]);
+});
+
+test("calendar view does not hide future canonical tasks after the first four", () => {
+  const toCalendar = scheduleCalendar();
+  const tasks = Array.from({ length: 8 }, (_, index) => ({
+    dueAt: `2026-08-${String(30 + index).padStart(2, "0")}T10:00:00+09:00`,
+    id: `task:${index}`,
+    notes: `第 ${index + 1} 项工作的具体准备内容`,
+    plannedDate: `2026-08-${String(30 + index).padStart(2, "0")}`,
+    priority: "normal",
+    title: `第 ${index + 1} 项工作`,
+  }));
+  const view = toCalendar({
+    events: { events: [] },
+    now: new Date("2026-08-29T08:00:00+09:00"),
+    selectedDateKey: "2026-09-06",
+    tasks: { tasks },
+  });
+  assert.equal(view.items.filter((item) => item.kind === "followup").length, 8);
+  assert.equal(view.items.some((item) => item.title === "第 8 项工作"), true);
+});
+
+test("scheduleToCalendarView moves the selected week without changing today's marker", () => {
+  const toCalendar = scheduleCalendar();
+  const view = toCalendar({
+    events: { events: [] },
+    now: new Date("2026-08-25T08:00:00+09:00"),
+    selectedDateKey: "2026-09-01",
+    tasks: { tasks: [] }
+  });
+
+  assert.equal(view.monthLabel, "2026年9月");
+  assert.equal(view.weekLabel, "8月30日 - 9月5日");
+  assert.equal(view.selectedDayLabel, "9月1日 周二");
+  assert.deepEqual(
+    view.days.map((day) => day.dateKey),
+    [
+      "2026-08-30",
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-05"
+    ]
+  );
+  assert.equal(view.days.some((day) => day.isToday), false);
+});
+
+test("Japanese calendar metadata distinguishes public holidays and weekends", () => {
+  const scheduleModule = schedule as ScheduleTimelineModule;
+
+  assert.equal(typeof scheduleModule.japanCalendarDateInfo, "function");
+  assert.deepEqual(scheduleModule.japanCalendarDateInfo?.("2026-08-11"), {
+    holidayName: "山之日",
+    isHoliday: true,
+    isSaturday: false,
+    isSunday: false
+  });
+  assert.deepEqual(scheduleModule.japanCalendarDateInfo?.("2026-08-29"), {
+    isHoliday: false,
+    isSaturday: true,
+    isSunday: false
+  });
+  assert.deepEqual(scheduleModule.japanCalendarDateInfo?.("2026-08-30"), {
+    isHoliday: false,
+    isSaturday: false,
+    isSunday: true
+  });
+});
+
+test("scheduleToCalendarView exposes localized Japanese holiday metadata", () => {
+  const toCalendar = scheduleCalendar();
+  const view = toCalendar({
+    events: { events: [] },
+    now: new Date("2026-08-11T08:00:00+09:00"),
+    tasks: { tasks: [] }
+  });
+
+  assert.equal(view.selectedDayLabel, "8月11日 周二");
+  assert.deepEqual(
+    view.days.find((day) => day.dateKey === "2026-08-11"),
+    {
+      dateKey: "2026-08-11",
+      dayNumber: "11",
+      holidayName: "山之日",
+      isHoliday: true,
+      isSaturday: false,
+      isSelected: true,
+      isSunday: false,
+      isToday: true,
+      items: [],
+      weekdayLabel: "周二"
+    }
+  );
+});
+
+test("scheduleToCalendarView keeps past events visible on their calendar date", () => {
+  const toCalendar = scheduleCalendar();
+  const view = toCalendar({
+    events: {
+      events: [
+        {
+          endsAt: "2026-08-15T12:00:00+09:00",
+          id: "event_past",
+          startsAt: "2026-08-15T10:00:00+09:00",
+          status: "imported",
+          title: "名片资料生成工作坊",
+          venue: "东京"
+        }
+      ]
+    },
+    now: new Date("2026-08-26T08:00:00+09:00"),
+    selectedDateKey: "2026-08-15",
+    tasks: { tasks: [] }
+  });
+
+  assert.equal(view.timedItems[0]?.id, "event_past");
+  assert.equal(view.timedItems[0]?.timeLabel, "10:00");
+});
+
+test("month navigation preserves the day when possible and clamps month ends", () => {
+  const scheduleModule = schedule as ScheduleTimelineModule;
+
+  assert.equal(typeof scheduleModule.shiftScheduleMonthDateKey, "function");
+  assert.equal(
+    scheduleModule.shiftScheduleMonthDateKey?.("2026-08-26", 1),
+    "2026-09-26"
+  );
+  assert.equal(
+    scheduleModule.shiftScheduleMonthDateKey?.("2026-08-31", 1),
+    "2026-09-30"
+  );
+  assert.equal(
+    scheduleModule.shiftScheduleMonthDateKey?.("2026-01-31", -1),
+    "2025-12-31"
   );
 });

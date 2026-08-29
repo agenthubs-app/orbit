@@ -1,4 +1,4 @@
-import { TodayAgentLedgerScreen } from "../src/screens/agent/AgentLedgerScreen";
 import { withOrbitPrivateRoute } from "../src/components/OrbitRouteAccessBoundary";
+import { TodayScreen } from "../src/screens/today/TodayScreen";
 
-export default withOrbitPrivateRoute(TodayAgentLedgerScreen);
+export default withOrbitPrivateRoute(TodayScreen);

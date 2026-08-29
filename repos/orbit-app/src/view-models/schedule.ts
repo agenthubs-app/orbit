@@ -1,3 +1,4 @@
+import * as holidayJp from "@holiday-jp/holiday_jp";
 import { eventsToSummaries } from "./events";
 import type { FollowupTaskContract } from "../api/contract/followups";
 
@@ -14,13 +15,15 @@ export interface ScheduleItem {
   title: string;
 }
 
-export type ScheduleTimelineItemKind = "event" | "followup";
+export type ScheduleTimelineItemKind = "event" | "followup" | "meeting" | "personal";
 
 export interface ScheduleTimelineItem {
   actionLabel: string;
   coverPath?: string;
+  dateKey: string;
   dayLabel: string;
   detail: string;
+  durationMinutes: number;
   href: string;
   id: string;
   kind: ScheduleTimelineItemKind;
@@ -47,6 +50,40 @@ export interface ScheduleTimelineView {
   sections: ScheduleTimelineSection[];
   stats: Array<{ label: string; value: string }>;
   summary: string;
+}
+
+export interface ScheduleCalendarDay {
+  dateKey: string;
+  dayNumber: string;
+  holidayName?: string;
+  isHoliday: boolean;
+  isSelected: boolean;
+  isSaturday: boolean;
+  isSunday: boolean;
+  isToday: boolean;
+  items: ScheduleTimelineItem[];
+  weekdayLabel: string;
+}
+
+export interface ScheduleCalendarView {
+  allDayItems: ScheduleTimelineItem[];
+  days: ScheduleCalendarDay[];
+  emptyMessage: string;
+  emptyTitle: string;
+  items: ScheduleTimelineItem[];
+  monthLabel: string;
+  selectedDateKey: string;
+  selectedDayLabel: string;
+  selectedHolidayName?: string;
+  timedItems: ScheduleTimelineItem[];
+  weekLabel: string;
+}
+
+export interface JapaneseCalendarDateInfo {
+  holidayName?: string;
+  isHoliday: boolean;
+  isSaturday: boolean;
+  isSunday: boolean;
 }
 
 interface TimelineItemWithSort extends ScheduleTimelineItem {
@@ -133,6 +170,7 @@ const enWeekdayToZh: Record<string, string> = {
 
 function dateParts(value: string):
   | {
+      dateKey: string;
       dayLabel: string;
       monthLabel: string;
       timeLabel: string;
@@ -166,6 +204,7 @@ function dateParts(value: string):
     .join(":");
 
   return {
+    dateKey: `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
     dayLabel: `${month}月${day}日 ${normalizedWeekday}`.trim(),
     monthLabel: `${year}年${month}月`,
     timeLabel: time
@@ -233,14 +272,18 @@ function contactNameFor(task: Record<string, unknown>): string {
 }
 
 function taskTitle(task: Record<string, unknown>): string {
-  return `跟进 ${contactNameFor(task)}`;
+  return stringField(task, "title") || `联系 ${contactNameFor(task)}`;
 }
 
 function recommendedAction(task: Record<string, unknown>): string {
   const value = taskField(task, "recommendedAction");
 
+  if (!value && stringField(task, "notes")) {
+    return stringField(task, "notes");
+  }
+
   if (!value || /\bcontact[_:-]?\d+|review follow-up\b/i.test(value)) {
-    return `跟进 ${contactNameFor(task)} 的关系进展。`;
+    return `联系 ${contactNameFor(task)}，确认下一步。`;
   }
 
   return value;
@@ -309,7 +352,8 @@ function shouldShowEvent(event: Record<string, unknown>, now: number): boolean {
 
 function followupTimelineItems(
   tasks: unknown,
-  now: Date
+  now: Date,
+  limit = maxTimelineFollowups
 ): TimelineItemWithSort[] {
   return listFromPayload(tasks, "tasks")
     .filter(isRecord)
@@ -326,37 +370,100 @@ function followupTimelineItems(
         Number.MAX_SAFE_INTEGER;
 
       return {
-        actionLabel: "处理跟进",
+        actionLabel: "处理待办",
+        dateKey: normalizedDate?.dateKey ?? "",
         dayLabel: normalizedDate?.dayLabel ?? item.dayLabel,
         detail: item.recommendedAction,
-        href: "/followups",
+        durationMinutes: 30,
+        href: stringField(task, "id")
+          ? `/tasks/${encodeURIComponent(stringField(task, "id"))}`
+          : "/followups",
         id: item.id,
         kind: "followup" as const,
         monthLabel: normalizedDate?.monthLabel ?? item.monthLabel,
         reason: item.recommendedAction,
         sortAt,
         statusLabel: item.priority,
-        subtitle: item.organization || "关系跟进",
+        subtitle: item.organization || "人脉待办",
         timeLabel: normalizedDate?.timeLabel ?? item.timeLabel,
         title: item.title
       };
     })
     .sort((left, right) => left.sortAt - right.sortAt)
-    .slice(0, maxTimelineFollowups);
+    .slice(0, limit);
 }
 
-function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] {
+function canonicalScheduleTimelineItems(scheduleItems: unknown): TimelineItemWithSort[] {
+  return listFromPayload(scheduleItems, "scheduleItems")
+    .filter(isRecord)
+    .filter((item) => stringField(item, "state") !== "cancelled")
+    .flatMap((item): TimelineItemWithSort[] => {
+      const kindValue = stringField(item, "kind");
+      const kind: Exclude<ScheduleTimelineItemKind, "followup"> =
+        kindValue === "meeting" || kindValue === "personal" ? kindValue : "event";
+      const rawStartsAt = stringField(item, "startsAt");
+      const startsAt = timestamp(rawStartsAt);
+      const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
+      const rawEndsAt = stringField(item, "endsAt");
+      const endsAt = timestamp(rawEndsAt);
+      if (startsAt === null || !formatted) return [];
+      const id = stringField(item, "id");
+      const sourceId = stringField(item, "sourceId");
+      const location = stringField(item, "location");
+      const labels = kind === "meeting"
+        ? { action: "查看会面", reason: "会面前确认目标、参与人和需要准备的材料。", subtitle: location || "会面" }
+        : kind === "personal"
+          ? { action: "查看日程", reason: "这是你安排的个人日程。", subtitle: location || "个人日程" }
+          : { action: "查看活动安排", reason: "先确认活动时间、地点和参会目标。", subtitle: location || "活动安排" };
+      return [{
+        actionLabel: labels.action,
+        dateKey: formatted.dateKey,
+        dayLabel: formatted.dayLabel,
+        detail: [formatted.timeLabel, location].filter(Boolean).join(" · "),
+        durationMinutes: endsAt !== null && endsAt > startsAt
+          ? Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
+          : 60,
+        href: kind === "event" && sourceId.startsWith("event")
+          ? `/schedule/events/${encodeURIComponent(sourceId)}`
+          : "/schedule",
+        id,
+        kind,
+        ...(location ? { location } : {}),
+        monthLabel: formatted.monthLabel,
+        reason: labels.reason,
+        sortAt: startsAt,
+        statusLabel: stringField(item, "state") === "ongoing" ? "进行中" : "已安排",
+        subtitle: labels.subtitle,
+        timeLabel: formatted.timeLabel,
+        title: stringField(item, "title", "日程"),
+      }];
+    });
+}
+
+function eventTimelineItems(
+  events: unknown,
+  now: Date,
+  includePastEvents = false
+): TimelineItemWithSort[] {
   const summaryById = new Map(
     eventsToSummaries(events).map((event) => [event.id, event])
   );
 
   return listFromPayload(events, "events")
     .filter(isRecord)
-    .filter((event) => shouldShowEvent(event, now.getTime()))
+    .filter(
+      (event) => includePastEvents || shouldShowEvent(event, now.getTime())
+    )
     .map((event) => {
       const rawStartsAt = stringField(event, "startsAt");
+      const rawEndsAt = stringField(event, "endsAt");
       const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
       const startsAt = timestamp(rawStartsAt) ?? Number.MAX_SAFE_INTEGER;
+      const endsAt = timestamp(rawEndsAt);
+      const durationMinutes =
+        endsAt !== null && startsAt !== Number.MAX_SAFE_INTEGER && endsAt > startsAt
+          ? Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
+          : 90;
       const id = stringField(event, "id", "event");
       const summary = summaryById.get(id);
       const title = summary?.title ?? "活动";
@@ -368,6 +475,7 @@ function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] 
       return {
         actionLabel: "查看活动安排",
         ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
+        dateKey: formatted?.dateKey ?? "",
         dayLabel: formatted?.dayLabel ?? "时间待定",
         detail: [
           formatted?.timeLabel ? `活动时间 ${formatted.timeLabel}` : "",
@@ -375,6 +483,7 @@ function eventTimelineItems(events: unknown, now: Date): TimelineItemWithSort[] 
         ]
           .filter(Boolean)
           .join(" · "),
+        durationMinutes,
         href: `/schedule/events/${encodeURIComponent(id)}`,
         id,
         kind: "event",
@@ -403,8 +512,10 @@ function publicTimelineItem(item: TimelineItemWithSort): ScheduleTimelineItem {
   return {
     actionLabel: item.actionLabel,
     ...(item.coverPath ? { coverPath: item.coverPath } : {}),
+    dateKey: item.dateKey,
     dayLabel: item.dayLabel,
     detail: item.detail,
+    durationMinutes: item.durationMinutes,
     href: item.href,
     id: item.id,
     kind: item.kind,
@@ -453,7 +564,7 @@ function summaryCopy(input: {
   const today = dateParts(input.now.toISOString())?.dayLabel;
   const prefix = input.sections[0]?.title === today ? "今天" : "近期";
 
-  return `${prefix}有 ${input.followupCount} 个跟进和 ${input.eventCount} 场活动需要判断。`;
+  return `${prefix}有 ${input.followupCount} 项待办和 ${input.eventCount} 场活动需要判断。`;
 }
 
 export function scheduleToTimelineView({
@@ -477,7 +588,7 @@ export function scheduleToTimelineView({
   const sections = timelineSections(items);
 
   return {
-    emptyMessage: "跟进、活动和需要提前准备的关系事项会出现在这里。",
+    emptyMessage: "待办、活动和需要提前准备的人脉事项会出现在这里。",
     emptyTitle: "暂无安排",
     eventHighlights: eventItems
       .sort((left, right) => left.sortAt - right.sortAt)
@@ -485,7 +596,7 @@ export function scheduleToTimelineView({
       .map(publicTimelineItem),
     sections,
     stats: [
-      { label: "跟进", value: String(followups.length) },
+      { label: "待办", value: String(followups.length) },
       { label: "活动", value: String(eventItems.length) },
       { label: "日期", value: String(sections.length) }
     ],
@@ -495,5 +606,177 @@ export function scheduleToTimelineView({
       now,
       sections
     })
+  };
+}
+
+function dateForKey(dateKey: string): Date | null {
+  const parsed = Date.parse(`${dateKey}T12:00:00+09:00`);
+  return Number.isFinite(parsed) ? new Date(parsed) : null;
+}
+
+const japaneseHolidayNameZh: Record<string, string> = {
+  "こどもの日": "儿童节",
+  "みどりの日": "绿之日",
+  "スポーツの日": "体育日",
+  "休日": "法定休息日",
+  "元日": "元旦",
+  "勤労感謝の日": "劳动感谢日",
+  "天皇誕生日": "天皇诞辰日",
+  "山の日": "山之日",
+  "建国記念の日": "建国纪念日",
+  "成人の日": "成人日",
+  "振替休日": "补休日",
+  "敬老の日": "敬老日",
+  "文化の日": "文化日",
+  "春分の日": "春分日",
+  "海の日": "海之日",
+  "秋分の日": "秋分日",
+  "憲法記念日": "宪法纪念日",
+  "昭和の日": "昭和日"
+};
+
+export function japanCalendarDateInfo(
+  dateKey: string
+): JapaneseCalendarDateInfo {
+  const date = dateForKey(dateKey);
+
+  if (!date) {
+    return {
+      isHoliday: false,
+      isSaturday: false,
+      isSunday: false
+    };
+  }
+
+  const holiday = holidayJp.between(date, date)[0];
+  const weekday = date.getUTCDay();
+
+  return {
+    ...(holiday
+      ? {
+          holidayName:
+            japaneseHolidayNameZh[holiday.name] ?? "日本法定节假日"
+        }
+      : {}),
+    isHoliday: Boolean(holiday),
+    isSaturday: weekday === 6,
+    isSunday: weekday === 0
+  };
+}
+
+export function shiftScheduleDateKey(dateKey: string, days: number): string {
+  const date = dateForKey(dateKey);
+
+  if (!date) {
+    return dateKey;
+  }
+
+  date.setUTCDate(date.getUTCDate() + days);
+  return tokyoDatePrefix(date);
+}
+
+export function shiftScheduleMonthDateKey(
+  dateKey: string,
+  months: number
+): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(dateKey);
+
+  if (!dateForKey(dateKey) || !match) {
+    return dateKey;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const target = new Date(Date.UTC(year, month - 1 + months, 1));
+  const targetYear = target.getUTCFullYear();
+  const targetMonth = target.getUTCMonth() + 1;
+  const targetDay = Math.min(
+    day,
+    new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate()
+  );
+
+  return `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+}
+
+function weekdayLabelFor(dateKey: string): string {
+  return dateParts(`${dateKey}T12:00:00+09:00`)?.dayLabel.split(" ")[1] ?? "";
+}
+
+function startOfWeek(dateKey: string): string {
+  const date = dateForKey(dateKey);
+
+  if (!date) {
+    return dateKey;
+  }
+
+  const sundayOffset = -date.getUTCDay();
+  return shiftScheduleDateKey(dateKey, sundayOffset);
+}
+
+function shortDateLabel(dateKey: string): string {
+  const parts = dateKey.split("-");
+  return `${Number(parts[1])}月${Number(parts[2])}日`;
+}
+
+export function scheduleToCalendarView({
+  events,
+  now = new Date(),
+  scheduleItems = { scheduleItems: [] },
+  selectedDateKey,
+  tasks
+}: {
+  events: unknown;
+  now?: Date;
+  scheduleItems?: unknown;
+  selectedDateKey?: string;
+  tasks: unknown;
+}): ScheduleCalendarView {
+  const todayDateKey = tokyoDatePrefix(now);
+  const selected = dateForKey(selectedDateKey ?? "")
+    ? (selectedDateKey as string)
+    : todayDateKey;
+  const weekStart = startOfWeek(selected);
+  const timeline = scheduleToTimelineView({ events, now, tasks });
+  const items = [
+    ...followupTimelineItems(tasks, now, Number.MAX_SAFE_INTEGER),
+    ...eventTimelineItems(events, now, true),
+    ...canonicalScheduleTimelineItems(scheduleItems)
+  ]
+    .sort((left, right) => left.sortAt - right.sortAt)
+    .map(publicTimelineItem);
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const dateKey = shiftScheduleDateKey(weekStart, index);
+    const dateItems = items.filter((item) => item.dateKey === dateKey);
+    const calendarDateInfo = japanCalendarDateInfo(dateKey);
+
+    return {
+      dateKey,
+      dayNumber: String(Number(dateKey.split("-")[2])),
+      ...calendarDateInfo,
+      isSelected: dateKey === selected,
+      isToday: dateKey === todayDateKey,
+      items: dateItems,
+      weekdayLabel: weekdayLabelFor(dateKey)
+    };
+  });
+  const selectedDay = days.find((day) => day.isSelected);
+  const selectedItems = selectedDay?.items ?? [];
+  const selectedHolidayName = selectedDay?.holidayName;
+  const selectedParts = dateParts(`${selected}T12:00:00+09:00`);
+  const weekEnd = shiftScheduleDateKey(weekStart, 6);
+
+  return {
+    allDayItems: selectedItems.filter((item) => !item.timeLabel),
+    days,
+    emptyMessage: timeline.emptyMessage,
+    emptyTitle: timeline.emptyTitle,
+    items,
+    monthLabel: selectedParts?.monthLabel ?? "",
+    selectedDateKey: selected,
+    selectedDayLabel: selectedParts?.dayLabel ?? "时间待定",
+    ...(selectedHolidayName ? { selectedHolidayName } : {}),
+    timedItems: selectedItems.filter((item) => item.timeLabel),
+    weekLabel: `${shortDateLabel(weekStart)} - ${shortDateLabel(weekEnd)}`
   };
 }

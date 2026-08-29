@@ -14,6 +14,7 @@ const config: ExpoConfig = {
   plugins: [
     "./plugins/with-ios-build-settings",
     "expo-secure-store",
+    "expo-notifications",
     "expo-web-browser",
     [
       "expo-image-picker",
@@ -34,6 +35,7 @@ const config: ExpoConfig = {
     }
   },
   extra: {
+    easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
     orbitApiBaseUrl:
       process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL ?? "http://localhost:3000"
   }

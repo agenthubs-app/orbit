@@ -52,10 +52,13 @@ export const ORBIT_API_ENDPOINTS = {
   eventCenter: "/api/events/center",
   eventValueRecommendations: "/api/recommendations/events",
   messageDrafts: "/api/message-drafts",
+  devicePushToken: "/api/devices/push-token",
+  notificationPreferences: "/api/notification-preferences",
   notifications: "/api/notifications",
   permissions: "/api/permissions",
   calendarPermissionRequest: "/api/permissions/calendar/request",
   reminderGeneration: "/api/notifications/reminders/generate",
+  scheduleItems: "/api/schedule-items",
   proactiveTurns: "/api/ai/proactive-turns",
   relationshipInbox: "/api/chat/relationship-inbox",
   relationshipSignalsEmailCalendar: "/api/relationship-signals/email-calendar",
@@ -71,7 +74,10 @@ export const ORBIT_API_ENDPOINTS = {
   relationshipValueAnalysis: "/api/analysis/relationship-value",
   relationshipValueRecompute: "/api/analysis/relationship-value/recompute",
   tasks: "/api/tasks",
-  taskGeneration: "/api/tasks/generate"
+  taskGeneration: "/api/tasks/generate",
+  taskSuggestions: "/api/task-suggestions",
+  reminders: "/api/reminders",
+  today: "/api/today"
 } as const;
 
 function detailPath(collectionPath: string, id: string): string {
@@ -84,6 +90,57 @@ export function eventDetailPath(id: string): string {
 
 export function publicEventDetailPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.publicEvents, id);
+}
+
+export function todayPath(timeZone: string): string {
+  return `${ORBIT_API_ENDPOINTS.today}?${new URLSearchParams({ timeZone }).toString()}`;
+}
+
+export function tasksPath(status?: "open" | "completed" | "cancelled"): string {
+  return status
+    ? `${ORBIT_API_ENDPOINTS.tasks}?${new URLSearchParams({ status }).toString()}`
+    : ORBIT_API_ENDPOINTS.tasks;
+}
+
+export function taskPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.tasks, id);
+}
+
+export function taskActivitiesPath(id: string): string {
+  return `${taskPath(id)}/activities`;
+}
+
+export function remindersPath(
+  targetType?: "task" | "schedule_item",
+  targetId?: string
+): string {
+  if (!targetType || !targetId) {
+    return ORBIT_API_ENDPOINTS.reminders;
+  }
+
+  return `${ORBIT_API_ENDPOINTS.reminders}?${new URLSearchParams({ targetType, targetId }).toString()}`;
+}
+
+export function reminderPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.reminders, id);
+}
+
+export function taskSuggestionsPath(category?: string): string {
+  return category
+    ? `${ORBIT_API_ENDPOINTS.taskSuggestions}?${new URLSearchParams({ category }).toString()}`
+    : ORBIT_API_ENDPOINTS.taskSuggestions;
+}
+
+export function taskSuggestionAcceptPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.taskSuggestions, id)}/accept`;
+}
+
+export function taskSuggestionDismissPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.taskSuggestions, id)}/dismiss`;
+}
+
+export function taskSuggestionSnoozePath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.taskSuggestions, id)}/snooze`;
 }
 
 export function agentActionAcceptPath(id: string): string {
