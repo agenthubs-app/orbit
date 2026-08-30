@@ -7,17 +7,9 @@ import type {
   SourceReferenceContract,
   SourceTypeCode
 } from "./source";
+import type { IndustryIdCode } from "./industries";
 
-export type ContactTagFilterCode =
-  | "event:climate-founders-dinner"
-  | "topic:storage-pilots"
-  | "priority:warm-follow-up"
-  | "source:business-card"
-  | "source:external-import"
-  | "topic:community"
-  | "topic:venture-ecosystem"
-  | "priority:nurture"
-  | "source:event-import";
+export type ContactTagFilterCode = string;
 
 export type ContactSourceFilterCode = Extract<
   SourceTypeCode,
@@ -79,6 +71,8 @@ export interface ContactListItemContract {
   tags: readonly ContactTagFilterCode[];
   value: ContactRelationshipValueContract;
   status: ContactStatusFilterCode;
+  primaryIndustryId?: IndustryIdCode;
+  primaryIndustryLabel?: string;
   databaseQueryExecuted: boolean;
   searchIndexReadExecuted: boolean;
   externalNetworkRequested: false;

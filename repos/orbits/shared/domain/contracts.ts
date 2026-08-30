@@ -17,6 +17,7 @@ import type {
   SourceReferenceDTO,
   SourceType,
 } from "./source-types";
+import type { IndustryIdCode } from "../contract/industries";
 
 // shared/domain/contracts 放核心 DTO，表示 Orbit 领域对象的最小稳定形状。
 // feature mock payload 可以更丰富，但跨模块共享时应能落回这些 DTO 概念。
@@ -146,6 +147,8 @@ export interface ContactDTO {
   handles?: ContactHandlesDTO;
   publicProfile?: PublicProfileDTO;
   networkCategory?: NetworkCategory;
+  primaryIndustryId?: IndustryIdCode;
+  customTags?: readonly string[];
   nextAction?: NextActionDTO;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;

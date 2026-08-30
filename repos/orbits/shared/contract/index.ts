@@ -4,6 +4,15 @@
 
 export { ORBIT_LANGUAGES, type OrbitLanguage } from "./language";
 
+export {
+  INDUSTRY_CATALOG,
+  INDUSTRY_IDS,
+  industryLabel,
+  isIndustryIdCode,
+  type IndustryDefinitionContract,
+  type IndustryIdCode
+} from "./industries";
+
 export type {
   ApiEnvelopeContract,
   ApiErrorBodyContract,
