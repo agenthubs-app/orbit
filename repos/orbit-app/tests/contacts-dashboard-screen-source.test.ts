@@ -15,7 +15,7 @@ test("contacts dashboard screen can safely recompute opportunity reminders throu
   assert.match(screenSource, /dashboardOpportunitiesRecomputeToView/u);
   assert.match(screenSource, /client\.post<unknown>\(\s*dashboardOpportunitiesRecomputePath\(\)/u);
   assert.match(screenSource, /recomputeContactDashboardOpportunities/u);
-  assert.match(screenSource, /opportunitiesState\.refresh\(\)/u);
+  assert.match(screenSource, /dashboardState\.refresh\(\)/u);
   assert.match(screenSource, /"重新计算机会"/u);
   assert.doesNotMatch(screenSource, /发送通知|写入任务|创建任务/u);
 });
@@ -28,7 +28,7 @@ test("contacts dashboard screen can edit the relationship goal through the profi
   assert.match(screenSource, /relationshipGoalDraft/u);
   assert.match(screenSource, /saveContactDashboardGoal/u);
   assert.match(screenSource, /client\.put<unknown>\(\s*ORBIT_API_ENDPOINTS\.profile/u);
-  assert.match(screenSource, /profileState\.refresh\(\)/u);
+  assert.match(screenSource, /dashboardState\.refresh\(\)/u);
   assert.match(screenSource, /"关系目标"/u);
   assert.match(screenSource, /"保存目标"/u);
 });

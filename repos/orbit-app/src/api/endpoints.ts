@@ -52,6 +52,7 @@ export const ORBIT_API_ENDPOINTS = {
   eventCenter: "/api/events/center",
   eventValueRecommendations: "/api/recommendations/events",
   messageDrafts: "/api/message-drafts",
+  mobileContactsDashboard: "/api/mobile/contacts-dashboard",
   devicePushToken: "/api/devices/push-token",
   notificationPreferences: "/api/notification-preferences",
   notifications: "/api/notifications",

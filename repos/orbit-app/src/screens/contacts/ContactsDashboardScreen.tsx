@@ -14,10 +14,10 @@ import {
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
-  dashboardAggregatePath,
   dashboardOpportunitiesRecomputePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
+import { mobileContactsDashboardPayloadSchema } from "../../api/schema/mobile-contacts-dashboard";
 import { AppScreen } from "../../components/AppScreen";
 import { AnalysisPieChart } from "../../components/AnalysisPieChart";
 import { DataCard } from "../../components/DataCard";
@@ -25,8 +25,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { colors, radius, spacing, typography } from "../../design/tokens";
-import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
 import {
   contactsAnalysisToView,
   type ContactsAnalysisActivityView,
@@ -109,40 +109,18 @@ export function ContactsDashboardScreen() {
   const [relationshipGoalMessage, setRelationshipGoalMessage] =
     useState<string | null>(null);
   const [savingRelationshipGoal, setSavingRelationshipGoal] = useState(false);
-  const aggregateState = useApiResource<unknown>(
-    dashboardAggregatePath(4),
-    (data) =>
-      contactsDashboardToView({ aggregate: data }).overview.every(
-        (item) => item.value === "0"
-      )
+  const dashboardState = useValidatedApiResource(
+    ORBIT_API_ENDPOINTS.mobileContactsDashboard,
+    mobileContactsDashboardPayloadSchema,
+    (data) => data.aggregate.relationshipAssetTotals.contacts === 0
   );
-  const summaryState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.dashboardSummary,
-    () => false
-  );
-  const opportunitiesState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.dashboardOpportunities,
-    () => false
-  );
-  const gapsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.dashboardNetworkGaps,
-    () => false
-  );
-  const distributionsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.dashboardDistributions,
-    () => false
-  );
-  const profileState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
-    () => false
-  );
-  const contactsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.contacts,
-    (data) => contactsToSummaries(data).length === 0
-  );
+  const dashboard =
+    dashboardState.kind === "success" || dashboardState.kind === "empty"
+      ? dashboardState.data
+      : null;
   const profile =
-    profileState.kind === "success" || profileState.kind === "empty"
-      ? profileToSummary(profileState.data)
+    dashboard?.profile
+      ? profileToSummary(dashboard.profile)
       : null;
 
   useEffect(() => {
@@ -154,13 +132,7 @@ export function ContactsDashboardScreen() {
   function refreshAll() {
     setRecomputeError(null);
     setRelationshipGoalError(null);
-    aggregateState.refresh();
-    summaryState.refresh();
-    opportunitiesState.refresh();
-    gapsState.refresh();
-    distributionsState.refresh();
-    profileState.refresh();
-    contactsState.refresh();
+    dashboardState.refresh();
   }
 
   async function recomputeContactDashboardOpportunities() {
@@ -177,9 +149,7 @@ export function ContactsDashboardScreen() {
         setRecomputeResult(
           dashboardOpportunitiesRecomputeToView(result.data)
         );
-        aggregateState.refresh();
-        opportunitiesState.refresh();
-        gapsState.refresh();
+        dashboardState.refresh();
       } else {
         setRecomputeError(result.error.message);
       }
@@ -222,10 +192,7 @@ export function ContactsDashboardScreen() {
       }
 
       setRelationshipGoalMessage("关系目标已保存。");
-      profileState.refresh();
-      aggregateState.refresh();
-      opportunitiesState.refresh();
-      gapsState.refresh();
+      dashboardState.refresh();
     } catch (error) {
       setRelationshipGoalError(
         error instanceof Error ? error.message : "关系目标暂时保存不了。"
@@ -241,49 +208,33 @@ export function ContactsDashboardScreen() {
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
-          refreshing={
-            aggregateState.refreshing ||
-            summaryState.refreshing ||
-            opportunitiesState.refreshing ||
-            gapsState.refreshing ||
-            distributionsState.refreshing ||
-            profileState.refreshing ||
-            contactsState.refreshing
-          }
+          refreshing={dashboardState.refreshing}
           tintColor={colors.accent}
         />
       }
       title="人脉分析"
     >
-      {aggregateState.kind === "loading" ? <LoadingState /> : null}
-      {aggregateState.kind === "offline" ? (
-        <ErrorState message={aggregateState.error.message} title="服务器连不上" />
+      {dashboardState.kind === "loading" ? <LoadingState /> : null}
+      {dashboardState.kind === "offline" ? (
+        <ErrorState message={dashboardState.error.message} title="服务器连不上" />
       ) : null}
-      {aggregateState.kind === "failure" ? (
-        <ErrorState message={aggregateState.error.message} />
+      {dashboardState.kind === "failure" ? (
+        <ErrorState message={dashboardState.error.message} />
       ) : null}
-      {aggregateState.kind === "empty" ? (
+      {dashboardState.kind === "empty" ? (
         <EmptyState
           message="先确认联系人，Orbit 才能判断关系覆盖和下一步。"
           title="暂无人脉资产"
         />
       ) : null}
-      {aggregateState.kind === "success" ? (
+      {dashboardState.kind === "success" ? (
         <ContactsDashboardContent
-          aggregate={aggregateState.data}
+          aggregate={dashboardState.data.aggregate}
           baseUrl={baseUrl}
-          contactsPayload={
-            contactsState.kind === "success" || contactsState.kind === "empty"
-              ? contactsState.data
-              : null
-          }
-          distributions={
-            distributionsState.kind === "success" ? distributionsState.data : null
-          }
-          gaps={gapsState.kind === "success" ? gapsState.data : null}
-          opportunities={
-            opportunitiesState.kind === "success" ? opportunitiesState.data : null
-          }
+          contactsPayload={dashboardState.data.contacts}
+          distributions={dashboardState.data.distributions}
+          gaps={dashboardState.data.gaps}
+          opportunities={dashboardState.data.opportunities}
           onRecompute={recomputeContactDashboardOpportunities}
           recomputeError={recomputeError}
           recomputeResult={recomputeResult}
@@ -303,7 +254,7 @@ export function ContactsDashboardScreen() {
           relationshipGoalError={relationshipGoalError}
           relationshipGoalMessage={relationshipGoalMessage}
           savingRelationshipGoal={savingRelationshipGoal}
-          summary={summaryState.kind === "success" ? summaryState.data : null}
+          summary={dashboardState.data.summary}
         />
       ) : null}
     </AppScreen>
