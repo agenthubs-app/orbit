@@ -7,6 +7,7 @@ import type {
 } from "../../shared/domain/contracts";
 import type { SourceType } from "../../shared/domain/source-types";
 import type { OrbitLanguage } from "../../shared/contract/language";
+import { resolveOrbitLanguage } from "../../shared/i18n/orbit-language";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
@@ -615,6 +616,7 @@ function payloadFor(input: {
   contact: ContactDTO;
   connection: ConnectionDTO | null;
   evidence: readonly RelationshipEvidenceDTO[];
+  language: OrbitLanguage;
   persistedState?: LiveContactDetailState | null;
   provider: LiveContactsGraphProvider;
 }): ContactDetailTagStatusPayload {
@@ -623,6 +625,7 @@ function payloadFor(input: {
     contact: input.contact,
     connection: input.connection,
     evidence: input.evidence,
+    language: input.language,
     persistedState: input.persistedState,
   });
 
@@ -967,6 +970,7 @@ export function createLiveContactDetailTagStatusService({
     actorId?: string | null;
     contactId: string;
     collectedAt: string;
+    language?: OrbitLanguage;
   }): Promise<ContactDetailTagStatusResult> {
     const actorId = input.actorId?.trim();
     if (!actorId) {
@@ -1010,6 +1014,7 @@ export function createLiveContactDetailTagStatusService({
           contact,
           connection: connectionFor(contact, graph.connections),
           evidence: graph.evidence,
+          language: resolveOrbitLanguage({ requestLanguage: input.language }),
           persistedState,
           provider,
         }),
@@ -1023,6 +1028,7 @@ export function createLiveContactDetailTagStatusService({
         actorId: input.actorId,
         contactId: input.contactId,
         collectedAt: now(),
+        language: input.language,
       });
     },
 
@@ -1058,6 +1064,7 @@ export function createLiveContactDetailTagStatusService({
         actorId: input.actorId,
         contactId: input.contactId,
         collectedAt,
+        language: input.language,
       });
 
       if (loaded.success === false) {

@@ -102,6 +102,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
 
   assert.equal(detail.success, true);
   assert.equal(detail.data.contact?.id, "contact_078");
+  assert.equal(detail.data.contact?.contentLanguage, "zh");
   assert.ok(detail.data.contact?.displayName);
   assert.equal(detail.data.contact?.databaseReadExecuted, true);
   assert.equal(detail.data.contact?.databaseWriteExecuted, false);
