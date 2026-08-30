@@ -88,6 +88,14 @@ test("live contacts service reads generated contacts from shared live storage", 
   const service = createLiveContactsListSearchAndFilterService({
     provider,
   });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId: "contact_001",
+    notes: [],
+    status: "active",
+    tags: ["日本市场", "仅用于自定义标签检索"],
+    updatedAt: "2026-07-01T16:05:00.000Z",
+  });
 
   const listResult = await service.listContacts({ actorId });
 
@@ -114,6 +122,7 @@ test("live contacts service reads generated contacts from shared live storage", 
   assert.equal(sato.databaseQueryExecuted, true);
   assert.equal(sato.searchIndexReadExecuted, false);
   assert.ok(sato.value.valueTypes.includes("referral_path"));
+  assert.deepEqual(sato.tags, ["日本市场", "仅用于自定义标签检索"]);
   assert.match(sato.relationshipContext, new RegExp(sato.displayName));
   assert.match(
     sato.relationshipContext,
@@ -131,6 +140,31 @@ test("live contacts service reads generated contacts from shared live storage", 
   assert.deepEqual(
     searchResult.data.contacts.map((contact) => contact.id),
     ["contact_001"],
+  );
+
+  const customTagSearch = await service.searchContacts({
+    actorId,
+    query: "仅用于自定义标签检索",
+  });
+  assert.equal(customTagSearch.success, true);
+  assert.deepEqual(
+    customTagSearch.data.contacts.map((contact) => contact.id),
+    ["contact_001"],
+  );
+
+  const customTagFilter = await service.listContacts({
+    actorId,
+    tagFilters: ["仅用于自定义标签检索"],
+  });
+  assert.equal(customTagFilter.success, true);
+  assert.deepEqual(
+    customTagFilter.data.contacts.map((contact) => contact.id),
+    ["contact_001"],
+  );
+  assert.ok(
+    customTagFilter.data.availableFilters.tags.some(
+      (tag) => tag.value === "仅用于自定义标签检索" && tag.count === 1,
+    ),
   );
 });
 

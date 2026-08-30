@@ -76,17 +76,26 @@ test("contact detail tag and status contract exposes detail tags status notes la
     status: "blocked",
   }));
   const unsupportedTag = syncResult(service.updateContactDetail({
-    addTags: ["topic:unverified"],
+    addTags: ["x".repeat(33)],
     contactId: "demo-contact-1",
+  }));
+  const unsupportedIndustry = syncResult(service.updateContactDetail({
+    contactId: "demo-contact-1",
+    primaryIndustryId: "made_up_industry",
+  }));
+  const updatedIndustry = syncResult(service.updateContactDetail({
+    contactId: "demo-contact-1",
+    primaryIndustryId: "technology_internet",
   }));
   const missing = syncResult(service.getContactDetail({ contactId: "missing-contact" }));
 
   assert.deepEqual(contract.CONTACT_DETAIL_TAG_STATUS_ERROR_CODES, [
     "CONTACT_DETAIL_ACTOR_REQUIRED",
     "CONTACT_DETAIL_NOT_FOUND",
-    "CONTACT_DETAIL_INVALID_PATCH_BODY",
-    "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
-    "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
+      "CONTACT_DETAIL_INVALID_PATCH_BODY",
+      "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
+      "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
+      "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
     "CONTACT_DETAIL_UPDATE_PENDING",
     "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
     "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
@@ -224,6 +233,16 @@ test("contact detail tag and status contract exposes detail tags status notes la
   );
   assert.equal(unsupportedTag.success, false);
   assert.equal(unsupportedTag.error.code, "CONTACT_DETAIL_TAG_NOT_SUPPORTED");
+  assert.equal(unsupportedIndustry.success, false);
+  assert.equal(
+    unsupportedIndustry.error.code,
+    "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
+  );
+  assert.equal(updatedIndustry.success, true);
+  assert.equal(
+    updatedIndustry.data.contact?.primaryIndustryId,
+    "technology_internet",
+  );
   assert.equal(missing.success, false);
   assert.equal(missing.error.code, "CONTACT_DETAIL_NOT_FOUND");
 

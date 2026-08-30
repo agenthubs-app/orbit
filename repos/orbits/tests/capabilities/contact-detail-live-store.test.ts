@@ -125,7 +125,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
 
   const updated = await service.updateContactDetail({
     actorId,
-    addTags: ["topic:venture-ecosystem"],
+    addTags: ["topic:venture-ecosystem", "日本市场"],
     contactId: "contact_078",
     lastInteraction: {
       channel: "manual_note",
@@ -136,6 +136,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
       authorLabel: "Orbit operator",
       body: "Persisted a live contact detail status update.",
     },
+    primaryIndustryId: "technology_internet",
     status: "active",
   });
 
@@ -143,6 +144,9 @@ test("live contact detail persists actor-scoped tag status note and interaction 
   assert.equal(updated.data.contact?.id, "contact_078");
   assert.equal(updated.data.contact?.status, "active");
   assert.ok(updated.data.contact?.tags.includes("topic:venture-ecosystem"));
+  assert.ok(updated.data.contact?.tags.includes("日本市场"));
+  assert.equal(updated.data.contact?.primaryIndustryId, "technology_internet");
+  assert.equal(updated.data.contact?.primaryIndustryLabel, "科技与互联网");
   assert.match(
     updated.data.contact?.notes.at(-1)?.body ?? "",
     /Persisted a live contact detail status update/,
@@ -173,6 +177,8 @@ test("live contact detail persists actor-scoped tag status note and interaction 
   assert.ok(
     refreshed.data.contact?.tags.includes("topic:venture-ecosystem"),
   );
+  assert.ok(refreshed.data.contact?.tags.includes("日本市场"));
+  assert.equal(refreshed.data.contact?.primaryIndustryId, "technology_internet");
   assert.equal(
     refreshed.data.contact?.notes.filter((note) =>
       note.body.includes("Persisted a live contact detail status update"),
@@ -211,6 +217,34 @@ test("live contact detail persists actor-scoped tag status note and interaction 
     ).length,
     1,
   );
+
+  const rejected = await service.updateContactDetail({
+    actorId,
+    contactId: "contact_078",
+    primaryIndustryId: "made_up_industry",
+  });
+  assert.equal(rejected.success, false);
+  if (!rejected.success) {
+    assert.equal(rejected.error.code, "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED");
+  }
+
+  const cleared = await service.updateContactDetail({
+    actorId,
+    contactId: "contact_078",
+    primaryIndustryId: null,
+  });
+  assert.equal(cleared.success, true);
+  assert.equal(cleared.data.contact?.primaryIndustryId, undefined);
+
+  const isolated = await service.updateContactDetail({
+    actorId: "actor:contact-detail-isolation",
+    contactId: "contact_078",
+    primaryIndustryId: "finance_investment",
+  });
+  assert.equal(isolated.success, false);
+  if (!isolated.success) {
+    assert.equal(isolated.error.code, "CONTACT_DETAIL_NOT_FOUND");
+  }
 
   assert.equal(
     await provider.readContactDetailState?.(

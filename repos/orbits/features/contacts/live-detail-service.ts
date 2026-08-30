@@ -7,6 +7,10 @@ import type {
 } from "../../shared/domain/contracts";
 import type { SourceType } from "../../shared/domain/source-types";
 import type { OrbitLanguage } from "../../shared/contract/language";
+import {
+  industryLabel,
+  isIndustryIdCode,
+} from "../../shared/contract/industries";
 import { resolveOrbitLanguage } from "../../shared/i18n/orbit-language";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
@@ -532,6 +536,10 @@ function detailFor(input: {
       input.contact.organization ?? contactDetailCopy(input.language).unknownOrganization,
     location:
       input.contact.location ?? contactDetailCopy(input.language).unknownLocation,
+    primaryIndustryId: input.contact.primaryIndustryId,
+    primaryIndustryLabel: input.contact.primaryIndustryId
+      ? industryLabel(input.contact.primaryIndustryId, input.language)
+      : undefined,
     primaryEmail:
       input.contact.primaryEmail ?? input.contact.handles?.email ?? "",
     primaryPhone:
@@ -565,9 +573,7 @@ function detailFor(input: {
       };
     }),
     tags: input.persistedState
-      ? (input.persistedState.tags.filter((tag) =>
-          supportedTags.has(tag as ContactDetailTagOption),
-        ) as ContactDetailTagOption[])
+      ? ([...input.persistedState.tags] as ContactDetailTagOption[])
       : tagsFor({
           contact: input.contact,
           connection: input.connection,
@@ -681,9 +687,12 @@ function unsupportedTagFailure(
     ...normalizedValues(input.addTags),
     ...normalizedValues(input.removeTags),
   ];
-  const hasUnsupportedTag = requestedTags.some(
-    (tag) => !supportedTags.has(tag as ContactDetailTagOption),
+  const uniqueRequestedTags = new Set(
+    requestedTags.map((tag) => tag.toLocaleLowerCase()),
   );
+  const hasUnsupportedTag =
+    uniqueRequestedTags.size > 20 ||
+    requestedTags.some((tag) => Array.from(tag).length > 32);
 
   return hasUnsupportedTag
     ? failure("CONTACT_DETAIL_TAG_NOT_SUPPORTED", context)
@@ -710,7 +719,14 @@ function unsupportedStatusFailure(
 }
 
 function uniqueTags(tags: readonly string[]): ContactDetailTagOption[] {
-  return Array.from(new Set(tags)) as ContactDetailTagOption[];
+  const seen = new Set<string>();
+
+  return tags.filter((tag) => {
+    const key = tag.toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }) as ContactDetailTagOption[];
 }
 
 function applyTagRules(
@@ -864,6 +880,18 @@ function previewUpdatePayload(input: {
   );
   const updatedContact: ContactDetail = {
     ...contact,
+    primaryIndustryId:
+      input.update.primaryIndustryId === null
+        ? undefined
+        : isIndustryIdCode(input.update.primaryIndustryId)
+          ? input.update.primaryIndustryId
+          : contact.primaryIndustryId,
+    primaryIndustryLabel:
+      input.update.primaryIndustryId === null
+        ? undefined
+        : isIndustryIdCode(input.update.primaryIndustryId)
+          ? industryLabel(input.update.primaryIndustryId, contact.contentLanguage)
+          : contact.primaryIndustryLabel,
     tags,
     status,
     notes,
@@ -1060,6 +1088,17 @@ export function createLiveContactDetailTagStatusService({
         return unsupportedTag;
       }
 
+      if (
+        input.primaryIndustryId !== undefined &&
+        input.primaryIndustryId !== null &&
+        !isIndustryIdCode(input.primaryIndustryId)
+      ) {
+        return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", {
+          collectedAt,
+          provider,
+        });
+      }
+
       const loaded = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
@@ -1071,7 +1110,19 @@ export function createLiveContactDetailTagStatusService({
         return loaded;
       }
 
-      if (!provider?.upsertContactDetailState) {
+      const writesDetailState =
+        input.tags !== undefined ||
+        input.addTags !== undefined ||
+        input.removeTags !== undefined ||
+        input.status !== undefined ||
+        input.note !== undefined ||
+        input.lastInteraction !== undefined;
+      const writesPrimaryIndustry = input.primaryIndustryId !== undefined;
+
+      if (
+        (writesDetailState && !provider?.upsertContactDetailState) ||
+        (writesPrimaryIndustry && !provider?.updateContactPrimaryIndustry)
+      ) {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
           databaseReadExecuted: true,
@@ -1099,13 +1150,26 @@ export function createLiveContactDetailTagStatusService({
         });
       }
       try {
-        await provider.upsertContactDetailState(
-          persistedStateFor({
+        if (writesPrimaryIndustry) {
+          await provider.updateContactPrimaryIndustry?.(
+            input.contactId.trim(),
             actorId,
-            collectedAt,
-            contact: preview.contact,
-          }),
-        );
+            input.primaryIndustryId === null
+              ? null
+              : isIndustryIdCode(input.primaryIndustryId)
+                ? input.primaryIndustryId
+                : null,
+          );
+        }
+        if (writesDetailState) {
+          await provider.upsertContactDetailState?.(
+            persistedStateFor({
+              actorId,
+              collectedAt,
+              contact: preview.contact,
+            }),
+          );
+        }
       } catch {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
@@ -1114,11 +1178,19 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
+      const reloaded = await loadPayload({
+        actorId,
+        contactId: input.contactId,
+        collectedAt,
+        language: input.language,
+      });
+      if (!reloaded.success) return reloaded;
+
       return {
         success: true,
         data: clonePayload(
           persistedUpdatePayload({
-            payload: preview,
+            payload: reloaded.data,
             update: input,
           }),
         ),

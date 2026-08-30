@@ -45,7 +45,6 @@ const supportedScenarios = new Set<ContactsListSearchFilterScenario>([
   "failure",
 ]);
 
-const supportedTags = new Set<ContactTagFilter>(CONTACT_TAG_FILTERS);
 const supportedSources = new Set<ContactSourceFilter>(CONTACT_SOURCE_FILTERS);
 const supportedValues = new Set<ContactValueFilter>(CONTACT_VALUE_FILTERS);
 const supportedStatuses = new Set<ContactStatusFilter>(CONTACT_STATUS_FILTERS);
@@ -62,7 +61,7 @@ const sourceLabels: Record<ContactSourceFilter, string> = {
   referral: "Referral",
 };
 
-const tagLabels: Record<ContactTagFilter, string> = {
+const tagLabels: Record<string, string> = {
   "event:climate-founders-dinner": "Climate founders dinner",
   "priority:nurture": "Nurture priority",
   "priority:warm-follow-up": "Warm follow-up",
@@ -153,7 +152,8 @@ function unsupportedFilterFailure(
   context: ContactsGraphQueryContext,
 ): ContactsListSearchFailure | null {
   if (
-    hasUnsupportedValue(normalizedValues(input.tagFilters), supportedTags) ||
+    normalizedValues(input.tagFilters).length > 20 ||
+    normalizedValues(input.tagFilters).some((tag) => Array.from(tag).length > 32) ||
     hasUnsupportedValue(
       normalizedValues(input.sourceFilters),
       supportedSources,
@@ -287,7 +287,8 @@ function toContactListItems(graph: LocalRemoteContactGraph): ContactListItem[] {
       nextAction: nextActionFor(contact),
       source,
       evidence: evidenceForContact(contact, source, graph.evidence),
-      tags: [],
+      tags: contact.customTags ?? [],
+      primaryIndustryId: contact.primaryIndustryId,
       value: {
         score: valueScore(valueTypes),
         valueTypes,
@@ -341,6 +342,7 @@ function includesText(contact: ContactListItem, query: string): boolean {
     contact.profileSnippet,
     contact.relationshipContext,
     contact.nextAction,
+    contact.tags.join(" "),
     contact.value.valueTypes.join(" "),
     contact.evidence.map((evidence) => evidence.excerpt).join(" "),
   ]
@@ -388,10 +390,15 @@ function buildAvailableFilters(
   appliedFilters: ContactsAppliedFilters,
 ): ContactsAvailableFilters {
   return {
-    tags: CONTACT_TAG_FILTERS.map((tag) =>
+    tags: Array.from(
+      new Set([
+        ...CONTACT_TAG_FILTERS,
+        ...contacts.flatMap((contact) => contact.tags),
+      ]),
+    ).map((tag) =>
       filterOption(
         tag,
-        tagLabels[tag],
+        tagLabels[tag] ?? tag,
         contacts.filter((contact) => contact.tags.includes(tag)).length,
         appliedFilters.tagFilters,
       ),

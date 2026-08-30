@@ -4,6 +4,10 @@ import type {
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
 import {
+  isIndustryIdCode,
+  type IndustryIdCode,
+} from "../../../shared/contract/industries";
+import {
   isNetworkCategory,
   isRelationshipStage,
   isRelationshipTrustLevel,
@@ -228,6 +232,9 @@ function contactFromRecord(
     networkCategory: isNetworkCategory(payload.networkCategory)
       ? payload.networkCategory
       : undefined,
+    primaryIndustryId: isIndustryIdCode(payload.primaryIndustryId)
+      ? payload.primaryIndustryId
+      : undefined,
     nextAction: isRecord(payload.nextAction) && nonEmptyString(payload.nextAction.text)
       ? {
           text: payload.nextAction.text,
@@ -345,12 +352,28 @@ function uniqueEvidenceIds(
 function graphFromRecords(input: {
   contactRecords: readonly LiveRecord<Record<string, unknown>>[];
   connectionRecords: readonly LiveRecord<Record<string, unknown>>[];
+  detailStateRecords?: readonly LiveRecord<Record<string, unknown>>[];
+  actorId?: string;
   evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
 }): LocalRemoteContactGraph {
+  const customTagsByContactId = new Map<string, readonly string[]>();
+  if (input.actorId) {
+    for (const record of input.detailStateRecords ?? []) {
+      const contactId = optionalString(record.payload.contactId);
+      if (!contactId) continue;
+      const state = contactDetailStateFromRecord(record, input.actorId, contactId);
+      if (state) customTagsByContactId.set(contactId, state.tags);
+    }
+  }
+
   return {
     contacts: input.contactRecords
       .map(contactFromRecord)
-      .filter((contact): contact is ContactDTO => contact !== null),
+      .filter((contact): contact is ContactDTO => contact !== null)
+      .map((contact) => ({
+        ...contact,
+        customTags: customTagsByContactId.get(contact.id) ?? [],
+      })),
     connections: input.connectionRecords
       .map(connectionFromRecord)
       .filter((connection): connection is ConnectionDTO => connection !== null),
@@ -362,6 +385,7 @@ function graphFromRecords(input: {
     generatedAt: latestTimestamp([
       ...input.contactRecords,
       ...input.connectionRecords,
+      ...(input.detailStateRecords ?? []),
       ...input.evidenceRecords,
     ]),
   };
@@ -379,21 +403,25 @@ async function readFocusedContactGraph(input: {
     return graphFromRecords({
       contactRecords: [],
       connectionRecords: [],
+      detailStateRecords: [],
       evidenceRecords: [],
     });
   }
 
-  const query = input.listInput?.query?.trim();
-  const [contactRecords, allConnectionRecords] = await Promise.all([
+  const query = input.listInput?.query?.trim().toLocaleLowerCase();
+  const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
-      ...(query ? { searchText: query } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+    }),
+    input.store.listRecords({
+      workspaceId: input.workspaceId,
+      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -406,11 +434,28 @@ async function readFocusedContactGraph(input: {
       .map((record) => record.payload.contactId)
       .filter(nonEmptyString),
   );
+  const actorDetailStateRecords = detailStateRecords.filter(
+    (record) => record.userId === actorId,
+  );
+  const customTagQueryContactIds = new Set(
+    actorDetailStateRecords
+      .filter((record) =>
+        stringArray(record.payload.tags).some((tag) =>
+          tag.toLocaleLowerCase().includes(query ?? ""),
+        ),
+      )
+      .map((record) => record.payload.contactId)
+      .filter(nonEmptyString),
+  );
   const actorContactRecords = contactRecords.filter(
     (record) =>
-      record.userId === actorId ||
-      (nonEmptyString(record.payload.id) &&
-        actorContactIds.has(record.payload.id)),
+      (record.userId === actorId ||
+        (nonEmptyString(record.payload.id) &&
+          actorContactIds.has(record.payload.id))) &&
+      (!query ||
+        record.searchText.toLocaleLowerCase().includes(query) ||
+        (nonEmptyString(record.payload.id) &&
+          customTagQueryContactIds.has(record.payload.id))),
   );
   const contacts = actorContactRecords
     .map(contactFromRecord)
@@ -435,8 +480,10 @@ async function readFocusedContactGraph(input: {
       : [];
 
   return graphFromRecords({
+    actorId,
     contactRecords: actorContactRecords,
     connectionRecords,
+    detailStateRecords: actorDetailStateRecords,
     evidenceRecords,
   });
 }
@@ -551,6 +598,61 @@ export function createStorageContactGraphProvider({
       }
 
       return persisted;
+    },
+    async updateContactPrimaryIndustry(
+      contactId: string,
+      actorId: string,
+      primaryIndustryId: IndustryIdCode | null,
+    ) {
+      const normalizedActorId = actorId.trim();
+      const normalizedContactId = contactId.trim();
+      if (!normalizedActorId || !normalizedContactId) {
+        throw new Error("Contact industry update requires actor and contact identifiers.");
+      }
+      const [contactRecord, connectionRecords] = await Promise.all([
+        store.getRecord({
+          workspaceId,
+          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+          recordId: normalizedContactId,
+        }),
+        store.listRecords({
+          workspaceId,
+          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+        }),
+      ]);
+      const actorCanEdit =
+        contactRecord?.userId === normalizedActorId ||
+        connectionRecords.some(
+          (record) =>
+            (record.userId === normalizedActorId ||
+              record.payload.accountId === normalizedActorId) &&
+            record.payload.contactId === normalizedContactId,
+        );
+      if (!contactRecord || !actorCanEdit) {
+        throw new Error("Contact industry update is outside the actor boundary.");
+      }
+      const nextPayload = { ...contactRecord.payload };
+      if (primaryIndustryId) {
+        nextPayload.primaryIndustryId = primaryIndustryId;
+      } else {
+        delete nextPayload.primaryIndustryId;
+      }
+      const updatedAt = new Date().toISOString();
+      nextPayload.updatedAt = updatedAt;
+      const record = await store.upsertRecord({
+        ...contactRecord,
+        updatedAt,
+        searchText: [contactRecord.searchText, primaryIndustryId ?? ""]
+          .filter(Boolean)
+          .join(" "),
+        payload: nextPayload,
+      });
+      const contact = contactFromRecord(record);
+      if (!contact) {
+        throw new Error("Persisted contact industry failed validation.");
+      }
+
+      return contact;
     },
   };
 }

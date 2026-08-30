@@ -4,6 +4,7 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
+import type { IndustryIdCode } from "../../shared/contract/industries";
 import { AppError } from "../../shared/errors/app-error";
 import type { ContactStatusFilter, ContactTagFilter } from "./contract";
 
@@ -41,6 +42,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_NOT_FOUND",
   "CONTACT_DETAIL_INVALID_PATCH_BODY",
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
+  "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
   "CONTACT_DETAIL_UPDATE_PENDING",
   "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
@@ -95,6 +97,12 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     message: "That mock contact tag is not supported by this sprint boundary.",
     recovery:
       "Use one of the local contact detail tag options declared in the detail contract.",
+  },
+  CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED: {
+    code: "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
+    appCode: "VALIDATION_ERROR",
+    message: "That contact industry is not part of the fixed industry catalog.",
+    recovery: "Choose a supported primary industry or clear the field.",
   },
   CONTACT_DETAIL_STATUS_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
@@ -231,6 +239,8 @@ export interface ContactDetail {
   role: string;
   organization: string;
   location: string;
+  primaryIndustryId?: IndustryIdCode;
+  primaryIndustryLabel?: string;
   primaryEmail?: string;
   primaryPhone?: string;
   wechatId?: string;
@@ -316,6 +326,7 @@ export interface ContactDetailLastInteractionInput {
 // Update input 支持替换/增删 tags、状态、note 和 lastInteraction。
 // mock service 生成预览；live service 必须在返回 success 前完成持久化回读。
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
+  primaryIndustryId?: IndustryIdCode | string | null;
   tags?: readonly (ContactDetailTagOption | string)[] | null;
   addTags?: readonly (ContactDetailTagOption | string)[] | null;
   removeTags?: readonly (ContactDetailTagOption | string)[] | null;

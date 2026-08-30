@@ -31,7 +31,7 @@ export const CONTACT_TAG_FILTERS = [
   "source:event-import",
 ] as const;
 
-export type ContactTagFilter = (typeof CONTACT_TAG_FILTERS)[number];
+export type ContactTagFilter = string;
 
 export const CONTACT_SOURCE_FILTERS = [
   "manual",

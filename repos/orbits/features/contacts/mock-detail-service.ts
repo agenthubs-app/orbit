@@ -38,6 +38,10 @@ import {
   mockUpdatedContactDetailNote,
   mockUpdatedContactDetailProvenance,
 } from "./detail-fixtures";
+import {
+  industryLabel,
+  isIndustryIdCode,
+} from "../../shared/contract/industries";
 
 const supportedScenarios = new Set<ContactDetailTagStatusScenario>([
   "success",
@@ -46,9 +50,6 @@ const supportedScenarios = new Set<ContactDetailTagStatusScenario>([
   "failure",
 ]);
 
-const supportedTags = new Set<ContactDetailTagOption>(
-  CONTACT_DETAIL_TAG_OPTIONS,
-);
 const supportedStatuses = new Set<ContactDetailStatusOption>(
   CONTACT_DETAIL_STATUS_OPTIONS,
 );
@@ -156,15 +157,15 @@ function normalizedValues(
 function unsupportedTagFailure(
   input: ContactDetailUpdateInput,
 ): ContactDetailTagStatusFailure | null {
-  // tags/addTags/removeTags 三个入口都必须服从同一套可编辑标签白名单。
+  // 自定义标签允许自由输入，但数量和长度必须保持在契约限制内。
   const requestedTags = [
     ...normalizedValues(input.tags),
     ...normalizedValues(input.addTags),
     ...normalizedValues(input.removeTags),
   ];
-  const hasUnsupportedTag = requestedTags.some(
-    (tag) => !supportedTags.has(tag as ContactDetailTagOption),
-  );
+  const hasUnsupportedTag =
+    new Set(requestedTags.map((tag) => tag.toLocaleLowerCase())).size > 20 ||
+    requestedTags.some((tag) => Array.from(tag).length > 32);
 
   return hasUnsupportedTag ? failure("CONTACT_DETAIL_TAG_NOT_SUPPORTED") : null;
 }
@@ -297,6 +298,18 @@ function buildUpdatePayload(
   const lastInteraction = buildLastInteraction(input.lastInteraction);
   const updatedContact: ContactDetail = {
     ...mockContactDetail,
+    primaryIndustryId:
+      input.primaryIndustryId === null
+        ? undefined
+        : isIndustryIdCode(input.primaryIndustryId)
+          ? input.primaryIndustryId
+          : mockContactDetail.primaryIndustryId,
+    primaryIndustryLabel:
+      input.primaryIndustryId === null
+        ? undefined
+        : isIndustryIdCode(input.primaryIndustryId)
+          ? industryLabel(input.primaryIndustryId, mockContactDetail.contentLanguage)
+          : mockContactDetail.primaryIndustryLabel,
     tags,
     status,
     notes,
@@ -357,6 +370,14 @@ export function createMockContactDetailTagStatusService(): ContactDetailTagStatu
 
       if (unsupportedTags) {
         return unsupportedTags;
+      }
+
+      if (
+        input.primaryIndustryId !== undefined &&
+        input.primaryIndustryId !== null &&
+        !isIndustryIdCode(input.primaryIndustryId)
+      ) {
+        return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED");
       }
 
       return success(buildUpdatePayload(input));

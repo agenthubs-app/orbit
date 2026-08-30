@@ -33,6 +33,7 @@ type PatchBody = {
   addTags?: readonly string[];
   lastInteraction?: ContactDetailLastInteractionInput;
   note?: ContactDetailNoteInput | string;
+  primaryIndustryId?: string | null;
   removeTags?: readonly string[];
   scenario?: string;
   status?: string;
@@ -123,6 +124,12 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
         addTags: readStringList(body.addTags ?? body.addTag),
         lastInteraction: readLastInteraction(body.lastInteraction),
         note: readNote(body.note),
+        primaryIndustryId:
+          body.primaryIndustryId === null
+            ? null
+            : typeof body.primaryIndustryId === "string"
+              ? body.primaryIndustryId
+              : undefined,
         removeTags: readStringList(body.removeTags ?? body.removeTag),
         scenario:
           typeof body.scenario === "string" ? body.scenario : undefined,
@@ -213,6 +220,7 @@ export function createContactDetailPatchHandler(
       contactId: id,
       lastInteraction: body.lastInteraction,
       note: body.note,
+      primaryIndustryId: body.primaryIndustryId,
       removeTags: body.removeTags,
       scenario: searchParams.get("scenario") ?? body.scenario,
       status: body.status,
