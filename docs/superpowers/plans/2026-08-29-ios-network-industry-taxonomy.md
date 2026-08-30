@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a persisted single-primary-industry model, preserve user-managed custom tags, replace inferred industry rows with the selected interactive pie chart, and add an actor-scoped industry drill-down screen in iOS.
+**Goal:** Build a persisted single-primary-industry model, preserve user-managed custom tags, and upgrade industry, location, role, and relationship analysis to a shared interactive pie-chart and actor-scoped drill-down flow in iOS.
 
-**Architecture:** A shared, localized industry catalog supplies stable IDs to Web and iOS. Contacts persist `primaryIndustryId` on the canonical contact record while existing custom tags remain in contact detail state; read providers compose both into analytics views. Dashboard services aggregate only the primary industry and expose a deterministic industry-detail endpoint, while Expo Router screens render the selected chart and drill-down flow.
+**Architecture:** A shared, localized industry catalog supplies stable IDs to Web and iOS. Contacts persist `primaryIndustryId` on the canonical contact record while existing custom tags remain in contact detail state; read providers compose both into analytics views. Dashboard services normalize all four dimensions into stable buckets and expose one deterministic structure-detail endpoint. Expo Router reuses one pie-chart component and one detail screen for every dimension.
 
 **Tech Stack:** TypeScript 5.7+, Next.js 16 route handlers, PostgreSQL-backed Orbit live-record store, React Native/Expo Router 57, `react-native-svg`, Node test runner with `tsx`.
 
@@ -21,6 +21,8 @@
 - Unknown industry IDs fail validation and never write storage.
 - No runtime organization-suffix inference remains after migration.
 - Every migration skip and ambiguity is reported explicitly.
+- Every structure dimension assigns each visible contact to exactly one bucket, including a neutral missing-data bucket.
+- First tap selects and explodes a slice; tapping the selected slice again or pressing the detail action navigates to the shared detail route.
 
 ---
 
@@ -259,22 +261,22 @@ git commit -m "feat(contacts): persist primary industry"
 
 ---
 
-### Task 3: Replace Industry Inference And Add Industry Detail API
+### Task 3: Normalize Four Dimensions And Add Structure Detail API
 
 **Files:**
 - Modify: `repos/orbits/features/dashboard/distribution-contract.ts`
 - Modify: `repos/orbits/features/dashboard/live-distribution-service.ts`
 - Modify: `repos/orbits/features/dashboard/mock-distribution-service.ts`
 - Modify: `repos/orbits/features/dashboard/service-factory.ts`
-- Create: `repos/orbits/app/api/dashboard/industries/[industryId]/route.ts`
+- Create: `repos/orbits/app/api/dashboard/structure/[dimension]/[bucketId]/route.ts`
 - Create: `repos/orbits/app/api/industries/route.ts`
 - Modify: `repos/orbits/tests/capabilities/network-distribution-live-store.test.ts`
 - Modify: `repos/orbits/tests/capabilities/network-distribution-analytics-mock.test.ts`
-- Create: `repos/orbits/tests/api/industry-routes.test.ts`
+- Create: `repos/orbits/tests/api/structure-analysis-routes.test.ts`
 
 **Interfaces:**
 - Consumes: fixed catalog and contact fields from Tasks 1-2.
-- Produces: `IndustryDistributionBucket.industryId`, `unclassifiedContactCount`, `IndustryDetailPayload`, `getIndustryDetail(input)`, `GET /api/industries`, and `GET /api/dashboard/industries/:industryId`.
+- Produces: stable bucket IDs for all four distributions, `StructureDimensionDetailPayload`, `getStructureDetail(input)`, `GET /api/industries`, and `GET /api/dashboard/structure/:dimension/:bucketId`.
 
 - [ ] **Step 1: Write failing aggregation and detail tests**
 
@@ -293,20 +295,21 @@ assert.equal(
   4,
 );
 
-const detail = await service.getIndustryDetail({
-  industryId: "food_hospitality",
+const detail = await service.getStructureDetail({
+  dimension: "industry",
+  bucketId: "food_hospitality",
 });
 assert.deepEqual(detail.data.relationshipQuality.map((item) => item.contactCount), [1, 1, 0]);
 assert.deepEqual(detail.data.commonTags[0], { label: "日本市场", contactCount: 2 });
 assert.equal(detail.data.provenance.aiProviderRequested, false);
 ```
 
-Include a contact named `Example Technologies` whose explicit industry is `food_hospitality`; assert it remains food to prove suffix inference is gone.
+Include a contact named `Example Technologies` whose explicit industry is `food_hospitality`; assert it remains food to prove suffix inference is gone. Add equivalent total-preservation tests for location, role, and relationship, including each neutral missing-data bucket.
 
 - [ ] **Step 2: Run the focused distribution tests and verify failure**
 
-Run: `cd repos/orbits && node --test --import tsx tests/capabilities/network-distribution-live-store.test.ts tests/capabilities/network-distribution-analytics-mock.test.ts tests/api/industry-routes.test.ts`  
-Expected: FAIL because industry IDs, unclassified totals, detail service, and routes are absent.
+Run: `cd repos/orbits && node --test --import tsx tests/capabilities/network-distribution-live-store.test.ts tests/capabilities/network-distribution-analytics-mock.test.ts tests/api/structure-analysis-routes.test.ts`  
+Expected: FAIL because stable bucket IDs, total-preserving distributions, shared detail service, and routes are absent.
 
 - [ ] **Step 3: Aggregate only explicit primary industry**
 
@@ -320,27 +323,31 @@ function contactsByIndustry(graph: LiveDashboardGraph, id: IndustryIdCode) {
 
 Iterate `INDUSTRY_CATALOG` in stable order, omit zero-count named industries, and return `unclassifiedContactCount` separately. Calculate displayed percentages with a largest-remainder allocator so named and unclassified buckets total exactly 100.
 
-- [ ] **Step 4: Add deterministic industry detail analysis**
+- [ ] **Step 4: Normalize location, role, and relationship buckets**
 
-Add `getIndustryDetail()` to `NetworkDistributionAnalyticsService`. Map existing connection strength to `strong`, `maintain`, and `reconnect`; contacts without a connection are `reconnect`. Count `contact.customTags` per contact with per-contact deduplication, sort by count descending then `localeCompare`, and return four tags. Build one template insight from the strongest quality bucket and the largest missing/weak signal.
+Use stable server-side definitions for location, role, and relationship. Assign every contact exactly once per dimension. Preserve original location and job-title text for display, but never use localized display labels as route IDs. Contacts that cannot be classified enter a neutral missing-data bucket.
 
-- [ ] **Step 5: Add actor-scoped routes**
+- [ ] **Step 5: Add deterministic shared detail analysis**
 
-`GET /api/industries` returns localized catalog entries using the request language resolver. `GET /api/dashboard/industries/[industryId]` validates the stable ID, resolves the authenticated actor, creates the actor-scoped live service, and returns the shared success/error envelope. Never accept `actorId` from query or body.
+Add `getStructureDetail()` to `NetworkDistributionAnalyticsService`. Resolve the selected dimension and bucket with a server-owned allowlist, then reuse the same relationship-quality, common-tag, stable-sort, provenance, and insight builders. Contacts without a connection are `reconnect`. Invalid dimensions or bucket IDs fail visibly.
 
-- [ ] **Step 6: Run route, service, and type tests**
+- [ ] **Step 6: Add actor-scoped routes**
 
-Run: `cd repos/orbits && node --test --import tsx tests/capabilities/network-distribution-live-store.test.ts tests/capabilities/network-distribution-analytics-mock.test.ts tests/api/industry-routes.test.ts`  
+`GET /api/industries` returns localized catalog entries using the request language resolver. `GET /api/dashboard/structure/[dimension]/[bucketId]` validates both stable IDs, resolves the authenticated actor, creates the actor-scoped live service, and returns the shared success/error envelope. Never accept `actorId` from query or body.
+
+- [ ] **Step 7: Run route, service, and type tests**
+
+Run: `cd repos/orbits && node --test --import tsx tests/capabilities/network-distribution-live-store.test.ts tests/capabilities/network-distribution-analytics-mock.test.ts tests/api/structure-analysis-routes.test.ts`  
 Expected: PASS.
 
 Run: `cd repos/orbits && npm run typecheck`  
 Expected: PASS.
 
-- [ ] **Step 7: Commit analytics and routes**
+- [ ] **Step 8: Commit analytics and routes**
 
 ```bash
-git add repos/orbits/features/dashboard repos/orbits/app/api/dashboard/industries repos/orbits/app/api/industries repos/orbits/tests
-git commit -m "feat(analysis): add industry distribution drill-down"
+git add repos/orbits/features/dashboard repos/orbits/app/api/dashboard/structure repos/orbits/app/api/industries repos/orbits/tests
+git commit -m "feat(analysis): add structure distribution drill-down"
 ```
 
 ---
@@ -436,7 +443,7 @@ git commit -m "feat(data): migrate contact primary industries"
 
 **Interfaces:**
 - Consumes: synchronized catalog and backend response contracts from Tasks 1-3.
-- Produces: `industryCatalogToOptions()`, `industryDetailToView()`, `buildContactIndustryMetadataRequest()`, and endpoint exports `industryDetailPath(id)` and `INDUSTRIES_ENDPOINT`.
+- Produces: `industryCatalogToOptions()`, `structureDetailToView()`, `buildContactIndustryMetadataRequest()`, and endpoint exports `structureDetailPath(dimension, bucketId)` and `INDUSTRIES_ENDPOINT`.
 
 - [ ] **Step 1: Write failing view-model tests**
 
@@ -450,7 +457,7 @@ assert.deepEqual(request.body, {
   tags: ["日本市场", "连锁经营"],
 });
 
-const view = industryDetailToView(payload);
+const view = structureDetailToView(payload);
 assert.equal(view.title, "餐饮与食品");
 assert.equal(view.contacts[0].name, "佐藤健一");
 assert.equal(view.quality.reduce((sum, item) => sum + item.percentage, 0), 100);
@@ -470,8 +477,8 @@ Add:
 ```ts
 export const INDUSTRIES_ENDPOINT = "/api/industries";
 
-export function industryDetailPath(id: string): string {
-  return `/api/dashboard/industries/${encodeURIComponent(id)}`;
+export function structureDetailPath(dimension: string, bucketId: string): string {
+  return `/api/dashboard/structure/${encodeURIComponent(dimension)}/${encodeURIComponent(bucketId)}`;
 }
 ```
 
@@ -498,22 +505,22 @@ git commit -m "feat(ios): edit contact industries and tags"
 
 ---
 
-### Task 6: Interactive Pie Chart And Industry Drill-Down Screen
+### Task 6: Interactive Pie Charts And Shared Structure Drill-Down Screen
 
 **Files:**
 - Modify: `repos/orbit-app/package.json`
 - Modify: `repos/orbit-app/package-lock.json`
-- Create: `repos/orbit-app/src/components/IndustryPieChart.tsx`
+- Create: `repos/orbit-app/src/components/AnalysisPieChart.tsx`
 - Modify: `repos/orbit-app/src/screens/contacts/ContactsDashboardScreen.tsx`
-- Create: `repos/orbit-app/src/screens/contacts/ContactIndustryDetailScreen.tsx`
-- Create: `repos/orbit-app/app/contacts/industries/[industryId].tsx`
-- Create: `repos/orbit-app/tests/industry-pie-chart-source.test.ts`
+- Create: `repos/orbit-app/src/screens/contacts/ContactStructureDetailScreen.tsx`
+- Create: `repos/orbit-app/app/contacts/analysis/[dimension]/[bucketId].tsx`
+- Create: `repos/orbit-app/tests/analysis-pie-chart-source.test.ts`
 - Modify: `repos/orbit-app/tests/contacts-dashboard-screen-source.test.ts`
-- Create: `repos/orbit-app/tests/contact-industry-detail-screen-source.test.ts`
+- Create: `repos/orbit-app/tests/contact-structure-detail-screen-source.test.ts`
 
 **Interfaces:**
 - Consumes: distribution and detail view models from Task 5.
-- Produces: accessible `IndustryPieChart`, Expo route `/contacts/industries/[industryId]`, and option-2 interaction flow.
+- Produces: accessible `AnalysisPieChart`, Expo route `/contacts/analysis/[dimension]/[bucketId]`, and option-2 interaction flow for every structure dimension.
 
 - [ ] **Step 1: Install the Expo-compatible SVG dependency**
 
@@ -527,30 +534,30 @@ Assert that:
 ```ts
 assert.match(chartSource, /accessibilityRole="button"/);
 assert.match(chartSource, /onSelect\(slice\.id\)/);
-assert.match(dashboardSource, /查看联系人/);
-assert.match(dashboardSource, /contacts\/industries/);
+assert.match(dashboardSource, /查看详情/);
+assert.match(dashboardSource, /contacts\/analysis/);
 assert.match(detailSource, /查看分析依据/);
 assert.match(detailSource, /查看全部.*位联系人/);
 ```
 
-Also assert that `IndustryPieChart` imports `react-native-svg`, does not contain handcrafted inline SVG XML, and exposes text labels outside the chart.
+Also assert that `AnalysisPieChart` imports `react-native-svg`, does not contain handcrafted inline SVG XML, exposes text labels outside the chart, offsets the selected slice, and calls a separate activation callback when the selected slice is tapped again.
 
 - [ ] **Step 3: Run the new UI tests and verify failures**
 
-Run: `cd repos/orbit-app && node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/industry-pie-chart-source.test.ts tests/contacts-dashboard-screen-source.test.ts tests/contact-industry-detail-screen-source.test.ts`  
+Run: `cd repos/orbit-app && node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/analysis-pie-chart-source.test.ts tests/contacts-dashboard-screen-source.test.ts tests/contact-structure-detail-screen-source.test.ts`  
 Expected: FAIL because chart, route, and detail screen are absent.
 
 - [ ] **Step 4: Build the reusable accessible pie chart**
 
 Use `Svg`, `Path`, and `G` from `react-native-svg`. Compute arcs from normalized counts in one pure helper, but keep each visible slice wrapped in a `Pressable` overlay or accessible legend row. Use the existing Orbit color tokens plus stable non-purple category colors from the selected mock. Center text shows total contacts; selection uses offset/stroke rather than color alone.
 
-- [ ] **Step 5: Replace only the industry breakdown surface**
+- [ ] **Step 5: Replace all four structure breakdown surfaces**
 
-In `StructureBreakdownCard`, branch on `dimension.id === "industry"` and render the selected option-2 composition: section header and management action, pie and legend, selected industry summary, and `查看联系人`. Keep the existing distribution rows for region, role, and relationship dimensions. Default to the largest industry and preserve selection when unrelated state changes.
+In `StructureBreakdownCard`, render the selected option-2 composition for industry, location, role, and relationship: section header, pie and legend, selected-group summary, and `查看详情`. Default to the largest bucket per dimension and preserve an independent selection for each dimension. Show `管理行业` only for industry.
 
-- [ ] **Step 6: Add the industry detail route and screen**
+- [ ] **Step 6: Add the shared structure detail route and screen**
 
-The route file exports `ContactIndustryDetailScreen`. The screen reads `industryId`, requests `industryDetailPath(industryId)`, and renders:
+The route file exports `ContactStructureDetailScreen`. The screen reads `dimension` and `bucketId`, requests `structureDetailPath(dimension, bucketId)`, and renders:
 
 1. title, count, and total share;
 2. relationship-quality segmented bar and deterministic insight;
@@ -563,7 +570,7 @@ Loading, offline, failure, empty industry, and unknown ID use existing `LoadingS
 
 - [ ] **Step 7: Run focused and full iOS verification**
 
-Run: `cd repos/orbit-app && node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/industry-pie-chart-source.test.ts tests/contacts-dashboard-screen-source.test.ts tests/contact-industry-detail-screen-source.test.ts tests/contacts-analysis-view-model.test.ts tests/industries-view-model.test.ts`  
+Run: `cd repos/orbit-app && node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/analysis-pie-chart-source.test.ts tests/contacts-dashboard-screen-source.test.ts tests/contact-structure-detail-screen-source.test.ts tests/contacts-analysis-view-model.test.ts tests/industries-view-model.test.ts`  
 Expected: PASS.
 
 Run: `cd repos/orbit-app && npm run typecheck`  
@@ -575,8 +582,8 @@ Expected: PASS.
 - [ ] **Step 8: Commit the selected iOS flow**
 
 ```bash
-git add repos/orbit-app/package.json repos/orbit-app/package-lock.json repos/orbit-app/src/components/IndustryPieChart.tsx repos/orbit-app/src/screens/contacts repos/orbit-app/app/contacts/industries repos/orbit-app/tests
-git commit -m "feat(ios): add interactive industry analysis"
+git add repos/orbit-app/package.json repos/orbit-app/package-lock.json repos/orbit-app/src/components/AnalysisPieChart.tsx repos/orbit-app/src/screens/contacts repos/orbit-app/app/contacts/analysis repos/orbit-app/tests
+git commit -m "feat(ios): add interactive structure analysis"
 ```
 
 ---
