@@ -3,10 +3,49 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { BusinessCardBatchDTO } from "../../../../features/acquisition/business-card-batch-contract";
+import type { IngestBatchDTO } from "../../../../features/acquisition/business-card-ingest-v2/contract";
 import { Icon } from "../orbit-reference-primitives";
 import { useOrbitLanguage } from "../orbit-language-context";
 
 type Translate = (copy: { en: string; zh: string }) => string;
+
+/** V2 摄取协议 feature flag（方案 §九）：新批次走 batch2 引导流程，旧批次不迁移。 */
+const INGEST_V2_ENABLED = process.env.NEXT_PUBLIC_ORBIT_INGEST_V2 === "1";
+
+const INGEST_V2_STATUS_COPY: Record<IngestBatchDTO["status"], { en: string; zh: string }> = {
+  cancelled: { en: "Cancelled", zh: "已取消" },
+  collecting: { en: "Uploading", zh: "上传中" },
+  completed: { en: "Completed", zh: "已完成" },
+  expired: { en: "Expired", zh: "已过期" },
+  processing: { en: "Processing", zh: "识别中" },
+  ready_for_review: { en: "Ready to review", zh: "待确认" },
+};
+
+function IngestV2BatchRow({ batch, t }: { batch: IngestBatchDTO; t: Translate }) {
+  return (
+    <a
+      className="card"
+      href={`/app/contacts/new/batch2/${batch.id}`}
+      style={{
+        alignItems: "center",
+        display: "flex",
+        gap: 10,
+        padding: "10px 12px",
+        textDecoration: "none",
+      }}
+    >
+      <Icon name="scan" size={16} color="var(--accent)" />
+      <span style={{ color: "var(--ink)", flex: 1, fontSize: 13 }}>
+        {batch.id.slice(0, 13)}
+        <span style={{ color: "var(--text-3)", marginLeft: 8 }}>
+          {batch.expectedItems} {t({ en: "photos", zh: "张" })}
+        </span>
+      </span>
+      <span className="nc-src nc-src-scan">{t(INGEST_V2_STATUS_COPY[batch.status])}</span>
+      <Icon name="chevR" size={16} color="var(--text-4)" />
+    </a>
+  );
+}
 
 const BATCH_STATUS_COPY: Record<
   BusinessCardBatchDTO["status"],
@@ -55,6 +94,7 @@ export function BusinessCardBatchEntry() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [batches, setBatches] = useState<readonly BusinessCardBatchDTO[]>([]);
+  const [ingestV2Batches, setIngestV2Batches] = useState<readonly IngestBatchDTO[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +105,32 @@ export function BusinessCardBatchEntry() {
       .then((body: { data?: { batches?: readonly BusinessCardBatchDTO[] } } | null) => {
         if (!cancelled && body?.data?.batches) {
           setBatches(body.data.batches.filter((batch) => batch.status !== "completed"));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!INGEST_V2_ENABLED) {
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/contact-drafts/business-card/batches/v2")
+      .then(async (response) => (response.ok ? response.json() : null))
+      .then((body: { data?: { batches?: readonly IngestBatchDTO[] } } | null) => {
+        if (!cancelled && body?.data?.batches) {
+          setIngestV2Batches(
+            body.data.batches.filter(
+              (batch) =>
+                batch.status === "collecting" ||
+                batch.status === "processing" ||
+                batch.status === "ready_for_review",
+            ),
+          );
         }
       })
       .catch(() => undefined);
@@ -127,7 +193,13 @@ export function BusinessCardBatchEntry() {
         <button
           className="btn btn-primary"
           disabled={uploading}
-          onClick={() => photoInputRef.current?.click()}
+          onClick={() => {
+            if (INGEST_V2_ENABLED) {
+              window.location.href = "/app/contacts/new/batch2";
+              return;
+            }
+            photoInputRef.current?.click();
+          }}
           type="button"
         >
           <Icon name="upload" size={17} />
@@ -170,8 +242,11 @@ export function BusinessCardBatchEntry() {
           {error}
         </div>
       ) : null}
-      {batches.length > 0 ? (
+      {batches.length > 0 || ingestV2Batches.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {ingestV2Batches.map((batch) => (
+            <IngestV2BatchRow batch={batch} key={batch.id} t={t} />
+          ))}
           {batches.map((batch) => (
             <BatchRow batch={batch} key={batch.id} t={t} />
           ))}
