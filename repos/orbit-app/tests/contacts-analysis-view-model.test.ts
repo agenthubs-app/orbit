@@ -248,7 +248,7 @@ test("contactsAnalysisToView turns relationship data into a goal-led decision vi
       ["industry", "行业", "3 个领域"],
       ["location", "地区", "2 个地区"],
       ["role", "角色", "3 类角色"],
-      ["strength", "关系", "强关系 42%"]
+      ["relationship", "关系", "强关系 42%"]
     ]
   );
   assert.deepEqual(
@@ -266,6 +266,39 @@ test("contactsAnalysisToView turns relationship data into a goal-led decision vi
     view.structureDimensions[2]?.items.map((item) => item.label),
     ["创始人与决策者", "经营管理者", "专业角色"]
   );
+});
+
+test("contactsAnalysisToView prefers actor-scoped four-dimensional distributions", () => {
+  const bucket = (bucketId: string, label: string, contactCount: number, percentage: number) => ({
+    bucketId,
+    contactCount,
+    evidenceIds: [],
+    label,
+    missingData: false,
+    percentage
+  });
+  const view = contactsAnalysisToView({
+    distributions: {
+      structureDistributions: {
+        industry: [bucket("technology_internet", "科技与互联网", 6, 60), bucket("finance_investment", "金融与投资", 4, 40)],
+        location: [bucket("tokyo", "东京", 7, 70), bucket("osaka", "大阪", 3, 30)],
+        role: [bucket("decision_maker", "创始人与决策者", 5, 50), bucket("management", "经营管理者", 5, 50)],
+        relationship: [bucket("strong", "强关系", 3, 30), bucket("warm", "熟悉关系", 5, 50), bucket("weak", "弱关系", 2, 20)]
+      }
+    }
+  }, "");
+
+  assert.deepEqual(view.structureDimensions.map((dimension) => dimension.id), [
+    "industry",
+    "location",
+    "role",
+    "relationship"
+  ]);
+  assert.deepEqual(
+    view.structureDimensions[1]?.items.map((item) => item.id),
+    ["tokyo", "osaka"]
+  );
+  assert.equal(view.structureDimensions[3]?.items[1]?.label, "熟悉关系");
 });
 
 test("contactsAnalysisToView stays honest when relationship evidence is sparse", () => {

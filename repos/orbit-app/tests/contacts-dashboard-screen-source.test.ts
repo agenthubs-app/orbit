@@ -65,11 +65,11 @@ test("contacts analysis option one exposes focused overview structure and opport
   assert.match(screenSource, /AnalysisSnapshotCard/u);
   assert.match(screenSource, /StructureDimensionControl/u);
   assert.match(screenSource, /StructureBreakdownCard/u);
-  assert.match(screenSource, /StructureDistributionRows/u);
+  assert.match(screenSource, /AnalysisPieChart/u);
   assert.match(screenSource, /StructureAnalysisView/u);
   assert.match(screenSource, /OpportunityAnalysisView/u);
   assert.match(screenSource, /结构摘要/u);
-  assert.match(screenSource, /选择维度查看构成/u);
+  assert.match(screenSource, /轻触扇区查看，第二次轻触进入详情/u);
   assert.match(screenSource, /关键机会/u);
   assert.match(overviewSource, /AnalysisSnapshotCard/u);
   assert.doesNotMatch(overviewSource, /NetworkStructureCard/u);
@@ -80,13 +80,13 @@ test("contacts analysis option one exposes focused overview structure and opport
     screenSource,
     /accessibilityLabel=\{`\$\{segment\.label\}分析`\}[\s\S]{0,120}accessibilityRole="button"/u
   );
-  assert.match(screenSource, /structureItemVisual\(dimension\.id, item\.label, index\)/u);
-  assert.match(screenSource, /餐饮\|食品/u);
+  assert.match(screenSource, /selectedStructureItems/u);
+  assert.match(screenSource, /onActivate/u);
   assert.match(screenSource, /dimension === "location"/u);
   assert.match(screenSource, /icon: "location-outline"/u);
   assert.match(screenSource, /icon: "diamond-outline"/u);
   assert.match(screenSource, /icon: "heart-outline"/u);
-  assert.match(screenSource, /<Text numberOfLines=\{2\} style=\{styles\.structureItemLabel\}>/u);
+  assert.match(screenSource, /查看这个分组/u);
 });
 
 test("opportunity actions open a structured action brief before contact details", () => {

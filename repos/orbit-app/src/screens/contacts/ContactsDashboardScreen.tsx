@@ -19,6 +19,7 @@ import {
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
+import { AnalysisPieChart } from "../../components/AnalysisPieChart";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -460,11 +461,13 @@ function ContactsDashboardContent({
     }
   }
 
-  function openStructureItem(item: ContactsAnalysisStructureItemView) {
-    router.push({
-      pathname: "/contacts/list",
-      params: { query: item.label }
-    });
+  function openStructureItem(
+    dimension: ContactsAnalysisStructureDimensionId,
+    item: ContactsAnalysisStructureItemView
+  ) {
+    router.push(
+      `/contacts/analysis/${encodeURIComponent(dimension)}/${encodeURIComponent(item.id)}` as Href
+    );
   }
 
   return (
@@ -898,11 +901,24 @@ function StructureDimensionControl({
 
 function StructureBreakdownCard({
   dimension,
-  onOpenItem
+  onOpenItem,
+  onSelectItem,
+  selectedId
 }: {
   dimension: ContactsAnalysisStructureDimensionView;
   onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
+  onSelectItem: (item: ContactsAnalysisStructureItemView) => void;
+  selectedId: string;
 }) {
+  const selectedItem =
+    dimension.items.find((item) => item.id === selectedId) ?? dimension.items[0];
+  const pieItems = dimension.items.map((item, index) => ({
+    color: structurePieColor(index),
+    id: item.id,
+    label: item.label,
+    percentage: item.percentage
+  }));
+
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -910,13 +926,86 @@ function StructureBreakdownCard({
           <Text style={styles.analysisSectionTitle}>{dimension.title}</Text>
           <Text style={styles.analysisSectionDetail}>{dimension.summary}</Text>
         </View>
-        <Text style={styles.structureBreakdownHint}>选择维度查看构成</Text>
+        <Text style={styles.structureBreakdownHint}>
+          轻触扇区查看，第二次轻触进入详情
+        </Text>
       </View>
 
-      <StructureDistributionRows
-        dimension={dimension}
-        onOpenItem={onOpenItem}
-      />
+      {dimension.items.length > 0 && selectedItem ? (
+        <>
+          <View style={styles.structurePieArea}>
+            <AnalysisPieChart
+              items={pieItems}
+              onActivate={(id) => {
+                const item = dimension.items.find((candidate) => candidate.id === id);
+                if (item) onOpenItem(item);
+              }}
+              onSelect={(id) => {
+                const item = dimension.items.find((candidate) => candidate.id === id);
+                if (item) onSelectItem(item);
+              }}
+              selectedId={selectedItem.id}
+            />
+          </View>
+          <View style={styles.structureLegend}>
+            {dimension.items.map((item, index) => {
+              const isSelected = item.id === selectedItem.id;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`${item.label}，${item.countLabel}，${item.percentage}%`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  key={item.id}
+                  onPress={() => onSelectItem(item)}
+                  style={({ pressed }) => [
+                    styles.structureLegendRow,
+                    isSelected ? styles.structureLegendRowSelected : null,
+                    pressed ? styles.pressed : null
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.structureLegendDot,
+                      { backgroundColor: structurePieColor(index) }
+                    ]}
+                  />
+                  <Text numberOfLines={1} style={styles.structureLegendLabel}>
+                    {item.label}
+                  </Text>
+                  <Text style={styles.structureLegendCount}>{item.countLabel}</Text>
+                  <Text style={styles.structureLegendPercentage}>
+                    {item.percentage}%
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Pressable
+            accessibilityLabel={`查看${selectedItem.label}分组详情`}
+            accessibilityRole="button"
+            onPress={() => onOpenItem(selectedItem)}
+            style={({ pressed }) => [
+              styles.structureDetailButton,
+              pressed ? styles.pressed : null
+            ]}
+          >
+            <Text style={styles.structureDetailButtonText}>查看这个分组</Text>
+            <Ionicons color={colors.accent} name="arrow-forward" size={17} />
+          </Pressable>
+        </>
+      ) : (
+        <View style={styles.analysisEmptyBlock}>
+          <Ionicons
+            color={colors.text4}
+            name={structureDimensionIcon(dimension.id)}
+            size={20}
+          />
+          <Text style={styles.analysisEmptyText}>
+            补充联系人{dimension.label}信息后，这里会显示分布。
+          </Text>
+        </View>
+      )}
 
       <View style={styles.structureInsight}>
         <View style={styles.structureInsightIcon}>
@@ -1110,11 +1199,17 @@ function StructureAnalysisView({
   dimensions: ContactsAnalysisStructureDimensionView[];
   health: ContactsAnalysisHealthView[];
   healthExpanded: boolean;
-  onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
+  onOpenItem: (
+    dimension: ContactsAnalysisStructureDimensionId,
+    item: ContactsAnalysisStructureItemView
+  ) => void;
   onSelectDimension: (dimension: ContactsAnalysisStructureDimensionId) => void;
   onToggleHealth: () => void;
   selectedDimension: ContactsAnalysisStructureDimensionId;
 }) {
+  const [selectedStructureItems, setSelectedStructureItems] = useState<
+    Partial<Record<ContactsAnalysisStructureDimensionId, string>>
+  >({});
   const activeDimension =
     dimensions.find((dimension) => dimension.id === selectedDimension) ??
     dimensions[0];
@@ -1122,6 +1217,10 @@ function StructureAnalysisView({
   if (!activeDimension) {
     return null;
   }
+  const selectedId =
+    selectedStructureItems[activeDimension.id] ??
+    activeDimension.items[0]?.id ??
+    "";
 
   return (
     <>
@@ -1132,7 +1231,14 @@ function StructureAnalysisView({
       />
       <StructureBreakdownCard
         dimension={activeDimension}
-        onOpenItem={onOpenItem}
+        onOpenItem={(item) => onOpenItem(activeDimension.id, item)}
+        onSelectItem={(item) =>
+          setSelectedStructureItems((current) => ({
+            ...current,
+            [activeDimension.id]: item.id
+          }))
+        }
+        selectedId={selectedId}
       />
       <RelationshipHealthCard
         expanded={healthExpanded}
@@ -1277,7 +1383,7 @@ function structureItemVisual(
     };
   }
 
-  if (dimension === "strength") {
+  if (dimension === "relationship") {
     if (/强/u.test(label)) {
       return {
         backgroundColor: colors.liveSoft,
@@ -1323,11 +1429,24 @@ function structureDimensionIcon(
     return "people-outline";
   }
 
-  if (dimension === "strength") {
+  if (dimension === "relationship") {
     return "heart-outline";
   }
 
   return "business-outline";
+}
+
+function structurePieColor(index: number): string {
+  return [
+    colors.accent,
+    colors.live,
+    colors.sky,
+    colors.amber,
+    colors.rose,
+    "#7B6E5B",
+    "#3E8C94",
+    "#8B6BB1"
+  ][index % 8] ?? colors.text3;
 }
 
 function analysisToneVisual(
@@ -2369,8 +2488,22 @@ const styles = StyleSheet.create({
     color: colors.text4,
     fontSize: 10,
     lineHeight: 14,
-    maxWidth: 96,
+    maxWidth: 126,
     textAlign: "right"
+  },
+  structureDetailButton: {
+    alignItems: "center",
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 38,
+    paddingHorizontal: spacing.xs
+  },
+  structureDetailButtonText: {
+    color: colors.accent,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 18
   },
   structureDimensionButton: {
     alignItems: "center",
@@ -2407,6 +2540,54 @@ const styles = StyleSheet.create({
   },
   structureDimensionTextSelected: {
     color: colors.accent
+  },
+  structureLegend: {
+    gap: spacing.xs
+  },
+  structureLegendCount: {
+    color: colors.text3,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    minWidth: 38,
+    textAlign: "right"
+  },
+  structureLegendDot: {
+    borderRadius: radius.pill,
+    height: 10,
+    width: 10
+  },
+  structureLegendLabel: {
+    color: colors.text2,
+    flex: 1,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  structureLegendPercentage: {
+    color: colors.ink,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 16,
+    minWidth: 34,
+    textAlign: "right"
+  },
+  structureLegendRow: {
+    alignItems: "center",
+    borderColor: "transparent",
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 38,
+    paddingHorizontal: spacing.sm
+  },
+  structureLegendRowSelected: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentSoft
+  },
+  structurePieArea: {
+    alignItems: "center",
+    minHeight: 208
   },
   activityDetail: {
     fontSize: 10,

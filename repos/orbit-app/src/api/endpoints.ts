@@ -88,6 +88,13 @@ export function eventDetailPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.events, id);
 }
 
+export function contactStructureDetailPath(
+  dimension: string,
+  bucketId: string
+): string {
+  return `/api/dashboard/structure/${encodeURIComponent(dimension)}/${encodeURIComponent(bucketId)}`;
+}
+
 export function publicEventDetailPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.publicEvents, id);
 }

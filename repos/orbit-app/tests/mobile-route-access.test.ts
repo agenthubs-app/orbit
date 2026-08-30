@@ -205,6 +205,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "chat/[id].tsx",
     "contacts/[id].tsx",
     "contacts/all-actions.tsx",
+    "contacts/analysis/[dimension]/[bucketId].tsx",
     "contacts/dashboard.tsx",
     "contacts/graph.tsx",
     "contacts/intros.tsx",

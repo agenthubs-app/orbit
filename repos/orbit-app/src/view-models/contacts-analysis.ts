@@ -24,7 +24,7 @@ export type ContactsAnalysisStructureDimensionId =
   | "industry"
   | "location"
   | "role"
-  | "strength";
+  | "relationship";
 
 export interface ContactsAnalysisStructureItemView {
   countLabel: string;
@@ -423,23 +423,43 @@ function roleCategory(role: string): string {
   return role.trim() ? "专业角色" : "";
 }
 
+function serverStructureItems(
+  distributions: unknown,
+  dimension: ContactsAnalysisStructureDimensionId
+): ContactsAnalysisStructureItemView[] | null {
+  const payload = isRecord(distributions) ? distributions : {};
+  const dimensions = recordField(payload, "structureDistributions");
+  if (!dimensions || !Array.isArray(dimensions[dimension])) return null;
+
+  return dimensions[dimension]
+    .filter(isRecord)
+    .map((item) => ({
+      countLabel: `${Math.max(0, Math.round(Number(item.contactCount) || 0))} 人`,
+      id: stringField(item, "bucketId"),
+      label: stringField(item, "label"),
+      percentage: Math.max(0, Math.min(100, Math.round(Number(item.percentage) || 0)))
+    }))
+    .filter((item) => item.id && item.label);
+}
+
 function structureDimensions(
   dashboard: DashboardView,
   contacts: ContactSummary[],
-  locations: string[]
+  locations: string[],
+  distributions: unknown
 ): ContactsAnalysisStructureDimensionView[] {
-  const industryItems = dashboard.industries.map((industry) => ({
+  const industryItems = serverStructureItems(distributions, "industry") ?? dashboard.industries.map((industry) => ({
     countLabel: industry.countLabel,
     id: industry.id,
     label: industry.label,
     percentage: industry.percentage
   }));
-  const locationItems = countedBreakdown(locations, "人");
-  const roleItems = countedBreakdown(
+  const locationItems = serverStructureItems(distributions, "location") ?? countedBreakdown(locations, "人");
+  const roleItems = serverStructureItems(distributions, "role") ?? countedBreakdown(
     contacts.map((contact) => roleCategory(contact.role)),
     "人"
   );
-  const strengthItems = dashboard.strengths.map((strength) => ({
+  const relationshipItems = serverStructureItems(distributions, "relationship") ?? dashboard.strengths.map((strength) => ({
     countLabel: strength.countLabel,
     id: strength.id,
     label: strength.label,
@@ -484,11 +504,11 @@ function structureDimensions(
       title: "角色构成"
     },
     {
-      id: "strength",
+      id: "relationship",
       insight: strong
         ? `强关系占 ${strong.percentage}%${weak ? `，弱关系占 ${weak.percentage}%` : ""}。优先维护关键领域中的弱连接。`
         : "关系证据还不完整，补充互动记录后才能判断关系质量。",
-      items: strengthItems,
+      items: relationshipItems,
       label: "关系",
       summary: strong ? `强关系 ${strong.percentage}%` : "待完善",
       title: "关系质量"
@@ -616,6 +636,11 @@ export function contactsAnalysisToView(
       }
     ],
     industries: dashboard.industries,
-    structureDimensions: structureDimensions(dashboard, contacts, locations)
+    structureDimensions: structureDimensions(
+      dashboard,
+      contacts,
+      locations,
+      input.distributions
+    )
   };
 }
