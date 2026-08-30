@@ -146,6 +146,14 @@ test("contact detail screen progressively discloses full data and editing contro
   assert.match(screenSource, /name=\{expanded \? "chevron-up" : "chevron-down"\}/u);
 });
 
+test("contact detail edits one fixed primary industry separately from custom tags", () => {
+  assert.match(screenSource, /INDUSTRY_CATALOG/u);
+  assert.match(screenSource, /primaryIndustryId/u);
+  assert.match(screenSource, /主要行业/u);
+  assert.match(screenSource, /自定义标签/u);
+  assert.match(screenSource, /client\.patch<unknown>\(contactDetailPath\(contactId\)/u);
+});
+
 test("expanded relationship value stays concise and does not repeat raw evidence", () => {
   assert.match(screenSource, /view\.scoreLabel/u);
   assert.match(screenSource, /view\.priorityLabel/u);

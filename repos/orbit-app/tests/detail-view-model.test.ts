@@ -506,6 +506,23 @@ test("buildContactDetailMetadataRequest prepares tag and last interaction update
   );
 });
 
+test("contact detail exposes the fixed primary industry without mixing it into custom tags", () => {
+  const summary = contactDetailToSummary({
+    contact: {
+      id: "contact_industry",
+      displayName: "林玫",
+      organization: "港湾创投",
+      primaryIndustryId: "finance_investment",
+      primaryIndustryLabel: "金融与投资",
+      tags: ["日本市场", "早期项目"]
+    }
+  });
+
+  assert.equal(summary.primaryIndustryId, "finance_investment");
+  assert.equal(summary.primaryIndustryLabel, "金融与投资");
+  assert.deepEqual(summary.detailTags, ["日本市场", "早期项目"]);
+});
+
 test("contactDetailToSummary localizes English public detail fields", () => {
   const summary = contactDetailToSummary({
     contact: {

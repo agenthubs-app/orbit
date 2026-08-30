@@ -12,6 +12,10 @@ import {
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
+  INDUSTRY_CATALOG,
+  type IndustryIdCode
+} from "../../api/contract/industries";
+import {
   contactDetailPath,
   ORBIT_API_ENDPOINTS,
   relationshipValueAnalysisPath,
@@ -91,6 +95,7 @@ export function ContactDetailScreen() {
     tagsText: ""
   });
   const [metadataPending, setMetadataPending] = useState(false);
+  const [industryPending, setIndustryPending] = useState(false);
   const [notePending, setNotePending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
   const [relationshipValuePending, setRelationshipValuePending] = useState(false);
@@ -102,7 +107,8 @@ export function ContactDetailScreen() {
     state.refreshing ||
     connectionsState.refreshing ||
     relationshipValueState.refreshing ||
-    relationshipValuePending;
+    relationshipValuePending ||
+    industryPending;
 
   function refreshAll() {
     setRelationshipValueOverride(null);
@@ -154,6 +160,29 @@ export function ContactDetailScreen() {
       setActionError("当前状态暂时改不了。请刷新后再试一次。");
     } finally {
       setStatusPending(false);
+    }
+  }
+
+  async function updatePrimaryIndustry(primaryIndustryId: IndustryIdCode) {
+    setIndustryPending(true);
+    setFeedback(null);
+    setActionError(null);
+
+    try {
+      const result = await client.patch<unknown>(contactDetailPath(contactId), {
+        body: { primaryIndustryId }
+      });
+
+      if (result.success) {
+        setFeedback("主要行业已更新。");
+        refreshAll();
+      } else {
+        setActionError("主要行业暂时保存不了。请刷新后再试一次。");
+      }
+    } catch {
+      setActionError("主要行业暂时保存不了。请刷新后再试一次。");
+    } finally {
+      setIndustryPending(false);
     }
   }
 
@@ -256,6 +285,7 @@ export function ContactDetailScreen() {
       {state.kind === "success" || state.kind === "empty" ? (
         <ContactDetailCard
           data={state.data}
+          industryPending={industryPending}
           metadataDraft={metadataDraft}
           metadataPending={metadataPending}
           noteDraft={noteDraft}
@@ -265,6 +295,7 @@ export function ContactDetailScreen() {
           onSaveMetadata={saveMetadata}
           onSaveNote={saveNote}
           onRecompute={recomputeRelationshipValue}
+          onSelectIndustry={updatePrimaryIndustry}
           onStatusAction={updateStatus}
           relationshipValueOverride={relationshipValueOverride}
           relationshipValuePending={relationshipValuePending}
@@ -278,6 +309,7 @@ export function ContactDetailScreen() {
 
 function ContactDetailCard({
   data,
+  industryPending,
   metadataDraft,
   metadataPending,
   noteDraft,
@@ -287,6 +319,7 @@ function ContactDetailCard({
   onSaveMetadata,
   onSaveNote,
   onRecompute,
+  onSelectIndustry,
   onStatusAction,
   relationshipValueOverride,
   relationshipValuePending,
@@ -294,6 +327,7 @@ function ContactDetailCard({
   statusPending
 }: {
   data: unknown;
+  industryPending: boolean;
   metadataDraft: ContactDetailMetadataDraft;
   metadataPending: boolean;
   noteDraft: string;
@@ -303,6 +337,7 @@ function ContactDetailCard({
   onSaveMetadata: () => void;
   onSaveNote: () => void;
   onRecompute: () => void;
+  onSelectIndustry: (industryId: IndustryIdCode) => void;
   onStatusAction: (action: ContactDetailStatusActionView) => void;
   relationshipValueOverride: unknown | null;
   relationshipValuePending: boolean;
@@ -355,6 +390,7 @@ function ContactDetailCard({
       >
         <UpdateContactPanel
           contact={contact}
+          industryPending={industryPending}
           metadataDraft={metadataDraft}
           metadataPending={metadataPending}
           noteDraft={noteDraft}
@@ -363,6 +399,7 @@ function ContactDetailCard({
           onChangeNoteDraft={onChangeNoteDraft}
           onSaveMetadata={onSaveMetadata}
           onSaveNote={onSaveNote}
+          onSelectIndustry={onSelectIndustry}
           onStatusAction={onStatusAction}
           statusPending={statusPending}
         />
@@ -622,6 +659,7 @@ function FullDetailsPanel({
 
 function UpdateContactPanel({
   contact,
+  industryPending,
   metadataDraft,
   metadataPending,
   noteDraft,
@@ -630,10 +668,12 @@ function UpdateContactPanel({
   onChangeNoteDraft,
   onSaveMetadata,
   onSaveNote,
+  onSelectIndustry,
   onStatusAction,
   statusPending
 }: {
   contact: ContactDetailSummary;
+  industryPending: boolean;
   metadataDraft: ContactDetailMetadataDraft;
   metadataPending: boolean;
   noteDraft: string;
@@ -642,6 +682,7 @@ function UpdateContactPanel({
   onChangeNoteDraft: (value: string) => void;
   onSaveMetadata: () => void;
   onSaveNote: () => void;
+  onSelectIndustry: (industryId: IndustryIdCode) => void;
   onStatusAction: (action: ContactDetailStatusActionView) => void;
   statusPending: boolean;
 }) {
@@ -697,10 +738,19 @@ function UpdateContactPanel({
         </View>
       </DetailSection>
       <SectionDivider />
+      <DetailSection detail="固定分类，用于人脉结构分析" title="主要行业">
+        <IndustryPicker
+          pending={industryPending}
+          selectedId={contact.primaryIndustryId}
+          selectedLabel={contact.primaryIndustryLabel}
+          onSelect={onSelectIndustry}
+        />
+      </DetailSection>
+      <SectionDivider />
       <DetailSection detail="标签和最近互动一起保存" title="编辑标签和互动">
         {contact.detailTags.length > 0 ? <TagList items={contact.detailTags} /> : null}
         <View style={styles.metadataStack}>
-          <Text style={styles.inputLabel}>标签</Text>
+          <Text style={styles.inputLabel}>自定义标签</Text>
           <TextInput
             onChangeText={(value) => onChangeMetadataDraft({ tagsText: value })}
             placeholder="AI, 关西渠道, 待联系"
@@ -785,6 +835,87 @@ function UpdateContactPanel({
         </Pressable>
       </DetailSection>
     </>
+  );
+}
+
+function IndustryPicker({
+  onSelect,
+  pending,
+  selectedId,
+  selectedLabel
+}: {
+  onSelect: (industryId: IndustryIdCode) => void;
+  pending: boolean;
+  selectedId: IndustryIdCode | undefined;
+  selectedLabel: string | undefined;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={styles.industryPicker}>
+      <Pressable
+        accessibilityLabel="选择主要行业"
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        disabled={pending}
+        onPress={() => setExpanded((current) => !current)}
+        style={({ pressed }) => [
+          styles.industryPickerButton,
+          pending ? styles.disabled : null,
+          pressed ? styles.pressed : null
+        ]}
+      >
+        <View style={styles.industryPickerCopy}>
+          <Text style={styles.industryPickerLabel}>当前分类</Text>
+          <Text style={styles.industryPickerValue}>
+            {pending ? "保存中" : selectedLabel || "选择一个主要行业"}
+          </Text>
+        </View>
+        <Ionicons
+          color={colors.text3}
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+        />
+      </Pressable>
+      {expanded ? (
+        <View style={styles.industryOptions}>
+          {INDUSTRY_CATALOG.map((industry) => {
+            const selected = industry.id === selectedId;
+
+            return (
+              <Pressable
+                accessibilityLabel={`设为${industry.labels.zh}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                disabled={pending}
+                key={industry.id}
+                onPress={() => {
+                  onSelect(industry.id);
+                  setExpanded(false);
+                }}
+                style={({ pressed }) => [
+                  styles.industryOption,
+                  selected ? styles.industryOptionSelected : null,
+                  pressed ? styles.pressed : null
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.industryOptionText,
+                    selected ? styles.industryOptionTextSelected : null
+                  ]}
+                >
+                  {industry.labels.zh}
+                </Text>
+                {selected ? (
+                  <Ionicons color={colors.accent} name="checkmark" size={18} />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1100,6 +1231,63 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "700",
     lineHeight: 16
+  },
+  industryOption: {
+    alignItems: "center",
+    borderColor: "transparent",
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 42,
+    paddingHorizontal: spacing.md
+  },
+  industryOptionSelected: {
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentSoft
+  },
+  industryOptionText: {
+    color: colors.text2,
+    fontSize: typography.small,
+    fontWeight: "700",
+    lineHeight: 19
+  },
+  industryOptionTextSelected: {
+    color: colors.accent
+  },
+  industryOptions: {
+    gap: spacing.xs
+  },
+  industryPicker: {
+    gap: spacing.sm
+  },
+  industryPickerButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface2,
+    borderColor: colors.border2,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
+  },
+  industryPickerCopy: {
+    flex: 1,
+    gap: spacing.xxs
+  },
+  industryPickerLabel: {
+    color: colors.text4,
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 13
+  },
+  industryPickerValue: {
+    color: colors.ink,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 19
   },
   metadataColumn: {
     flex: 1,

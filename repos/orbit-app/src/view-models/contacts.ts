@@ -1,5 +1,9 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { ContactListItemContract } from "../api/contract/contacts";
+import {
+  isIndustryIdCode,
+  type IndustryIdCode
+} from "../api/contract/industries";
 
 export interface ContactSummary {
   id: string;
@@ -202,6 +206,8 @@ export interface ContactDetailSummary extends ContactSummary {
   publicPrompts: string[];
   publicSeeking: string[];
   publicTopics: string[];
+  primaryIndustryId?: IndustryIdCode;
+  primaryIndustryLabel?: string;
   role: string;
   sourceLabel: string;
   statusAction: ContactDetailStatusActionView | null;
@@ -1506,6 +1512,12 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
     publicPrompts: publicProfileList(contact, "conversationPrompts"),
     publicSeeking: publicProfileList(contact, "seeking"),
     publicTopics: publicProfileList(contact, "topics"),
+    ...(isIndustryIdCode(contact.primaryIndustryId)
+      ? { primaryIndustryId: contact.primaryIndustryId }
+      : {}),
+    ...(stringField(contact, "primaryIndustryLabel")
+      ? { primaryIndustryLabel: stringField(contact, "primaryIndustryLabel") }
+      : {}),
     relationship: relationshipText(contact),
     role: roleLabel(stringField(contact, "role")),
     sourceLabel: sourceLabel(contact),
