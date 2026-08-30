@@ -27,6 +27,7 @@
     "post-event-ai:worker": "tsx scripts/run-attendee-post-event-ai-worker.ts",
     "smoke:event-lifecycle": "tsx scripts/smoke-event-lifecycle-browser.ts",
     "eval:business-card-ocr": "tsx scripts/evaluate-business-card-ocr.ts",
+    "ingest-v2:worker": "tsx scripts/run-business-card-ingest-v2-worker.ts",
     "audit:surfaces": "node scripts/generate-product-surface-manifest.mjs",
     "audit:full-product": "node scripts/generate-full-product-functional-audit.mjs",
     "audit:web-transport": "node scripts/verify-web-route-transport.mjs",
