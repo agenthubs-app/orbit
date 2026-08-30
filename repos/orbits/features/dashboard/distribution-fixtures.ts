@@ -206,6 +206,31 @@ export const mockNetworkDistributionAnalyticsFixture: NetworkDistributionAnalyti
     industryDistribution: mockIndustryDistribution,
     valueTypeDistribution: mockValueTypeDistribution,
     relationshipStrengthDistribution: mockRelationshipStrengthDistribution,
+    structureDistributions: {
+      industry: mockIndustryDistribution.map((bucket) => ({
+        bucketId: bucket.bucketId,
+        label: bucket.label,
+        contactCount: bucket.contactCount,
+        percentage: bucket.percentage,
+        evidenceIds: bucket.evidenceIds,
+        missingData: false,
+      })),
+      location: [],
+      role: [],
+      relationship: mockRelationshipStrengthDistribution.map((bucket) => ({
+        bucketId: bucket.strength,
+        label:
+          bucket.strength === "strong"
+            ? "强关系"
+            : bucket.strength === "warm"
+              ? "保持联系"
+              : "待重新联系",
+        contactCount: bucket.relationshipCount,
+        percentage: bucket.percentage,
+        evidenceIds: bucket.evidenceIds,
+        missingData: false,
+      })),
+    },
     summary:
       "Mock network distribution analytics groups sourced relationships by industry, value type, and relationship strength from deterministic local fixtures.",
     provenance: mockNetworkDistributionAnalyticsProvenance,
@@ -219,6 +244,12 @@ export const mockEmptyNetworkDistributionAnalyticsFixture: NetworkDistributionAn
     industryDistribution: [],
     valueTypeDistribution: [],
     relationshipStrengthDistribution: [],
+    structureDistributions: {
+      industry: [],
+      location: [],
+      role: [],
+      relationship: [],
+    },
     summary:
       "The local network distribution analytics mock has no sourced relationships to bucket.",
     provenance: emptyStateProvenance,
@@ -232,6 +263,12 @@ export const mockPendingNetworkDistributionAnalyticsFixture: NetworkDistribution
     industryDistribution: [],
     valueTypeDistribution: [],
     relationshipStrengthDistribution: [],
+    structureDistributions: {
+      industry: [],
+      location: [],
+      role: [],
+      relationship: [],
+    },
     summary:
       "The network distribution analytics mock is waiting for local fixture review.",
     provenance: pendingStateProvenance,

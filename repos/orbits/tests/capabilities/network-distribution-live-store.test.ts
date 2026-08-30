@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createLiveNetworkDistributionAnalyticsService } from "../../features/dashboard/live-distribution-service";
 import { createStorageNetworkDistributionAnalyticsProvider } from "../../features/dashboard/storage/network-distribution-live-record-provider";
+import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
@@ -16,6 +17,37 @@ test("live network distribution analytics reads generated graph and remains read
     store,
     workspaceId,
   });
+
+  const contactRecords = store.listRecords({
+    collectionName: "contacts",
+    workspaceId,
+  });
+  for (const [index, record] of contactRecords.entries()) {
+    const primaryIndustryId =
+      index < 2
+        ? "food_hospitality"
+        : index === 2
+          ? "technology_internet"
+          : undefined;
+    store.upsertRecord({
+      ...record,
+      payload: {
+        ...record.payload,
+        ...(primaryIndustryId ? { primaryIndustryId } : {}),
+      },
+    });
+  }
+  const contactProvider = createStorageContactGraphProvider({ store, workspaceId });
+  for (const contactId of contactRecords.slice(0, 2).map((record) => record.recordId)) {
+    await contactProvider.upsertContactDetailState?.({
+      actorId: "account_orbit_generated",
+      contactId,
+      notes: [],
+      status: "active",
+      tags: ["日本市场"],
+      updatedAt: "2026-07-02T07:01:00.000Z",
+    });
+  }
 
   const originalConnection = store.getRecord({
     collectionName: "connections",
@@ -35,7 +67,7 @@ test("live network distribution analytics reads generated graph and remains read
 
   assert.equal(distributions.success, true);
   assert.equal(distributions.data.state, "success");
-  assert.equal(distributions.data.industryDistribution.length, 5);
+  assert.equal(distributions.data.industryDistribution.length, 3);
   assert.equal(
     distributions.data.industryDistribution.reduce(
       (total, bucket) => total + bucket.contactCount,
@@ -45,14 +77,24 @@ test("live network distribution analytics reads generated graph and remains read
   );
   assert.deepEqual(
     distributions.data.industryDistribution.map((bucket) => bucket.bucketId),
-    [
-      "industry:foods",
-      "industry:technologies",
-      "industry:partners",
-      "industry:community",
-      "industry:capital",
-    ],
+    ["food_hospitality", "technology_internet", "unclassified"],
   );
+  for (const dimension of ["industry", "location", "role", "relationship"] as const) {
+    assert.equal(
+      distributions.data.structureDistributions[dimension].reduce(
+        (total, bucket) => total + bucket.contactCount,
+        0,
+      ),
+      defaultMockFixtures.contacts.length,
+    );
+    assert.equal(
+      distributions.data.structureDistributions[dimension].reduce(
+        (total, bucket) => total + bucket.percentage,
+        0,
+      ),
+      100,
+    );
+  }
   assert.deepEqual(
     distributions.data.valueTypeDistribution.map((bucket) => bucket.valueType),
     [
@@ -99,6 +141,31 @@ test("live network distribution analytics reads generated graph and remains read
   assert.equal(distributions.data.provenance.graphAlgorithmExecuted, false);
   assert.equal(distributions.data.provenance.embeddingSearchExecuted, false);
   assert.equal(distributions.data.provenance.aiProviderRequested, false);
+
+  const industryDetail = await service.getStructureDetail({
+    bucketId: "food_hospitality",
+    dimension: "industry",
+  });
+  assert.equal(industryDetail.success, true);
+  assert.equal(industryDetail.data.bucket.contactCount, 2);
+  assert.equal(industryDetail.data.contacts.length, 2);
+  assert.deepEqual(industryDetail.data.commonTags[0], {
+    contactCount: 2,
+    label: "日本市场",
+  });
+  assert.equal(industryDetail.data.provenance.aiProviderRequested, false);
+
+  const locationBucket = distributions.data.structureDistributions.location[0];
+  assert.ok(locationBucket);
+  const locationDetail = await service.getStructureDetail({
+    bucketId: locationBucket.bucketId,
+    dimension: "location",
+  });
+  assert.equal(locationDetail.success, true);
+  assert.equal(
+    locationDetail.data.contacts.length,
+    locationBucket.contactCount,
+  );
 
   const gaps = await service.getNetworkGaps();
 

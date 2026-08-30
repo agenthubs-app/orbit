@@ -11,6 +11,7 @@ import {
   isRelationshipValueType,
   isSourceType,
 } from "../../../shared/domain/source-types";
+import { isIndustryIdCode } from "../../../shared/contract/industries";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -34,6 +35,7 @@ export interface LiveDashboardGraph {
 export const DASHBOARD_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
   contacts: "contacts",
+  detailStates: "contact_detail_states",
   events: "events",
   evidence: "evidence",
   tasks: "tasks",
@@ -131,6 +133,10 @@ function contactFromRecord(
     primaryEmail: optionalString(payload.primaryEmail),
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
+    primaryIndustryId: isIndustryIdCode(payload.primaryIndustryId)
+      ? payload.primaryIndustryId
+      : undefined,
+    customTags: stringArray(payload.customTags),
     stage: payload.stage,
     source,
     evidenceIds: ids,
@@ -303,6 +309,7 @@ export function createStorageDashboardAggregateProvider({
     const [
       contactRecords,
       connectionRecords,
+      detailStateRecords,
       eventRecords,
       taskRecords,
       evidenceRecords,
@@ -315,6 +322,11 @@ export function createStorageDashboardAggregateProvider({
       store.listRecords({
         workspaceId,
         collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
+        ...ownerQuery,
+      }),
+      store.listRecords({
+        workspaceId,
+        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates,
         ...ownerQuery,
       }),
       store.listRecords({
@@ -334,13 +346,23 @@ export function createStorageDashboardAggregateProvider({
       }),
     ]);
 
+    const customTagsByContactId = new Map<string, readonly string[]>();
+    for (const record of detailStateRecords) {
+      const contactId = optionalString(record.payload.contactId);
+      if (contactId) customTagsByContactId.set(contactId, stringArray(record.payload.tags));
+    }
+
     return {
       connections: connectionRecords
         .map(connectionFromRecord)
         .filter((connection): connection is ConnectionDTO => connection !== null),
       contacts: contactRecords
         .map(contactFromRecord)
-        .filter((contact): contact is ContactDTO => contact !== null),
+        .filter((contact): contact is ContactDTO => contact !== null)
+        .map((contact) => ({
+          ...contact,
+          customTags: customTagsByContactId.get(contact.id) ?? contact.customTags ?? [],
+        })),
       events: eventRecords
         .map(eventFromRecord)
         .filter((event): event is EventDTO => event !== null),
@@ -352,6 +374,7 @@ export function createStorageDashboardAggregateProvider({
       generatedAt: latestTimestamp([
         ...contactRecords,
         ...connectionRecords,
+        ...detailStateRecords,
         ...eventRecords,
         ...taskRecords,
         ...evidenceRecords,

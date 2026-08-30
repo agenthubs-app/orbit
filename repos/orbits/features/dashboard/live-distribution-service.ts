@@ -3,6 +3,10 @@ import type {
   ContactDTO,
 } from "../../shared/domain/contracts";
 import {
+  INDUSTRY_CATALOG,
+  industryLabel,
+} from "../../shared/contract/industries";
+import {
   NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS,
   type IndustryDistributionBucket,
   type NetworkDistributionAnalyticsErrorCode,
@@ -20,6 +24,12 @@ import {
   type NetworkGapSeverity,
   type NetworkRelationshipStrength,
   type NetworkRelationshipValueType,
+  type NetworkStructureDetailInput,
+  type NetworkStructureDetailPayload,
+  type NetworkStructureDetailResult,
+  type NetworkStructureDimensionId,
+  type NetworkStructureDistributionBucket,
+  type NetworkStructureDistributions,
   type RelationshipStrengthDistributionBucket,
   type ValueTypeDistributionBucket,
 } from "./distribution-contract";
@@ -29,12 +39,6 @@ import type { LiveNetworkDistributionAnalyticsProvider } from "./storage/network
 export interface LiveNetworkDistributionAnalyticsServiceOptions {
   now?: () => string;
   provider: LiveNetworkDistributionAnalyticsProvider | null;
-}
-
-interface IndustryDefinition {
-  bucketId: string;
-  label: string;
-  suffixes: readonly string[];
 }
 
 const emptyEvidenceId = "evidence:network-distribution-live-empty";
@@ -49,34 +53,6 @@ const supportedScenarios = new Set<NetworkDistributionAnalyticsScenario>([
   "pending",
   "failure",
 ]);
-
-const industryDefinitions: readonly IndustryDefinition[] = [
-  {
-    bucketId: "industry:foods",
-    label: "餐饮与食品",
-    suffixes: ["Foods", "餐饮"],
-  },
-  {
-    bucketId: "industry:technologies",
-    label: "科技公司",
-    suffixes: ["Technologies", "科技"],
-  },
-  {
-    bucketId: "industry:partners",
-    label: "合作伙伴与顾问机构",
-    suffixes: ["Partners", "伙伴"],
-  },
-  {
-    bucketId: "industry:community",
-    label: "社群组织",
-    suffixes: ["Community", "社群"],
-  },
-  {
-    bucketId: "industry:capital",
-    label: "资本与投资机构",
-    suffixes: ["Capital", "资本"],
-  },
-];
 
 const valueTypeLabels: Record<NetworkRelationshipValueType, string> = {
   commercial_opportunity: "商业机会",
@@ -254,43 +230,177 @@ function topOrganizations(contacts: readonly ContactDTO[]): readonly string[] {
     .map(([organization]) => organization);
 }
 
-function contactsForIndustry(
+const structureDimensions: readonly NetworkStructureDimensionId[] = [
+  "industry",
+  "location",
+  "role",
+  "relationship",
+];
+
+const relationshipLabels: Record<NetworkRelationshipStrength, string> = {
+  strong: "强关系",
+  warm: "保持联系",
+  weak: "待重新联系",
+};
+
+function allocatedPercentages(counts: readonly number[]): number[] {
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  if (total === 0) return counts.map(() => 0);
+  const exact = counts.map((count) => (count / total) * 100);
+  const values = exact.map(Math.floor);
+  let remainder = 100 - values.reduce((sum, value) => sum + value, 0);
+  const order = exact
+    .map((value, index) => ({ fraction: value - Math.floor(value), index }))
+    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+  for (let index = 0; index < order.length && remainder > 0; index += 1) {
+    values[order[index]!.index] += 1;
+    remainder -= 1;
+  }
+  return values;
+}
+
+function normalizedLocation(location?: string): { id: string; label: string; missing: boolean } {
+  const value = location?.trim();
+  if (!value) return { id: "location_unknown", label: "地区待完善", missing: true };
+  const aliases: readonly [RegExp, string, string][] = [
+    [/东京|東京都|tokyo/iu, "location_tokyo", "东京"],
+    [/大阪|osaka/iu, "location_osaka", "大阪"],
+    [/京都|kyoto/iu, "location_kyoto", "京都"],
+    [/神户|神戸|kobe/iu, "location_kobe", "神户"],
+    [/横滨|横浜|yokohama/iu, "location_yokohama", "横滨"],
+  ];
+  const alias = aliases.find(([pattern]) => pattern.test(value));
+  if (alias) return { id: alias[1], label: alias[2], missing: false };
+  return {
+    id: `location_${encodeURIComponent(value.toLocaleLowerCase())}`,
+    label: value,
+    missing: false,
+  };
+}
+
+function normalizedRole(role?: string): { id: string; label: string; missing: boolean } {
+  const value = role?.trim() ?? "";
+  if (!value) return { id: "role_unknown", label: "角色待完善", missing: true };
+  if (/创始|董事|社长|代表|合伙人|首席|founder|president|\bceo\b|\bcoo\b|\bcfo\b|\bcto\b/iu.test(value)) {
+    return { id: "role_decision_maker", label: "经营决策者", missing: false };
+  }
+  if (/市场|销售|商务|业务拓展|business development|sales|marketing/iu.test(value)) {
+    return { id: "role_business_growth", label: "业务拓展", missing: false };
+  }
+  if (/顾问|律师|会计|税务|consultant|advisor|lawyer/iu.test(value)) {
+    return { id: "role_professional_advisor", label: "专业顾问", missing: false };
+  }
+  return { id: "role_operations", label: "运营与专业角色", missing: false };
+}
+
+function connectionByContactId(graph: LiveDashboardGraph): ReadonlyMap<string, ConnectionDTO> {
+  return new Map(graph.connections.map((connection) => [connection.contactId, connection]));
+}
+
+function structureDescriptor(
+  dimension: NetworkStructureDimensionId,
+  contact: ContactDTO,
+  connections: ReadonlyMap<string, ConnectionDTO>,
+): { id: string; label: string; missing: boolean } {
+  if (dimension === "industry") {
+    return contact.primaryIndustryId
+      ? {
+          id: contact.primaryIndustryId,
+          label: industryLabel(contact.primaryIndustryId, "zh"),
+          missing: false,
+        }
+      : { id: "unclassified", label: "未分类", missing: true };
+  }
+  if (dimension === "location") return normalizedLocation(contact.location);
+  if (dimension === "role") return normalizedRole(contact.role);
+  const connection = connections.get(contact.id);
+  const strength = connection ? strengthFor(connection) : "weak";
+  return { id: strength, label: relationshipLabels[strength], missing: !connection };
+}
+
+function structureDistribution(
   graph: LiveDashboardGraph,
-  definition: IndustryDefinition,
-): readonly ContactDTO[] {
-  return graph.contacts.filter((contact) =>
-    definition.suffixes.some((suffix) =>
-      contact.organization?.endsWith(suffix),
-    ),
-  );
+  dimension: NetworkStructureDimensionId,
+): readonly NetworkStructureDistributionBucket[] {
+  const connections = connectionByContactId(graph);
+  const groups = new Map<
+    string,
+    { label: string; missing: boolean; contacts: ContactDTO[] }
+  >();
+  for (const contact of graph.contacts) {
+    const descriptor = structureDescriptor(dimension, contact, connections);
+    const group = groups.get(descriptor.id) ?? {
+      label: descriptor.label,
+      missing: descriptor.missing,
+      contacts: [],
+    };
+    group.contacts.push(contact);
+    groups.set(descriptor.id, group);
+  }
+  let entries = [...groups.entries()];
+  if (dimension === "industry") {
+    const order = new Map(INDUSTRY_CATALOG.map((item, index) => [item.id, index]));
+    entries.sort(([left], [right]) =>
+      (order.get(left as never) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(right as never) ?? Number.MAX_SAFE_INTEGER),
+    );
+  } else if (dimension === "relationship") {
+    const order = new Map(["strong", "warm", "weak"].map((id, index) => [id, index]));
+    entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
+  } else {
+    entries.sort(([, left], [, right]) =>
+      right.contacts.length - left.contacts.length || left.label.localeCompare(right.label),
+    );
+  }
+  const percentages = allocatedPercentages(entries.map(([, group]) => group.contacts.length));
+  return entries.map(([bucketId, group], index) => ({
+    bucketId,
+    label: group.label,
+    contactCount: group.contacts.length,
+    percentage: percentages[index] ?? 0,
+    evidenceIds: uniqueStrings(group.contacts.flatMap((contact) => contact.evidenceIds)),
+    missingData: group.missing,
+    ...(dimension === "industry" && bucketId !== "unclassified"
+      ? { primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"] }
+      : {}),
+  }));
+}
+
+function structureDistributions(graph: LiveDashboardGraph): NetworkStructureDistributions {
+  return Object.fromEntries(
+    structureDimensions.map((dimension) => [dimension, structureDistribution(graph, dimension)]),
+  ) as unknown as NetworkStructureDistributions;
 }
 
 function industryDistribution(
   graph: LiveDashboardGraph,
 ): readonly IndustryDistributionBucket[] {
-  const totalContacts = graph.contacts.length;
+  const groups = structureDistribution(graph, "industry");
+  return groups.map((group) => {
+    const contacts = contactsForStructureBucket(graph, "industry", group.bucketId);
+    return {
+      bucketId: group.bucketId,
+      label: group.label,
+      contactCount: group.contactCount,
+      percentage: group.percentage,
+      topOrganizations: topOrganizations(contacts),
+      sourceRefs: sourceRefsFor(contacts),
+      evidenceIds: group.evidenceIds.length
+        ? group.evidenceIds
+        : [`evidence:network-distribution:${group.bucketId}`],
+    };
+  });
+}
 
-  return industryDefinitions
-    .map((definition) => {
-      const contacts = contactsForIndustry(graph, definition);
-      const evidenceIds = uniqueStrings(
-        contacts.flatMap((contact) => contact.evidenceIds),
-      );
-
-      return {
-        bucketId: definition.bucketId,
-        label: definition.label,
-        contactCount: contacts.length,
-        percentage: percentage(contacts.length, totalContacts),
-        topOrganizations: topOrganizations(contacts),
-        sourceRefs: sourceRefsFor(contacts),
-        evidenceIds:
-          evidenceIds.length > 0
-            ? evidenceIds
-            : [`evidence:network-distribution:${definition.bucketId}`],
-      };
-    })
-    .filter((bucket) => bucket.contactCount > 0);
+function contactsForStructureBucket(
+  graph: LiveDashboardGraph,
+  dimension: NetworkStructureDimensionId,
+  bucketId: string,
+): readonly ContactDTO[] {
+  const connections = connectionByContactId(graph);
+  return graph.contacts.filter(
+    (contact) => structureDescriptor(dimension, contact, connections).id === bucketId,
+  );
 }
 
 function contactById(
@@ -470,6 +580,7 @@ function distributionPayload(
   return {
     state: graph.contacts.length > 0 ? "success" : "empty",
     industryDistribution: industryDistribution(graph),
+    structureDistributions: structureDistributions(graph),
     valueTypeDistribution: valueTypeDistribution(graph),
     relationshipStrengthDistribution: strengthDistribution(graph),
     summary:
@@ -497,6 +608,12 @@ function emptyDistributionPayload(input: {
   return {
     state: input.state,
     industryDistribution: [],
+    structureDistributions: {
+      industry: [],
+      location: [],
+      role: [],
+      relationship: [],
+    },
     valueTypeDistribution: [],
     relationshipStrengthDistribution: [],
     summary: input.summary,
@@ -673,6 +790,92 @@ function emptyGapPayload(input: {
   };
 }
 
+function structureDetailSuccess(
+  data: NetworkStructureDetailPayload,
+): NetworkStructureDetailResult {
+  return { success: true, data: clonePayload(data) };
+}
+
+function structureDetailPayload(
+  graph: LiveDashboardGraph,
+  provider: LiveNetworkDistributionAnalyticsProvider,
+  input: NetworkStructureDetailInput & { dimension: NetworkStructureDimensionId },
+): NetworkStructureDetailPayload | null {
+  const bucket = structureDistribution(graph, input.dimension).find(
+    (item) => item.bucketId === input.bucketId,
+  );
+  if (!bucket) return null;
+  const contacts = contactsForStructureBucket(graph, input.dimension, input.bucketId);
+  const connections = connectionByContactId(graph);
+  const strengths: readonly NetworkRelationshipStrength[] = ["strong", "warm", "weak"];
+  const qualityCounts = strengths.map(
+    (strength) =>
+      contacts.filter((contact) => {
+        const connection = connections.get(contact.id);
+        return (connection ? strengthFor(connection) : "weak") === strength;
+      }).length,
+  );
+  const qualityPercentages = allocatedPercentages(qualityCounts);
+  const tagCounts = new Map<string, number>();
+  for (const contact of contacts) {
+    for (const tag of new Set(contact.customTags ?? [])) {
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    }
+  }
+  const commonTags = [...tagCounts.entries()]
+    .sort(([leftTag, leftCount], [rightTag, rightCount]) =>
+      rightCount - leftCount || leftTag.localeCompare(rightTag),
+    )
+    .slice(0, 4)
+    .map(([label, contactCount]) => ({ label, contactCount }));
+  const strongestIndex = qualityCounts.indexOf(Math.max(...qualityCounts));
+  const strongest = strengths[Math.max(0, strongestIndex)] ?? "weak";
+
+  return {
+    state: contacts.length ? "success" : "empty",
+    dimension: input.dimension,
+    bucket,
+    totalContactCount: graph.contacts.length,
+    relationshipQuality: strengths.map((id, index) => ({
+      id,
+      label: relationshipLabels[id],
+      contactCount: qualityCounts[index] ?? 0,
+      percentage: qualityPercentages[index] ?? 0,
+    })),
+    commonTags,
+    insight:
+      contacts.length === 0
+        ? "该分组暂时没有联系人。"
+        : `${bucket.label}共有 ${contacts.length} 位联系人，当前以${relationshipLabels[strongest]}为主。`,
+    contacts: [...contacts]
+      .sort(
+        (left, right) =>
+          (connections.get(right.id)?.relationshipStrength ?? 0) -
+            (connections.get(left.id)?.relationshipStrength ?? 0) ||
+          left.displayName.localeCompare(right.displayName),
+      )
+      .map((contact) => {
+        const connection = connections.get(contact.id);
+        return {
+          id: contact.id,
+          displayName: contact.displayName,
+          organization: contact.organization ?? "",
+          role: contact.role ?? "",
+          location: contact.location ?? "",
+          relationshipStrength: connection ? strengthFor(connection) : "weak",
+          tags: contact.customTags ?? [],
+        };
+      }),
+    provenance: provenance({
+      collectedAt: graph.generatedAt,
+      databaseReadExecuted: true,
+      evidenceIds: bucket.evidenceIds.length ? bucket.evidenceIds : [emptyEvidenceId],
+      generationMethod: "live-store-query",
+      provider,
+    }),
+  };
+}
+
 export function createLiveNetworkDistributionAnalyticsService({
   now = () => new Date().toISOString(),
   provider,
@@ -778,6 +981,39 @@ export function createLiveNetworkDistributionAnalyticsService({
             gapPayload(await provider.readNetworkDistributionGraph(), provider),
           );
       }
+    },
+
+    async getStructureDetail(input) {
+      const capturedNow = now();
+      if (!provider) {
+        return failure("NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED", {
+          now: capturedNow,
+          provider,
+        });
+      }
+      if (!structureDimensions.includes(input.dimension as NetworkStructureDimensionId)) {
+        return failure("NETWORK_STRUCTURE_BUCKET_NOT_FOUND", {
+          now: capturedNow,
+          provider,
+        });
+      }
+      if (normalizeScenario(input.scenario) === "failure") {
+        return failure("NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED", {
+          now: capturedNow,
+          provider,
+        });
+      }
+      const graph = await provider.readNetworkDistributionGraph();
+      const payload = structureDetailPayload(graph, provider, {
+        ...input,
+        dimension: input.dimension as NetworkStructureDimensionId,
+      });
+      return payload
+        ? structureDetailSuccess(payload)
+        : failure("NETWORK_STRUCTURE_BUCKET_NOT_FOUND", {
+            now: capturedNow,
+            provider,
+          });
     },
   };
 }

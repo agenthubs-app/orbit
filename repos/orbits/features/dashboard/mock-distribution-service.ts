@@ -124,6 +124,10 @@ export function createMockNetworkDistributionAnalyticsService(): NetworkDistribu
       // 返回网络缺口分析 fixture。
       return gapsScenarioResult(normalizeScenario(input.scenario));
     },
+
+    getStructureDetail() {
+      return failure("NETWORK_STRUCTURE_BUCKET_NOT_FOUND");
+    },
   };
 }
 

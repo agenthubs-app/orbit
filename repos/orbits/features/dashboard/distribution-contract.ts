@@ -3,6 +3,7 @@ import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO } from "../../shared/domain/source-types";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
+import type { IndustryIdCode } from "../../shared/contract/industries";
 
 // Network Distribution Analytics contract 描述 dashboard 的网络分布和缺口分析。
 // 当前使用 fixture/rule，不运行图算法、embedding search 或 live analytics job。
@@ -10,6 +11,7 @@ export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_CODES = [
   "NETWORK_DISTRIBUTION_ANALYTICS_MOCK_FAILED",
   "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_FAILED",
   "NETWORK_DISTRIBUTION_ANALYTICS_LIVE_STORE_UNCONFIGURED",
+  "NETWORK_STRUCTURE_BUCKET_NOT_FOUND",
 ] as const;
 
 export type NetworkDistributionAnalyticsErrorCode =
@@ -73,6 +75,12 @@ export const NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS = {
       "Network distribution analytics live storage is not configured for this workspace.",
     recovery:
       "Configure the shared live record store before requesting live network distribution analytics. Do not fall back to mock data silently.",
+  },
+  NETWORK_STRUCTURE_BUCKET_NOT_FOUND: {
+    code: "NETWORK_STRUCTURE_BUCKET_NOT_FOUND",
+    appCode: "NOT_FOUND",
+    message: "That network structure group is not available for this actor.",
+    recovery: "Refresh the analysis and choose a visible structure group.",
   },
 } as const satisfies Record<
   NetworkDistributionAnalyticsErrorCode,
@@ -155,10 +163,76 @@ export interface NetworkDistributionAnalyticsPayload {
   industryDistribution: readonly IndustryDistributionBucket[];
   valueTypeDistribution: readonly ValueTypeDistributionBucket[];
   relationshipStrengthDistribution: readonly RelationshipStrengthDistributionBucket[];
+  structureDistributions: NetworkStructureDistributions;
   summary: string;
   provenance: NetworkDistributionAnalyticsProvenance;
   nextAction: string;
 }
+
+export type NetworkStructureDimensionId =
+  | "industry"
+  | "location"
+  | "role"
+  | "relationship";
+
+export interface NetworkStructureDistributionBucket {
+  bucketId: string;
+  label: string;
+  contactCount: number;
+  percentage: number;
+  evidenceIds: readonly string[];
+  missingData: boolean;
+  primaryIndustryId?: IndustryIdCode;
+}
+
+export type NetworkStructureDistributions = Readonly<
+  Record<
+    NetworkStructureDimensionId,
+    readonly NetworkStructureDistributionBucket[]
+  >
+>;
+
+export interface NetworkStructureDetailInput
+  extends NetworkDistributionAnalyticsInput {
+  bucketId: string;
+  dimension: NetworkStructureDimensionId | string;
+}
+
+export interface NetworkStructureDetailContact {
+  id: string;
+  displayName: string;
+  organization: string;
+  role: string;
+  location: string;
+  relationshipStrength: NetworkRelationshipStrength;
+  tags: readonly string[];
+}
+
+export interface NetworkStructureDetailPayload {
+  state: "success" | "empty";
+  dimension: NetworkStructureDimensionId;
+  bucket: NetworkStructureDistributionBucket;
+  totalContactCount: number;
+  relationshipQuality: readonly {
+    id: NetworkRelationshipStrength;
+    label: string;
+    contactCount: number;
+    percentage: number;
+  }[];
+  commonTags: readonly { label: string; contactCount: number }[];
+  insight: string;
+  contacts: readonly NetworkStructureDetailContact[];
+  provenance: NetworkDistributionAnalyticsProvenance;
+}
+
+export interface NetworkStructureDetailSuccess {
+  success: true;
+  data: NetworkStructureDetailPayload;
+}
+
+export type NetworkStructureDetailResult =
+  | NetworkStructureDetailSuccess
+  | NetworkDistributionAnalyticsFailure;
 
 // GapAnalysisItem 描述网络覆盖缺口和推荐动作，不会自动创建任务。
 export interface NetworkGapAnalysisItem {
@@ -222,6 +296,9 @@ export interface NetworkDistributionAnalyticsService {
   getNetworkGaps: (
     input?: NetworkDistributionAnalyticsInput,
   ) => NetworkDistributionAnalyticsServiceResult<NetworkGapAnalysisResult>;
+  getStructureDetail: (
+    input: NetworkStructureDetailInput,
+  ) => NetworkDistributionAnalyticsServiceResult<NetworkStructureDetailResult>;
 }
 
 export function networkDistributionAnalyticsFailureToAppError(
