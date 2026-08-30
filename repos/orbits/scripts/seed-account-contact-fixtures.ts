@@ -5,6 +5,7 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../shared/domain/contracts";
+import type { IndustryIdCode } from "../shared/contract/industries";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import { createConfiguredStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
 import { resolveCanonicalAccountOwnerId } from "../features/account/canonical-account-owner";
@@ -28,6 +29,7 @@ interface FixtureDefinition {
   sourceLabel: string;
   networkCategory: NonNullable<ContactDTO["networkCategory"]>;
   industry: string;
+  primaryIndustryId: IndustryIdCode;
   valueTypes: ConnectionDTO["valueTypes"];
   relationshipStrength: number;
   businessRelevanceScore: number;
@@ -59,6 +61,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "东京人工智能合作伙伴交流会",
     networkCategory: "investor",
     industry: "风险投资",
+    primaryIndustryId: "finance_investment",
     valueTypes: ["strategic_fit", "referral_path"],
     relationshipStrength: 92,
     businessRelevanceScore: 95,
@@ -88,6 +91,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "名片扫描",
     networkCategory: "prospect",
     industry: "机器人",
+    primaryIndustryId: "manufacturing_supply_chain",
     valueTypes: ["commercial_opportunity", "knowledge_exchange"],
     relationshipStrength: 58,
     businessRelevanceScore: 91,
@@ -117,6 +121,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "由林玫推荐",
     networkCategory: "connector",
     industry: "创业服务",
+    primaryIndustryId: "professional_services",
     valueTypes: ["community_context", "referral_path"],
     relationshipStrength: 72,
     businessRelevanceScore: 82,
@@ -146,6 +151,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "通讯录导入",
     networkCategory: "partner",
     industry: "企业人工智能",
+    primaryIndustryId: "technology_internet",
     valueTypes: ["commercial_opportunity", "strategic_fit"],
     relationshipStrength: 76,
     businessRelevanceScore: 94,
@@ -175,6 +181,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "现场扫码交换资料",
     networkCategory: "partner",
     industry: "跨境电商",
+    primaryIndustryId: "retail_consumer",
     valueTypes: ["knowledge_exchange", "commercial_opportunity"],
     relationshipStrength: 49,
     businessRelevanceScore: 78,
@@ -204,6 +211,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "已确认邮件往来",
     networkCategory: "partner",
     industry: "云基础设施",
+    primaryIndustryId: "technology_internet",
     valueTypes: ["strategic_fit", "commercial_opportunity"],
     relationshipStrength: 84,
     businessRelevanceScore: 89,
@@ -233,6 +241,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "手动录入",
     networkCategory: "advisor",
     industry: "可持续发展",
+    primaryIndustryId: "community_nonprofit",
     valueTypes: ["knowledge_exchange", "community_context"],
     relationshipStrength: 35,
     businessRelevanceScore: 64,
@@ -262,6 +271,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "已确认日程会议",
     networkCategory: "customer",
     industry: "企业软件",
+    primaryIndustryId: "technology_internet",
     valueTypes: ["commercial_opportunity"],
     relationshipStrength: 63,
     businessRelevanceScore: 88,
@@ -291,6 +301,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "通讯录导入",
     networkCategory: "advisor",
     industry: "品牌战略",
+    primaryIndustryId: "media_creative",
     valueTypes: ["knowledge_exchange"],
     relationshipStrength: 28,
     businessRelevanceScore: 42,
@@ -320,6 +331,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "制造业人工智能峰会",
     networkCategory: "prospect",
     industry: "制造业",
+    primaryIndustryId: "manufacturing_supply_chain",
     valueTypes: ["commercial_opportunity", "knowledge_exchange"],
     relationshipStrength: 54,
     businessRelevanceScore: 86,
@@ -349,6 +361,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "合作伙伴推荐",
     networkCategory: "prospect",
     industry: "数字医疗",
+    primaryIndustryId: "healthcare_life_sciences",
     valueTypes: ["strategic_fit", "knowledge_exchange"],
     relationshipStrength: 46,
     businessRelevanceScore: 73,
@@ -378,6 +391,7 @@ const fixtures: readonly FixtureDefinition[] = [
     sourceLabel: "名片扫描",
     networkCategory: "customer",
     industry: "酒店业",
+    primaryIndustryId: "food_hospitality",
     valueTypes: ["commercial_opportunity", "community_context"],
     relationshipStrength: 79,
     businessRelevanceScore: 87,
@@ -490,6 +504,7 @@ async function main(): Promise<void> {
       location: fixture.location,
       primaryEmail: fixture.email,
       profileSnippet: fixture.profileBio,
+      primaryIndustryId: fixture.primaryIndustryId,
       stage: fixture.stage,
       handles: { email: fixture.email },
       publicProfile: {

@@ -10,6 +10,7 @@
     "db:seed:live-events": "tsx scripts/seed-live-events.ts",
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
     "db:seed:xiaoyu-planner": "tsx scripts/seed-xiaoyu-three-month-planner.ts",
+    "contacts:migrate-primary-industries": "tsx scripts/migrate-contact-primary-industries.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
     "db:backfill:event-core": "tsx scripts/backfill-event-core.ts",
