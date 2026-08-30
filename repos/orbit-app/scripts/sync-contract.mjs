@@ -1,4 +1,4 @@
-// 把 orbits 的跨客户端契约拷贝到 src/api/contract/。
+// 把 orbits 的跨客户端契约与运行时 Schema 拷贝到 App。
 //
 // App 不在构建期 import ../orbits（见 AGENTS.md），所以契约以副本形式进来，
 // 由 tests/contract-sync.test.ts 校验副本与源逐字一致。源改了而副本没跟上，
@@ -11,8 +11,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDir = join(appRoot, "..", "orbits", "shared", "contract");
-const targetDir = join(appRoot, "src", "api", "contract");
+const syncTargets = [
+  {
+    label: "契约",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "contract"),
+    targetDir: join(appRoot, "src", "api", "contract"),
+  },
+  {
+    label: "API Schema",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "api-schema"),
+    targetDir: join(appRoot, "src", "api", "schema"),
+  },
+];
 
 function contractFileNames(directory) {
   return readdirSync(directory)
@@ -20,11 +30,11 @@ function contractFileNames(directory) {
     .sort();
 }
 
-function sync() {
+function syncDirectory({ label, sourceDir, targetDir }) {
   const names = contractFileNames(sourceDir);
 
   if (names.length === 0) {
-    throw new Error(`契约源目录是空的：${sourceDir}`);
+    throw new Error(`${label}源目录是空的：${sourceDir}`);
   }
 
   rmSync(targetDir, { force: true, recursive: true });
@@ -34,10 +44,10 @@ function sync() {
     copyFileSync(join(sourceDir, name), join(targetDir, name));
   });
 
-  console.log(`已同步 ${names.length} 个契约文件到 src/api/contract/`);
+  console.log(`已同步 ${names.length} 个${label}文件到 ${targetDir}`);
   names.forEach((name) => {
     console.log(`  ${name}`);
   });
 }
 
-sync();
+syncTargets.forEach(syncDirectory);
