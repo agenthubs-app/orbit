@@ -349,6 +349,16 @@ const contactsPayloadSchema = z
   })
   .passthrough();
 
+export const mobileContactsDashboardSectionSchemas = {
+  aggregate: dashboardAggregateSchema,
+  summary: dashboardSummarySchema,
+  opportunities: dashboardOpportunitiesSchema,
+  gaps: dashboardGapsSchema,
+  distributions: dashboardDistributionsSchema,
+  profile: profilePayloadSchema,
+  contacts: contactsPayloadSchema,
+} as const;
+
 export const MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS = [
   "summary",
   "opportunities",
