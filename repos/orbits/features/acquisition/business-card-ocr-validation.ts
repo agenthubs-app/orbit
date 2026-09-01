@@ -44,7 +44,7 @@ export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
         properties: {
           label: nullableStringSchema,
           type: {
-            enum: ["phone", "mobile", "fax"],
+            enum: ["phone", "mobile", "fax", "wechat", "line", "whatsapp", "website", "other"],
             type: "string",
           },
           value: { type: "string" },
@@ -155,8 +155,19 @@ function labeledValues(value: unknown): readonly BusinessCardLabeledValue[] | nu
   return parsed;
 }
 
+const CONTACT_POINT_TYPES: readonly BusinessCardContactPointType[] = [
+  "phone",
+  "mobile",
+  "fax",
+  "wechat",
+  "line",
+  "whatsapp",
+  "website",
+  "other",
+];
+
 function isContactPointType(value: unknown): value is BusinessCardContactPointType {
-  return value === "phone" || value === "mobile" || value === "fax";
+  return CONTACT_POINT_TYPES.some((type) => type === value);
 }
 
 function contactPoints(value: unknown): readonly BusinessCardContactPoint[] | null {

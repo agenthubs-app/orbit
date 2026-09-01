@@ -14,7 +14,17 @@ export const BUSINESS_CARD_IMAGE_MIME_TYPES = [
 export type BusinessCardImageMimeType =
   (typeof BUSINESS_CARD_IMAGE_MIME_TYPES)[number];
 
-export type BusinessCardContactPointType = "phone" | "mobile" | "fax";
+// 通用联系方式：印在名片上的任何联系渠道都必须有去处，分类不了的用 other，
+// 绝不静默丢弃（微信号此前直接没有槽位）。
+export type BusinessCardContactPointType =
+  | "phone"
+  | "mobile"
+  | "fax"
+  | "wechat"
+  | "line"
+  | "whatsapp"
+  | "website"
+  | "other";
 
 export interface BusinessCardLabeledValue {
   label: string | null;
@@ -46,7 +56,9 @@ export type BusinessCardReviewIssueCode =
   | "INVALID_PHONE"
   | "MULTIPLE_OFFICES"
   | "SHARED_CONTACT_VALUE"
-  | "NATIVE_ROMANIZED_NAME_CONFLICT";
+  | "NATIVE_ROMANIZED_NAME_CONFLICT"
+  | "ORG_SUFFIX_MISSING"
+  | "VERIFICATION_MISMATCH";
 
 export interface BusinessCardReviewIssue {
   code: BusinessCardReviewIssueCode;
@@ -60,9 +72,19 @@ export interface BusinessCardCloudOcrUsage {
   latencyMs: number;
 }
 
+// 第三遍「高风险字段逐字符重读」的原样读数。空数组组合视为校验不可用
+// （模型未按格式返回），由 review 策略判空跳过，不产生误报。
+export interface BusinessCardVerificationReads {
+  emails: readonly string[];
+  organizations: readonly string[];
+  phones: readonly string[];
+}
+
 export interface BusinessCardCloudOcrResult {
   extraction: BusinessCardStructuredExtraction;
   usage: BusinessCardCloudOcrUsage;
+  /** 第一阶段的逐行转写原文；复核策略用它做「原文有株式会社而结构化没有」类比对。 */
+  transcript?: string;
 }
 
 export interface BusinessCardCloudOcrProvider {
@@ -72,6 +94,14 @@ export interface BusinessCardCloudOcrProvider {
     imageBase64: string;
     mimeType: BusinessCardImageMimeType;
   }): Promise<BusinessCardCloudOcrResult>;
+  /**
+   * 可选的第三遍定向复核：对同一张全图只重读邮箱/电话/公司行（逐字符）。
+   * 失败或缺席都不阻塞主链路——没有校验读数时相关 issue 直接不产生。
+   */
+  verifyHighRiskFields?(input: {
+    imageBase64: string;
+    mimeType: BusinessCardImageMimeType;
+  }): Promise<BusinessCardVerificationReads | null>;
 }
 
 function optionalText(value: string | null): string | null {
@@ -139,12 +169,17 @@ function validPhone(value: string): boolean {
   return digits.length >= 7 && digits.length <= 18;
 }
 
+// 只有地址和电话/传真才可能带「本社／関西事業所」这类办公地点标签；
+// 微信/LINE/网站的 label 是渠道名（"WeChat"），把它们算进来会让
+// MULTIPLE_OFFICES 在几乎每张带 messenger 的名片上误报（实测复现）。
 function officeLabels(
   extraction: BusinessCardStructuredExtraction,
 ): readonly string[] {
   return [
     ...extraction.addresses.map((item) => item.label),
-    ...extraction.contactPoints.map((item) => item.label),
+    ...extraction.contactPoints
+      .filter((item) => item.type === "phone" || item.type === "mobile" || item.type === "fax")
+      .map((item) => item.label),
   ].filter((label): label is string => Boolean(label));
 }
 
@@ -182,8 +217,51 @@ function hasNativeRomanizedPairRequiringReview(
   );
 }
 
+// 法律实体后缀词典（有限集）：转写原文含后缀而结构化公司名缺失时强制复核。
+// 命中靠包含关系，不做模糊匹配——宁可漏报也不误报。
+const ORG_LEGAL_SUFFIXES = [
+  "株式会社",
+  "(株)",
+  "㈱",
+  "合同会社",
+  "有限会社",
+  "合資会社",
+  "一般社団法人",
+  "有限公司",
+  "股份有限公司",
+  "Inc.",
+  "Inc",
+  "Ltd.",
+  "Ltd",
+  "LLC",
+  "Corp.",
+  "Corp",
+  "Co.,",
+  "GmbH",
+  "K.K.",
+] as const;
+
+function containsLegalSuffix(text: string): boolean {
+  const lower = text.toLowerCase();
+  return ORG_LEGAL_SUFFIXES.some((suffix) => lower.includes(suffix.toLowerCase()));
+}
+
+function normalizedEmailForm(value: string): string {
+  return value.replace(/\s/g, "").toLowerCase();
+}
+
+function phoneDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+export interface BusinessCardReviewContext {
+  transcript?: string | null;
+  verification?: BusinessCardVerificationReads | null;
+}
+
 export function reviewIssuesForBusinessCard(
   input: BusinessCardStructuredExtraction,
+  context: BusinessCardReviewContext = {},
 ): readonly BusinessCardReviewIssue[] {
   const extraction = normalizeBusinessCardExtraction(input);
   const issues: BusinessCardReviewIssue[] = [];
@@ -243,6 +321,60 @@ export function reviewIssuesForBusinessCard(
       field: "romanizedFullName",
       message: "Confirm the relationship between the native and romanized names.",
     });
+  }
+
+  // 转写原文含法律实体后缀（株式会社/Inc. 等）而结构化公司名一个都不含时，
+  // 说明结构化阶段丢了后缀——强制复核，不静默通过。
+  const transcript = context.transcript?.trim();
+  if (
+    transcript &&
+    extraction.organization &&
+    containsLegalSuffix(transcript) &&
+    !containsLegalSuffix(extraction.organization)
+  ) {
+    issues.push({
+      code: "ORG_SUFFIX_MISSING",
+      field: "organization",
+      message:
+        "The card shows a legal-entity suffix that is missing from the extracted organization name.",
+    });
+  }
+
+  // 第三遍定向重读与结构化结果不一致 → 标红，禁止静默确认。格式合法不等于
+  // 字符正确（m-watanabe 和 r-watanabe 都能通过正则），一致性才是信号。
+  // 读数完全为空视为校验不可用（模型未按格式返回），跳过而不误报。
+  const verification = context.verification;
+  const verificationUsable =
+    verification &&
+    verification.emails.length + verification.phones.length + verification.organizations.length > 0;
+  if (verificationUsable) {
+    const verifiedEmails = verification.emails.map(normalizedEmailForm);
+    for (const email of extraction.emails) {
+      if (verification.emails.length > 0 && !verifiedEmails.includes(normalizedEmailForm(email.value))) {
+        issues.push({
+          code: "VERIFICATION_MISMATCH",
+          field: "emails",
+          message: `A second character-level read of the card disagrees with the email ${email.value}.`,
+        });
+        break;
+      }
+    }
+
+    const verifiedPhones = verification.phones.map(phoneDigits).filter((digits) => digits.length > 0);
+    for (const point of extraction.contactPoints) {
+      if (point.type !== "phone" && point.type !== "mobile" && point.type !== "fax") {
+        continue;
+      }
+      const digits = phoneDigits(point.value);
+      if (digits && verifiedPhones.length > 0 && !verifiedPhones.includes(digits)) {
+        issues.push({
+          code: "VERIFICATION_MISMATCH",
+          field: "contactPoints",
+          message: `A second character-level read of the card disagrees with the ${point.type} number ${point.value}.`,
+        });
+        break;
+      }
+    }
   }
 
   return issues;

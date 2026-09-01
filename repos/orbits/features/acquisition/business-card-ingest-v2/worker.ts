@@ -1,7 +1,11 @@
+import sharp from "sharp";
+
 import {
   normalizeBusinessCardExtraction,
   reviewIssuesForBusinessCard,
   type BusinessCardCloudOcrProvider,
+  type BusinessCardCloudOcrResult,
+  type BusinessCardStructuredExtraction,
 } from "../business-card-cloud-ocr";
 import { BusinessCardCloudOcrProviderError } from "../business-card-ocr-validation";
 import {
@@ -44,6 +48,63 @@ export function retryDelayMsForAttempt(attempt: number): number {
   const base = 5_000 * 3 ** Math.max(0, attempt - 1);
   const jitter = base * 0.25 * (Math.random() * 2 - 1);
   return Math.round(base + jitter);
+}
+
+// 方向回退：仅当姓名+公司全部识别为空时才尝试旋转重试（180° 覆盖最常见的
+// 倒置，其次 90°），按字段覆盖度择优；绝不对每张照片固定识别四遍。
+function identityAndOrgMissing(extraction: BusinessCardStructuredExtraction): boolean {
+  return !extraction.fullName && !extraction.nativeFullName && !extraction.organization;
+}
+
+function coverageScore(extraction: BusinessCardStructuredExtraction): number {
+  return (
+    (extraction.fullName || extraction.nativeFullName ? 2 : 0) +
+    (extraction.organization ? 1 : 0) +
+    extraction.emails.length +
+    extraction.contactPoints.length
+  );
+}
+
+const ROTATION_FALLBACK_ANGLES = [180, 90] as const;
+
+export async function extractWithOrientationFallback(
+  provider: BusinessCardCloudOcrProvider,
+  bytes: Buffer,
+): Promise<{ base64: string; extraction: BusinessCardStructuredExtraction; ocr: BusinessCardCloudOcrResult }> {
+  const base64 = bytes.toString("base64");
+  const first = await provider.extract({ imageBase64: base64, mimeType: "image/jpeg" });
+  let best = {
+    base64,
+    extraction: normalizeBusinessCardExtraction(first.extraction),
+    ocr: first,
+  };
+
+  if (!identityAndOrgMissing(best.extraction)) {
+    return best;
+  }
+
+  for (const angle of ROTATION_FALLBACK_ANGLES) {
+    let rotatedBase64: string;
+    try {
+      rotatedBase64 = (await sharp(bytes).rotate(angle).jpeg().toBuffer()).toString("base64");
+    } catch {
+      continue;
+    }
+    try {
+      const attempt = await provider.extract({ imageBase64: rotatedBase64, mimeType: "image/jpeg" });
+      const extraction = normalizeBusinessCardExtraction(attempt.extraction);
+      if (coverageScore(extraction) > coverageScore(best.extraction)) {
+        best = { base64: rotatedBase64, extraction, ocr: attempt };
+      }
+      if (!identityAndOrgMissing(extraction)) {
+        break;
+      }
+    } catch {
+      // 单个方向失败不影响其余尝试；最差保留第一次结果。
+    }
+  }
+
+  return best;
 }
 
 async function withDeadline<T>(promise: Promise<T>, deadlineMs: number): Promise<T> {
@@ -132,21 +193,33 @@ export function createIngestV2Worker({
               result.failed += 1;
               return;
             }
-            const ocr = await withDeadline(
-              provider.extract({
-                imageBase64: bytes.toString("base64"),
-                mimeType: "image/jpeg",
-              }),
+            const best = await withDeadline(
+              (async () => {
+                const chosen = await extractWithOrientationFallback(provider, bytes);
+                // 第三遍定向复核只对最终采用的方向跑一次；失败返回 null，
+                // 相关 mismatch issue 直接不产生，绝不阻塞主链路。
+                const verification =
+                  (await provider
+                    .verifyHighRiskFields?.({
+                      imageBase64: chosen.base64,
+                      mimeType: "image/jpeg",
+                    })
+                    .catch(() => null)) ?? null;
+                return { ...chosen, verification };
+              })(),
               ocrDeadlineMs,
             );
-            const extraction = normalizeBusinessCardExtraction(ocr.extraction);
+            const extraction = best.extraction;
             const submitted = await repository.submitExtraction({
               itemId: item.id,
               leaseToken: item.leaseToken,
               expectedVersion: item.version,
               extraction,
-              reviewIssues: reviewIssuesForBusinessCard(extraction),
-              usage: ocr.usage,
+              reviewIssues: reviewIssuesForBusinessCard(extraction, {
+                transcript: best.ocr.transcript ?? null,
+                verification: best.verification,
+              }),
+              usage: best.ocr.usage,
             });
             if (submitted.accepted) {
               result.extracted += 1;

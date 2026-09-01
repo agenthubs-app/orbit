@@ -25,6 +25,7 @@ export const BUSINESS_CARD_TRANSCRIPTION_PROMPT = [
   "The photographed card may be rotated; read it in its natural orientation.",
   "Preserve the original wording, line breaks, and office or contact labels.",
   "Keep native-script and romanized spellings separately when both are printed.",
+  "Include messenger handles and social IDs (WeChat, LINE, WhatsApp, LinkedIn) together with their printed labels.",
   "If more than one business card appears in the photo, transcribe each card as a separate block.",
   "When a character, digit, or word is too small or blurry to read with confidence, omit it entirely instead of guessing.",
   "Do not translate, summarize, or invent text that is not on the card.",
@@ -36,11 +37,42 @@ export function businessCardStructuringPrompt(): string {
     "Use only text present in the transcription. Never infer or invent missing values.",
     "Keep native-script and romanized names separate when both are transcribed.",
     "Keep printed office labels on phones, faxes, emails, and addresses.",
+    "Classify messenger handles as contactPoints with type wechat, line, or whatsapp; use type website for printed URLs, and type other for any remaining printed contact method so nothing is dropped.",
     "If the transcription contains multiple business cards, structure only the single card with the most complete details, and never merge values from different cards.",
     "Return null or an empty array for absent fields; never fabricate a value the transcription does not contain.",
     "Respond with a single JSON object matching this JSON schema exactly:",
     JSON.stringify(BUSINESS_CARD_EXTRACTION_JSON_SCHEMA),
   ].join(" ");
+}
+
+// 第三遍定向复核 prompt：对全图只重读高风险行，逐字符原样输出。不用
+// response_format（视觉模型 + JSON 的组合未经验证），前缀行协议宽松可解析。
+const BUSINESS_CARD_VERIFICATION_PROMPT = [
+  "Re-read ONLY the highest-risk text on this business card, character by character, exactly as printed.",
+  "Output one item per line using the prefixes EMAIL:, PHONE:, ORG: and nothing else.",
+  "Include every printed email address, every phone or fax number, and the organization name(s).",
+  "If any character of an item is too small or blurry to be certain, skip that entire item instead of guessing.",
+].join(" ");
+
+const VERIFICATION_TIMEOUT_MS = 30_000;
+
+function parseVerificationReads(content: string): {
+  emails: string[];
+  organizations: string[];
+  phones: string[];
+} {
+  const reads = { emails: [] as string[], organizations: [] as string[], phones: [] as string[] };
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^\s*(EMAIL|PHONE|ORG)\s*[:：]\s*(.+)$/i);
+    if (!match) continue;
+    const value = match[2].trim();
+    if (!value) continue;
+    const kind = match[1].toUpperCase();
+    if (kind === "EMAIL") reads.emails.push(value);
+    else if (kind === "PHONE") reads.phones.push(value);
+    else reads.organizations.push(value);
+  }
+  return reads;
 }
 
 type BusinessCardOcrEnv = Record<string, string | undefined>;
@@ -245,12 +277,51 @@ export function createConfiguredDeepseekBusinessCardOcrProvider({
 
       return {
         extraction: parseBusinessCardStructuredExtraction(parsed),
+        transcript: transcription.content,
         usage: {
           inputTokens: transcription.inputTokens + structured.inputTokens,
           latencyMs: Math.max(0, nowMs() - startedAt),
           outputTokens: transcription.outputTokens + structured.outputTokens,
         },
       };
+    },
+    async verifyHighRiskFields(input) {
+      if (!isBusinessCardMimeType(input.mimeType)) {
+        return null;
+      }
+      try {
+        const verification = await postChatCompletion({
+          apiKey,
+          body: {
+            messages: [
+              {
+                content: [
+                  { text: BUSINESS_CARD_VERIFICATION_PROMPT, type: "text" },
+                  {
+                    image_url: {
+                      url: `data:${input.mimeType};base64,${input.imageBase64}`,
+                    },
+                    type: "image_url",
+                  },
+                ],
+                role: "user",
+              },
+            ],
+            model: visionModel,
+            thinking: THINKING_DISABLED,
+          },
+          fetchImplementation,
+          timeoutMs: Math.min(timeoutMs, VERIFICATION_TIMEOUT_MS),
+        });
+        const reads = parseVerificationReads(verification.content);
+        // 全空视为模型未按协议返回：交给策略层跳过，不制造误报。
+        return reads.emails.length + reads.phones.length + reads.organizations.length > 0
+          ? reads
+          : null;
+      } catch {
+        // 校验遍失败绝不能拖垮主识别结果。
+        return null;
+      }
     },
   };
 }

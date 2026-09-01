@@ -11,6 +11,7 @@ import {
   INGEST_V2_MAX_ITEMS,
   INGEST_V2_MAX_RAW_BYTES,
   IngestConflictError,
+  type IngestItemDTO,
   type IngestManifestEntry,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import type { IngestDerivativeStore } from "../../../../../../features/acquisition/business-card-ingest-v2/derivative-store";
@@ -516,6 +517,43 @@ function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
   return createLiveBusinessCardContactWriteService({ provider });
 }
 
+// P2 质量基准的最小起步：记录用户在复核页改了哪些字段（与 OCR 结果对比）。
+// 只进服务端日志，不入库——正式落库需要 schema/migration，另行提案。
+function editedReviewFields(
+  extraction: NonNullable<IngestItemDTO["extraction"]>,
+  body: Record<string, unknown>,
+): readonly string[] {
+  const edited: string[] = [];
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+  const displayName = text(body.displayName);
+  if (
+    displayName &&
+    displayName !== (extraction.fullName ?? "").trim() &&
+    displayName !== (extraction.nativeFullName ?? "").trim()
+  ) {
+    edited.push("displayName");
+  }
+  if (text(body.organization) !== (extraction.organization ?? "").trim()) {
+    edited.push("organization");
+  }
+  if (text(body.role) !== (extraction.title ?? "").trim()) {
+    edited.push("role");
+  }
+  const email = text(body.email).toLowerCase();
+  if (email && !extraction.emails.some((item) => item.value.toLowerCase() === email)) {
+    edited.push("email");
+  }
+  const phoneDigits = text(body.phone).replace(/\D/g, "");
+  if (
+    phoneDigits &&
+    !extraction.contactPoints.some((point) => point.value.replace(/\D/g, "") === phoneDigits)
+  ) {
+    edited.push("phone");
+  }
+  return edited;
+}
+
 function createConfirmLikeHandler(
   deps: IngestV2HandlerDeps,
   allowFrom: readonly ["extracted"] | readonly ["terminal_failed"],
@@ -568,6 +606,15 @@ function createConfirmLikeHandler(
             return result.data.contactId;
           },
         });
+        if (item.extraction) {
+          const edited = editedReviewFields(item.extraction, body);
+          if (edited.length > 0) {
+            console.info(
+              "[ingest-v2] review edits",
+              JSON.stringify({ batchId: id, edited, itemId }),
+            );
+          }
+        }
         return NextResponse.json(
           success({
             contactId: confirmed.confirmedContactId,

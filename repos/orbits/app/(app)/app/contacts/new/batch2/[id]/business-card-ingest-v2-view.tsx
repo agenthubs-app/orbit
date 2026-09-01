@@ -33,13 +33,31 @@ interface FixedFields {
   notes: string;
 }
 
+// 日中韩名片以突出印刷的原文姓名为主显示名；模型的 fullName 常给罗马字，
+// 用它当主名会把「渡辺」变成 "Watanabe"。原文含 CJK 时优先 nativeFullName。
+const CJK_CHAR_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
+
+function preferredDisplayName(
+  extraction: IngestItemDTO["extraction"],
+): string {
+  const native = extraction?.nativeFullName ?? "";
+  if (native && CJK_CHAR_RE.test(native)) {
+    return native;
+  }
+  return extraction?.fullName ?? native;
+}
+
 function initialFields(item: IngestItemDTO): FixedFields {
   const extraction = item.extraction;
   const email = extraction?.emails[0]?.value ?? "";
+  // 主电话只认 phone/mobile：contactPoints 现在还装着微信/LINE/网站等通用
+  // 联系方式，"非传真即电话" 的旧写法会把微信号填进电话框。
   const phone =
-    extraction?.contactPoints.find((point) => point.type !== "fax")?.value ?? "";
+    extraction?.contactPoints.find(
+      (point) => point.type === "phone" || point.type === "mobile",
+    )?.value ?? "";
   return {
-    displayName: extraction?.fullName ?? extraction?.nativeFullName ?? "",
+    displayName: preferredDisplayName(extraction),
     email,
     notes: extraction
       ? aggregateBusinessCardNotes(extraction, {
@@ -83,6 +101,97 @@ const ITEM_STATUS_COPY: Record<IngestItemDTO["status"], { en: string; zh: string
 
 function itemImageUrl(batchId: string, item: IngestItemDTO): string {
   return `${INGEST_V2_API_BASE}/${batchId}/items/${item.id}/image`;
+}
+
+// worker 早就把 reviewIssues 算好了，此前 view 一个都没渲染——用户只能肉眼
+// 从头找差异。这里按 code 给用户语言的说明；未知 code 落回服务端原文。
+const REVIEW_ISSUE_COPY: Record<string, { en: string; zh: string }> = {
+  IDENTITY_MISSING: { en: "No name was recognized on this card.", zh: "没有识别到姓名。" },
+  INVALID_EMAIL: { en: "An email address looks invalid — check it against the card.", zh: "有邮箱格式可疑，请对照图片核对。" },
+  INVALID_PHONE: { en: "A phone number looks invalid — check it against the card.", zh: "有电话号码可疑，请对照图片核对。" },
+  MULTIPLE_OFFICES: { en: "Multiple offices are printed — confirm the primary one.", zh: "名片上有多个办公地点，请确认主要地点。" },
+  SHARED_CONTACT_VALUE: { en: "The same number appears under more than one label.", zh: "同一号码出现在多个标签下，请确认归属。" },
+  NATIVE_ROMANIZED_NAME_CONFLICT: { en: "Native and romanized names differ — confirm which is primary.", zh: "原文姓名与罗马字拼写不同，请确认主名。" },
+  ORG_SUFFIX_MISSING: { en: "The company name may be missing a legal suffix (株式会社 / Inc. …).", zh: "公司名可能丢失了「株式会社／Inc.」等后缀，请对照图片补全。" },
+  VERIFICATION_MISMATCH: { en: "A second character-level read disagrees with a field — verify it character by character.", zh: "二次逐字符识别与结果不一致，请对照图片逐字核对标出的字段。" },
+};
+
+function ReviewIssueList({ issues, t }: { issues: IngestItemDTO["reviewIssues"]; t: Translate }) {
+  if (issues.length === 0) {
+    return null;
+  }
+  return (
+    <ul className="bci-issues" data-ingest-review-issues>
+      {issues.map((issue, index) => (
+        <li key={`${issue.code}-${index}`}>
+          {REVIEW_ISSUE_COPY[issue.code] ? t(REVIEW_ISSUE_COPY[issue.code]) : issue.message}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const CONTACT_POINT_TYPE_LABELS: Record<string, { en: string; zh: string }> = {
+  phone: { en: "Phone", zh: "电话" },
+  mobile: { en: "Mobile", zh: "手机" },
+  fax: { en: "Fax", zh: "传真" },
+  wechat: { en: "WeChat", zh: "微信" },
+  line: { en: "LINE", zh: "LINE" },
+  whatsapp: { en: "WhatsApp", zh: "WhatsApp" },
+  website: { en: "Website", zh: "网站" },
+  other: { en: "Other", zh: "其他" },
+};
+
+// 固定表单只有一个邮箱/电话槽位，识别出的其余联系方式此前只沉在备注里。
+// 这里把它们列成可见的行：邮箱/电话可一键填入对应字段，其余（微信等）保证可见。
+function ExtraContactSignals({
+  extraction,
+  fields,
+  onChange,
+  t,
+}: {
+  extraction: NonNullable<IngestItemDTO["extraction"]>;
+  fields: FixedFields;
+  onChange: (next: FixedFields) => void;
+  t: Translate;
+}) {
+  const extraEmails = extraction.emails.filter((email) => email.value !== fields.email);
+  const extraPoints = extraction.contactPoints.filter((point) => point.value !== fields.phone);
+  if (extraEmails.length === 0 && extraPoints.length === 0) {
+    return null;
+  }
+  return (
+    <div className="bci-signals" data-ingest-extra-signals>
+      <span className="bci-signals-label">{t({ en: "Also recognized", zh: "还识别到" })}</span>
+      {extraEmails.map((email, index) => (
+        <button
+          className="bci-signal"
+          key={`email-${index}`}
+          onClick={() => onChange({ ...fields, email: email.value })}
+          title={t({ en: "Use as the email", zh: "填入邮箱" })}
+          type="button"
+        >
+          {t({ en: "Email", zh: "邮箱" })}{email.label ? ` · ${email.label}` : ""}：{email.value}
+        </button>
+      ))}
+      {extraPoints.map((point, index) => {
+        const fillable = point.type === "phone" || point.type === "mobile";
+        const label = CONTACT_POINT_TYPE_LABELS[point.type] ?? CONTACT_POINT_TYPE_LABELS.other;
+        return (
+          <button
+            className="bci-signal"
+            disabled={!fillable}
+            key={`point-${index}`}
+            onClick={fillable ? () => onChange({ ...fields, phone: point.value }) : undefined}
+            title={fillable ? t({ en: "Use as the phone", zh: "填入电话" }) : undefined}
+            type="button"
+          >
+            {t(label)}{point.label ? ` · ${point.label}` : ""}：{point.value}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function FieldEditor({
@@ -676,8 +785,14 @@ function ReviewPane({
                 : ""}
             </div>
           ) : null}
+          {item.status === "extracted" ? (
+            <ReviewIssueList issues={item.reviewIssues} t={t} />
+          ) : null}
           {item.status === "extracted" || (failed && manual) ? (
             <FieldEditor fields={fields} onChange={setFields} t={t} />
+          ) : null}
+          {item.status === "extracted" && item.extraction ? (
+            <ExtraContactSignals extraction={item.extraction} fields={fields} onChange={setFields} t={t} />
           ) : null}
           {duplicate ? (
             <div className="bci-warn">
@@ -745,6 +860,14 @@ const VIEW_STYLE = `
 .bci-batch-id { font-family: var(--mono); text-transform: none; }
 .bci-privacy { background: var(--accent-softer); border-radius: 11px; color: var(--text-2); font-size: 12px; line-height: 1.5; padding: 10px 12px; }
 .bci-warn { background: var(--amber-soft); border-radius: 10px; color: var(--amber-text); font-size: 12.5px; line-height: 1.5; padding: 10px 12px; }
+.bci-issues { background: var(--amber-soft); border-radius: 10px; color: var(--amber-text); display: grid; font-size: 12.5px; gap: 5px; line-height: 1.5; list-style: none; margin: 0; padding: 10px 12px; }
+.bci-issues li { padding-left: 14px; position: relative; }
+.bci-issues li::before { content: "•"; left: 2px; position: absolute; }
+.bci-signals { align-items: baseline; display: flex; flex-wrap: wrap; gap: 6px; }
+.bci-signals-label { color: var(--text-3); font-size: 12px; }
+.bci-signal { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; color: var(--text-2); cursor: pointer; font: inherit; font-size: 12px; padding: 3px 10px; }
+.bci-signal:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.bci-signal:disabled { cursor: default; }
 .bci-progress { background: var(--surface-3); border-radius: 999px; height: 8px; overflow: hidden; }
 .bci-progress-fill { background: var(--accent); border-radius: 999px; height: 100%; transition: width .4s ease; }
 .bci-progress-label { color: var(--text-3); font-family: var(--mono); font-size: 12px; }
