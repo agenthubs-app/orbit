@@ -9,6 +9,7 @@ import {
   type LiveRecordSqlClient,
 } from "../../shared/storage/postgres-live-record-store";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
+import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS } from "../../features/events/event-operations/storage/migrations";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 
 const baseRecord: LiveRecord<{ title: string; startsAt: string }> = {
@@ -86,7 +87,7 @@ test("orbit records migration can run through an async SQL client", async () => 
 
   await runOrbitRecordsMigration(client);
 
-  assert.equal(client.calls.length, 3);
+  assert.equal(client.calls.length, 2 + EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
@@ -97,6 +98,31 @@ test("orbit records migration can run through an async SQL client", async () => 
     /create table if not exists event_ops_schema_migrations/i,
   );
   assert.match(client.calls[2]?.text ?? "", /create table event_ops_events/i);
+  for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
+    const sql = client.calls[index + 2].text;
+    assert.ok(sql.includes(`where version = ${migration.version};`));
+    assert.ok(sql.includes(migration.name));
+    assert.ok(sql.includes(migration.checksum));
+  }
+});
+
+test("migration waits for the current SQL operation and stops on a rejected operation", async () => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  const failure = new Error("planned database failure");
+  let calls = 0;
+  const migrating = runOrbitRecordsMigration({
+    async query() {
+      calls += 1;
+      if (calls === 1) await pending;
+      else throw failure;
+    },
+  });
+  await Promise.resolve();
+  assert.equal(calls, 1, "dependent migration SQL cannot run before the base schema finishes");
+  release();
+  await assert.rejects(migrating, (error: unknown) => error === failure);
+  assert.equal(calls, 2, "a failure must prevent later versions from starting");
 });
 
 test("postgres live record store upserts records with parameterized SQL", async () => {
