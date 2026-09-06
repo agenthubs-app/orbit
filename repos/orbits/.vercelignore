@@ -1,0 +1,9 @@
+.env*
+.git
+.gitnexus
+.next
+node_modules
+.orbit-batch-uploads
+orbit-local-backup.sql
+*.log
+tsconfig.tsbuildinfo
