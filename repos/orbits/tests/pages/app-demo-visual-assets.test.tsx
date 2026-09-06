@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { getDemoEventSceneAsset } from "../../shared/demo-visual-assets";
 import { renderToStaticMarkup } from "react-dom/server";
+import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
@@ -32,10 +35,23 @@ async function renderEventsPage(): Promise<string> {
   }
 
   return renderToStaticMarkup(
-    <OrbitRealExploreClient
-      registrationAvailabilityByEventId={{}}
-      viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
-    />,
+    <AppRouterContext.Provider value={{
+      back: () => assert.fail("SSR must not navigate"),
+      forward: () => assert.fail("SSR must not navigate"),
+      refresh: () => assert.fail("SSR must not refresh"),
+      push: () => assert.fail("SSR must not navigate"),
+      replace: () => assert.fail("SSR must not navigate"),
+      prefetch: () => assert.fail("SSR must not prefetch"),
+    }}>
+      <PathnameContext.Provider value="/app/events">
+        <SearchParamsContext.Provider value={new URLSearchParams()}>
+          <OrbitRealExploreClient
+            registrationAvailabilityByEventId={{}}
+            viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
+          />
+        </SearchParamsContext.Provider>
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>,
   );
 }
 
@@ -51,9 +67,11 @@ async function renderEventDetailPage(): Promise<string> {
     return "";
   }
 
+  const artwork = getDemoEventSceneAsset("demo-event-1");
+  assert.ok(artwork, "the known-artwork test needs an explicit local cover");
   return renderToStaticMarkup(
     <OrbitRealEventDetail
-      event={eventDetailRouteToOrbitLandingEventView(routeModel)}
+      event={{ ...eventDetailRouteToOrbitLandingEventView(routeModel), detailLogoUrl: artwork.src }}
     />,
   );
 }
@@ -174,11 +192,14 @@ test("event list and event detail render manifest scene images", async () => {
   assert.match(listHtml, /background-image:url\(data:image\/webp;base64,/);
   assert.match(listHtml, /opacity:0;transition:opacity 220ms/);
 
-  const detailImages = detailHtml.match(/<img\b[^>]*>/g) ?? [];
-  assert.ok(detailImages.length >= 3, "event detail should render its responsive artwork surfaces");
-  assert.doesNotMatch(detailImages[0], /loading="lazy"/);
-  assert.doesNotMatch(detailImages[1], /loading="lazy"/);
-  assert.match(detailImages[2], /loading="lazy"/);
+  const detailImages: readonly string[] = detailHtml.match(/<img\b[^>]*>/g) ?? [];
+  // This manifest cover is SVG: it scales without raster srcset variants.
+  const artwork = getDemoEventSceneAsset("demo-event-1")!;
+  const coverImages = detailImages.filter((tag) => tag.includes(`src="${artwork.src}"`));
+  assert.equal(coverImages.length, 2, "known artwork should render in the backdrop and rail");
+  assert.doesNotMatch(coverImages[0], /loading="lazy"/);
+  assert.match(coverImages[1], /loading="lazy"/);
+  for (const tag of coverImages) assert.match(tag, /data-nimg="fill"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
 });
