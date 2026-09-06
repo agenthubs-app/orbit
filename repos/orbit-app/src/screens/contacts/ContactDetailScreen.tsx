@@ -11,10 +11,8 @@ import {
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import {
-  INDUSTRY_CATALOG,
-  type IndustryIdCode
-} from "../../api/contract/industries";
+import type { IndustryIdCode } from "../../api/contract/industries";
+import { INDUSTRY_CATALOG } from "../../api/domain/industries";
 import {
   contactDetailPath,
   ORBIT_API_ENDPOINTS,

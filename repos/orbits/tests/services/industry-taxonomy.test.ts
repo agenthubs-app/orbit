@@ -5,7 +5,7 @@ import {
   INDUSTRY_CATALOG,
   industryLabel,
   isIndustryIdCode,
-} from "../../shared/contract/industries";
+} from "../../shared/domain/industries";
 
 test("固定行业字典使用稳定且不重复的 ID", () => {
   assert.equal(INDUSTRY_CATALOG.length, 14);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { INDUSTRY_IDS } from "../contract/industries";
-import { ORBIT_LANGUAGES } from "../contract/language";
+import { INDUSTRY_IDS } from "../domain/industries";
+import { ORBIT_LANGUAGES } from "../domain/language";
 
 const nonEmptyString = z.string().trim().min(1);
 const stringList = z.array(z.string());

@@ -1,9 +1,7 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { ContactListItemContract } from "../api/contract/contacts";
-import {
-  isIndustryIdCode,
-  type IndustryIdCode
-} from "../api/contract/industries";
+import type { IndustryIdCode } from "../api/contract/industries";
+import { isIndustryIdCode } from "../api/domain/industries";
 
 export interface ContactSummary {
   id: string;

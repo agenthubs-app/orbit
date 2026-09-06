@@ -1,4 +1,4 @@
-// 把 orbits 的跨客户端契约与运行时 Schema 拷贝到 App。
+// 把 orbits 的跨客户端契约、运行时 Schema 与受控字典拷贝到 App。
 //
 // App 不在构建期 import ../orbits（见 AGENTS.md），所以契约以副本形式进来，
 // 由 tests/contract-sync.test.ts 校验副本与源逐字一致。源改了而副本没跟上，
@@ -22,6 +22,12 @@ const syncTargets = [
     sourceDir: join(appRoot, "..", "orbits", "shared", "api-schema"),
     targetDir: join(appRoot, "src", "api", "schema"),
   },
+  {
+    label: "领域字典",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "domain"),
+    targetDir: join(appRoot, "src", "api", "domain"),
+    fileNames: ["industries.ts", "language.ts"],
+  },
 ];
 
 function contractFileNames(directory) {
@@ -30,8 +36,8 @@ function contractFileNames(directory) {
     .sort();
 }
 
-function syncDirectory({ label, sourceDir, targetDir }) {
-  const names = contractFileNames(sourceDir);
+function syncDirectory({ label, sourceDir, targetDir, fileNames }) {
+  const names = fileNames ?? contractFileNames(sourceDir);
 
   if (names.length === 0) {
     throw new Error(`${label}源目录是空的：${sourceDir}`);

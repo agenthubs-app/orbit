@@ -3,10 +3,8 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
-import {
-  isIndustryIdCode,
-  type IndustryIdCode,
-} from "../../../shared/contract/industries";
+import type { IndustryIdCode } from "../../../shared/contract/industries";
+import { isIndustryIdCode } from "../../../shared/domain/industries";
 import {
   isNetworkCategory,
   isRelationshipStage,

@@ -3,10 +3,8 @@ import { pathToFileURL } from "node:url";
 import { resolveCanonicalAccountOwnerId } from "../features/account/canonical-account-owner";
 import { createConfiguredStorageAccountSessionProvider } from "../features/account/storage/account-live-record-provider";
 import { createConfiguredStorageAuthUserProvider } from "../features/auth/storage/auth-user-live-record-provider";
-import {
-  isIndustryIdCode,
-  type IndustryIdCode,
-} from "../shared/contract/industries";
+import type { IndustryIdCode } from "../shared/contract/industries";
+import { isIndustryIdCode } from "../shared/domain/industries";
 import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/configured-live-record-store";
 import type { LiveRecordStoreLike } from "../shared/storage/live-record-store";
 import { loadLocalEnv } from "./load-local-env";

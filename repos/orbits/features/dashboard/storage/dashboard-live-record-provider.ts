@@ -11,7 +11,7 @@ import {
   isRelationshipValueType,
   isSourceType,
 } from "../../../shared/domain/source-types";
-import { isIndustryIdCode } from "../../../shared/contract/industries";
+import { isIndustryIdCode } from "../../../shared/domain/industries";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,

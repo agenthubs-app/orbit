@@ -26,6 +26,9 @@ workspace root for implementation work.
   或 `shared/domain/`，并在那一侧用 `shared/contract-check.ts` 的 `ContractMatches` 断言一致。
 - 新增或修改契约后，`features/<module>/contract.ts` 用转发导出保持既有引用名不变，
   并到 `repos/orbit-app` 跑 `npm run sync:contract`，否则移动端测试会红。
+- 经确认，`shared/domain/industries.ts` 与 `shared/domain/language.ts` 两个自包含字典
+  通过同一命令按白名单同步到移动端 `src/api/domain/`；不复制其余 domain 或 feature
+  代码。字典只能依赖同步范围内的类型，完整枚举一致性由编译期契约检查保障。
 - 完整规则与迁移步骤见 `docs/cross-client-contract.md`。
 
 ## Dev Capability Surfaces

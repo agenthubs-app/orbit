@@ -19,6 +19,9 @@ shared/contract/          零 import 的纯类型声明，iOS App 会原样拷�
   contacts.ts             联系人列表响应
   index.ts                公开出口
 shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于契约，不外发）
+shared/domain/industries.ts  行业 ID、三语标签及校验函数，按白名单同步
+shared/domain/language.ts    语言常量，按白名单同步
+shared/api-schema/       运行时响应校验，单独同步到移动端 src/api/schema
 ```
 
 ## 三条硬规则
@@ -53,6 +56,7 @@ shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于
 | 个人资料 | `profile.ts` | 资料、完整度、编辑器状态；provenance 未跨端 |
 | 跟进任务 | `followups.ts` | 任务、触发原因、复核提示 |
 | 活动 | `events.ts` | 活动记录、来源元数据、证据 |
+| 行业与语言 | `industries.ts`、`language.ts` | 纯类型；运行时字典在 shared/domain，按两个文件白名单同步 |
 
 移动端对应的取值器分别是 `contactField`、`conversationField` / `messageField` /
 `intentField`、`profileField`、`taskField`、`eventField`，它们把字段名约束到
@@ -81,6 +85,14 @@ shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于
   不足以报错，因此该文件以 `true satisfies` 形式实际约束断言结果。
 - `tsx` 执行测试不等于类型检查；运行时断言、全量编译和移动端副本一致性必须分别通过。
 
-零类型错误不代表契约治理全部完成：`industries.ts` 与 `language.ts` 仍包含运行时
-字典，违反纯类型目录约束；迁移字典及扩展移动端受控同步范围尚待确认。这与剩余的
-运行时测试失败分别跟踪，不能用编译通过替代这些验收。
+行业和语言的运行时字典已移到 `shared/domain`，契约目录仅保留联合类型和接口。
+`tests/contract-compatibility.typecheck.ts` 同时检查两个字典的完整枚举与契约一致，
+防止只约束「每个值合法」却漏掉某个合法值。14 个行业 ID、42 个三语标签及排序不变。
+
+移动端 `scripts/sync-contract.mjs` 仅允许复制 `industries.ts` 和 `language.ts` 到
+`src/api/domain/`，不复制整个服务端 domain 目录。`tests/domain-sync.test.ts` 校验
+逐字一致，并在独立临时目录执行真实同步命令，验证白名单、过期副本清理和重复执行。
+
+零类型错误不等于所有接口都已做运行时校验。当前同步的运行时 Schema 为
+`mobile-contacts-dashboard.ts`；通用 API client 的响应壳检查和资源的 Schema 校验
+是两个不同层次。剩余运行时回归仍需分别处理，不能用编译通过替代功能验收。

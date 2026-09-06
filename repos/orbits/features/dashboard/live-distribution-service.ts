@@ -5,7 +5,7 @@ import type {
 import {
   INDUSTRY_CATALOG,
   industryLabel,
-} from "../../shared/contract/industries";
+} from "../../shared/domain/industries";
 import {
   NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS,
   type IndustryDistributionBucket,

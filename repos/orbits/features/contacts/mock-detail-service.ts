@@ -41,7 +41,7 @@ import {
 import {
   industryLabel,
   isIndustryIdCode,
-} from "../../shared/contract/industries";
+} from "../../shared/domain/industries";
 
 const supportedScenarios = new Set<ContactDetailTagStatusScenario>([
   "success",

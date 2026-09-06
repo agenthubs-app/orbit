@@ -10,7 +10,7 @@ import type { OrbitLanguage } from "../../shared/contract/language";
 import {
   industryLabel,
   isIndustryIdCode,
-} from "../../shared/contract/industries";
+} from "../../shared/domain/industries";
 import { resolveOrbitLanguage } from "../../shared/i18n/orbit-language";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,

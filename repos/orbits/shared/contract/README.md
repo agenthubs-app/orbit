@@ -29,3 +29,9 @@
 App 不从 `../orbits` import 源文件（`repos/orbit-app/AGENTS.md` 禁止构建期跨仓库耦合）。
 它把本目录原样拷贝到 `src/api/contract/`，由 `npm run sync:contract` 生成、由
 `tests/contract-sync.test.ts` 校验副本与这里逐字一致。副本过期，App 的测试就红。
+
+运行时行业与语言字典不放在本目录。它们位于 `shared/domain/industries.ts` 和
+`shared/domain/language.ts`，经批准由同一命令按两个文件白名单同步至 App 的
+`src/api/domain/`，不复制其他 domain 代码。完整枚举一致性由
+`tests/contract-compatibility.typecheck.ts` 检查，字典副本由移动端
+`tests/domain-sync.test.ts` 检查。

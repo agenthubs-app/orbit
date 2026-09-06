@@ -1,7 +1,5 @@
-import {
-  ORBIT_LANGUAGES,
-  type OrbitLanguage,
-} from "../contract/language";
+import type { OrbitLanguage } from "../contract/language";
+import { ORBIT_LANGUAGES } from "../domain/language";
 
 export { ORBIT_LANGUAGES, type OrbitLanguage };
 
