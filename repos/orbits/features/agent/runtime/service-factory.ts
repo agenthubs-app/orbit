@@ -1,3 +1,5 @@
+import { enqueueAgentAction } from "./action-queue";
+import { withAgentBackgroundDispatch } from "./background-dispatch";
 import { createStorageContactArchiveActionWriter } from "../../contacts/action-writer";
 import { createStorageEventActionWriter } from "../../events/action-writer";
 import { createEventMatchmakingService } from "../../events/matchmaking/service";
@@ -23,7 +25,7 @@ interface OrbitAgentRuntimeGlobal {
 }
 
 const runtimeGlobal = globalThis as typeof globalThis & OrbitAgentRuntimeGlobal;
-const RUNTIME_SERVICE_CACHE_VERSION = 3;
+const RUNTIME_SERVICE_CACHE_VERSION = 4;
 if (
   runtimeGlobal.__orbitAgentRuntimeServicesVersion !==
   RUNTIME_SERVICE_CACHE_VERSION
@@ -117,7 +119,10 @@ export function createOrbitAgentRuntimeService(
         : undefined,
     }),
   );
-  const service = createAgentRuntimeService({ executors, repository });
+  const base = createAgentRuntimeService({ executors, repository });
+  const service = mode === "live" && process.env.VERCEL === "1"
+    ? withAgentBackgroundDispatch(base, actorId, enqueueAgentAction)
+    : base;
   cachedServices.set(cacheKey, service);
   return service;
 }
