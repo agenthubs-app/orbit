@@ -260,6 +260,10 @@ export function OrbitRealAllActions({
         <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>
           还没有任何安排。待决定、稍后处理和已执行的操作都会在这里统一留痕。
         </p>
+        <nav aria-label="开始新的安排" style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
+          <a className="btn btn-primary" href="/app/contacts/new">添加联系人</a>
+          <a className="btn btn-ghost" href="/app/agent">前往 iOrbit</a>
+        </nav>
       </div>
     );
   }

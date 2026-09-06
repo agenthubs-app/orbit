@@ -58,7 +58,11 @@ test("an empty ledger renders the dedicated empty state", async () => {
   const html = renderToStaticMarkup(<OrbitRealAllActions viewModel={model} />);
 
   assert.ok(html.includes("app-all-actions-route-empty"));
-  assert.ok(html.includes("还没有任何操作记录"));
+  assert.ok(html.includes("还没有任何安排"));
+  assert.match(html, /<nav aria-label="开始新的安排"/);
+  assert.match(html, /href="\/app\/contacts\/new">添加联系人<\/a>/);
+  assert.match(html, /href="\/app\/agent">前往 iOrbit<\/a>/);
+  assert.ok(!html.includes("data-orbit-all-actions-entry="));
 });
 
 test("a zero-match filter renders the no-match message instead of a blank list", async () => {
