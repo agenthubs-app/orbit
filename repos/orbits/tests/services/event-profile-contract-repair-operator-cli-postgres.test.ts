@@ -14,6 +14,7 @@ import { buildProfileContractRepairPlan } from "../../features/events/registrati
 import { readProfileContractRepairSource } from "../../features/events/registration/profile-contract-repair/source-reader";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { seedProfileRepairFixture } from "../support/profile-repair-fixture";
 
 loadLocalEnv();
 const connectionString = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -38,110 +39,78 @@ async function createTemporaryFixture() {
   const scopedUrl = schemaUrl(connectionString, schema);
   const pool = new Pool({ connectionString: scopedUrl, max: 2 });
   const client = createEventOperationsPostgresClient({ connectionString: scopedUrl, pool });
-  const sourceSchema = String((await admin.query("select current_schema() as value")).rows[0]?.value);
-  assert.match(sourceSchema, /^[A-Za-z_][A-Za-z0-9_]*$/u);
-  await admin.query(`create schema ${schema}`);
-  await runEventOperationsMigrations(client);
-  await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
-  for (const table of [
-    "event_ops_events", "event_event_versions", "event_ops_configurations",
-    "event_ops_configuration_heads", "event_ops_profile_versions", "event_ops_profile_heads",
-    "event_ops_profile_response_versions",
-  ]) {
-    await pool.query(`insert into ${table} select * from ${sourceSchema}.${table} where workspace_id=$1`, [workspaceId]);
-  }
-  await pool.query(`insert into event_ops_membership_versions (
-    workspace_id,event_id,actor_id,membership_version,participant_id,profile_version,status,
-    registered_at,cancelled_at,reactivated_at,late_registration,source_registration_id,
-    created_at,effective_at,origin,admission_application_version)
-    select workspace_id,event_id,actor_id,membership_version,participant_id,profile_version,status,
-    registered_at,cancelled_at,reactivated_at,late_registration,source_registration_id,
-    created_at,effective_at,'legacy_registration',null from ${sourceSchema}.event_ops_membership_versions
-    where workspace_id=$1`, [workspaceId]);
-  const admission = (await pool.query<{ actor_id: string; event_id: string; membership_version: number; registered_at: Date }>(
-    `select event_id,actor_id,membership_version,registered_at from event_ops_membership_versions
-      where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId],
-  )).rows[0];
-  assert.ok(admission);
-  await pool.query(`insert into event_ops_admission_policy_versions
-    (workspace_id,event_id,policy_version,capacity,admission_mode,waitlist_enabled,
-     registration_opens_at,registration_closes_at,updated_at,profile_edit_deadline_at)
-    values ($1,$2,1,null,'instant',true,$3::timestamptz-interval '1 day',$3::timestamptz+interval '1 day',$3,$3)`,
-  [workspaceId, admission.event_id, admission.registered_at]);
-  await pool.query(`insert into event_ops_admission_application_versions
-    (workspace_id,event_id,actor_id,application_version,policy_version,status,profile_payload,
-     submitted_at,updated_at,decided_at,decision_actor_id)
-    values ($1,$2,$3,1,1,'admitted','{}',$4,$4,$4,'actor:test-organizer')`,
-  [workspaceId, admission.event_id, admission.actor_id, admission.registered_at]);
-  await pool.query(`update event_ops_membership_versions
-    set origin='admission_application',admission_application_version=1
-    where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
-  [workspaceId, admission.event_id, admission.actor_id, admission.membership_version]);
-  assert.equal(Number((await pool.query(`select count(*) as count
-    from event_ops_membership_versions membership
-    join event_ops_admission_application_versions application
-      on application.workspace_id=membership.workspace_id and application.event_id=membership.event_id
-      and application.actor_id=membership.actor_id and application.application_version=membership.admission_application_version
-    join event_ops_admission_policy_versions policy
-      on policy.workspace_id=application.workspace_id and policy.event_id=application.event_id
-      and policy.policy_version=application.policy_version
-    where membership.workspace_id=$1 and membership.origin='admission_application'`, [workspaceId])).rows[0]?.count), 1);
-  await pool.query(`insert into event_ops_membership_heads select * from ${sourceSchema}.event_ops_membership_heads where workspace_id=$1`, [workspaceId]);
-  await pool.query(`insert into event_ops_audit_log select * from ${sourceSchema}.event_ops_audit_log
-    where workspace_id=$1 and action='registration_migration_activated'`, [workspaceId]);
-  await pool.query(`insert into orbit_records select * from ${sourceSchema}.orbit_records where workspace_id=$1`, [workspaceId]);
-  const repairLedger = await admin.query<{ present: boolean }>(
-    `select to_regclass($1) is not null as present`,
-    [`${sourceSchema}.event_ops_data_repair_items`],
-  );
-  if (repairLedger.rows[0]?.present) {
-    // Reconstruct the reviewed pre-repair defect from append-only history so
-    // this isolated apply test remains meaningful after main was repaired.
-    await pool.query(`update event_ops_profile_versions current_profile
-      set profile_payload=source_profile.profile_payload,
-          profile_hash=source_profile.profile_hash
-      from ${sourceSchema}.event_ops_data_repair_items item
-      join ${sourceSchema}.event_ops_data_repair_runs repair_run
-        on repair_run.workspace_id=item.workspace_id and repair_run.repair_id=item.repair_id
-      join ${sourceSchema}.event_ops_profile_versions source_profile
-        on source_profile.workspace_id=item.workspace_id and source_profile.event_id=item.event_id
-        and source_profile.participant_id=item.participant_id
-        and source_profile.profile_version=item.source_profile_version
-      where item.workspace_id=$1 and current_profile.workspace_id=item.workspace_id
-        and repair_run.repair_type='canonical_profile_empty_answer_v1'
-        and current_profile.event_id=item.event_id and current_profile.participant_id=item.participant_id
-        and current_profile.profile_version=item.target_profile_version`, [workspaceId]);
-  }
-  const plan = await withCanonicalMembershipMigrationSnapshot({
-    connectionString: scopedUrl,
-    isolation: "serializable",
-    operation: async (snapshot) => buildProfileContractRepairPlan(await readProfileContractRepairSource({ snapshot, workspaceId })),
-  });
-  assert.equal(plan.applyEligible, true, JSON.stringify(plan.blockers));
-  assert.equal(plan.eventCount, 2);
-  assert.equal(plan.targetCount, 24);
-  assert.ok(plan.applyPlanHash);
-  assert.ok(Number((await pool.query("select max(version) as version from event_ops_schema_migrations")).rows[0]?.version) >= 11);
-  return {
-    admission,
-    admin,
-    plan,
-    pool,
-    schema,
-    async close() {
-      await client.close();
-      await admin.query(`drop schema if exists ${schema} cascade`);
-      await admin.end();
-    },
+  const close = async () => {
+    try { await client.close(); }
+    finally {
+      try { await admin.query(`drop schema if exists ${schema} cascade`); }
+      finally { await admin.end(); }
+    }
   };
+  try {
+    await admin.query(`create schema ${schema}`);
+    await runEventOperationsMigrations(client);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    await seedProfileRepairFixture(pool, workspaceId);
+    const admission = (await pool.query<{ actor_id: string; event_id: string; membership_version: number; registered_at: Date }>(
+      `select event_id,actor_id,membership_version,registered_at from event_ops_membership_versions
+        where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId],
+    )).rows[0];
+    assert.ok(admission);
+    await pool.query(`insert into event_ops_admission_policy_versions
+      (workspace_id,event_id,policy_version,capacity,admission_mode,waitlist_enabled,
+       registration_opens_at,registration_closes_at,updated_at,profile_edit_deadline_at)
+      values ($1,$2,1,null,'instant',true,$3::timestamptz-interval '1 day',$3::timestamptz+interval '1 day',$3,$3)`,
+    [workspaceId, admission.event_id, admission.registered_at]);
+    await pool.query(`insert into event_ops_admission_application_versions
+      (workspace_id,event_id,actor_id,application_version,policy_version,status,profile_payload,
+       submitted_at,updated_at,decided_at,decision_actor_id)
+      values ($1,$2,$3,1,1,'admitted','{}',$4,$4,$4,'actor:test-organizer')`,
+    [workspaceId, admission.event_id, admission.actor_id, admission.registered_at]);
+    await pool.query(`update event_ops_membership_versions
+      set origin='admission_application',admission_application_version=1
+      where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
+    [workspaceId, admission.event_id, admission.actor_id, admission.membership_version]);
+    assert.equal(Number((await pool.query(`select count(*) as count
+      from event_ops_membership_versions membership
+      join event_ops_admission_application_versions application
+        on application.workspace_id=membership.workspace_id and application.event_id=membership.event_id
+        and application.actor_id=membership.actor_id and application.application_version=membership.admission_application_version
+      join event_ops_admission_policy_versions policy
+        on policy.workspace_id=application.workspace_id and policy.event_id=application.event_id
+        and policy.policy_version=application.policy_version
+      where membership.workspace_id=$1 and membership.origin='admission_application'`, [workspaceId])).rows[0]?.count), 1);
+    const plan = await withCanonicalMembershipMigrationSnapshot({
+      connectionString: scopedUrl,
+      isolation: "serializable",
+      operation: async (snapshot) => buildProfileContractRepairPlan(await readProfileContractRepairSource({ snapshot, workspaceId })),
+    });
+    assert.equal(plan.applyEligible, true, JSON.stringify(plan.blockers));
+    assert.equal(plan.eventCount, 2);
+    assert.equal(plan.targetCount, 24);
+    assert.ok(plan.applyPlanHash);
+    assert.ok(Number((await pool.query("select max(version) as version from event_ops_schema_migrations")).rows[0]?.version) >= 11);
+    return {
+      admission,
+      admin,
+      plan,
+      pool,
+      schema,
+      scopedUrl,
+      close,
+    };
+  } catch (error) {
+    await close();
+    throw error;
+  }
 }
 
-test("main CLI dry run is read-only and does not disclose operator inputs", {
+test("isolated CLI dry run is read-only and does not disclose operator inputs", {
   skip: connectionString && workspaceId ? false : "ORBIT_EVENT_DATABASE_URL/ORBIT_WORKSPACE_ID is not configured",
   timeout: 120_000,
-}, async () => {
-  assert.ok(connectionString && workspaceId);
-  const pool = new Pool({ connectionString, max: 1 });
+}, async (t) => {
+  const fixture = await createTemporaryFixture();
+  t.after(fixture.close);
+  const { pool, scopedUrl: connectionString } = fixture;
   const directory = await mkdtemp(join(tmpdir(), "profile-repair-cli-main-"));
   try {
     const before = await pool.query<{ version: string; legacy: string }>(
@@ -153,7 +122,7 @@ test("main CLI dry run is read-only and does not disclose operator inputs", {
       operation: async (snapshot) => buildProfileContractRepairPlan(await readProfileContractRepairSource({ snapshot, workspaceId })),
     });
     assert.equal(plan.eventCount, 2);
-    assert.ok(plan.targetCount === 0 || plan.targetCount === 24);
+    assert.equal(plan.targetCount, 24);
     const manifest = join(directory, "scope.json");
     await writeFile(manifest, JSON.stringify({ events: plan.events.map((event) => event.eventId), repairType: "canonical_profile_empty_answer_v1", schemaVersion: 1 }));
     const result = command(["--dry-run", "--workspace-id", workspaceId, "--scope-manifest", manifest], {
@@ -175,7 +144,7 @@ test("main CLI dry run is read-only and does not disclose operator inputs", {
     const cliOutput = `${result.stdout.slice(jsonStart)}\n${result.stderr}`;
     assert.ok(!cliOutput.includes(connectionString));
     assert.ok(!cliOutput.includes(manifest));
-  } finally { await pool.end(); await rm(directory, { force: true, recursive: true }); }
+  } finally { await rm(directory, { force: true, recursive: true }); }
 });
 
 test("temporary-schema CLI applies only the reviewed 24-target manifest without leaking operator inputs", {

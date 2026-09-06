@@ -573,6 +573,10 @@ test(
       await adminPool.query(`create schema ${schema}`);
       await runOrbitRecordsMigration(scopedPool);
       await runEventOperationsMigrations(client);
+      // Registration checks PostgreSQL time, so keep the fixture window ahead of that clock.
+      const clock = await scopedPool.query<{ now: Date }>("select now() as now");
+      const eventStart = clock.rows[0]!.now.getTime() + 30 * 24 * 60 * 60 * 1000;
+      const eventTime = (hours: number) => new Date(eventStart + hours * 60 * 60 * 1000).toISOString();
       let leakedSnapshot: CanonicalMembershipMigrationSnapshot | null = null;
       let pendingRead:
         | ReturnType<typeof readCanonicalMembershipMigrationSource>
@@ -603,10 +607,10 @@ test(
              event_version
            ) values (
              $1, $2, 'organizer-source-reader', 'active', 1, now(), now(),
-             $2, $2, 'Asia/Tokyo', '2026-09-01T10:00:00.000Z',
-             '2026-09-01T14:00:00.000Z', 'published', '{}'::jsonb, 1
+             $2, $2, 'Asia/Tokyo', $3,
+             $4, 'published', '{}'::jsonb, 1
            )`,
-          [workspaceId, eventId],
+          [workspaceId, eventId, eventTime(0), eventTime(4)],
         );
         await scopedPool.query(
           `insert into event_event_versions (
@@ -615,26 +619,26 @@ test(
              organizer_actor_id, content_hash, created_at
            ) values (
              $1, $2, 1, $2, $2, 'Asia/Tokyo',
-             '2026-09-01T10:00:00.000Z', '2026-09-01T14:00:00.000Z',
+             $4, $5,
              'published', '{}'::jsonb, 'organizer-source-reader', $3, now()
            )`,
-          [workspaceId, eventId, sha256(`content-hash-${index}`)],
+          [workspaceId, eventId, sha256(`content-hash-${index}`), eventTime(0), eventTime(4)],
         );
       }
       for (const eventId of canonicalEventIds) {
         await repository.saveConfiguration({
-          checkInOpensAt: "2026-09-01T09:00:00.000Z",
-          eventEndsAt: "2026-09-01T14:00:00.000Z",
+          checkInOpensAt: eventTime(-1),
+          eventEndsAt: eventTime(4),
           eventId,
-          eventStartsAt: "2026-09-01T10:00:00.000Z",
+          eventStartsAt: eventTime(0),
           maxAttemptsPerTask: 3,
           organizerActorId: "organizer-source-reader",
-          profileEditDeadlineAt: "2026-08-20T10:00:00.000Z",
+          profileEditDeadlineAt: eventTime(-12 * 24),
           recommendationCount: 4,
-          registrationCutoffAt: "2026-08-25T10:00:00.000Z",
-          resultsAvailableAt: "2026-08-26T10:00:00.000Z",
-          roundOneStartsAt: "2026-09-01T11:00:00.000Z",
-          roundTwoStartsAt: "2026-09-01T12:00:00.000Z",
+          registrationCutoffAt: eventTime(-7 * 24),
+          resultsAvailableAt: eventTime(-6 * 24),
+          roundOneStartsAt: eventTime(1),
+          roundTwoStartsAt: eventTime(2),
           shardSize: 8,
           tableSize: 6,
           updatedAt: "2026-08-04T10:00:00.000Z",
