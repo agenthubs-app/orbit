@@ -124,3 +124,10 @@ Agent 活动推荐语言测试不再依赖运行机器的目录配置。通过�
 新增 `agent-worker-postgres-recovery.test.ts`，在随机隔离 PostgreSQL schema 中使用正式 LiveRecordStore、SQL 原子领取和 Agent Runtime。生产者持久化两项已确认任务，其中一项已有成功回执；独立 Node 子进程领取两项后由测试发送 SIGKILL，并确认进程因该信号退出。随后用新数据库连接与两个并发 worker 验证：15 分钟租约到期前不接管；到期后每项只领取一次、attempt 增至 2；已有回执的任务不调用执行器；两项状态均为 completed，回执各一条，后续扫描为空；不同工作区不能领取。时钟由测试推进，避免实等租约周期。
 
 真实数据库恢复测试与轮询控制共 4 项通过，类型检查无新增诊断。测试创建的子进程、连接及 schema 已清理。此处证明 SQL 领取与持久化回执恢复，不证明第三方系统在“写入成功但回执尚未落库”时能避免重复，也不代表常驻 Agent worker 已部署到云端。生产实现未修改。
+
+
+### 当前日程入口与 Agent 请求超时（2026-09-06）
+
+修正两条过时测试约束：Today 已通过 `loadConfiguredTodaySchedule(actorId)` 加载已确认预约和批准后的 Orbit Schedule，不再调用旧建议聚合 `loadAppScheduleRouteViewModel`；旧 `/app/schedule` 仍跳转到存在的 `#arrangements` 区域。Agent 的 `setTimeout` 用于请求截止时间，不能用全文件禁用计时器的断言把它误判为模拟答复。
+
+新增行为验证通过 TypeScript AST 提取当前源码的实际请求函数及其截止时间/错误类，在隔离上下文运行，验证 POST 地址和请求体、30 秒超时取消、原始网络错误传递，以及成功/失败/超时均清理计时器。未复制另一份请求实现，也未为测试增加生产导出。41 项页面与 Today 关联测试通过，无新增类型诊断；生产代码未修改。这里未执行真实模型请求，不替代端到端生成验收。
