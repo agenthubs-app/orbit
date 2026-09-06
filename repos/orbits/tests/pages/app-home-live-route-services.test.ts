@@ -152,9 +152,9 @@ test("iOrbit dashboard presents registration state from the shared runtime snaps
   );
 
   assert.match(dashboardSource, /registrationAvailabilityByEventId/);
-  assert.match(dashboardSource, /nextEventRegistrationAvailability === "open"/);
-  assert.match(dashboardSource, /报名已截止/);
-  assert.match(dashboardSource, /报名资料已锁定/);
+  assert.match(dashboardSource, /eventRegistrationIsOpen\(nextEventRegistrationAvailability\)/);
+  assert.match(dashboardSource, /eventRegistrationLabel\(registrationAvailability\)/);
+  assert.match(dashboardSource, /eventRegistrationIsOpen\(registrationAvailabilityByEventId\[event.id\]/);
   assert.doesNotMatch(
     dashboardSource,
     /浏览可报名的活动，回答两题即可完成报名/,

@@ -127,3 +127,12 @@ Calendar Provider Import 是后续独立集成。它可以接日历、活动平�
 ## 团队协作规则
 
 Events 团队维护活动上下文，不直接实现联系人导入和消息发送。参会者转联系人走 Acquisition；跟进任务走 Followups；开场白推荐可调用 Recommendations。
+
+
+## 网页报名状态一致性
+
+活动列表、iOrbit 首页和详情页共同使用 `orbit-event-registration-view-model.ts` 映射后端报名窗口。仅 `open` 允许进入公共报名；`profile_edit_closed` 显示资料已锁定并关闭新报名，因为公共表单必须提交画像答案；`registration_closed` 禁止新报名入口，`unavailable` 明确表示无法确认状态，不能默认开放。已报名用户在活动开始前保留管理入口，不因新报名截止而丢失已有报名。
+
+详情页由 canonical route 同时注入报名窗口和 actor 的报名状态；侧栏、旅程和主按钮使用该快照。移除了客户端重复读取 registration 后把网络失败解释为未报名的路径。后台数据库时钟、发布状态、截止规则、审计和 outbox 事务边界没有变化。旧仓储测试补齐隔离 fixture 的 published 前置状态，并明确断言草稿不能报名。
+
+浏览器真实数据进一步确认共享 runtime 曾只按活动开始时间判断窗口，现改为复用数据库时钟的 `resolveEventRegistrationAvailability`，因此首页、列表与详情的状态和后端写入规则一致；公开活动可见性与已开始活动的关闭保护仍保留。

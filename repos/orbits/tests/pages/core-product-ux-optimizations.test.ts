@@ -122,19 +122,21 @@ test("Today only accepts actor-authorized records as schedule truth", () => {
   assert.doesNotMatch(page, /OrbitTodayArrangements/);
 });
 
-test("event registration uses event start as the only public availability rule", () => {
+test("event registration display respects the same published window as backend writes", () => {
   const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
   const windowProvider = source("features/events/registration/storage/event-operations-window-provider.ts");
   const registrationRepository = source("features/events/event-operations/storage/canonical-registration-repository.ts");
 
   assert.match(detail, /event\.status !== "upcoming"/);
   assert.match(detail, /报名已结束/);
-  assert.doesNotMatch(detail, /报名暂不可用/);
+  assert.match(detail, /eventRegistrationIsOpen\(registrationAvailability\)/);
   assert.doesNotMatch(detail, /开放报名时提醒我/);
   assert.doesNotMatch(detail, /查看其他可报名活动/);
   assert.match(detail, /SAMPLE_MATCHES\.slice\(0, 1\)/);
-  assert.match(windowProvider, /event\.starts_at/);
-  assert.match(registrationRepository, /event_row\.starts_at as registration_cutoff_at/);
+  assert.match(windowProvider, /admission_policy\.registration_closes_at/);
+  assert.match(windowProvider, /configuration\.registration_cutoff_at/);
+  assert.match(registrationRepository, /admission_policy\.registration_closes_at/);
+  assert.match(registrationRepository, /configuration\.registration_cutoff_at/);
 });
 
 test("long result surfaces expose skip and list semantics for keyboard and screen-reader navigation", () => {

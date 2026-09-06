@@ -11,12 +11,12 @@ test("registered event actions are consistent across lifecycle states", () => {
   assert.equal(eventCardActionKind("upcoming", true), "manage");
   assert.equal(eventCardActionKind("active", true), "enter");
   assert.equal(eventCardActionKind("ended", true), "view");
-  assert.equal(eventCardActionKind("upcoming", false), "register");
+  assert.equal(eventCardActionKind("upcoming", false, "open"), "register");
   assert.equal(eventCardActionKind("active", false), "view");
   assert.equal(eventCardActionKind("ended", false), "view");
   assert.equal(
     eventCardActionKind("upcoming", false, "registration_closed"),
-    "register",
+    "view",
   );
   assert.equal(
     eventCardActionKind("active", false, "unavailable"),
@@ -43,4 +43,13 @@ test("event scope has one URL source across registered and lifecycle transitions
     eventScopeSearchString("all", "scope=registered&language=zh"),
     "language=zh",
   );
+});
+
+
+test("event cards never imply an open registration window when configuration is missing", () => {
+  assert.equal(eventCardActionKind("upcoming", false), "view");
+  assert.equal(eventCardActionKind("upcoming", false, "unavailable"), "view");
+  assert.equal(eventCardActionKind("upcoming", false, "profile_edit_closed"), "view");
+  assert.equal(eventCardActionKind("upcoming", true, "registration_closed"), "manage");
+  assert.equal(eventCardActionKind("upcoming", true, "unavailable"), "manage");
 });

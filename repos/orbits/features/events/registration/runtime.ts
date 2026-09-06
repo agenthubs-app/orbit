@@ -1,5 +1,6 @@
 import {
   createDeadlineGatedEventRegistrationService,
+  resolveEventRegistrationAvailability,
   type EventRegistrationAvailability,
 } from "./deadline-gated-service";
 import { createConfiguredEventCoreService } from "../core/runtime";
@@ -45,7 +46,8 @@ export async function readRuntimeEventRegistrationAvailability(
   try {
     const event = await createConfiguredEventCoreService()?.getPublishedEvent(eventId);
     if (!event) return "unavailable";
-    return event.phase === "upcoming" ? "open" : "registration_closed";
+    if (event.phase !== "upcoming") return "registration_closed";
+    return resolveEventRegistrationAvailability(await runtimeWindowProvider.getEnrollment(event.eventId));
   } catch {
     return "unavailable";
   }

@@ -14,6 +14,8 @@ import { EventCover } from "../orbit-event-cover";
 import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-event-matchmaking";
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
+import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
+
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
 type JourneyStage = "joined" | "post" | "pre";
@@ -186,6 +188,7 @@ function primaryAction(
   event: OrbitLandingEventView,
   t: Translate,
   registrationStatus: RegistrationStatus,
+  registrationAvailability: EventRegistrationAvailability,
   flex: CSSProperties["flex"] = "0 0 auto",
 ) {
   const registrationHref = `/app/events/${encodeURIComponent(event.code || event.id)}/register`;
@@ -201,6 +204,9 @@ function primaryAction(
   }
   if (event.status !== "upcoming") {
     return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t({ en: "Registration closed", zh: "报名已结束" })}</ActionButton>;
+  }
+  if (!eventRegistrationIsOpen(registrationAvailability)) {
+    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t(eventRegistrationLabel(registrationAvailability))}</ActionButton>;
   }
   if (registrationStatus === "cancelled") {
     return (
@@ -446,6 +452,7 @@ function EventInfoCard({
   event,
   mini,
   registrationStatus,
+  registrationAvailability,
   stage,
   t,
   workspaceAvailable,
@@ -453,6 +460,7 @@ function EventInfoCard({
   event: OrbitLandingEventView;
   mini: { name: string; timeDate: string; timeTime: string; venue: string };
   registrationStatus: RegistrationStatus;
+  registrationAvailability: EventRegistrationAvailability;
   stage: JourneyStage;
   t: Translate;
   workspaceAvailable: boolean;
@@ -469,7 +477,9 @@ function EventInfoCard({
     : stage === "joined"
       ? { label: t({ en: "Registered", zh: "已报名" }), tone: "badge-success" }
       : event.status === "upcoming"
-        ? { label: t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
+        ? eventRegistrationIsOpen(registrationAvailability)
+          ? { label: t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
+          : { label: t(eventRegistrationLabel(registrationAvailability)), tone: "badge-muted" }
         : { label: t({ en: "Registration closed", zh: "报名已结束" }), tone: "badge-muted" };
 
   return (
@@ -520,9 +530,9 @@ function EventInfoCard({
           </div>
 
           <div className="a-cta-row">
-            {primaryAction(event, t, registrationStatus)}
+            {primaryAction(event, t, registrationStatus, registrationAvailability)}
             {registrationStatus === "rsvped" ? enterAction(event, t, workspaceAvailable) : null}
-            {stage === "pre" && event.status === "upcoming" ? <span className="a-cta-note">{t({ en: "Just 2 questions · your first match direction appears right after", zh: "只需 2 个问题 · 报名后立即看到你的初步匹配方向" })}</span> : null}
+            {stage === "pre" && event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability) ? <span className="a-cta-note">{t({ en: "Just 2 questions · your first match direction appears right after", zh: "只需 2 个问题 · 报名后立即看到你的初步匹配方向" })}</span> : null}
           </div>
           <EventDetailsExtra event={event} t={t} />
           {stage !== "pre" ? (
@@ -640,40 +650,25 @@ function PostEventCard({ event, stage, summary, t, youRsvped }: { event: OrbitLa
   );
 }
 
-function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable }: {
+function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, registrationAvailability }: {
   askAgentHref: string;
   event: OrbitLandingEventView;
   mini: { name: string; timeDate: string; timeTime: string; venue: string };
   t: Translate;
   workspaceAvailable: boolean;
+  registrationAvailability: EventRegistrationAvailability;
 }) {
-  const [registrationStatus, setRegistrationStatus] = useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
+  const registrationStatus: RegistrationStatus = event.stats.youRsvped ? "rsvped" : null;
   const [summary, setSummary] = useState<EventMatchmakingSummary | null>(null);
   const onSummary = useCallback((value: EventMatchmakingSummary | null) => setSummary(value), []);
 
-  useEffect(() => {
-    if (!event.stats.authed) {
-      setRegistrationStatus(null);
-      return;
-    }
-    const controller = new AbortController();
-    void fetch(`/api/events/${encodeURIComponent(event.id)}/registration?questions=false`, { signal: controller.signal })
-      .then(async (response) => {
-        const body = (await response.json()) as { data?: { registration?: { status?: RegistrationStatus } | null }; success?: boolean };
-        if (response.ok && body.success === true) setRegistrationStatus(body.data?.registration?.status ?? null);
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setRegistrationStatus(null);
-      });
-    return () => controller.abort();
-  }, [event.id, event.stats.authed]);
 
   const youRsvped = registrationStatus === "rsvped";
   const stage: JourneyStage = event.status === "ended" ? "post" : youRsvped ? "joined" : "pre";
 
   return (
     <>
-      <EventInfoCard event={event} mini={mini} registrationStatus={registrationStatus} stage={stage} t={t} workspaceAvailable={workspaceAvailable} />
+      <EventInfoCard event={event} mini={mini} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} stage={stage} t={t} workspaceAvailable={workspaceAvailable} />
       <OnsiteCard event={event} onSummary={onSummary} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <PostEventCard event={event} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <div className="orb-dock">
@@ -685,7 +680,7 @@ function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable }: 
   );
 }
 
-export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { event: OrbitLandingEventView; workspaceAvailable?: boolean }) {
+export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable" }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability }) {
   const { t, language } = useOrbitLanguage();
   // The approved journey uses one stable product-green fallback. Real event
   // artwork still wins when supplied; source-less events no longer receive a
@@ -730,7 +725,7 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { ev
                   : initialStage === "joined"
                     ? t({ en: "Registered", zh: "已报名" })
                     : event.status === "upcoming"
-                      ? t({ en: "Registration open", zh: "报名中" })
+                      ? t(eventRegistrationLabel(registrationAvailability))
                       : t({ en: "Registration closed", zh: "报名已结束" })}
               </span>
             </EventCover>
@@ -739,7 +734,7 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false }: { ev
           </aside>
 
           <div className="orbit-detail-main">
-            <EventDetailPanel askAgentHref={askAgentHref} event={event} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
+            <EventDetailPanel askAgentHref={askAgentHref} event={event} registrationAvailability={registrationAvailability} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>
       </main>

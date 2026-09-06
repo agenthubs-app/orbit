@@ -11,7 +11,7 @@ import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primit
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../orbit-z";
 import { EventCover } from "./orbit-event-cover";
-import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
+import { eventRegistrationIsOpen, type EventRegistrationAvailability } from "../orbit-event-registration-view-model";
 
 const tz = { timeZone: "Asia/Tokyo" };
 const statusFilters = ["all", "registered", "upcoming", "active", "ended"] as const;
@@ -41,10 +41,10 @@ export function eventScopeSearchString(
 export function eventCardActionKind(
   status: OrbitLandingEventView["status"],
   registered: boolean,
-  _registrationAvailability: EventRegistrationAvailability = "open",
+  registrationAvailability: EventRegistrationAvailability = "unavailable",
 ): "enter" | "manage" | "register" | "view" {
   if (!registered) {
-    return status === "upcoming" ? "register" : "view";
+    return status === "upcoming" && eventRegistrationIsOpen(registrationAvailability) ? "register" : "view";
   }
   if (status === "active") return "enter";
   return status === "upcoming" ? "manage" : "view";

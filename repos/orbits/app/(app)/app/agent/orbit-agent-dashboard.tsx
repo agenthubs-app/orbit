@@ -18,7 +18,7 @@ import type { OrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { AgentStar } from "./orbit-real-agent";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
-import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
+import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../orbit-event-registration-view-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -69,13 +69,13 @@ function greeting(t: Translate, now: Date): string {
 
 function journeyStageBadge(
   event: OrbitHomeViewModel["events"][number],
-  _registrationAvailability: EventRegistrationAvailability,
+  registrationAvailability: EventRegistrationAvailability,
   t: Translate,
 ): { label: string; tone: "act" | "done" | "wait" } {
   if (event.status === "ended") return { label: t({ en: "Ended", zh: "已结束" }), tone: "done" };
   if (event.status === "active") return { label: t({ en: "Live now", zh: "进行中" }), tone: "act" };
   if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Waiting for matches", zh: "等待匹配发布" }), tone: "wait" };
-  return { label: t({ en: "Registration open", zh: "报名开放" }), tone: "act" };
+  return { label: t(eventRegistrationLabel(registrationAvailability)), tone: eventRegistrationIsOpen(registrationAvailability) ? "act" : "wait" };
 }
 
 const APPOINTMENT_TZ = "Asia/Tokyo";
@@ -141,7 +141,8 @@ export function OrbitAgentDashboard({
     (event) =>
       event.status === "upcoming" &&
       !event.youRsvped &&
-      !event.stats.youRsvped,
+      !event.stats.youRsvped &&
+      eventRegistrationIsOpen(registrationAvailabilityByEventId[event.id] ?? "unavailable"),
   );
 
   const nextEventDate = nextEvent ? eventTemporalBounds(nextEvent.startsAt, nextEvent.endsAt).start : null;
@@ -376,12 +377,12 @@ export function OrbitAgentDashboard({
               <b>{nextEvent.name || nextEvent.code}</b>
             </div>
             <div className="stage-row">
-              <span className={`stage${nextEventRegistered ? " done" : nextEventRegistrationAvailability === "open" ? " now" : ""}`}>
+              <span className={`stage${nextEventRegistered ? " done" : eventRegistrationIsOpen(nextEventRegistrationAvailability) ? " now" : ""}`}>
                 <span className="s-dot">
                   {nextEventRegistered ? <Icon name="check" size={11} /> : null}
                   {nextEventRegistered
                     ? t({ en: "Registration complete", zh: "已完成报名" })
-                    : nextEventRegistrationAvailability === "open"
+                    : eventRegistrationIsOpen(nextEventRegistrationAvailability)
                       ? t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })
                       : journeyStageBadge(nextEvent, nextEventRegistrationAvailability, t).label}
                 </span>
@@ -431,7 +432,7 @@ export function OrbitAgentDashboard({
           </div>
           <p>
             {openUnregisteredEvent
-              ? t({ en: "There are events accepting registration now. Answer two questions to complete registration.", zh: "目前有活动正在开放报名，回答两题即可完成报名。" })
+              ? t({ en: "There are events accepting registration now. Review their requirements to register.", zh: "目前有活动正在开放报名，可查看要求后提交报名。" })
               : t({ en: "Review upcoming events and their current registration status.", zh: "查看近期活动及各自的真实报名状态。" })}
           </p>
           <button className="btn btn-soft btn-sm" onClick={() => navigate("/app/events")} type="button">
