@@ -39,7 +39,7 @@ export function createBusinessCardBatchWorker({
 }: {
   service: BusinessCardBatchService;
   imageStore: BusinessCardBatchImageStore;
-  provider: BusinessCardCloudOcrProvider;
+  provider: BusinessCardCloudOcrProvider | null;
   notify: (input: { actorId: string; batchId: string; now: string }) => Promise<void>;
   concurrency?: number;
 }) {
@@ -49,17 +49,18 @@ export function createBusinessCardBatchWorker({
       now: string;
     }): Promise<BusinessCardBatchWorkerRunResult> {
       const swept = await service.sweepExpired(input.now);
-      const claimed = await service.claimPendingItems({
+      const claimed = provider ? await service.claimPendingItems({
         limit: concurrency,
         now: input.now,
         workerId: input.workerId,
-      });
+      }) : [];
       let completed = 0;
       let failed = 0;
       let notifyFailures = 0;
 
       await Promise.all(
         claimed.map(async (item) => {
+          if (!provider) return;
           let outcome: { batchBecameReady: boolean };
 
           try {

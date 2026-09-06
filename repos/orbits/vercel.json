@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "functions": {
+    "app/api/queues/business-card/route.ts": {
+      "experimentalTriggers": [{
+        "type": "queue/v2beta", "topic": "business-card-processing", "retryAfterSeconds": 60
+      }]
+    },
     "app/api/queues/password-reset/route.ts": {
       "experimentalTriggers": [
         {

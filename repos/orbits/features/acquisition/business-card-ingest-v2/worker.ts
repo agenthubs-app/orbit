@@ -138,7 +138,7 @@ export function createIngestV2Worker({
 }: {
   repository: BusinessCardIngestRepository;
   store: IngestDerivativeStore;
-  provider: BusinessCardCloudOcrProvider;
+  provider: BusinessCardCloudOcrProvider | null;
   notify: (input: {
     actorId: string;
     batchId: string;
@@ -167,11 +167,12 @@ export function createIngestV2Worker({
       const reaped = await repository.reapExhaustedLeases();
       result.reapedItems = reaped.reapedItemIds.length;
 
-      const claimed = await repository.claimItems({ limit: concurrency });
+      const claimed = provider ? await repository.claimItems({ limit: concurrency }) : [];
       result.claimed = claimed.length;
 
       await Promise.all(
         claimed.map(async (item) => {
+          if (!provider) return;
           try {
             if (!item.derivativeObjectKey) {
               throw new BusinessCardCloudOcrProviderError(

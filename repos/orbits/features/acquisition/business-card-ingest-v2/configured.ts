@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { withQueuedCardIngest } from "../business-card-queue-dispatch";
 
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 import {
@@ -59,7 +60,7 @@ export function getConfiguredIngestV2(): ConfiguredIngest | null {
   })();
   globalCache.__orbitIngestV2 = {
     pool,
-    repository,
+    repository: process.env.VERCEL === "1" ? withQueuedCardIngest(repository) : repository,
     store,
     workspaceId: config.workspaceId,
     ready,

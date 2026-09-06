@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { withQueuedCardBatches } from "./business-card-queue-dispatch";
 
 import type {
   BusinessCardCloudOcrUsage,
@@ -380,6 +381,13 @@ export function createBusinessCardBatchService({
     },
 
     async claimPendingItems(input) {
+      const batches = await store.listRecords({
+        collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId,
+      });
+      const activeBatches = new Set(batches.map(batchFromRecord).filter(
+        (batch): batch is BusinessCardBatchDTO => batch !== null &&
+          batch.status === "processing" && batch.expiresAt > input.now,
+      ).map((batch) => batch.id));
       const leaseExpiredBefore = new Date(
         Date.parse(input.now) - BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
       ).toISOString();
@@ -390,6 +398,7 @@ export function createBusinessCardBatchService({
       const claimable = records
         .map(itemFromRecord)
         .filter((item): item is BusinessCardBatchItemDTO => item !== null)
+        .filter((item) => activeBatches.has(item.batchId))
         .filter(
           (item) =>
             item.status === "pending" ||
@@ -578,7 +587,7 @@ export function createConfiguredBusinessCardBatchService({
   }
 
   const images = imageStore ?? createBusinessCardBatchImageStore({ env });
-  return createTransactionalBusinessCardBatchService({
+  const service = createTransactionalBusinessCardBatchService({
     pool: configuredBusinessCardBatchPool(config.connectionString),
     workspaceId: config.workspaceId,
     createService: (store) => createBusinessCardBatchService({
@@ -587,4 +596,5 @@ export function createConfiguredBusinessCardBatchService({
       workspaceId: config.workspaceId,
     }),
   });
+  return (env ?? process.env).VERCEL === "1" ? withQueuedCardBatches(service) : service;
 }
