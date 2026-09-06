@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   BUSINESS_CARD_BATCH_MAX_ITEMS,
+  BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
   type NewBusinessCardBatchItemInput,
 } from "../../features/acquisition/business-card-batch-contract";
 import { createBusinessCardBatchService } from "../../features/acquisition/business-card-batch-service";
@@ -100,7 +101,7 @@ test("claim leases items, expired leases are reclaimed, and ownership is enforce
   const claimedB = await service.claimPendingItems({ limit: 5, now: NOW, workerId: "w-b" });
   assert.equal(claimedB.length, 1, "leased item must not be claimable before expiry");
 
-  const later = "2026-08-26T10:01:00.000Z";
+  const later = new Date(Date.parse(NOW) + BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS + 1).toISOString();
   const reclaimed = await service.claimPendingItems({ limit: 5, now: later, workerId: "w-c" });
   assert.equal(reclaimed.length, 2, "both expired leases are reclaimed");
 

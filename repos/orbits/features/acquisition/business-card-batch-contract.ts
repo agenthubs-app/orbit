@@ -7,7 +7,9 @@ import type {
 export const BUSINESS_CARD_BATCH_MAX_ITEMS = 500;
 export const BUSINESS_CARD_BATCH_MAX_PDF_BYTES = 50 * 1024 * 1024;
 export const BUSINESS_CARD_BATCH_EXPIRY_DAYS = 7;
-export const BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS = 30_000;
+// Longer than the cloud worker's maximum lifetime; an active two-stage OCR
+// request must not be reclaimed just because it takes more than 30 seconds.
+export const BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS = 15 * 60_000;
 export const BUSINESS_CARD_BATCH_ITEM_MAX_ATTEMPTS = 2;
 
 export type BusinessCardBatchStatus =

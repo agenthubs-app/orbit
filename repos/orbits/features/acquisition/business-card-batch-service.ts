@@ -16,7 +16,8 @@ import {
   type BusinessCardBatchSourceFile,
   type NewBusinessCardBatchItemInput,
 } from "./business-card-batch-contract";
-import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
+import { configuredBusinessCardBatchPool, createTransactionalBusinessCardBatchService } from "./storage/business-card-batch-transactions";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
@@ -570,15 +571,20 @@ export function createConfiguredBusinessCardBatchService({
   env?: Record<string, string | undefined>;
   imageStore?: BusinessCardBatchImageStore;
 } = {}): BusinessCardBatchService | null {
-  const configuredStore = createConfiguredPostgresLiveRecordStore({ env });
+  const config = resolveLiveDatabaseConnectionConfig(env);
 
-  if (!configuredStore) {
+  if (!config) {
     return null;
   }
 
-  return createBusinessCardBatchService({
-    imageStore: imageStore ?? createBusinessCardBatchImageStore({ env }),
-    store: configuredStore.store,
-    workspaceId: configuredStore.workspaceId,
+  const images = imageStore ?? createBusinessCardBatchImageStore({ env });
+  return createTransactionalBusinessCardBatchService({
+    pool: configuredBusinessCardBatchPool(config.connectionString),
+    workspaceId: config.workspaceId,
+    createService: (store) => createBusinessCardBatchService({
+      imageStore: images,
+      store,
+      workspaceId: config.workspaceId,
+    }),
   });
 }
