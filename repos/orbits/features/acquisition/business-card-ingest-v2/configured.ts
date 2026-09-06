@@ -2,6 +2,10 @@ import { Pool } from "pg";
 
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 import {
+  createPrivateBlobDerivativeStore,
+  usesPrivateBusinessCardBlob,
+} from "../storage/business-card-private-blob-store";
+import {
   createFilesystemDerivativeStore,
   resolveIngestDerivativeRootDir,
   type IngestDerivativeStore,
@@ -42,9 +46,9 @@ export function getConfiguredIngestV2(): ConfiguredIngest | null {
     pool,
     workspaceId: config.workspaceId,
   });
-  const store = createFilesystemDerivativeStore({
-    rootDir: resolveIngestDerivativeRootDir(),
-  });
+  const store = usesPrivateBusinessCardBlob()
+    ? createPrivateBlobDerivativeStore({ workspaceId: config.workspaceId })
+    : createFilesystemDerivativeStore({ rootDir: resolveIngestDerivativeRootDir() });
   const ready = (async () => {
     const client = await pool.connect();
     try {

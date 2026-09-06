@@ -577,7 +577,7 @@ export function createConfiguredBusinessCardBatchService({
   }
 
   return createBusinessCardBatchService({
-    imageStore: imageStore ?? createBusinessCardBatchImageStore(),
+    imageStore: imageStore ?? createBusinessCardBatchImageStore({ env }),
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
   });

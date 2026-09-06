@@ -1,5 +1,9 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import {
+  createPrivateBlobBatchImageStore,
+  usesPrivateBusinessCardBlob,
+} from "./business-card-private-blob-store";
 
 export interface BusinessCardBatchImageStore {
   save(batchId: string, itemId: string, jpegBytes: Buffer): Promise<string>;
@@ -9,13 +13,20 @@ export interface BusinessCardBatchImageStore {
 }
 
 /**
- * Transcoded batch card images live on local disk until the reviewer confirms
+ * Transcoded batch card images use private Blob on Vercel and local disk in
+ * development until the reviewer confirms
  * or skips the card — the deliberate, user-approved relaxation of the
  * "no image persistence" invariant that single-shot scans still keep.
  */
 export function createBusinessCardBatchImageStore({
-  rootDir = process.env.ORBIT_BATCH_UPLOAD_DIR ?? ".orbit-batch-uploads",
-}: { rootDir?: string } = {}): BusinessCardBatchImageStore {
+  env = process.env,
+  rootDir = env.ORBIT_BATCH_UPLOAD_DIR ?? ".orbit-batch-uploads",
+}: { env?: Record<string, string | undefined>; rootDir?: string } = {}): BusinessCardBatchImageStore {
+  if (usesPrivateBusinessCardBlob(env)) {
+    return createPrivateBlobBatchImageStore({
+      workspaceId: env.ORBIT_WORKSPACE_ID?.trim() || "workspace:default",
+    });
+  }
   const absoluteRoot = resolve(rootDir);
 
   function guardInsideRoot(imagePath: string): string {

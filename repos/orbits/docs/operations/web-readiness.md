@@ -230,3 +230,14 @@ GitNexus 修改前报告 CRITICAL：工厂 9 个直接调用方、44 个受影�
 批量链路另有独立阻碍：V1 的 `createBusinessCardBatchImageStore` 直接写 `.orbit-batch-uploads`；V2 的 `getConfiguredIngestV2` 无条件装配 `createFilesystemDerivativeStore`，其接口注释明确要求多实例部署前实现共享对象存储。当前 `vercel.json` 仅有密码恢复及 Agent 两个队列触发器，V1/V2 OCR worker 都没有云端触发器。已有本机 worker 测试不能证明上传后在另一实例上仍能读取图片、自动识别、清理和发送完成通知。
 
 后续必须同时处理共享私有图片存储、两代 worker 唤醒及恢复、上传限制与清理，不能仅把本地目录换成 `/tmp`。Vercel 官方支持私有 Blob 与客户端直传（https://vercel.com/docs/vercel-blob/private-storage ，https://vercel.com/docs/vercel-blob/client-upload）；适配前须继续核对现有原图限制、批次权限和七天审核保留规则。尚未创建或连接 Blob，也未变更这些生产链路。
+
+
+### 2026-09-07：两代批量名片的私有共享图片存储
+
+新增官方 `@vercel/blob@2.8.0` 适配器，Vercel 下 V1/V2 均选择 private Blob；本机默认沿用文件系统，独立远程 worker 可设置 `ORBIT_BATCH_IMAGE_STORAGE=private-blob` 使用同一存储。V1 以工作区、批次和条目哈希隔离对象路径；V2 保留数据库已有 UUID.jpg 对象键并加工作区与版本前缀。图片仍须通过批次权限 API 读取，不将对象 URL 或凭证下发给审核页面。SDK 私有读取禁用缓存，服务异常仅返回固定错误，不回退到本机目录。
+
+批次清理先收集完整分页，再删除，避免边删除边翻页漏图；严格检查列出的对象属于当前工作区和当前批次，并阻止重复游标循环。原有确认/跳过/过期及 V2 cleanup outbox 继续调用相同存储接口。已有文件系统历史图片不会自动迁移；启用远程存储前需处理旧本机批次，不能假定新实例能读取历史文件路径。
+
+验证：新增适配器测试与 V1 服务/API/worker 共 14 项通过，覆盖独立实例共享、跨工作区拒绝、批次分页清理、重复删除、存储错误脱敏、异常游标。V2 API/worker 初次因缺少数据库变量跳过，随后使用本机默认 PostgreSQL 的随机 schema 实际执行 8 项全部通过，结束清理；未读取连接密钥。生产构建通过，类型诊断仍为 109 条既有问题、无新增。日志 `/tmp/orbit-private-blob-tests.log`、`/tmp/orbit-private-blob-v2-tests.log`、`/tmp/orbit-private-blob-build.log`。
+
+尚未完成：本轮共享传输测试使用受控客户端，不能证明真实 Blob 访问；尚未创建/连接私有 Blob、部署该适配器、接入名片队列及补发扫描，也未解决大文件直接上传的云函数请求体限制。OCR 真实提供方、云端识别与首次价值闭环继续保持未验收。
