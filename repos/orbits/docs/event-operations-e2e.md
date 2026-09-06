@@ -24,9 +24,9 @@ The password is supplied only through the environment and is neither embedded no
 
 ## Organizer path
 
-1. Open `/app/account/login?next=%2Fapp%2Fevents%2Fevent%253Ae2e%253Aorbit-connection-night%2Foperations`.
+1. Open `/app/account/login?next=%2Fapp%2Fevents%2Fevent_signup_01%2Foperations`.
 2. Sign in as `organizer.event-ops@orbit.example.test` with the development password supplied above.
-3. Confirm `/app/events/event%3Ae2e%3Aorbit-connection-night/operations` shows exactly 64 active, on-time participants with complete, partial, and minimal profiles. The underlying canonical fixture also retains 6 cancelled histories, including 3 late registrations.
+3. Confirm `/app/events/event_signup_01/operations` shows exactly 64 active, on-time participants with complete profiles. The underlying canonical fixture also retains 6 cancelled histories, including 3 late registrations.
 4. Review the seeded time gates. Save only if intentionally changing them.
 5. Select **Capture snapshot**. Record the immutable snapshot hash and confirm its participant count is 64. None of the 6 cancelled histories may enter that snapshot.
 6. Keep the independent worker running. The admin page polls persisted progress automatically; it must never require repeated HTTP **Run AI tasks** clicks. The legacy `/run` route returns `EVENT_OPERATIONS_DURABLE_WORKER_REQUIRED` instead of holding an HTTP request open for provider work.
@@ -37,12 +37,12 @@ The password is supplied only through the environment and is neither embedded no
 ## Attendee result and check-in path
 
 1. Sign out, then sign in as `attendee01.event-ops@orbit.example.test` with the same development password.
-2. Open `/app/party?eventId=event%3Ae2e%3Aorbit-connection-night`.
+2. Open `/app/party?eventId=event_signup_01`.
 3. Confirm **All attendees** contains exactly 64 active registration-backed profiles. Cancelled histories must be absent. Non-recommended attendees must be labeled as directory profiles rather than recommendations.
 4. Confirm **For you** contains only the published AI recommendations, with evidence-based reasons, two icebreakers, and a member hint. If the model returned no match, confirm the explicit `noMatchReason` appears.
 5. Confirm **Groups** shows two distinct rounds, each with a real table number, seat, theme, rationale, three table icebreakers, and participant-specific prompts.
 6. Confirm **Graph** node and edge counts match the published graph and that edges distinguish mutual recommendations, round-one tables, and round-two topics.
-7. Open `/app/party/checkin?eventId=event%3Ae2e%3Aorbit-connection-night`, select **Check in now**, refresh, and confirm the same persisted timestamp remains. Repeating the action must not create another arrival record.
+7. Open `/app/party/checkin?eventId=event_signup_01`, select **Check in now**, refresh, and confirm the same persisted timestamp remains. Repeating the action must not create another arrival record.
 
 ## Bilateral business-card consent
 
@@ -59,3 +59,7 @@ The password is supplied only through the environment and is neither embedded no
 - Visit the organizer URL as an attendee: owned-event access must reject it.
 - Visit Party without an active registration: registered-event access must reject it.
 - Before `resultsAvailableAt`, Party must show a locked state even if a generation is published.
+
+## 缺字段回归验收（2026-09-06）
+
+默认种子的 64 名有效参与者使用完整且不同的画像；6 条取消历史保留原有生命周期覆盖。`tests/capabilities/event-operations-seed.test.ts` 同时运行完整画像场景和缺少可选字段的独立内存场景：后者保留核心字段，将 5 人限制为 3 项回答、3 人限制为 2 项回答，期望 56 complete / 5 partial / 3 minimal。两种场景都验证重复播种、精确范围清理、取消与迟到历史排除、管理页及冻结快照中的回答一致性，不能凭空补全缺失回答。这个自动化检查没有生成真实模型结果，也没有向云端导入测试人员。

@@ -18,7 +18,8 @@ import {
 import { createEventRegistrationLiveRecordProvider } from "../../features/events/registration/storage/live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
-test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64-person lifecycle matrix", async () => {
+for (const profileCoverage of ["full", "mixed"] as const) {
+test(`event operations E2E seed preserves its 64-person lifecycle matrix with ${profileCoverage} profiles`, async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "workspace:event-operations-seed-test";
   const organizerActorId = "actor:event-operations-organizer";
@@ -33,6 +34,15 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   };
   const participants = EVENT_OPERATIONS_E2E_SEED_ACCOUNTS.map((definition, index) => ({
     ...definition,
+    // Keep the canonical core answers; missing optional answers must remain
+    // absent rather than be filled with fictional participant information.
+    answers: profileCoverage === "mixed" && index >= 56 && index < 64
+      ? {
+          targetAttendees: definition.answers.targetAttendees,
+          valueOffered: definition.answers.valueOffered,
+          ...(index < 61 ? { positioning: definition.answers.positioning } : {}),
+        }
+      : { ...definition.answers },
     actorId: `actor:event-operations-attendee:${index + 1}`,
   }));
   let repositoryTimestamp = timestamp;
@@ -291,7 +301,7 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   assert.equal(admin.metrics.participantCount, 64);
   assert.deepEqual(
     new Set(admin.participants.map((value) => value.profileCompleteness)),
-    new Set(["complete", "partial", "minimal"]),
+    new Set(profileCoverage === "full" ? ["complete"] : ["complete", "partial", "minimal"]),
   );
   assert.deepEqual(
     Object.fromEntries(
@@ -302,7 +312,9 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
         ).length,
       ]),
     ),
-    { complete: 56, minimal: 3, partial: 5 },
+    profileCoverage === "full"
+      ? { complete: 64, minimal: 0, partial: 0 }
+      : { complete: 56, minimal: 3, partial: 5 },
   );
   assert.equal(admin.participants.filter((value) => value.lateRegistration).length, 0);
   assert.equal(
@@ -330,6 +342,15 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
     idempotencyKey: "fixed-64-person-seed",
   });
   assert.equal(generation.snapshot.participants.length, 64);
+  for (const frozen of generation.snapshot.participants) {
+    const source = participants.find((person) => person.actorId === frozen.actorId);
+    assert.ok(source);
+    assert.equal(source.registrationStatus, "rsvped");
+    assert.deepEqual(frozen.profileAnswers, source.answers);
+    const visible = admin.participants.find((person) => person.actorId === frozen.actorId);
+    assert.ok(visible);
+    assert.equal(frozen.profileCompleteness, visible.profileCompleteness);
+  }
   assert.ok(
     generation.snapshot.participants.every(
       (participant) => participant.lateRegistration === false,
@@ -337,3 +358,4 @@ test("event operations E2E seed is exact-scope idempotent and exposes a fixed 64
   );
   assert.equal(aiCalls, 0);
 });
+}
