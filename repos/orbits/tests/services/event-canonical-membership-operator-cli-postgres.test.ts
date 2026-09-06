@@ -18,11 +18,10 @@ import {
   type EventProfileResponseSnapshot,
 } from "../../features/events/registration/interview-response-contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
-import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
+import { ORBIT_RECORDS_SCHEMA_SQL, runOrbitRecordsMigration } from "../../shared/storage/migrations";
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
-const mainWorkspaceId = process.env.ORBIT_WORKSPACE_ID;
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -548,23 +547,37 @@ test(
 );
 
 test(
-  "main v11 canonical membership CLI is read-only and apply fails not-ready",
+  "isolated v11 canonical membership CLI is read-only and apply fails not-ready",
   { timeout: 120_000 },
   async () => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
-    assert.ok(mainWorkspaceId, "ORBIT_WORKSPACE_ID is required");
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
-    const directory = await mkdtemp(join(tmpdir(), "canonical-cli-main-"));
+    const schema = `canonical_cli_v11_${randomUUID().replaceAll("-", "")}`;
+    const mainWorkspaceId = `workspace:${schema}`;
+    const connectionString = scopedUrl(databaseUrl, schema);
+    const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+    const pool = new Pool({ connectionString, max: 1 });
+    const directory = await mkdtemp(join(tmpdir(), "canonical-cli-v11-"));
     const manifestFile = join(directory, "manifest.json");
     const reviewFile = join(directory, "review.json");
     const rawManifest = JSON.stringify({ events: {}, schemaVersion: 1 });
     const parsedManifest = parseCanonicalMembershipOperatorManifest(rawManifest);
     const environment = {
       ...process.env,
-      ORBIT_EVENT_DATABASE_URL: databaseUrl,
+      ORBIT_EVENT_DATABASE_URL: connectionString,
       ORBIT_WORKSPACE_ID: mainWorkspaceId,
     };
     try {
+      await admin.query(`create schema ${schema}`);
+      await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+      await runEventOperationsMigrations({ async query(sql) {
+        const version = /where version = (\d+)/.exec(sql)?.[1];
+        if (!version || Number(version) <= 11) return pool.query(sql);
+        return undefined;
+      } });
+      await pool.query(`insert into orbit_records (workspace_id,collection_name,record_id,source_type,source_id,payload,created_at,updated_at)
+        values ($1,'cliReadOnlySentinel','sentinel','manual','cli-test','{"preserve":true}',now(),now())`, [mainWorkspaceId]);
+      const tablesBefore = (await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows;
+      assert.equal(tablesBefore.some((row) => row.tablename.startsWith("event_ops_canonical_membership_migration_")), false);
       const before = await mainSnapshot(pool, mainWorkspaceId);
       assert.equal((before as { version: string }).version, "11");
       await writeFile(manifestFile, rawManifest);
@@ -623,9 +636,14 @@ test(
       assert.deepEqual(await mainSnapshot(pool, mainWorkspaceId), before);
       const disclosure = `${dry.stdout}\n${dry.stderr}\n${apply.stdout}\n${apply.stderr}`;
       assert.ok(!disclosure.includes(databaseUrl));
+      assert.ok(!disclosure.includes(connectionString));
+      assert.deepEqual((await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows, tablesBefore);
+      assert.deepEqual((await pool.query("select payload from orbit_records where workspace_id=$1 and record_id='sentinel'", [mainWorkspaceId])).rows, [{ payload: { preserve: true } }]);
       assert.ok(!disclosure.includes(directory));
     } finally {
       await pool.end();
+      try { await admin.query(`drop schema if exists ${schema} cascade`); }
+      finally { await admin.end(); }
       await rm(directory, { force: true, recursive: true });
     }
   },
