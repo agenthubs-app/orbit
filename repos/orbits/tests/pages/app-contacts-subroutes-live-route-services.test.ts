@@ -70,7 +70,10 @@ test("contacts introductions use stored actor-scoped records, not contact-derive
   assert.match(adapterSource, /intros: \[\]/);
   assert.doesNotMatch(adapterSource, /payload\.contacts\.slice\(0, 6\)/);
   assert.match(pageSource, /createConfiguredContactIntroductionRepository/);
-  assert.match(pageSource, /introductionRepository\.list\(session\.user\.id\)/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.match(pageSource, /userId: session\.user\.id/);
+  assert.match(pageSource, /introductionRepository\.list\(actor\.id\)/);
+  assert.doesNotMatch(pageSource, /introductionRepository\.list\(session\.user\.id\)/);
   assert.match(componentSource, /\/api\/contacts\/introductions/);
   assert.match(componentSource, /statusBadge: introduction\.status/);
   assert.match(componentSource, /function IntroDetailModal/);

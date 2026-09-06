@@ -14,7 +14,10 @@ test("contacts dashboard loads the authenticated account's contacts", () => {
   const pageSource = source("app/(app)/app/contacts/dashboard/page.tsx");
 
   assert.match(pageSource, /const session = await auth\(\)/);
-  assert.match(pageSource, /loadAppContactsRouteViewModel\(undefined, session\.user\.id\)/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.match(pageSource, /userId: session\.user\.id/);
+  assert.match(pageSource, /loadAppContactsRouteViewModel\(undefined, actor\.id\)/);
+  assert.doesNotMatch(pageSource, /loadAppContactsRouteViewModel\(undefined, session\.user\.id\)/);
   assert.match(pageSource, /contactsRouteToOrbitContactsViewModel/);
   assert.match(pageSource, /redirect\("\/app\/account\/login/);
 });

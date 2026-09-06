@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { useUnconfiguredLiveDatabase } from "../support/unconfigured-live-database";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -157,11 +158,9 @@ test("public Chat query input cannot activate scenarios or run an Agent turn", a
   });
 });
 
-test("/app/chat fails closed when live chat storage is unavailable", async () => {
-  const previousDatabaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
-
+test("/app/chat fails closed when live chat storage is unavailable", async (context) => {
+  useUnconfiguredLiveDatabase(context);
   await withModuleMode("live", async () => {
-    delete process.env.ORBIT_EVENT_DATABASE_URL;
     const { loadAppChatRouteViewModel } = await import(
       "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
     );
@@ -179,11 +178,6 @@ test("/app/chat fails closed when live chat storage is unavailable", async () =>
     }
   });
 
-  if (previousDatabaseUrl === undefined) {
-    delete process.env.ORBIT_EVENT_DATABASE_URL;
-  } else {
-    process.env.ORBIT_EVENT_DATABASE_URL = previousDatabaseUrl;
-  }
 });
 
 test("app chat route has one production composition and no dead mock command center", () => {

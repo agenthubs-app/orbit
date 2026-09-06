@@ -4,8 +4,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { useRegistrationCatalogueFixture } from "../support/registration-catalogue-fixture";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+useRegistrationCatalogueFixture();
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
@@ -72,8 +75,7 @@ test("/app/register redirects a reviewed code without propagating fixture contro
         }),
       }),
     (error: unknown) =>
-      error instanceof Error &&
-      error.message === "NEXT_REDIRECT" &&
+      isRedirectError(error) &&
       error.digest.includes(
         "/app/events/event_signup_01/register?language=en#",
       ) &&
@@ -97,8 +99,7 @@ test("/app/register uses first-value decoders and explicitly clears an inherited
         }),
       }),
     (error: unknown) =>
-      error instanceof Error &&
-      error.message === "NEXT_REDIRECT" &&
+      isRedirectError(error) &&
       error.digest.includes(
         "/app/events/event_signup_01/register?language=ja#",
       ),

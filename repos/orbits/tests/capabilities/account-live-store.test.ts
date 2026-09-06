@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { useUnconfiguredLiveDatabase } from "../support/unconfigured-live-database";
 
 import {
   ACCOUNT_SESSION_ERROR_DEFINITIONS,
@@ -125,7 +126,8 @@ test("account live service fails closed when live storage is unconfigured", asyn
   assert.equal(requireAccount.error.code, "ACCOUNT_LIVE_STORE_UNCONFIGURED");
 });
 
-test("account live factory resolves live mode and preserves mock behavior", async () => {
+test("account live factory resolves live mode and preserves mock behavior", async (context) => {
+  useUnconfiguredLiveDatabase(context);
   const liveResolution = resolveAccountSessionService("live");
   const liveService = createAccountSessionService("live");
   const mockService = createAccountSessionService("mock");
@@ -135,8 +137,10 @@ test("account live factory resolves live mode and preserves mock behavior", asyn
     true,
     liveResolution.success === false ? liveResolution.error.message : "",
   );
-  assert.equal((await liveService.getCurrentSession()).success, false);
-  assert.equal(mockService.getCurrentSession().success, true);
+  const liveResult = await liveService.getCurrentSession();
+  assert.equal(liveResult.success, false);
+  assert.equal(liveResult.error.code, "ACCOUNT_LIVE_STORE_UNCONFIGURED");
+  assert.equal((await mockService.getCurrentSession()).success, true);
 });
 
 test("account API route reports live mode and controlled unconfigured storage failure", async () => {

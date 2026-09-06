@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { useUnconfiguredLiveDatabase } from "../support/unconfigured-live-database";
 
 import {
   createCanonicalEventRecommendationReader,
@@ -201,7 +202,8 @@ function createAsyncFakeLiveProvider(): LiveEventStoreProvider {
   };
 }
 
-test("event CRUD and child event factories register explicit live mode", async () => {
+test("event CRUD and child event factories register explicit live mode", async (context) => {
+  useUnconfiguredLiveDatabase(context);
   const liveResolution = resolveEventCrudAndImportService("live");
   const attendeeLive = resolveEventAttendeeRosterService("live");
   const goalLive = resolveEventGoalAndReadinessService("live");

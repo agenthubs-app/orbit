@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { useUnconfiguredLiveDatabase } from "../support/unconfigured-live-database";
 
 import {
   PERMISSION_STATE_ERROR_DEFINITIONS,
@@ -164,7 +165,8 @@ test("permission live service fails closed when live storage is unconfigured", a
   assert.equal(request.error.code, "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED");
 });
 
-test("permission live factory resolves live mode and preserves mock behavior", async () => {
+test("permission live factory resolves live mode and preserves mock behavior", async (context) => {
+  useUnconfiguredLiveDatabase(context);
   const liveResolution = resolvePermissionStateService("live");
   const liveService = createPermissionStateService("live");
   const mockService = createPermissionStateService("mock");
@@ -174,8 +176,10 @@ test("permission live factory resolves live mode and preserves mock behavior", a
     true,
     liveResolution.success === false ? liveResolution.error.message : "",
   );
-  assert.equal((await liveService.listPermissionStates()).success, false);
-  assert.equal(mockService.listPermissionStates().success, true);
+  const liveResult = await liveService.listPermissionStates();
+  assert.equal(liveResult.success, false);
+  assert.equal(liveResult.error.code, "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED");
+  assert.equal((await mockService.listPermissionStates()).success, true);
 });
 
 test("permission API route reports live mode and controlled unconfigured storage failure", async () => {

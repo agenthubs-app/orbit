@@ -4,10 +4,10 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadLocalEnv } from "../../scripts/load-local-env";
+import { useRegistrationCatalogueFixture } from "../support/registration-catalogue-fixture";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
-loadLocalEnv();
+useRegistrationCatalogueFixture();
 
 async function withOrbitModuleMode<T>(
   mode: string,
