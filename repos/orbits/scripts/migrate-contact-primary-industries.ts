@@ -86,12 +86,13 @@ export function classifyLegacyContactIndustry(input: {
   const label = typeof input.industry === "string" ? input.industry.trim() : "";
   if (label && legacyIndustryMap[label]) return legacyIndustryMap[label];
 
+  const organization = input.organization;
   if (
     input.provider === "generated-relationship-fixtures" &&
-    typeof input.organization === "string"
+    typeof organization === "string"
   ) {
     return generatedFixtureOrganizationSuffixes.find(([suffix]) =>
-      input.organization?.endsWith(suffix),
+      organization.endsWith(suffix),
     )?.[1];
   }
   return undefined;

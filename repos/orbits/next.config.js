@@ -9,6 +9,11 @@
 const apiCorsOrigin = process.env.ORBIT_API_CORS_ORIGIN ?? "*";
 
 const nextConfig = {
+  outputFileTracingRoot: __dirname,
+  typescript: {
+    tsconfigPath:
+      process.env.NODE_ENV === "production" ? "tsconfig.build.json" : "tsconfig.json",
+  },
   // dev 模式经 zrok 隧道(orbit.shares.zrok.io)对外演示时，Next 16 的跨
   // origin 防护会静默拒绝 hydration 与 HMR websocket；显式放行该域名。
   // 仅影响 dev server，生产构建忽略此项。

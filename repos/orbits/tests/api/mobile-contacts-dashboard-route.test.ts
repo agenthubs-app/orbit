@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { MobileContactsDashboardPayload } from "../../shared/api-schema/mobile-contacts-dashboard";
 
 import {
   createMobileContactsDashboardGetHandler,
   type MobileContactsDashboardRouteDependencies,
-} from "../../app/api/mobile/contacts-dashboard/route";
+} from "../../app/api/mobile/contacts-dashboard/handler";
 
 const aggregate = {
-  state: "success",
+  state: "success" as const,
   relationshipAssetTotals: {
     contacts: 78,
     connections: 78,
@@ -24,7 +25,7 @@ const aggregate = {
   nextAction: "查看优先事项",
 };
 
-const payload = {
+const payload: MobileContactsDashboardPayload = {
   schemaVersion: 1 as const,
   generatedAt: "2026-08-31T00:00:00.000Z",
   aggregate,
@@ -41,7 +42,7 @@ const payload = {
     "distributions",
     "profile",
     "contacts",
-  ] as const,
+  ],
 };
 
 function dependencies(
