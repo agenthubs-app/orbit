@@ -221,3 +221,12 @@ GitNexus 修改前报告 CRITICAL：工厂 9 个直接调用方、44 个受影�
 
 
 部署补记：提交 `49fe4909` 已发布到 https://orbit-jqpr9w7l2-liqys-projects-33c8ddec.vercel.app ，固定预览 https://orbit-preview-li-qy.vercel.app 已切换。云端构建成功；通过 CLI 现有访问认证读取首页为 HTTP 200。首页直接引用的 `6523-e28b040078dedc68.js` 返回 HTTP 200，包含 `skPromptInput` 事件模块及 `isComposing` / `229` 保护。此检查证明发布产物包含修复，与上轮本机 Chrome 行为验证相互补充，不替代实体输入法或线上登录后完整业务验收。未读取或导出密钥，Preview 访问保护保留。
+
+
+### 2026-09-06：空账户导入的云端依赖复核
+
+本轮只读取源码和平台文档，未上传名片、读取密钥或宣称完成导入。单张入口 `/app/contacts/new` 通过 `resolveBusinessCardCaptureAvailability` 检查 live 模式、数据库与 DEEPSEEK/GEMINI/GOOGLE OCR 配置，点击后走 `/api/contact-drafts/business-card/scan`，用户审核后才走 `/api/contacts/business-card/confirm`；页面加载不会执行识别。云端 OCR 配置与实际识别仍未验收。
+
+批量链路另有独立阻碍：V1 的 `createBusinessCardBatchImageStore` 直接写 `.orbit-batch-uploads`；V2 的 `getConfiguredIngestV2` 无条件装配 `createFilesystemDerivativeStore`，其接口注释明确要求多实例部署前实现共享对象存储。当前 `vercel.json` 仅有密码恢复及 Agent 两个队列触发器，V1/V2 OCR worker 都没有云端触发器。已有本机 worker 测试不能证明上传后在另一实例上仍能读取图片、自动识别、清理和发送完成通知。
+
+后续必须同时处理共享私有图片存储、两代 worker 唤醒及恢复、上传限制与清理，不能仅把本地目录换成 `/tmp`。Vercel 官方支持私有 Blob 与客户端直传（https://vercel.com/docs/vercel-blob/private-storage ，https://vercel.com/docs/vercel-blob/client-upload）；适配前须继续核对现有原图限制、批次权限和七天审核保留规则。尚未创建或连接 Blob，也未变更这些生产链路。
