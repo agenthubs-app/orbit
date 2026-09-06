@@ -33,6 +33,7 @@ import {
   type SignedAdaptiveInterviewStep,
 } from "../../../../../../features/events/registration/interview-response-contract";
 import { Icon } from "../../../orbit-reference-primitives";
+import { ORBIT_Z } from "../../../orbit-z";
 import {
   quickSignupStorageKey,
   readQuickSignupAnswers,
@@ -1613,7 +1614,7 @@ export function EventRegistrationWorkspace({
               justifyContent: "center",
               padding: 20,
               position: "fixed",
-              zIndex: 120,
+              zIndex: ORBIT_Z.modal,
             }}
           >
             <section

@@ -3272,7 +3272,7 @@ export function OrbitRealAgent({
             padding: 0,
             position: "relative",
             width: 8,
-            zIndex: 1,
+            zIndex: ORBIT_Z.raised,
           }}
         />
         <div className="ws-main">
