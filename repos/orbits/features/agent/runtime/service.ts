@@ -971,6 +971,12 @@ export function createAgentRuntimeService({
           operationId: operation.operationId,
           idempotencyKey: undoIdempotencyKey,
           now: timestamp,
+          resultRef: detail.receipts.find((receipt) =>
+            receipt.actionId === actionId &&
+            receipt.operationId === operation.operationId &&
+            receipt.idempotencyKey === operation.idempotencyKey &&
+            receipt.status === "completed",
+          )?.resultRef,
         });
         await repository.saveReceipt({
           receiptId: `receipt:undo:${operation.idempotencyKey}`,

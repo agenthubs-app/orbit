@@ -33,3 +33,9 @@ crosses user boundaries. The cache has an explicit implementation version:
 when the runtime interface changes during development hot reload, stale service
 instances are discarded instead of leaking an old method surface into new
 routes.
+
+## 日历撤销的执行身份
+
+日历动作仅在用户明确确认后创建。撤销使用当前 actor 的集成服务，从匹配 action、operation、idempotency key 的已完成回执读取 `calendar:` resultRef，再向创建时选定的 provider 删除该事件；不接受提案 payload 中的 providerRecordId 作为删除目标。删除失败不写 undone 回执，允许重试；完成后重复撤销复用既有结果。新自然语言日历提案采用能力注册表的 compensationSupported；旧持久化提案不被回写。
+
+`agent-calendar-compensation.test.ts` 覆盖两种 provider、持久化存储适配器重建、失败重试、重复撤销与无回执拒绝；43 项运行时、工作流、集成安全和能力测试通过。使用的是测试 provider 边界，真实 OAuth/外部日历写入验收仍待完成。

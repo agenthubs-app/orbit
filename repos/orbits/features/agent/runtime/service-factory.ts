@@ -12,6 +12,7 @@ import {
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import { createMemoryLiveRecordStore } from "../../../shared/storage/live-record-store";
 import { createStorageAgentRuntimeRepository } from "../storage/agent-runtime-live-record-provider";
+import { createAgentCalendarExecutorAdapter } from "./calendar-executor-adapter";
 import { createAgentDomainExecutors } from "./domain-executors";
 import { createAgentExecutorRegistry } from "./executor-registry";
 import { createAgentRuntimeService, type AgentRuntimeService } from "./service";
@@ -22,7 +23,7 @@ interface OrbitAgentRuntimeGlobal {
 }
 
 const runtimeGlobal = globalThis as typeof globalThis & OrbitAgentRuntimeGlobal;
-const RUNTIME_SERVICE_CACHE_VERSION = 2;
+const RUNTIME_SERVICE_CACHE_VERSION = 3;
 if (
   runtimeGlobal.__orbitAgentRuntimeServicesVersion !==
   RUNTIME_SERVICE_CACHE_VERSION
@@ -112,19 +113,7 @@ export function createOrbitAgentRuntimeService(
         mode,
       }),
       calendar: integrations
-        ? {
-            createEvent: async (payload, idempotencyKey) => {
-              const provider =
-                payload.provider === "microsoft_graph"
-                  ? "microsoft_graph"
-                  : "google_calendar";
-              return integrations.createCalendarEvent({
-                provider,
-                payload,
-                idempotencyKey,
-              });
-            },
-          }
+        ? createAgentCalendarExecutorAdapter(integrations)
         : undefined,
     }),
   );
