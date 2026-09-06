@@ -100,7 +100,9 @@ actor 的上下文，并通过独立的 `userMemory` 字段传给 planner 和 sy
 记录，后续结果会和先前评价合并，并保留本轮真实来源模块与 evidence ids。
 
 普通用户对话不展示评价、业务结果、证据编号或 Run 处理过程；设置页仍可检查或删除
-已有记录。最近记录会由服务端压缩为独立的 `userRecordedOutcomes` 上下文交给 planner 和 synthesis。它只能
+已有记录。仅当答复包含真实 `actionIds` 和 `runId` 时展示“本次安排”：从 Run/ledger
+读取操作状态，允许进入 Today/全部安排复核；该入口不展示 Run 处理步骤、证据编号或内部操作编号，
+外部操作仍须在 Today 查看详情后确认。没有操作的普通答复不生成空状态卡。最近记录会由服务端压缩为独立的 `userRecordedOutcomes` 上下文交给 planner 和 synthesis。它只能
 作为弱个性化信号，不能覆盖当前请求、工具证据、安全规则、权限、确认策略和工具
 allowlist。客户端不能在对话请求中伪造这份上下文。
 

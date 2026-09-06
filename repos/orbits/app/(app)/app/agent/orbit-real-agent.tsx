@@ -23,6 +23,7 @@ import { productHref } from "../orbit-public-shell";
 import { Avatar, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
+import { AgentActionStatusCard } from "./agent-action-status-card";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
@@ -3068,6 +3069,15 @@ export function OrbitRealAgent({
               <AgentMarkdown text={message.text} />
               {message.items.length > 0 ? (
                 <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
+              ) : null}
+              {message.runId && message.actionIds?.length ? (
+                <AgentActionStatusCard
+                  actionIds={message.actionIds}
+                  language={language === "zh" ? "zh" : "en"}
+                  navigate={navigate}
+                  runId={message.runId}
+                  showRunDetails={false}
+                />
               ) : null}
               {message.retryRequest ? (
                 <button

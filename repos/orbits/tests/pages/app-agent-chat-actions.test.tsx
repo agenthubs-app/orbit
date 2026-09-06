@@ -365,7 +365,8 @@ test("Agent chat persists run ids without rendering internal tracking UI", async
   assert.match(source, /payload\.data\.actionIds/);
   assert.match(source, /evidenceRefsFromArtifacts/);
   assert.doesNotMatch(source, /data-agent-evidence-sources/);
-  assert.doesNotMatch(source, /<AgentActionStatusCard/);
+  assert.match(source, /showRunDetails={false}/);
+  assert.doesNotMatch(source, /data-agent-run-details/);
 });
 
 test("Agent run cancellation uses user-facing request language", async () => {
@@ -400,4 +401,23 @@ test("Agent run transition API exposes cancellation only, not a fake in-place re
   assert.match(source, /body\?\.action !== "cancel"/);
   assert.match(source, /runtime\.cancelRun/);
   assert.doesNotMatch(source, /runtime\.retryRun/);
+});
+
+
+test("product action handoff shows review links without run diagnostics or visible ids", () => {
+  const html = renderToStaticMarkup(
+    <AgentActionStatusCard
+      actionIds={["action:private-internal-id"]}
+      language="zh"
+      navigate={() => undefined}
+      runId="run:private-internal-id"
+      showRunDetails={false}
+    />,
+  );
+  const visibleText = html.replace(/<[^>]*>/g, "");
+  assert.match(visibleText, /本次安排/);
+  assert.match(visibleText, /在 Today 查看/);
+  assert.match(visibleText, /全部安排/);
+  assert.doesNotMatch(visibleText, /private-internal-id|Agent 过程|Agent 进度|确认执行/);
+  assert.doesNotMatch(html, /data-agent-run-step|data-agent-run-status/);
 });

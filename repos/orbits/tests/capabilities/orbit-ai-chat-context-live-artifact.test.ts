@@ -701,7 +701,8 @@ test("/app/agent keeps technical provenance out of the user conversation", () =>
   assert.match(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
   assert.match(agentSource, /cursor: "col-resize"/);
   assert.doesNotMatch(agentSource, /<AgentOutcomeFeedback/);
-  assert.doesNotMatch(agentSource, /<AgentActionStatusCard/);
+  assert.match(agentSource, /showRunDetails={false}/);
+  assert.doesNotMatch(agentSource, /data-agent-run-details/);
   assert.match(agentSource, /evidenceRefsFromArtifacts/);
   assert.match(pageSource, /data-orbit-route="app-agent-route"/);
 });

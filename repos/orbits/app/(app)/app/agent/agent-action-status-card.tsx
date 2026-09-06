@@ -46,6 +46,7 @@ interface AgentActionStatusCardProps {
   navigate: (href: string) => void;
   onRetryRequest?: () => Promise<void>;
   runId: string;
+  showRunDetails?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -271,6 +272,7 @@ export function AgentActionStatusCard({
   navigate,
   onRetryRequest,
   runId,
+  showRunDetails = true,
 }: AgentActionStatusCardProps) {
   const stableActionIds = useMemo(
     () => Array.from(new Set(actionIds.filter(Boolean))),
@@ -334,7 +336,7 @@ export function AgentActionStatusCard({
     runView?.status === "waiting_for_confirmation";
 
   useEffect(() => {
-    if (!hasPendingExecution && !hasPendingRun) return;
+    if (!hasPendingExecution && !(showRunDetails && hasPendingRun)) return;
     let cancelled = false;
 
     async function refreshExecutionStatus() {
@@ -366,7 +368,7 @@ export function AgentActionStatusCard({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [hasPendingExecution, hasPendingRun, runId, stableActionIds]);
+  }, [hasPendingExecution, hasPendingRun, runId, stableActionIds, showRunDetails]);
 
   async function cancelRun() {
     setPendingActionId("run:cancel");
@@ -488,10 +490,14 @@ export function AgentActionStatusCard({
     >
       <div style={{ alignItems: "center", display: "flex", gap: 8, justifyContent: "space-between" }}>
         <strong style={{ fontSize: 13 }}>
-          {language === "zh" ? "本次 Agent 过程" : "Agent run"}
+          {showRunDetails
+            ? language === "zh" ? "本次 Agent 过程" : "Agent run"
+            : language === "zh" ? "本次安排" : "Actions from this reply"}
         </strong>
         <span style={{ color: "var(--text-3)", fontSize: 11 }}>
-          {runView
+          {!showRunDetails && !loading
+            ? language === "zh" ? `${visibleActions.length} 项` : `${visibleActions.length} actions`
+            : showRunDetails && runView
             ? `${runView.progress.completedSteps}/${runView.progress.totalSteps}`
             : language === "zh"
               ? "正在同步"
@@ -499,7 +505,7 @@ export function AgentActionStatusCard({
         </span>
       </div>
 
-      {runView ? (
+      {showRunDetails && runView ? (
         <div
           data-agent-run-status={runView.status}
           style={{ display: "grid", gap: 8 }}
@@ -612,7 +618,11 @@ export function AgentActionStatusCard({
           >
             <div style={{ alignItems: "flex-start", display: "flex", gap: 10, justifyContent: "space-between" }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{action.title}</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {action.title === action.actionId
+                    ? language === "zh" ? "操作详情" : "Action details"
+                    : action.title}
+                </div>
                 <div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 3 }}>
                   {actionRiskLabel(action.riskLevel, language)}
                 </div>
@@ -674,7 +684,7 @@ export function AgentActionStatusCard({
                 </button>
               ) : null}
               {editable && action.riskLevel === "external" ? (
-                <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+                <span style={{ color: "var(--text-3)", flexBasis: "100%", fontSize: 11 }}>
                   {language === "zh"
                     ? "外部操作请在 Today 查看详情后确认"
                     : "Review external action details in Today before confirming"}
