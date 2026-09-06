@@ -19,6 +19,7 @@ export interface PasswordResetMailJob {
 
 export interface PasswordResetStore {
   request(email: string, reset: PasswordResetRecord, before: string): Promise<void>;
+  hasPendingDelivery(now: string): Promise<boolean>;
   isValid(tokenHash: string, now: string): Promise<boolean>;
   consume(tokenHash: string, passwordHash: string, now: string): Promise<boolean>;
   claim(now: string, leaseUntil: string, leaseId: string): Promise<PasswordResetMailJob | null>;
@@ -27,6 +28,14 @@ export interface PasswordResetStore {
 
 export function createPasswordResetStore(client: LiveRecordSqlClient, workspaceId: string): PasswordResetStore {
   return {
+    async hasPendingDelivery(now) {
+      const result = await client.query(`SELECT 1 FROM orbit_records WHERE workspace_id = $1
+        AND collection_name = 'auth_users' AND lifecycle_state = 'active'
+        AND payload->'passwordReset'->>'delivery' IN ('pending', 'sending')
+        AND (payload->'passwordReset'->>'expiresAt')::timestamptz > $2::timestamptz
+        LIMIT 1`, [workspaceId, now]);
+      return result.rows.length > 0;
+    },
     async request(email, reset, before) {
       // One row per existing account: atomic cooldown, no unbounded anonymous rows.
       await client.query(`UPDATE orbit_records SET payload = jsonb_set(payload, '{passwordReset}', $3::jsonb), updated_at = $4

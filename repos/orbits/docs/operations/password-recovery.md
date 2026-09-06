@@ -12,7 +12,9 @@
 
 发送接口依据 [Resend 官方 API](https://resend.com/docs/api-reference/emails/send-email)。此配置仅供事务性密码恢复邮件使用，不授权 Agent 发送联系人消息。
 
-Vercel 使用 Next `after()` 在申请响应后投递。受 `CRON_SECRET` 保护的 `GET /api/auth/password-reset/worker` 支持调度重试；必须配置实际调度器才能保证无新请求时持续重试。Vercel 预览部署不会自动运行生产 cron。SMTP 使用 TLS 和固定 Message-ID，但 SMTP 不提供严格幂等：投递后崩溃可能导致重复邮件，链接仍只可消费一次。
+本版本在 Vercel 使用原生 Queues：申请先写数据库，再等待不含邮箱/令牌的唤醒消息入队，成功后才返回 202；入队失败返回可重试的 503。`vercel.json` 的 `queue/v2beta` trigger 将消费者设为平台私有函数。每次消费最多投递一封，再检查数据库是否仍有未过期的 pending/sending 任务；未来重试时间和未释放租约不会被误认为完成。消息保留 35 分钟，超过链接有效期；发送次数仍由数据库状态控制，正常失败最多 5 次。Vercel OIDC 自动认证，无新增静态密钥。
+
+非 Vercel 环境保留 Next `after()` 首次投递，需常驻 worker 或实际调度器。受 `CRON_SECRET` 保护的 `GET /api/auth/password-reset/worker` 仍支持运维补偿；Preview 原生 cron 不运行。队列接口依据 [Vercel 官方文档](https://vercel.com/docs/queues/quickstart)。SMTP 使用 TLS 和固定 Message-ID，但 SMTP 不提供严格幂等：投递后崩溃可能导致重复邮件，链接仍只可消费一次。
 
 启动：`node --import tsx scripts/run-password-reset-worker.ts`。生产进程管理器必须持续运行该命令、失败重启并收集退出/重试日志。禁止把 worker 仅作为一次部署命令运行。
 
@@ -23,6 +25,8 @@ Vercel 使用 Next `after()` 在申请响应后投递。受 `CRON_SECRET` 保护
 - worker 通过 `FOR UPDATE SKIP LOCKED` 领取任务、60 秒租约恢复崩溃任务，失败退避重试最多 5 次。Resend 幂等键绑定同一个凭证，避免投递成功但回写失败造成重复发送。
 - 改密与消费凭证在同一条件 UPDATE 中完成；并发提交最多成功一次。改密后 Web 与移动端 Auth.js 会话通过原始签发时间校验失效。
 - 新密码最低 8 字符，UTF-8 最多 72 字节（bcrypt 边界）；不返回 hash、凭证或 provider 错误正文。
+
+消费者仅记录 `password_reset_delivery_tick`、`result`、`pending`，不记录邮箱、令牌、消息内容或环境变量。可使用 Vercel 按该事件名过滤日志验证自动重试，不需要拉取部署密钥。
 
 ## 上线验收（缺少证据不得标为完成）
 
