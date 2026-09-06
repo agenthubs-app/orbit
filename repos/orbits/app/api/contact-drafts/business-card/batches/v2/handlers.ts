@@ -252,6 +252,24 @@ async function normalizeAndStore(
   return runtime.store.put(normalized.jpegBytes);
 }
 
+async function removeUnreferencedUpload(
+  runtime: IngestV2Runtime,
+  actorId: string,
+  batchId: string,
+  itemId: string,
+  objectKey: string,
+): Promise<void> {
+  // An error may occur after the repository commits (for example, dispatch).
+  // Preserve the object unless a fresh read proves it is not the saved image.
+  try {
+    const detail = await runtime.repository.getBatch({ actorId, batchId });
+    const item = detail?.items.find((candidate) => candidate.id === itemId);
+    if (item?.derivativeObjectKey !== objectKey) await runtime.store.delete(objectKey);
+  } catch {
+    // An unavailable database cannot prove that deleting the image is safe.
+  }
+}
+
 export function createIngestV2CollectionHandlers(deps: IngestV2HandlerDeps = {}) {
   return {
     async GET(): Promise<Response> {
@@ -371,7 +389,7 @@ export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
           { headers: runtimeBoundaryHeaders(mode) },
         );
       } catch (error) {
-        await runtime.store.delete(stored.objectKey).catch(() => undefined);
+        await removeUnreferencedUpload(runtime, actorId, id, itemId, stored.objectKey);
         throw error;
       }
     });
@@ -410,7 +428,7 @@ export function createIngestV2ReplaceHandler(deps: IngestV2HandlerDeps = {}) {
           headers: runtimeBoundaryHeaders(mode),
         });
       } catch (error) {
-        await runtime.store.delete(stored.objectKey).catch(() => undefined);
+        await removeUnreferencedUpload(runtime, actorId, id, itemId, stored.objectKey);
         throw error;
       }
     });
