@@ -211,3 +211,10 @@ GitNexus 修改前报告 CRITICAL：工厂 9 个直接调用方、44 个受影�
 
 
 部署与补充验收：报名状态及引导页另 14 项检查通过（本轮共 22 项）；本地生产构建通过。提交 `137ed816` 连同补发扫描 `4e88e468` 已部署至 https://orbit-obbpa6q75-liqys-projects-33c8ddec.vercel.app ，固定预览 https://orbit-preview-li-qy.vercel.app 已切换。CLI 现有访问认证检查登录路由 HTTP 200、邮箱及密码字段存在；补发 GET 未提供 CRON_SECRET 返回 HTTP 401，未执行扫描。保留 Preview 访问保护，没有读取或导出密钥。尚未接入定时调度，也未证明云端真实补发/业务执行成功；邮件真实收件、真实提供方闭环、目标用户试用仍未完成。
+
+
+### 2026-09-06：首页输入法确认不再误提交
+
+首页桌面/移动共用的 `bindStarfieldAgentPrompt` 原先对每个 Enter 都导航到 Agent，中文输入法确认候选字也会触发。现在保留输入框事件隔离，并在 `isComposing` 或兼容性 `keyCode === 229` 时交还输入法处理，不阻止默认选词；普通 Enter 仍按现有路径提交。修改前 GitNexus 为 HIGH：2 个直接调用方、5 个影响符号、3 组首页流程，已告知用户。
+
+本机 Chrome 加载实际事件模块，在 390/1280 两种宽度分别发送合成中 Enter、229 兼容事件、普通 Enter：修改前四个输入法场景都误导航，修改后 6/6 通过；示例点击只填入输入框，普通提交的 `q` 保留完整中文。现有首页入口检查 3/3 通过。证据为真实 DOM 配合模拟 KeyboardEvent、浏览器内拦截的目标路由，不能证明实体输入法、实际登录后 Agent 或模型业务闭环。脚本 `/tmp/orbit-ime-browser.cjs`，对照日志 `/tmp/orbit-ime-before.log` 与 `/tmp/orbit-ime-after.log`。本轮尚未部署此修复。

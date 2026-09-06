@@ -96,6 +96,10 @@ export function bindStarfieldAgentPrompt(
     if (!(event.target instanceof HTMLInputElement) || event.target.id !== "skPromptInput") return;
     event.stopPropagation();
 
+    // Enter may confirm an IME candidate rather than submit the prompt.
+    // Some browsers report keyCode 229 on the final composition keydown.
+    if (event.isComposing || event.keyCode === 229) return;
+
     if (event.key === "Enter") {
       event.preventDefault();
       submitInput();
