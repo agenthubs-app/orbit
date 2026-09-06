@@ -241,3 +241,12 @@ GitNexus 修改前报告 CRITICAL：工厂 9 个直接调用方、44 个受影�
 验证：新增适配器测试与 V1 服务/API/worker 共 14 项通过，覆盖独立实例共享、跨工作区拒绝、批次分页清理、重复删除、存储错误脱敏、异常游标。V2 API/worker 初次因缺少数据库变量跳过，随后使用本机默认 PostgreSQL 的随机 schema 实际执行 8 项全部通过，结束清理；未读取连接密钥。生产构建通过，类型诊断仍为 109 条既有问题、无新增。日志 `/tmp/orbit-private-blob-tests.log`、`/tmp/orbit-private-blob-v2-tests.log`、`/tmp/orbit-private-blob-build.log`。
 
 尚未完成：本轮共享传输测试使用受控客户端，不能证明真实 Blob 访问；尚未创建/连接私有 Blob、部署该适配器、接入名片队列及补发扫描，也未解决大文件直接上传的云函数请求体限制。OCR 真实提供方、云端识别与首次价值闭环继续保持未验收。
+
+
+### 2026-09-07：私有 Blob 已连接 Preview
+
+通过 Vercel CLI 创建 `orbit-card-images`（`store_N5S1mVeqsHNd3AhJ`，private，iad1），交互选择仅连接 Orbit 的 Preview，明确取消 Production 与 Development。平台自动配置连接变量；随后只用 `env ls preview` 确认名称存在，没有拉取变量值。创建命令的非敏感 rw-token 占位参数仅用于阻止 CLI 先读取本地 `.env.local`；已核对安装的 CLI 源码，create-store 操作使用现有 Vercel 登录，不使用该占位参数。没有执行 `env pull`。
+
+提交 `562dc083` 已部署到 https://orbit-85rnx5vyb-liqys-projects-33c8ddec.vercel.app ，固定预览 https://orbit-preview-li-qy.vercel.app 已切换，云端构建成功。通过 CLI 的部署访问认证、但不带应用会话请求批量名片集合 GET，返回 HTTP 401，保留应用权限边界。
+
+实际 Blob 上传/读取/删除仍未验证：本轮未上传测试图。V1 待处理批次不能直接 finish，V2 取消后的图片清理由 cleanup outbox 驱动；应在云端 worker/清理接好后再做完整图片存取验收，避免把测试图片留在无人消费的队列中。此部署不代表 OCR、名片队列或空账户首次价值已完成。
