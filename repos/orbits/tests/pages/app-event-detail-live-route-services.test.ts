@@ -310,15 +310,15 @@ test("event detail presents invalid end times honestly instead of a zero-duratio
   assert.match(logistics?.body ?? "", /结束时间待确认/u);
 });
 
-test("event detail reads registration state from the registration record API", () => {
+test("event detail reads registration state from the authenticated canonical server snapshot", () => {
   const detailSource = source(
     "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
   );
 
-  assert.match(
-    detailSource,
-    /\/api\/events\/.*\/registration\?questions=false/,
-  );
+  const pageSource = source("app/(app)/app/events/[id]/page.tsx");
+  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(pageSource, /youRsvped: resolution\.registered/);
+  assert.doesNotMatch(detailSource, /registration\?questions=false|setRegistrationStatus/);
   assert.match(detailSource, /registrationStatus/);
   assert.match(detailSource, /Manage registration|管理报名/);
   assert.match(detailSource, /Register again|重新报名/);
@@ -331,7 +331,7 @@ test("event detail reads registration state from the registration record API", (
   );
 });
 
-test("public event detail keeps registration and matchmaking requests behind auth state", () => {
+test("public event detail derives registration from server auth and gates matchmaking requests", () => {
   const detailSource = source(
     "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
   );
@@ -339,7 +339,10 @@ test("public event detail keeps registration and matchmaking requests behind aut
     "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
   );
 
-  assert.match(detailSource, /if \(!event\.stats\.authed\)/);
+  const pageSource = source("app/(app)/app/events/[id]/page.tsx");
+  assert.match(pageSource, /authed: Boolean\(session\?\.user\?\.id\)/);
+  assert.match(pageSource, /attendees: resolution\.registered \? presentedEvent\.stats\.attendees : \[\]/);
+  assert.doesNotMatch(detailSource, /registration\?questions=false/);
   assert.match(
     detailSource,
     /authenticated=\{event\.stats\.authed\}/,
