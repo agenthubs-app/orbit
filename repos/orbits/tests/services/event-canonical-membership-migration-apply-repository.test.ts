@@ -1,14 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { Pool } from "pg";
-
 import {
   applyCanonicalMembershipMigration,
   CanonicalMembershipMigrationApplyError,
   canonicalMembershipMigrationLedgerResultHash,
 } from "../../features/events/registration/canonical-migration/apply-repository";
 import { loadLocalEnv } from "../../scripts/load-local-env";
+import { createCanonicalMembershipV11Fixture } from "../support/canonical-membership-v11-fixture";
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -71,45 +70,41 @@ test("canonical migration apply errors redact command input and ledger result ha
 });
 
 test(
-  "main v11 apply fails not-ready before manifest parsing and is read-only",
+  "isolated v11 apply fails not-ready before manifest parsing and is read-only",
   {
     skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured",
   },
-  async () => {
+  async (context) => {
     assert.ok(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
-    try {
-      const before = await pool.query(
-        `select coalesce(max(version),0)::text as version
-           from event_ops_schema_migrations`,
-      );
-      await assert.rejects(
-        applyCanonicalMembershipMigration(
-          {
-            connectionString: databaseUrl,
-            expectedCount: 0,
-            expectedPlanHash: hash,
-            manifestHash: hash,
-            migrationRunId: "run:not-ready",
-            workspaceId: process.env.ORBIT_WORKSPACE_ID ?? "workspace:default",
-          },
-          undefined,
-        ),
-        (error: unknown) =>
-          error instanceof CanonicalMembershipMigrationApplyError &&
-          error.code === "CANONICAL_MEMBERSHIP_MIGRATION_NOT_READY",
-      );
-      assert.deepEqual(
-        (
-          await pool.query(
-            `select coalesce(max(version),0)::text as version
-               from event_ops_schema_migrations`,
-          )
-        ).rows[0],
-        before.rows[0],
-      );
-    } finally {
-      await pool.end();
-    }
+    const { pool, connectionString } = await createCanonicalMembershipV11Fixture(context, databaseUrl);
+    const before = await pool.query(
+      `select coalesce(max(version),0)::text as version
+         from event_ops_schema_migrations`,
+    );
+    await assert.rejects(
+      applyCanonicalMembershipMigration(
+        {
+          connectionString,
+          expectedCount: 0,
+          expectedPlanHash: hash,
+          manifestHash: hash,
+          migrationRunId: "run:not-ready",
+          workspaceId: process.env.ORBIT_WORKSPACE_ID ?? "workspace:default",
+        },
+        undefined,
+      ),
+      (error: unknown) =>
+        error instanceof CanonicalMembershipMigrationApplyError &&
+        error.code === "CANONICAL_MEMBERSHIP_MIGRATION_NOT_READY",
+    );
+    assert.deepEqual(
+      (
+        await pool.query(
+          `select coalesce(max(version),0)::text as version
+             from event_ops_schema_migrations`,
+        )
+      ).rows[0],
+      before.rows[0],
+    );
   },
 );

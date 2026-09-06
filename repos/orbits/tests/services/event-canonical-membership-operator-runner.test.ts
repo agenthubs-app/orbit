@@ -223,7 +223,7 @@ test("CLI emits stable exit classes and never serializes secrets", async () => {
   const dryMock = dependencies({ manifest: "{" });
   const blocked = await executeCanonicalMembershipOperatorCli(
     dryArgs,
-    { ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
+    { NODE_ENV: "test", ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
     dryMock.deps,
   );
   assert.equal(blocked.exitCode, 2);
@@ -231,7 +231,7 @@ test("CLI emits stable exit classes and never serializes secrets", async () => {
 
   const config = await executeCanonicalMembershipOperatorCli(
     dryArgs,
-    { ORBIT_EVENT_DATABASE_URL: connectionString },
+    { NODE_ENV: "test", ORBIT_EVENT_DATABASE_URL: connectionString },
     dryMock.deps,
   );
   assert.deepEqual(
@@ -242,7 +242,7 @@ test("CLI emits stable exit classes and never serializes secrets", async () => {
   const reviewMock = dependencies({ review: "{" });
   const invalidReview = await executeCanonicalMembershipOperatorCli(
     applyArgs,
-    { ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
+    { NODE_ENV: "test", ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
     reviewMock.deps,
   );
   assert.equal(invalidReview.exitCode, 65);
@@ -266,7 +266,7 @@ test("CLI emits stable exit classes and never serializes secrets", async () => {
     });
     const outcome = await executeCanonicalMembershipOperatorCli(
       applyArgs,
-      { ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
+      { NODE_ENV: "test", ORBIT_EVENT_DATABASE_URL: connectionString, ORBIT_WORKSPACE_ID: workspaceId },
       failure.deps,
     );
     assert.equal(outcome.exitCode, exitCode);

@@ -19,6 +19,7 @@ import {
 } from "../../features/events/registration/interview-response-contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
+import { createCanonicalMembershipV11Fixture } from "../support/canonical-membership-v11-fixture";
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -548,12 +549,12 @@ test(
 );
 
 test(
-  "main v11 canonical membership CLI is read-only and apply fails not-ready",
+  "isolated v11 canonical membership CLI is read-only and apply fails not-ready",
   { timeout: 120_000 },
-  async () => {
+  async (context) => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
     assert.ok(mainWorkspaceId, "ORBIT_WORKSPACE_ID is required");
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const { pool, connectionString } = await createCanonicalMembershipV11Fixture(context, databaseUrl);
     const directory = await mkdtemp(join(tmpdir(), "canonical-cli-main-"));
     const manifestFile = join(directory, "manifest.json");
     const reviewFile = join(directory, "review.json");
@@ -561,10 +562,27 @@ test(
     const parsedManifest = parseCanonicalMembershipOperatorManifest(rawManifest);
     const environment = {
       ...process.env,
-      ORBIT_EVENT_DATABASE_URL: databaseUrl,
+      ORBIT_EVENT_DATABASE_URL: connectionString,
       ORBIT_WORKSPACE_ID: mainWorkspaceId,
     };
     try {
+      const eventId = "event:cli:v11-preservation";
+      const client = createEventOperationsPostgresClient({ connectionString, pool });
+      const repository = createPostgresEventOperationsRepository({
+        client,
+        workspaceId: mainWorkspaceId,
+      });
+      await insertEvent({ eventId, index: 1, pool, workspaceId: mainWorkspaceId });
+      await saveConfiguration(repository, eventId);
+      const attendee = registration({ adaptive: true, eventId, index: 1 });
+      await repository.activateCanonicalRegistrations(eventId, [attendee]);
+      await insertLegacyRegistration({ pool, registration: attendee, workspaceId: mainWorkspaceId });
+      for (const table of [
+        "event_ops_events", "event_ops_membership_heads", "event_ops_profile_heads", "orbit_records",
+      ]) {
+        const count = await pool.query(`select count(*)::int as count from ${table} where workspace_id=$1`, [mainWorkspaceId]);
+        assert.equal(count.rows[0]?.count, 1, `${table} must contain preservation evidence`);
+      }
       const before = await mainSnapshot(pool, mainWorkspaceId);
       assert.equal((before as { version: string }).version, "11");
       await writeFile(manifestFile, rawManifest);
@@ -623,9 +641,9 @@ test(
       assert.deepEqual(await mainSnapshot(pool, mainWorkspaceId), before);
       const disclosure = `${dry.stdout}\n${dry.stderr}\n${apply.stdout}\n${apply.stderr}`;
       assert.ok(!disclosure.includes(databaseUrl));
+      assert.ok(!disclosure.includes(connectionString));
       assert.ok(!disclosure.includes(directory));
     } finally {
-      await pool.end();
       await rm(directory, { force: true, recursive: true });
     }
   },

@@ -9,6 +9,7 @@ import {
   type LiveRecordSqlClient,
 } from "../../shared/storage/postgres-live-record-store";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
+import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS } from "../../features/events/event-operations/storage/migrations";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 
 const baseRecord: LiveRecord<{ title: string; startsAt: string }> = {
@@ -86,7 +87,7 @@ test("orbit records migration can run through an async SQL client", async () => 
 
   await runOrbitRecordsMigration(client);
 
-  assert.equal(client.calls.length, 3);
+  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 2);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
@@ -97,6 +98,11 @@ test("orbit records migration can run through an async SQL client", async () => 
     /create table if not exists event_ops_schema_migrations/i,
   );
   assert.match(client.calls[2]?.text ?? "", /create table event_ops_events/i);
+  for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
+    const sql = client.calls[index + 2]?.text ?? "";
+    assert.ok(sql.includes(migration.name));
+    assert.ok(sql.includes(migration.checksum));
+  }
 });
 
 test("postgres live record store upserts records with parameterized SQL", async () => {

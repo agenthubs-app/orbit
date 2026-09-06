@@ -4,8 +4,9 @@ import test from "node:test";
 
 import { Pool, type PoolClient } from "pg";
 
-import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS, runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { loadLocalEnv } from "../../scripts/load-local-env";
+import { createCanonicalMembershipV11Fixture } from "../support/canonical-membership-v11-fixture";
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -105,7 +106,10 @@ test(
       const version = await pool.query<{ count: string; version: string }>(`select
         count(*) filter (where version=12)::text as count, max(version)::text as version
         from event_ops_schema_migrations`);
-      assert.deepEqual(version.rows[0], { count: "1", version: "13" });
+      assert.deepEqual(version.rows[0], {
+        count: "1",
+        version: String(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)!.version),
+      });
 
       await insertRun(pool);
       await insertEvent(pool);
@@ -196,26 +200,15 @@ test(
 );
 
 test(
-  "main database remains at v11 or earlier without canonical membership ledger writes",
+  "isolated v11 schema has no canonical membership ledger",
   { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured" },
-  async () => {
+  async (context) => {
     assert.ok(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
-    try {
-      const state = await pool.query<{ events: string | null; runs: string | null; version: string }>(`select
-        (select coalesce(max(version),0)::text from event_ops_schema_migrations) as version,
-        to_regclass('event_ops_canonical_membership_migration_runs')::text as runs,
-        to_regclass('event_ops_canonical_membership_migration_events')::text as events`);
-      assert.ok(Number(state.rows[0]?.version) <= 11);
-      assert.equal(state.rows[0]?.runs === null, state.rows[0]?.events === null);
-      if (state.rows[0]?.runs && state.rows[0]?.events) {
-        const counts = await pool.query<{ events: string; runs: string }>(`select
-          (select count(*)::text from event_ops_canonical_membership_migration_runs) as runs,
-          (select count(*)::text from event_ops_canonical_membership_migration_events) as events`);
-        assert.deepEqual(counts.rows[0], { events: "0", runs: "0" });
-      }
-    } finally {
-      await pool.end();
-    }
+    const { pool } = await createCanonicalMembershipV11Fixture(context, databaseUrl);
+    const state = await pool.query<{ events: string | null; runs: string | null; version: string }>(`select
+      (select coalesce(max(version),0)::text from event_ops_schema_migrations) as version,
+      to_regclass('event_ops_canonical_membership_migration_runs')::text as runs,
+      to_regclass('event_ops_canonical_membership_migration_events')::text as events`);
+    assert.deepEqual(state.rows[0], { version: "11", runs: null, events: null });
   },
 );
