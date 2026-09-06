@@ -301,6 +301,8 @@ test("AI email draft reads an actor-scoped contact from live storage before call
     workspaceId,
   });
   let providerBody = "";
+  let providerCalls = 0;
+  let finishReason: string | undefined = "stop";
   const service = createAiEmailDraftService({
     contactsService: createLiveContactsListSearchAndFilterService({ provider }),
     contactDetailService: createLiveContactDetailTagStatusService({ provider }),
@@ -309,11 +311,13 @@ test("AI email draft reads an actor-scoped contact from live storage before call
       model: "deepseek-chat",
       provider: "deepseek",
       fetchImplementation: (async (_url, init) => {
+        providerCalls += 1;
         providerBody = String(init?.body ?? "");
         return new Response(
           JSON.stringify({
             choices: [
               {
+                finish_reason: finishReason,
                 message: {
                   content: JSON.stringify({
                     subject: "继续推进制造业 AI 试点",
@@ -358,4 +362,19 @@ test("AI email draft reads an actor-scoped contact from live storage before call
   assert.equal(result.data.safety.liveDatabaseReadExecuted, true);
   assert.equal(result.data.safety.liveDatabaseWriteExecuted, false);
   assert.equal(result.data.safety.externalSendRequested, false);
+
+  const callsBeforeOtherActor = providerCalls;
+  const otherActor = await service.createDraft({
+    actorId: "account:unrelated", contactId: "contact_001", language: "zh",
+  });
+  assert.equal(otherActor.success, false);
+  if (otherActor.success === false) assert.equal(otherActor.error.code, "CONTACT_NOT_FOUND");
+  assert.equal(providerCalls, callsBeforeOtherActor, "another account must not send contact data to the model");
+
+  for (finishReason of [undefined, "length", "content_filter"]) {
+    const incomplete = await service.createDraft({ actorId, contactId: "contact_001", language: "zh" });
+    assert.equal(incomplete.success, false, `must reject completion reason ${finishReason}`);
+    if (incomplete.success === false) assert.equal(incomplete.error.code, "MODEL_REQUEST_FAILED");
+    assert.equal("data" in incomplete, false, "an incomplete response must not expose a usable draft");
+  }
 });
