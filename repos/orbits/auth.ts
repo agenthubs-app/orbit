@@ -7,6 +7,7 @@ import Google from "next-auth/providers/google";
 
 import { enabledOAuthProviders } from "./features/auth/oauth-providers";
 import { resolveAuthUserService } from "./features/auth/service-factory";
+import { isPasswordSessionCurrent } from "./features/auth/session-revocation";
 
 function authUserService() {
   return resolveAuthUserService(
@@ -26,6 +27,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        const authenticatedAt = Date.now();
         const result = await authUserService().verifyCredentials({
           email: typeof credentials?.email === "string" ? credentials.email : "",
           password:
@@ -43,6 +45,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           id: result.data.user.id,
           email: result.data.user.email,
           name: result.data.user.displayName,
+          authenticatedAt,
         };
       },
     }),
@@ -58,6 +61,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, account, profile }) {
+      if (user) token.authenticatedAt = "authenticatedAt" in user && typeof user.authenticatedAt === "number" ? user.authenticatedAt : Date.now();
+      if (!user && token.email && token.sub) {
+        const authenticatedAt = typeof token.authenticatedAt === "number"
+          ? token.authenticatedAt : (token.iat ?? 0) * 1000;
+        if (!await isPasswordSessionCurrent({ email: token.email, userId: token.sub, authenticatedAt })) return null;
+        // Keep the original authentication time as Auth.js rotates iat on refresh.
+        token.authenticatedAt = authenticatedAt;
+      }
       // OAuth 首次登录:把 IdP 身份换成我们自己的用户记录,token.sub 用我们的 id。
       if (account?.provider === "google" && profile?.email) {
         const result = await authUserService().getOrCreateOAuthUser({

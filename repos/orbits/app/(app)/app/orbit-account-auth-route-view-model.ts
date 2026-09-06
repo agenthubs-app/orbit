@@ -27,8 +27,8 @@ const accountAuthCopy: Record<OrbitAccountAuthMode, Omit<OrbitAccountAuthViewMod
   },
   forgot: {
     busyLabel: "处理中...",
-    description: "输入注册邮箱，我们会发送验证码用于重置密码。",
-    primaryLabel: "发送验证码",
+    description: "输入注册邮箱，申请密码重置链接。",
+    primaryLabel: "申请重置链接",
     switchLabel: "返回登录",
     title: "重置密码",
   },

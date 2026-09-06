@@ -1,4 +1,5 @@
 import { EventExperienceEditor } from "./event-experience-editor";
+import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +10,5 @@ export default async function AppEventExperiencePage({
 }) {
   const { id } = await params;
   const eventId = decodeURIComponent(id);
-  return <EventExperienceEditor eventId={eventId} />;
+  return <><OrbitReferenceStyles /><EventExperienceEditor eventId={eventId} /></>;
 }

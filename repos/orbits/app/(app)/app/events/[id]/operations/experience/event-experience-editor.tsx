@@ -9,7 +9,6 @@ import type {
   EventExperienceSnapshot,
   EventExperienceVersion,
 } from "../../../../../../../features/events/experience/contract";
-import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { PublicTopNav } from "../../../../orbit-public-shell";
 
 interface ExperienceEditorProps {
@@ -287,7 +286,6 @@ export function EventExperienceEditor({ eventId }: ExperienceEditorProps) {
 
   return (
     <>
-      <OrbitReferenceStyles />
       <PublicTopNav active="events" />
       <main style={{ margin: "0 auto", maxWidth: 980, padding: "28px clamp(16px,4vw,42px) 80px" }}>
         <a href={`/app/events/${encodeURIComponent(eventId)}/operations`} style={{ color: "var(--text-2)", textDecoration: "none" }}>
