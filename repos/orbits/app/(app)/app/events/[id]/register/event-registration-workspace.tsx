@@ -881,7 +881,7 @@ export function EventRegistrationWorkspace({
         <a
           className="reg-ghost-btn"
           href={eventHref}
-          style={{ alignItems: "center", color: "var(--text-3)", display: "inline-flex", fontSize: 13.5, fontWeight: 600, gap: 6, marginLeft: -12, textDecoration: "none" }}
+          style={{ alignItems: "center", color: "var(--text-3)", display: "inline-flex", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, textDecoration: "none" }}
         >
           <Icon name="chevR" size={14} style={{ transform: "rotate(180deg)" }} />
           {copy(language, { en: "Back to event", zh: "返回活动页" })}
@@ -889,7 +889,7 @@ export function EventRegistrationWorkspace({
 
         <header className="reg-page-header" style={{ alignItems: "flex-end", display: "flex", gap: 18, justifyContent: "space-between", margin: "20px 0 24px" }}>
           <div style={{ minWidth: 0 }}>
-            <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 11.5, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+            <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
               <Icon name="sparkle" size={13} />
               {copy(language, { en: "Event persona", zh: "活动个人画像" })}
             </span>
@@ -994,7 +994,7 @@ export function EventRegistrationWorkspace({
               </span>
 
               <div style={{ alignItems: "center", display: "flex", gap: 10, marginBottom: 20 }}>
-                <span className="chip" style={{ background: "var(--accent-soft)", border: 0, color: "var(--accent)", fontSize: 11.5, fontWeight: 700 }}>
+                <span className="chip" style={{ background: "var(--accent-soft)", border: 0, color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>
                   {fieldLabel(language, question.field)}
                 </span>
                 <span
@@ -1007,7 +1007,7 @@ export function EventRegistrationWorkspace({
               </div>
 
               {positioningSeeded && transcript.some((turn) => turn.field === "positioning") ? (
-                <div data-registration-prefilled-positioning style={{ alignItems: "center", background: "var(--surface-2)", border: "1px dashed var(--border-2)", borderRadius: 12, color: "var(--text-2)", display: "flex", fontSize: 12.5, gap: 8, marginBottom: 16, padding: "9px 13px" }}>
+                <div data-registration-prefilled-positioning style={{ alignItems: "center", background: "var(--surface-2)", border: "1px dashed var(--border-2)", borderRadius: 12, color: "var(--text-2)", display: "flex", fontSize: 13, gap: 8, marginBottom: 16, padding: "9px 13px" }}>
                   <Icon color="var(--accent)" name="user" size={14} />
                   <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {copy(language, { en: "Positioning from your profile: ", zh: "定位已从通用画像带入：" })}
@@ -1102,7 +1102,7 @@ export function EventRegistrationWorkspace({
                             color: selectedOption === option ? "var(--on-dark)" : "var(--text-3)",
                             display: "inline-flex",
                             flexShrink: 0,
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: 700,
                             height: 24,
                             justifyContent: "center",
@@ -1137,7 +1137,7 @@ export function EventRegistrationWorkspace({
                       />
                       <button className="btn btn-primary" disabled={!freeText.trim()} type="submit" style={{ alignItems: "center", display: "inline-flex", gap: 7 }}>
                         {copy(language, { en: "Next", zh: "继续" })}
-                        <span className="mono" style={{ background: "rgba(255,255,255,.2)", borderRadius: 5, fontSize: 10.5, padding: "2px 6px" }}>⏎</span>
+                        <span className="mono" style={{ background: "rgba(255,255,255,.2)", borderRadius: 5, fontSize: 11, padding: "2px 6px" }}>⏎</span>
                       </button>
                     </form>
                   ) : (
@@ -1145,7 +1145,7 @@ export function EventRegistrationWorkspace({
                       className="reg-ghost-btn"
                       onClick={() => setFreeTextOpen(true)}
                       type="button"
-                      style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 6, marginLeft: -12, marginTop: 14 }}
+                      style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, marginTop: 14 }}
                     >
                       <Icon name="edit" size={14} />
                       {copy(language, { en: "I'd rather write my own", zh: "选项不合适?用自己的话说" })}
@@ -1172,7 +1172,7 @@ export function EventRegistrationWorkspace({
                 <Icon name="chevR" size={13} style={{ transform: "rotate(180deg)" }} />
                 {copy(language, { en: "Previous", zh: "上一题" })}
               </button>
-              <span style={{ color: "var(--text-4)", fontSize: 12.5 }}>
+              <span style={{ color: "var(--text-4)", fontSize: 13 }}>
                 {copy(language, {
                   en: `${missingCoreFields.length} question(s) left before registration. Answers stay scoped to this event.`,
                   zh: `还需完成 ${missingCoreFields.length} 个问题即可报名；回答只用于本次活动。`,
@@ -1204,7 +1204,7 @@ export function EventRegistrationWorkspace({
                   zh: "你的本场回答已可靠保存",
                 })}
               </h2>
-              <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
+              <p style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
                 {copy(language, {
                   en: "These exact answers remain after refresh or sign-in. The AI persona is a derived preview and is regenerated only when you request it.",
                   zh: "下列原始回答在刷新或重新登录后仍会保留。AI 活动画像属于派生预览，只会在你主动要求时重新生成。",
@@ -1226,7 +1226,7 @@ export function EventRegistrationWorkspace({
                     <dt style={{ color: "var(--text-3)", fontSize: 12, fontWeight: 700 }}>
                       {fieldLabel(language, turn.field)}
                     </dt>
-                    <dd style={{ color: "var(--ink)", fontSize: 14.5, lineHeight: 1.55, margin: 0 }}>
+                    <dd style={{ color: "var(--ink)", fontSize: 15, lineHeight: 1.55, margin: 0 }}>
                       {turn.answer}
                     </dd>
                   </div>
@@ -1301,7 +1301,7 @@ export function EventRegistrationWorkspace({
                 zh: "你已不再参加这场活动",
               })}
             </h2>
-            <p role="status" style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>
+            <p role="status" style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>
               {copy(language, {
                 en: "No email, organizer message, calendar update, or refund was triggered. You can reactivate the same registration record by answering again.",
                 zh: "本次取消不会发送邮件、联系主办方、修改日历或发起退款。再次回答时会重新激活同一条报名记录，不会创建重复记录。",
@@ -1309,7 +1309,7 @@ export function EventRegistrationWorkspace({
             </p>
             {transcript.length > 0 ? (
               <details>
-                <summary style={{ color: "var(--text-2)", cursor: "pointer", fontSize: 13.5, fontWeight: 650 }}>
+                <summary style={{ color: "var(--text-2)", cursor: "pointer", fontSize: 14, fontWeight: 650 }}>
                   {copy(language, { en: "Review previously saved answers", zh: "查看此前保存的回答" })}
                 </summary>
                 <dl style={{ display: "grid", gap: 8, margin: "12px 0 0" }}>
@@ -1406,7 +1406,7 @@ export function EventRegistrationWorkspace({
                   <span
                     style={{
                       color: index === generatingStep ? "var(--ink)" : "var(--text-3)",
-                      fontSize: index === generatingStep ? 15 : 13.5,
+                      fontSize: index === generatingStep ? 15 : 14,
                       fontWeight: index === generatingStep ? 650 : 500,
                       transition: "all .3s ease",
                     }}
@@ -1448,7 +1448,7 @@ export function EventRegistrationWorkspace({
               <span aria-hidden="true" style={{ color: "color-mix(in srgb, var(--accent) 14%, transparent)", position: "absolute", right: 24, top: 20 }}>
                 <Icon name="sparkle" size={44} />
               </span>
-              <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 11.5, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              <span style={{ alignItems: "center", color: "var(--accent)", display: "inline-flex", fontSize: 12, fontWeight: 750, gap: 6, letterSpacing: "0.14em", textTransform: "uppercase" }}>
                 <Icon name="sparkle" size={13} />
                 {copy(language, { en: "Your persona for this event", zh: "你的本场活动画像" })}
               </span>
@@ -1474,7 +1474,7 @@ export function EventRegistrationWorkspace({
                       background: "var(--accent)",
                       borderRadius: "var(--r-pill)",
                       color: "var(--on-dark)",
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: 700,
                       padding: "5px 13px",
                     }}
@@ -1491,7 +1491,7 @@ export function EventRegistrationWorkspace({
                       border: "1px solid color-mix(in srgb, var(--accent) 34%, var(--border))",
                       borderRadius: "var(--r-pill)",
                       color: "var(--accent)",
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: 700,
                       padding: "5px 13px",
                     }}
@@ -1528,7 +1528,7 @@ export function EventRegistrationWorkspace({
                     <Icon name={section.icon} size={14} />
                     {section.label}
                   </div>
-                  <p style={{ color: "var(--text)", fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>{section.body}</p>
+                  <p style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.65, margin: 0 }}>{section.body}</p>
                 </div>
               ))}
 
@@ -1540,17 +1540,17 @@ export function EventRegistrationWorkspace({
                 <div style={{ display: "grid", gap: 8 }}>
                   {persona.openers.map((opener, openerIndex) => (
                     <div key={opener} style={{ alignItems: "baseline", display: "flex", gap: 10 }}>
-                      <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 11.5, fontWeight: 700 }}>
+                      <span className="mono" style={{ color: "var(--text-4)", flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
                         {String(openerIndex + 1).padStart(2, "0")}
                       </span>
-                      <span style={{ color: "var(--text)", fontSize: 14.5, lineHeight: 1.6 }}>{opener}</span>
+                      <span style={{ color: "var(--text)", fontSize: 15, lineHeight: 1.6 }}>{opener}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div style={{ alignItems: "center", display: "flex", gap: 8, gridColumn: "1 / -1" }}>
-                <span className="chip" style={{ fontSize: 11.5 }}>
+                <span className="chip" style={{ fontSize: 12 }}>
                   {persona.provenance.generationMethod === "orbit-agent-model-adaptive"
                     ? copy(language, { en: "Composed by Orbit AI", zh: "由 Orbit AI 生成" })
                     : copy(language, { en: "Composed from your answers", zh: "由你的回答直接生成" })}
@@ -1635,7 +1635,7 @@ export function EventRegistrationWorkspace({
             >
               <h2
                 id="event-registration-cancel-title"
-                style={{ color: "var(--ink)", fontSize: 21, margin: 0 }}
+                style={{ color: "var(--ink)", fontSize: 22, margin: 0 }}
               >
                 {admissionControlled
                   ? copy(language, {
@@ -1647,7 +1647,7 @@ export function EventRegistrationWorkspace({
                       zh: "确认取消这次活动报名？",
                     })}
               </h2>
-              <p style={{ color: "var(--text-2)", fontSize: 14.5, lineHeight: 1.6, margin: 0 }}>
+              <p style={{ color: "var(--text-2)", fontSize: 15, lineHeight: 1.6, margin: 0 }}>
                 {admissionControlled
                   ? copy(language, {
                       en: "The application becomes final and you will leave attendee matching. If already admitted, your attendee membership is cancelled atomically and the next waitlisted person may be promoted.",
