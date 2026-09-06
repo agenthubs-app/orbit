@@ -163,3 +163,11 @@ canonical membership CLI 的 v11 验收改为随机 schema 和独立 workspace�
 - GitNexus 当前索引对五个组件均报告 LOW，涉及首页、报名、活动参与者和 Agent 页面。相关现有页面、弹窗和层级检查 32 项通过；类型检查仍有 109 条既有错误，没有新增诊断。
 - 本次只核对代码与现有组件检查，尚未补充真实浏览器点击证据或更新 Vercel 预览。邮件真实收件、云端持续执行及真实用户试用仍未完成。
 - 提交前 `detect_changes` 的 all / staged 均完整返回（无 partial / truncated）；staged 包含 5 个文件、8 个图符号、10 条 Agent 流程，整体评为 HIGH。已向用户说明组件级影响范围；代码审查确认 Agent 差异仅分隔条层级，额外 17 项聊天历史和 API/UI 检查通过，共 49 项相关检查通过。
+
+### 2026-09-06：层级修复已更新到 Vercel Preview
+
+- 源码提交 `092e4f47` 已部署；沿用当前工作区既有联系人改动，相关联系人检查 22 项通过，没有改写或提交这些用户文件。本地生产构建与 Vercel 云端构建成功。
+- 新部署：https://orbit-6twur1xm7-liqys-projects-33c8ddec.vercel.app 。固定预览 https://orbit-preview-li-qy.vercel.app 已绑定该部署，访问保护保留。
+- 使用 Vercel CLI 现有认证检查真实路由 `/app/account/login`：HTTP 200，邮箱、密码字段和恢复入口均存在。最初误查 `/login` 返回 404，随后依据源码纠正路由；不是页面故障。此检查证明登录页服务与入口存在，不替代实际登录、邮件收件或完整业务闭环。
+- 没有拉取环境变量、读取或展示密钥，也没有再次向测试邮箱发送申请。SMTP 认证失败仍待解决。
+- 核对部署配置后，仍只有密码恢复队列拥有 Vercel 触发器；Agent 目前依赖确认接口即时执行或独立 worker。独立 worker 尚未部署，请求中断后的持续接管、定时自动化和信号轮询仍未完成云端验收。
