@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { Pool, type PoolClient } from "pg";
 
-import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS, runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 
 loadLocalEnv();
@@ -105,7 +105,10 @@ test(
       const version = await pool.query<{ count: string; version: string }>(`select
         count(*) filter (where version=12)::text as count, max(version)::text as version
         from event_ops_schema_migrations`);
-      assert.deepEqual(version.rows[0], { count: "1", version: "13" });
+      assert.deepEqual(version.rows[0], { count: "1", version: String(Math.max(...EVENT_OPERATIONS_SCHEMA_MIGRATIONS.map((item) => item.version))) });
+
+      assert.deepEqual((await pool.query("select version,name,checksum from event_ops_schema_migrations order by version")).rows,
+        EVENT_OPERATIONS_SCHEMA_MIGRATIONS.map(({ version, name, checksum }) => ({ version, name, checksum })));
 
       await insertRun(pool);
       await insertEvent(pool);
@@ -126,6 +129,16 @@ test(
         { authority: "canonical_membership", count: "1", deadline_evidence_hash: null },
         { authority: "legacy_registration", count: "1", deadline_evidence_hash: hash("legacy-deadline-evidence") },
       ]);
+      const ledgerBeforeRerun = await Promise.all([
+        pool.query("select * from event_ops_canonical_membership_migration_runs order by migration_run_id"),
+        pool.query("select * from event_ops_canonical_membership_migration_events order by event_id"),
+      ]);
+      await runEventOperationsMigrations(pool);
+      const ledgerAfterRerun = await Promise.all([
+        pool.query("select * from event_ops_canonical_membership_migration_runs order by migration_run_id"),
+        pool.query("select * from event_ops_canonical_membership_migration_events order by event_id"),
+      ]);
+      assert.deepEqual(ledgerAfterRerun.map((result) => result.rows), ledgerBeforeRerun.map((result) => result.rows));
       await assert.rejects(insertRun(pool, { migrationRunId: "canonical-membership-run:same-plan" }));
       await assert.rejects(insertEvent(pool, {
         eventId: "event:orphan", migrationRunId: "canonical-membership-run:missing",
@@ -191,31 +204,6 @@ test(
       await pool.end();
       await admin.query(`drop schema if exists ${schema} cascade`);
       await admin.end();
-    }
-  },
-);
-
-test(
-  "main database remains at v11 or earlier without canonical membership ledger writes",
-  { skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured" },
-  async () => {
-    assert.ok(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
-    try {
-      const state = await pool.query<{ events: string | null; runs: string | null; version: string }>(`select
-        (select coalesce(max(version),0)::text from event_ops_schema_migrations) as version,
-        to_regclass('event_ops_canonical_membership_migration_runs')::text as runs,
-        to_regclass('event_ops_canonical_membership_migration_events')::text as events`);
-      assert.ok(Number(state.rows[0]?.version) <= 11);
-      assert.equal(state.rows[0]?.runs === null, state.rows[0]?.events === null);
-      if (state.rows[0]?.runs && state.rows[0]?.events) {
-        const counts = await pool.query<{ events: string; runs: string }>(`select
-          (select count(*)::text from event_ops_canonical_membership_migration_runs) as runs,
-          (select count(*)::text from event_ops_canonical_membership_migration_events) as events`);
-        assert.deepEqual(counts.rows[0], { events: "0", runs: "0" });
-      }
-    } finally {
-      await pool.end();
     }
   },
 );

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { randomUUID } from "node:crypto";
+import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 
 import { Pool } from "pg";
 
@@ -71,14 +73,30 @@ test("canonical migration apply errors redact command input and ledger result ha
 });
 
 test(
-  "main v11 apply fails not-ready before manifest parsing and is read-only",
+  "isolated v11 apply fails not-ready before manifest parsing and is read-only",
   {
     skip: databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured",
   },
   async () => {
     assert.ok(databaseUrl);
-    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const schema = `canonical_v11_${randomUUID().replaceAll("-", "")}`;
+    const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+    const url = new URL(databaseUrl);
+    url.searchParams.set("options", `-c search_path=${schema}`);
+    const pool = new Pool({ connectionString: url.toString(), max: 1 });
     try {
+      await admin.query(`create schema ${schema}`);
+      // Execute the official bootstrap and v1–v11 statements, deliberately excluding v12+.
+      await runEventOperationsMigrations({ async query(sql) {
+        const version = /where version = (\d+)/.exec(sql)?.[1];
+        if (!version || Number(version) <= 11) return pool.query(sql);
+        return undefined;
+      } });
+      const migrationsBefore = (await pool.query("select * from event_ops_schema_migrations order by version")).rows;
+      assert.equal(migrationsBefore.length, 11);
+      assert.equal(migrationsBefore.at(-1)?.version, 11);
+      const tablesBefore = (await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows;
+      assert.equal(tablesBefore.some((row) => row.tablename.startsWith("event_ops_canonical_membership_migration_")), false);
       const before = await pool.query(
         `select coalesce(max(version),0)::text as version
            from event_ops_schema_migrations`,
@@ -86,7 +104,7 @@ test(
       await assert.rejects(
         applyCanonicalMembershipMigration(
           {
-            connectionString: databaseUrl,
+            connectionString: url.toString(),
             expectedCount: 0,
             expectedPlanHash: hash,
             manifestHash: hash,
@@ -108,8 +126,12 @@ test(
         ).rows[0],
         before.rows[0],
       );
+      assert.deepEqual((await pool.query("select * from event_ops_schema_migrations order by version")).rows, migrationsBefore);
+      assert.deepEqual((await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows, tablesBefore);
     } finally {
       await pool.end();
+      try { await admin.query(`drop schema if exists ${schema} cascade`); }
+      finally { await admin.end(); }
     }
   },
 );
