@@ -144,7 +144,8 @@ test("live contact detail persists actor-scoped tag status note and interaction 
   assert.equal(updated.data.contact?.id, "contact_078");
   assert.equal(updated.data.contact?.status, "active");
   assert.ok(updated.data.contact?.tags.includes("topic:venture-ecosystem"));
-  assert.ok(updated.data.contact?.tags.includes("日本市场"));
+  const updatedTags: readonly string[] = updated.data.contact?.tags ?? [];
+  assert.ok(updatedTags.includes("日本市场"));
   assert.equal(updated.data.contact?.primaryIndustryId, "technology_internet");
   assert.equal(updated.data.contact?.primaryIndustryLabel, "科技与互联网");
   assert.match(
@@ -177,7 +178,8 @@ test("live contact detail persists actor-scoped tag status note and interaction 
   assert.ok(
     refreshed.data.contact?.tags.includes("topic:venture-ecosystem"),
   );
-  assert.ok(refreshed.data.contact?.tags.includes("日本市场"));
+  const refreshedTags: readonly string[] = refreshed.data.contact?.tags ?? [];
+  assert.ok(refreshedTags.includes("日本市场"));
   assert.equal(refreshed.data.contact?.primaryIndustryId, "technology_internet");
   assert.equal(
     refreshed.data.contact?.notes.filter((note) =>

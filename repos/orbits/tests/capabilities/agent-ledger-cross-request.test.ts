@@ -30,7 +30,6 @@ test("mock ledger state survives service recreation across request boundaries", 
   const nextRequest = createAgentLedgerService("mock");
   const result = await nextRequest.listEntries();
   assert.equal(result.success, true);
-  if (result.success === false) return;
   assert.equal(
     result.data.entries.find(
       (entry) => entry.entryId === "ledger-followup-alex-chen",
@@ -81,7 +80,6 @@ test("runtime workflow actions appear in the mock Today ledger", async () => {
   const ledger = createAgentLedgerService("mock");
   const result = await ledger.listEntries();
   assert.equal(result.success, true);
-  if (result.success === false) return;
   assert.equal(
     result.data.entries.find((entry) => entry.entryId === actionId)?.status,
     "awaiting_confirmation",
@@ -136,7 +134,6 @@ test("confirming a runtime action executes its mock outbox work", async () => {
     selectedOperationIds: [`${actionId}:task`],
   });
   assert.equal(result.success, true);
-  if (result.success === false) return;
   assert.equal(result.data.entry.status, "completed");
   assert.equal(result.data.entry.operations[0]?.status, "succeeded");
 });

@@ -26,7 +26,6 @@ test("/app/agent Chinese contact artifacts carry localized product labels and an
   }));
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
   const visibleContract = JSON.stringify({
     artifacts: result.data.artifacts,
     assistantMessage: result.data.assistantMessage,
@@ -47,7 +46,6 @@ test("/app/agent Chinese event artifacts use the locale passed through the conve
   }));
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
   const visibleContract = JSON.stringify({
     artifacts: result.data.artifacts,
     assistantMessage: result.data.assistantMessage,

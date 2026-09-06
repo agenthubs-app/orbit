@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type {
+  EventAttendeeRosterPayload,
+  EventAttendeeRosterImportPayload,
+} from "../../features/events/attendee-roster/contract";
+import type {
+  EventGoalReadinessPayload,
+  EventGoalSetPayload,
+} from "../../features/events/goal-readiness/contract";
+import type {
+  EventEncounterNotePayload,
+  EventEncounterEvidencePayload,
+} from "../../features/events/encounter-note/contract";
+import type {
+  WantConnectPayload,
+  WantConnectMatchesPayload,
+} from "../../features/events/want-connect/contract";
+import type {
+  PostEventReviewPayload,
+  PostEventReviewConfirmPayload,
+} from "../../features/events/post-event-review/contract";
+
 import { createLiveEventAttendeeRosterService } from "../../features/events/attendee-roster/live-service";
 import { mockEventAttendeeRosterFixture } from "../../features/events/attendee-roster/fixtures";
 import { createLiveEventEncounterNoteService } from "../../features/events/encounter-note/live-service";
@@ -69,7 +90,7 @@ test("event child service factories register live and hybrid storage-backed mode
       resolveWantConnectService("hybrid"),
       resolvePostEventContactReviewService("live"),
       resolvePostEventContactReviewService("hybrid"),
-    ];
+    ] as const;
 
     for (const resolution of resolutions) {
       assert.equal(resolution.success, true);
@@ -133,27 +154,37 @@ test("event child live services read and write shared event work records", async
   const store = createMemoryLiveRecordStore();
   const workspaceId = "workspace:event-child-live";
 
-  const rosterProvider = createEventCapabilityRecordProvider({
+  const rosterProvider = createEventCapabilityRecordProvider<
+    EventAttendeeRosterPayload | EventAttendeeRosterImportPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.attendeeRoster,
     store,
     workspaceId,
   });
-  const goalProvider = createEventCapabilityRecordProvider({
+  const goalProvider = createEventCapabilityRecordProvider<
+    EventGoalReadinessPayload | EventGoalSetPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.goalReadiness,
     store,
     workspaceId,
   });
-  const encounterProvider = createEventCapabilityRecordProvider({
+  const encounterProvider = createEventCapabilityRecordProvider<
+    EventEncounterNotePayload | EventEncounterEvidencePayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.encounterNotes,
     store,
     workspaceId,
   });
-  const wantConnectProvider = createEventCapabilityRecordProvider({
+  const wantConnectProvider = createEventCapabilityRecordProvider<
+    WantConnectPayload | WantConnectMatchesPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.wantConnect,
     store,
     workspaceId,
   });
-  const postEventProvider = createEventCapabilityRecordProvider({
+  const postEventProvider = createEventCapabilityRecordProvider<
+    PostEventReviewPayload | PostEventReviewConfirmPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.postEventReview,
     store,
     workspaceId,

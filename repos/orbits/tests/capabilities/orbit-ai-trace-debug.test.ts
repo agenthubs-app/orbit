@@ -40,7 +40,7 @@ function geminiTextResponse(text: string): Response {
 
 test("development Orbit AI trace route returns full-chain trace and planner comparison", async () => {
   const previousApiKey = process.env.GEMINI_API_KEY;
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
   const previousFetch = globalThis.fetch;
   const plannerOutput = JSON.stringify({
     assistantMessage: "我会先找适合的活动，并准备一个可复核的推荐视图。",
@@ -59,7 +59,12 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
 
   try {
     process.env.GEMINI_API_KEY = "test-gemini-key";
-    process.env.NODE_ENV = "development";
+    Object.defineProperty(process.env, "NODE_ENV", {
+      configurable: true,
+      enumerable: true,
+      value: "development",
+      writable: true,
+    });
     globalThis.fetch = (async () => {
       const next = providerResponses.shift();
       assert.ok(next, "test provider response queue must not be empty");
@@ -351,9 +356,9 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     }
 
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
+      Reflect.deleteProperty(process.env, "NODE_ENV");
     } else {
-      process.env.NODE_ENV = previousNodeEnv;
+      Object.defineProperty(process.env, "NODE_ENV", previousNodeEnv);
     }
 
     globalThis.fetch = previousFetch;
@@ -361,11 +366,16 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
 });
 
 test("development Orbit AI trace stops local guardrail prompts before planner and tools", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
   const previousFetch = globalThis.fetch;
 
   try {
-    process.env.NODE_ENV = "development";
+    Object.defineProperty(process.env, "NODE_ENV", {
+      configurable: true,
+      enumerable: true,
+      value: "development",
+      writable: true,
+    });
     globalThis.fetch = (async () => {
       throw new Error("guardrail prompt must not call provider");
     }) as typeof fetch;
@@ -433,9 +443,9 @@ test("development Orbit AI trace stops local guardrail prompts before planner an
     assert.equal(body.data?.plannerOnly.status, "skipped");
   } finally {
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
+      Reflect.deleteProperty(process.env, "NODE_ENV");
     } else {
-      process.env.NODE_ENV = previousNodeEnv;
+      Object.defineProperty(process.env, "NODE_ENV", previousNodeEnv);
     }
 
     globalThis.fetch = previousFetch;
@@ -443,10 +453,15 @@ test("development Orbit AI trace stops local guardrail prompts before planner an
 });
 
 test("development Orbit AI trace route is unavailable in production", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
 
   try {
-    process.env.NODE_ENV = "production";
+    Object.defineProperty(process.env, "NODE_ENV", {
+      configurable: true,
+      enumerable: true,
+      value: "production",
+      writable: true,
+    });
     const route = await importProjectModule<{
       POST: (request: Request) => Promise<Response>;
     }>("app/api/dev/orbit-ai/trace/route.ts");
@@ -468,9 +483,9 @@ test("development Orbit AI trace route is unavailable in production", async () =
     assert.match(body.error?.message ?? "", /development/i);
   } finally {
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
+      Reflect.deleteProperty(process.env, "NODE_ENV");
     } else {
-      process.env.NODE_ENV = previousNodeEnv;
+      Object.defineProperty(process.env, "NODE_ENV", previousNodeEnv);
     }
   }
 });

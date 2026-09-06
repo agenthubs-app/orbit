@@ -144,7 +144,6 @@ test("AI email draft reads the signed-in contact evidence and never requests ema
   });
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
 
   assert.deepEqual(calls, [
     "list:actor:test-account",
@@ -238,7 +237,6 @@ test("AI email draft rejects invented attachments, retries once, and only return
   assert.equal(result.success, true);
   assert.equal(providerCalls, 2);
   assert.match(providerBodies[1] ?? "", /attachment_not_in_record/);
-  if (result.success === false) return;
   assert.doesNotMatch(result.data.body, /附件|attached/i);
   assert.match(result.data.body, /想请您复核/);
   assert.equal(result.data.safety.externalSendRequested, false);
@@ -340,7 +338,6 @@ test("AI email draft reads an actor-scoped contact from live storage before call
   });
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
 
   assert.equal(result.data.contactId, "contact_001");
   assert.equal(result.data.provider, "deepseek");

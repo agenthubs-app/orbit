@@ -26,8 +26,6 @@ import * as signOutRoute from "../../app/api/account/session/sign-out/route";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const accountDebugView =
-  accountDebugViewModule["module.exports"] ??
-  accountDebugViewModule.default ??
   accountDebugViewModule;
 const {
   MockAccountSessionCapabilityDemo,

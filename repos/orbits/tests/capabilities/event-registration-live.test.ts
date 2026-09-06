@@ -88,6 +88,7 @@ test("invalid or unavailable model output returns no substitute questions", asyn
         provider: "openai",
         source: "provider:openai-responses-api",
       },
+      retryable: true,
       success: false,
     }),
   });
@@ -300,6 +301,12 @@ test("registration replay ignores JSON object key order", async () => {
       },
       async listRegistrations() {
         return [jsonbOrderedRegistration];
+      },
+      async listRegistrationsForUser(userId, eventIds) {
+        return userId === jsonbOrderedRegistration.userId &&
+          eventIds.includes(jsonbOrderedRegistration.eventId)
+          ? [jsonbOrderedRegistration]
+          : [];
       },
       async saveRegistration(registration) {
         saves += 1;

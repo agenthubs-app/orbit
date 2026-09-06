@@ -5,6 +5,8 @@ import {
   createEventAdmissionReviewDecisionPostHandler,
   createEventAdmissionReviewDetailGetHandler,
   createEventAdmissionReviewListGetHandler,
+  type EventAdmissionReviewDetailRouteContext,
+  type EventAdmissionReviewRouteContext,
 } from "../../app/api/events/[id]/admission/reviews/handler";
 import type { EventAccessService } from "../../features/events/event-access/service";
 import {
@@ -140,7 +142,9 @@ function admissionService(input: {
   };
 }
 
-function context(actorId?: string, eventId = EVENT_ID) {
+function context(actorId: string, eventId?: string): EventAdmissionReviewDetailRouteContext;
+function context(actorId?: undefined, eventId?: string): EventAdmissionReviewRouteContext;
+function context(actorId?: string, eventId = EVENT_ID): EventAdmissionReviewRouteContext {
   return actorId
     ? { params: Promise.resolve({ actorId, id: eventId }) }
     : { params: Promise.resolve({ id: eventId }) };

@@ -10,16 +10,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import * as primitivesModule from "../../shared/ui/primitives";
+import * as primitiveExports from "../../shared/ui/primitives";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const primitiveExports =
-  primitivesModule["module.exports"] ??
-  primitivesModule.default ??
-  primitivesModule;
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
@@ -226,44 +222,48 @@ test("product primitives expose reusable frame, surface, chips, controls, swatch
     assert.equal(typeof primitiveExports[exportName], "function", `${exportName} export`);
   }
 
-  const html = renderToStaticMarkup(
+  const content = React.createElement(
+    React.Fragment,
+    null,
+    React.createElement(primitiveExports.InlineMetric, {
+      label: "Evidence",
+      value: "2 sources",
+      tone: "evidence",
+    }),
+    React.createElement(primitiveExports.StatusDisplay, {
+      label: "Confirmation guard",
+      tone: "warning",
+      value: "Paused before send",
+    }),
     React.createElement(
-      primitiveExports.ProductFrame,
-      null,
-      React.createElement(
-        primitiveExports.ProductSurface,
-        { elevated: true, eyebrow: "Relationship context", title: "Source-backed intro" },
-        React.createElement(primitiveExports.InlineMetric, {
-          label: "Evidence",
-          value: "2 sources",
-          tone: "evidence",
-        }),
-        React.createElement(primitiveExports.StatusDisplay, {
-          label: "Confirmation guard",
-          tone: "warning",
-          value: "Paused before send",
-        }),
-        React.createElement(
-          "div",
-          { className: "chip-row" },
-          React.createElement(primitiveExports.Chip, { tone: "unknown" }, "Unknown tone"),
-          React.createElement(primitiveExports.Chip, { tone: "success" }, "Ready"),
-          React.createElement(primitiveExports.Chip, { tone: "warning" }, "Review"),
-        ),
-        React.createElement(
-          primitiveExports.Field,
-          { label: "Relationship source", helper: "Source required" },
-          React.createElement("input", { defaultValue: "Orbit Summit" }),
-        ),
-        React.createElement(primitiveExports.PrimaryAction, null, "Confirm next step"),
-        React.createElement(primitiveExports.SecondaryAction, null, "Keep as draft"),
-        React.createElement(primitiveExports.TokenSwatch, {
-          name: "Primary action",
-          tone: "primary",
-          value: "#155e75",
-        }),
-      ),
+      "div",
+      { className: "chip-row" },
+      React.createElement(primitiveExports.Chip, { tone: "unknown", children: "Unknown tone" }),
+      React.createElement(primitiveExports.Chip, { tone: "success", children: "Ready" }),
+      React.createElement(primitiveExports.Chip, { tone: "warning", children: "Review" }),
     ),
+    React.createElement(primitiveExports.Field, {
+      label: "Relationship source",
+      helper: "Source required",
+      children: React.createElement("input", { defaultValue: "Orbit Summit" }),
+    }),
+    React.createElement(primitiveExports.PrimaryAction, { children: "Confirm next step" }),
+    React.createElement(primitiveExports.SecondaryAction, { children: "Keep as draft" }),
+    React.createElement(primitiveExports.TokenSwatch, {
+      name: "Primary action",
+      tone: "primary",
+      value: "#155e75",
+    }),
+  );
+  const html = renderToStaticMarkup(
+    React.createElement(primitiveExports.ProductFrame, {
+      children: React.createElement(primitiveExports.ProductSurface, {
+        elevated: true,
+        eyebrow: "Relationship context",
+        title: "Source-backed intro",
+        children: content,
+      }),
+    }),
   );
 
   assert.match(html, /workbench-frame/);

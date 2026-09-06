@@ -26,8 +26,6 @@ import { syncResult } from "../support/sync-result";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const profileOnboardingDebugView =
-  profileOnboardingDebugViewModule["module.exports"] ??
-  profileOnboardingDebugViewModule.default ??
   profileOnboardingDebugViewModule;
 const {
   ProfileOnboardingCapabilityDemo,
@@ -134,16 +132,20 @@ test("profile API routes return stable envelopes for GET and PUT probes", async 
   assert.equal(getResponse.status, 200);
   assert.equal(getResponse.headers.get("cache-control"), "no-store");
   assert.equal(getResponse.headers.get("x-orbit-feature-mode"), "mock");
+  const expectedProfile = await createMockProfileService().getProfile();
+  assert.equal(expectedProfile.success, true);
   assert.deepEqual(await getResponse.json(), {
     success: true,
-    data: createMockProfileService().getProfile().data,
+    data: expectedProfile.data,
   });
 
   assert.equal(putResponse.status, 200);
   assert.equal(putResponse.headers.get("cache-control"), "no-store");
+  const expectedUpdate = await createMockProfileService().updateProfile(mockProfileUpdateInput);
+  assert.equal(expectedUpdate.success, true);
   assert.deepEqual(await putResponse.json(), {
     success: true,
-    data: createMockProfileService().updateProfile(mockProfileUpdateInput).data,
+    data: expectedUpdate.data,
   });
 });
 
@@ -180,9 +182,11 @@ test("profile API routes document empty and controlled failure paths", async () 
   );
 
   assert.equal(emptyResponse.status, 200);
+  const expectedEmpty = await createMockProfileService().getProfile({ scenario: "empty" });
+  assert.equal(expectedEmpty.success, true);
   assert.deepEqual(await emptyResponse.json(), {
     success: true,
-    data: createMockProfileService().getProfile({ scenario: "empty" }).data,
+    data: expectedEmpty.data,
   });
 
   assert.equal(failureResponse.status, 400);

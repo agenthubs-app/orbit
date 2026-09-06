@@ -129,7 +129,6 @@ test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups
   }));
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
   const artifact = result.data.artifacts[0];
   const items = artifact?.result.generatedView?.sections[0]?.items ?? [];
   const visibleContract = JSON.stringify({

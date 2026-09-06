@@ -10,7 +10,6 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import * as acquisitionEventAttendeeFixtures from "../../features/acquisition/event-attendee-fixtures";
 import * as eventsAttendeeFixtures from "../../features/events/attendee-roster/fixtures";
 import { eventOwnerTestDependencies } from "../api/event-owner-test-dependencies";
 
@@ -31,112 +30,39 @@ async function importProjectModule<TModule>(
 }
 
 test("event attendee roster contract exposes tags known-contact markers recommendation pool and errors", async () => {
-  const contract = await importProjectModule<{
-    EVENT_ATTENDEE_ROSTER_ERROR_CODES: readonly string[];
-    EVENT_ATTENDEE_ROSTER_ERROR_DEFINITIONS: Record<
-      string,
-      { appCode: string; message: string; recovery: string }
-    >;
-    EVENT_ATTENDEE_ROSTER_FIXTURE_SOURCE: string;
-    mockEventAttendeeRosterFixture: {
-      state: string;
-      attendees: ReadonlyArray<{
-        attendeeId: string;
-        displayName: string;
-        attendeeTags: ReadonlyArray<{ code: string; label: string }>;
-        knownContactMarker: {
-          isKnownContact: boolean;
-          contactId: string | null;
-          matchSource: string;
-        };
-        eligibleRecommendation: {
-          isEligible: boolean;
-          recommendationCandidateId: string | null;
-          reasons: readonly string[];
-        };
-        organizerFeedRequested: false;
-        externalLookupExecuted: false;
-        databaseWriteExecuted: false;
-        aiProviderRequested: false;
-      }>;
-      knownContactMarkers: ReadonlyArray<{
-        attendeeId: string;
-        isKnownContact: boolean;
-        contactId: string | null;
-      }>;
-      eligibleRecommendationPool: ReadonlyArray<{
-        attendeeId: string;
-        recommendationCandidateId: string;
-      }>;
-      provenance: { source: string; evidenceIds: readonly string[] };
-    };
-    mockEmptyEventAttendeeRosterFixture: {
-      state: string;
-      attendees: readonly unknown[];
-      eligibleRecommendationPool: readonly unknown[];
-      nextAction: string;
-    };
-    mockEventAttendeeRosterImportFixture: {
-      state: string;
-      importBatch: {
-        id: string;
-        recommendationCandidateIds: readonly string[];
-        organizerFeedRequested: false;
-        liveDatabaseWriteExecuted: false;
-      };
-    };
-  }>("features/events/attendee-roster/contract.ts");
-  const serviceModule = await importProjectModule<{
-    createMockEventAttendeeRosterService: () => {
-      getAttendeeRoster: (input?: {
-        eventId?: string | null;
-        scenario?: string | null;
-        tagFilter?: string | null;
-        eligibleOnly?: boolean;
-      }) => {
-        success: boolean;
-        data?: typeof acquisitionEventAttendeeFixtures.mockEventAttendeeRosterFixture;
-        error?: { code: string; appCode: string };
-      };
-      importAttendeeRoster: (input?: {
-        eventId?: string | null;
-        scenario?: string | null;
-        tagFilter?: string | null;
-        eligibleOnly?: boolean;
-      }) => {
-        success: boolean;
-        data?: typeof eventsAttendeeFixtures.mockEventAttendeeRosterImportFixture;
-        error?: { code: string; appCode: string };
-      };
-    };
-  }>("features/events/attendee-roster/mock-service.ts");
+  const contract = await importProjectModule<
+    typeof import("../../features/events/attendee-roster/contract")
+  >("features/events/attendee-roster/contract.ts");
+  const serviceModule = await importProjectModule<
+    typeof import("../../features/events/attendee-roster/mock-service")
+  >("features/events/attendee-roster/mock-service.ts");
 
   const service = serviceModule.createMockEventAttendeeRosterService();
-  const roster = service.getAttendeeRoster({ eventId: "demo-event-1" });
-  const filtered = service.getAttendeeRoster({
+  const roster = await service.getAttendeeRoster({ eventId: "demo-event-1" });
+  const filtered = await service.getAttendeeRoster({
     eventId: "demo-event-1",
     tagFilter: "storage_pilot",
   });
-  const eligibleOnly = service.getAttendeeRoster({
+  const eligibleOnly = await service.getAttendeeRoster({
     eventId: "demo-event-1",
     eligibleOnly: true,
   });
-  const importResult = service.importAttendeeRoster({
+  const importResult = await service.importAttendeeRoster({
     eventId: "demo-event-1",
   });
-  const empty = service.importAttendeeRoster({
+  const empty = await service.importAttendeeRoster({
     eventId: "demo-event-1",
     scenario: "empty",
   });
-  const pending = service.getAttendeeRoster({
+  const pending = await service.getAttendeeRoster({
     eventId: "demo-event-1",
     scenario: "pending",
   });
-  const failure = service.getAttendeeRoster({
+  const failure = await service.getAttendeeRoster({
     eventId: "demo-event-1",
     scenario: "failure",
   });
-  const missingEvent = service.getAttendeeRoster({ eventId: "missing-event" });
+  const missingEvent = await service.getAttendeeRoster({ eventId: "missing-event" });
 
   assert.deepEqual(contract.EVENT_ATTENDEE_ROSTER_ERROR_CODES, [
     "EVENT_ATTENDEE_ROSTER_EVENT_ID_REQUIRED",

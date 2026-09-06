@@ -27,8 +27,6 @@ import { createResumeExtractionPostHandler } from "../../app/api/profile/extract
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const profileDocumentDebugView =
-  profileDocumentDebugViewModule["module.exports"] ??
-  profileDocumentDebugViewModule.default ??
   profileDocumentDebugViewModule;
 const {
   ProfileDocumentExtractionCapabilityDemo,

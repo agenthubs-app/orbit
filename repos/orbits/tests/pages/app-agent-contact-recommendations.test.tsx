@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
+import type { LocalRemoteContactGraph } from "../../features/contacts/contact-graph-provider";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -125,55 +126,18 @@ test("/app/agent makes contact and event discovery explicit before submission", 
 });
 
 test("contact detail mapping translates live source and relationship tokens into labels", async () => {
-  const routeModule = await importProjectModule<{
-    loadAppContactDetailRoute: (input: {
-      contactId: string;
-      liveContactGraphProvider: {
-        source: string;
-        sourceLabel: string;
-        readContactGraph: () => never;
-        readContactGraphForContact: (contactId: string) => {
-          contacts: readonly unknown[];
-          connections: readonly unknown[];
-          evidence: readonly unknown[];
-          generatedAt: string;
-        };
-      };
-      mode: "live";
-    }) => Promise<
-      | { routeState: "success"; [key: string]: unknown }
-      | { routeState: "empty" | "failure" | "pending"; [key: string]: unknown }
-    >;
-  }>(
+  const routeModule = await importProjectModule<
+    typeof import("../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service")
+  >(
     "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts",
   );
-  const adapterModule = await importProjectModule<{
-    contactDetailRouteToOrbitContactsViewModel: (model: {
-      routeState: "success";
-      [key: string]: unknown;
-    }) => {
-      connections: readonly {
-        encounters: readonly {
-          context: {
-            publicProfile: {
-              industry: string;
-              offering: readonly string[];
-              topics: readonly string[];
-            };
-            reason: string;
-          };
-          eventId: string;
-        }[];
-        note: string;
-        offering: string;
-      }[];
-      events: readonly { id: string; name: string }[];
-    };
-  }>(
+  const adapterModule = await importProjectModule<
+    typeof import("../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter")
+  >(
     "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts",
   );
   const timestamp = "2026-07-01T10:00:00.000Z";
-  const graph = {
+  const graph: LocalRemoteContactGraph = {
     contacts: [
       {
         id: "contact_001",

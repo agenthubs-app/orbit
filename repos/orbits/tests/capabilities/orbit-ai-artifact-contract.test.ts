@@ -8,6 +8,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { OrbitAgentArtifactPayload } from "../../features/orbit-ai/artifact-contract";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -68,9 +69,6 @@ test("Orbit AI artifact contract exports supported kinds statuses surfaces and a
 });
 
 test("Orbit AI artifact contract supports traceable generated views and safe actions", async () => {
-  type ArtifactContract = typeof import("../../features/orbit-ai/artifact-contract");
-  type OrbitAgentArtifactPayload = ArtifactContract["OrbitAgentArtifactPayload"];
-
   const payload: OrbitAgentArtifactPayload = {
     result: {
       artifactId: "artifact:event-recommendations:demo",

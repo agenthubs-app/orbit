@@ -491,10 +491,7 @@ test("event goal and readiness API routes return stable envelopes with empty and
     {
       success: true,
       data: {
-        ...(eventsGoalFixtures.mockEventGoalReadinessFixture as Record<
-          string,
-          unknown
-        >),
+        ...eventsGoalFixtures.mockEventGoalReadinessFixture,
         goal: undefined,
       },
     },

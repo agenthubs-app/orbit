@@ -3,6 +3,10 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type {
+  OrbitAiEventRecommendationSignal as EventRecommendationSignal,
+  OrbitAiEventRecommendationResult as EventRecommendationResult,
+} from "../../features/orbit-ai/event-recommendation-service";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -20,13 +24,6 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
-type EventRecommendationSignal =
-  | "attendee_intent"
-  | "event_topic"
-  | "profile_fit"
-  | "relationship_opportunity"
-  | "schedule_timing";
-
 interface EventRecommendationEvaluationCase {
   expectedTopEventId?: string;
   goal: string;
@@ -35,43 +32,6 @@ interface EventRecommendationEvaluationCase {
   maxRecommendations?: number;
   shouldBeReady: boolean;
   toolArguments?: Record<string, unknown>;
-}
-
-interface EventRecommendationResult {
-  evidenceCoverage: Record<EventRecommendationSignal, number>;
-  goalConcepts: readonly string[];
-  recommendations: readonly {
-    confidence: "high" | "medium";
-    detailHref: string;
-    eventId: string;
-    evidenceSnippets: readonly {
-      evidenceId: string;
-      signal: EventRecommendationSignal;
-      snippet: string;
-      sourceLabel: string;
-    }[];
-    peopleToMeet: readonly {
-      name: string;
-      organization: string;
-      reason: string;
-      role: string;
-    }[];
-    score: number;
-    sourceBackedReasons: readonly string[];
-    timing: string;
-    whyThisEvent: string;
-  }[];
-  rejectedEvents: readonly {
-    eventId: string;
-    popular: boolean;
-    reason: string;
-    score: number;
-    title: string;
-  }[];
-  readiness: {
-    minimumReadyScore: number;
-    state: "ready" | "needs_more_context" | "no_recommendation";
-  };
 }
 
 test("event recommendation service evaluates ten named relationship and business-development goals", async () => {

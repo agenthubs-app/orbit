@@ -9,7 +9,10 @@ import type {
   ChatMessageThreadResult,
 } from "../../features/chat/service";
 import { createOrbitAgentArtifactPreviewService } from "../../features/orbit-ai/artifact-task-preview-service";
-import { createOrbitAgentChatContextArtifactService } from "../../features/orbit-ai/chat-context-artifact-service";
+import {
+  createOrbitAgentChatContextArtifactService,
+  type OrbitAgentFollowupContextGenerationInput,
+} from "../../features/orbit-ai/chat-context-artifact-service";
 import { createLiveOrbitAgentConversationService } from "../../features/orbit-ai/live-conversation-service";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
@@ -17,31 +20,7 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 
 const ACCEPTED_CONTEXT_SCORE = 0.7;
 
-type FollowupGeneratorCall = {
-  locale: "en" | "zh";
-  messages: readonly { body: string; messageId: string }[];
-  privacy: {
-    includedMessageCount: number;
-    mode: "full" | "limited";
-  };
-  query: string;
-  relationship: {
-    contactId: string;
-    organization: string;
-    participantName: string;
-    relationshipStage: string;
-  };
-  resolution: {
-    matchedBy: string;
-    score: number;
-    state: "ambiguous" | "missing" | "resolved";
-  };
-  selectedConversation: {
-    conversationId: string;
-    participantContactId: string;
-    participantName: string;
-  };
-};
+type FollowupGeneratorCall = OrbitAgentFollowupContextGenerationInput;
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -130,11 +109,7 @@ async function runContextCase(input: {
   toolArguments?: Record<string, unknown>;
 }) {
   const spy = createGeneratedContextSpy();
-  const service = (createOrbitAgentChatContextArtifactService as unknown as (config: {
-    chatService: ChatConversationMessageService;
-    fallbackService: ReturnType<typeof createOrbitAgentArtifactPreviewService>;
-    followupContextGenerator: typeof spy.generator;
-  }) => ReturnType<typeof createOrbitAgentChatContextArtifactService>)({
+  const service = createOrbitAgentChatContextArtifactService({
     chatService: input.chatService,
     fallbackService: createOrbitAgentArtifactPreviewService(),
     followupContextGenerator: spy.generator,
@@ -235,7 +210,12 @@ test("ten named follow-up context evaluation cases enforce resolution score befo
   const direct = seededIdentity(0);
   const target = seededIdentity(1);
   const stale = seededIdentity(2);
-  const cases = [
+  const cases: readonly (Omit<Parameters<typeof runContextCase>[0], "chatService"> & {
+    expectedConversationId: string | null;
+    expectedStatus: "ready" | "pending";
+    name: string;
+    service?: ChatConversationMessageService;
+  })[] = [
     {
       expectedConversationId: direct.conversation.id,
       expectedStatus: "ready",
@@ -342,10 +322,10 @@ test("ten named follow-up context evaluation cases enforce resolution score befo
       toolArguments: evaluationCase.toolArguments,
     });
     const resultText = JSON.stringify(result);
+    assert.equal(result.success, true, evaluationCase.name);
     const item = result.data?.result.generatedView?.sections[0]?.items[0];
     const score = resolutionScore(item);
 
-    assert.equal(result.success, true, evaluationCase.name);
     assert.equal(result.data?.result.status, evaluationCase.expectedStatus, evaluationCase.name);
     assert.equal(
       result.data?.task.conversationId,
@@ -386,9 +366,9 @@ test("Chinese contact-and-organization query resolves from identity terms withou
     locale: "zh",
     query: `总结和${target.contact.displayName}在${target.contact.organization}的关系上下文`,
   });
+  assert.equal(result.success, true);
   const item = result.data?.result.generatedView?.sections[0]?.items[0];
 
-  assert.equal(result.success, true);
   assert.equal(result.data?.result.status, "ready");
   assert.equal(result.data?.task.conversationId, target.conversation.id);
   assert.ok(resolutionScore(item) >= ACCEPTED_CONTEXT_SCORE);
@@ -417,11 +397,7 @@ test("live Orbit Agent uses generated follow-up context instead of canned planne
   const target = seededIdentity(1);
   const spy = createGeneratedContextSpy();
   const requests: unknown[] = [];
-  const artifactTaskService = (createOrbitAgentChatContextArtifactService as unknown as (config: {
-    chatService: ChatConversationMessageService;
-    fallbackService: ReturnType<typeof createOrbitAgentArtifactPreviewService>;
-    followupContextGenerator: typeof spy.generator;
-  }) => ReturnType<typeof createOrbitAgentChatContextArtifactService>)({
+  const artifactTaskService = createOrbitAgentChatContextArtifactService({
     chatService,
     fallbackService: createOrbitAgentArtifactPreviewService(),
     followupContextGenerator: spy.generator,
@@ -468,10 +444,10 @@ test("live Orbit Agent uses generated follow-up context instead of canned planne
     locale: "en",
     message: `Summarize my relationship context with ${target.contact.displayName} at ${target.contact.organization}.`,
   });
+  assert.equal(result.success, true);
   const artifact = result.data?.artifacts[0];
   const artifactText = JSON.stringify(artifact);
 
-  assert.equal(result.success, true);
   assert.equal(requests.length, 1);
   assert.equal(spy.calls.length, 1);
   assert.equal(

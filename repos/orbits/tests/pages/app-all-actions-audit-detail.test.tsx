@@ -61,10 +61,10 @@ test("expanded audit details stay inside their mobile grid column", async () => 
 
   assert.match(
     html,
-    /\.orbit-all-actions-entry-detail\s*\{[^}]*box-sizing:\s*border-box;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*min-width:\s*0;[^}]*width:\s*100%;/s,
+    /\.orbit-all-actions-entry-detail\s*\{[^}]*box-sizing:\s*border-box;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*min-width:\s*0;[^}]*width:\s*100%;/,
   );
   assert.match(
     html,
-    /\.orbit-all-actions-entry-detail \.chip\s*\{[^}]*max-width:\s*100%;[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/s,
+    /\.orbit-all-actions-entry-detail \.chip\s*\{[^}]*max-width:\s*100%;[^}]*overflow-wrap:\s*anywhere;[^}]*white-space:\s*normal;/,
   );
 });

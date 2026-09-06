@@ -9,6 +9,8 @@ import { createAgentExecutorRegistry } from "../../features/agent/runtime/execut
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { projectLedgerEntriesToTodayWorkItems } from "../../features/agent/runtime/today-projection";
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
+import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
+import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
 import { createStorageEventActionWriter } from "../../features/events/action-writer";
 import {
   createEventMatchmakingService,
@@ -29,13 +31,20 @@ function createWorkflowHarness() {
   const workspaceId = "agent-workflow-e2e";
   const actorId = "user:agent-workflow-e2e";
   const matchmaking = createEventMatchmakingService({ store, workspaceId });
+  type RuntimePayload = Parameters<Parameters<typeof createStorageAgentRuntimeRepository>[0]["store"]["upsertRecord"]>[0]["payload"];
+  const runtimeStore = createMemoryLiveRecordStore<RuntimePayload>();
   const runtime = createAgentRuntimeService({
     repository: createStorageAgentRuntimeRepository({
-      store,
+      store: runtimeStore,
       workspaceId,
     }),
     executors: createAgentExecutorRegistry(
       createAgentDomainExecutors({
+        memory: createStorageAgentMemoryService({
+          actorId,
+          store: createMemoryLiveRecordStore<AgentMemoryRecordPayload>(),
+          workspaceId,
+        }),
         contacts: createStorageContactArchiveActionWriter({
           store,
           workspaceId,
@@ -64,7 +73,7 @@ function createWorkflowHarness() {
       return () => `e2e-${++value}`;
     })(),
   });
-  return { actorId, matchmaking, runtime, store, workspaceId };
+  return { actorId, matchmaking, runtime, runtimeStore, store, workspaceId };
 }
 
 async function records(
@@ -390,7 +399,10 @@ test("legacy matchmaking workflow rejects before ranking or writing", async () =
     },
   );
   assert.deepEqual(await records(harness, "matchmakingIntroductionRequests"), []);
-  assert.deepEqual(await records(harness, "agentRuns"), []);
+  assert.deepEqual(await harness.runtimeStore.listRecords({
+    workspaceId: harness.workspaceId,
+    collectionName: "agentRuns",
+  }), []);
 });
 
 test("voice memo validates privacy bounds and always falls back to typed note on ASR failure", async () => {

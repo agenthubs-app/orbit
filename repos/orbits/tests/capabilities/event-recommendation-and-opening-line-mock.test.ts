@@ -28,88 +28,15 @@ async function importProjectModule<TModule>(
 }
 
 test("event recommendation contract exposes ranked attendees signals opening lines fixtures and errors", async () => {
-  const contract = await importProjectModule<{
-    EVENT_RECOMMENDATION_ERROR_CODES: readonly string[];
-    EVENT_RECOMMENDATION_ERROR_DEFINITIONS: Record<
-      string,
-      { appCode: string; message: string; recovery: string }
-    >;
-  }>("features/recommendations/contract.ts");
-  const fixtures = await importProjectModule<{
-    EVENT_RECOMMENDATION_FIXTURE_SOURCE: string;
-    mockEventRecommendationsFixture: {
-      state: string;
-      event: { id: string; title: string; venue: string };
-      recommendations: ReadonlyArray<{
-        recommendationId: string;
-        attendee: { attendeeId: string; displayName: string };
-        rank: number;
-        score: number;
-        reasons: readonly string[];
-        matchSignals: ReadonlyArray<{
-          signalId: string;
-          label: string;
-          weight: number;
-          vectorSearchExecuted: false;
-          aiProviderRequested: false;
-        }>;
-        openingLine: {
-          text: string;
-          generatedBy: string;
-          aiProviderRequested: false;
-        };
-        vectorSearchExecuted: false;
-        rankingProviderRequested: false;
-        aiProviderRequested: false;
-      }>;
-      provenance: {
-        source: string;
-        evidenceIds: readonly string[];
-        generationMethod: string;
-        aiProviderRequested: false;
-        vectorSearchExecuted: false;
-      };
-    };
-    mockEmptyEventRecommendationsFixture: {
-      state: string;
-      recommendations: readonly unknown[];
-      nextAction: string;
-    };
-    mockPendingEventRecommendationsFixture: {
-      state: string;
-      recommendations: readonly unknown[];
-      nextAction: string;
-    };
-    mockOpeningLineFixture: {
-      state: string;
-      recommendation: { attendee: { attendeeId: string } };
-      openingLine: { text: string; evidenceIds: readonly string[] };
-      provenance: { generationMethod: string };
-    };
-  }>("features/recommendations/fixtures.ts");
-  const serviceModule = await importProjectModule<{
-    createMockEventRecommendationService: () => {
-      listEventRecommendations: (input?: {
-        eventId?: string | null;
-        scenario?: string | null;
-        limit?: number | null;
-      }) => {
-        success: boolean;
-        data?: typeof fixtures.mockEventRecommendationsFixture;
-        error?: { code: string; appCode: string };
-      };
-      composeOpeningLine: (input?: {
-        eventId?: string | null;
-        attendeeId?: string | null;
-        scenario?: string | null;
-        style?: string | null;
-      }) => {
-        success: boolean;
-        data?: typeof fixtures.mockOpeningLineFixture;
-        error?: { code: string; appCode: string };
-      };
-    };
-  }>("features/recommendations/mock-service.ts");
+  const contract = await importProjectModule<
+    typeof import("../../features/recommendations/contract")
+  >("features/recommendations/contract.ts");
+  const fixtures = await importProjectModule<
+    typeof import("../../features/recommendations/fixtures")
+  >("features/recommendations/fixtures.ts");
+  const serviceModule = await importProjectModule<
+    typeof import("../../features/recommendations/mock-service")
+  >("features/recommendations/mock-service.ts");
 
   assert.deepEqual(contract.EVENT_RECOMMENDATION_ERROR_CODES, [
     "EVENT_RECOMMENDATION_EVENT_ID_REQUIRED",
@@ -201,36 +128,36 @@ test("event recommendation contract exposes ranked attendees signals opening lin
   );
 
   const service = serviceModule.createMockEventRecommendationService();
-  const success = service.listEventRecommendations({ eventId: "demo-event-1" });
-  const limited = service.listEventRecommendations({
+  const success = await service.listEventRecommendations({ eventId: "demo-event-1" });
+  const limited = await service.listEventRecommendations({
     eventId: "demo-event-1",
     limit: 2,
   });
-  const empty = service.listEventRecommendations({
+  const empty = await service.listEventRecommendations({
     eventId: "demo-event-1",
     scenario: "empty",
   });
-  const pending = service.listEventRecommendations({
+  const pending = await service.listEventRecommendations({
     eventId: "demo-event-1",
     scenario: "pending",
   });
-  const failure = service.listEventRecommendations({
+  const failure = await service.listEventRecommendations({
     eventId: "demo-event-1",
     scenario: "failure",
   });
-  const missingEvent = service.listEventRecommendations({
+  const missingEvent = await service.listEventRecommendations({
     eventId: "missing-event",
   });
-  const openingLine = service.composeOpeningLine({
+  const openingLine = await service.composeOpeningLine({
     eventId: "demo-event-1",
     attendeeId: "attendee:mina-park",
   });
-  const alternativeOpeningLine = service.composeOpeningLine({
+  const alternativeOpeningLine = await service.composeOpeningLine({
     eventId: "demo-event-1",
     attendeeId: "attendee:leo-grant",
     style: "context_question",
   });
-  const missingAttendee = service.composeOpeningLine({
+  const missingAttendee = await service.composeOpeningLine({
     eventId: "demo-event-1",
     attendeeId: "attendee:unknown",
   });

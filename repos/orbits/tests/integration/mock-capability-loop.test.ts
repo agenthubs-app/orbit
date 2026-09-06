@@ -8,6 +8,8 @@ import { createAgentExecutorRegistry } from "../../features/agent/runtime/execut
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { projectLedgerEntriesToTodayWorkItems } from "../../features/agent/runtime/today-projection";
 import { createStorageAgentRuntimeRepository } from "../../features/agent/storage/agent-runtime-live-record-provider";
+import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
+import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
 import { createMockExternalActionSandboxService } from "../../features/agent/mock-external-action-sandbox";
 import { createRuntimeBackedAgentLedgerService } from "../../features/agent/ledger/runtime-adapter";
 import { createStorageEventActionWriter } from "../../features/events/action-writer";
@@ -22,10 +24,19 @@ function createMockMvpHarness() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "mock-mvp-integration";
   const actorId = "account:mock-mvp-user";
+  type RuntimePayload = Parameters<Parameters<typeof createStorageAgentRuntimeRepository>[0]["store"]["upsertRecord"]>[0]["payload"];
   const runtime = createAgentRuntimeService({
-    repository: createStorageAgentRuntimeRepository({ store, workspaceId }),
+    repository: createStorageAgentRuntimeRepository({
+      store: createMemoryLiveRecordStore<RuntimePayload>(),
+      workspaceId,
+    }),
     executors: createAgentExecutorRegistry(
       createAgentDomainExecutors({
+        memory: createStorageAgentMemoryService({
+          actorId,
+          store: createMemoryLiveRecordStore<AgentMemoryRecordPayload>(),
+          workspaceId,
+        }),
         contacts: createStorageContactArchiveActionWriter({
           store,
           workspaceId,

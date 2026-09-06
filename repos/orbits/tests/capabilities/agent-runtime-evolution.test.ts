@@ -437,7 +437,7 @@ test("an existing undo receipt fences compensation after a crash before action s
 
 test("storage repository returns completed compensation but ignores failed attempts", async () => {
   const repository = createStorageAgentRuntimeRepository({
-    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    store: createMemoryLiveRecordStore<Parameters<Parameters<typeof createStorageAgentRuntimeRepository>[0]["store"]["upsertRecord"]>[0]["payload"]>(),
     workspaceId: "receipt-terminal-success",
   });
   const baseReceipt = {

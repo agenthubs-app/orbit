@@ -1,28 +1,6 @@
 /**
- * Ratchet gate: the test suite typechecks.
- *
- * `tsconfig.json` has always covered `tests/**` via its `**\/*.ts` include, but
- * `npm run lint` typechecks a hand-curated list of ~150 production files, so
- * nothing ever compiled the tests. When the project tsconfig was first run
- * across the whole tree it reported 541 errors — every single one inside
- * `tests/`; production code was already clean.
- *
- * Two systemic causes accounted for most of them and are now fixed:
- *
- *   - 97 x TS1354: `readonly Array<T>` is not valid TypeScript (it is only
- *     permitted on array and tuple *literal* types). Rewritten to
- *     `ReadonlyArray<T>`, which is what every one of them meant.
- *   - 334 errors from reading `.data` / `.success` / `.error` straight off a
- *     `MaybePromise<T>` service result. The mocks return synchronously but are
- *     typed like their async live counterparts, so the union has no such
- *     fields. `tests/support/sync-result.ts` asserts the synchronous branch
- *     and narrows it — 71 call sites, which is where those 334 came from.
- *
- * The remaining 110 are a heterogeneous long tail across 42 files (route
- * context shapes, `as` casts, readonly assignment, comparisons that TypeScript
- * can prove are always false). This test does not try to clear them in one
- * shot — it locks in what has been fixed and stops new ones from creeping in.
- * CEILING is a ceiling, not a target; lower it as the tail is worked down.
+ * Compile the complete project, including tests. Runtime tests execute through
+ * tsx and do not replace this check. Historical error allowances are now zero.
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -42,18 +20,23 @@ function typecheckErrors(): string[] {
     // behind by an editor or a previous run, and so concurrent test files
     // cannot race each other over that cache.
     execFileSync(
-      "npx",
-      ["tsc", "--noEmit", "--incremental", "false", "-p", "tsconfig.json"],
+      process.execPath,
+      [join(projectRoot, "node_modules/typescript/bin/tsc"), "--noEmit", "--incremental", "false", "-p", "tsconfig.json"],
       { cwd: projectRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
   } catch (error) {
-    // tsc exits non-zero when it reports anything; the diagnostics are stdout.
-    output = String((error as { stdout?: string }).stdout ?? "");
+    assert.ok(error && typeof error === "object" && "status" in error && "stdout" in error,
+      "TypeScript must start successfully before its diagnostics can be checked");
+    assert.equal(error.status, 2, "TypeScript failed for a reason other than type diagnostics");
+    assert.equal(typeof error.stdout, "string");
+    output = String(error.stdout);
+    assert.ok(output.split("\n").some((line) => ERROR_LINE.test(line)),
+      `TypeScript failed without file diagnostics:\n${output}`);
   }
   return output.split("\n").filter((line) => ERROR_LINE.test(line));
 }
 
-test("the project typechecks with no new errors, and production code stays clean", () => {
+test("the entire project typechecks with zero errors", () => {
   const errors = typecheckErrors();
 
   const outsideTests = errors.filter((line) => !line.startsWith("tests/"));
@@ -63,14 +46,10 @@ test("the project typechecks with no new errors, and production code stays clean
     `type errors outside tests/ must stay at zero — production code is clean today:\n${outsideTests.join("\n")}`,
   );
 
-  // 541 at the point tests were first compiled; 110 after the two systemic
-  // fixes described above.
-  const CEILING = 110;
-
-  assert.ok(
-    errors.length <= CEILING,
-    `expected <= ${CEILING} type errors in tests/, found ${errors.length} ` +
-      `(${errors.length - CEILING} over ceiling):\n${errors.slice(0, 40).join("\n")}`,
+  assert.deepEqual(
+    errors,
+    [],
+    `expected zero type errors, found ${errors.length}:\n${errors.join("\n")}`,
   );
 });
 

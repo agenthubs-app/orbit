@@ -8,6 +8,8 @@ import { createAgentSchedulerRouteHandler } from "../../app/api/internal/agent/s
 import { agentActionToLedgerEntry } from "../../features/agent/ledger/runtime-adapter";
 import { createStorageContactArchiveActionWriter } from "../../features/contacts/action-writer";
 import { createAgentDomainExecutors } from "../../features/agent/runtime/domain-executors";
+import { createStorageAgentMemoryService } from "../../features/agent/memory/service";
+import type { AgentMemoryRecordPayload } from "../../features/agent/memory/contract";
 import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
 import { createMemoryAgentRuntimeRepository } from "../../features/agent/runtime/repository";
@@ -34,6 +36,11 @@ function createHarness() {
     repository: createMemoryAgentRuntimeRepository(),
     executors: createAgentExecutorRegistry(
       createAgentDomainExecutors({
+        memory: createStorageAgentMemoryService({
+          actorId: "account:pre-event-brief-delivery",
+          store: createMemoryLiveRecordStore<AgentMemoryRecordPayload>(),
+          workspaceId,
+        }),
         contacts: createStorageContactArchiveActionWriter({
           store,
           workspaceId,

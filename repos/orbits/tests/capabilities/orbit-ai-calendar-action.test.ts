@@ -3,6 +3,11 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type {
+  OrbitAiCalendarActionSideEffects as CalendarPreviewSideEffects,
+  OrbitAiCalendarActionPreview as CalendarActionPreview,
+  OrbitAiCalendarActionService as CalendarActionService,
+} from "../../features/orbit-ai/calendar-action-service";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -18,73 +23,6 @@ async function importProjectModule<TModule>(
   );
 
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
-}
-
-interface CalendarPreviewSideEffects {
-  externalCalendarMutation: false;
-  messageSend: false;
-  notificationDelivery: false;
-  outsideNetworkRequest: false;
-  savedRecordWrite: false;
-}
-
-interface CalendarActionPreview {
-  actionId: string;
-  confirmationStatus: "unconfirmed";
-  completionBoundary: {
-    confirmationAvailable: false;
-    noExternalEventCreated: true;
-    state: "awaiting_live_calendar_adapter";
-  };
-  itemId: string;
-  label: string;
-  localOnly: true;
-  source: {
-    artifactSource: string;
-    evidenceIds: readonly string[];
-    label: string;
-  };
-  state: "staged_unconfirmed";
-  sideEffects: CalendarPreviewSideEffects;
-  wouldAdd: {
-    date: string;
-    endTime: string | null;
-    location: string | null;
-    reason: string;
-    relatedLink: {
-      href: string;
-      label: string;
-    };
-    startTime: string;
-    time: string;
-    timeZone: string;
-    title: string;
-  };
-}
-
-interface CalendarActionService {
-  cancelPreview: (input: { actionId: string }) => {
-    data: {
-      actionId: string;
-      state: "cancelled";
-      sideEffects: CalendarPreviewSideEffects;
-    };
-    success: true;
-  };
-  createPreviews: (input: {
-    conversation: { artifacts: readonly unknown[] };
-    locale?: "en" | "zh";
-  }) => {
-    data: {
-      previews: readonly CalendarActionPreview[];
-      safety: CalendarPreviewSideEffects;
-    };
-    success: true;
-  };
-  stagePreview: (input: { preview: CalendarActionPreview }) => {
-    data: CalendarActionPreview;
-    success: true;
-  };
 }
 
 function sideEffectsAreFalse(sideEffects: CalendarPreviewSideEffects) {

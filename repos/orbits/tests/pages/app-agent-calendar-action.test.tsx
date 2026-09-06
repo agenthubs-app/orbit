@@ -31,7 +31,6 @@ test("event recommendations still produce a local, unconfirmed calendar preview 
   }));
 
   assert.equal(conversation.success, true);
-  if (conversation.success === false) return;
   const preview = createOrbitAiCalendarActionService().createPreviews({
     conversation: conversation.data,
     locale: "en",
@@ -92,7 +91,6 @@ test("to-do artifacts preserve their source link and local calendar safety bound
   }));
 
   assert.equal(conversation.success, true);
-  if (conversation.success === false) return;
   const preview = createOrbitAiCalendarActionService().createPreviews({
     conversation: conversation.data,
     locale: "zh",

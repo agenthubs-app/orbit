@@ -70,12 +70,17 @@ test("dev knowledge document route rejects ids outside the knowledge manifest", 
 });
 
 test("dev knowledge document route is hidden in production runtime", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
   const route = await importProjectModule<KnowledgeDocumentRoute>(
     "app/api/dev/knowledge/documents/[id]/route.ts",
   );
 
-  process.env.NODE_ENV = "production";
+  Object.defineProperty(process.env, "NODE_ENV", {
+    configurable: true,
+    enumerable: true,
+    value: "production",
+    writable: true,
+  });
   try {
     const response = await route.GET(
       new Request("https://orbit.local/api/dev/knowledge/documents/technical-design"),
@@ -88,9 +93,9 @@ test("dev knowledge document route is hidden in production runtime", async () =>
     assert.equal(body.error.code, "NOT_FOUND");
   } finally {
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
+      Reflect.deleteProperty(process.env, "NODE_ENV");
     } else {
-      process.env.NODE_ENV = previousNodeEnv;
+      Object.defineProperty(process.env, "NODE_ENV", previousNodeEnv);
     }
   }
 });

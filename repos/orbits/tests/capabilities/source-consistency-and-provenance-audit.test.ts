@@ -258,46 +258,16 @@ test("source consistency provenance audit contract exports typed fixtures servic
 });
 
 test("mock source consistency provenance audit service is deterministic and provider-free", async () => {
-  const serviceModule = await importProjectModule<{
-    createMockSourceConsistencyProvenanceAuditService: () => {
-      getAuditSnapshot: (input?: { scenario?: string | null }) => {
-        success: boolean;
-        data?: {
-          state: string;
-          auditedCollections: readonly unknown[];
-          findings: readonly unknown[];
-          provenance: {
-            complianceReportingExecuted: false;
-            productionAuditStorageWriteExecuted: false;
-            externalNetworkRequested: false;
-            databaseReadExecuted: false;
-            databaseWriteExecuted: false;
-            aiProviderRequested: false;
-          };
-        };
-        error?: { code: string; appCode: string };
-      };
-      runAudit: (input?: { scenario?: string | null }) => {
-        success: boolean;
-        data?: {
-          state: string;
-          generatedFindingIds: readonly string[];
-          activeFindingCount: number;
-          complianceReportPersisted: false;
-          productionAuditStorageWritten: false;
-          provenance: { generationMethod: string };
-        };
-        error?: { code: string; appCode: string };
-      };
-    };
-  }>("features/audit/mock-provenance-audit-service.ts");
+  const serviceModule = await importProjectModule<
+    typeof import("../../features/audit/mock-provenance-audit-service")
+  >("features/audit/mock-provenance-audit-service.ts");
 
   const service = serviceModule.createMockSourceConsistencyProvenanceAuditService();
-  const success = service.getAuditSnapshot();
-  const run = service.runAudit();
-  const empty = service.getAuditSnapshot({ scenario: "empty" });
-  const pending = service.runAudit({ scenario: "pending" });
-  const failure = service.getAuditSnapshot({ scenario: "failure" });
+  const success = await service.getAuditSnapshot();
+  const run = await service.runAudit();
+  const empty = await service.getAuditSnapshot({ scenario: "empty" });
+  const pending = await service.runAudit({ scenario: "pending" });
+  const failure = await service.getAuditSnapshot({ scenario: "failure" });
 
   assert.deepEqual(service.getAuditSnapshot(), service.getAuditSnapshot());
   assert.deepEqual(service.runAudit(), service.runAudit());

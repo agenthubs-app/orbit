@@ -26,6 +26,7 @@ function modelRunnerReturning(text: string) {
 
 const failingRunner = async (): Promise<OrbitAgentModelTextResult> => ({
   success: false,
+  retryable: false,
   error: {
     code: "MODEL_API_KEY_MISSING",
     message: "no key",

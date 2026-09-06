@@ -2779,7 +2779,7 @@ test("Orbit Agent provider times out hung model requests", async () => {
 
 test("development Orbit Agent trace route exposes raw planner output", async () => {
   const previousApiKey = process.env.GEMINI_API_KEY;
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
   const previousFetch = globalThis.fetch;
   const rawOutputText = JSON.stringify({
     assistantMessage: "好的，我来为您查找一些近期有趣的活动。",
@@ -2795,7 +2795,12 @@ test("development Orbit Agent trace route exposes raw planner output", async () 
 
   try {
     process.env.GEMINI_API_KEY = "test-gemini-key";
-    process.env.NODE_ENV = "development";
+    Object.defineProperty(process.env, "NODE_ENV", {
+      configurable: true,
+      enumerable: true,
+      value: "development",
+      writable: true,
+    });
     globalThis.fetch = (async () =>
       jsonResponse({
         steps: [
@@ -2879,9 +2884,9 @@ test("development Orbit Agent trace route exposes raw planner output", async () 
     }
 
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
+      Reflect.deleteProperty(process.env, "NODE_ENV");
     } else {
-      process.env.NODE_ENV = previousNodeEnv;
+      Object.defineProperty(process.env, "NODE_ENV", previousNodeEnv);
     }
 
     globalThis.fetch = previousFetch;

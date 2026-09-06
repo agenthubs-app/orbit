@@ -15,7 +15,7 @@ const projectRoot = path.resolve(
 
 test("state view renders every recovery action as a real named link", () => {
   const html = renderToStaticMarkup(
-    React.createElement(StateView as React.ComponentType<Record<string, unknown>>, {
+    React.createElement(StateView, {
       description: "Relationship work is waiting for source context.",
       eyebrow: "Checking sources",
       evidence: ["source:event:demo"],
@@ -55,7 +55,7 @@ test("state view renders every recovery action as a real named link", () => {
 
 test("state view filters unnamed recovery controls instead of rendering empty links", () => {
   const html = renderToStaticMarkup(
-    React.createElement(StateView as React.ComponentType<Record<string, unknown>>, {
+    React.createElement(StateView, {
       description: "Relationship work is waiting for source context.",
       eyebrow: "Checking sources",
       recoveryActions: [
@@ -83,7 +83,7 @@ test("state view filters unnamed recovery controls instead of rendering empty li
 
 test("state view binds recovery copy to each visible recovery control", () => {
   const html = renderToStaticMarkup(
-    React.createElement(StateView as React.ComponentType<Record<string, unknown>>, {
+    React.createElement(StateView, {
       description: "Relationship work is waiting for source context.",
       eyebrow: "Checking sources",
       recoveryActions: [
@@ -182,20 +182,14 @@ test("state view and primitives ship their own styling instead of relying on glo
 
 test("WorkbenchSurface and Chip render their own <style> tag so product routes stay styled", () => {
   const surfaceHtml = renderToStaticMarkup(
-    React.createElement(
-      WorkbenchSurface as React.ComponentType<Record<string, unknown>>,
-      { eyebrow: "Eyebrow", title: "Title" },
-      React.createElement("p", null, "Body"),
-    ),
+    <WorkbenchSurface eyebrow="Eyebrow" title="Title">
+      <p>Body</p>
+    </WorkbenchSurface>,
   );
   assert.match(surfaceHtml, /<style>[\s\S]*\.workbench-surface[\s\S]*<\/style>/);
 
   const chipHtml = renderToStaticMarkup(
-    React.createElement(
-      Chip as React.ComponentType<Record<string, unknown>>,
-      { tone: "evidence" },
-      "source:demo",
-    ),
+    <Chip tone="evidence">source:demo</Chip>,
   );
   assert.match(chipHtml, /<style>[\s\S]*\.orbit-chip[\s\S]*<\/style>/);
 });

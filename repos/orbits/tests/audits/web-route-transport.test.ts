@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import type { buildFullProductFunctionalAuditInventory } from "../../scripts/generate-full-product-functional-audit.mjs";
 
 import {
   expectedTransportForSurface,
@@ -15,12 +16,13 @@ const INVENTORY_PATH = path.resolve(
   TEST_DIR,
   "../../../../docs/audits/full-product-functional-audit/inventory.json",
 );
-const inventory = JSON.parse(readFileSync(INVENTORY_PATH, "utf8"));
+const inventory: ReturnType<typeof buildFullProductFunctionalAuditInventory> =
+  JSON.parse(readFileSync(INVENTORY_PATH, "utf8"));
 const webSurfaces = inventory.surfaces.filter(
-  (surface: { client: string }) => surface.client === "web",
+  (surface) => surface.client === "web",
 );
 const webSurfaceByRuntimePath = new Map(
-  webSurfaces.map((surface: { access: { policy: string } }) => [
+  webSurfaces.map((surface) => [
     runtimePathForSurface(surface),
     surface,
   ]),
@@ -52,10 +54,10 @@ test("all dynamic Web routes have an explicit valid runtime sample", () => {
 
 test("transport expectations distinguish public event detail from authenticated registration", () => {
   const eventDetail = webSurfaces.find(
-    (surface: { route: string }) => surface.route === "/app/events/[id]",
+    (surface) => surface.route === "/app/events/[id]",
   );
   const registration = webSurfaces.find(
-    (surface: { route: string }) =>
+    (surface) =>
       surface.route === "/app/events/[id]/register",
   );
 

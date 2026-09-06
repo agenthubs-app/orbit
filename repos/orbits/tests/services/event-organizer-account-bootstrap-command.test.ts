@@ -298,7 +298,11 @@ test(
           JSON.stringify({ id: "profile_orbit_generated_operator", accountId: "account_orbit_generated", displayName: "小雨", timezone: "Asia/Tokyo", createdAt: "2026-08-19T00:00:00.000Z", updatedAt: "2026-08-19T00:00:00.000Z" }),
         ],
       );
-      const writer = createPostgresOrganizerOwnershipWriter({ client: pool });
+      const writer = createPostgresOrganizerOwnershipWriter({
+        client: Object.assign(pool, {
+          close: () => pool.end(),
+        }),
+      });
 
       await pool.query("BEGIN");
       try {

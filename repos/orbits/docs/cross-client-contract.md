@@ -38,7 +38,7 @@ shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于
 2. 在 `shared/contract/index.ts` 补一行 export。
 3. `features/<domain>/contract.ts` 改成从契约转发（`export type { XContract as X }`），
    枚举常量留在原处并补 `ContractMatches` 断言。
-4. 跑 `npx tsc --noEmit`，确认没有新增错误。
+4. 跑 `npx tsc --noEmit --incremental false`，确认整个项目（含测试）零类型错误。
 5. 到 `repos/orbit-app` 跑 `npm run sync:contract`，再跑 `npm test` 和
    `npm run typecheck`，把被指出来的 view-model 改成引用契约字段。
 
@@ -67,3 +67,20 @@ shared/contract-check.ts  ContractMatches：编译期一致性断言（不属于
 仓库的构建互相绑死。所以走拷贝：`repos/orbit-app/scripts/sync-contract.mjs` 生成副本，
 `repos/orbit-app/tests/contract-sync.test.ts` 校验副本与这里逐字一致。副本过期，
 移动端的 `npm test` 就红。
+
+## 类型检查门槛
+
+2026-09-06 已清理剩余 103 项测试类型错误，未改数据库结构或 API 字段，也未使用
+`any`、忽略指令或放宽编译配置。测试直接引用对应领域的 DTO、provider 和模块类型，
+不再手写会随接口演进失效的替代形状；故意缺失证据等负向场景仍保留。
+
+- `tests/ui/orbit-typecheck-ratchet.test.ts` 编译完整 `tsconfig.json`，错误上限从 110
+  降为 0。编译器启动失败或非类型诊断错误也会让检查失败。
+- `tests/contract-compatibility.typecheck.ts` 对联系人筛选项、来源、关系阶段与价值、
+  错误码和联系人响应壳执行编译期一致性断言。仅定义一个可能变成 `never` 的类型别名
+  不足以报错，因此该文件以 `true satisfies` 形式实际约束断言结果。
+- `tsx` 执行测试不等于类型检查；运行时断言、全量编译和移动端副本一致性必须分别通过。
+
+零类型错误不代表契约治理全部完成：`industries.ts` 与 `language.ts` 仍包含运行时
+字典，违反纯类型目录约束；迁移字典及扩展移动端受控同步范围尚待确认。这与剩余的
+运行时测试失败分别跟踪，不能用编译通过替代这些验收。

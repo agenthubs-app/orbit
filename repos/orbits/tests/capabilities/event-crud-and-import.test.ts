@@ -28,88 +28,15 @@ async function importProjectModule<TModule>(
 }
 
 test("event CRUD and import contract exposes statuses source metadata fixtures and errors", async () => {
-  const contract = await importProjectModule<{
-    EVENT_CRUD_AND_IMPORT_ERROR_CODES: readonly string[];
-    EVENT_CRUD_AND_IMPORT_ERROR_DEFINITIONS: Record<
-      string,
-      { appCode: string; message: string; recovery: string }
-    >;
-    EVENT_STATUS_VALUES: readonly string[];
-    EVENT_SOURCE_CAPTURE_METHODS: readonly string[];
-  }>("features/events/event-crud-and-import/contract.ts");
-  const fixtures = await importProjectModule<{
-    EVENT_CRUD_IMPORT_FIXTURE_SOURCE: string;
-    mockEventListFixture: {
-      state: string;
-      events: ReadonlyArray<{
-        id: string;
-        title: string;
-        status: string;
-        sourceMetadata: {
-          captureMethod: string;
-          provider: string;
-          calendarSyncRequested: false;
-          organizerFeedRequested: false;
-          liveDatabaseWriteExecuted: false;
-        };
-      }>;
-      importedRecords: ReadonlyArray<{
-        id: string;
-        externalRecordId: string;
-        sourceMetadata: { captureMethod: string };
-      }>;
-      provenance: {
-        source: string;
-        evidenceIds: readonly string[];
-        generationMethod: string;
-      };
-    };
-    mockManualEventCreationFixture: {
-      state: string;
-      event: {
-        id: string;
-        title: string;
-        status: string;
-        sourceMetadata: { captureMethod: string; provider: string };
-      };
-      provenance: { evidenceIds: readonly string[] };
-    };
-    mockEmptyEventListFixture: {
-      state: string;
-      events: readonly unknown[];
-      importedRecords: readonly unknown[];
-      nextAction: string;
-    };
-  }>("features/events/event-crud-and-import/fixtures.ts");
-  const serviceModule = await importProjectModule<{
-    createMockEventCrudAndImportService: () => {
-      listEvents: (input?: {
-        scenario?: string | null;
-        statusFilter?: string | null;
-      }) => {
-        success: boolean;
-        data?: typeof fixtures.mockEventListFixture;
-        error?: { code: string; appCode: string };
-      };
-      createEvent: (input?: {
-        title?: string | null;
-        sourceNote?: string | null;
-        scenario?: string | null;
-      }) => {
-        success: boolean;
-        data?: typeof fixtures.mockManualEventCreationFixture;
-        error?: { code: string; appCode: string };
-      };
-      getEvent: (input: {
-        eventId?: string | null;
-        scenario?: string | null;
-      }) => {
-        success: boolean;
-        data?: { event: typeof fixtures.mockEventListFixture.events[number] };
-        error?: { code: string; appCode: string };
-      };
-    };
-  }>("features/events/event-crud-and-import/mock-service.ts");
+  const contract = await importProjectModule<
+    typeof import("../../features/events/event-crud-and-import/contract")
+  >("features/events/event-crud-and-import/contract.ts");
+  const fixtures = await importProjectModule<
+    typeof import("../../features/events/event-crud-and-import/fixtures")
+  >("features/events/event-crud-and-import/fixtures.ts");
+  const serviceModule = await importProjectModule<
+    typeof import("../../features/events/event-crud-and-import/mock-service")
+  >("features/events/event-crud-and-import/mock-service.ts");
 
   assert.deepEqual(contract.EVENT_STATUS_VALUES, [
     "draft",
@@ -200,24 +127,24 @@ test("event CRUD and import contract exposes statuses source metadata fixtures a
   );
 
   const service = serviceModule.createMockEventCrudAndImportService();
-  const list = service.listEvents();
-  const filtered = service.listEvents({ statusFilter: "confirmed" });
-  const created = service.createEvent({
+  const list = await service.listEvents();
+  const filtered = await service.listEvents({ statusFilter: "confirmed" });
+  const created = await service.createEvent({
     title: "Founder investor salon",
     sourceNote:
       "Operator met the host at a founder dinner and wants the context preserved.",
   });
-  const demoCreated = service.createEvent();
-  const detail = service.getEvent({ eventId: "demo-event-1" });
-  const empty = service.listEvents({ scenario: "empty" });
-  const pending = service.listEvents({ scenario: "pending" });
-  const failure = service.listEvents({ scenario: "failure" });
-  const missingTitle = service.createEvent({ title: "  " });
-  const missingSourceNote = service.createEvent({
+  const demoCreated = await service.createEvent();
+  const detail = await service.getEvent({ eventId: "demo-event-1" });
+  const empty = await service.listEvents({ scenario: "empty" });
+  const pending = await service.listEvents({ scenario: "pending" });
+  const failure = await service.listEvents({ scenario: "failure" });
+  const missingTitle = await service.createEvent({ title: "  " });
+  const missingSourceNote = await service.createEvent({
     title: "Founder investor salon",
     sourceNote: "  ",
   });
-  const missingEvent = service.getEvent({ eventId: "missing-event" });
+  const missingEvent = await service.getEvent({ eventId: "missing-event" });
 
   assert.equal(list.success, true);
   assert.equal(list.data?.events.length, 3);

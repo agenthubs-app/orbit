@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type {
+  EventAttendeeRosterPayload,
+  EventAttendeeRosterImportPayload,
+} from "../../features/events/attendee-roster/contract";
+import type {
+  EventGoalReadinessPayload,
+  EventGoalSetPayload,
+} from "../../features/events/goal-readiness/contract";
+import type {
+  EventEncounterNotePayload,
+  EventEncounterEvidencePayload,
+} from "../../features/events/encounter-note/contract";
+import type {
+  WantConnectPayload,
+  WantConnectMatchesPayload,
+} from "../../features/events/want-connect/contract";
+import type {
+  PostEventReviewPayload,
+  PostEventReviewConfirmPayload,
+} from "../../features/events/post-event-review/contract";
+
 import { createLiveEventAttendeeRosterService } from "../../features/events/attendee-roster/live-service";
 import { createLiveEventCrudAndImportService } from "../../features/events/event-crud-and-import/live-service";
 import { createStorageEventStoreProvider } from "../../features/events/event-crud-and-import/providers/storage-event-provider";
@@ -104,27 +125,37 @@ test("events live seed writes all mock event datasets into live record storage",
     false,
   );
 
-  const attendeeProvider = createEventCapabilityRecordProvider({
+  const attendeeProvider = createEventCapabilityRecordProvider<
+    EventAttendeeRosterPayload | EventAttendeeRosterImportPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.attendeeRoster,
     store,
     workspaceId,
   });
-  const goalProvider = createEventCapabilityRecordProvider({
+  const goalProvider = createEventCapabilityRecordProvider<
+    EventGoalReadinessPayload | EventGoalSetPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.goalReadiness,
     store,
     workspaceId,
   });
-  const encounterProvider = createEventCapabilityRecordProvider({
+  const encounterProvider = createEventCapabilityRecordProvider<
+    EventEncounterNotePayload | EventEncounterEvidencePayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.encounterNotes,
     store,
     workspaceId,
   });
-  const wantConnectProvider = createEventCapabilityRecordProvider({
+  const wantConnectProvider = createEventCapabilityRecordProvider<
+    WantConnectPayload | WantConnectMatchesPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.wantConnect,
     store,
     workspaceId,
   });
-  const postEventProvider = createEventCapabilityRecordProvider({
+  const postEventProvider = createEventCapabilityRecordProvider<
+    PostEventReviewPayload | PostEventReviewConfirmPayload
+  >({
     collectionName: EVENT_WORK_RECORD_COLLECTIONS.postEventReview,
     store,
     workspaceId,

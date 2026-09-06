@@ -110,7 +110,6 @@ test("proactive alerts view model maps an explicit test fixture to a nudge with 
   const result = createFixtureOrbitAiProactiveAgentService().createProactiveTurn();
 
   assert.equal(result.success, true);
-  if (result.success === false) return;
 
   const alerts = toProactiveAlerts(
     result.data as OrbitAiProactiveAgentPayload,

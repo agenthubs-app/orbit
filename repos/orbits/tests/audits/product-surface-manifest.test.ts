@@ -57,12 +57,26 @@ test("surface scanner derives private routes from the production auth boundary",
     manifest.surfaces.map((surface) => [surface.route, surface]),
   );
 
-  assert.equal(byRoute.get("/app/agent")?.access.policy, "authenticated");
-  assert.equal(byRoute.get("/app/contacts/[id]")?.access.policy, "authenticated");
-  assert.equal(byRoute.get("/app/account/login")?.access.policy, "public-auth-entry");
-  assert.equal(byRoute.get("/app/events")?.access.policy, "public-at-proxy");
+  for (const [route, policy] of [
+    ["/app/agent", "authenticated"],
+    ["/app/contacts/[id]", "authenticated"],
+    ["/app/account/login", "public-auth-entry"],
+    ["/app/events", "public-at-proxy"],
+  ]) {
+    const surface = byRoute.get(route);
+    assert.ok(surface && typeof surface === "object" && "access" in surface);
+    const access = surface.access;
+    assert.ok(access && typeof access === "object" && "policy" in access);
+    assert.equal(access.policy, policy);
+  }
+
+  const agentSurface = byRoute.get("/app/agent");
+  assert.ok(agentSurface && typeof agentSurface === "object" && "access" in agentSurface);
+  const access = agentSurface.access;
+  assert.ok(access && typeof access === "object" && "anonymousBehavior" in access);
+  assert.ok(typeof access.anonymousBehavior === "string");
   assert.match(
-    byRoute.get("/app/agent")?.access.anonymousBehavior ?? "",
+    access.anonymousBehavior,
     /redirect:\/app\/account\/login/,
   );
 });
