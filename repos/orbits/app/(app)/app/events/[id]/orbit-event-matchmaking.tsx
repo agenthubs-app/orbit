@@ -488,7 +488,7 @@ export function OrbitEventMatchmaking({
   contactRequestsOpen = true,
   eventId,
   onWorkspaceSummary,
-  registrationOpen = true,
+  registrationOpen = false,
 }: {
   authenticated?: boolean;
   contactRequestsOpen?: boolean;
@@ -518,6 +518,7 @@ export function OrbitEventMatchmaking({
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [loading, setLoading] = useState(authenticated);
   const [unauthorized, setUnauthorized] = useState(!authenticated);
+  const [authenticationRequired, setAuthenticationRequired] = useState(!authenticated);
   const [error, setError] = useState("");
   const [working, setWorking] = useState<string | null>(null);
   const visibleError = error
@@ -529,18 +530,21 @@ export function OrbitEventMatchmaking({
 
   const load = useCallback(async () => {
     if (!authenticated) {
+      setAuthenticationRequired(true);
       setUnauthorized(true);
       setWorkspace(null);
       return;
     }
     const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/operations`, { cache: "no-store" });
     if (response.status === 401 || response.status === 403) {
+      setAuthenticationRequired(response.status === 401);
       setUnauthorized(true);
       setWorkspace(null);
       return;
     }
     const body = (await response.json().catch(() => ({}))) as { data?: OperationsWorkspace };
     if (!response.ok || !body.data) throw new Error(messageFrom(body));
+    setAuthenticationRequired(false);
     setUnauthorized(false);
     setWorkspace(body.data);
   }, [authenticated, eventId]);
@@ -672,7 +676,7 @@ export function OrbitEventMatchmaking({
       {unauthorized ? (
         <div className="card-flat" style={{ display: "grid", gap: 9, padding: 14 }}>
           <p style={{ color: "var(--text-2)", fontSize: 14, margin: 0 }}>{t({ en: "Only confirmed participants can see event matching.", zh: "只有已确认报名的参与者可以查看活动匹配。" })}</p>
-          {authenticated && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : !authenticated ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
+          {authenticated && !authenticationRequired && registrationOpen ? <a className="btn btn-primary btn-sm" href={`/app/events/${encodeURIComponent(eventId)}/register`} style={{ justifySelf: "start" }}>{t({ en: "Complete registration", zh: "完成报名" })}</a> : authenticationRequired ? <a className="btn btn-primary btn-sm" href={`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}`)}`} style={{ justifySelf: "start" }}>{t({ en: "Sign in", zh: "登录" })}</a> : null}
         </div>
       ) : null}
 

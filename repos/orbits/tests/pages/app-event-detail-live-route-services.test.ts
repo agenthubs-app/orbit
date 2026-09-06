@@ -416,8 +416,8 @@ test("ended event matchmaking does not offer a dead registration route", () => {
     "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
   );
 
-  assert.match(detailSource, /registrationOpen=\{event\.status !== "ended"\}/);
-  assert.match(matchmakingSource, /authenticated && registrationOpen/);
+  assert.match(detailSource, /registrationOpen=\{event\.status === "upcoming" && eventRegistrationIsOpen\(registrationAvailability\)\}/);
+  assert.match(matchmakingSource, /authenticated && !authenticationRequired && registrationOpen/);
   assert.match(matchmakingSource, /resultsState === "ready"/);
   assert.doesNotMatch(matchmakingSource, /!registrationOpen[^]*\/register/);
 });

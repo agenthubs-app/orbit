@@ -7,6 +7,80 @@ import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { OrbitEventMatchmaking } from "../../app/(app)/app/events/[id]/orbit-event-matchmaking";
+import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
+
+test("the event journey passes the canonical registration window to matching recovery", async () => {
+  const model = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(model.routeState, "success");
+  if (model.routeState !== "success") return;
+  const base = eventDetailRouteToOrbitLandingEventView(model);
+  const originalFetch = globalThis.fetch;
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { setInterval, clearInterval, location: { search: "", href: "https://orbit.example/app/events/demo-event-1" } },
+  });
+  globalThis.fetch = async () => new Response(null, { status: 403 });
+  try {
+    for (const status of ["upcoming", "active", "ended"] as const) {
+      for (const availability of ["open", "profile_edit_closed", "registration_closed", "unavailable"] as const) {
+        let renderer!: ReactTestRenderer;
+        try {
+          await act(async () => {
+            renderer = create(createElement(OrbitRealEventDetail, {
+              event: { ...base, status, stats: { ...base.stats, authed: true, youRsvped: true } },
+              registrationAvailability: availability,
+            }));
+          });
+          const matching = renderer.root.findByType(OrbitEventMatchmaking);
+          assert.equal(matching.props.registrationOpen, status === "upcoming" && availability === "open");
+          assert.equal(
+            matching.findAllByType("a").some((node) => String(node.props.href).endsWith("/register")),
+            status === "upcoming" && availability === "open",
+          );
+        } finally {
+          if (renderer) await act(async () => renderer.unmount());
+        }
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
+test("matching recovery distinguishes an expired session from closed or unknown registration", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const status of [401, 403]) {
+      for (const registrationOpen of [true, false, undefined]) {
+        globalThis.fetch = async () => new Response(null, { status });
+        let renderer!: ReactTestRenderer;
+        try {
+          await act(async () => {
+            renderer = create(createElement(OrbitEventMatchmaking, {
+              eventId: "event:closed-test", authenticated: true, registrationOpen,
+            }));
+          });
+          const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href as string);
+          assert.equal(hrefs.some((href) => href.endsWith("/register")), status === 403 && registrationOpen === true);
+          assert.equal(hrefs.some((href) => href.startsWith("/app/account/login?next=")), status === 401);
+          if (status === 401) {
+            const login = new URL(hrefs[0], "https://orbit.example");
+            assert.equal(login.searchParams.get("next"), "/app/events/event:closed-test");
+          }
+        } finally {
+          if (renderer) await act(async () => renderer.unmount());
+        }
+      }
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 

@@ -549,12 +549,14 @@ function EventInfoCard({
 function OnsiteCard({
   event,
   onSummary,
+  registrationAvailability,
   stage,
   summary,
   t,
   youRsvped,
 }: {
   event: OrbitLandingEventView;
+  registrationAvailability: EventRegistrationAvailability;
   onSummary: (summary: EventMatchmakingSummary | null) => void;
   stage: JourneyStage;
   summary: EventMatchmakingSummary | null;
@@ -607,7 +609,7 @@ function OnsiteCard({
                 contactRequestsOpen={event.status !== "upcoming"}
                 eventId={event.id}
                 onWorkspaceSummary={onSummary}
-                registrationOpen={event.status === "upcoming"}
+                registrationOpen={event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)}
               />
             </div>
           </div>
@@ -669,7 +671,7 @@ function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, re
   return (
     <>
       <EventInfoCard event={event} mini={mini} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} stage={stage} t={t} workspaceAvailable={workspaceAvailable} />
-      <OnsiteCard event={event} onSummary={onSummary} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
+      <OnsiteCard event={event} registrationAvailability={registrationAvailability} onSummary={onSummary} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <PostEventCard event={event} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <div className="orb-dock">
         <a aria-label={t({ en: "Ask iOrbit about this event", zh: "向 iOrbit 询问这场活动" })} className="orb-ball" data-agent-context="event" href={askAgentHref} title={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}>
