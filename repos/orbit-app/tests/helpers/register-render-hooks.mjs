@@ -23,6 +23,10 @@ const REDIRECTS = new Map([
   [
     "react-native-safe-area-context",
     join(helpersDir, "stubs", "react-native-safe-area-context.js")
+  ],
+  [
+    "react-native-svg",
+    join(helpersDir, "stubs", "react-native-svg.js")
   ]
 ]);
 

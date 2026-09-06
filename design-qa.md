@@ -71,6 +71,77 @@ final result: passed
 
 ---
 
+# iOS 行业分布环绕标注方案 1 Design QA
+
+## Comparison Target
+
+- Source visual truth: `/Users/xzhao/Projects/orbit/docs/designs/orbit-app/network-structure/2026-08-30/01-orbital-callout-halo.png`
+- Implementation top: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-final-top.png`
+- Implementation lower detail: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-final-focused.png`
+- Accessibility Medium upper detail: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-accessibility-medium-upper.png`
+- Accessibility Medium lower detail: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-accessibility-medium-top.png`
+- Full side-by-side comparison: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-final-comparison.png`
+- Focused side-by-side comparison: `/Users/xzhao/Projects/orbit/repos/orbit-app/.tmp/visual-qa/network-structure-orbit-final-focused-comparison.png`
+- Route: `orbit://contacts/dashboard`
+- Runtime: native iOS Simulator, iPhone 16, `393 x 852` logical points at `3x`
+
+## Normalization
+
+- Source pixels: `850 x 1850`.
+- Implementation pixels: `1179 x 2556`.
+- The full comparison scales the source to `1179 x 2556`; the aspect-ratio adjustment is below 1% and no source content is cropped.
+- The focused comparison places the industry-card region from both images in one comparison input so callouts, spacing, typography, and chart geometry remain readable.
+
+## State
+
+- Both sides show `结构` → `行业` with `餐饮与食品` selected.
+- The implementation uses the live nine-industry payload: all names, counts, and percentages remain visible.
+- The native screen retains the real structure-diagnosis card, status bar, and scroll continuation outside the target industry visualization.
+
+## Findings
+
+- No actionable P0, P1, or P2 visual or interaction findings remain.
+- Typography: all nine industry names and their `人数 · 百分比` values render in full; no ellipsis, clipping, or hidden legend is used.
+- Layout: labels surround the donut on the top, left, right, and bottom, with color-matched curved leader lines. The selected label is a compact violet capsule, preserving the visual center of gravity from the reference.
+- Spacing: the live card uses a smaller donut than the concept image to preserve full labels inside the existing 327-point content width. The card scrolls normally and the lower labels, explicit detail action, and structure insight remain reachable.
+- Colors and tokens: existing Orbit violet, green, blue, amber, red, cyan, brown, purple, and gray tokens are reused. `社群与非营利` uses gray so the ninth segment remains visually distinct.
+- Copy and content: the interface presents the real Chinese industry names, counts, and percentages. Selecting another group updates the chart center and detail-action label without inventing or hiding information.
+- Assets: no raster asset is required for this interactive data visualization. The donut and leader lines are code-native SVG rendering, not a substitute for a missing illustration or icon asset.
+- Accessibility: all nine orbital labels are native selectable buttons with complete VoiceOver labels and selected state; the decorative connector layer is hidden from accessibility.
+- Large text: the orbital frame and label widths expand with the actual system font scale. Accessibility Medium native frames confirm six-point vertical gaps between adjacent left-side labels, and pure layout tests cover `1.5`, `1.6`, `2.2`, and `3.2` font scales without rectangle collisions.
+- Interaction: tapping a sector or surrounding label changes selection in place. Only `查看这个分组` navigates to the corresponding contact list.
+
+## Comparison History
+
+1. The first implementation comparison showed a reused purple ninth segment and leader lines that were visually heavier than the selected reference.
+2. The palette gained a distinct gray ninth color and connector strokes were reduced to `1.4` selected / `0.9` default.
+3. Independent review found that the first large-text formula allowed a five-point collision between dense left-side labels. A failing collision test reproduced it.
+4. The layout now grows from the actual font scale, widens the label lanes when needed, and reserves wrapped-copy height. Accessibility Medium simulator captures and the complete accessibility tree confirm collision-free labels; the fixed-size chart center also remains legible at large system sizes.
+5. Final full and focused comparisons confirm the intended orbital composition, complete information visibility, and native interaction behavior.
+
+## Verification
+
+- Focused layout and source-contract tests: passed.
+- `npm run typecheck`: passed.
+- Full iOS test suite: 708 passed, 0 failed.
+- Knowledge-base maintenance tests: 6 passed, 0 failed.
+- `git diff --check`: passed.
+- GitNexus uncommitted-change analysis: low risk, 0 affected execution flows.
+- Independent code review: no remaining Critical, Important, or Minor findings; ready verdict.
+- Native interaction: sector selection, label selection, center-state update, and explicit detail navigation boundary verified.
+- Native accessibility tree: nine complete industry controls plus the explicit detail action verified.
+- Large-text regression: nine-item rectangle collision checks passed at `1.5`, `1.6`, `2.2`, and `3.2`; Accessibility Medium native render verified without label overlap.
+- Native simulator: no React Native error overlay observed.
+- Browser console check: not applicable to this native iOS implementation.
+
+## Follow-up Polish
+
+- P3: the dense leader-line cluster for the four one-percent industries can be micro-adjusted if future data produces longer labels, but it is readable and collision-free in the verified payload.
+
+final result: passed
+
+---
+
 # iOS 关系进展方案 1 Design QA
 
 ## Comparison Target

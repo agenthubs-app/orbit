@@ -39,6 +39,7 @@ repos/orbits/build/
 repos/orbits/npm-debug.log*
 
 # Local visual exports
+repos/orbit-app/.tmp/
 orbits-app-ai-command-center.png
 orbits-app-product-contacts.png
 orbits-app-redesign-mobile.png

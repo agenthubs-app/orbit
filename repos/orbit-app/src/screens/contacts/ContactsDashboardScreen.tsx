@@ -19,7 +19,7 @@ import {
 } from "../../api/endpoints";
 import { mobileContactsDashboardPayloadSchema } from "../../api/schema/mobile-contacts-dashboard";
 import { AppScreen } from "../../components/AppScreen";
-import { AnalysisPieChart } from "../../components/AnalysisPieChart";
+import { AnalysisPieOrbitChart } from "../../components/AnalysisPieOrbitChart";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -865,6 +865,7 @@ function StructureBreakdownCard({
     dimension.items.find((item) => item.id === selectedId) ?? dimension.items[0];
   const pieItems = dimension.items.map((item, index) => ({
     color: structurePieColor(index),
+    countLabel: item.countLabel,
     id: item.id,
     label: item.label,
     percentage: item.percentage
@@ -878,60 +879,22 @@ function StructureBreakdownCard({
           <Text style={styles.analysisSectionDetail}>{dimension.summary}</Text>
         </View>
         <Text style={styles.structureBreakdownHint}>
-          轻触扇区查看，第二次轻触进入详情
+          {dimension.items.length > 5
+            ? `前 5 个分组 + 其他 ${dimension.items.length - 5} 个`
+            : `全部 ${dimension.items.length} 个分组`}
         </Text>
       </View>
 
       {dimension.items.length > 0 && selectedItem ? (
         <>
-          <View style={styles.structurePieArea}>
-            <AnalysisPieChart
-              items={pieItems}
-              onActivate={(id) => {
-                const item = dimension.items.find((candidate) => candidate.id === id);
-                if (item) onOpenItem(item);
-              }}
-              onSelect={(id) => {
-                const item = dimension.items.find((candidate) => candidate.id === id);
-                if (item) onSelectItem(item);
-              }}
-              selectedId={selectedItem.id}
-            />
-          </View>
-          <View style={styles.structureLegend}>
-            {dimension.items.map((item, index) => {
-              const isSelected = item.id === selectedItem.id;
-
-              return (
-                <Pressable
-                  accessibilityLabel={`${item.label}，${item.countLabel}，${item.percentage}%`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  key={item.id}
-                  onPress={() => onSelectItem(item)}
-                  style={({ pressed }) => [
-                    styles.structureLegendRow,
-                    isSelected ? styles.structureLegendRowSelected : null,
-                    pressed ? styles.pressed : null
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.structureLegendDot,
-                      { backgroundColor: structurePieColor(index) }
-                    ]}
-                  />
-                  <Text numberOfLines={1} style={styles.structureLegendLabel}>
-                    {item.label}
-                  </Text>
-                  <Text style={styles.structureLegendCount}>{item.countLabel}</Text>
-                  <Text style={styles.structureLegendPercentage}>
-                    {item.percentage}%
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <AnalysisPieOrbitChart
+            items={pieItems}
+            onSelect={(id) => {
+              const item = dimension.items.find((candidate) => candidate.id === id);
+              if (item) onSelectItem(item);
+            }}
+            selectedId={selectedItem.id}
+          />
           <Pressable
             accessibilityLabel={`查看${selectedItem.label}分组详情`}
             accessibilityRole="button"
@@ -941,7 +904,9 @@ function StructureBreakdownCard({
               pressed ? styles.pressed : null
             ]}
           >
-            <Text style={styles.structureDetailButtonText}>查看这个分组</Text>
+            <Text style={styles.structureDetailButtonText}>
+              查看{selectedItem.label}分组
+            </Text>
             <Ionicons color={colors.accent} name="arrow-forward" size={17} />
           </Pressable>
         </>
@@ -967,75 +932,6 @@ function StructureBreakdownCard({
           <Text style={styles.structureInsightText}>{dimension.insight}</Text>
         </View>
       </View>
-    </View>
-  );
-}
-
-function StructureDistributionRows({
-  dimension,
-  onOpenItem
-}: {
-  dimension: ContactsAnalysisStructureDimensionView;
-  onOpenItem: (item: ContactsAnalysisStructureItemView) => void;
-}) {
-  if (dimension.items.length === 0) {
-    return (
-      <View style={styles.analysisEmptyBlock}>
-        <Ionicons
-          color={colors.text4}
-          name={structureDimensionIcon(dimension.id)}
-          size={20}
-        />
-        <Text style={styles.analysisEmptyText}>
-          补充联系人{dimension.label}信息后，这里会显示分布。
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.structureItemList}>
-      {dimension.items.map((item, index) => {
-        const visual = structureItemVisual(dimension.id, item.label, index);
-        const barWidth = `${Math.max(4, Math.min(100, item.percentage))}%` as `${number}%`;
-
-        return (
-          <Pressable
-            accessibilityLabel={`${item.label}，${item.countLabel}，${item.percentage}%，查看联系人`}
-            accessibilityRole="button"
-            key={item.id}
-            onPress={() => onOpenItem(item)}
-            style={({ pressed }) => [
-              styles.structureItemRow,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <View
-              style={[
-                styles.structureItemIcon,
-                { backgroundColor: visual.backgroundColor }
-              ]}
-            >
-              <Ionicons color={visual.color} name={visual.icon} size={16} />
-            </View>
-            <Text numberOfLines={2} style={styles.structureItemLabel}>
-              {item.label}
-            </Text>
-            <View style={styles.structureItemBarTrack}>
-              <View
-                style={[
-                  styles.structureItemBarFill,
-                  { backgroundColor: visual.color, width: barWidth }
-                ]}
-              />
-            </View>
-            <Text style={styles.structureItemCount}>{item.countLabel}</Text>
-            <Text style={styles.structureItemPercentage}>
-              {item.percentage}%
-            </Text>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }
@@ -1249,126 +1145,6 @@ function OpportunityAnalysisView({
   );
 }
 
-function structureItemVisual(
-  dimension: ContactsAnalysisStructureDimensionId,
-  label: string,
-  index: number
-): {
-  backgroundColor: string;
-  color: string;
-  icon: keyof typeof Ionicons.glyphMap;
-} {
-  if (dimension === "industry" && /餐饮|食品/u.test(label)) {
-    return {
-      backgroundColor: colors.amberSoft,
-      color: colors.amber,
-      icon: "restaurant-outline"
-    };
-  }
-
-  if (dimension === "industry" && /科技|软件|AI/iu.test(label)) {
-    return {
-      backgroundColor: colors.liveSoft,
-      color: colors.live,
-      icon: "code-slash-outline"
-    };
-  }
-
-  if (dimension === "industry" && /资本|投资/u.test(label)) {
-    return {
-      backgroundColor: colors.accentSofter,
-      color: colors.accent,
-      icon: "analytics-outline"
-    };
-  }
-
-  if (dimension === "industry" && /社群|社区/u.test(label)) {
-    return {
-      backgroundColor: colors.skySoft,
-      color: colors.sky,
-      icon: "people-outline"
-    };
-  }
-
-  if (dimension === "industry" && /顾问|合作|专业/u.test(label)) {
-    return {
-      backgroundColor: colors.amberSoft,
-      color: colors.amber,
-      icon: "briefcase-outline"
-    };
-  }
-
-  if (dimension === "location") {
-    const locationColors = [
-      { backgroundColor: colors.skySoft, color: colors.sky },
-      { backgroundColor: colors.liveSoft, color: colors.live },
-      { backgroundColor: colors.amberSoft, color: colors.amber },
-      { backgroundColor: colors.accentSofter, color: colors.accent }
-    ];
-    const visual = locationColors[index % locationColors.length] ?? locationColors[0]!;
-
-    return { ...visual, icon: "location-outline" };
-  }
-
-  if (dimension === "role") {
-    if (/创始|决策/u.test(label)) {
-      return {
-        backgroundColor: colors.amberSoft,
-        color: colors.amber,
-        icon: "diamond-outline"
-      };
-    }
-
-    if (/管理/u.test(label)) {
-      return {
-        backgroundColor: colors.skySoft,
-        color: colors.sky,
-        icon: "briefcase-outline"
-      };
-    }
-
-    return {
-      backgroundColor: colors.liveSoft,
-      color: colors.live,
-      icon: "person-outline"
-    };
-  }
-
-  if (dimension === "relationship") {
-    if (/强/u.test(label)) {
-      return {
-        backgroundColor: colors.liveSoft,
-        color: colors.live,
-        icon: "heart-outline"
-      };
-    }
-
-    if (/弱/u.test(label)) {
-      return {
-        backgroundColor: colors.amberSoft,
-        color: colors.amber,
-        icon: "alert-circle-outline"
-      };
-    }
-
-    return {
-      backgroundColor: colors.skySoft,
-      color: colors.sky,
-      icon: "flame-outline"
-    };
-  }
-
-  const visuals = [
-    { backgroundColor: colors.liveSoft, color: colors.live, icon: "code-slash-outline" as const },
-    { backgroundColor: colors.skySoft, color: colors.sky, icon: "storefront-outline" as const },
-    { backgroundColor: colors.amberSoft, color: colors.amber, icon: "briefcase-outline" as const },
-    { backgroundColor: colors.accentSofter, color: colors.accent, icon: "analytics-outline" as const },
-    { backgroundColor: colors.surface2, color: colors.text3, icon: "grid-outline" as const }
-  ];
-
-  return visuals[index % visuals.length] ?? visuals[0]!;
-}
-
 function structureDimensionIcon(
   dimension: ContactsAnalysisStructureDimensionId
 ): keyof typeof Ionicons.glyphMap {
@@ -1396,8 +1172,9 @@ function structurePieColor(index: number): string {
     colors.rose,
     "#7B6E5B",
     "#3E8C94",
-    "#8B6BB1"
-  ][index % 8] ?? colors.text3;
+    "#8B6BB1",
+    colors.muted
+  ][index % 9] ?? colors.text3;
 }
 
 function analysisToneVisual(
@@ -2492,54 +2269,6 @@ const styles = StyleSheet.create({
   structureDimensionTextSelected: {
     color: colors.accent
   },
-  structureLegend: {
-    gap: spacing.xs
-  },
-  structureLegendCount: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    minWidth: 38,
-    textAlign: "right"
-  },
-  structureLegendDot: {
-    borderRadius: radius.pill,
-    height: 10,
-    width: 10
-  },
-  structureLegendLabel: {
-    color: colors.text2,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  structureLegendPercentage: {
-    color: colors.ink,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16,
-    minWidth: 34,
-    textAlign: "right"
-  },
-  structureLegendRow: {
-    alignItems: "center",
-    borderColor: "transparent",
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 38,
-    paddingHorizontal: spacing.sm
-  },
-  structureLegendRowSelected: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft
-  },
-  structurePieArea: {
-    alignItems: "center",
-    minHeight: 208
-  },
   activityDetail: {
     fontSize: 10,
     fontWeight: "700",
@@ -2766,56 +2495,6 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "800",
     lineHeight: 18
-  },
-  structureItemBarFill: {
-    borderRadius: radius.pill,
-    height: "100%"
-  },
-  structureItemBarTrack: {
-    backgroundColor: colors.surface3,
-    borderRadius: radius.pill,
-    flex: 1,
-    height: 6,
-    minWidth: 48,
-    overflow: "hidden"
-  },
-  structureItemCount: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    minWidth: 34,
-    textAlign: "right"
-  },
-  structureItemIcon: {
-    alignItems: "center",
-    borderRadius: radius.pill,
-    height: 30,
-    justifyContent: "center",
-    width: 30
-  },
-  structureItemLabel: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 17,
-    width: 100
-  },
-  structureItemList: {
-    gap: spacing.md
-  },
-  structureItemPercentage: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    minWidth: 30,
-    textAlign: "right"
-  },
-  structureItemRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 40
   },
   recommendedActionRow: {
     alignItems: "center",

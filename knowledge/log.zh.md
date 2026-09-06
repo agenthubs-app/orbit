@@ -95,3 +95,9 @@
 - 扫描排除规则新增 coding-agent 工具说明（`**/.claude/**` 与 `CLAUDE.md`），并写入 `knowledge/schema.zh.md`。
 - live-handoff 自动收录扩展到 `*_LIVE_IMPLEMENTATION.md` 与 `*_MOCK_TO_LIVE.md` 命名；moduleDocs 补充 home 模块。
 - freshness 报告"扫描范围内未纳入目录"从 52 归零；root 知识库测试 6/6、app 侧 knowledge 测试 11/11 通过（后者需先补装 node_modules 缺失依赖）。
+
+## [2026-08-30] maintenance | 记录 iOS 行业环绕标注实现
+
+- 在开发历史中记录方案一的选择依据、实现边界、使用方式、无障碍规则和验证入口。
+- 更新 iOS App README，说明行业图的选择与详情导航行为，并明确其他结构维度仍沿用完整图例。
+- 在原人脉分析设计文档追加行业环绕布局 follow-up，在项目根 `design-qa.md` 保存最终对照结论和模拟器证据路径。

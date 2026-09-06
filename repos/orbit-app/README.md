@@ -38,6 +38,15 @@ at `react-native-web` inside the test process only, so components render to HTML
 under `node --test`. The native build is unaffected. Static rendering covers
 structure and copy; interaction is not simulated yet.
 
+## Project Documentation
+
+- This README is the usage, local-development, architecture-boundary, and
+  feature-behavior guide.
+- [`docs/history/development-log.zh.md`](docs/history/development-log.zh.md)
+  records completed product and engineering tasks for future maintainers.
+- [`design-qa.md`](design-qa.md) records visual comparison evidence and the
+  remaining polish level for implemented designs.
+
 ## Boundaries
 
 - The app consumes `/api/**` routes from `repos/orbits`.
@@ -262,6 +271,28 @@ payloads but presents them as an asset check for the address book: total
 contacts, high-value relationships, follow-up load, dormant relationships,
 coverage gaps, and value type distribution. Export, recompute, and bulk
 drill-down actions stay out of mobile until those contracts are explicit.
+
+In the dashboard's `结构` view, all four dimensions — `行业`, `地区`, `角色`,
+and `关系` — use the same orbital callout chart. Dimensions with at most five
+groups show every real group; larger dimensions keep one true donut slice per
+group while showing the five largest labels and one `其他 N 个` aggregate around
+the ring. Every visible label is positioned from its own sector midpoint, and
+a direct non-crossing leader reaches the matching color endpoint beside the
+label. Same-side labels reserve room for the full name, count, and percentage,
+preserve their angular order, and are spaced to avoid overlap, including at
+larger system text sizes. Tapping a major label selects
+that group. Tapping a small sector represented by `其他` exposes that group's
+exact name, count, and percentage in the center; repeatedly tapping the larger
+`其他` anchor cycles through every represented real group, so thin sectors are
+not the only way to inspect them. Open the selected group's contact list only
+through the explicit `查看{分组名称}分组` action.
+
+Visual QA for this analytics surface must use the representative Xiaoyu
+dataset with populated industry, location, role, and relationship dimensions.
+The generic empty-data QA account is suitable for auth and navigation checks,
+but not for accepting chart geometry. Local QA loads the Xiaoyu test identity
+from the ignored backend `.env.local`; credential values must never be copied
+into project documentation, test output, screenshots, or commits.
 
 Contacts link to a mobile relationship graph. The graph reads connection
 evidence, hides backend provenance wording, opens the related contact detail,

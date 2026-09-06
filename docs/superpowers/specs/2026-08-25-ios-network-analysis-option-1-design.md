@@ -47,3 +47,19 @@ A functional three-way segmented control presents:
 - Source tests cover the segmented control and all three analysis views.
 - TypeScript and the complete iOS test suite must pass.
 - iOS Simulator captures are compared side by side with the selected visual and recorded in project-root `design-qa.md`.
+
+## 2026-08-30 Interaction Follow-up
+
+- Tapping a structure chart sector selects it and keeps the selection visible; it never navigates by itself.
+- The chart center keeps the selected group name and percentage visible.
+- Every group remains visible beside the chart with its color, complete label, count, and percentage. Narrow or large-text layouts may wrap the legend below the chart, but must not hide or truncate information.
+- Opening the group detail is reserved for the explicit `查看这个分组` action.
+
+## 2026-08-30 Industry Orbital Layout Follow-up
+
+- Selected visual reference: `docs/designs/orbit-app/network-structure/2026-08-30/01-orbital-callout-halo.png`.
+- The `行业` dimension replaces the side legend with nine labels arranged around the donut and connects each label to its sector with a matching leader line.
+- The selected label uses the existing violet soft surface, while the chart center keeps the selected percentage and full industry name visible.
+- Tapping a sector or an orbital label only changes selection. Navigation remains exclusive to `查看这个分组`.
+- Full industry names, counts, and percentages remain visible; the component increases its layout height for larger accessibility font scales instead of truncating labels.
+- `地区`, `角色`, and `关系` retain the earlier donut-and-complete-legend presentation so this visual change remains scoped to industry information.

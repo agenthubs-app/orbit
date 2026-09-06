@@ -54,8 +54,11 @@ test("contacts analysis option one exposes focused overview structure and opport
   const overviewStart = screenSource.indexOf('analysisSegment === "overview"');
   const structureStart = screenSource.indexOf('analysisSegment === "structure"');
   const opportunityStart = screenSource.indexOf('analysisSegment === "opportunity"');
+  const breakdownStart = screenSource.indexOf("function StructureBreakdownCard");
+  const dimensionSummaryStart = screenSource.indexOf("function AnalysisDimensionSummary");
   const overviewSource = screenSource.slice(overviewStart, structureStart);
   const structureSource = screenSource.slice(structureStart, opportunityStart);
+  const breakdownSource = screenSource.slice(breakdownStart, dimensionSummaryStart);
 
   assert.match(screenSource, /AnalysisSegmentedControl/u);
   assert.match(screenSource, /"概览"/u);
@@ -65,11 +68,13 @@ test("contacts analysis option one exposes focused overview structure and opport
   assert.match(screenSource, /AnalysisSnapshotCard/u);
   assert.match(screenSource, /StructureDimensionControl/u);
   assert.match(screenSource, /StructureBreakdownCard/u);
-  assert.match(screenSource, /AnalysisPieChart/u);
+  assert.doesNotMatch(screenSource, /StructureDistributionRows/u);
+  assert.match(screenSource, /AnalysisPieOrbitChart/u);
   assert.match(screenSource, /StructureAnalysisView/u);
   assert.match(screenSource, /OpportunityAnalysisView/u);
   assert.match(screenSource, /结构摘要/u);
-  assert.match(screenSource, /轻触扇区查看，第二次轻触进入详情/u);
+  assert.match(screenSource, /前 5 个分组 \+ 其他/u);
+  assert.match(screenSource, /全部 \$\{dimension\.items\.length\} 个分组/u);
   assert.match(screenSource, /关键机会/u);
   assert.match(overviewSource, /AnalysisSnapshotCard/u);
   assert.doesNotMatch(overviewSource, /NetworkStructureCard/u);
@@ -81,12 +86,20 @@ test("contacts analysis option one exposes focused overview structure and opport
     /accessibilityLabel=\{`\$\{segment\.label\}分析`\}[\s\S]{0,120}accessibilityRole="button"/u
   );
   assert.match(screenSource, /selectedStructureItems/u);
-  assert.match(screenSource, /onActivate/u);
+  assert.match(breakdownSource, /<AnalysisPieOrbitChart/u);
+  assert.match(breakdownSource, /countLabel: item\.countLabel/u);
+  assert.doesNotMatch(breakdownSource, /dimension\.id === "industry"/u);
+  assert.doesNotMatch(breakdownSource, /structureChartBody/u);
+  assert.doesNotMatch(breakdownSource, /structureLegend/u);
+  assert.doesNotMatch(screenSource, /STRUCTURE_CHART_SIZE/u);
+  assert.doesNotMatch(screenSource, /AnalysisPieChart/u);
+  assert.doesNotMatch(breakdownSource, /onActivate/u);
+  assert.doesNotMatch(
+    breakdownSource,
+    /numberOfLines=\{1\} style=\{styles\.structureLegendLabel\}/u
+  );
   assert.match(screenSource, /dimension === "location"/u);
-  assert.match(screenSource, /icon: "location-outline"/u);
-  assert.match(screenSource, /icon: "diamond-outline"/u);
-  assert.match(screenSource, /icon: "heart-outline"/u);
-  assert.match(screenSource, /查看这个分组/u);
+  assert.match(screenSource, /查看\{selectedItem\.label\}分组/u);
 });
 
 test("opportunity actions open a structured action brief before contact details", () => {
