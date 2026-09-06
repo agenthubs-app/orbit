@@ -1,10 +1,15 @@
+import { createIsolatedRegistrationRuntime } from "../support/isolated-registration-runtime";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import test from "node:test";
+import test, { before, after } from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadLocalEnv } from "../../scripts/load-local-env";
+
+let isolatedRuntime: Awaited<ReturnType<typeof createIsolatedRegistrationRuntime>>;
+before(async () => { isolatedRuntime = await createIsolatedRegistrationRuntime(); });
+after(async () => { await isolatedRuntime?.close(); });
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 loadLocalEnv();
