@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BusinessCardBatchDTO,
@@ -385,40 +385,48 @@ export function BusinessCardBatchViewPure({
   );
 }
 
+class BatchRequestFailure extends Error {
+  constructor(readonly status: number) { super("Batch request failed."); }
+}
+
+async function requestBatchJson(path: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(path, { ...init, signal: controller.signal });
+    if (!response.ok) throw new BatchRequestFailure(response.status);
+    return await response.json();
+  } finally { clearTimeout(timer); }
+}
+
 export function BusinessCardBatchView({ batchId }: { batchId: string }) {
   const { t } = useOrbitLanguage();
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<number | null>(null);
+  const requestSequence = useRef(0);
+  const actionInFlight = useRef(false);
   const [batch, setBatch] = useState<BusinessCardBatchDTO | null>(null);
   const [items, setItems] = useState<readonly BusinessCardBatchItemDTO[]>([]);
   const [busy, setBusy] = useState(false);
   const [duplicateItemId, setDuplicateItemId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (afterAction = false) => {
+    if (actionInFlight.current && !afterAction) return;
+    const sequence = ++requestSequence.current;
     try {
-      const response = await fetch(
-        `/api/contact-drafts/business-card/batches/${batchId}`,
-      );
-
-      if (!response.ok) {
-        return;
+      const body = await requestBatchJson(`/api/contact-drafts/business-card/batches/${batchId}`);
+      if (sequence !== requestSequence.current || (actionInFlight.current && !afterAction)) return;
+      if (body?.data?.batch?.id !== batchId || !Array.isArray(body?.data?.items)) throw new BatchRequestFailure(502);
+      setBatch(body.data.batch);
+      setItems(body.data.items);
+      setLoadError(null);
+    } catch (error) {
+      if (sequence === requestSequence.current && (!actionInFlight.current || afterAction)) {
+        setLoadError(error instanceof BatchRequestFailure ? error.status : 0);
       }
-
-      const body = (await response.json()) as {
-        data?: {
-          batch?: BusinessCardBatchDTO;
-          items?: readonly BusinessCardBatchItemDTO[];
-        };
-      };
-
-      if (body.data?.batch) {
-        setBatch(body.data.batch);
-        setItems(body.data.items ?? []);
-      }
-    } catch {
-      // 网络抖动时保留上一次状态，下一轮轮询恢复。
     } finally {
-      setNowMs(Date.now());
+      if (sequence === requestSequence.current) setNowMs(Date.now());
     }
   }, [batchId]);
 
@@ -426,11 +434,11 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
     void refresh();
     const timer = setInterval(() => void refresh(), 3_000);
 
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); requestSequence.current++; };
   }, [refresh]);
 
-  async function post(path: string, body?: unknown): Promise<Response> {
-    return fetch(path, {
+  async function post(path: string, body?: unknown) {
+    return requestBatchJson(path, {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       method: "POST",
@@ -438,23 +446,45 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
   }
 
   async function withBusy(action: () => Promise<void>): Promise<void> {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
+    requestSequence.current++;
+    setActionError(null);
     setBusy(true);
-
     try {
       await action();
-      await refresh();
+    } catch (error) {
+      setActionError(error instanceof BatchRequestFailure ? error.status : 0);
     } finally {
+      await refresh(true);
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
 
-  if (!batch) {
-    return null;
+  const errorStatus = actionError === 401 || loadError === 401 ? 401 : actionError ?? loadError;
+  const feedback = errorStatus !== null ? <div role="alert">
+    <p>{errorStatus === 401 ? t({ en: "Your session has expired. Sign in again to continue.", zh: "登录已过期，请重新登录后继续。" })
+      : errorStatus === 403 ? t({ en: "You do not have permission to perform this action.", zh: "你没有执行此操作的权限。" })
+      : errorStatus === 404 ? t({ en: "This batch is no longer available.", zh: "此批次已不可用。" })
+      : actionError !== null ? t({ en: "The result could not be confirmed. Check the latest batch state below before retrying.", zh: "暂时无法确认操作结果。请检查下方最新批次状态，再决定是否重试。" })
+      : batch ? t({ en: "Batch progress could not be loaded. Your last displayed state has been kept; try refreshing.", zh: "暂时无法加载批次进度，已保留上次显示的状态，请刷新重试。" })
+      : t({ en: "Batch progress could not be loaded. Try refreshing.", zh: "暂时无法加载批次进度，请刷新重试。" })}</p>
+    {errorStatus === 401 ? <a className="btn btn-primary" href={`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/batch/${batchId}`)}`}>{t({ en: "Sign in", zh: "重新登录" })}</a>
+      : <button className="btn btn-ghost" disabled={busy} type="button" onClick={() => { setActionError(null); void refresh(); }}>{t({ en: "Refresh status", zh: "刷新状态" })}</button>}
+  </div> : null;
+
+  if (!batch || batch.id !== batchId) {
+    return <section className="bcb-shell"><style>{BATCH_STYLE}</style>
+      <h2>{t({ en: "Card import", zh: "名片导入" })}</h2>
+      {feedback ?? <p role="status">{t({ en: "Loading batch…", zh: "正在加载批次…" })}</p>}
+      <a href="/app/contacts">{t({ en: "Back to contacts", zh: "返回名片夹" })}</a>
+    </section>;
   }
 
   return (
     <>
-    {actionError ? <p role="alert">{actionError}</p> : null}
+    {feedback}
     <BusinessCardBatchViewPure
       batch={batch}
       busy={busy}
@@ -463,11 +493,11 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
       nowMs={nowMs}
       onConfirm={(item, fields, allowDuplicate) =>
         void withBusy(async () => {
-          const response = await post(
+          const body = await post(
             `/api/contact-drafts/business-card/batches/${batch.id}/items/${item.id}/confirm`,
             { ...fields, allowDuplicate },
           );
-          const body = (await response.json()) as { data?: { state?: string } };
+          if (!["duplicate_review", "created", "already_confirmed"].includes(body?.data?.state)) throw new BatchRequestFailure(502);
 
           if (body.data?.state === "duplicate_review") {
             setDuplicateItemId(item.id);
@@ -477,13 +507,7 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
         })
       }
       onCancel={() => void withBusy(async () => {
-        setActionError(null);
-        try {
-          const response = await post(`/api/contact-drafts/business-card/batches/${batch.id}/cancel`);
-          if (!response.ok) throw new Error("cancel unavailable");
-        } catch {
-          setActionError(t({ en: "Cancellation could not be confirmed. Check the batch status below and retry if needed.", zh: "暂时无法确认取消结果，请查看下方批次状态，必要时重试。" }));
-        }
+        await post(`/api/contact-drafts/business-card/batches/${batch.id}/cancel`);
       })}
       onFinish={() =>
         void withBusy(async () => {
