@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type { CardPipeline } from "../business-card-queue-dispatch";
+import { CardUploadSourceError } from "./business-card-upload-source-error";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
@@ -69,6 +70,7 @@ export function createCardUploadSourceRepository({ pool, workspaceId, wake }: {
       const r = await pool.query(`SELECT *, upload_expires_at > now() AS valid FROM bc_ingest_raw_uploads
         WHERE workspace_id = $1 AND actor_id = $2 AND request_key = $3`, [workspaceId, input.actorId, input.requestKey]);
       const row = r.rows[0];
+      if (row?.state === "reserved" && !row.valid) throw new CardUploadSourceError("UPLOAD_SOURCE_EXPIRED");
       if (!row || row.state !== "reserved" || !row.valid || row.pipeline !== input.pipeline || row.file_name !== input.fileName ||
           row.mime_type !== input.mimeType || Number(row.byte_size) !== input.byteSize || row.digest !== input.digest) throw new Error("Upload reservation conflicts with existing state.");
       // Commit the record and accept its cleanup wake before exposing a source
@@ -93,6 +95,7 @@ export function createCardUploadSourceRepository({ pool, workspaceId, wake }: {
         if (rows.every((row) => ["consumed", "deleting", "deleted"].includes(row.state) && row.target_ref) && new Set(rows.map((row) => row.target_ref)).size === 1) {
           return { state: "consumed" as const, targetRef: rows[0].target_ref as string };
         }
+        if (rows.some((row) => !row.usable || ["deleting", "deleted"].includes(row.state))) throw new CardUploadSourceError("UPLOAD_SOURCE_EXPIRED");
         if (rows.some((row) => !row.usable || !["reserved", "processing"].includes(row.state) || row.leased)) throw new Error("Upload source is not available for processing.");
         const leaseKey = randomUUID();
         await client.query(`UPDATE bc_ingest_raw_uploads SET state='processing', lease_key=$3,

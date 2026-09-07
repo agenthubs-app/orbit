@@ -8,12 +8,13 @@ import type {
 } from "../../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import { contentUploadErrorCopy } from "../ingest-v2-upload-feedback";
 import {
   INGEST_V2_API_BASE,
   fetchBatchDetail,
   getPendingFiles,
   postAction,
-  resolveUploadMimeType,
+  replaceItemContent,
   sha256OfFile,
   uploadItemContent,
   type IngestBatchDetail,
@@ -302,6 +303,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
           }
           return next;
         });
+        let failed = false;
         await Promise.all(
           wave.map(async (item) => {
             const file = pendingFilesRef.current.get(item.clientDigest);
@@ -309,6 +311,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
               return;
             }
             const result = await uploadItemContent({ batchId, itemId: item.id, file });
+            if (!result.ok) failed = true;
             setUploadStates((previous) => {
               const next = { ...previous };
               if (result.ok) {
@@ -323,6 +326,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
             }
           }),
         );
+        if (failed) break;
       }
     } finally {
       uploadingRef.current = false;
@@ -358,23 +362,8 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
 
   async function submitReplace(item: IngestItemDTO, file: File): Promise<void> {
     await withBusy(async () => {
-      const response = await fetch(
-        `${INGEST_V2_API_BASE}/${batchId}/items/${item.id}/replace`,
-        {
-          body: file,
-          headers: {
-            "Content-Type": resolveUploadMimeType(file),
-            "If-Match": String(item.version),
-          },
-          method: "POST",
-        },
-      );
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
-        setGlobalError(body?.error?.message ?? `HTTP ${response.status}`);
-      }
+      const result = await replaceItemContent({ batchId, itemId: item.id, expectedVersion: item.version, file });
+      if (!result.ok) setGlobalError(t(contentUploadErrorCopy(result.errorCode)));
     });
   }
 
@@ -418,7 +407,10 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
         hidden
         multiple
-        onChange={(event) => void attachFiles(event.target.files)}
+        onChange={(event) => {
+          void attachFiles(event.target.files);
+          event.target.value = "";
+        }}
         ref={reattachRef}
         type="file"
       />
@@ -446,8 +438,8 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
       {renderPhase()}
       <div className="bci-privacy">
         {t({
-          en: "Originals are never stored. Recognition copies are deleted right after you confirm or skip.",
-          zh: "原始照片不会被保存；识别用的图片副本在确认或跳过后立即删除。",
+          en: "Originals are stored temporarily for import and scheduled for cleanup. Recognition images are hidden after you confirm or skip.",
+          zh: "原件会临时保存用于导入，并安排自动清理；确认或跳过后不再展示识别图片。",
         })}
       </div>
     </section>
@@ -508,8 +500,9 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
     const readyToFinalize = awaiting.length === 0 && uploaded > 0;
     const missingFiles = awaiting.filter(
       (item) =>
-        !pendingFilesRef.current.has(item.clientDigest) && !uploadStates[item.id],
+        !pendingFilesRef.current.has(item.clientDigest),
     );
+    const canRetry = awaiting.some((item) => uploadStates[item.id]?.kind === "failed" && pendingFilesRef.current.has(item.clientDigest));
 
     return (
       <>
@@ -543,7 +536,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
                 ? uploadState?.kind === "uploading"
                   ? { en: "Uploading…", zh: "上传中…" }
                   : uploadState?.kind === "failed"
-                    ? { en: `Invalid: ${uploadState.code}`, zh: `图片无效：${uploadState.code}` }
+                    ? contentUploadErrorCopy(uploadState.code)
                     : { en: "Waiting for file", zh: "等待文件" }
                 : ITEM_STATUS_COPY[item.status];
             return (
@@ -589,6 +582,14 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
               type="button"
             >
               {t({ en: "Re-attach photos", zh: "重新选择照片" })}
+            </button>
+          ) : null}
+          {canRetry ? (
+            <button className="btn btn-ghost" type="button"
+              disabled={busy || Object.values(uploadStates).some((state) => state.kind === "uploading")}
+              onClick={() => void pumpUploads()}
+            >
+              {t({ en: "Retry upload", zh: "重试上传" })}
             </button>
           ) : null}
           <button

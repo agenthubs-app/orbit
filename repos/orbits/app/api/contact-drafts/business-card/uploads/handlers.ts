@@ -3,6 +3,8 @@ import { getConfiguredCardUploadSources } from "../../../../../features/acquisit
 import { getConfiguredIngestV2SourceConsumer } from "../../../../../features/acquisition/business-card-ingest-v2/configured-source-consumer";
 import { IngestConflictError } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { IngestImageInvalidError } from "../../../../../features/acquisition/business-card-ingest-v2/normalization";
+import { CardUploadSourceError } from "../../../../../features/acquisition/storage/business-card-upload-source-error";
+import { usesPrivateBusinessCardBlob } from "../../../../../features/acquisition/storage/business-card-private-blob-store";
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../_shared/authenticated-actor";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -40,11 +42,13 @@ export function createCardUploadHandlers({
   configured = getConfiguredCardUploadSources,
   issue = handleUpload,
   consumeV2 = getConfiguredIngestV2SourceConsumer,
+  privateUploads = usesPrivateBusinessCardBlob,
 }: {
   resolveActor?: ResolveAuthenticatedApiActor;
   configured?: typeof getConfiguredCardUploadSources;
   issue?: typeof handleUpload;
   consumeV2?: typeof getConfiguredIngestV2SourceConsumer;
+  privateUploads?: () => boolean;
 } = {}) {
   async function authenticate(request: Request) {
     // These cookie-authenticated mutations are initiated only by our own UI.
@@ -70,7 +74,10 @@ export function createCardUploadHandlers({
         mimeType: body.mimeType, byteSize: body.byteSize, digest: body.digest,
       });
       return Response.json({ data: { source } }, { status: 201, headers });
-    } catch { return error(503, "UPLOAD_RESERVATION_UNAVAILABLE"); }
+    } catch (cause) {
+      if (cause instanceof CardUploadSourceError) return error(410, cause.code);
+      return error(503, "UPLOAD_RESERVATION_UNAVAILABLE");
+    }
   }
 
   async function token(request: Request): Promise<Response> {
@@ -116,10 +123,17 @@ export function createCardUploadHandlers({
       });
       return Response.json({ data: result }, { headers });
     } catch (cause) {
+      if (cause instanceof CardUploadSourceError) return error(cause.code === "UPLOAD_SOURCE_EXPIRED" ? 410 : 404, cause.code);
       if (cause instanceof IngestConflictError) return error(cause.code === "BATCH_GONE" ? 404 : 409, cause.code);
       if (cause instanceof IngestImageInvalidError) return error(400, "IMAGE_INVALID");
       return error(503, "UPLOAD_CONSUMPTION_UNAVAILABLE");
     }
   }
-  return { reserve, token, consume };
+  async function mode(): Promise<Response> {
+    try {
+      if (!await resolveActor()) return error(401, "UNAUTHORIZED");
+      return Response.json({ data: { directUpload: privateUploads() } }, { headers });
+    } catch { return error(503, "UPLOAD_UNAVAILABLE"); }
+  }
+  return { reserve, token, consume, mode };
 }

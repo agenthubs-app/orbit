@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { get } from "@vercel/blob";
 import type { CardUploadSource } from "./business-card-upload-sources";
+import { CardUploadSourceError } from "./business-card-upload-source-error";
 
 export interface CardSourceTransport {
   open(pathname: string, signal: AbortSignal): Promise<ReadableStream<Uint8Array> | null>;
@@ -59,7 +60,7 @@ export function createCardUploadSourceReader({ workspaceId, transport = privateT
         return stream;
       });
       const stream = await Promise.race([opening, expired]);
-      if (!stream) throw new Error("Upload source missing.");
+      if (!stream) throw new CardUploadSourceError("UPLOAD_SOURCE_NOT_UPLOADED");
       reader = stream.getReader();
       const chunks: Buffer[] = [];
       const digest = createHash("sha256");
@@ -81,7 +82,8 @@ export function createCardUploadSourceReader({ workspaceId, transport = privateT
       }
       complete = true;
       return Buffer.concat(chunks, size);
-    } catch {
+    } catch (error) {
+      if (error instanceof CardUploadSourceError) throw error;
       // Never propagate SDK URLs, authorization data, or raw provider errors.
       throw new Error("Uploaded file could not be verified. Please retry the upload.");
     } finally {
