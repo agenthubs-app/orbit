@@ -45,6 +45,7 @@ export interface ContactAcquisitionSummary {
   evidenceExcerpts: string[];
   nextAction: string;
   reviewFields?: ContactDraftReviewFieldView[];
+  reviewIssues?: Array<{ code: string; message: string }>;
   reviewLabel?: string;
   sourceLabel: string;
   stateLabel: string;
@@ -1104,6 +1105,27 @@ export function businessCardContactWriteToView(
   };
 }
 
+function businessCardReviewIssues(value: unknown): NonNullable<ContactAcquisitionSummary["reviewIssues"]> {
+  const messages: Record<string, string> = {
+    IDENTITY_MISSING: "没有识别到姓名，请对照名片补填。",
+    INVALID_EMAIL: "邮箱可能有误，请对照名片核对。",
+    INVALID_PHONE: "电话可能有误，请对照名片核对。",
+    MULTIPLE_OFFICES: "名片有多个办公地点，请确认要保留的信息。",
+    SHARED_CONTACT_VALUE: "多个办公地点使用了相同联系方式，请确认归属。",
+    NATIVE_ROMANIZED_NAME_CONFLICT: "请核对原文姓名与罗马字姓名是否属于同一人。",
+  };
+  return (Array.isArray(value) ? value : [value]).map((value, index) => {
+    const issue = isRecord(value) ? value : {};
+    const code = stringField(issue, "code") || `unrecognized:${index}`;
+    const message = stringField(issue, "message");
+    const knownMessage = Object.hasOwn(messages, code) ? messages[code] : undefined;
+    return {
+      code,
+      message: knownMessage ?? (segmentLooksChinese(message) ? message : "识别结果有待核对的内容，请对照名片原图确认。"),
+    };
+  });
+}
+
 export function acquisitionResultToSummary(
   data: unknown
 ): ContactAcquisitionSummary {
@@ -1130,6 +1152,7 @@ export function acquisitionResultToSummary(
     booleanField(contactCandidate, "readyForContactWrite");
   const draftId = stringField(draft, "id");
   const reviewFields = reviewFieldsFromDraft(draft);
+  const reviewIssues = nestedRecord(payload, "ocr").reviewIssues;
   const contactWrite = businessCardWriteCandidate(
     draft,
     nestedRecord(payload, "capture")
@@ -1162,6 +1185,7 @@ export function acquisitionResultToSummary(
     detail,
     draftId,
     evidenceExcerpts: evidenceExcerpts(draft),
+    ...(reviewIssues !== undefined ? { reviewIssues: businessCardReviewIssues(reviewIssues) } : {}),
     nextAction: summaryNextAction(
       stringField(draft, "suggestedNextAction") ||
         stringField(payload, "nextAction"),

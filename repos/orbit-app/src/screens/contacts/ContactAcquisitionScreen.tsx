@@ -120,13 +120,16 @@ function keepBusinessCardWriteCandidate(
     !next.contactId && current?.contactId
       ? { ...next, contactId: current.contactId }
       : next;
+  const withReviewIssues = next.reviewIssues === undefined && next.draftId === current?.draftId && current.reviewIssues
+    ? { ...withContactId, reviewIssues: current.reviewIssues }
+    : withContactId;
 
-  if (withContactId.contactWrite || !current?.contactWrite) {
-    return withContactId;
+  if (withReviewIssues.contactWrite || !current?.contactWrite) {
+    return withReviewIssues;
   }
 
   return {
-    ...withContactId,
+    ...withReviewIssues,
     contactWrite: current.contactWrite,
     ...(current.contactWriteLabel
       ? { contactWriteLabel: current.contactWriteLabel }
@@ -175,6 +178,8 @@ export function ContactAcquisitionScreen() {
   const [qrScannerReady, setQrScannerReady] = useState(true);
   const [reviewFields, setReviewFields] =
     useState<ContactDraftReviewFormState | null>(null);
+  const [acknowledgedIssueCodes, setAcknowledgedIssueCodes] = useState<string[]>([]);
+  const [allFieldsReviewed, setAllFieldsReviewed] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [referralResult, setReferralResult] =
     useState<ContactReferralRecommendationsView | null>(null);
@@ -221,6 +226,14 @@ export function ContactAcquisitionScreen() {
       setReviewFields(null);
     }
   }, [result?.draftId, result?.reviewFields?.length]);
+
+  useEffect(() => {
+    setAcknowledgedIssueCodes([]);
+    setAllFieldsReviewed(false);
+  }, [result?.draftId]);
+
+  const canWriteBusinessCard = !!result?.contactWrite && !!reviewFields?.displayName.trim() &&
+    allFieldsReviewed && (result.reviewIssues ?? []).every(issue => acknowledgedIssueCodes.includes(issue.code));
 
   useEffect(
     () => () => {
@@ -347,6 +360,7 @@ export function ContactAcquisitionScreen() {
     field: ContactDraftReviewFieldName,
     value: string
   ) {
+    setAllFieldsReviewed(false);
     setReviewFields((current) =>
       current
         ? {
@@ -406,6 +420,8 @@ export function ContactAcquisitionScreen() {
     }
 
     setSubmitting(true);
+    setAcknowledgedIssueCodes([]);
+    setAllFieldsReviewed(false);
     setError(null);
     setBusinessCardWriteResult(null);
 
@@ -415,7 +431,11 @@ export function ContactAcquisitionScreen() {
       });
 
       if (response.success) {
-        setResult(acquisitionResultToSummary(response.data));
+        const summary = acquisitionResultToSummary(response.data);
+        setResult(summary);
+        setReviewFields(summary.reviewFields?.length ? contactDraftReviewFormFromSummary(summary) : null);
+        setAcknowledgedIssueCodes([]);
+        setAllFieldsReviewed(false);
         refreshReviewSurfaces();
       } else {
         setError(response.error.message);
@@ -490,6 +510,10 @@ export function ContactAcquisitionScreen() {
   }
 
   async function writeBusinessCardContact(summary: ContactAcquisitionSummary) {
+    if (!canWriteBusinessCard || summary.draftId !== result?.draftId || writingContact || reviewing || submitting) {
+      setError("请先确认识别风险，并核对全部字段。");
+      return;
+    }
     const request = buildBusinessCardContactWriteRequest(summary, reviewFields);
 
     if (!request.success) {
@@ -950,6 +974,9 @@ export function ContactAcquisitionScreen() {
       ) : null}
       {result ? (
         <AcquisitionResultCard
+          acknowledgedIssueCodes={acknowledgedIssueCodes}
+          allFieldsReviewed={allFieldsReviewed}
+          canWriteContact={canWriteBusinessCard && !reviewing && !submitting}
           contactWriteResult={businessCardWriteResult}
           confirming={confirming}
           onConfirm={confirmDraft}
@@ -957,6 +984,8 @@ export function ContactAcquisitionScreen() {
           onOpenContact={onOpenContact}
           onOpenContacts={onOpenContacts}
           onReviewFieldChange={updateReviewField}
+          onIssueAcknowledged={(code) => setAcknowledgedIssueCodes(current => current.includes(code) ? current.filter(item => item !== code) : [...current, code])}
+          onFieldsReviewed={() => setAllFieldsReviewed(current => !current)}
           onSaveReview={saveReviewFields}
           onWriteContact={writeBusinessCardContact}
           reviewFields={reviewFields}
@@ -1368,6 +1397,9 @@ function EventContextDraftImportCard({
 }
 
 function AcquisitionResultCard({
+  acknowledgedIssueCodes,
+  allFieldsReviewed,
+  canWriteContact,
   contactWriteResult,
   confirming,
   onConfirm,
@@ -1375,6 +1407,8 @@ function AcquisitionResultCard({
   onOpenContact,
   onOpenContacts,
   onReviewFieldChange,
+  onIssueAcknowledged,
+  onFieldsReviewed,
   onSaveReview,
   onWriteContact,
   reviewFields,
@@ -1382,6 +1416,9 @@ function AcquisitionResultCard({
   result,
   writingContact
 }: {
+  acknowledgedIssueCodes: string[];
+  allFieldsReviewed: boolean;
+  canWriteContact: boolean;
   contactWriteResult: ContactBusinessCardWriteView | null;
   confirming: boolean;
   onConfirm: (draftId: string) => void;
@@ -1389,6 +1426,8 @@ function AcquisitionResultCard({
   onOpenContact: (contactId: string) => void;
   onOpenContacts: () => void;
   onReviewFieldChange: (field: ContactDraftReviewFieldName, value: string) => void;
+  onIssueAcknowledged: (code: string) => void;
+  onFieldsReviewed: () => void;
   onSaveReview: () => void;
   onWriteContact: (summary: ContactAcquisitionSummary) => void;
   reviewFields: ContactDraftReviewFormState | null;
@@ -1434,13 +1473,40 @@ function AcquisitionResultCard({
         />
       ) : null}
       {result.contactWrite ? (
+        <View style={styles.reviewPanel}>
+          {(result.reviewIssues ?? []).map((issue, index) => (
+            <Pressable
+              accessibilityLabel={issue.message}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acknowledgedIssueCodes.includes(issue.code) }}
+              key={`${issue.code}:${index}`}
+              onPress={() => onIssueAcknowledged(issue.code)}
+              style={styles.secondaryButton}
+            >
+              <Ionicons color={colors.accent} name={acknowledgedIssueCodes.includes(issue.code) ? "checkbox-outline" : "square-outline"} size={18} />
+              <Text style={styles.bodyText}>{issue.message}</Text>
+            </Pressable>
+          ))}
+          <Pressable
+            accessibilityLabel="我已核对所有字段，并决定将其收录进人脉。"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: allFieldsReviewed }}
+            onPress={onFieldsReviewed}
+            style={styles.secondaryButton}
+          >
+            <Ionicons color={colors.accent} name={allFieldsReviewed ? "checkbox-outline" : "square-outline"} size={18} />
+            <Text style={styles.bodyText}>我已核对所有字段，并决定将其收录进人脉。</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {result.contactWrite ? (
         <Pressable
           accessibilityRole="button"
-          disabled={writingContact}
+          disabled={writingContact || !canWriteContact}
           onPress={() => onWriteContact(result)}
           style={({ pressed }) => [
             styles.primaryButton,
-            writingContact ? styles.disabled : null,
+            writingContact || !canWriteContact ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
