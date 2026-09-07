@@ -19,6 +19,8 @@ import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { agentHrefForContext } from "../orbit-agent-context-href";
+import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/industries";
+import { ContactIndustryEditor } from "./contact-industry-editor";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -83,14 +85,17 @@ function Frow({ icon, k, children }: { icon: string; k: string; children: ReactN
   );
 }
 
-function ContactCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+function ContactCard({ contact, t, onEditIndustry }: { contact: OrbitContactView; t: Translate; onEditIndustry: () => void }) {
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="user">{t({ en: "Contact", zh: "联系方式" })}</CardTitle>
       {contact.email ? <Frow icon="mail" k={t({ en: "Email", zh: "邮箱" })}><span className="mono">{contact.email}</span></Frow> : null}
       {contact.phone ? <Frow icon="phone" k={t({ en: "Phone", zh: "电话" })}><span className="mono">{contact.phone}</span></Frow> : null}
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
-      {contact.industry ? <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>{contact.industry}</Frow> : null}
+      <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>
+        <span>{contact.industry || t({ en: "Unclassified", zh: "未分类" })}</span>{" "}
+        <button className="btn btn-quiet btn-sm" type="button" aria-label={t({ en: "Edit primary industry", zh: "编辑主要行业" })} onClick={onEditIndustry}>{t({ en: "Edit", zh: "编辑" })}</button>
+      </Frow>
       {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
       {contact.met ? <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
       {contact.lastInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>{contact.lastInteraction}</Frow> : null}
@@ -318,7 +323,14 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
 
 export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: string; viewModel: OrbitContactsViewModel }) {
   const { language, t } = useOrbitLanguage();
-  const contact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const sourceContact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const [industryEditContactId, setIndustryEditContactId] = useState<string | null>(null);
+  const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null } | null>(null);
+  const contact = industryUpdate?.source === sourceContact ? {
+    ...sourceContact,
+    primaryIndustryId: industryUpdate.value ?? undefined,
+    industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
+  } : sourceContact;
   const askAgentHref = agentHrefForContext({
     details: crmRole(contact, t),
     id: contactId,
@@ -379,7 +391,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <div className="nc-cols">
               <div className="nc-stack">
                 <AboutCard contact={contact} t={t} />
-                <ContactCard contact={contact} t={t} />
+                <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
                 <TagsCard contact={contact} t={t} />
                 <TwoWayCard contact={contact} t={t} />
               </div>
@@ -426,7 +438,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
-            <ContactCard contact={contact} t={t} />
+            <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
             <TagsCard contact={contact} t={t} />
             <TwoWayCard contact={contact} t={t} />
             <TimelineCard contact={contact} t={t} />
@@ -434,6 +446,13 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
           </div>
         </div>
       </div>
+
+      {industryEditContactId === contact.id ? (
+        <ContactIndustryEditor key={contact.id} contactId={contact.id} initialIndustryId={contact.primaryIndustryId} language={language} onClose={() => setIndustryEditContactId(null)} onSaved={(value) => {
+          setIndustryUpdate({ source: sourceContact, value });
+          setIndustryEditContactId(null);
+        }} />
+      ) : null}
 
       {toast ? (
         <div

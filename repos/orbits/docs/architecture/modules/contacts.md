@@ -21,7 +21,7 @@ Mock 服务返回确定性的联系人、标签、状态、搜索结果和空/�
 Contacts live mode 读取共享 live storage 的 generated relationship graph：
 
 - 列表、搜索和筛选从 `contacts`、`connections` 和 `evidence` 映射成联系人列表契约。
-- 联系人详情从同一组 live records 映射成 detail/tag/status 契约；更新标签、状态、note 和 last interaction 目前仍是 preview，不写回联系人记录或生产 audit log。
+- 联系人详情从同一组 live records 映射成 detail/tag/status 契约；支持写入的 live provider 在成功前持久化并回读标签、状态、note、last interaction 和主要行业。主要行业写入联系人主记录，其余详情状态按 actor 隔离；mock 预览不能作为持久化证据。
 - Contacts live provider 保留全图读取 API，同时为列表和详情提供 focused reads：列表按 search input 缩小 contact set 后只读取 listed contacts 与其 connections 引用的 evidence；详情按 `contactId` 只读取该 contact、对应 connection 和相关 evidence。
 - 联系人详情页不是新的数据层。它组合 Contacts、Connections 和 Analysis 三个 feature service；live 模式下先按 `contactId` 读取一次 shared focused graph，再把同一 graph 复用给 contact detail、connection evidence 和 relationship value scoring，避免重复读取全量 `contacts` / `connections` / `evidence`。
 - `/app/contacts/[id]` 现在通过 `loadAppContactDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有详情 UI 的 `OrbitContactsViewModel` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
@@ -52,6 +52,14 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 - 保留 `/app/contacts/pipeline` 及旧导航路径映射、人数标记、既有布局和只读说明，不更改 API 或阶段值。历史未装配的 pipeline／导入侧栏组件不作为本次业务同步基准。
 - App 对应术语版本 `b45641788` 同时保留“待跟进”旧数据别名。Web 的四阶段、阶段写入、关联待办仍待接入，本次不代表这些业务已对齐。
 - 10 项中／英真实页面渲染回归先失败后通过，覆盖链接名称与目的地、两种宽度的标题和侧栏人数；周边共 52 项通过，Web 类型检查通过。未执行真实账号写入或跨端回读。
+
+## Web 主要行业编辑（2026-09-08）
+
+联系人详情的桌面与窄屏联系方式卡片提供同一个行业编辑弹窗，沿用原有样式与焦点管理。选项来自共享的固定三语字典；没有分类时仍可编辑。保存仅 PATCH `/api/contacts/:id` 的 `primaryIndustryId`，清空明确发送 `null`，不随请求覆盖标签、备注或关系阶段。
+
+弹窗打开期间，新的服务端页面数据不能改写未保存选择；浏览器整页重载不保留本地草稿。保存期间锁住重复点击；失败保留选择并显示重试提示。只有响应中的联系人 ID 和行业值均匹配才显示成功，详情直接展示服务端确认的值；关闭后重新打开沿用已保存值，之后收到新的服务端页面数据则以新数据为准。离开弹窗后晚到结果不再修改页面。
+
+验证包括真实页面双入口渲染、编辑交互、PATCH handler → live service → 内存存储的保存／清空及新实例回读，确认标签与状态不变。浏览器脚本 `tests/pages/app-contact-industry-editor.browser.mjs` 在隔离 mock 预览中检查 1440px／390px 的失败、重试、清空、重开和键盘焦点；全部浏览器 API 被拦截，不访问业务数据库。本项不修改共享契约或 App，不执行行业迁移，也不宣称真实账号的跨端同步已验收。
 
 ## 热拔插边界
 
