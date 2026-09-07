@@ -48,7 +48,7 @@ export function createBusinessCardBatchWorker({
       workerId: string;
       now: string;
     }): Promise<BusinessCardBatchWorkerRunResult> {
-      const swept = await service.sweepCancelled(input.now) + await service.sweepExpired(input.now);
+      const swept = await service.sweepConfirmedImages(input.now) + await service.sweepCancelled(input.now) + await service.sweepExpired(input.now);
       const claimed = provider ? await service.claimPendingItems({
         limit: concurrency,
         now: input.now,

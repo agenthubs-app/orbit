@@ -38,7 +38,7 @@ export function createBusinessCardBatchItemImageHandler(
     const detail = await service.getBatch(actor.id, id);
     const item = detail?.items.find((entry) => entry.id === itemId);
 
-    if (detail?.batch.status === "cancelled" || !item?.imagePath) {
+    if (detail?.batch.status === "cancelled" || item?.status === "confirmed" || !item?.imagePath) {
       return new Response(null, { status: 404 });
     }
 

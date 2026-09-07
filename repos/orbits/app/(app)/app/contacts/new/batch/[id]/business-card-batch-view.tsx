@@ -68,8 +68,8 @@ function PrivacyNote({ t }: { t: Translate }) {
       <Icon name="lock" size={15} color="var(--accent)" />
       <span>
         {t({
-          en: "Card images are kept only until you finish reviewing them, then deleted.",
-          zh: "卡图保留至你完成确认，确认或跳过后立即删除。",
+          en: "After confirmation, images are no longer accessible and are deleted in the background. Skipping also removes the image.",
+          zh: "确认后卡图不再可访问，并由后台删除；跳过也会移除卡图。",
         })}
       </span>
     </div>

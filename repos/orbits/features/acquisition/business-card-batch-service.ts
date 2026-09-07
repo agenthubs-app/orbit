@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { AppError } from "../../shared/errors/app-error";
+import { createLiveBusinessCardContactWriteService } from "../contacts/live-contact-write-service";
+import { createStorageBusinessCardContactWriteProvider } from "../contacts/storage/contact-write-live-record-provider";
+import type { BusinessCardContactWriteResult, BusinessCardContactWriteService, ConfirmBusinessCardContactInput } from "../contacts/contact-write-contract";
 import { withQueuedCardBatches } from "./business-card-queue-dispatch";
 
 import type {
@@ -93,6 +97,12 @@ export interface BusinessCardBatchService {
     batchId: string;
     now: string;
   }): Promise<void>;
+  confirmContact(input: {
+    actorId: string; actorLabel: string; batchId: string; itemId: string; now: string;
+    fields: Omit<ConfirmBusinessCardContactInput, "actorId" | "actorLabel" | "draftId" | "confirmed" | "evidenceIds" | "imageDigest">;
+    writeService?: BusinessCardContactWriteService;
+  }): Promise<BusinessCardContactWriteResult>;
+  sweepConfirmedImages(now: string): Promise<number>;
   cancelBatch(input: { actorId: string; batchId: string; now: string }): Promise<void>;
   sweepCancelled(now: string): Promise<number>;
   sweepExpired(now: string): Promise<number>;
@@ -526,6 +536,46 @@ export function createBusinessCardBatchService({
         updatedAt: input.now,
       });
       await recomputeCounts(input.batchId, input.now);
+    },
+
+    async confirmContact(input) {
+      const batch = await readBatch(input.batchId);
+      const item = await readItem(input.itemId);
+      if (!batch || batch.actorId !== input.actorId || !item || item.actorId !== input.actorId || item.batchId !== batch.id) {
+        throw new AppError("NOT_FOUND", "Business-card batch item was not found.");
+      }
+      if (batch.status === "cancelled" || batch.status === "completed" ||
+          (item.status !== "extracted" && item.status !== "confirmed")) {
+        throw new AppError("CONFLICT", "This card is no longer available for confirmation.");
+      }
+      // The configured service binds this provider to the same transaction
+      // connection as the item and batch. Cancellation takes the same lock.
+      const contacts = input.writeService ?? createLiveBusinessCardContactWriteService({
+        now: () => input.now,
+        provider: createStorageBusinessCardContactWriteProvider({ store, workspaceId }),
+      });
+      const result = await contacts.confirmBusinessCardContact({ ...input.fields,
+        actorId: input.actorId, actorLabel: input.actorLabel, confirmed: true, draftId: item.id,
+        evidenceIds: [`evidence:business-card-batch:${item.id}`], imageDigest: item.imageDigest,
+      });
+      if (!result.success || result.data.state === "duplicate_review") return result;
+      if (item.status === "confirmed") return result;
+      // Keep the cleanup reference until after this transaction commits. A
+      // failed commit must preserve both the reviewable image and the card.
+      await saveItem({ ...item, status: "confirmed", confirmedContactId: result.data.contactId, updatedAt: input.now });
+      await recomputeCounts(batch.id, input.now);
+      return result;
+    },
+
+    async sweepConfirmedImages(now) {
+      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items, workspaceId });
+      const confirmed = records.map(itemFromRecord).filter((item): item is BusinessCardBatchItemDTO =>
+        item !== null && item.status === "confirmed" && item.imagePath !== null).slice(0, 20);
+      for (const item of confirmed) {
+        await imageStore.removeItemImage(item.imagePath!);
+        await saveItem({ ...item, imagePath: null, updatedAt: now });
+      }
+      return confirmed.length;
     },
 
     async cancelBatch(input) {

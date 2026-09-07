@@ -63,46 +63,24 @@ export function createBusinessCardBatchItemConfirmHandler(
       );
     }
 
-    const contacts =
-      writeService ?? createBusinessCardContactWriteService(mode);
     const { id, itemId } = await context.params;
-    const detail = await batchService.getBatch(actor.id, id);
-    const item = detail?.items.find((entry) => entry.id === itemId);
-
-    if (!item) {
-      return errorResponse(
-        new AppError("NOT_FOUND", `Business-card batch item ${itemId} was not found.`),
-      );
-    }
-
-    if (item.status !== "extracted") {
-      return errorResponse(
-        new AppError(
-          "CONFLICT",
-          "Only extracted business-card batch items can be confirmed.",
-        ),
-      );
-    }
-
     const parsedBody: unknown = await request.json().catch(() => ({}));
     const body = isRecord(parsedBody) ? parsedBody : {};
-    const now = new Date().toISOString();
-    const result = await contacts.confirmBusinessCardContact({
-      actorId: actor.id,
-      actorLabel: actor.name ?? actor.id,
-      allowDuplicate: body.allowDuplicate === true,
-      confirmed: true,
-      displayName: text(body.displayName),
-      draftId: itemId,
-      email: text(body.email),
-      evidenceIds: [`evidence:business-card-batch:${itemId}`],
-      imageDigest: item.imageDigest,
-      notes: text(body.notes),
-      organization: text(body.organization),
-      phone: text(body.phone),
-      relationshipContext: text(body.relationshipContext),
-      role: text(body.role),
-    });
+    let result;
+    try {
+      result = await batchService.confirmContact({
+        actorId: actor.id, actorLabel: actor.name ?? actor.id, batchId: id, itemId,
+        now: new Date().toISOString(),
+        // Non-live modes retain their disabled provider; explicit test injection
+        // is supported without changing the production transaction binding.
+        writeService: writeService ?? (mode === "live" ? undefined : createBusinessCardContactWriteService(mode)),
+        fields: { allowDuplicate: body.allowDuplicate === true, displayName: text(body.displayName),
+          email: text(body.email), notes: text(body.notes), organization: text(body.organization),
+          phone: text(body.phone), relationshipContext: text(body.relationshipContext), role: text(body.role) },
+      });
+    } catch (error) {
+      return errorResponse(error instanceof AppError ? error : new AppError("SERVICE_UNAVAILABLE", "Card confirmation is unavailable. Refresh the batch and retry."));
+    }
 
     if (result.success === false) {
       return errorResponse(new AppError("VALIDATION_ERROR", result.error.message));
@@ -117,14 +95,6 @@ export function createBusinessCardBatchItemConfirmHandler(
         { headers: runtimeBoundaryHeaders(mode), status: 200 },
       );
     }
-
-    await batchService.confirmItem({
-      actorId: actor.id,
-      batchId: id,
-      contactId: result.data.contactId,
-      itemId,
-      now,
-    });
 
     return NextResponse.json(
       success({ contactId: result.data.contactId, state: result.data.state }),

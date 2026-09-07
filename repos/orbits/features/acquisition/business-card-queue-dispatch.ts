@@ -35,6 +35,11 @@ export function withQueuedCardBatches(service: BusinessCardBatchService, publish
     skipItem: (input) => changed(() => service.skipItem(input), publish),
     finishBatch: (input) => changed(() => service.finishBatch(input), publish),
     cancelBatch: (input) => changed(() => service.cancelBatch(input), publish),
+    async confirmContact(input) {
+      const result = await service.confirmContact(input);
+      return result.success && result.data.state !== "duplicate_review"
+        ? changed(async () => result, publish) : result;
+    },
   };
 }
 

@@ -89,7 +89,7 @@ test("processing view shows progress, per-card cells, and a stalled-worker warni
   assert.ok(html.includes("取消剩余导入"));
   assert.ok(!html.includes("run-business-card-batch-worker"));
   assert.ok(html.includes("cards.pdf"));
-  assert.ok(html.includes("卡图保留至你完成确认"));
+  assert.ok(html.includes("确认后卡图不再可访问，并由后台删除"));
 });
 
 test("review view prefills fixed fields and the aggregated notes textarea", () => {
