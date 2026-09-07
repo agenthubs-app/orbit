@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
@@ -13,7 +13,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
-import { taskActivitiesToView, taskDetailToView } from "../../view-models/today-tasks";
+import { taskActivitiesToView, taskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -57,6 +57,10 @@ export function TaskDetailScreen() {
   const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date()), []);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [baseline, setBaseline] = useState<TaskDetailView | null>(null);
+  const [latest, setLatest] = useState<TaskDetailView | null>(null);
+  const latestRef = useRef(latest);
+  latestRef.current = latest;
   const [moreOpen, setMoreOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -64,9 +68,18 @@ export function TaskDetailScreen() {
 
   useEffect(() => {
     if (!detail) return;
-    setTitle(detail.title);
-    setNotes(detail.notes);
+    setLatest(detail);
+    if (!baseline || baseline.id !== detail.id || (
+      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes
+    )) {
+      setBaseline(detail);
+      setTitle(detail.title);
+      setNotes(detail.notes);
+    }
+    // Only a newly received revision may replace the editor. A successful
+    // write can arrive before the GET resource refreshes its older snapshot.
   }, [detail?.id, detail?.updatedAt]);
+  const staleDraft = !!baseline && !!latest && baseline.id === latest.id && baseline.updatedAt !== latest.updatedAt;
 
   function refresh() {
     detailState.refresh();
@@ -75,27 +88,43 @@ export function TaskDetailScreen() {
   }
 
   async function save() {
-    if (!detail || !title.trim() || saving) return;
+    if (!detail || !baseline || baseline.id !== taskId || staleDraft || saving || !title.trim()) return;
     const normalizedTitle = title.trim();
     const normalizedNotes = notes.trim();
-    if (normalizedTitle === detail.title && normalizedNotes === detail.notes.trim()) return;
+    if (baseline.notes && !normalizedNotes) {
+      setMutationError("暂不支持清空已有备注，请保留或修改内容。");
+      return;
+    }
+    if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
+    const revisionAtStart = latest?.updatedAt;
     setSaving(true);
     setMutationError(null);
-    const result = await client.patch<unknown>(taskPath(taskId), {
-      body: {
-        action: "update",
-        expectedUpdatedAt: detail.updatedAt,
-        idempotencyKey: mutationKey(`update:${taskId}`),
-        patch: {
-          category: detail.category,
-          ...(normalizedNotes ? { notes: normalizedNotes } : {}),
-          title: normalizedTitle,
+    try {
+      const result = await client.patch<unknown>(taskPath(taskId), {
+        body: {
+          action: "update",
+          expectedUpdatedAt: baseline.updatedAt,
+          idempotencyKey: mutationKey(`update:${taskId}`),
+          patch: {
+            ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+            title: normalizedTitle,
+          },
         },
-      },
-    });
-    if (result.success) refresh();
-    else setMutationError(result.error.message);
-    setSaving(false);
+      });
+      if (latestRef.current?.id !== baseline.id) return;
+      if (result.success) {
+        const updated = taskDetailToView(result.data);
+        if (updated) {
+          if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
+          setBaseline(updated);
+          setTitle(updated.title);
+          setNotes(updated.notes);
+        }
+        refresh();
+      } else setMutationError(result.error.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function changeStatus() {
@@ -187,9 +216,19 @@ export function TaskDetailScreen() {
           </View>
 
           <View style={styles.editorGroup}>
-            <TextInput accessibilityLabel="待办标题" multiline onBlur={save} onChangeText={setTitle} style={styles.titleInput} value={title} />
-            <TextInput accessibilityLabel="备注" multiline onBlur={save} onChangeText={setNotes} placeholder="写一点备注" placeholderTextColor={colors.text4} style={styles.notesInput} value={notes} />
+            <TextInput accessibilityLabel="待办标题" editable={!saving} multiline onBlur={save} onChangeText={setTitle} style={styles.titleInput} value={title} />
+            <TextInput accessibilityLabel="备注" editable={!saving} multiline onBlur={save} onChangeText={setNotes} placeholder="写一点备注" placeholderTextColor={colors.text4} style={styles.notesInput} value={notes} />
           </View>
+
+          {staleDraft ? <View>
+            <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
+            <Pressable accessibilityRole="button" disabled={saving} onPress={() => {
+              if (!latest) return;
+              setBaseline(latest); setTitle(latest.title); setNotes(latest.notes); setMutationError(null);
+            }} style={styles.sheetRow}>
+              <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
+            </Pressable>
+          </View> : null}
 
           <View style={styles.metadataGroup}>
             <View style={styles.metadataRow}>
