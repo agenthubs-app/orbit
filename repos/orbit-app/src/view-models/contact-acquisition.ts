@@ -956,23 +956,24 @@ function reviewFieldsFromDraft(
     return [];
   }
 
-  return reviewFieldOrder
-    .map((fieldName) => {
-      const field = nestedRecord(extractedFields, fieldName);
-      const value =
-        stringField(field, "reviewedValue") ||
-        stringField(field, "value") ||
-        stringField(draft, fieldName);
+  return reviewFieldOrder.map((fieldName) => {
+    const field = nestedRecord(extractedFields, fieldName);
+    const reviewed = field.reviewState === "accepted" || field.reviewState === "edited";
+    const value =
+      reviewed && typeof field.reviewedValue === "string"
+        ? clean(field.reviewedValue)
+        : stringField(field, "reviewedValue") ||
+          stringField(field, "value") ||
+          stringField(draft, fieldName);
 
-      return {
-        confidenceLabel: confidenceLabel(stringField(field, "confidence")),
-        field: fieldName,
-        label: fieldLabel(fieldName),
-        stateLabel: reviewStateLabel(stringField(field, "reviewState")),
-        value
-      };
-    })
-    .filter((field) => field.value);
+    return {
+      confidenceLabel: confidenceLabel(stringField(field, "confidence")),
+      field: fieldName,
+      label: fieldLabel(fieldName),
+      stateLabel: reviewStateLabel(stringField(field, "reviewState")),
+      value
+    };
+  });
 }
 
 export function contactDraftReviewFormFromSummary(
@@ -1037,7 +1038,7 @@ export function buildBusinessCardContactWriteRequest(
     return { error: "这条名片候选缺少写入信息。", success: false };
   }
 
-  const displayName = clean(fields?.displayName) || clean(candidate.displayName);
+  const displayName = clean(fields?.displayName ?? candidate.displayName);
 
   if (!displayName) {
     return { error: "先确认名片上的姓名。", success: false };
@@ -1050,14 +1051,13 @@ export function buildBusinessCardContactWriteRequest(
         confirmed: true,
         displayName,
         draftId: candidate.draftId,
-        email: clean(fields?.email) || clean(candidate.email),
+        email: clean(fields?.email ?? candidate.email),
         evidenceIds: candidate.evidenceIds,
         imageDigest: candidate.imageDigest,
-        organization:
-          clean(fields?.organization) || clean(candidate.organization),
-        phone: clean(fields?.phone) || clean(candidate.phone),
+        organization: clean(fields?.organization ?? candidate.organization),
+        phone: clean(fields?.phone ?? candidate.phone),
         relationshipContext: clean(candidate.relationshipContext),
-        role: clean(fields?.role) || clean(candidate.role)
+        role: clean(fields?.role ?? candidate.role)
       },
       endpoint: businessCardContactConfirmPath()
     },
