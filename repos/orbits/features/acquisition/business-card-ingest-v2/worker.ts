@@ -296,6 +296,7 @@ export function createIngestV2Worker({
         }
       }
 
+      result.cleanupDeleted += await store.reapUnattachedWrites?.() ?? 0;
       return result;
     },
   };

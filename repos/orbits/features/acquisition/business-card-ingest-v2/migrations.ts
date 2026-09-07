@@ -141,6 +141,41 @@ create index bc_ingest_cleanup_pending
   where status = 'pending';
 `,
   },
+  {
+    name: "business-card-image-write-intents",
+    version: 2,
+    sql: `
+create table bc_ingest_image_writes (
+  workspace_id text not null,
+  object_key text not null,
+  state text not null default 'pending' check (state in ('pending', 'attached', 'deleting', 'deleted')),
+  created_at timestamptz not null default now(),
+  next_attempt_at timestamptz not null default now() + interval '24 hours',
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, object_key)
+);
+create index bc_ingest_image_writes_due on bc_ingest_image_writes (workspace_id, next_attempt_at)
+  where state in ('pending', 'deleting');
+
+create function bc_ingest_attach_image_write() returns trigger language plpgsql as $body$
+declare write_state text;
+begin
+  if new.derivative_object_key is null then return new; end if;
+  select state into write_state from bc_ingest_image_writes
+    where workspace_id = new.workspace_id and object_key = new.derivative_object_key for update;
+  if write_state in ('deleting', 'deleted') then
+    raise exception 'Image write has expired; upload a new image' using errcode = '23514';
+  end if;
+  update bc_ingest_image_writes set state = 'attached', updated_at = now()
+    where workspace_id = new.workspace_id and object_key = new.derivative_object_key and state = 'pending';
+  return new;
+end;
+$body$;
+create trigger bc_ingest_attach_image_write_trigger
+  before insert or update of derivative_object_key on bc_ingest_items
+  for each row execute function bc_ingest_attach_image_write();
+`,
+  },
 ];
 
 function checksum(sql: string): string {

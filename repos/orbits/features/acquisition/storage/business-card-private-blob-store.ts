@@ -126,9 +126,11 @@ export function createPrivateBlobBatchImageStore({
 export function createPrivateBlobDerivativeStore({
   workspaceId,
   client = blobClient,
+  lifecycle,
 }: {
   workspaceId: string;
   client?: PrivateCardBlobClient;
+  lifecycle?: { beforePut(objectKey: string): Promise<void>; reap(): Promise<number> };
 }): IngestDerivativeStore {
   const prefix = `orbit-card-images/${digestIdentifier(workspaceId)}/v2/`;
   function pathname(objectKey: string): string {
@@ -140,6 +142,7 @@ export function createPrivateBlobDerivativeStore({
   return {
     async put(bytes) {
       const objectKey = `${randomUUID()}.jpg`;
+      await lifecycle?.beforePut(objectKey);
       await storageCall(() => client.put(pathname(objectKey), bytes));
       return { objectKey, size: bytes.length };
     },
@@ -151,5 +154,6 @@ export function createPrivateBlobDerivativeStore({
       const scopedPath = pathname(objectKey);
       return storageCall(() => client.delete([scopedPath]));
     },
+    reapUnattachedWrites: lifecycle?.reap,
   };
 }
