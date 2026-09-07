@@ -25,6 +25,10 @@ import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
+import { createAgentChatSessionMutationQueue } from "./agent-chat-session-mutations";
+import { AgentTaskInteractionCard } from "./agent-task-interaction-card";
+import { useAgentTaskSuggestions } from "./agent-task-interaction-client";
+import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "./agent-task-interaction-view-model";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 
@@ -47,6 +51,7 @@ type AgentMessage =
       retryRequest?: string;
       role: "assistant";
       runId?: string;
+      taskInteraction?: AgentTaskInteractionView;
       text: string;
     };
 
@@ -487,12 +492,14 @@ export interface AgentStoredChatSession {
 
 function parseStoredAgentMessage(value: unknown): AgentMessage | null {
   if (isStoredAgentMessage(value)) {
-    return value.role === "assistant" && value.evidenceRefs
-      ? {
-          ...value,
-          evidenceRefs: uniqueAgentEvidenceRefs(value.evidenceRefs),
-        }
-      : value;
+    if (value.role === "user") return value;
+    const { taskInteraction: rawInteraction, ...message } = value;
+    const taskInteraction = parseAgentTaskInteraction(rawInteraction);
+    return {
+      ...message,
+      ...(value.evidenceRefs ? { evidenceRefs: uniqueAgentEvidenceRefs(value.evidenceRefs) } : {}),
+      ...(taskInteraction ? { taskInteraction } : {}),
+    };
   }
 
   if (
@@ -500,12 +507,14 @@ function parseStoredAgentMessage(value: unknown): AgentMessage | null {
     value.role === "assistant" &&
     typeof value.text === "string"
   ) {
+    const taskInteraction = parseAgentTaskInteraction(value.taskInteraction);
     return {
       items: [],
       kind: "people",
       panelTitle: "",
       role: "assistant",
       text: value.text,
+      ...(taskInteraction ? { taskInteraction } : {}),
     };
   }
 
@@ -1874,6 +1883,14 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const taskSuggestions = useAgentTaskSuggestions((original, next) => {
+    // Object identity confines a delayed response to its original message.
+    // Switching sessions or starting a new chat must not patch the new thread.
+    setMessages((current) => current.map((message) =>
+      message.role === "assistant" && message.taskInteraction === original
+        ? { ...message, taskInteraction: next } : message,
+    ));
+  });
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
@@ -1884,6 +1901,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     HISTORY_SIDEBAR_DEFAULT_WIDTH,
   );
   const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
+  const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
@@ -1975,7 +1993,16 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     setActiveSessionId(sessionId);
     storedSessionsRef.current = nextSessions;
     setStoredSessions(nextSessions);
-    void persistStoredAgentChatSession(session).then((persisted) => {
+    void historyMutationQueue.save(session.id, () => {
+      // A name/pin change ahead of this queued snapshot may have just committed.
+      const latest = storedSessionsRef.current.find((item) => item.id === session.id);
+      return persistStoredAgentChatSession({
+        ...session,
+        customTitle: latest?.customTitle,
+        pinned: latest?.pinned,
+        title: latest?.customTitle?.trim() || session.title,
+      });
+    }).then((persisted) => {
       if (!persisted) {
         setHistoryFeedback({
           kind: "error",
@@ -1993,7 +2020,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
         sessionId,
       );
     }
-  }, []);
+  }, [historyMutationQueue]);
 
   // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
   // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
@@ -2042,6 +2069,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
           artifacts?: unknown;
           assistantMessage?: string;
           runId?: unknown;
+          taskInteraction?: unknown;
         };
         error?: { message?: string };
         success?: boolean;
@@ -2135,6 +2163,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
           panelTitle,
           role: "assistant",
           runId,
+          taskInteraction: parseAgentTaskInteraction(payload.data.taskInteraction),
           text: assistantText,
         },
       ]);
@@ -2357,7 +2386,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       return false;
     }
 
-    const nextSession = {
+    let nextSession = {
       ...update(currentSession),
       updatedAt: new Date().toISOString(),
     };
@@ -2367,7 +2396,11 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     setHistoryFeedback(null);
 
     try {
-      const persisted = await persistStoredAgentChatSession(nextSession);
+      const persisted = await historyMutationQueue.save(sessionId, () => {
+        const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
+        nextSession = { ...update(latest), updatedAt: nextSession.updatedAt };
+        return persistStoredAgentChatSession(nextSession);
+      });
       if (!persisted) {
         setHistoryFeedback({
           kind: "error",
@@ -2379,10 +2412,13 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
         return false;
       }
 
-      const nextSessions = upsertAgentChatSession(
-        storedSessionsRef.current,
-        nextSession,
-      );
+      const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? nextSession;
+      const nextSessions = upsertAgentChatSession(storedSessionsRef.current, {
+        ...latest,
+        customTitle: nextSession.customTitle,
+        pinned: nextSession.pinned,
+        title: nextSession.title,
+      });
       storedSessionsRef.current = nextSessions;
       setStoredSessions(nextSessions);
       setHistoryFeedback({ kind: "success", text: successText });
@@ -2456,7 +2492,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     setHistoryFeedback(null);
 
     try {
-      const persisted = await deleteStoredAgentChatSession(sessionId);
+      const persisted = await historyMutationQueue.remove(sessionId, () => deleteStoredAgentChatSession(sessionId));
       if (!persisted) {
         setHistoryDeleteError(
           languageRef.current === "zh"
@@ -2520,6 +2556,13 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
                 </div>
               ) : null}
               <AgentMarkdown text={message.text} />
+              {message.taskInteraction ? (
+                <AgentTaskInteractionCard
+                  interaction={message.taskInteraction}
+                  language={language === "zh" ? "zh" : "en"}
+                  {...taskSuggestions.forInteraction(message.taskInteraction)}
+                />
+              ) : null}
               {message.items.length > 0 ? (
                 <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
               ) : null}

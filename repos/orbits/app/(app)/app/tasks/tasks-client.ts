@@ -62,6 +62,9 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
   const key = () => `web:task:${globalThis.crypto.randomUUID()}`;
   const pathFor = (id: string) => `/api/tasks/${encodeURIComponent(id)}`;
   const single = (data: unknown) => taskToView(z.object({ task: z.unknown() }).parse(data).task);
+  const dismissed = (id: string) => (data: unknown) => {
+    z.object({ suggestion: z.object({ id: z.literal(id), status: z.literal("dismissed") }) }).parse(data);
+  };
   const ignore = (data: unknown) => { z.record(z.string(), z.unknown()).parse(data); };
   function titleValue(title: string) {
     if (!title.trim()) throw new TasksClientError("EMPTY_TITLE", "Empty title");
@@ -95,8 +98,8 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
       action: completed ? "complete" : "reopen", idempotencyKey: key(),
     }),
     remove: (id: string) => request(pathFor(id), ignore, "DELETE", { idempotencyKey: key() }),
-    resolveSuggestion: (id: string, action: "accept" | "dismiss") => request(
-      `/api/task-suggestions/${encodeURIComponent(id)}/${action}`, action === "accept" ? single : ignore,
+    resolveSuggestion: (id: string, action: "accept" | "dismiss") => request<TaskView | void>(
+      `/api/task-suggestions/${encodeURIComponent(id)}/${action}`, action === "accept" ? single : dismissed(id),
       "POST", { idempotencyKey: key() },
     ),
     async addReminder(task: TaskView, fireAt?: string) {

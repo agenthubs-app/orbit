@@ -47,6 +47,18 @@ artifact 可以带：
 
 页面只能通过 route view model 渲染这些结果，不能直接消费 raw artifact payload。
 
+## Web 对话待办卡片（2026-09-08）
+
+`/app/agent` 读取既有 conversation 响应的 `taskInteraction`，先经页面 view-model 解码，再展示紧凑卡片。`created` 使用服务端 task ID 打开 `/app/tasks/:id`；`suggested` 提供「加入待办 / 暂不需要」，复用 task suggestions accept/dismiss API；`failed` 或字段无效时显示错误和全部待办入口，不伪造创建成功。
+
+接受成功后以 API 返回的任务替换卡片，并随消息保存到既有 sessions API；重开 Web 历史保留结果。忽略后的 `dismissed` 和无法解析的 `unavailable` 只是页面状态，不扩展共享 AI 响应契约。旧的纯文本 assistant 消息仍可读取。桌面/移动两棵渲染树共用操作锁；网络失败保留操作入口和当前页面内的幂等重试键；切换会话后旧操作不能更新新会话。
+
+同一挂载页面的会话保存按 session ID 排队，避免旧快照晚写覆盖已创建待办；不同会话互不等待。删除排在已有保存之后，并拒绝晚到结果重新保存已删除会话。改名/置顶在执行时读取最新消息，成功后只合并元数据；后续消息快照保留已确认的名称/置顶，失败仍显示原有错误提示。
+
+本项不修改任务创建/建议策略、AI 请求的会话标识规则、App 界面或服务端会话版本契约。历史快照不是待办实时状态源：另一端接受/忽略建议后，旧卡片的再次操作仍由服务端裁定；失败必须可见。现有 App 对消息附加待办元数据的保存/恢复、多标签页并发编辑及真实账号双向回读未在本项验收，不能据此宣称两端历史卡片完全一致。
+
+验证入口：`tests/pages/app-agent-task-interaction.test.tsx` 覆盖真实页面响应映射、双视图锁、操作结果保存、失败重试与历史解码；`tests/pages/app-agent-task-interaction.browser.mjs` 在隔离临时预览中拦截全部浏览器 API 流量，检查 1440px / 390px 的接受、忽略、失败、重开历史、按钮可辨识性与布局。它们不证明真实 AI provider、业务数据库或跨端线上同步已验收。
+
 ## Mock 行为
 
 Mock 服务使用本地规则、fixture 和核心模块 factory 组合响应。它不调用真实模型、外部网络、数据库、邮件、日历、通知服务或设备 API。
