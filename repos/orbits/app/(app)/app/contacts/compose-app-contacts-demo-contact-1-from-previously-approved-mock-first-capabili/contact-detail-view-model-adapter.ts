@@ -1,4 +1,5 @@
 import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
+import { CONTACT_DETAIL_TAG_OPTIONS } from "../../../../../features/contacts/detail-contract";
 import type {
   ContactDetailSourceReference,
   ContactDetailStatusOption,
@@ -179,8 +180,7 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
   ],
 };
 
-// 联系人标签是 `前缀:值` token（如 topic:storage-pilots）。展示端只显示可读的值，
-// 已知值给出中/英文案，未知值回退到把连字符换成空格。
+// 已知系统标签显示可读名称；用户自定义文字保留原样，不拆前缀或改写标点。
 const tagValueLabels: Record<string, Record<string, string>> = {
   en: {
     "warm-follow-up": "warm follow-up",
@@ -206,7 +206,8 @@ const tagValueLabels: Record<string, Record<string, string>> = {
   },
 };
 
-function tagLabel(tag: string, language: OrbitLanguage): string {
+export function tagLabel(tag: string, language: OrbitLanguage): string {
+  if (!(CONTACT_DETAIL_TAG_OPTIONS as readonly string[]).includes(tag)) return tag;
   const value = tag.includes(":") ? tag.slice(tag.indexOf(":") + 1) : tag;
 
   return tagValueLabels[language === "ja" ? "en" : language]?.[value] ?? value.replace(/[-_]+/g, " ");
@@ -445,6 +446,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
           )
         : "unscored",
     valueTags: model.contact.tags.map((tag) => tagLabel(tag, language)),
+    editableTags: model.contact.tags.map((tag) => ({ value: tag, label: tagLabel(tag, language) })),
     nextAction: model.contact.nextAction
       ? {
           text: displayText(model.contact.nextAction, language),

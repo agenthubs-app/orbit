@@ -126,6 +126,10 @@ function localizeContact(
   const industry = isIndustryIdCode(contact.primaryIndustryId)
     ? industryLabel(contact.primaryIndustryId, language)
     : contact.industry;
+  const editableTags = contact.editableTags?.map((tag) => ({
+    ...tag,
+    label: tag.value === tag.label ? tag.label : tr(VALUE_TAG, tag.label, language),
+  }));
   return {
     ...contact,
     company: localizeCompany(contact.company, language),
@@ -141,7 +145,8 @@ function localizeContact(
         }))
       : contact.encounters,
     location: contact.location ? tr(LOCATION, contact.location, language) : contact.location,
-    valueTags: contact.valueTags.map((tag) => tr(VALUE_TAG, tag, language)),
+    ...(editableTags ? { editableTags } : {}),
+    valueTags: editableTags ? editableTags.map((tag) => tag.label) : contact.valueTags.map((tag) => tr(VALUE_TAG, tag, language)),
     nextAction: contact.nextAction
       ? {
           ...contact.nextAction,

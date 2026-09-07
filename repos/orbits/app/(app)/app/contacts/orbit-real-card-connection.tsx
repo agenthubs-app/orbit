@@ -21,6 +21,8 @@ import { ORBIT_Z } from "../orbit-z";
 import { agentHrefForContext } from "../orbit-agent-context-href";
 import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/industries";
 import { ContactIndustryEditor } from "./contact-industry-editor";
+import { ContactTagEditor } from "./contact-tag-editor";
+import { tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -163,11 +165,12 @@ function AboutCard({ contact, t }: { contact: OrbitContactView; t: Translate }) 
   );
 }
 
-function TagsCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
-  if (!contact.valueTags.length) return null;
+function TagsCard({ contact, t, onEdit }: { contact: OrbitContactView; t: Translate; onEdit: () => void }) {
+  if (!contact.valueTags.length && !contact.editableTags) return null;
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="star">{t({ en: "Tags", zh: "标签" })}</CardTitle>
+      {contact.editableTags ? <button type="button" className="btn btn-quiet btn-sm" style={{ marginBottom: 12 }} aria-label={t({ en: "Edit custom tags", zh: "编辑自定义标签" })} onClick={onEdit}>{t({ en: "Edit tags", zh: "编辑标签" })}</button> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {contact.valueTags.map((tag) => <span className="nc-tag nc-tag-value" key={tag}>{tag}</span>)}
       </div>
@@ -326,11 +329,14 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   const sourceContact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
   const [industryEditContactId, setIndustryEditContactId] = useState<string | null>(null);
   const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null } | null>(null);
-  const contact = industryUpdate?.source === sourceContact ? {
+  const [tagEditContactId, setTagEditContactId] = useState<string | null>(null);
+  const [tagUpdate, setTagUpdate] = useState<{ source: OrbitContactView; tags: { value: string; label: string }[] } | null>(null);
+  const industryContact = industryUpdate?.source === sourceContact ? {
     ...sourceContact,
     primaryIndustryId: industryUpdate.value ?? undefined,
     industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
   } : sourceContact;
+  const contact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
   const askAgentHref = agentHrefForContext({
     details: crmRole(contact, t),
     id: contactId,
@@ -392,7 +398,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               <div className="nc-stack">
                 <AboutCard contact={contact} t={t} />
                 <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
-                <TagsCard contact={contact} t={t} />
+                <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
                 <TwoWayCard contact={contact} t={t} />
               </div>
               <div className="nc-stack">
@@ -439,13 +445,20 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
             <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
-            <TagsCard contact={contact} t={t} />
+            <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
             <TwoWayCard contact={contact} t={t} />
             <TimelineCard contact={contact} t={t} />
             <NextStepCard compact contact={contact} t={t} />
           </div>
         </div>
       </div>
+
+      {tagEditContactId === contact.id && contact.editableTags ? (
+        <ContactTagEditor key={contact.id} contactId={contact.id} initialTags={contact.editableTags} language={language} onClose={() => setTagEditContactId(null)} onSaved={(values) => {
+          setTagUpdate({ source: sourceContact, tags: values.map((value) => ({ value, label: tagLabel(value, language) })) });
+          setTagEditContactId(null);
+        }} />
+      ) : null}
 
       {industryEditContactId === contact.id ? (
         <ContactIndustryEditor key={contact.id} contactId={contact.id} initialIndustryId={contact.primaryIndustryId} language={language} onClose={() => setIndustryEditContactId(null)} onSaved={(value) => {

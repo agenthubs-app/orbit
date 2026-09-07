@@ -28,6 +28,7 @@ export interface OrbitContactView {
   // —— 名片夹复刻新增（静态演示数据）——
   strength: OrbitContactStrength;
   valueTags: string[];
+  editableTags?: { value: string; label: string }[];
   nextAction: { text: string; reason: string; evidenceId?: string } | null;
   lastInteraction: string;
   dormant: boolean;
