@@ -43,3 +43,11 @@ PostgreSQL 生命周期仓储在同一事务内读取回执、锁定账号/works
 `assessRelationshipLifecycleMigration` 是不执行 I/O 的迁移预检器，接收明确提供的账号/workspace 记录快照，检查 ownership、唯一连接、整数版本及阶段任务约束。报告只含范围、计数、记录 ID 和问题代码，不包含私人目标、任务标题或笔记；输入不会被改动，报告不受记录顺序影响。
 
 任何待修复项都会使 `readyForCutover` 为 `false`。缺少 owner/version、缺少目标/日期、采集阶段、重复连接与跨账号引用均须显式处理；预检不会代替人工迁移、用旧 Contact 状态覆盖 Connection，或取消任务。`true` 仅说明这份输入快照通过这些预检，不证明数据完整、仍然新鲜，也不授权迁移或切换现有路由。
+
+离线预检命令只读取操作者提供的 LiveRecord JSON 数组，不加载 `.env` 或连接数据库：
+
+```sh
+node --import tsx scripts/check-relationship-lifecycle.ts --input records.json --actor actor:example --workspace workspace:example
+```
+
+结果以单个 JSON 报告输出到 stdout：退出码 `0` 为快照预检通过，`2` 为需要复核/修复，`1` 为参数、文件或输入格式错误。参数必须各出现一次，不支持 `--apply`；错误消息不会回显输入正文。此命令不执行修复、不产生审核批准、不启用路由切换，正式迁移仍须审核 manifest、校验快照新鲜度并验证事务回滚。
