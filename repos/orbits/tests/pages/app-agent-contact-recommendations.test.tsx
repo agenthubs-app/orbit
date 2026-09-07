@@ -242,10 +242,10 @@ test("contact detail mapping translates live source and relationship tokens into
     viewModel.events[0]?.name,
   ].join(" ");
 
-  assert.match(visibleText, /投资意向/);
-  assert.match(visibleText, /社群上下文/);
+  assert.match(visibleText, /投资合作/);
+  assert.match(visibleText, /社群背景/);
   assert.match(visibleText, /种子轮融资的投资人暖介绍/);
-  assert.match(visibleText, /QR scan at Japan-China AI Workflow PoC Roundtable/);
+  assert.match(visibleText, /二维码交换记录：佐藤 健一/);
   assert.doesNotMatch(
     visibleText,
     /investment interest|community context|venture_capital|community_context|event table matching and sponsor visibility|source:qr_scan:contact_001/,
