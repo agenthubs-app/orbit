@@ -10,6 +10,7 @@ import { createIngestV2Worker } from "./business-card-ingest-v2/worker";
 import { createBusinessCardBatchImageStore } from "./storage/business-card-batch-image-store";
 import type { CardPipeline } from "./business-card-queue-dispatch";
 import { getConfiguredCardUploadSources } from "./storage/business-card-upload-source-runtime";
+import { getConfiguredV1Preparation } from "./business-card-v1-preparation/configured";
 
 const NOTIFIED = "businessCardBatchReadyNotifications";
 const READY_V1 = `
@@ -25,7 +26,10 @@ export class CardWorkPending extends Error {
 
 export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceId: string, pipeline: CardPipeline): Promise<boolean> {
   const sql = pipeline === "v1" ? `SELECT (
-    EXISTS (SELECT 1 FROM orbit_records i JOIN orbit_records b
+    EXISTS (SELECT 1 FROM orbit_records j WHERE j.workspace_id = $1
+      AND j.collection_name = 'businessCardImportJobs' AND j.lifecycle_state = 'active'
+      AND j.payload->'job'->>'state' IN ('pending','processing','ready'))
+    OR EXISTS (SELECT 1 FROM orbit_records i JOIN orbit_records b
       ON b.workspace_id = i.workspace_id AND b.collection_name = 'businessCardBatches'
       AND b.record_id = i.payload->'item'->>'batchId'
       WHERE i.workspace_id = $1 AND i.collection_name = 'businessCardBatchItems'
@@ -108,6 +112,7 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
     }
   };
   if (pipeline === "v1") {
+    const preparation = await getConfiguredV1Preparation();
     const service = createConfiguredBusinessCardBatchService();
     if (!service) throw new Error("Business-card background storage unavailable.");
     const worker = createBusinessCardBatchWorker({
@@ -117,6 +122,10 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
     await processCardQueueTick(pipeline, {
       async run() {
         await sources?.reap(pipeline);
+        const prepared = await preparation?.worker.runOnce();
+        // Keep a conversion tick within its own budget; the next durable wake
+        // runs OCR, avoiding a long PDF render plus an OCR timeout in one call.
+        if (prepared?.claimed) return prepared;
         const result = await worker.runOnce({ workerId: `vercel-card:${randomUUID()}`, now: new Date().toISOString() });
         // Retry materialization even when an earlier completion already changed
         // the batch to ready_for_review and its best-effort notify failed.

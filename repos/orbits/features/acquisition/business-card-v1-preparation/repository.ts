@@ -117,10 +117,26 @@ export function createV1PreparationRepository({ pool, workspaceId, wake }: {
 
     nextReady(): Promise<V1PreparationJob | null> {
       return transaction(async (ctx) => {
-        const result = await ctx.client.query(`SELECT record_id FROM orbit_records WHERE workspace_id=$1 AND collection_name=$2
-          AND lifecycle_state='active' AND payload->'job'->>'state'='ready'
-          AND (payload->'job'->>'expiresAt')::timestamptz > clock_timestamp() ORDER BY created_at LIMIT 1`, [workspaceId, V1_PREPARATION_JOBS]);
+        const result = await ctx.client.query(`SELECT j.record_id FROM orbit_records j WHERE j.workspace_id=$1 AND j.collection_name=$2
+          AND j.lifecycle_state='active' AND j.payload->'job'->>'state'='ready'
+          AND (j.payload->'job'->>'expiresAt')::timestamptz > clock_timestamp()
+          AND (j.payload->'job'->>'nextAttemptAt')::timestamptz <= clock_timestamp()
+          AND NOT EXISTS (SELECT 1 FROM bc_ingest_raw_uploads s WHERE s.workspace_id=j.workspace_id
+            AND j.payload->'job'->'sourceIds' ? s.id::text AND s.state='processing' AND s.lease_expires_at > clock_timestamp())
+          ORDER BY j.created_at LIMIT 1`, [workspaceId, V1_PREPARATION_JOBS]);
         return result.rows[0] ? get(ctx, result.rows[0].record_id) : null;
+      });
+    },
+
+    deferReady(id: string) {
+      return transaction(async (ctx) => {
+        const job = await get(ctx, id);
+        if (job.state !== "ready") return job;
+        // A completion failure must not hold up unrelated ready imports. Keep
+        // retrying within the original source lifetime, never extend retention.
+        job.errorCode = "SOURCE_UNAVAILABLE"; job.failures++;
+        job.nextAttemptAt = new Date(Date.parse(ctx.now) + 60_000).toISOString();
+        return save(ctx, job);
       });
     },
 
