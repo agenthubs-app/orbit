@@ -82,17 +82,17 @@ export function OrbitStarfieldDesktop({
             <h1 id="skH1" data-serif="" data-i18n-html="h1Html" style={{"fontFamily":"'Noto Serif SC',Georgia,serif","fontWeight":"300","fontSize":"clamp(30px,5vw,60px)","lineHeight":"1.24","letterSpacing":".005em","color":"#f1eff9","margin":"0","textWrap":"balance"}}>
               {' '}
               <span className="sk-word" style={{"display":"inline-block","opacity":"0"}}>
-                {"你的人脉，"}
+                {"从你认识的人里，"}
               </span>
               <span className="sk-word" style={{"display":"inline-block","opacity":"0"}}>
-                {"是一片"}
+                {"找出现在"}
               </span>
               <br />
               <span className="sk-word" style={{"display":"inline-block","opacity":"0"}}>
-                {"待你点亮的"}
+                {"最值得联系的"}
               </span>
               <span className="sk-word" style={{"display":"inline-block","fontWeight":"500","color":"#fff","opacity":"0"}}>
-                {"星空"}
+                {"3 位"}
               </span>
               {' '}
             </h1>
@@ -104,7 +104,7 @@ export function OrbitStarfieldDesktop({
               </div>
               {' '}
               <div data-i18n="subText" style={{"marginTop":"10px","fontSize":"15px","lineHeight":"1.75","color":"#a6a3bd"}}>
-                {"人脉本是散落天际的星星，Orbit 让它们围绕你的轨道运转、为你所用。"}
+                {"基于你已授权的人脉、活动与跟进记录，给出联系人、依据和可编辑消息草稿。"}
               </div>
               {' '}
             </div>
@@ -113,7 +113,7 @@ export function OrbitStarfieldDesktop({
           {' '}
           {/* FIELD (input — centered, lower) */}
           {' '}
-          <div id="skFieldWrap" style={{"position":"absolute","bottom":"14vh","left":"50%","transform":"translateX(-50%)","width":"min(620px,92vw)","textAlign":"center","opacity":"0"}}>
+          <div id="skFieldWrap" style={{"position":"absolute","bottom":"14vh","left":"50%","transform":"translateX(-50%)","width":"min(620px,92vw)","textAlign":"center","opacity":"0","zIndex":"20"}}>
             {' '}
             <div style={{"position":"relative"}}>
               {' '}
@@ -135,9 +135,10 @@ export function OrbitStarfieldDesktop({
                 {' '}
                 <input
                   id="skPromptInput"
-                  aria-label="向 iOrbit 写下你的目标"
+                  aria-describedby="skPromptScope"
+                  aria-label="告诉 iOrbit 你现在想促成的事"
                   autoComplete="off"
-                  placeholder="向 Orbit 写下你的目标…"
+                  placeholder="例如：现在最值得联系谁？"
                   style={{"flex":"1","minWidth":"0","border":"0","outline":"none","background":"transparent","padding":"0","textAlign":"left","fontFamily":"inherit","fontSize":"16px","lineHeight":"1.4","color":"#eeecf7"}}
                   type="text"
                 />
@@ -173,6 +174,9 @@ export function OrbitStarfieldDesktop({
                 {"推荐 AI / 出海活动"}
               </button>
               {' '}
+            </div>
+            <div id="skPromptScope" data-i18n="promptScope" role="status" aria-live="polite" style={{"marginTop":"10px","fontSize":"12px","lineHeight":"1.5","color":"#c4c0d8","pointerEvents":"auto"}}>
+              {"示例只会填入输入框，不会自动执行。"}
             </div>
             {' '}
           </div>
@@ -272,7 +276,7 @@ export function OrbitStarfieldDesktop({
             </span>
             {' '}
             <span data-i18n="corner" style={{"fontFamily":"'JetBrains Mono',monospace","fontSize":"11px","letterSpacing":".06em","color":"#cdcae3"}}>
-              {"某商业峰会 · 已报名 826 人 · iOrbit 已读取全场"}
+              {"示例预览 · 导入后换成真实数据"}
             </span>
             {' '}
           </div>

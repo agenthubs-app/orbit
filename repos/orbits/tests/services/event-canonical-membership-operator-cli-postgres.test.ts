@@ -23,7 +23,6 @@ import { createCanonicalMembershipV11Fixture } from "../support/canonical-member
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
-const mainWorkspaceId = process.env.ORBIT_WORKSPACE_ID;
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -553,9 +552,9 @@ test(
   { timeout: 120_000 },
   async (context) => {
     assert.ok(databaseUrl, "ORBIT_EVENT_DATABASE_URL is required");
-    assert.ok(mainWorkspaceId, "ORBIT_WORKSPACE_ID is required");
     const { pool, connectionString } = await createCanonicalMembershipV11Fixture(context, databaseUrl);
-    const directory = await mkdtemp(join(tmpdir(), "canonical-cli-main-"));
+    const mainWorkspaceId = `workspace:canonical-cli-v11:${randomUUID()}`;
+    const directory = await mkdtemp(join(tmpdir(), "canonical-cli-v11-"));
     const manifestFile = join(directory, "manifest.json");
     const reviewFile = join(directory, "review.json");
     const rawManifest = JSON.stringify({ events: {}, schemaVersion: 1 });
@@ -583,6 +582,12 @@ test(
         const count = await pool.query(`select count(*)::int as count from ${table} where workspace_id=$1`, [mainWorkspaceId]);
         assert.equal(count.rows[0]?.count, 1, `${table} must contain preservation evidence`);
       }
+      await pool.query(`insert into orbit_records (workspace_id,collection_name,record_id,source_type,source_id,payload,created_at,updated_at)
+        values ($1,'cliReadOnlySentinel','sentinel','manual','cli-test','{"preserve":true}',now(),now())`, [mainWorkspaceId]);
+      const tablesBefore = (await pool.query<{ tablename: string }>(
+        "select tablename from pg_tables where schemaname=current_schema() order by tablename",
+      )).rows;
+      assert.equal(tablesBefore.some((row) => row.tablename.startsWith("event_ops_canonical_membership_migration_")), false);
       const before = await mainSnapshot(pool, mainWorkspaceId);
       assert.equal((before as { version: string }).version, "11");
       await writeFile(manifestFile, rawManifest);
@@ -642,6 +647,8 @@ test(
       const disclosure = `${dry.stdout}\n${dry.stderr}\n${apply.stdout}\n${apply.stderr}`;
       assert.ok(!disclosure.includes(databaseUrl));
       assert.ok(!disclosure.includes(connectionString));
+      assert.deepEqual((await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows, tablesBefore);
+      assert.deepEqual((await pool.query("select payload from orbit_records where workspace_id=$1 and record_id='sentinel'", [mainWorkspaceId])).rows, [{ payload: { preserve: true } }]);
       assert.ok(!disclosure.includes(directory));
     } finally {
       await rm(directory, { force: true, recursive: true });

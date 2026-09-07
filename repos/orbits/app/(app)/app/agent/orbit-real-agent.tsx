@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -24,12 +24,18 @@ import { Avatar, Icon, IconButton, gradientFromString } from "../orbit-reference
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
-import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
+import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
+import {
+  openRelationshipInbox,
+  openRelationshipInboxCompose,
+  requestMessageDraft,
+} from "../inbox/relationship-inbox-panel";
 
 interface OrbitRealAgentProps {
   home?: OrbitHomeViewModel | null;
+  registrationAvailabilityByEventId?: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitAgentViewModel;
 }
 
@@ -235,11 +241,14 @@ function isTodoResult(item: AgentResultItem): item is OrbitAgentTodoResultView {
 interface AgentArtifactViewItem {
   body?: string;
   confidenceLabel?: string;
+  contactId?: string;
+  dueAt?: string;
   id?: string;
   metadata?: readonly { label?: string; value?: string }[];
   reason?: string;
   subtitle?: string;
   title?: string;
+  triggerKind?: string;
 }
 
 interface AgentArtifactRecord {
@@ -310,6 +319,15 @@ function artifactMetadataValue(
   return "";
 }
 
+const CONTACT_RECOMMENDATION_ITEM_PREFIX = "contact-recommendation:";
+
+export function contactIdFromArtifactItemId(value: unknown): string {
+  const itemId = String(value ?? "");
+  return itemId.startsWith(CONTACT_RECOMMENDATION_ITEM_PREFIX)
+    ? itemId.slice(CONTACT_RECOMMENDATION_ITEM_PREFIX.length)
+    : itemId;
+}
+
 function peopleItemsFromArtifact(
   artifact: AgentArtifactRecord | null,
 ): OrbitAgentPeopleResultView[] {
@@ -318,8 +336,8 @@ function peopleItemsFromArtifact(
       (section) => section.items ?? [],
     ) ?? [];
 
-  return items.map((item) => {
-    const contactId = String(item.id ?? "").split(":").pop() ?? "";
+  const mapped = items.map((item) => {
+    const contactId = contactIdFromArtifactItemId(item.id);
     const displayName = item.title?.trim() || contactId || "Orbit";
     const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
 
@@ -339,6 +357,28 @@ function peopleItemsFromArtifact(
       reason: item.reason ?? "",
     };
   });
+
+  // artifact 的 sections 可能把同一个联系人分到多段（例如「强匹配」与「同场活动」），
+  // flatMap 之后就会在面板里出现两张一模一样的卡和两个「生成跟进草稿」按钮——
+  // 用户无法判断点哪个、会不会发两封。这里按 contact id 收敛成一条，保留最先出现
+  // 的排序位置，并把后续重复项里非空的理由/证据补进来，避免丢证据。
+  const byContact = new Map<string, OrbitAgentPeopleResultView>();
+  for (const entry of mapped) {
+    const key = entry.connection.id || entry.connection.displayName;
+    const kept = byContact.get(key);
+    if (!kept) {
+      byContact.set(key, entry);
+      continue;
+    }
+    byContact.set(key, {
+      ...kept,
+      match: Math.max(kept.match, entry.match),
+      opener: kept.opener || entry.opener,
+      reason: kept.reason || entry.reason,
+    });
+  }
+
+  return [...byContact.values()];
 }
 
 // event_recommendations artifact → 活动卡片视图。startsAt 优先取 Start(ISO)，
@@ -414,8 +454,10 @@ function todoItemsFromArtifact(
     ) ?? [];
 
   return items.map((item, index) => ({
+    contactId: item.contactId,
     contactName: item.subtitle ?? "",
     due: artifactMetadataValue(item, ["到期", "Due"]),
+    dueAt: item.dueAt,
     id: String(item.id ?? `todo-${index}`),
     organization: artifactMetadataValue(item, ["组织", "Organization"]),
     priority: artifactMetadataValue(item, ["优先级", "Priority"]) || item.confidenceLabel || "",
@@ -423,6 +465,7 @@ function todoItemsFromArtifact(
     sourceLabel: artifactMetadataValue(item, ["来源", "Source"]),
     task: item.body ?? "",
     title: item.title ?? "",
+    triggerKind: item.triggerKind,
   }));
 }
 
@@ -927,82 +970,6 @@ function AgentMessageCopyButton({ text }: { text: string }) {
   );
 }
 
-function toggleAgentEvidenceSourcesFromKeyboard(
-  event: ReactKeyboardEvent<HTMLElement>,
-) {
-  if (event.key !== "Enter" && event.key !== " ") {
-    return;
-  }
-
-  const details = event.currentTarget.parentElement;
-  if (!(details instanceof HTMLDetailsElement)) {
-    return;
-  }
-
-  event.preventDefault();
-  details.open = !details.open;
-}
-
-function AgentEvidenceSources({
-  references,
-}: {
-  references: readonly AgentEvidenceRef[];
-}) {
-  const { t } = useOrbitLanguage();
-  if (references.length === 0) return null;
-  const totalItems = references.reduce(
-    (total, reference) => total + reference.itemCount,
-    0,
-  );
-
-  return (
-    <details
-      data-agent-evidence-sources
-      style={{
-        borderTop: "1px solid var(--border)",
-        color: "var(--text-3)",
-        fontSize: 11,
-        marginTop: 10,
-        paddingTop: 8,
-      }}
-    >
-      <summary
-        onKeyDown={toggleAgentEvidenceSourcesFromKeyboard}
-        style={{ cursor: "pointer", fontWeight: 600 }}
-      >
-        {t({
-          en: `Sources · ${totalItems} records`,
-          zh: `查看依据 · ${totalItems} 条真实记录`,
-        })}
-      </summary>
-      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-        {references.map((reference, index) => (
-          <div
-            key={`${reference.label}:${reference.generatedAt}:${index}`}
-            style={{ display: "grid", gap: 4 }}
-          >
-            <span style={{ color: "var(--text-2)" }}>
-              {reference.label} · {reference.itemCount}
-            </span>
-            <span>
-              {t({ en: "Source", zh: "来源" })}:{" "}
-              {reference.sourceModules.join(" · ") || "Orbit"}
-              {reference.generatedAt
-                ? ` · ${new Date(reference.generatedAt).toLocaleString()}`
-                : ""}
-            </span>
-            {reference.evidenceIds.length > 0 ? (
-              <span className="mono" style={{ overflowWrap: "anywhere" }}>
-                {reference.evidenceIds.slice(0, 3).join(" · ")}
-              </span>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
 function AgentHistoryList({
   activeQ,
   activeSessionId,
@@ -1074,7 +1041,7 @@ function AgentHistoryList({
           <div className="eyebrow orbit-agent-history-group">
             {group}
           </div>
-          <div className="orbit-agent-history-group-list" style={{ display: "flex", flexDirection: "column" }}>
+          <div aria-label={`${group} · ${history.filter((item) => item.group === group).length}`} className="orbit-agent-history-group-list" role="list" style={{ display: "flex", flexDirection: "column" }}>
             {history
               .filter((item) => item.group === group)
               .map((item) => {
@@ -1092,6 +1059,7 @@ function AgentHistoryList({
                     aria-busy={pending}
                     className={`orbit-agent-history-row${active ? " is-active" : ""}`}
                     key={item.id}
+                    role="listitem"
                     onMouseEnter={() => setHoveredHistoryId(item.id)}
                     onMouseLeave={() => {
                       setHoveredHistoryId((current) => (current === item.id ? null : current));
@@ -1521,24 +1489,238 @@ function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; 
   );
 }
 
+function useAgentInlineDraft(input: {
+  contactId?: string;
+  language: "en" | "zh";
+  organization: string;
+  recipientName: string;
+}) {
+  // handed = 用户点过「继续到草稿箱」。系统里没有真实的「已发送」信号（草稿箱
+  // 只暂存、不发送），所以卡片能诚实记录的最远状态就是这次交接——没有它，
+  // 主按钮会永远停在「起草跟进 N 件」，看起来像什么都没发生过。
+  const [state, setState] = useState<"idle" | "generating" | "ready" | "handed" | "error">("idle");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [handedAt, setHandedAt] = useState<string | null>(null);
+  // 记住这份草稿生成时覆盖的事项。用户生成后又改了勾选时，UI 据此提示「重新生成」，
+  // 而不是让「写进 3 件事」的标注和只写了 2 件事的正文悄悄不一致。
+  const [generatedPurpose, setGeneratedPurpose] = useState<string | null>(null);
+
+  const generate = async (purpose?: string) => {
+    setState("generating");
+    setErrorCode(null);
+    setHandedAt(null);
+    const result = await requestMessageDraft({ ...input, purpose });
+    if (result.success === false) {
+      setErrorCode(result.error.code);
+      setState("error");
+      return;
+    }
+    setSubject(result.data.subject);
+    setBody(result.data.body);
+    setGeneratedPurpose(purpose ?? null);
+    setState("ready");
+  };
+
+  const markHanded = () => {
+    setHandedAt(new Date().toISOString());
+    setState("handed");
+  };
+
+  // 回执上的「查看草稿」：本地副本还在 state 里，翻回可编辑面板即可。
+  const reopen = () => setState("ready");
+
+  return { body, errorCode, generate, generatedPurpose, handedAt, markHanded, reopen, setBody, setSubject, state, subject };
+}
+
+function AgentInlineDraftResult({
+  contactId,
+  currentPurpose,
+  draft,
+  organization,
+  recipientName,
+  t,
+}: {
+  contactId?: string;
+  currentPurpose?: string;
+  draft: ReturnType<typeof useAgentInlineDraft>;
+  organization: string;
+  recipientName: string;
+  t: Translate;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (draft.state === "error") {
+    // 实测最常见的失败是 provider 20s 超时（MODEL_REQUEST_FAILED），重试一次即可。
+    // 错误必须自带出路：说清发生了什么、该怎么办，并把「怎么办」做成旁边的按钮。
+    const timedOut = draft.errorCode === "MODEL_REQUEST_FAILED";
+    return (
+      <div className="draft-error" data-agent-inline-draft-error data-agent-inline-draft-error-code={draft.errorCode ?? undefined} role="alert">
+        <span className="w">
+          <b>
+            {timedOut
+              ? t({ en: "Generation timed out — no draft was written", zh: "生成超时，草稿没有写出来" })
+              : t({ en: "The draft could not be generated", zh: "草稿生成失败" })}
+          </b>
+          <span>
+            {timedOut
+              ? t({ en: "The model did not answer in time; retrying usually works. No external action was taken.", zh: "模型没有按时返回，通常重试一次即可。未执行任何外部动作。" })
+              : t({ en: "Try again. No external action was taken.", zh: "请重试。未执行任何外部动作。" })}
+          </span>
+        </span>
+        <button className="btn btn-ghost btn-sm" onClick={() => void draft.generate(currentPurpose)} type="button">
+          {t({ en: "Retry", zh: "重试" })}
+        </button>
+      </div>
+    );
+  }
+  if (draft.state === "handed") {
+    // 交接回执：只声称实际发生的事（草稿转入了草稿箱），发送与否由用户在
+    // 草稿箱决定——这里若写「已发送」就是在替系统撒谎。
+    const handedTime = draft.handedAt
+      ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(draft.handedAt))
+      : "";
+    return (
+      <div className="draft-receipt" data-agent-inline-draft-receipt role="status">
+        <span aria-hidden="true" className="draft-receipt-check">
+          <Icon name="check" size={13} />
+        </span>
+        <span className="w">
+          <b>{t({ en: `Moved to drafts${handedTime ? ` · ${handedTime}` : ""}`, zh: `已转入草稿箱${handedTime ? ` · ${handedTime}` : ""}` })}</b>
+          <span>{t({ en: "Nothing was sent — you confirm the send in your drafts.", zh: "尚未发送任何内容，发送由你在草稿箱确认。" })}</span>
+        </span>
+        <span className="draft-receipt-acts">
+          <button className="linkish" onClick={() => openRelationshipInbox()} type="button">
+            {t({ en: "Open drafts", zh: "打开草稿箱" })}
+          </button>
+          <button className="linkish" onClick={() => draft.reopen()} type="button">
+            {t({ en: "View draft", zh: "查看草稿" })}
+          </button>
+        </span>
+      </div>
+    );
+  }
+  if (draft.state !== "ready") return null;
+
+  const stale = (draft.generatedPurpose ?? "") !== (currentPurpose ?? "");
+  // 标注反映这份草稿**生成时**覆盖的事项数（从 purpose 的编号行数出来），
+  // 不是当前勾选数——取消勾选后显示「写进 0 件事」就是在说假话。
+  const writes = (draft.generatedPurpose?.match(/^\d+\./gm) ?? []).length;
+
+  return (
+    <div className="draft" data-agent-inline-draft>
+      <p className="draft-label">
+        {writes > 0
+          ? t({ en: `Draft · covers ${writes} item(s)`, zh: `草稿 · 写进 ${writes} 件事` })
+          : t({ en: "Editable follow-up draft", zh: "可编辑跟进草稿" })}
+      </p>
+      {stale ? (
+        <p className="draft-stale">
+          <span>{t({ en: "Your selection changed after this draft was written.", zh: "生成这份草稿后你改过勾选。" })}</span>
+          <button className="linkish" onClick={() => void draft.generate(currentPurpose)} type="button">
+            {t({ en: "Regenerate", zh: "重新生成" })}
+          </button>
+        </p>
+      ) : null}
+      <input aria-label={t({ en: "Subject", zh: "主题" })} className="draft-subj" onChange={(event) => draft.setSubject(event.target.value)} value={draft.subject} />
+      <textarea aria-label={t({ en: "Message", zh: "正文" })} className="draft-body" onChange={(event) => draft.setBody(event.target.value)} rows={7} value={draft.body} />
+      <div className="draft-foot">
+        {/* 「邮件止于草稿」是产品红线：承诺和主按钮同级同框，不做灰色脚注。 */}
+        <p className="draft-guard">
+          <Icon name="lock" size={13} />
+          <span>
+            <b>{t({ en: "Draft only — not sent", zh: "仅草稿 · 未发送" })}</b>
+            {t({ en: "Orbit never sends on your behalf. You confirm the send in your drafts.", zh: "Orbit 不会代你发送，发送由你在草稿箱确认。" })}
+          </span>
+        </p>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={!draft.subject.trim() || !draft.body.trim()}
+          onClick={async () => setCopied(await copyAgentMessageText(`${draft.subject}\n\n${draft.body}`))}
+          type="button"
+        >
+          <Icon name={copied ? "check" : "copy"} size={14} />
+          {copied ? t({ en: "Copied", zh: "已复制" }) : t({ en: "Copy draft", zh: "复制草稿" })}
+        </button>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!draft.subject.trim() || !draft.body.trim()}
+          onClick={() => {
+            openRelationshipInboxCompose({
+              body: draft.body,
+              contactId,
+              organization,
+              recipient: recipientName,
+              subject: draft.subject,
+            });
+            // 交接即记录：卡片翻到回执态，主按钮同步降级为「重新起草」。
+            draft.markHanded();
+          }}
+          type="button"
+        >
+          {t({ en: "Continue in drafts", zh: "继续到草稿箱" })}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // 结果行：设计稿 .panel / .p-person 的紧凑列表（home-console-green.html 对话页）。
-function AgentPeopleRow({ item, navigate, t }: { item: OrbitAgentPeopleResultView; navigate: (href: string) => void; t: Translate }) {
+// rank=0 是本次排序里的首选：只有它拿填充主按钮，其余降为次级按钮。一屏一个主 CTA
+// 既是设计规范（primary-action），也让「为什么这条排第一」在视觉上可读。
+function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const connection = item.connection;
+  const draft = useAgentInlineDraft({
+    contactId: connection.id,
+    language,
+    organization: connection.company,
+    recipientName: connection.displayName,
+  });
+  const confidenceLabel = connection.industry?.trim() ?? "";
 
   return (
     <div className="p-person">
       <Avatar g={connection.g} letter={connection.initial} size={38} />
       <span className="w">
-        <b>{connection.displayName}</b>
+        <b>
+          {connection.displayName}
+          {confidenceLabel ? <em className="p-conf">{confidenceLabel}</em> : null}
+        </b>
         <span>{[connection.title, connection.company].filter(Boolean).join(" · ")}</span>
       </span>
       <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/home/cards/${connection.id}`)} type="button">
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts/${connection.id}`)} type="button">
           {t({ en: "View", zh: "查看" })}
         </button>
+        {(() => {
+          const drafted = draft.state === "ready" || draft.state === "handed";
+          const label =
+            draft.state === "generating"
+              ? t({ en: "Drafting…", zh: "正在生成…" })
+              : drafted
+                ? t({ en: "Redraft", zh: "重新起草" })
+                : t({ en: "Generate follow-up draft", zh: "生成跟进草稿" });
+          return (
+            <button
+              className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+              data-draft-state={draft.state}
+              disabled={draft.state === "generating"}
+              onClick={() => void draft.generate()}
+              type="button"
+            >
+              <Icon name="sparkle" size={14} />
+              <span className="swap" key={label}>{label}</span>
+            </button>
+          );
+        })()}
       </span>
+      {/* whyThisPerson：面向用户的「为什么是这个人」。c0835aff 收内部诊断时把它和
+          item.opener 一起删了，卡片就退化成没有信息的按钮架子，依据只活在上方那段
+          散文里，不可核也不可跳转。item.opener 是「证据片段：来源标签：原文」的原始
+          拼接，属于 DESIGN.md 里明确不对普通用户展示的那一类，保持隐藏。 */}
       {item.reason ? <span className="why">{item.reason}</span> : null}
-      {item.opener ? <span className="why">{item.opener}</span> : null}
+      <AgentInlineDraftResult contactId={connection.id} draft={draft} organization={connection.company} recipientName={connection.displayName} t={t} />
     </div>
   );
 }
@@ -1569,50 +1751,306 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
   );
 }
 
-function AgentTodoRow({ item, navigate, t }: { item: OrbitAgentTodoResultView; navigate: (href: string) => void; t: Translate }) {
+// 跟进队列的主体是**人**，不是任务句子：一个人一张卡，起草是对人的动作。
+// 卡片默认收起——用户问的是「谁值得跟进」，答案是名单（是谁 · 为什么是现在 ·
+// 下一步），任务看板级的细节等展开再给；常见路径（默认勾选 → 起草）不需要展开。
+const TODO_LEAD_KINDS = new Set(["new_connection", "event_encounter", "dormant_relationship"]);
+
+// 「你答应过的事」（真实 task 记录）和「系统推导的关系线索」性质不同，靠
+// triggerKind 区分；旧 artifact 没有该字段时按承诺处理（宁可多勾不静默丢）。
+function isTodoLead(item: OrbitAgentTodoResultView): boolean {
+  return TODO_LEAD_KINDS.has(item.triggerKind ?? "");
+}
+
+interface AgentTodoGroup {
+  contactId?: string;
+  contactName: string;
+  items: readonly OrbitAgentTodoResultView[];
+  key: string;
+  organization: string;
+}
+
+export function groupTodosByContact(
+  items: readonly OrbitAgentTodoResultView[],
+): AgentTodoGroup[] {
+  const groups = new Map<string, AgentTodoGroup>();
+
+  for (const item of items) {
+    const key = item.contactName.trim() || item.id;
+    const existing = groups.get(key);
+
+    if (existing) {
+      groups.set(key, {
+        ...existing,
+        contactId: existing.contactId || item.contactId,
+        items: [...existing.items, item],
+        organization: existing.organization || item.organization,
+      });
+      continue;
+    }
+
+    groups.set(key, {
+      contactId: item.contactId,
+      contactName: item.contactName.trim(),
+      items: [item],
+      key,
+      organization: item.organization,
+    });
+  }
+
+  // 同一人名下文案一字不差的重复线索（例如两场活动各生成一条「跟进这次双方都已
+  // 确认的活动连接」）对用户是一件事：合并成一条，证据说明拼在一起。
+  return [...groups.values()].map((group) => {
+    const merged = new Map<string, OrbitAgentTodoResultView>();
+    for (const item of group.items) {
+      const mergeKey = `${isTodoLead(item) ? "lead" : "task"}|${item.title.trim()}`;
+      const kept = merged.get(mergeKey);
+      if (!kept) {
+        merged.set(mergeKey, item);
+        continue;
+      }
+      merged.set(mergeKey, {
+        ...kept,
+        dueAt: [kept.dueAt, item.dueAt].filter(Boolean).sort()[0],
+        reason: [kept.reason, item.reason].filter(Boolean).join(" "),
+        task: kept.task || item.task,
+      });
+    }
+    return { ...group, items: [...merged.values()] };
+  });
+}
+
+export function earliestTodoDueAt(
+  items: readonly OrbitAgentTodoResultView[],
+): string | undefined {
+  return items
+    .map((item) => item.dueAt)
+    .filter((value): value is string => Boolean(value) && Number.isFinite(new Date(value as string).getTime()))
+    .sort()[0];
+}
+
+// 到期展示在客户端按真实时钟算。artifact 里那套「今天/N 天后」的参照系是
+// 「最新记录的 updatedAt」而不是当前时间（见 orbit-followup-queue-clock-bug），
+// 这里有原始 dueAt 就不再信它。
+function todoDueLabel(dueAt: string, language: "en" | "zh"): { label: string; soon: boolean } | null {
+  const due = new Date(dueAt);
+  if (!Number.isFinite(due.getTime())) return null;
+
+  const days = Math.ceil((due.getTime() - Date.now()) / 86_400_000);
+  const date = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+    day: "numeric",
+    month: language === "zh" ? "long" : "short",
+    timeZone: "Asia/Tokyo",
+  }).format(due);
+  const relative =
+    days < 0
+      ? language === "zh" ? `已逾期 ${-days} 天` : `overdue ${-days}d`
+      : days === 0
+        ? language === "zh" ? "今天" : "today"
+        : days === 1
+          ? language === "zh" ? "明天" : "tomorrow"
+          : language === "zh" ? `${days} 天后` : `in ${days}d`;
+
+  return { label: `${date} · ${relative}`, soon: days <= 3 };
+}
+
+// 勾选的事项序列化成 purpose 传给草稿服务——按钮和列表的因果就在这里：
+// 你选什么，信里就写什么。
+function draftPurposeFor(
+  items: readonly OrbitAgentTodoResultView[],
+  language: "en" | "zh",
+): string {
+  if (items.length === 0) return "";
+  const lines = items.map((item, index) => {
+    const detail =
+      item.task && item.task !== item.title ? `${item.title}：${item.task}` : item.title;
+    return `${index + 1}. ${detail}`;
+  });
+  return language === "zh"
+    ? `这封跟进邮件需要覆盖以下事项：\n${lines.join("\n")}`
+    : `Cover these follow-up items in the email:\n${lines.join("\n")}`;
+}
+
+function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodoGroup; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
+  const promised = group.items.filter((item) => !isTodoLead(item));
+  const leads = group.items.filter(isTodoLead);
+  const [open, setOpen] = useState(false);
+  // 默认勾选 = 按钮会写的事：有承诺勾承诺；只有线索时勾线索（否则按钮没有意义）。
+  // 这个默认值因人而异，所以不写死在任何标签文案里——勾选框自己陈述。
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set((promised.length > 0 ? promised : group.items).map((item) => item.id)),
+  );
+  const draft = useAgentInlineDraft({
+    contactId: group.contactId,
+    language,
+    organization: group.organization,
+    recipientName: group.contactName,
+  });
+  const chosen = group.items.filter((item) => selected.has(item.id));
+  const purpose = draftPurposeFor(chosen, language);
+  const dueAt = earliestTodoDueAt(group.items);
+  const due = dueAt ? todoDueLabel(dueAt, language) : null;
+  const summary = [
+    promised.length > 0 ? t({ en: `${promised.length} to-do(s)`, zh: `${promised.length} 件待办` }) : "",
+    leads.length > 0 ? t({ en: `${leads.length} lead(s)`, zh: `${leads.length} 条线索` }) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const viewContact = () => {
+    if (group.contactId) {
+      navigate(`/app/contacts/${group.contactId}`);
+      return;
+    }
+    navigate(`/app/contacts?query=${encodeURIComponent(group.contactName)}`);
+  };
+
+  const toggleItem = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const renderItem = (item: OrbitAgentTodoResultView) => {
+    const checked = selected.has(item.id);
+    const lead = isTodoLead(item);
+    // 承诺项的第二行是任务说明；线索项的第二行是证据文本（活动名等，文本退化，
+    // 可点跳转排到 evidenceId→href 映射建好之后）。
+    const detail = lead ? item.reason || item.task : item.task !== item.title ? item.task : "";
+    const inputId = `agent-todo-${item.id.replace(/[^\w-]/g, "-")}`;
+
+    return (
+      <li className="todo-item" key={item.id}>
+        <input checked={checked} className="todo-check" id={inputId} onChange={() => toggleItem(item.id)} type="checkbox" />
+        <label className={checked ? "t" : "t t-off"} htmlFor={inputId}>{item.title}</label>
+        {detail ? <span className="d">{detail}</span> : null}
+      </li>
+    );
+  };
+
   return (
-    <div className="p-person">
-      <Avatar g={gradientFromString(item.contactName || item.id)} letter={(item.contactName || item.title).slice(0, 1).toUpperCase()} size={38} />
-      <span className="w">
-        <b>{item.title}</b>
-        <span>{[item.contactName, item.organization, item.due].filter(Boolean).join(" · ")}</span>
-      </span>
-      <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate("/home/schedule")} type="button">
-          {t({ en: "View", zh: "查看" })}
-        </button>
-      </span>
-      {item.reason ? <span className="why">{item.reason}</span> : null}
-      {item.task ? <span className="why">{item.task}</span> : null}
-    </div>
+    <article className="todo-card">
+      <div className="todo-head">
+        <Avatar g={gradientFromString(group.contactName || group.key)} letter={(group.contactName || group.key).slice(0, 1).toUpperCase()} size={34} />
+        <span className="todo-who">
+          <b>{group.contactName}</b>
+          <span className="todo-sub">{group.organization}</span>
+          <button aria-controls={`agent-todo-detail-${rank}`} aria-expanded={open} className="todo-peek" onClick={() => setOpen((value) => !value)} type="button">
+            <svg aria-hidden="true" className="todo-tri" fill="currentColor" height="9" viewBox="0 0 12 12" width="9"><path d="M4 2l5 4-5 4z" /></svg>
+            {open ? t({ en: "Collapse", zh: "收起" }) : summary}
+          </button>
+        </span>
+        <span className="todo-side">
+          {due ? <span className={due.soon ? "todo-due soon" : "todo-due"}>{due.label}</span> : null}
+          {(() => {
+            // 起草之后按钮必须换脸：一是回答「刚才发生了什么」（已有草稿/已交接），
+            // 二是把主按钮让给面板里的「继续到草稿箱」——一张卡只留一个主 CTA。
+            const drafted = draft.state === "ready" || draft.state === "handed";
+            const label =
+              draft.state === "generating"
+                ? t({ en: "Drafting…", zh: "正在生成…" })
+                : drafted
+                  ? t({ en: "Redraft", zh: "重新起草" })
+                  : chosen.length === 0
+                    ? t({ en: "Select items first", zh: "先选要写的事" })
+                    : t({ en: `Generate follow-up draft (${chosen.length})`, zh: `起草跟进 ${chosen.length} 件` });
+            return (
+              <button
+                className={rank === 0 && !drafted ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+                data-draft-state={draft.state}
+                disabled={draft.state === "generating" || chosen.length === 0}
+                onClick={() => void draft.generate(purpose)}
+                type="button"
+              >
+                <Icon name="sparkle" size={14} />
+                <span className="swap" key={label}>{label}</span>
+              </button>
+            );
+          })()}
+        </span>
+      </div>
+      {open ? (
+        <div className="todo-detail" id={`agent-todo-detail-${rank}`}>
+          {promised.length > 0 ? <ul className="todo-items">{promised.map(renderItem)}</ul> : null}
+          {leads.length > 0 ? (
+            <>
+              <p className="todo-zone">{t({ en: "Leads the system found", zh: "系统发现的线索" })}</p>
+              <ul className="todo-items">{leads.map(renderItem)}</ul>
+            </>
+          ) : null}
+          <button className="linkish todo-view" onClick={viewContact} type="button">
+            {t({ en: "View contact", zh: "查看联系人" })}
+          </button>
+        </div>
+      ) : null}
+      <AgentInlineDraftResult contactId={group.contactId} currentPurpose={purpose} draft={draft} organization={group.organization} recipientName={group.contactName} t={t} />
+    </article>
   );
 }
 
 function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
+  const [showAll, setShowAll] = useState(false);
+  const initialLimit = panel.kind === "people" ? 3 : panel.items.length;
+  const visibleItems = showAll ? panel.items : panel.items.slice(0, initialLimit);
+  const hiddenCount = panel.items.length - visibleItems.length;
+
+  if (panel.kind === "todos") {
+    // 跟进队列不再套「面板标题栏 + 计数」外壳：结论行由即将渲染的卡片数据直接
+    // 生成（永远不会和卡片打架），卡片按最早到期排序——模型的判断以排序体现，
+    // 不以「建议先推进谁」的句子体现。
+    const groups = [...groupTodosByContact(panel.items.filter(isTodoResult))].sort((a, b) =>
+      (earliestTodoDueAt(a.items) ?? "9999").localeCompare(earliestTodoDueAt(b.items) ?? "9999"),
+    );
+    return (
+      <div className="todo-stack" data-agent-todo-stack>
+        <p className="todo-verdict">
+          {t({
+            en: `${groups.length} contact(s) have follow-ups waiting on you.`,
+            zh: `${groups.length} 位联系人有待跟进的事。`,
+          })}
+        </p>
+        {groups.map((group, index) => (
+          <AgentTodoRow group={group} key={group.key} language={language} navigate={navigate} rank={index} t={t} />
+        ))}
+      </div>
+    );
+  }
+
   const meta =
     panel.kind === "people"
       ? t({ en: `${panel.items.length} people`, zh: `${panel.items.length} 位` })
-      : panel.kind === "events"
-        ? t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` })
-        : t({ en: `${panel.items.length} items`, zh: `${panel.items.length} 条` });
+      : t({ en: `${panel.items.length} events`, zh: `${panel.items.length} 场` });
 
   return (
     <div className="panel">
       <div className="panel-head">
-        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : panel.kind === "events" ? "calendar" : "clock"} size={14} />
+        <Icon color="var(--accent)" name={panel.kind === "people" ? "users" : "calendar"} size={14} />
         <b>{panel.panelTitle}</b>
         <span className="meta">{meta}</span>
       </div>
       <div className="panel-body">
-        {panel.items.map((item, index) =>
+        {visibleItems.map((item, index) =>
           isPeopleResult(item) ? (
-            <AgentPeopleRow key={`${item.connection.id}-${index}`} item={item} navigate={navigate} t={t} />
-          ) : isTodoResult(item) ? (
-            <AgentTodoRow key={`${item.id}-${index}`} item={item} navigate={navigate} t={t} />
-          ) : (
+            <AgentPeopleRow key={item.connection.id || `${item.connection.displayName}-${index}`} item={item} language={language} navigate={navigate} rank={index} t={t} />
+          ) : isTodoResult(item) ? null : (
             <AgentEventRow key={`${item.event.code}-${index}`} item={item} language={language} navigate={navigate} t={t} />
           ),
         )}
+        {panel.kind === "people" && panel.items.length > initialLimit ? (
+          <button
+            className="btn btn-ghost btn-sm"
+            data-agent-recommendations-toggle
+            onClick={() => setShowAll((value) => !value)}
+            style={{ marginTop: 8 }}
+            type="button"
+          >
+            {showAll
+              ? t({ en: "Show top 3 only", zh: "只看前三位" })
+              : t({ en: `View ${hiddenCount} more`, zh: `查看另外 ${hiddenCount} 位` })}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -1620,16 +2058,48 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
 
 // 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
 // 回调，等待可能好几秒。为了不让用户对着一个静止的点发呆，这里按时间推进一串
-// “正在…”阶段文案（理解→检索→深度思考→整理），配合旋转指示，营造进度感。
-// 纯展示：文案与真实进度无严格对应，只按固定节奏往后走并停在最后一个。
+// 文案只说明这条管线将核对的维度，不伪装成服务端实时进度；按固定节奏轮换，
+// 并明确给出用户可预期的等待范围与副作用边界。
 const THINKING_PHASES: readonly Copy[] = [
-  { en: "Understanding your request", zh: "正在理解你的需求" },
-  { en: "Searching your network & events", zh: "正在检索信息" },
-  { en: "Thinking it through", zh: "正在深度思考中" },
-  { en: "Composing recommendations", zh: "正在整理答复" },
+  { en: "Checking your authorized contacts, events, and follow-ups", zh: "正在核对你已授权的人脉、活动与跟进记录" },
+  { en: "Comparing relationship strength, timing, and your goal", zh: "正在比较关系强度、时机与你的目标" },
+  { en: "Ranking the most useful next decisions", zh: "正在排列最值得处理的下一步" },
+  { en: "Preparing the answer and its evidence", zh: "正在整理答复与依据" },
 ];
 
 const THINKING_PHASE_INTERVAL_MS = 2200;
+const AGENT_REQUEST_TIMEOUT_MS = 30_000;
+
+class AgentRequestTimeoutError extends Error {
+  constructor() {
+    super("Agent request timed out");
+    this.name = "AgentRequestTimeoutError";
+  }
+}
+
+async function fetchAgentConversation(body: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    AGENT_REQUEST_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetch("/api/ai/conversations", {
+      body,
+      headers: { "content-type": "application/json" },
+      method: "POST",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new AgentRequestTimeoutError();
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 // 设计稿的四角星标（home-console-green.html 中 iOrbit 的品牌记号）。
 export function AgentStar({ size = 15 }: { size?: number }) {
@@ -1655,9 +2125,11 @@ function ThinkingIndicator({ t }: { t: Translate }) {
   }, []);
 
   return (
-    <span aria-live="polite" className="thinking orbit-agent-thinking-indicator">
-      <span className="sp" />
-      {t(THINKING_PHASES[phase])}
+    <span aria-live="polite" className="thinking orbit-agent-thinking-indicator" style={{ display: "inline-grid", gap: 4 }}>
+      <span><span className="sp" />{t(THINKING_PHASES[phase])}</span>
+      <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+        {t({ en: "Usually 10–20 seconds · no external action is being taken", zh: "通常需要 10–20 秒 · 当前不会执行任何外部动作" })}
+      </span>
     </span>
   );
 }
@@ -1672,6 +2144,8 @@ const CONSOLE_STYLES = `
   --console-tight: 'Inter Tight', Inter, system-ui, -apple-system, 'PingFang SC', sans-serif;
   --glass: rgba(255,255,255,.66);
   --glass-border: #dbe7e4;
+  --text-3: #687078;
+  --text-4: #687078;
   font-size: 15px;
   line-height: 1.65;
 }
@@ -1842,13 +2316,81 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .p-person .w b { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
 [data-orbit-real-page="agent"] .p-person .w span { font-size: 12.5px; color: var(--text-2); }
 [data-orbit-real-page="agent"] .p-person .why { flex-basis: 100%; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-left: 2px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+[data-orbit-real-page="agent"] .p-person .w b .p-conf { font-style: normal; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-softer); border-radius: var(--r-pill); padding: 2px 7px; margin-left: 7px; vertical-align: 1px; }
 [data-orbit-real-page="agent"] .p-acts { display: flex; gap: 8px; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] { border-top: 0; margin-top: 11px; padding-top: 0; font-size: 12.5px; color: var(--text-3); }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); padding: 5px 10px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 500; list-style: none; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary::-webkit-details-marker { display: none; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > summary:hover { color: var(--ink); border-color: var(--border-2); }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div { margin-top: 8px; }
-[data-orbit-real-page="agent"] [data-agent-evidence-sources] > div > div { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-2); padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+/* ═══ 跟进队列（按人分组卡片）与内联草稿 ═══
+   产品字号只有三级：--t-lead 人名/结论/主题，--t-base 事项/说明/正文/按钮，
+   --t-meta 一切次级。层级由字重（600/400）和颜色（ink/muted）承担，
+   不允许出现第四个字号数值。 */
+[data-orbit-real-page="agent"] { --t-lead: 15px; --t-base: 13px; --t-meta: 12px; }
+
+[data-orbit-real-page="agent"] .todo-stack { margin-top: 13px; display: grid; gap: 8px; }
+[data-orbit-real-page="agent"] .todo-verdict { color: var(--ink); font-size: var(--t-lead); font-weight: 600; line-height: 1.5; margin: 0 0 4px; }
+[data-orbit-real-page="agent"] .todo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 13px 15px; }
+[data-orbit-real-page="agent"] .todo-head { display: flex; align-items: flex-start; gap: 11px; }
+[data-orbit-real-page="agent"] .todo-who { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+[data-orbit-real-page="agent"] .todo-who b { color: var(--ink); font-size: var(--t-lead); font-weight: 600; line-height: 1.4; }
+[data-orbit-real-page="agent"] .todo-sub { color: var(--text-2); font-size: var(--t-meta); }
+[data-orbit-real-page="agent"] .todo-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .todo-due { color: var(--text-3); font-size: var(--t-meta); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-orbit-real-page="agent"] .todo-due.soon { color: var(--amber-text, #8A5A00); font-weight: 600; }
+/* 展开钮既是摘要也是开关；内容宽度，focus 轮廓贴文字，不横穿整卡。 */
+[data-orbit-real-page="agent"] .todo-peek { align-items: center; background: none; border: 0; color: var(--text-2); cursor: pointer; display: inline-flex; font: inherit; font-size: var(--t-meta); gap: 6px; margin-top: 6px; padding: 3px 2px; }
+[data-orbit-real-page="agent"] .todo-peek:hover { color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-tri { transition: transform .18s ease; }
+[data-orbit-real-page="agent"] .todo-peek[aria-expanded="true"] .todo-tri { transform: rotate(90deg); }
+[data-orbit-real-page="agent"] .todo-detail { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 4px; }
+[data-orbit-real-page="agent"] .todo-zone { color: var(--text-3); font-size: var(--t-meta); margin: 12px 0 2px; }
+[data-orbit-real-page="agent"] .todo-items { list-style: none; margin: 0; padding: 0; }
+[data-orbit-real-page="agent"] .todo-item { display: grid; gap: 0 11px; grid-template-columns: auto 1fr; padding: 9px 0; }
+[data-orbit-real-page="agent"] .todo-item + .todo-item { border-top: 1px solid var(--border); }
+/* 勾选框描边化：未选空盒，选中浅底 + 勾。选中态由控件自己承载，不给整行铺底。 */
+[data-orbit-real-page="agent"] .todo-check { appearance: none; -webkit-appearance: none; background: var(--surface); border: 1.5px solid var(--border-2); border-radius: 4px; cursor: pointer; display: grid; grid-row: 1 / span 2; height: 16px; margin: 2px 0 0; place-items: center; transition: border-color .15s, background .15s; width: 16px; }
+[data-orbit-real-page="agent"] .todo-check:hover { border-color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-check:checked { background: var(--accent-softer); border-color: var(--accent); }
+[data-orbit-real-page="agent"] .todo-check:checked::before { border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); content: ""; height: 4px; margin-top: -2px; transform: rotate(-45deg); width: 8px; }
+[data-orbit-real-page="agent"] .todo-item .t { color: var(--ink); cursor: pointer; font-size: var(--t-base); font-weight: 600; line-height: 1.55; }
+[data-orbit-real-page="agent"] .todo-item .t.t-off { color: var(--text-2); font-weight: 400; }
+[data-orbit-real-page="agent"] .todo-item .d { color: var(--text-2); font-size: var(--t-base); grid-column: 2; line-height: 1.55; margin-top: 1px; }
+[data-orbit-real-page="agent"] .todo-view { margin-top: 10px; }
+[data-orbit-real-page="agent"] .linkish { background: none; border: 0; color: var(--text-2); cursor: pointer; font: inherit; font-size: var(--t-meta); padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+[data-orbit-real-page="agent"] .linkish:hover { color: var(--accent); }
+
+/* 内联草稿：卡片的下半部分，不是第二张卡。主题/正文无框，像一封信而不是表单。 */
+[data-orbit-real-page="agent"] .draft { border-top: 1px solid var(--border); display: grid; flex-basis: 100%; gap: 9px; margin-top: 12px; padding-top: 13px; }
+[data-orbit-real-page="agent"] .draft-label { color: var(--text-3); font-size: var(--t-meta); margin: 0; }
+[data-orbit-real-page="agent"] .draft-stale { align-items: center; background: var(--amber-soft); border-radius: var(--r-sm); color: var(--amber-text, #8A5A00); display: flex; flex-wrap: wrap; font-size: var(--t-meta); gap: 8px; margin: 0; padding: 7px 10px; }
+[data-orbit-real-page="agent"] .draft-stale .linkish { color: inherit; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-subj { background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--ink); font: inherit; font-size: var(--t-lead); font-weight: 600; padding: 0 0 9px; width: 100%; }
+[data-orbit-real-page="agent"] .draft-subj:focus { border-bottom-color: var(--accent); outline: none; }
+[data-orbit-real-page="agent"] .draft-body { background: none; border: 0; color: var(--text); font: inherit; font-size: var(--t-base); line-height: 1.75; min-height: 150px; padding: 2px 0 0; resize: vertical; width: 100%; }
+[data-orbit-real-page="agent"] .draft-body:focus { outline: none; }
+[data-orbit-real-page="agent"] .draft-foot { align-items: center; display: flex; flex-wrap: wrap; gap: 9px; }
+[data-orbit-real-page="agent"] .draft-guard { align-items: flex-start; color: var(--text-2); display: flex; flex: 1; font-size: var(--t-meta); gap: 7px; line-height: 1.5; margin: 0; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-guard > svg { color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
+[data-orbit-real-page="agent"] .draft-guard b { color: var(--ink); font-weight: 600; margin-right: 6px; }
+[data-orbit-real-page="agent"] .draft-error { align-items: center; background: rgba(179, 38, 30, .06); border: 1px solid rgba(179, 38, 30, .25); border-radius: var(--r-sm); display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding: 10px 12px; }
+[data-orbit-real-page="agent"] .draft-error .w { flex: 1; font-size: var(--t-base); line-height: 1.5; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-error .w b { color: var(--danger); display: block; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-error .w span { color: var(--text-2); font-size: var(--t-meta); }
+
+/* 状态动效：面板/回执进场 4px 上浮淡入，check 轻弹一下，按钮换字交叉淡入。
+   全部 transform/opacity（不引起回流），时长 180-250ms；页面末尾的
+   prefers-reduced-motion 规则会整体关掉这些动画。 */
+[data-orbit-real-page="agent"] .draft { animation: agent-draft-in .22s ease-out; }
+[data-orbit-real-page="agent"] .btn .swap { animation: agent-label-in .18s ease-out; }
+/* 交接回执：记录「草稿已转入草稿箱」这一件已发生的事。用 accent 软底而不是
+   success 绿——发送尚未发生，这里不是完成态；且 --live-text 在浅色主题下没有
+   重绑，直接用会对比度不足。 */
+[data-orbit-real-page="agent"] .draft-receipt { align-items: flex-start; animation: agent-draft-in .22s ease-out; background: var(--accent-softer); border-radius: var(--r-sm); display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 10px; margin-top: 12px; padding: 11px 13px; }
+[data-orbit-real-page="agent"] .draft-receipt-check { align-items: center; animation: agent-check-pop .25s ease-out; background: var(--accent); border-radius: 50%; color: var(--on-accent); display: inline-flex; flex: 0 0 auto; height: 20px; justify-content: center; margin-top: 1px; width: 20px; }
+[data-orbit-real-page="agent"] .draft-receipt .w { color: var(--text-2); flex: 1; font-size: var(--t-meta); line-height: 1.5; min-width: 200px; }
+[data-orbit-real-page="agent"] .draft-receipt .w b { color: var(--ink); display: block; font-size: var(--t-base); font-variant-numeric: tabular-nums; font-weight: 600; }
+[data-orbit-real-page="agent"] .draft-receipt-acts { align-items: center; align-self: center; display: flex; gap: 12px; }
+@keyframes agent-draft-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes agent-check-pop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes agent-label-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
 [data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
 
 [data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
@@ -1869,7 +2411,11 @@ const CONSOLE_STYLES = `
 }
 `;
 
-export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) {
+export function OrbitRealAgent({
+  home = null,
+  registrationAvailabilityByEventId = {},
+  viewModel,
+}: OrbitRealAgentProps) {
   const { language, preserveHref, t } = useOrbitLanguage();
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
@@ -2004,7 +2550,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
       locale === "zh"
-        ? "Agent 暂时无法完成这次回复，请稍后再试。"
+        ? "iOrbit 暂时无法完成这次回复，请稍后再试。"
         : "The agent could not complete this reply. Please try again.";
 
     // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
@@ -2031,11 +2577,9 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
     try {
-      const response = await fetch("/api/ai/conversations", {
-        body: JSON.stringify({ history, locale, message: query }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      });
+      const response = await fetchAgentConversation(
+        JSON.stringify({ history, locale, message: query }),
+      );
       const payload = (await response.json().catch(() => null)) as {
         data?: {
           actionIds?: unknown;
@@ -2043,13 +2587,24 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
           assistantMessage?: string;
           runId?: unknown;
         };
-        error?: { message?: string };
+        error?: { code?: string; message?: string };
         success?: boolean;
       } | null;
 
       if (!response.ok || payload?.success !== true || !payload.data) {
-        const errorText = payload?.error?.message
-          ? `${failureText}（${payload.error.message}）`
+        // 服务端错误原文是内部诊断（provider 名、英文超时串），不拼进用户文案——
+        // 这里只做归类：超时给「通常重试一次即可」的可操作说法，其余走通用文案。
+        // 原文进 console 供排查，与「普通用户对话不展示内部诊断」的边界一致。
+        if (payload?.error?.message) {
+          console.warn("[agent] conversation request failed:", payload.error.code, payload.error.message);
+        }
+        const providerTimedOut =
+          payload?.error?.code === "MODEL_REQUEST_FAILED" ||
+          /timed out/i.test(payload?.error?.message ?? "");
+        const errorText = providerTimedOut
+          ? locale === "zh"
+            ? "iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。"
+            : "The model did not answer in time — this is usually temporary. Resubmit the request. No external action was taken."
           : failureText;
 
         setMessages((current) => [
@@ -2108,10 +2663,14 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
             : locale === "zh"
               ? "人脉推荐"
               : "Recommended contacts");
-      const assistantText =
-        payload.data.assistantMessage?.trim() ||
-        activeArtifact?.result?.generatedView?.summary ||
-        failureText;
+      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
+      const assistantText = items.length === 0 && evidenceRefs.length === 0
+        ? locale === "zh"
+          ? "本次没有从你已授权的人脉、活动或跟进记录中找到可核查的结果，因此不会把泛化回答展示成真实推荐，也没有执行任何外部动作。请先导入联系人或补充可用记录后重试。"
+          : "No verifiable result was found in your authorized contacts, events, or follow-ups. A generic answer will not be presented as a real recommendation, and no external action was taken. Import contacts or add usable records, then retry."
+        : payload.data.assistantMessage?.trim() ||
+          activeArtifact?.result?.generatedView?.summary ||
+          failureText;
       const runId =
         typeof payload.data.runId === "string" && payload.data.runId.trim()
           ? payload.data.runId.trim()
@@ -2123,8 +2682,6 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
               : [],
           )
         : [];
-      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
-
       setMessages((current) => [
         ...current,
         {
@@ -2140,7 +2697,13 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       ]);
 
       setPanel(items.length > 0 ? { items, kind, panelTitle } : null);
-    } catch {
+    } catch (error) {
+      const requestFailureText =
+        error instanceof AgentRequestTimeoutError
+          ? locale === "zh"
+            ? "等待超过 30 秒，本次请求已停止；当前未执行任何外部动作。你可以重新提交。"
+            : "The request took over 30 seconds and was stopped. No external action was taken. You can retry it."
+          : failureText;
       setMessages((current) => [
         ...current,
         {
@@ -2149,7 +2712,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
           panelTitle: "",
           retryRequest: query,
           role: "assistant",
-          text: failureText,
+          text: requestFailureText,
         },
       ]);
     } finally {
@@ -2523,34 +3086,15 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
               {message.items.length > 0 ? (
                 <PanelCards language={language === "ja" ? "en" : language} navigate={navigate} panel={{ items: message.items, kind: message.kind, panelTitle: message.panelTitle }} t={t} />
               ) : null}
-              {message.runId ? (
-                <AgentOutcomeFeedback
-                  evidenceIds={(message.evidenceRefs ?? []).flatMap(
-                    (reference) => reference.evidenceIds,
-                  )}
-                  language={language === "zh" ? "zh" : "en"}
-                  runId={message.runId}
-                  sourceModules={(message.evidenceRefs ?? []).flatMap(
-                    (reference) => reference.sourceModules,
-                  )}
-                />
-              ) : null}
-              {message.runId ? (
+              {message.runId && message.actionIds?.length ? (
                 <AgentActionStatusCard
-                  actionIds={message.actionIds ?? []}
+                  actionIds={message.actionIds}
                   language={language === "zh" ? "zh" : "en"}
                   navigate={navigate}
-                  onRetryRequest={async () => {
-                    const request = agentRetryRequestForAssistant(
-                      messages,
-                      index,
-                    );
-                    if (request) await ask(request);
-                  }}
                   runId={message.runId}
+                  showRunDetails={false}
                 />
               ) : null}
-              <AgentEvidenceSources references={message.evidenceRefs ?? []} />
               {message.retryRequest ? (
                 <button
                   className="btn btn-ghost btn-sm"
@@ -2633,7 +3177,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
     <>
       <div className="thread-bar">
         <button
-          aria-label={t({ en: "Back to dashboard", zh: "返回 dashboard" })}
+          aria-label={t({ en: "Back to workspace", zh: "返回工作台" })}
           className="btn-back"
           onClick={backToDashboard}
           title={t({ en: "Back", zh: "返回" })}
@@ -2650,7 +3194,14 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       )}
     </>
   ) : home ? (
-    <OrbitAgentDashboard home={home} language={language} navigate={navigate} onAsk={ask} t={t} />
+    <OrbitAgentDashboard
+      home={home}
+      language={language}
+      navigate={navigate}
+      onAsk={ask}
+      registrationAvailabilityByEventId={registrationAvailabilityByEventId}
+      t={t}
+    />
   ) : (
     <AgentWelcome onPick={ask} viewModel={viewModel} />
   );
@@ -2665,14 +3216,21 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
       data-orbit-agent-request-state={thinking ? "pending" : "idle"}
       data-orbit-ask-clearance="manual"
       data-orbit-real-page="agent"
-      style={{ background: "var(--bg-soft)", display: "flex", flexDirection: "column", height: "100dvh" }}
+      style={{
+        "--text-3": "#687078",
+        "--text-4": "#687078",
+        background: "var(--bg-soft)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+      } as CSSProperties}
     >
       <style dangerouslySetInnerHTML={{ __html: CONSOLE_STYLES }} />
       <h1
         data-orbit-agent-screen-title
         style={{ clipPath: "inset(50%)", height: 1, margin: -1, overflow: "hidden", position: "absolute", whiteSpace: "nowrap", width: 1 }}
       >
-        {t({ en: "iOrbit Agent workspace", zh: "iOrbit Agent 工作区" })}
+        {t({ en: "iOrbit workspace", zh: "iOrbit 工作区" })}
       </h1>
       <div className="orbit-desktop-only">
         {/* No rightExtra here: the "New chat" action already lives in the
@@ -2730,7 +3288,7 @@ export function OrbitRealAgent({ home = null, viewModel }: OrbitRealAgentProps) 
             padding: 0,
             position: "relative",
             width: 8,
-            zIndex: 1,
+            zIndex: ORBIT_Z.raised,
           }}
         />
         <div className="ws-main">

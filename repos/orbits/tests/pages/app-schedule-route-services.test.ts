@@ -332,26 +332,16 @@ test("schedule route states keep Chinese recovery copy for empty, pending, and f
   }
 });
 
-test("schedule route view model owns arrangement mapping outside the page component", () => {
-  const routeModelSource = source(
-    "app/(app)/app/schedule/schedule-route-view-model.ts",
-  );
-  // T3 (today-schedule merge): schedule/page.tsx itself no longer calls
-  // loadAppScheduleRouteViewModel — it's a redirect shell to
-  // /app/today#arrangements now. The loader moved to
-  // today/compose-app-today-from-agent-ledger/today-merged-view-model.ts,
-  // which is what actually owns rendering the arrangement mapping today.
-  const mergedViewModelSource = source(
-    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
-  );
-
-  assert.match(routeModelSource, /createContactsListSearchAndFilterService/);
-  assert.match(routeModelSource, /createEventCrudAndImportService/);
-  assert.match(routeModelSource, /createFollowupTaskGenerationService/);
-  assert.match(routeModelSource, /AppScheduleArrangementViewModel/);
-  assert.doesNotMatch(routeModelSource, /Review follow-up for/);
-  assert.match(mergedViewModelSource, /loadAppScheduleRouteViewModel/);
-  assert.doesNotMatch(mergedViewModelSource, /AppFollowupsPage/);
+test("the current Today schedule uses authoritative appointments outside the page component", () => {
+  const merged = source("app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts");
+  const schedule = source("app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule.ts");
+  assert.match(merged, /loadConfiguredTodaySchedule\(actorId\)/);
+  assert.doesNotMatch(merged, /loadAppScheduleRouteViewModel|AppFollowupsPage/);
+  assert.match(schedule, /appointmentService\.list\(\{ actorId \}\)/);
+  assert.match(schedule, /listConfiguredOrbitScheduleItems\(actorId\)/);
+  assert.doesNotMatch(schedule, /createEventCrudAndImportService|createFollowupTaskGenerationService/);
+  assert.match(source("app/(app)/app/schedule/page.tsx"), /redirect\("\/app\/today#arrangements"\)/);
+  assert.match(source("app/(app)/app/today/today-page-content.tsx"), /id="arrangements"/);
 });
 
 test("schedule live implementation doc records replacement boundary", () => {

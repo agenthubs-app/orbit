@@ -20,7 +20,7 @@ const TODAY_SECTION_TITLES: Record<
   },
   zh: {
     decide: "需要你决定",
-    prepared: "ORBIT 已准备",
+    prepared: "已准备的操作",
     recent: "最近动态",
   },
 };

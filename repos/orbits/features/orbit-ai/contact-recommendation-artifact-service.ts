@@ -144,9 +144,11 @@ function presentationFor(
       en: "Matched from existing relationship evidence only",
       zh: "仅从已有真实关系证据中匹配",
     }),
+    // 「可复核人脉路径」是内部架构词：用户脑子里没有「可复核」和「路径」这两个概念。
+    // 面板标题说清楚它是什么（一份可以先联系谁的名单），依据交给卡片里的 reason/证据。
     title: localize(locale, {
-      en: "Recommended relationship paths",
-      zh: "可复核人脉路径",
+      en: "People worth contacting first",
+      zh: "可优先联系的人",
     }),
     widthHint: "half",
   };

@@ -26,12 +26,14 @@ const SEEDED_COLLECTIONS = [
   "attendees",
   "contacts",
   "connections",
+  "dashboards",
   "evidence",
   "tasks",
   "conversations",
   "messages",
   "agentActions",
   "notifications",
+  "permissions",
   "eventParticipantIntents",
   "aiAnalyses",
   "matchRecommendations",
@@ -181,6 +183,8 @@ function targetFor(
       return { targetId: recordId, targetType: "contact" };
     case "connections":
       return { targetId: recordId, targetType: "connection" };
+    case "dashboards":
+      return { targetId: recordId, targetType: "dashboard" };
     case "evidence":
       return { targetId: recordId, targetType: "evidence" };
     case "tasks":
@@ -193,6 +197,8 @@ function targetFor(
       return { targetId: recordId, targetType: "agent_action" };
     case "notifications":
       return { targetId: recordId, targetType: "notification" };
+    case "permissions":
+      return { targetId: recordId, targetType: "permission" };
     case "eventParticipantIntents":
       return {
         targetId: stringField(payload, "eventId") ?? recordId,

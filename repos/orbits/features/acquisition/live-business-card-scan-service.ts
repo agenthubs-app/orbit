@@ -25,14 +25,18 @@ import {
   type BusinessCardSourceReference,
 } from "./business-card-contract";
 import {
-  BUSINESS_CARD_IMAGE_MIME_TYPES,
   normalizeBusinessCardExtraction,
   reviewIssuesForBusinessCard,
   type BusinessCardCloudOcrProvider,
   type BusinessCardCloudOcrUsage,
-  type BusinessCardImageMimeType,
   type BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
+import {
+  isBusinessCardUploadMimeType,
+  normalizeBusinessCardUploadImage,
+  type BusinessCardUploadMimeType,
+  type NormalizedBusinessCardUploadImage,
+} from "./business-card-image-normalization";
 import {
   BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX,
   BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
@@ -120,11 +124,6 @@ function compactDigest(value: string): string {
   return `sha256:live-card-${hash.toString().padStart(6, "0")}`;
 }
 
-function isBusinessCardImageMimeType(
-  value: string | null | undefined,
-): value is BusinessCardImageMimeType {
-  return BUSINESS_CARD_IMAGE_MIME_TYPES.some((mimeType) => mimeType === value);
-}
 
 function uploadedImageDigest(imageBytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(imageBytes).digest("hex")}`;
@@ -184,7 +183,7 @@ function uploadedPayload(input: {
   digest: string;
   extraction: BusinessCardStructuredExtraction;
   imageName: string;
-  mimeType: BusinessCardImageMimeType;
+  mimeType: BusinessCardUploadMimeType;
   now: string;
   provider: BusinessCardCloudOcrProvider;
   usage: BusinessCardCloudOcrUsage;
@@ -304,7 +303,7 @@ async function scanUploadedBusinessCard(input: {
     );
   }
 
-  if (!isBusinessCardImageMimeType(input.scanInput.mimeType)) {
+  if (!isBusinessCardUploadMimeType(input.scanInput.mimeType)) {
     return failure(
       "BUSINESS_CARD_IMAGE_UNSUPPORTED",
       uploadedProvenance({
@@ -332,6 +331,8 @@ async function scanUploadedBusinessCard(input: {
     );
   }
 
+  // Evidence digests always cover the bytes the user actually uploaded,
+  // never the transcoded JPEG handed to the OCR provider.
   const digest = uploadedImageDigest(imageBytes);
 
   if (!input.cloudOcrProvider) {
@@ -346,10 +347,29 @@ async function scanUploadedBusinessCard(input: {
     );
   }
 
+  let normalizedImage: NormalizedBusinessCardUploadImage;
+
   try {
-    const result = await input.cloudOcrProvider.extract({
+    normalizedImage = await normalizeBusinessCardUploadImage({
       imageBase64,
       mimeType: input.scanInput.mimeType,
+    });
+  } catch {
+    return failure(
+      "BUSINESS_CARD_IMAGE_UNSUPPORTED",
+      uploadedProvenance({
+        digest,
+        now: input.now,
+        provider: input.cloudOcrProvider,
+        providerRequested: false,
+      }),
+    );
+  }
+
+  try {
+    const result = await input.cloudOcrProvider.extract({
+      imageBase64: normalizedImage.imageBase64,
+      mimeType: normalizedImage.mimeType,
     });
 
     return success(

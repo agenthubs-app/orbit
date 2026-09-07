@@ -5,6 +5,8 @@ import type { AgentRuntimeService } from "../../../../../features/agent/runtime/
 import { createOrbitAgentRuntimeService } from "../../../../../features/agent/runtime/service-factory";
 import type { OrbitPushAdapter } from "../../../../../features/notifications/push-adapter";
 import { createConfiguredExpoPushAdapter } from "../../../../../features/notifications/push-adapter";
+import type { NotificationDeliveryService } from "../../../../../features/notifications/delivery-service";
+import { createNotificationDeliveryService } from "../../../../../features/notifications/delivery-service";
 import {
   createConfiguredPreEventBriefCandidateCollector,
   type PreEventBriefCandidateCollector,
@@ -27,6 +29,7 @@ export interface AgentSchedulerRouteDependencies {
     mode: ModuleMode,
   ) => PreEventBriefCandidateCollector;
   preferences?: (actorId: string) => Promise<SchedulerPreferences>;
+  deliveryForActor?: (actorId: string) => NotificationDeliveryService;
   push?: () => OrbitPushAdapter | null;
   resolveActorId?: (request: Request) => string | null;
   resolveMode?: () => ModuleMode;
@@ -65,17 +68,13 @@ export function createAgentSchedulerRouteHandler(
       createOrbitAgentRuntimeService(mode, {
         actorId,
       }));
-  const collectorForActor =
-    dependencies.collectorForActor ??
-    ((actorId, mode) =>
-      createConfiguredPreEventBriefCandidateCollector({
-        actorId,
-        mode,
-      }));
   const preferences =
     dependencies.preferences ??
     ((actorId) => createAgentPreferencesService({ actorId }).get());
   const push = dependencies.push ?? createConfiguredExpoPushAdapter;
+  const deliveryForActor =
+    dependencies.deliveryForActor ??
+    ((actorId) => createNotificationDeliveryService({ actorId }));
 
   return async function handleAgentSchedulerRequest(
     request: Request,
@@ -124,11 +123,31 @@ export function createAgentSchedulerRouteHandler(
 
     try {
       const mode = resolveMode();
+      const schedulerPreferences = await preferences(actorId);
+      const collector = dependencies.collectorForActor
+        ? dependencies.collectorForActor(actorId, mode)
+        : createConfiguredPreEventBriefCandidateCollector({
+            actorId,
+            delivery: {
+              async getDeliveryProfile() {
+                return {
+                  // The durable delivery worker still rechecks the user's
+                  // preference and active device. This profile marks the
+                  // server-owned pre-event candidate as eligible; no client
+                  // can inject a costlyMiss flag through the route body.
+                  costlyMiss: true,
+                  pushEnabled: schedulerPreferences.preEventBriefPushEnabled,
+                };
+              },
+            },
+            mode,
+          });
       const scheduler = createAgentWorkflowScheduler({
-        collector: collectorForActor(actorId, mode),
+        collector,
+        delivery: deliveryForActor(actorId),
         runtime: runtimeForActor(actorId, mode),
         push: push(),
-        preferences: await preferences(actorId),
+        preferences: schedulerPreferences,
       });
       const result = await scheduler.tick();
       return NextResponse.json({ data: result }, { status: 200 });

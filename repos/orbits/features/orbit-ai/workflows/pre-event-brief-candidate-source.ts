@@ -8,6 +8,8 @@ import { createConfiguredOrbitIntegrationService } from "../../integrations/serv
 import type { EventRecord } from "../../events/event-crud-and-import/contract";
 import type { EventCrudAndImportService } from "../../events/event-crud-and-import/service";
 import { createEventCrudAndImportService } from "../../events/service-factory";
+import type { PublishedCanonicalEvent } from "../../events/core/contract";
+import { createConfiguredEventCoreService } from "../../events/core/runtime";
 import type { RelationshipNaturalSearchResultItem } from "../../search/contract";
 import type { RelationshipNaturalSearchService } from "../../search/service";
 import { createRelationshipNaturalSearchService } from "../../search/service-factory";
@@ -27,11 +29,17 @@ export interface PreEventBriefCollectionContext {
 export interface PreEventBriefOrbitDataAdapter {
   listEvents: (
     context: PreEventBriefCollectionContext,
-  ) => Promise<readonly EventRecord[]>;
+  ) => Promise<readonly PreEventBriefOrbitEvent[]>;
   listRelationships: (
-    event: EventRecord,
+    event: PreEventBriefOrbitEvent,
     context: PreEventBriefCollectionContext,
   ) => Promise<readonly RelationshipNaturalSearchResultItem[]>;
+}
+
+export interface PreEventBriefOrbitEvent extends EventRecord {
+  canonicalEventRevision?: string;
+  canonicalEventVersion?: number;
+  canonicalTimeZone?: string;
 }
 
 /**
@@ -180,7 +188,7 @@ function personFor(
   };
 }
 
-function externalEventRecord(event: ExternalCalendarEventSummary): EventRecord {
+function externalEventRecord(event: ExternalCalendarEventSummary): PreEventBriefOrbitEvent {
   return {
     id: `external-calendar:${event.providerRecordId}`,
     title: event.title,
@@ -238,11 +246,11 @@ function externalEventRecord(event: ExternalCalendarEventSummary): EventRecord {
 }
 
 function mergeEvents(
-  orbitEvents: readonly EventRecord[],
+  orbitEvents: readonly PreEventBriefOrbitEvent[],
   calendarEvents: readonly ExternalCalendarEventSummary[],
   context: PreEventBriefCollectionContext,
 ): readonly {
-  event: EventRecord;
+  event: PreEventBriefOrbitEvent;
   calendarEvidenceIds: readonly string[];
 }[] {
   const orbit = orbitEvents
@@ -330,6 +338,8 @@ export function createPreEventBriefCandidateCollector(input: {
         );
         candidates.push({
           eventId: event.id,
+          eventRevision: event.canonicalEventRevision,
+          eventVersion: event.canonicalEventVersion,
           title: event.title,
           startsAt: event.startsAt,
           endsAt: validDate(event.endsAt) ? event.endsAt : undefined,
@@ -344,6 +354,7 @@ export function createPreEventBriefCandidateCollector(input: {
           costlyMiss: delivery.costlyMiss,
           pushEnabled: delivery.pushEnabled,
           pushToken: delivery.pushToken,
+          timeZone: event.canonicalTimeZone,
         });
       }
 
@@ -373,6 +384,104 @@ export function createDomainPreEventBriefOrbitAdapter(input: {
   return {
     async listEvents() {
       return successfulEvents(await input.events.listEvents());
+    },
+    async listRelationships(event) {
+      return successfulRelationships(
+        await input.relationships.queryRelationships({
+          query: [event.title, event.relationshipContext]
+            .filter(Boolean)
+            .join(" "),
+          limit: 12,
+        }),
+      );
+    },
+  };
+}
+
+function canonicalEvidenceIds(event: PublishedCanonicalEvent): readonly string[] {
+  const sourcePayload = event.sourcePayload;
+  const evidenceIds =
+    sourcePayload &&
+    typeof sourcePayload === "object" &&
+    !Array.isArray(sourcePayload)
+      ? (sourcePayload as Record<string, unknown>).evidenceIds
+      : undefined;
+  const normalized = Array.isArray(evidenceIds)
+    ? evidenceIds.filter(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0,
+      )
+    : [];
+  return normalized.length > 0
+    ? [...new Set(normalized)]
+    : [`evidence:event-core:${event.eventId}:v${event.eventVersion}`];
+}
+
+function canonicalEventToBriefEvent(
+  event: PublishedCanonicalEvent,
+  generatedAt: string,
+): PreEventBriefOrbitEvent {
+  const evidenceIds = canonicalEvidenceIds(event);
+  const importedAt = new Date(generatedAt).toISOString();
+  const sourceMetadata = {
+    captureMethod: "organizer_feed" as const,
+    calendarSyncRequested: false as const,
+    externalNetworkRequested: false as const,
+    id: `event-core-postgres:${event.eventId}:v${event.eventVersion}`,
+    importedAt,
+    label: "event-core-postgres",
+    liveDatabaseWriteExecuted: false,
+    organizerFeedRequested: false as const,
+    provider: "event-core-postgres",
+    providerRecordId: event.eventId,
+    type: "event_import" as const,
+  };
+  return {
+    aiProviderRequested: false,
+    calendarProviderRequested: false,
+    calendarSyncRequested: false,
+    canonicalEventRevision: `${event.eventVersion}:${event.startsAt}:${event.endsAt}:${event.timezone}`,
+    canonicalEventVersion: event.eventVersion,
+    canonicalTimeZone: event.timezone,
+    description: event.description?.trim() ?? "",
+    emailProviderRequested: false,
+    endsAt: event.endsAt,
+    evidence: evidenceIds.map((evidenceId) => ({
+      capturedAt: importedAt,
+      createdBy: "event-core-postgres",
+      evidenceId,
+      excerpt: event.description?.trim() || `Canonical event ${event.eventId}.`,
+      source: sourceMetadata,
+    })),
+    externalNetworkRequested: false,
+    id: event.eventId,
+    liveDatabaseWriteExecuted: false,
+    nextAction: "Sign in and register before viewing the attendee list.",
+    notificationDelivered: false,
+    organizerFeedRequested: false,
+    recommendedPreparation:
+      "Review the canonical event details and complete the event-scoped registration profile.",
+    relationshipContext: event.description?.trim() || "Published event context.",
+    sourceMetadata,
+    startsAt: event.startsAt,
+    status: "imported",
+    title: event.title,
+    venue: event.venue?.trim() ?? "",
+  };
+}
+
+export function createCanonicalEventCorePreEventBriefOrbitAdapter(input: {
+  eventCore: NonNullable<ReturnType<typeof createConfiguredEventCoreService>>;
+  relationships: RelationshipNaturalSearchService;
+}): PreEventBriefOrbitDataAdapter {
+  return {
+    async listEvents(context) {
+      const published = await input.eventCore.listPublishedEvents(
+        new Date(context.now),
+      );
+      return published
+        .filter((event) => eventInWindow(event.startsAt, context))
+        .map((event) => canonicalEventToBriefEvent(event, context.now));
     },
     async listRelationships(event) {
       return successfulRelationships(
@@ -467,14 +576,30 @@ export function createConfiguredPreEventBriefCandidateCollector(input: {
     mode === "live"
       ? createConfiguredOrbitIntegrationService({ actorId: input.actorId })
       : null;
+  const relationships = createRelationshipNaturalSearchService(mode);
+  const orbit =
+    mode === "live"
+      ? (() => {
+          const eventCore = createConfiguredEventCoreService();
+          if (!eventCore) {
+            throw new Error(
+              "Canonical Event Core is required for live pre-event reminders.",
+            );
+          }
+          return createCanonicalEventCorePreEventBriefOrbitAdapter({
+            eventCore,
+            relationships,
+          });
+        })()
+      : createDomainPreEventBriefOrbitAdapter({
+          events: createEventCrudAndImportService(mode),
+          relationships,
+        });
   return createPreEventBriefCandidateCollector({
     actorId: input.actorId,
     delivery: input.delivery,
     external: createIntegrationPreEventBriefExternalAdapter(integrations),
     now: input.now,
-    orbit: createDomainPreEventBriefOrbitAdapter({
-      events: createEventCrudAndImportService(mode),
-      relationships: createRelationshipNaturalSearchService(mode),
-    }),
+    orbit,
   });
 }

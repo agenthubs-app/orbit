@@ -2,7 +2,7 @@
  * Today route view-model 测试。
  *
  * Today 是操作账本的一个视图：awaiting_confirmation → 需要你决定，
- * executing → ORBIT 已准备，全部终态 → 最近动态。
+ * executing → 已准备的操作，全部终态 → 最近动态。
  * deferred（稍后处理）不在 Today 出现，只在 All actions 可见。
  */
 import assert from "node:assert/strict";
@@ -50,7 +50,7 @@ test("today presents terminal ledger outcomes as recent activity in every langua
     presentTodaySectionTitles(model, "zh").sections.map(
       (section) => section.title,
     ),
-    ["需要你决定", "ORBIT 已准备", "最近动态"],
+    ["需要你决定", "已准备的操作", "最近动态"],
   );
   assert.deepEqual(
     presentTodaySectionTitles(model, "en").sections.map(

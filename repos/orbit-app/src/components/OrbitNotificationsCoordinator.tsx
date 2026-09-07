@@ -11,8 +11,8 @@ import {
 } from "../notifications/notification-model";
 import {
   cancelOrbitManagedNotifications,
+  getReminderNotificationGeneration,
   onReminderPlansChanged,
-  registerNotificationDevice,
   syncReminderNotifications,
 } from "../notifications/native-notifications";
 
@@ -20,10 +20,12 @@ const responseGuard = createNotificationResponseGuard();
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
-    async handleNotification() {
+    async handleNotification(notification) {
+      const deliveryId = notification.request.content.data?.deliveryId;
+      const durableDelivery = typeof deliveryId === "string" && Boolean(deliveryId.trim());
       return {
-        shouldPlaySound: true,
-        shouldSetBadge: false,
+        shouldPlaySound: !durableDelivery,
+        shouldSetBadge: durableDelivery,
         shouldShowBanner: true,
         shouldShowList: true,
       };
@@ -32,30 +34,44 @@ if (Platform.OS !== "web") {
 }
 
 function openNotification(response: Notifications.NotificationResponse): void {
+  const data = response.notification.request.content.data;
+  const deliveryId = typeof data?.deliveryId === "string" ? data.deliveryId.trim() : "";
+  const href = notificationHrefFromDeepLink(data?.deepLink);
+  if (!deliveryId && !href) return;
   const notificationId = response.notification.request.identifier;
   if (!responseGuard.shouldHandle(notificationId, response.actionIdentifier)) return;
-  const href = notificationHrefFromDeepLink(response.notification.request.content.data?.deepLink);
-  if (href) router.push(href as Href);
+  if (deliveryId) {
+    router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
+  } else if (href) {
+    router.push(href as Href);
+  }
 }
 
 export function OrbitNotificationsCoordinator() {
-  const { ready, signedIn } = useOrbitAuthSession();
+  const { notificationSessionRevision, ready, signedIn } = useOrbitAuthSession();
   const client = useOrbitApiClient();
 
-  const synchronize = useCallback(async () => {
+  const synchronize = useCallback(async (generation: number) => {
     if (!ready || !signedIn || Platform.OS !== "ios") return;
-    await syncReminderNotifications(client);
-    await registerNotificationDevice(client);
+    await syncReminderNotifications(client, generation);
   }, [client, ready, signedIn]);
 
   useEffect(() => {
-    if (Platform.OS === "web") return;
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(openNotification);
-    void Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) openNotification(response);
+    if (!ready || !signedIn || Platform.OS === "web") return;
+    let active = true;
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (active) openNotification(response);
     });
-    return () => responseSubscription.remove();
-  }, []);
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (active && response) openNotification(response);
+    }).catch(() => {
+      console.warn("Orbit 无法读取最近的通知入口");
+    });
+    return () => {
+      active = false;
+      responseSubscription.remove();
+    };
+  }, [ready, signedIn]);
 
   useEffect(() => {
     if (ready && !signedIn && Platform.OS === "ios") {
@@ -65,16 +81,20 @@ export function OrbitNotificationsCoordinator() {
 
   useEffect(() => {
     if (!ready || !signedIn || Platform.OS !== "ios") return;
-    void synchronize();
-    const unsubscribe = onReminderPlansChanged(() => void synchronize());
+    const generation = getReminderNotificationGeneration();
+    void synchronize(generation);
+    const unsubscribe = onReminderPlansChanged(() => void synchronize(generation));
     const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void synchronize();
+      if (state === "active") void synchronize(generation);
     });
     return () => {
       unsubscribe();
       appStateSubscription.remove();
+      void cancelOrbitManagedNotifications().catch(() => {
+        console.warn("Orbit 未能清除旧账号的本地提醒");
+      });
     };
-  }, [ready, signedIn, synchronize]);
+  }, [notificationSessionRevision, ready, signedIn, synchronize]);
 
   return null;
 }

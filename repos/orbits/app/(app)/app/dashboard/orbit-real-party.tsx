@@ -223,16 +223,16 @@ function NetworkPerson({
   t: Translate;
 }) {
   return (
-    <article className="orbit-party-network-person card" style={{ minWidth: 0, position: "relative" }}>
+    <article className="orbit-party-network-person card" style={{ isolation: "isolate", minWidth: 0, position: "relative" }}>
       <button
         aria-label={t({ en: `View ${p.name}'s details`, zh: `查看 ${p.name} 的详情` })}
         data-party-person-open={p.id}
         onClick={() => onSelect(p)}
-        style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute", zIndex: 0 }}
+        style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute" }}
         type="button"
       />
-      <span className={`avatar ${p.g} orbit-party-network-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{p.initial}</span>
-      <div className="orbit-party-network-person-body" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>
+      <span className={`avatar ${p.g} orbit-party-network-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: ORBIT_Z.raised }}>{p.initial}</span>
+      <div className="orbit-party-network-person-body" style={{ pointerEvents: "none", position: "relative", zIndex: ORBIT_Z.raised }}>
         <div className="orbit-party-network-person-top">
           <span className="h-section orbit-party-network-person-name">{p.name}</span>
           {p.groupNumber !== null && p.seat ? (
@@ -253,7 +253,7 @@ function NetworkPerson({
             </span>
           ))}
         </div>
-        <div style={{ display: "grid", gap: 8, marginTop: 12, pointerEvents: "auto", position: "relative", zIndex: 2 }}>
+        <div style={{ display: "grid", gap: 8, marginTop: 12, pointerEvents: "auto", position: "relative", zIndex: ORBIT_Z.raised + 1 }}>
           <EventContactRequestControl contactRequestsOpen={contactRequestsOpen} eventId={eventId} person={p} t={t} />
         </div>
       </div>
@@ -727,16 +727,16 @@ function PartyAttendees({ onSelect, t, viewModel }: { onSelect: (person: OrbitPa
           ) : null}
         </div>
         {list.map((person) => (
-          <article className="card orbit-party-attendee-card" key={person.id} style={{ position: "relative" }}>
+          <article className="card orbit-party-attendee-card" key={person.id} style={{ isolation: "isolate", position: "relative" }}>
             <button
               aria-label={t({ en: `View ${person.name}'s details`, zh: `查看 ${person.name} 的详情` })}
               data-party-person-open={person.id}
               onClick={() => onSelect(person)}
-              style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute", zIndex: 0 }}
+              style={{ background: "transparent", border: 0, cursor: "pointer", inset: 0, padding: 0, position: "absolute" }}
               type="button"
             />
-            <span className={`avatar ${person.g} orbit-party-attendee-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{person.initial}</span>
-            <div className="orbit-party-attendee-body" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>
+            <span className={`avatar ${person.g} orbit-party-attendee-avatar`} style={{ pointerEvents: "none", position: "relative", zIndex: ORBIT_Z.raised }}>{person.initial}</span>
+            <div className="orbit-party-attendee-body" style={{ pointerEvents: "none", position: "relative", zIndex: ORBIT_Z.raised }}>
               <div className="orbit-party-attendee-name">{person.name}</div>
               <div className="orbit-party-attendee-meta">
                 {person.company} · {person.title}
@@ -752,9 +752,9 @@ function PartyAttendees({ onSelect, t, viewModel }: { onSelect: (person: OrbitPa
               </div>
             </div>
             {person.seat ? (
-              <span className="chip chip-accent orbit-party-attendee-seat" style={{ pointerEvents: "none", position: "relative", zIndex: 1 }}>{person.seat}</span>
+              <span className="chip chip-accent orbit-party-attendee-seat" style={{ pointerEvents: "none", position: "relative", zIndex: ORBIT_Z.raised }}>{person.seat}</span>
             ) : null}
-            <div style={{ gridColumn: "1 / -1", position: "relative", zIndex: 2 }}>
+            <div style={{ gridColumn: "1 / -1", position: "relative", zIndex: ORBIT_Z.raised + 1 }}>
               <EventContactRequestControl contactRequestsOpen={viewModel.eventPhase !== "upcoming"} eventId={viewModel.eventId} person={person} t={t} />
             </div>
           </article>

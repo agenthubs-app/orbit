@@ -26,6 +26,7 @@ test("PUT preferences remain visible to a later GET request", async () => {
   const updateResponse = await updatePreferences(
     new Request("http://localhost/api/agent/preferences", {
       body: JSON.stringify({
+        followupDuePushEnabled: false,
         quietHours: { start: "22:15", end: "08:00" },
         timeZone: "America/Los_Angeles",
       }),
@@ -43,6 +44,7 @@ test("PUT preferences remain visible to a later GET request", async () => {
     end: "08:00",
   });
   assert.equal(body.data.timeZone, "America/Los_Angeles");
+  assert.equal(body.data.followupDuePushEnabled, false);
 });
 
 test("PUT preferences rejects an invalid IANA time zone", async () => {

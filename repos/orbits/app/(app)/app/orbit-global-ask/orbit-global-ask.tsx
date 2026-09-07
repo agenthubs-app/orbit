@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 import { useOrbitAsk } from "./orbit-ask-context";
-import { allowsOrbitAsk, orbitAskPageContext } from "./orbit-ask-routes";
+import { allowsOrbitAsk, isOrbitAskHome, orbitAskPageContext } from "./orbit-ask-routes";
 import { ORBIT_ASK_STYLES } from "./orbit-global-ask-styles";
 
 /** 提示语轮换间隔。用户已经开始打字就不再打扰。 */
@@ -36,7 +36,14 @@ export function OrbitGlobalAsk() {
 
   // 三道门：没登录、路由不在白名单、没有 provider —— 任何一条不满足都不渲染。
   // 这个组件挂在 /app 的 layout 上，一旦抛错整个产品面都会白屏，所以宁可少显示。
-  const mounted = status === "authenticated" && allowsOrbitAsk(pathname) && Boolean(ask);
+  // /app/agent already owns the full conversation composer. Rendering a second
+  // fixed launcher there duplicates the same action and can cover result text
+  // on narrow screens, so the global entry is reserved for cross-page access.
+  const mounted =
+    status === "authenticated" &&
+    allowsOrbitAsk(pathname) &&
+    !isOrbitAskHome(pathname) &&
+    Boolean(ask);
 
   if (!mounted || !ask) return null;
 
@@ -49,8 +56,8 @@ function OrbitAskDock() {
   const ask = useOrbitAsk();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  // 首屏在 iOrbit 页是默认展开的，这时不该抢焦点（读屏用户会被直接丢进输入框）。
-  // 只有用户自己点开时才聚焦。
+  // 全局提问器始终由用户主动展开，展开后才聚焦；iOrbit 工作台自己的主输入区
+  // 仍按页面阅读顺序获得焦点。
   const openedByUser = useRef(false);
   const hintOrderRef = useRef<string[]>([]);
   const [hint, setHint] = useState("");
@@ -256,7 +263,10 @@ function OrbitAskDock() {
                 <button
                   className="oga-chip"
                   key={chip.label}
-                  onClick={() => send(chip.query)}
+                  onClick={() => {
+                    setDraft?.(chip.query);
+                    window.requestAnimationFrame(() => inputRef.current?.focus());
+                  }}
                   type="button"
                 >
                   {chip.label}

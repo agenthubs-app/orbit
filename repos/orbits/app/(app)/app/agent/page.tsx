@@ -20,6 +20,8 @@ import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-p
 import { OrbitRealAgent } from "./orbit-real-agent";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
+import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
+import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
   lang?: string | string[];
@@ -124,6 +126,32 @@ export default async function AppAgentPage({
     email: session?.user?.email,
     id: actorId,
   });
+  const registrationEventIds =
+    homeModel.state === "success"
+      ? homeModel.home.events.map((event) => event.id)
+      : [];
+  const canonicalEventIdsByRouteId = await resolveConfiguredActorEventCanonicalIds({
+    actorId,
+    eventIds: registrationEventIds,
+  });
+  const canonicalRegistrationStates = await readRuntimeEventRegistrationStates({
+    eventIds: registrationEventIds.map(
+      (routeId) => canonicalEventIdsByRouteId[routeId] ?? routeId,
+    ),
+    userId: actorId,
+  });
+  const registrationStates = Object.fromEntries(
+    registrationEventIds.map((routeId) => {
+      const canonicalId = canonicalEventIdsByRouteId[routeId] ?? routeId;
+      return [
+        routeId,
+        canonicalRegistrationStates[canonicalId] ?? {
+          availability: "unavailable" as const,
+          registered: false,
+        },
+      ];
+    }),
+  );
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -137,12 +165,32 @@ export default async function AppAgentPage({
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
           <OrbitRealAgent
+            registrationAvailabilityByEventId={Object.fromEntries(
+              Object.entries(registrationStates).map(([eventId, state]) => [
+                eventId,
+                state.availability,
+              ]),
+            )}
             home={
               homeModel.state === "success"
                 ? localizeOrbitTree(
                     {
                       ...homeModel.home,
-                      events: presentOrbitEvents(homeModel.home.events, language),
+                      events: presentOrbitEvents(
+                        homeModel.home.events.map((event) => {
+                          const registered =
+                            registrationStates[event.id]?.registered ?? false;
+                          return {
+                            ...event,
+                            stats: {
+                              ...event.stats,
+                              youRsvped: registered,
+                            },
+                            youRsvped: registered,
+                          };
+                        }),
+                        language,
+                      ),
                     },
                     language,
                   )

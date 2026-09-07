@@ -100,9 +100,29 @@ test("orbit records migration can run through an async SQL client", async () => 
   assert.match(client.calls[2]?.text ?? "", /create table event_ops_events/i);
   for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
     const sql = client.calls[index + 2]?.text ?? "";
+    assert.ok(sql.includes(`where version = ${migration.version};`));
     assert.ok(sql.includes(migration.name));
     assert.ok(sql.includes(migration.checksum));
   }
+});
+
+test("migration waits for the current SQL operation and stops on a rejected operation", async () => {
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  const failure = new Error("planned database failure");
+  let calls = 0;
+  const migrating = runOrbitRecordsMigration({
+    async query() {
+      calls += 1;
+      if (calls === 1) await pending;
+      else throw failure;
+    },
+  });
+  await Promise.resolve();
+  assert.equal(calls, 1, "dependent migration SQL cannot run before the base schema finishes");
+  release();
+  await assert.rejects(migrating, (error: unknown) => error === failure);
+  assert.equal(calls, 2, "a failure must prevent later versions from starting");
 });
 
 test("postgres live record store upserts records with parameterized SQL", async () => {

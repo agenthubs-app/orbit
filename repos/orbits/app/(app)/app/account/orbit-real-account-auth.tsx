@@ -62,6 +62,7 @@ export function OrbitRealAccountAuth({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [resetNotice, setResetNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Post-hydration update (legal — it runs after the first paint matches
@@ -91,8 +92,8 @@ export function OrbitRealAccountAuth({
   const message = query.created ? t({ en: "Account created. Please sign in and complete your general profile first.", zh: "账号已创建。请登录后先完成通用档案。" }) : "";
   const primary = isForgot
     ? t({
-        en: "Check reset availability",
-        zh: "检查重置可用性",
+        en: "Request reset link",
+        zh: "申请重置链接",
       })
     : viewModel.primaryLabel;
   const switchHref = isSignup
@@ -100,11 +101,11 @@ export function OrbitRealAccountAuth({
     : `/account/signup?next=${encodeURIComponent(query.next)}`;
 
   // 注册走 /api/auth/register，登录走 NextAuth credentials（auth.ts →
-  // features/auth 校验）。当前部署没有密码重置 provider；必须显式失败，
-  // 不能进入没有邮件、验证码或持久化支撑的假第二步。
+  // features/auth 校验）。恢复申请写入持久化邮件队列，受理不等于已送达。
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setResetNotice("");
     setSubmitting(true);
 
     try {
@@ -136,12 +137,15 @@ export function OrbitRealAccountAuth({
       }
 
       if (isForgot) {
-        setError(
-          t({
-            en: "Password reset is not configured in this deployment. No reset email or code was sent. Return to sign-in or contact the organizer who provided your account.",
-            zh: "当前部署尚未配置密码重置服务，系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。",
-          }),
-        );
+        const response = await fetch("/api/auth/password-reset/request", {
+          method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }),
+        });
+        const payload = await response.json().catch(() => null) as { success?: boolean; error?: { message?: string } } | null;
+        if (!response.ok || !payload?.success) {
+          setError(payload?.error?.message ?? t({ en: "Password recovery is temporarily unavailable. Please try again later.", zh: "密码恢复暂不可用，请稍后重试。" }));
+          return;
+        }
+        setResetNotice(t({ en: "Request accepted. If this email supports password recovery, a reset link will arrive shortly. Check spam or retry after a minute if it does not arrive.", zh: "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接。请检查垃圾邮件；未收到时可在一分钟后重试。" }));
         return;
       }
 
@@ -203,8 +207,8 @@ export function OrbitRealAccountAuth({
             <p>
               {isForgot
                 ? t({
-                    en: "Check whether password reset is available before expecting an email or code.",
-                    zh: "请先检查当前部署是否支持密码重置；在确认可用前，不会发送邮件或验证码。",
+                    en: "Enter your account email to request a password reset link, valid for 30 minutes.",
+                    zh: "输入注册邮箱，申请有效期为 30 分钟的密码重置链接。",
                   })
                 : viewModel.description}
             </p>
@@ -273,6 +277,7 @@ export function OrbitRealAccountAuth({
             ) : null}
 
             {error ? <div className="orbit-alert error" role="alert">{error}</div> : null}
+            {resetNotice ? <div className="orbit-alert notice" role="status">{resetNotice}</div> : null}
             {message ? <div className="orbit-alert notice">{message}</div> : null}
 
             <button aria-busy={submitting || undefined} className={`btn btn-primary btn-block btn-lg${submitting ? " is-loading" : ""}`} disabled={submitting} type="submit">

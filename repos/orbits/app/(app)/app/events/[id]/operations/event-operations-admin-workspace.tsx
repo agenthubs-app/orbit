@@ -455,6 +455,9 @@ export function EventOperationsAdminWorkspace({
               <a className="btn btn-ghost" href={operationsCheckInHref}>
                 <Icon name="check" size={16} />打开签到台
               </a>
+              <a className="btn btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/operations/experience`}>
+                <Icon name="sparkle" size={16} />报名体验
+              </a>
               <a className="btn btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/analytics`}>
                 <Icon name="target" size={16} />查看活动分析
               </a>

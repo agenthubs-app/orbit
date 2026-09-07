@@ -13,7 +13,8 @@ import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets
 import { EventCover } from "../orbit-event-cover";
 import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-event-matchmaking";
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
-import type { EventRegistrationAvailability } from "../../../../../features/events/registration/deadline-gated-service";
+
+import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
@@ -48,6 +49,22 @@ const SAMPLE_MATCHES = [
     why: { en: "Can address the JPY settlement problem mentioned in the profile.", zh: "能解决画像中提到的日元结算问题，双方目标匹配度高。" },
   },
 ] as const;
+
+const EVENT_TAG_COPY: Record<string, { en: string; zh: string }> = {
+  calendar_sync: { en: "Calendar synced", zh: "日历已同步" },
+  confirmed: { en: "Confirmed", zh: "已确认" },
+  "event import": { en: "Event import", zh: "活动导入" },
+  invite_only: { en: "Invite only", zh: "仅限邀请" },
+  live: { en: "In person", zh: "线下活动" },
+  online: { en: "Online", zh: "线上活动" },
+  partners: { en: "Partners", zh: "合作伙伴" },
+  "relationship building": { en: "Relationship building", zh: "关系建立" },
+};
+
+function eventTagLabel(tag: string, t: Translate): string {
+  const copy = EVENT_TAG_COPY[tag.trim().toLowerCase()];
+  return copy ? t(copy) : tag;
+}
 
 function dateLocale(language: OrbitLanguage): string {
   return language === "en" ? "en-US" : "zh-CN";
@@ -175,61 +192,32 @@ function primaryAction(
   flex: CSSProperties["flex"] = "0 0 auto",
 ) {
   const registrationHref = `/app/events/${encodeURIComponent(event.code || event.id)}/register`;
-  if (event.status === "ended") {
-    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t({ en: "Ended", zh: "已结束" })}</ActionButton>;
-  }
   if (registrationStatus === "rsvped") {
+    if (event.status !== "upcoming") {
+      return <ActionButton className="btn is-disabled" disabled style={{ flex }}><Icon name="check" size={17} />{t({ en: "Registered", zh: "已报名" })}</ActionButton>;
+    }
     return (
       <ActionButton className="btn btn-soft" href={registrationHref} style={{ flex }}>
         <Icon name="check" size={17} />{t({ en: "Manage registration", zh: "管理报名" })}
       </ActionButton>
     );
   }
+  if (event.status !== "upcoming") {
+    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t({ en: "Registration closed", zh: "报名已结束" })}</ActionButton>;
+  }
+  if (!eventRegistrationIsOpen(registrationAvailability)) {
+    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t(eventRegistrationLabel(registrationAvailability))}</ActionButton>;
+  }
   if (registrationStatus === "cancelled") {
-    if (registrationAvailability !== "open") {
-      return <RegistrationUnavailableAction availability={registrationAvailability} flex={flex} t={t} />;
-    }
     return (
       <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
         {t({ en: "Register again", zh: "重新报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
       </ActionButton>
     );
   }
-  if (registrationAvailability !== "open") {
-    return <RegistrationUnavailableAction availability={registrationAvailability} flex={flex} t={t} />;
-  }
   return (
     <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
-      {t({ en: "Answer 2 questions & register", zh: "回答 2 题并报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
-    </ActionButton>
-  );
-}
-
-function registrationAvailabilityCopy(
-  availability: Exclude<EventRegistrationAvailability, "open">,
-  t: Translate,
-): string {
-  if (availability === "registration_closed") {
-    return t({ en: "Registration closed", zh: "报名已截止" });
-  }
-  if (availability === "profile_edit_closed") {
-    return t({ en: "Registration profile closed", zh: "报名资料已冻结" });
-  }
-  return t({ en: "Registration unavailable", zh: "报名暂不可用" });
-}
-
-function RegistrationUnavailableAction({
-  availability,
-  flex,
-  t,
-}: {
-  availability: Exclude<EventRegistrationAvailability, "open">;
-  flex: CSSProperties["flex"];
-  t: Translate;
-}) {
-  return (
-    <ActionButton className="btn is-disabled" disabled style={{ flex }}>
-      {registrationAvailabilityCopy(availability, t)}
+      {t({ en: "Register", zh: "报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
     </ActionButton>
   );
 }
@@ -418,14 +406,13 @@ function ProgressStrip({ event, t }: { event: OrbitLandingEventView; t: Translat
 
 function RegistrationPreview({
   event,
-  registrationAvailability,
   t,
 }: {
   event: OrbitLandingEventView;
-  registrationAvailability: EventRegistrationAvailability;
   t: Translate;
 }) {
-  const registrationHref = `/app/events/${encodeURIComponent(event.code || event.id)}/register`;
+  const compactPreview = event.status !== "upcoming";
+  const visibleMatches = compactPreview ? SAMPLE_MATCHES.slice(0, 1) : SAMPLE_MATCHES;
   return (
     <div className="b-hook">
       <p className="hook-lede">
@@ -434,7 +421,7 @@ function RegistrationPreview({
       <div className="hook-grid">
         <div className="glass-dark hook-card">
           <h4>{t({ en: "People matched for you · sample", zh: "为你推荐的人 · 示例" })}</h4>
-          {SAMPLE_MATCHES.map((person, index) => (
+          {visibleMatches.map((person, index) => (
             <div className="mock-person" key={person.name.en}>
               <Avatar g={["g-teal", "g-slate", "g-sand"][index]} letter={person.initial} size={36} />
               <div className="mock-person-copy">
@@ -443,7 +430,7 @@ function RegistrationPreview({
             </div>
           ))}
         </div>
-        <div className="hook-side">
+        {!compactPreview ? <div className="hook-side">
           <div className="glass-dark hook-card">
             <h4>{t({ en: "Your seat · sample", zh: "你的座位 · 示例" })}</h4>
             <div className="hook-seat"><span className="seat-num">{t({ en: "Table 5", zh: "5 桌" })}</span><span className="seat-desc">{t({ en: "Round 2 · table of 6, grouped around market-entry goals", zh: "第 2 轮 · 6 人桌，围绕「市场进入」目标组桌" })}</span></div>
@@ -452,20 +439,9 @@ function RegistrationPreview({
             <h4>{t({ en: "Opener suggestion · sample", zh: "开场白建议 · 示例" })}</h4>
             <p className="hook-open">{t({ en: "“I hear you run overseas warehouses for Japanese sellers — do you have capacity in Kansai?”", zh: "「听说你们在帮日本卖家做海外仓，我们正好在选仓——你们在关西有点位吗？」" })}</p>
           </div>
-        </div>
+        </div> : null}
       </div>
       <div className="hook-foot">
-        {registrationAvailability === "open" ? (
-          <ActionButton className="btn btn-unlock" href={registrationHref}>
-            <Icon name="lock" size={15} />{t({ en: "Register to unlock your real matches", zh: "报名后解锁你的真实匹配" })}
-          </ActionButton>
-        ) : (
-          <RegistrationUnavailableAction
-            availability={registrationAvailability}
-            flex="0 0 auto"
-            t={t}
-          />
-        )}
         <span className="note">{t({ en: "Sample only · real results use your two registration answers", zh: "以上为示例效果，实际内容基于你的两项报名回答生成" })}</span>
       </div>
     </div>
@@ -475,16 +451,16 @@ function RegistrationPreview({
 function EventInfoCard({
   event,
   mini,
-  registrationAvailability,
   registrationStatus,
+  registrationAvailability,
   stage,
   t,
   workspaceAvailable,
 }: {
   event: OrbitLandingEventView;
   mini: { name: string; timeDate: string; timeTime: string; venue: string };
-  registrationAvailability: EventRegistrationAvailability;
   registrationStatus: RegistrationStatus;
+  registrationAvailability: EventRegistrationAvailability;
   stage: JourneyStage;
   t: Translate;
   workspaceAvailable: boolean;
@@ -500,9 +476,11 @@ function EventInfoCard({
     ? { label: t({ en: "Ended", zh: "已结束" }), tone: "badge-muted" }
     : stage === "joined"
       ? { label: t({ en: "Registered", zh: "已报名" }), tone: "badge-success" }
-      : registrationAvailability === "open"
-        ? { label: t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
-        : { label: registrationAvailabilityCopy(registrationAvailability, t), tone: "badge-muted" };
+      : event.status === "upcoming"
+        ? eventRegistrationIsOpen(registrationAvailability)
+          ? { label: t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
+          : { label: t(eventRegistrationLabel(registrationAvailability)), tone: "badge-muted" }
+        : { label: t({ en: "Registration closed", zh: "报名已结束" }), tone: "badge-muted" };
 
   return (
     <section aria-label={t({ en: "Event information", zh: "活动信息" })} className="card cardA">
@@ -534,7 +512,7 @@ function EventInfoCard({
             </div>
             {event.organizer ? <p className="a-sub">Orbit × {event.organizer} {t({ en: "co-hosted", zh: "联合主办" })}</p> : null}
             <div className="a-tags">
-              {event.tags.map((tag) => <span className="a-tag" key={tag}>{tag}</span>)}
+              {event.tags.map((tag) => <span className="a-tag" key={tag}>{eventTagLabel(tag, t)}</span>)}
               {event.cap ? <span className="a-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
             </div>
           </div>
@@ -554,7 +532,7 @@ function EventInfoCard({
           <div className="a-cta-row">
             {primaryAction(event, t, registrationStatus, registrationAvailability)}
             {registrationStatus === "rsvped" ? enterAction(event, t, workspaceAvailable) : null}
-            {stage === "pre" && event.status !== "ended" && registrationAvailability === "open" ? <span className="a-cta-note">{t({ en: "Just 2 questions · your first match direction appears right after", zh: "只需 2 个问题 · 报名后立即看到你的初步匹配方向" })}</span> : null}
+            {stage === "pre" && event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability) ? <span className="a-cta-note">{t({ en: "Just 2 questions · your first match direction appears right after", zh: "只需 2 个问题 · 报名后立即看到你的初步匹配方向" })}</span> : null}
           </div>
           <EventDetailsExtra event={event} t={t} />
           {stage !== "pre" ? (
@@ -578,8 +556,8 @@ function OnsiteCard({
   youRsvped,
 }: {
   event: OrbitLandingEventView;
-  onSummary: (summary: EventMatchmakingSummary | null) => void;
   registrationAvailability: EventRegistrationAvailability;
+  onSummary: (summary: EventMatchmakingSummary | null) => void;
   stage: JourneyStage;
   summary: EventMatchmakingSummary | null;
   t: Translate;
@@ -590,9 +568,9 @@ function OnsiteCard({
   return (
     <section aria-label={t({ en: "On-site", zh: "活动现场" })} className="cardB">
       <div className="b-head">
-        <div className="b-titlewrap"><span className="b-eyebrow">On-site</span><span className="b-title">{t({ en: "Event floor", zh: "活动现场" })}</span></div>
+        <div className="b-titlewrap"><span className="b-eyebrow">{t({ en: "On-site", zh: "现场阶段" })}</span><span className="b-title">{t({ en: "Event floor", zh: "活动现场" })}</span></div>
         {stage === "joined" && event.status === "active" ? <span className="badge-live"><span className="dot" />LIVE · {t({ en: "In progress", zh: "进行中" })}</span> : null}
-        {stage === "pre" ? <span className="ai-chip on-dark"><Icon name="sparkle" size={11} />{t({ en: "AI sample", zh: "AI 示例" })}</span> : null}
+        {stage === "pre" ? <span className="ai-chip on-dark"><Icon name="sparkle" size={11} />{t({ en: "Feature sample", zh: "功能示例" })}</span> : null}
         {stage === "post" && youRsvped ? (
           <button aria-expanded={reviewOpen} className="fold-btn" onClick={() => setReviewOpen((value) => !value)} type="button">
             {t({ en: "Review the event floor", zh: "回顾现场内容" })}<span className="chev"><Icon name="chevD" size={14} /></span>
@@ -600,7 +578,7 @@ function OnsiteCard({
         ) : null}
       </div>
 
-      {stage === "pre" ? <RegistrationPreview event={event} registrationAvailability={registrationAvailability} t={t} /> : null}
+      {stage === "pre" ? <RegistrationPreview event={event} t={t} /> : null}
       {stage === "post" ? (
         <div className="b-ended-bar">
           {youRsvped
@@ -631,7 +609,7 @@ function OnsiteCard({
                 contactRequestsOpen={event.status !== "upcoming"}
                 eventId={event.id}
                 onWorkspaceSummary={onSummary}
-                registrationOpen={event.status !== "ended" && registrationAvailability === "open"}
+                registrationOpen={event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)}
               />
             </div>
           </div>
@@ -645,8 +623,8 @@ function PostEventCard({ event, stage, summary, t, youRsvped }: { event: OrbitLa
   return (
     <section aria-label={t({ en: "Post-event center", zh: "会后中心" })} className="card cardC">
       <div className="c-head">
-        <div className="c-titlewrap"><span className="eyebrow">Post-Event</span><h3 className="h-display c-title">{t({ en: "Post-event center", zh: "会后中心" })}</h3></div>
-        <div className="right"><span className="ai-chip on-light"><Icon name="sparkle" size={11} />{stage === "post" ? t({ en: "Generated by iOrbit", zh: "iOrbit 生成" }) : t({ en: "AI sample", zh: "AI 示例" })}</span></div>
+        <div className="c-titlewrap"><span className="eyebrow">{t({ en: "Post-Event", zh: "会后阶段" })}</span><h3 className="h-display c-title">{t({ en: "Post-event center", zh: "会后中心" })}</h3></div>
+        <div className="right"><span className="ai-chip on-light"><Icon name="sparkle" size={11} />{stage === "post" ? t({ en: "Generated by iOrbit", zh: "iOrbit 生成" }) : t({ en: "Feature sample", zh: "功能示例" })}</span></div>
       </div>
       <div className="c-body">
         {stage === "post" && youRsvped ? (
@@ -674,34 +652,18 @@ function PostEventCard({ event, stage, summary, t, youRsvped }: { event: OrbitLa
   );
 }
 
-function EventDetailPanel({ askAgentHref, event, mini, registrationAvailability, t, workspaceAvailable }: {
+function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, registrationAvailability }: {
   askAgentHref: string;
   event: OrbitLandingEventView;
   mini: { name: string; timeDate: string; timeTime: string; venue: string };
-  registrationAvailability: EventRegistrationAvailability;
   t: Translate;
   workspaceAvailable: boolean;
+  registrationAvailability: EventRegistrationAvailability;
 }) {
-  const [registrationStatus, setRegistrationStatus] = useState<RegistrationStatus>(event.stats.youRsvped ? "rsvped" : null);
+  const registrationStatus: RegistrationStatus = event.stats.youRsvped ? "rsvped" : null;
   const [summary, setSummary] = useState<EventMatchmakingSummary | null>(null);
   const onSummary = useCallback((value: EventMatchmakingSummary | null) => setSummary(value), []);
 
-  useEffect(() => {
-    if (!event.stats.authed) {
-      setRegistrationStatus(null);
-      return;
-    }
-    const controller = new AbortController();
-    void fetch(`/api/events/${encodeURIComponent(event.id)}/registration?questions=false`, { signal: controller.signal })
-      .then(async (response) => {
-        const body = (await response.json()) as { data?: { registration?: { status?: RegistrationStatus } | null }; success?: boolean };
-        if (response.ok && body.success === true) setRegistrationStatus(body.data?.registration?.status ?? null);
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setRegistrationStatus(null);
-      });
-    return () => controller.abort();
-  }, [event.id, event.stats.authed]);
 
   const youRsvped = registrationStatus === "rsvped";
   const stage: JourneyStage = event.status === "ended" ? "post" : youRsvped ? "joined" : "pre";
@@ -709,7 +671,7 @@ function EventDetailPanel({ askAgentHref, event, mini, registrationAvailability,
   return (
     <>
       <EventInfoCard event={event} mini={mini} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} stage={stage} t={t} workspaceAvailable={workspaceAvailable} />
-      <OnsiteCard event={event} onSummary={onSummary} registrationAvailability={registrationAvailability} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
+      <OnsiteCard event={event} registrationAvailability={registrationAvailability} onSummary={onSummary} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <PostEventCard event={event} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
       <div className="orb-dock">
         <a aria-label={t({ en: "Ask iOrbit about this event", zh: "向 iOrbit 询问这场活动" })} className="orb-ball" data-agent-context="event" href={askAgentHref} title={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}>
@@ -720,7 +682,7 @@ function EventDetailPanel({ askAgentHref, event, mini, registrationAvailability,
   );
 }
 
-export function OrbitRealEventDetail({ event, registrationAvailability, workspaceAvailable = false }: { event: OrbitLandingEventView; registrationAvailability: EventRegistrationAvailability; workspaceAvailable?: boolean }) {
+export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable" }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability }) {
   const { t, language } = useOrbitLanguage();
   // The approved journey uses one stable product-green fallback. Real event
   // artwork still wins when supplied; source-less events no longer receive a
@@ -764,9 +726,9 @@ export function OrbitRealEventDetail({ event, registrationAvailability, workspac
                   ? t({ en: "Ended", zh: "已结束" })
                   : initialStage === "joined"
                     ? t({ en: "Registered", zh: "已报名" })
-                    : registrationAvailability === "open"
-                      ? t({ en: "Registration open", zh: "报名中" })
-                      : registrationAvailabilityCopy(registrationAvailability, t)}
+                    : event.status === "upcoming"
+                      ? t(eventRegistrationLabel(registrationAvailability))
+                      : t({ en: "Registration closed", zh: "报名已结束" })}
               </span>
             </EventCover>
             <OrganizerRailCard event={event} t={t} />
@@ -774,7 +736,7 @@ export function OrbitRealEventDetail({ event, registrationAvailability, workspac
           </aside>
 
           <div className="orbit-detail-main">
-            <EventDetailPanel askAgentHref={askAgentHref} event={event} mini={mini} registrationAvailability={registrationAvailability} t={t} workspaceAvailable={workspaceAvailable} />
+            <EventDetailPanel askAgentHref={askAgentHref} event={event} registrationAvailability={registrationAvailability} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>
       </main>

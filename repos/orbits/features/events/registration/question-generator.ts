@@ -3,6 +3,7 @@ import {
   type GeminiOrbitAgentProviderConfig,
 } from "../../orbit-ai/gemini-provider";
 import type { EventRecord } from "../event-crud-and-import/contract";
+import type { EventExperiencePublishedQuestionSet } from "../experience/contract";
 import {
   EVENT_REGISTRATION_QUESTION_INTENTS,
   type EventParticipantProfileField,
@@ -19,6 +20,7 @@ export interface CandidateQuestion {
   options: readonly string[];
   participantProfileField: EventParticipantProfileField;
   prompt: string;
+  required: boolean;
 }
 
 const fieldForIntent = {
@@ -49,6 +51,7 @@ export function candidatesFor(
         options: ["Founders", "Operators", "Investors or partners"],
         participantProfileField: "targetAttendees",
         prompt: `Who would make ${title} especially useful for you to attend?`,
+        required: true,
       },
       {
         id: "value_offered",
@@ -56,6 +59,7 @@ export function candidatesFor(
         options: ["Relevant introductions", "Operating experience", "Feedback or expertise"],
         participantProfileField: "valueOffered",
         prompt: `What could you most usefully offer people you meet at ${title}?`,
+        required: true,
       },
     ];
   }
@@ -67,6 +71,7 @@ export function candidatesFor(
       options: ["创业者", "业务运营者", "投资人或合作伙伴"],
       participantProfileField: "targetAttendees",
       prompt: `在「${title}」中遇见哪类人，会让这次参加对你最有价值？`,
+      required: true,
     },
     {
       id: "value_offered",
@@ -74,6 +79,7 @@ export function candidatesFor(
       options: ["相关引荐", "实操经验", "反馈或专业能力"],
       participantProfileField: "valueOffered",
       prompt: `在「${title}」认识新朋友时，你最适合为对方提供什么？`,
+      required: true,
     },
   ];
 }
@@ -143,7 +149,29 @@ function readQuestion(
     options,
     participantProfileField: candidate.participantProfileField,
     prompt,
-    required: true,
+    required: candidate.required,
+  };
+}
+
+function deterministicQuestionSet(input: {
+  candidates: readonly CandidateQuestion[];
+  fallbackReason: string | null;
+  model: string | null;
+  provider: string | null;
+  requested: boolean;
+}): EventRegistrationQuestionSet {
+  return {
+    provenance: {
+      aiProviderRequested: input.requested,
+      externalNetworkRequested: input.requested,
+      fallbackReason: input.fallbackReason,
+      generationMethod: input.requested
+        ? "deterministic-fallback"
+        : "deterministic-not-requested",
+      model: input.model,
+      provider: input.provider,
+    },
+    questions: input.candidates.map((candidate) => ({ ...candidate })),
   };
 }
 
@@ -182,6 +210,7 @@ function parseModelQuestions(
 
 export async function generateEventRegistrationQuestions(input: {
   event: EventRecord;
+  publishedQuestionSet?: EventExperiencePublishedQuestionSet | null;
   language?: "en" | "zh";
   modelConfig?: GeminiOrbitAgentProviderConfig;
   modelRunner?: EventRegistrationModelRunner;
@@ -201,6 +230,22 @@ export async function generateEventRegistrationQuestions(input: {
   }
 
   const language = input.language === "en" ? "en" : "zh";
+  if (input.publishedQuestionSet) {
+    return {
+      provenance: {
+        aiProviderRequested: false,
+        externalNetworkRequested: false,
+        fallbackReason: null,
+        generationMethod: "deterministic-not-requested",
+        model: null,
+        provider: null,
+      },
+      questionSetHash: input.publishedQuestionSet.hash,
+      questionSetVersion: input.publishedQuestionSet.questionSetVersion,
+      questions: input.publishedQuestionSet.questions,
+      track: input.publishedQuestionSet.track,
+    };
+  }
   const candidates = candidatesFor(input.event, language);
   const modelRunner = input.modelRunner ?? runOrbitAgentModelText;
   const modelResult = await modelRunner({
@@ -254,28 +299,20 @@ export async function generateEventRegistrationQuestions(input: {
       };
     }
 
-    return {
-      provenance: {
-        aiProviderRequested: true,
-        externalNetworkRequested: true,
-        fallbackReason: "MODEL_SCHEMA_INVALID",
-        generationMethod: "orbit-agent-model-failed",
-        model: modelResult.model,
-        provider: modelResult.provider,
-      },
-      questions: [],
-    };
+    return deterministicQuestionSet({
+      candidates,
+      fallbackReason: "MODEL_SCHEMA_INVALID",
+      model: modelResult.model,
+      provider: modelResult.provider,
+      requested: true,
+    });
   }
 
-  return {
-    provenance: {
-      aiProviderRequested: true,
-      externalNetworkRequested: true,
-      fallbackReason: modelResult.error.code,
-      generationMethod: "orbit-agent-model-failed",
-      model: null,
-      provider: modelResult.error.provider,
-    },
-    questions: [],
-  };
+  return deterministicQuestionSet({
+    candidates,
+    fallbackReason: modelResult.error.code,
+    model: null,
+    provider: modelResult.error.provider,
+    requested: true,
+  });
 }

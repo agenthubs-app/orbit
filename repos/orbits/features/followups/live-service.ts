@@ -165,6 +165,10 @@ function connectionForTask(
   return task.connectionId ? connectionsById.get(task.connectionId) ?? null : null;
 }
 
+// 没有任何一条证据带 summary 时，这里曾经返回 "Live task evidence is available for
+// review."，然后被当作跟进卡片的「理由」展示给用户：一句什么都没说明的英文兜底，
+// 比留空更伤——它看起来像有依据，实际什么依据都没给。改成返回空串，由展示层
+// 决定不渲染这一行，宁可少一行也不编一句。
 function evidenceSummary(
   evidenceIds: readonly string[],
   evidenceById: ReadonlyMap<string, RelationshipEvidenceDTO>,
@@ -172,8 +176,7 @@ function evidenceSummary(
   return (
     evidenceIds
       .map((evidenceId) => evidenceById.get(evidenceId)?.summary)
-      .find((summary): summary is string => Boolean(summary?.trim())) ??
-    "Live task evidence is available for review."
+      .find((summary): summary is string => Boolean(summary?.trim())) ?? ""
   );
 }
 
@@ -229,7 +232,8 @@ function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
     contactName: contact?.displayName ?? "未关联联系人",
     organization: contact?.organization ?? "",
     recommendedAction: task.title,
-    rationale: connection?.summary ?? evidenceSummary(task.evidenceIds, evidenceById),
+    rationale:
+      connection?.summary?.trim() || evidenceSummary(task.evidenceIds, evidenceById),
     source,
     evidenceIds: task.evidenceIds,
     generatedBy: "live-store-query",

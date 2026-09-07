@@ -10,8 +10,8 @@ import type {
 interface WindowRow {
   event_id: string;
   profile_edit_deadline_at: Date | string | null;
+  registration_closes_at: Date | string | null;
   registration_migration_state: string;
-  registration_cutoff_at: Date | string | null;
   statement_timestamp: Date | string;
 }
 
@@ -34,16 +34,28 @@ export function createEventOperationsRegistrationWindowProvider(
             event.event_id,
             event.registration_migration_state,
             configuration.profile_edit_deadline_at,
-            configuration.registration_cutoff_at,
+            coalesce(
+              admission_policy.registration_closes_at,
+              configuration.registration_cutoff_at
+            ) as registration_closes_at,
             statement_timestamp() as statement_timestamp
           from event_ops_events event
-          left join event_ops_configuration_heads head
-            on head.workspace_id = event.workspace_id
-            and head.event_id = event.event_id
+          left join event_ops_configuration_heads configuration_head
+            on configuration_head.workspace_id = event.workspace_id
+            and configuration_head.event_id = event.event_id
           left join event_ops_configurations configuration
-            on configuration.workspace_id = head.workspace_id
-            and configuration.event_id = head.event_id
-            and configuration.configuration_version = head.configuration_version
+            on configuration.workspace_id = configuration_head.workspace_id
+            and configuration.event_id = configuration_head.event_id
+            and configuration.configuration_version =
+              configuration_head.configuration_version
+          left join event_ops_admission_policy_heads admission_policy_head
+            on admission_policy_head.workspace_id = event.workspace_id
+            and admission_policy_head.event_id = event.event_id
+          left join event_ops_admission_policy_versions admission_policy
+            on admission_policy.workspace_id = admission_policy_head.workspace_id
+            and admission_policy.event_id = admission_policy_head.event_id
+            and admission_policy.policy_version =
+              admission_policy_head.policy_version
           where event.workspace_id = $1 and event.event_id = $2
           limit 1
         `,
@@ -55,11 +67,12 @@ export function createEventOperationsRegistrationWindowProvider(
         return { state: "legacy_importing" };
       }
       const profileEditDeadlineAt = timestamp(row.profile_edit_deadline_at);
-      const registrationCutoffAt = timestamp(row.registration_cutoff_at);
+      const registrationCutoffAt = timestamp(row.registration_closes_at);
       const statementTimestamp = timestamp(row.statement_timestamp);
       if (
         !profileEditDeadlineAt ||
         !registrationCutoffAt ||
+        Date.parse(profileEditDeadlineAt) > Date.parse(registrationCutoffAt) ||
         !statementTimestamp
       ) {
         return { state: "canonical_misconfigured" };

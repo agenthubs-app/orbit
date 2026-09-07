@@ -53,7 +53,7 @@ export default async function AppAllActionsPage({
               <a className="chip" href="/app/contacts/pipeline">管线</a>
               <a className="chip" href="/app/contacts/graph">图谱</a>
               <a className="chip" href="/app/contacts/intros">引荐</a>
-              <a aria-current="page" className="chip is-active" href="/app/contacts/all-actions">All actions</a>
+              <a aria-current="page" className="chip is-active" href="/app/contacts/all-actions">全部安排</a>
             </nav>
             <OrbitRealAllActions viewModel={localizeOrbitTree(viewModel, language)} />
           </div>

@@ -140,7 +140,7 @@ test("external calendar proposals require provider authorization before reaching
   assert.equal(result.actions[0]?.riskLevel, "external");
   assert.equal(
     result.actions[0]?.operations[0]?.compensation.supported,
-    false,
+    true,
   );
 });
 

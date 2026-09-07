@@ -50,6 +50,53 @@ function aggregate(): EventAnalyticsOrganizerAggregate {
     },
     kind: "organizer_aggregate",
     registrations: { active: 5, cancelled: 1 },
+    roi: {
+      metrics: {
+        attributionCoverage: {
+          declaredCompletedOperations: 2,
+          stronglyAttributedCompletedOperations: 1,
+          rate: { denominator: 2, numerator: 1, value: 0.5 },
+        },
+        checkedInParticipants: 4,
+        completedAttributedAgentOperations: 1,
+        effectiveConnectionPairs: 1,
+        effectiveConnectionParticipants: 2,
+        effectiveConnectionRate: { denominator: 4, numerator: 2, value: 0.5 },
+        mutualConnections: {
+          acceptedRelationshipPairs: 2,
+          distinctConnectedCheckIns: 2,
+          mutuallyCheckedInPairs: 1,
+          participationRate: { denominator: 4, numerator: 2, value: 0.5 },
+        },
+        strongActions: {
+          appointments: 1,
+          followupReminders: 1,
+          humanEncounterNotes: 1,
+          messageDrafts: 1,
+        },
+      },
+      snapshot: {
+        finalizedAt: null,
+        formulaHash: "formula:test",
+        metricVersion: "event-roi-v1",
+        revision: null,
+        sourceWatermark: {
+          appointmentCount: 0,
+          appointmentUpdatedAt: null,
+          checkInCount: 4,
+          checkInRevision: 1,
+          completedAgentReceiptCount: 2,
+          completedAgentReceiptUpdatedAt: null,
+          configurationVersion: 1,
+          membershipCount: 5,
+          membershipRevision: 1,
+          relationshipPairCount: 2,
+          relationshipAcceptedAt: null,
+        },
+        status: "live",
+        windowEndsAt: "2026-08-12T08:00:00.000Z",
+      },
+    },
   };
 }
 
@@ -228,6 +275,16 @@ test("aggregate endpoint allows only analytics principals and allow-lists aggreg
               ...aggregate(),
               internalActorId: OTHER_ACTOR_ID,
               internalProfile: { displayName: "Other attendee secret" },
+              roi: {
+                ...aggregate().roi,
+                snapshot: {
+                  ...aggregate().roi.snapshot,
+                  sourceWatermark: {
+                    ...aggregate().roi.snapshot.sourceWatermark,
+                    internalActorId: OTHER_ACTOR_ID,
+                  },
+                },
+              },
             } as EventAnalyticsOrganizerAggregate,
             onAggregate: (value) => {
               aggregateInput = value;
@@ -252,6 +309,10 @@ test("aggregate endpoint allows only analytics principals and allow-lists aggreg
       assert.equal(serialized.includes("Other attendee secret"), false);
       assert.equal("internalActorId" in body.data, false);
       assert.equal("internalProfile" in body.data, false);
+      assert.equal(
+        "internalActorId" in body.data.roi.snapshot.sourceWatermark,
+        false,
+      );
     });
   }
 });

@@ -111,6 +111,9 @@ test(
         version: String(EVENT_OPERATIONS_SCHEMA_MIGRATIONS.at(-1)!.version),
       });
 
+      assert.deepEqual((await pool.query("select version,name,checksum from event_ops_schema_migrations order by version")).rows,
+        EVENT_OPERATIONS_SCHEMA_MIGRATIONS.map(({ version, name, checksum }) => ({ version, name, checksum })));
+
       await insertRun(pool);
       await insertEvent(pool);
       await insertEvent(pool, {
@@ -130,6 +133,16 @@ test(
         { authority: "canonical_membership", count: "1", deadline_evidence_hash: null },
         { authority: "legacy_registration", count: "1", deadline_evidence_hash: hash("legacy-deadline-evidence") },
       ]);
+      const ledgerBeforeRerun = await Promise.all([
+        pool.query("select * from event_ops_canonical_membership_migration_runs order by migration_run_id"),
+        pool.query("select * from event_ops_canonical_membership_migration_events order by event_id"),
+      ]);
+      await runEventOperationsMigrations(pool);
+      const ledgerAfterRerun = await Promise.all([
+        pool.query("select * from event_ops_canonical_membership_migration_runs order by migration_run_id"),
+        pool.query("select * from event_ops_canonical_membership_migration_events order by event_id"),
+      ]);
+      assert.deepEqual(ledgerAfterRerun.map((result) => result.rows), ledgerBeforeRerun.map((result) => result.rows));
       await assert.rejects(insertRun(pool, { migrationRunId: "canonical-membership-run:same-plan" }));
       await assert.rejects(insertEvent(pool, {
         eventId: "event:orphan", migrationRunId: "canonical-membership-run:missing",
@@ -192,9 +205,11 @@ test(
         (select count(*) from event_ops_canonical_membership_migration_events where migration_run_id='canonical-membership-run:rollback')::text as events`);
       assert.deepEqual(rolledBack.rows[0], { events: "0", runs: "0" });
     } finally {
-      await pool.end();
-      await admin.query(`drop schema if exists ${schema} cascade`);
-      await admin.end();
+      try { await pool.end(); }
+      finally {
+        try { await admin.query(`drop schema if exists ${schema} cascade`); }
+        finally { await admin.end(); }
+      }
     }
   },
 );

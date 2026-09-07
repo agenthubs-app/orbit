@@ -80,6 +80,17 @@ export function openRelationshipInboxCompose(seed: NewThreadSeed): void {
   );
 }
 
+// 只打开面板看线程列表，不进入新建 compose 流程——供「已转入草稿箱」回执类
+// 入口回访已暂存的草稿；复用 compose 事件会重新预填一份新草稿，误导用户。
+export const RELATIONSHIP_INBOX_OPEN_EVENT = "orbit:relationship-inbox-open";
+
+export function openRelationshipInbox(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(RELATIONSHIP_INBOX_OPEN_EVENT));
+}
+
 // 拉取 async correspondence workspace。传 conversationId 选中某条线程。
 // 面板只经这里的 view model 消费数据，不直接依赖 feature 契约的运行时代码。
 async function fetchInboxWorkspace(
@@ -150,12 +161,20 @@ export function hasRenderedComposeTriggerArea(
 
 // 用当前账户的人脉证据生成首封 AI 草稿（subject + body），供发起新对话预填。
 // 这里只生成可编辑草稿；接口不会调用邮件发送方，也不会创建外部副作用。
-export async function generateMessageDraft(input: {
+export type MessageDraftRequestResult =
+  | { success: true; data: { subject: string; body: string } }
+  | { success: false; error: { code: string; message: string } };
+
+export async function requestMessageDraft(input: {
   contactId?: string;
   language: OrbitLanguage;
+  // purpose 是这封草稿要覆盖的具体事项（用户勾选的跟进内容）。路由和
+  // ai-email-draft-service 一直支持这个参数，此前没有调用方传——结果生成的
+  // 信和卡片上列的事项毫无关系。
+  purpose?: string;
   recipientName: string;
   organization: string;
-}): Promise<{ subject: string; body: string } | null> {
+}): Promise<MessageDraftRequestResult> {
   try {
     const response = await fetch("/api/chat/assist/email-draft", {
       method: "POST",
@@ -163,6 +182,7 @@ export async function generateMessageDraft(input: {
       body: JSON.stringify({
         contactId: input.contactId,
         language: input.language,
+        purpose: input.purpose,
         recipientName: input.recipientName,
         organization: input.organization,
       }),
@@ -170,18 +190,50 @@ export async function generateMessageDraft(input: {
     const envelope = (await response.json()) as {
       success?: boolean;
       data?: { subject?: string; body?: string };
+      error?: { code?: string; message?: string };
     };
     if (!response.ok || envelope.success !== true) {
-      return null;
+      return {
+        success: false,
+        error: {
+          code: envelope.error?.code ?? "DRAFT_REQUEST_FAILED",
+          message: envelope.error?.message ?? "The draft request failed.",
+        },
+      };
     }
     const draft = envelope.data;
     if (!draft) {
-      return null;
+      return {
+        success: false,
+        error: {
+          code: "DRAFT_RESPONSE_INVALID",
+          message: "The draft response did not include a reviewable draft.",
+        },
+      };
     }
-    return { subject: draft.subject ?? "", body: draft.body ?? "" };
+    return {
+      success: true,
+      data: { subject: draft.subject ?? "", body: draft.body ?? "" },
+    };
   } catch {
-    return null;
+    return {
+      success: false,
+      error: {
+        code: "DRAFT_REQUEST_FAILED",
+        message: "The draft request could not be completed.",
+      },
+    };
   }
+}
+
+export async function generateMessageDraft(input: {
+  contactId?: string;
+  language: OrbitLanguage;
+  recipientName: string;
+  organization: string;
+}): Promise<{ subject: string; body: string } | null> {
+  const result = await requestMessageDraft(input);
+  return result.success ? result.data : null;
 }
 
 // draft→thread：从确认后的草稿创建一个新的本地 staged 对话线程。
@@ -1443,6 +1495,22 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
     }
     window.addEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);
     return () => window.removeEventListener(RELATIONSHIP_INBOX_COMPOSE_EVENT, onCompose);
+  }, []);
+
+  // 「打开草稿箱」类入口：只开面板到线程列表，不带 compose 种子。
+  useEffect(() => {
+    function onOpen() {
+      if (
+        !triggerRef.current ||
+        !hasRenderedComposeTriggerArea(triggerRef.current)
+      ) {
+        return;
+      }
+      setSeed(null);
+      setOpen(true);
+    }
+    window.addEventListener(RELATIONSHIP_INBOX_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(RELATIONSHIP_INBOX_OPEN_EVENT, onOpen);
   }, []);
 
   const displayCount = count;

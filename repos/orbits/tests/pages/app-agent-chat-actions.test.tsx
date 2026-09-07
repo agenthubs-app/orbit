@@ -346,10 +346,10 @@ test("chat action card exposes the shared action id and canonical Today and ledg
   assert.match(html, /本次 Agent 过程/);
   assert.match(html, /正在同步/);
   assert.match(html, /在 Today 查看/);
-  assert.match(html, /全部操作/);
+  assert.match(html, /全部安排/);
 });
 
-test("Agent chat keeps run and action ids in persisted assistant messages", async () => {
+test("Agent chat persists run ids without rendering internal tracking UI", async () => {
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(
       new URL(
@@ -364,10 +364,9 @@ test("Agent chat keeps run and action ids in persisted assistant messages", asyn
   assert.match(source, /runId\?: string/);
   assert.match(source, /payload\.data\.actionIds/);
   assert.match(source, /evidenceRefsFromArtifacts/);
-  assert.match(source, /data-agent-evidence-sources/);
-  assert.match(source, /<AgentActionStatusCard/);
-  assert.match(source, /onRetryRequest=/);
-  assert.match(source, /agentRetryRequestForAssistant/);
+  assert.doesNotMatch(source, /data-agent-evidence-sources/);
+  assert.match(source, /showRunDetails={false}/);
+  assert.doesNotMatch(source, /data-agent-run-details/);
 });
 
 test("Agent run cancellation uses user-facing request language", async () => {
@@ -402,4 +401,23 @@ test("Agent run transition API exposes cancellation only, not a fake in-place re
   assert.match(source, /body\?\.action !== "cancel"/);
   assert.match(source, /runtime\.cancelRun/);
   assert.doesNotMatch(source, /runtime\.retryRun/);
+});
+
+
+test("product action handoff shows review links without run diagnostics or visible ids", () => {
+  const html = renderToStaticMarkup(
+    <AgentActionStatusCard
+      actionIds={["action:private-internal-id"]}
+      language="zh"
+      navigate={() => undefined}
+      runId="run:private-internal-id"
+      showRunDetails={false}
+    />,
+  );
+  const visibleText = html.replace(/<[^>]*>/g, "");
+  assert.match(visibleText, /本次安排/);
+  assert.match(visibleText, /在 Today 查看/);
+  assert.match(visibleText, /全部安排/);
+  assert.doesNotMatch(visibleText, /private-internal-id|Agent 过程|Agent 进度|确认执行/);
+  assert.doesNotMatch(html, /data-agent-run-step|data-agent-run-status/);
 });

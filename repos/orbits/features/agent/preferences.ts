@@ -7,6 +7,7 @@ export interface AgentPreferences {
   externalCalendarWritesEnabled: boolean;
   postEventReminderPushEnabled: boolean;
   preEventBriefPushEnabled: boolean;
+  followupDuePushEnabled: boolean;
   quietHours: {
     start: string;
     end: string;
@@ -25,6 +26,7 @@ export interface AgentPreferencesService {
         | "externalCalendarWritesEnabled"
         | "postEventReminderPushEnabled"
         | "preEventBriefPushEnabled"
+        | "followupDuePushEnabled"
         | "quietHours"
         | "timeZone"
       >
@@ -37,6 +39,7 @@ const DEFAULT_PREFERENCES: AgentPreferences = {
   externalCalendarWritesEnabled: false,
   postEventReminderPushEnabled: true,
   preEventBriefPushEnabled: true,
+  followupDuePushEnabled: true,
   quietHours: { start: "22:00", end: "08:00" },
   timeZone: "Asia/Tokyo",
   updatedAt: "2026-07-25T00:00:00.000Z",
@@ -114,6 +117,8 @@ export function createStorageAgentPreferencesService(input: {
         preEventBriefPushEnabled:
           patch.preEventBriefPushEnabled ??
           existing.preEventBriefPushEnabled,
+        followupDuePushEnabled:
+          patch.followupDuePushEnabled ?? existing.followupDuePushEnabled,
         quietHours: patch.quietHours ?? existing.quietHours,
         timeZone: patch.timeZone ?? existing.timeZone,
         updatedAt,

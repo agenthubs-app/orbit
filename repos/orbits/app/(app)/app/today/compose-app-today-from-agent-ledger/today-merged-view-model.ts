@@ -1,36 +1,12 @@
 /**
  * Today × 日程 合并页 route view-model。
  *
- * 三个来源并行加载（账本 / 关系安排 / 跟进日程），任一失败只降级对应区块，
- * 不拖垮整页——每个 section 的 loader 各自包一层 try/catch，再一起
- * `Promise.all`，这样一次意外抛错不会让另外两个区块也失败。
- *
- * 同时负责把 ?date= / ?view= 解析进日历状态，并把关系安排里"已确认"的活动
- * 合流进时间轴（design doc §2 左栏时间轴合流），以及给右栏"可复核安排"算出
- * 哪些卡片和选中日期无关、需要淡化（design doc §7.2：只降不透明度，不隐藏）。
+ * 两个权威来源并行加载：操作账本，以及真实日程（actor-owned confirmed
+ * appointments + user-approved Orbit Schedule events）。联系人状态、跟进建议和
+ * 活动库存都不是日程，不参与这个页面的日历或标题计数。
  */
+import type { OrbitScheduleViewModel } from "../../orbit-schedule-route-view-model";
 import {
-  loadAppFollowupsRouteViewModel,
-  type AppFollowupsRouteControls,
-  type AppFollowupsRouteScenario,
-  type AppFollowupsRouteStateViewModel,
-  type AppFollowupsRouteViewModel,
-} from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-route-view-model";
-import { followupsRouteToOrbitScheduleViewModel } from "../../followups/compose-app-followups-from-previously-approved-mock-first-capabilities/followups-view-model-adapter";
-import type {
-  OrbitScheduleConnectionView,
-  OrbitScheduleItemView,
-  OrbitScheduleViewModel,
-} from "../../orbit-schedule-route-view-model";
-import {
-  loadAppScheduleRouteViewModel,
-  type AppScheduleRouteControls,
-  type AppScheduleArrangementViewModel,
-  type AppScheduleRouteStateViewModel,
-  type AppScheduleRouteViewModel,
-} from "../../schedule/schedule-route-view-model";
-import {
-  eventsOn,
   firstDayWithMeetings,
   type CalendarView,
 } from "../orbit-today-time-spine-helpers";
@@ -41,6 +17,10 @@ import {
   type AppTodaySearchParams,
 } from "./today-route-view-model";
 import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
+import {
+  emptyTodayAppointmentSchedule,
+  loadConfiguredTodaySchedule,
+} from "./today-appointment-schedule";
 
 export type AppTodayMergedSearchParams = AppTodaySearchParams & {
   date?: string | string[];
@@ -53,33 +33,38 @@ export interface AppTodayMergedCalendarState {
 }
 
 export interface AppTodayMergedViewModel {
+  /** One summary derived from the actionable rows actually rendered on Today. */
+  attention: {
+    decisionCount: number;
+    pendingScheduleCount: number;
+    total: number;
+  };
   calendar: AppTodayMergedCalendarState;
-  /** ids of arrangement cards unrelated to the selected date — dim, don't hide. */
-  dimmedArrangementIds: ReadonlySet<string>;
-  followups: AppFollowupsRouteViewModel;
-  schedule: AppScheduleRouteViewModel;
-  /** merged left-column feed: followups meetings + confirmed arrangement events. null when the followups source failed to load. */
+  /** Confirmed persisted appointments + explicitly approved Orbit Schedule events. */
   timeSpine: OrbitScheduleViewModel | null;
+  timeSpineError: {
+    description: string;
+    guardrail: string;
+    recoveryActions: readonly { href: string; label: string }[];
+    title: string;
+  } | null;
   today: AppTodayRouteViewModel;
 }
 
 export interface AppTodayMergedRouteControls {
-  followups?: AppFollowupsRouteControls;
-  schedule?: AppScheduleRouteControls;
+  appointments?: { scenario?: "failure" };
   today?: AppTodayRouteControls;
 }
 
 export interface AppTodayMergedLoaders {
-  loadFollowups: () => Promise<AppFollowupsRouteViewModel>;
-  loadSchedule: () => Promise<AppScheduleRouteViewModel>;
+  loadTimeSpine: () => Promise<OrbitScheduleViewModel>;
   loadToday: (
     searchParams?: AppTodaySearchParams,
   ) => Promise<AppTodayRouteViewModel>;
 }
 
 const defaultLoaders: AppTodayMergedLoaders = {
-  loadFollowups: loadAppFollowupsRouteViewModel,
-  loadSchedule: loadAppScheduleRouteViewModel,
+  loadTimeSpine: async () => emptyTodayAppointmentSchedule(),
   loadToday: loadAppTodayRouteViewModel,
 };
 
@@ -90,14 +75,12 @@ export function createAppTodayMergedLoaders(
 ): AppTodayMergedLoaders {
   return {
     ...defaultLoaders,
-    loadFollowups: () =>
-      loadAppFollowupsRouteViewModel(
-        controls.followups,
-        undefined,
-        actorId,
-      ),
-    loadSchedule: () =>
-      loadAppScheduleRouteViewModel(controls.schedule, undefined, actorId),
+    loadTimeSpine: () => {
+      if (controls.appointments?.scenario === "failure") {
+        throw new Error("appointment source unavailable");
+      }
+      return loadConfiguredTodaySchedule(actorId);
+    },
     loadToday: (searchParams) =>
       loadAppTodayRouteViewModel(
         searchParams,
@@ -164,6 +147,7 @@ function parseViewParam(
 function todayLoadFailureViewModel(message: string): AppTodayRouteViewModel {
   return {
     decideCount: 0,
+    hiddenDecisionCount: 0,
     errorCode: "TODAY_SECTION_LOAD_FAILED",
     evidenceIds: [],
     failureMessage: message,
@@ -171,46 +155,6 @@ function todayLoadFailureViewModel(message: string): AppTodayRouteViewModel {
     selectedEntry: null,
     state: "failure",
   };
-}
-
-function scheduleLoadFailureViewModel(message: string): AppScheduleRouteViewModel {
-  const routeState: AppScheduleRouteStateViewModel = {
-    copy: {
-      description: message,
-      eyebrow: "日程安排",
-      guardrail: "加载失败期间，Orbit 不会写入日历、提醒、消息或外部系统。",
-      nextStep: "重新加载今天的工作台，或稍后再试。",
-      title: "可复核安排暂时无法加载",
-    },
-    errorCode: "SCHEDULE_SECTION_LOAD_FAILED",
-    evidenceIds: [],
-    recoveryActions: [{ href: "/app/today", label: "重新加载" }],
-    scenario: "failure",
-  };
-
-  return { routeState, state: "route-state" };
-}
-
-function followupsLoadFailureViewModel(
-  message: string,
-): AppFollowupsRouteViewModel {
-  const scenario: AppFollowupsRouteScenario = "failure";
-  const routeState: AppFollowupsRouteStateViewModel = {
-    copy: {
-      description: message,
-      emptyState: "时间脊柱暂时没有可显示的约见。",
-      guardrail: "加载失败期间，Orbit 不会写入日历、提醒、消息或外部系统。",
-      nextStep: "重新加载今天的工作台，或稍后再试。",
-      purpose: "来源不可用时，仍显示可见的恢复入口。",
-      title: "时间脊柱暂时无法加载",
-    },
-    errorCode: "FOLLOWUPS_SECTION_LOAD_FAILED",
-    evidenceIds: [],
-    recoveryActions: [{ href: "/app/today", label: "重新加载" }],
-    scenario,
-  };
-
-  return { routeState, state: "route-state" };
 }
 
 async function loadTodaySection(
@@ -224,165 +168,44 @@ async function loadTodaySection(
   }
 }
 
-async function loadScheduleSection(
-  loadSchedule: AppTodayMergedLoaders["loadSchedule"],
-): Promise<AppScheduleRouteViewModel> {
+async function loadTimeSpineSection(
+  loadTimeSpine: AppTodayMergedLoaders["loadTimeSpine"],
+): Promise<{
+  error: AppTodayMergedViewModel["timeSpineError"];
+  viewModel: OrbitScheduleViewModel | null;
+}> {
   try {
-    return await loadSchedule();
+    return { error: null, viewModel: await loadTimeSpine() };
   } catch (error) {
-    return scheduleLoadFailureViewModel(errorMessage(error));
+    return {
+      error: {
+        description: errorMessage(error),
+        guardrail: "来源不可用期间，Orbit 不会把跟进任务、提醒或 AI 建议冒充为日程。",
+        recoveryActions: [{ href: "/app/today", label: "重新加载" }],
+        title: "真实约谈暂时无法加载",
+      },
+      viewModel: null,
+    };
   }
 }
 
-async function loadFollowupsSection(
-  loadFollowups: AppTodayMergedLoaders["loadFollowups"],
-): Promise<AppFollowupsRouteViewModel> {
-  try {
-    return await loadFollowups();
-  } catch (error) {
-    return followupsLoadFailureViewModel(errorMessage(error));
-  }
-}
-
-// ---- timeline merge: confirmed arrangement *events* become extra timeline
-// entries, rendered by the exact same SchedRow card as a meeting. Contact
-// arrangements stay right-column only (design doc §2). ----
-
-function eventArrangementDateTime(
-  timing: string,
-): { date: string; durationMinutes: number | null; time: string } | null {
-  const match = timing.match(
-    /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/,
-  );
-
-  if (!match) return null;
-
-  const [, y, m, d, startH, startMin, endH, endMin] = match;
-  const start = Number(startH) * 60 + Number(startMin);
-  const end = Number(endH) * 60 + Number(endMin);
-
-  return {
-    date: `${y}-${pad2(Number(m))}-${pad2(Number(d))}`,
-    durationMinutes: end >= start ? end - start : null,
-    time: `${pad2(Number(startH))}:${startMin}`,
-  };
-}
-
-function durationLabel(minutes: number | null): string {
-  if (minutes == null) return "时长待定";
-  if (minutes % 60 === 0) return `${minutes / 60} 小时`;
-  return `${minutes} 分钟`;
-}
-
-function confirmedEventTimelineItems(
-  arrangements: readonly AppScheduleArrangementViewModel[],
-): { connections: OrbitScheduleConnectionView[]; items: OrbitScheduleItemView[] } {
-  const connections: OrbitScheduleConnectionView[] = [];
-  const items: OrbitScheduleItemView[] = [];
-
-  for (const arrangement of arrangements) {
-    if (arrangement.target.kind !== "event") continue;
-    if (!/已确认|confirmed/i.test(arrangement.statusLabel)) continue;
-
-    const parsed = eventArrangementDateTime(arrangement.timing);
-    if (!parsed) continue;
-
-    const connectionId = `arrangement:${arrangement.id}`;
-    connections.push({
-      company: "关系安排",
-      displayName: arrangement.primaryName,
-      g: "g-amber",
-      id: connectionId,
-      initial: arrangement.primaryName.trim().slice(0, 1) || "活",
-      title: "已确认活动",
-    });
-    items.push({
-      cid: connectionId,
-      contactId: null,
-      date: parsed.date,
-      detailHref: arrangement.href,
-      dur: durationLabel(parsed.durationMinutes),
-      id: arrangement.id,
-      place: arrangement.secondaryName.replace(/^地点：/, ""),
-      status: "已确认",
-      time: parsed.time,
-      topic: arrangement.primaryName,
-    });
-  }
-
-  return { connections, items };
-}
-
-function mergeTimeSpine(
-  followupsSchedule: OrbitScheduleViewModel,
-  scheduleRoute: AppScheduleRouteViewModel,
-): OrbitScheduleViewModel {
-  if (scheduleRoute.state !== "success") return followupsSchedule;
-
-  const { connections: eventConnections, items: eventItems } =
-    confirmedEventTimelineItems(scheduleRoute.arrangements);
-
-  if (eventItems.length === 0) return followupsSchedule;
-
-  return {
-    connections: [...followupsSchedule.connections, ...eventConnections],
-    schedules: [...followupsSchedule.schedules, ...eventItems],
-    today: followupsSchedule.today,
-  };
-}
-
-// ---- filter-dim: arrangement cards unrelated to the selected date get
-// opacity .45 in the right column. Decision cards have no date attribute
-// and are never touched by this rule (design doc §7.2, decided 2026-07-25). ----
-
-function contactArrangementDateKey(
-  arrangement: AppScheduleArrangementViewModel,
-  todayKey: string,
-): string | null {
-  const label = arrangement.timing.replace(/^跟进时机：/, "");
-
-  if (label === "今天") return todayKey;
-  if (label === "明天") return addDaysToDateKey(todayKey, 1);
-
-  const withinDays = label.match(/^(\d+)\s*天内$/);
-  if (withinDays) return addDaysToDateKey(todayKey, Number(withinDays[1]));
-
-  return null;
-}
-
-function addDaysToDateKey(key: string, days: number): string {
-  const [y, m, d] = key.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + days);
-
-  return dateKeyFromParts({ d: date.getDate(), m: date.getMonth(), y: date.getFullYear() });
-}
-
-function arrangementRelatedDateKey(
-  arrangement: AppScheduleArrangementViewModel,
-  todayKey: string,
-): string | null {
-  if (arrangement.target.kind === "event") {
-    return eventArrangementDateTime(arrangement.timing)?.date ?? null;
-  }
-
-  return contactArrangementDateKey(arrangement, todayKey);
-}
-
-function computeDimmedArrangementIds(
-  scheduleRoute: AppScheduleRouteViewModel,
+function attentionSummary(
+  today: AppTodayRouteViewModel,
+  timeSpine: OrbitScheduleViewModel | null,
   selectedDateKey: string,
-  todayKey: string,
-): ReadonlySet<string> {
-  if (scheduleRoute.state !== "success") return new Set();
+): AppTodayMergedViewModel["attention"] {
+  const decisionCount = today.state === "failure" ? 0 : today.decideCount;
+  const pendingScheduleCount =
+    timeSpine?.schedules.filter(
+      (schedule) =>
+        schedule.date === selectedDateKey && schedule.status === "待确认",
+    ).length ?? 0;
 
-  const dimmed = new Set<string>();
-  for (const arrangement of scheduleRoute.arrangements) {
-    const relatedDate = arrangementRelatedDateKey(arrangement, todayKey);
-    if (relatedDate && relatedDate !== selectedDateKey) dimmed.add(arrangement.id);
-  }
-
-  return dimmed;
+  return {
+    decisionCount,
+    pendingScheduleCount,
+    total: decisionCount + pendingScheduleCount,
+  };
 }
 
 export async function loadAppTodayMergedViewModel(
@@ -393,18 +216,11 @@ export async function loadAppTodayMergedViewModel(
   const todaySearchParams = requestedEntry
     ? { entry: requestedEntry }
     : undefined;
-  const [today, schedule, followups] = await Promise.all([
+  const [today, timeSpineSection] = await Promise.all([
     loadTodaySection(todaySearchParams, loaders.loadToday),
-    loadScheduleSection(loaders.loadSchedule),
-    loadFollowupsSection(loaders.loadFollowups),
+    loadTimeSpineSection(loaders.loadTimeSpine),
   ]);
-
-  const followupsSchedule =
-    followups.state === "success"
-      ? followupsRouteToOrbitScheduleViewModel(followups)
-      : null;
-  const timeSpine =
-    followupsSchedule && mergeTimeSpine(followupsSchedule, schedule);
+  const timeSpine = timeSpineSection.viewModel;
 
   const now = new Date();
   const todayKey = dateKeyFromParts({ d: now.getDate(), m: now.getMonth(), y: now.getFullYear() });
@@ -416,17 +232,10 @@ export async function loadAppTodayMergedViewModel(
     selected.d != null ? dateKeyFromParts({ d: selected.d, m: selected.m, y: selected.y }) : todayKey;
 
   return {
+    attention: attentionSummary(today, timeSpine, selectedDateKey),
     calendar: { selected, view: parseViewParam(searchParams) },
-    dimmedArrangementIds: computeDimmedArrangementIds(schedule, selectedDateKey, todayKey),
-    followups,
-    schedule,
     timeSpine,
+    timeSpineError: timeSpineSection.error,
     today,
   };
 }
-
-// Exported for the timeline-merge & VM tests — pure, no I/O.
-export const __internal = {
-  eventArrangementDateTime,
-  eventsOn,
-};

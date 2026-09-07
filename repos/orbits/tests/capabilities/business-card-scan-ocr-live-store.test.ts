@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { createBusinessCardScanHandler } from "../../app/api/contact-drafts/business-card/scan/handler";
@@ -253,6 +255,65 @@ test("uploaded business card scan rejects unsupported images before calling OCR"
   assert.equal(result.success, false);
   assert.equal(result.error.code, "BUSINESS_CARD_IMAGE_UNSUPPORTED");
   assert.equal(providerCalled, false);
+});
+
+test("HEIC uploads are transcoded for the provider while evidence digests the original bytes", async () => {
+  const heicBytes = await readFile(
+    new URL("../fixtures/business-card-tiny.heic", import.meta.url),
+  );
+  const extractCalls: { imageBase64: string; mimeType: string }[] = [];
+  const service = createLiveBusinessCardScanOcrService({
+    cloudOcrProvider: {
+      model: "deepseek-v4-flash-vision-exp+deepseek-v4-flash",
+      providerName: "deepseek-chat-completions",
+      async extract(input) {
+        extractCalls.push(input);
+
+        return {
+          extraction: {
+            addresses: [],
+            certifications: [],
+            contactPoints: [],
+            departments: [],
+            detectedLanguages: ["ja"],
+            emails: [{ label: "Email", value: "person@example.com" }],
+            fullName: "青空 太郎",
+            nativeFullName: "青空 太郎",
+            organization: "架空技研株式会社",
+            romanizedFullName: null,
+            title: "室長",
+            website: null,
+          },
+          usage: {
+            inputTokens: 1300,
+            latencyMs: 40,
+            outputTokens: 330,
+          },
+        };
+      },
+    },
+    now: () => NOW,
+    provider: null,
+  });
+
+  const result = await service.scanBusinessCard({
+    actorId: ACTOR_ID,
+    imageBase64: heicBytes.toString("base64"),
+    imageName: "IMG_0001.heic",
+    imageSizeBytes: heicBytes.byteLength,
+    mimeType: "image/heic",
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(extractCalls.length, 1);
+  assert.equal(extractCalls[0]?.mimeType, "image/jpeg");
+  assert.notEqual(extractCalls[0]?.imageBase64, heicBytes.toString("base64"));
+  assert.equal(
+    result.data.capture.imageDigest,
+    `sha256:${createHash("sha256").update(heicBytes).digest("hex")}`,
+  );
+  assert.equal(result.data.capture.imageMimeType, "image/heic");
+  assert.equal(result.data.draft?.contactWriteExecuted, false);
 });
 
 test("uploaded business card scan rejects images larger than ten MiB", async () => {

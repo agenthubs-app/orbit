@@ -15,12 +15,12 @@ import {
   orbitAskPageContext,
 } from "../../app/(app)/app/orbit-global-ask/orbit-ask-routes";
 
-test("iOrbit 工作台自身被识别为 home（决定默认展开）", () => {
+test("iOrbit 工作台自身仍被识别为提问落点 home", () => {
   assert.equal(isOrbitAskHome(ORBIT_ASK_HOME), true);
   assert.equal(isOrbitAskHome("/app/agent/"), true);
   assert.equal(isOrbitAskHome("/app/agent?lang=en"), true);
   assert.equal(isOrbitAskHome("/app/events"), false);
-  // 子路由不是工作台首页，进去应该是收起的。
+  // 子路由不是工作台首页，不应被识别为跨页提问的 home 落点。
   assert.equal(isOrbitAskHome("/app/agent/settings"), false);
 });
 

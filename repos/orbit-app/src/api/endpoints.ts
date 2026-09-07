@@ -33,6 +33,7 @@ export const ORBIT_API_ENDPOINTS = {
   agentActions: "/api/agent/actions",
   agentSignals: "/api/agent/signals",
   agentLedger: "/api/agent/ledger",
+  agentPreferences: "/api/agent/preferences",
   agentSettings: "/api/agent/settings",
   connections: "/api/connections",
   contacts: "/api/contacts",
@@ -56,6 +57,7 @@ export const ORBIT_API_ENDPOINTS = {
   devicePushToken: "/api/devices/push-token",
   notificationPreferences: "/api/notification-preferences",
   notifications: "/api/notifications",
+  pushTokens: "/api/devices/push-tokens",
   permissions: "/api/permissions",
   calendarPermissionRequest: "/api/permissions/calendar/request",
   reminderGeneration: "/api/notifications/reminders/generate",
@@ -153,6 +155,14 @@ export function taskSuggestionSnoozePath(id: string): string {
 
 export function agentActionAcceptPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.agentActions, id)}/accept`;
+}
+
+export function pushTokenPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.pushTokens, id);
+}
+
+export function notificationDeliveryPath(id: string): string {
+  return `${ORBIT_API_ENDPOINTS.notifications}/deliveries/${encodeURIComponent(id)}`;
 }
 
 export function agentActionDismissPath(id: string): string {

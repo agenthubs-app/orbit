@@ -104,10 +104,43 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(agentSource, /opener: item\.body/);
   assert.match(agentSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentPeopleRow/);
-  assert.match(agentSource, /navigate\(`\/home\/cards\/\$\{connection\.id\}`\)/);
-  assert.match(agentSource, /<AgentEvidenceSources/);
-  assert.match(agentSource, /onKeyDown=\{toggleAgentEvidenceSourcesFromKeyboard\}/);
-  assert.match(agentSource, /details\.open = !details\.open/);
+  assert.match(agentSource, /navigate\(`\/app\/contacts\/\$\{connection\.id\}`\)/);
+  assert.match(agentSource, /requestMessageDraft/);
+  assert.match(agentSource, /data-agent-inline-draft-error-code/);
+  assert.match(agentSource, /data-agent-inline-draft/);
+  assert.match(agentSource, /生成跟进草稿/);
+  assert.match(agentSource, /panel\.items\.slice\(0, initialLimit\)/);
+  assert.match(agentSource, /data-agent-recommendations-toggle/);
+  const peopleRowSource = agentSource.slice(
+    agentSource.indexOf("function AgentPeopleRow"),
+    agentSource.indexOf("function AgentEventRow"),
+  );
+  // c0835aff 收内部诊断时把 reason 和 opener 一起挡了，但两者性质不同：
+  // reason 是 whyThisPerson（面向用户的「为什么是这个人」），必须展示，否则卡片
+  // 没有任何依据；opener 是「证据片段：来源标签：原文」的原始拼接，属于 DESIGN.md
+  // 里不对普通用户展示的内部产物，继续挡住。
+  assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
+  assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
+  assert.doesNotMatch(agentSource, /查看完整处理过程/);
+  assert.doesNotMatch(agentSource, /data-agent-run-details/);
+  assert.doesNotMatch(agentSource, /AgentEvidenceSources/);
+});
+
+test("contact artifact mapping preserves actor-scoped contact ids", async () => {
+  const { contactIdFromArtifactItemId } = await importProjectModule<{
+    contactIdFromArtifactItemId: (value: unknown) => string;
+  }>("app/(app)/app/agent/orbit-real-agent.tsx");
+
+  assert.equal(
+    contactIdFromArtifactItemId(
+      "contact-recommendation:iorbit-qa:contact_042",
+    ),
+    "iorbit-qa:contact_042",
+  );
+  assert.equal(
+    contactIdFromArtifactItemId("contact-recommendation:contact_001"),
+    "contact_001",
+  );
 });
 
 test("/app/agent makes contact and event discovery explicit before submission", () => {

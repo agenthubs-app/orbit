@@ -316,3 +316,100 @@ test("Gemini business card provider times out hung requests", async () => {
       error.code === "PROVIDER_TIMEOUT",
   );
 });
+
+test("review flags an organization that lost its legal suffix present in the transcript", () => {
+  const issues = reviewIssuesForBusinessCard(
+    extraction({ organization: "架空産業" }),
+    { transcript: "架空産業株式会社\n未来 花子\n代表取締役社長" },
+  );
+
+  assert.ok(issues.some((issue) => issue.code === "ORG_SUFFIX_MISSING"));
+});
+
+test("review stays quiet when the structured organization keeps its suffix", () => {
+  const issues = reviewIssuesForBusinessCard(
+    extraction({ organization: "架空産業株式会社" }),
+    { transcript: "架空産業株式会社\n未来 花子" },
+  );
+
+  assert.ok(!issues.some((issue) => issue.code === "ORG_SUFFIX_MISSING"));
+});
+
+test("review flags an email that the character-level verification pass read differently", () => {
+  const issues = reviewIssuesForBusinessCard(
+    extraction({ emails: [{ label: null, value: "m-watanabe@example.test" }] }),
+    {
+      verification: {
+        emails: ["r-watanabe@example.test"],
+        organizations: [],
+        phones: [],
+      },
+    },
+  );
+
+  assert.ok(
+    issues.some(
+      (issue) => issue.code === "VERIFICATION_MISMATCH" && issue.field === "emails",
+    ),
+  );
+});
+
+test("review accepts an email confirmed by the verification pass and skips absent verification", () => {
+  const base = extraction({ emails: [{ label: null, value: "m-watanabe@example.test" }] });
+
+  const confirmed = reviewIssuesForBusinessCard(base, {
+    verification: {
+      emails: [" M-Watanabe@Example.Test "],
+      organizations: [],
+      phones: [],
+    },
+  });
+  assert.ok(!confirmed.some((issue) => issue.code === "VERIFICATION_MISMATCH"));
+
+  // 校验遍失败/缺席时不产生 mismatch——格式检查仍然兜底，但不能凭空标红。
+  const withoutVerification = reviewIssuesForBusinessCard(base, {});
+  assert.ok(!withoutVerification.some((issue) => issue.code === "VERIFICATION_MISMATCH"));
+});
+
+test("review flags a phone number the verification pass read differently by digits", () => {
+  const issues = reviewIssuesForBusinessCard(
+    extraction({
+      contactPoints: [
+        { label: null, type: "mobile", value: "090-1234-5678" },
+        { label: null, type: "wechat", value: "hanako_wx" },
+      ],
+    }),
+    {
+      verification: {
+        emails: [],
+        organizations: [],
+        phones: ["090-1234-5679"],
+      },
+    },
+  );
+
+  assert.ok(
+    issues.some(
+      (issue) => issue.code === "VERIFICATION_MISMATCH" && issue.field === "contactPoints",
+    ),
+  );
+});
+
+test("messenger contact points survive normalization and skip phone validation", () => {
+  const normalized = normalizeBusinessCardExtraction(
+    extraction({
+      contactPoints: [{ label: " WeChat ", type: "wechat", value: " hanako_wx " }],
+    }),
+  );
+  assert.deepEqual(normalized.contactPoints, [
+    { label: "WeChat", type: "wechat", value: "hanako_wx" },
+  ]);
+
+  // 微信号不是电话号码，不能被 INVALID_PHONE 误伤。
+  const issues = reviewIssuesForBusinessCard(
+    extraction({
+      contactPoints: [{ label: null, type: "wechat", value: "hanako_wx" }],
+    }),
+  );
+  assert.ok(!issues.some((issue) => issue.code === "INVALID_PHONE"));
+});

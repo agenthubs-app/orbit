@@ -7,7 +7,14 @@ import { createConfiguredEventOperationsPostgresRuntime } from "../../features/e
 import { loadLocalEnv } from "../../scripts/load-local-env";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
 
-export function useRegistrationCatalogueFixture(): void {
+export function useRegistrationCatalogueFixture(
+  additionalPublishedEvents: readonly {
+    id: string;
+    code: string;
+    title: string;
+    venue: string;
+  }[] = [],
+): void {
   let admin: Pool | undefined;
   let pool: Pool | undefined;
   let schema: string | undefined;
@@ -58,23 +65,28 @@ export function useRegistrationCatalogueFixture(): void {
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
     for (const event of [
-      { id: "event_signup_01", code: "EVTSIGNUP01", title: "关西跨境商务对接会", start: now + 30 * day, state: "published" },
-      { id: "event_01", code: "EVTENDED01", title: "Ended registration fixture", start: now - 30 * day, state: "published" },
-      { id: "event_001", code: "EVTDRAFT01", title: "Unpublished registration fixture", start: now + 30 * day, state: "draft" },
+      { id: "event_signup_01", code: "EVTSIGNUP01", title: "关西跨境商务对接会", venue: "大阪", start: now + 30 * day, state: "published" },
+      { id: "event_01", code: "EVTENDED01", title: "Ended registration fixture", venue: "大阪", start: now - 30 * day, state: "published" },
+      { id: "event_001", code: "EVTDRAFT01", title: "Unpublished registration fixture", venue: "大阪", start: now + 30 * day, state: "draft" },
+      ...additionalPublishedEvents.map((event) => ({
+        ...event,
+        start: now + 30 * day,
+        state: "published",
+      })),
     ]) {
       const startsAt = new Date(event.start).toISOString();
       const endsAt = new Date(event.start + 2 * 60 * 60 * 1000).toISOString();
-      const values = [workspaceId, event.id, event.code, event.title, startsAt, endsAt, event.state];
+      const values = [workspaceId, event.id, event.code, event.title, startsAt, endsAt, event.state, event.venue];
       await pool.query(`insert into event_ops_events (
         workspace_id,event_id,organizer_actor_id,created_at,updated_at,public_code,
         title,description,venue,timezone,starts_at,ends_at,lifecycle_state_v2,source_payload,event_version
       ) values ($1,$2,'organizer:registration-test',now(),now(),$3,$4,
-        'Independent registration test event','大阪','Asia/Tokyo',$5,$6,$7,'{}',1)`, values);
+        'Independent registration test event',$8,'Asia/Tokyo',$5,$6,$7,'{}',1)`, values);
       await pool.query(`insert into event_event_versions (
         workspace_id,event_id,event_version,public_code,title,description,venue,timezone,
         starts_at,ends_at,lifecycle_state_v2,source_payload,organizer_actor_id,content_hash,created_at
-      ) values ($1,$2,1,$3,$4,'Independent registration test event','大阪','Asia/Tokyo',
-        $5,$6,$7,'{}','organizer:registration-test',$8,now())`,
+      ) values ($1,$2,1,$3,$4,'Independent registration test event',$8,'Asia/Tokyo',
+        $5,$6,$7,'{}','organizer:registration-test',$9,now())`,
       [...values, createHash("sha256").update(JSON.stringify(values)).digest("hex")]);
       await pool.query(`insert into event_aliases (workspace_id,normalized_alias,alias_value,alias_type,event_id)
         values ($1,lower($2),$2,'public_code',$3), ($1,lower($3),$3,'event_id',$3)`,

@@ -100,16 +100,17 @@ test("client account auth normalizes the hydrated next query with the shared aut
   );
 });
 
-test("forgot password fails honestly when no reset provider is configured", () => {
+test("forgot password submits a recovery request and announces acceptance separately from delivery", () => {
   const accountAuthSource = source(
     "app/(app)/app/account/orbit-real-account-auth.tsx",
   );
 
   assert.match(
     accountAuthSource,
-    /Password reset is not configured in this deployment\./,
+    /\/api\/auth\/password-reset\/request/,
   );
-  assert.match(accountAuthSource, /No reset email or code was sent\./);
+  assert.match(accountAuthSource, /Request accepted\./);
+  assert.match(accountAuthSource, /role="status"/);
   assert.match(accountAuthSource, /role="alert"/);
   assert.doesNotMatch(accountAuthSource, /setForgotStep/);
   assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);

@@ -145,6 +145,12 @@ export interface OrbitAgentArtifactGeneratedViewItem {
   metadata: readonly OrbitAgentArtifactGeneratedViewMetadata[];
   actions: readonly OrbitAgentArtifactGeneratedViewAction[];
   evidenceIds: readonly string[];
+  // 可选的机器可读字段（纯增量，旧消费方可忽略）。metadata 里的同类信息是
+  // 本地化后的展示串，客户端没法可靠还原：Due 是「已逾期 N 天 · 7月29日（周三）」
+  // 这类文字，分组/排序/相对时间都需要原始值。
+  contactId?: string;
+  dueAt?: string;
+  triggerKind?: string;
 }
 
 export interface OrbitAgentArtifactGeneratedViewSection {

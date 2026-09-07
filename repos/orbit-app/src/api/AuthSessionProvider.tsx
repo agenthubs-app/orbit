@@ -30,7 +30,9 @@ import {
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
 import { createOrbitApiClient } from "./client";
-import { revokeNotificationDevice } from "../notifications/native-notifications";
+import { cancelOrbitManagedNotifications, revokeNotificationDevice } from "../notifications/native-notifications";
+import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
+import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 
 interface AuthActionResult {
   message?: string;
@@ -52,6 +54,7 @@ interface SignInInput {
 interface AuthSessionContextValue {
   cookieHeader: string;
   googleEnabled: boolean;
+  notificationSessionRevision: number;
   providers: readonly "google"[];
   ready: boolean;
   register: (input: RegisterInput) => Promise<AuthActionResult>;
@@ -81,6 +84,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const [providers, setProviders] = useState<readonly "google"[]>([]);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<MobileAuthUser | null>(null);
+  const [notificationSessionRevision, setNotificationSessionRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -156,6 +160,19 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     };
   }, [baseUrl, baseUrlReady]);
 
+  const clearNotificationSession = useCallback(async (): Promise<boolean> => {
+    const client = createOrbitApiClient({ authCookieHeader: cookieHeader, baseUrl });
+    const results = await Promise.allSettled([
+      revokePushDeviceRegistrations([
+        () => revokeNotificationDevice(client),
+        () => revokeRegisteredPushDevice({ baseUrl, cookieHeader }),
+      ], { endSession: true }),
+      cancelOrbitManagedNotifications(),
+    ]);
+    return results[0].status === "fulfilled" && results[0].value
+      && results[1].status === "fulfilled";
+  }, [baseUrl, cookieHeader]);
+
   const acceptSession = useCallback(
     async (session: MobileAuthSession): Promise<AuthActionResult> => {
       const validation = await validateAuthSession({
@@ -176,6 +193,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         try {
           if (user && user.id !== validation.data.user.id) {
             await clearSnapshots();
+            if (!(await clearNotificationSession())) {
+              console.warn("Orbit 旧账号通知清理未完全确认，继续切换账号；服务端可能仍保留设备注册");
+            }
           }
           await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
         } catch {
@@ -190,7 +210,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       setUser(validation.data.user);
       return { success: true };
     },
-    [baseUrl, user]
+    [baseUrl, clearNotificationSession, user]
   );
 
   const signIn = useCallback(
@@ -281,14 +301,13 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
     if (user !== null) {
-      const client = createOrbitApiClient({ authCookieHeader: cookieHeader, baseUrl });
-      const revoked = await revokeNotificationDevice(client).catch(() => false);
-      if (!revoked) {
-        console.warn("Orbit 无法在登出前解绑这台设备的推送令牌");
+      if (!(await clearNotificationSession())) {
+        console.warn("Orbit 通知清理未完全确认，继续注销；服务端可能仍保留设备注册");
       }
       const result = await signOutOrbitSession({ baseUrl, cookieHeader });
 
       if (!result.success) {
+        setNotificationSessionRevision((revision) => revision + 1);
         return { message: result.error.message, success: false };
       }
     }
@@ -309,7 +328,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setCookieHeader("");
     setUser(null);
     return { success: true };
-  }, [baseUrl, cookieHeader, user]);
+  }, [baseUrl, clearNotificationSession, cookieHeader, user]);
 
   // 任何一次请求收到 401，都说明这台设备上保存的会话已经失效。
   //
@@ -339,6 +358,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     () => ({
       cookieHeader,
       googleEnabled: providers.includes("google"),
+      notificationSessionRevision,
       providers,
       ready,
       register,
@@ -352,6 +372,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }),
     [
       cookieHeader,
+      notificationSessionRevision,
       providers,
       ready,
       register,

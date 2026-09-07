@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,13 +12,13 @@ import { createEventOperationsPostgresClient } from "../../features/events/event
 import { withCanonicalMembershipMigrationSnapshot } from "../../features/events/registration/canonical-migration/snapshot-runner";
 import { buildProfileContractRepairPlan } from "../../features/events/registration/profile-contract-repair/planner";
 import { readProfileContractRepairSource } from "../../features/events/registration/profile-contract-repair/source-reader";
+import { stableProfileRepairValue } from "../../features/events/registration/profile-contract-repair/contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { seedProfileRepairFixture } from "../support/profile-repair-fixture";
 
 loadLocalEnv();
 const connectionString = process.env.ORBIT_EVENT_DATABASE_URL;
-const workspaceId = process.env.ORBIT_WORKSPACE_ID;
 
 function command(args: readonly string[], env: NodeJS.ProcessEnv) {
   return spawnSync("npm", ["--silent", "run", "events:repair-profile-contract", "--", ...args], {
@@ -33,8 +33,9 @@ function schemaUrl(value: string, schema: string): string {
 }
 
 async function createTemporaryFixture() {
-  assert.ok(connectionString && workspaceId);
+  assert.ok(connectionString);
   const schema = `profile_repair_operator_cli_${randomUUID().replaceAll("-", "")}`;
+  const workspaceId = `workspace:${schema}`;
   const admin = new Pool({ connectionString, max: 1 });
   const scopedUrl = schemaUrl(connectionString, schema);
   const pool = new Pool({ connectionString: scopedUrl, max: 2 });
@@ -51,6 +52,22 @@ async function createTemporaryFixture() {
     await runEventOperationsMigrations(client);
     await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
     await seedProfileRepairFixture(pool, workspaceId);
+    // Keep the missing-answer-object defect alongside the reusable fixture's whitespace cases.
+    const missingAnswers = (await pool.query<{
+      event_id: string; participant_id: string; profile_version: number;
+      profile_payload: { participant: { profileAnswers?: Record<string, string> } };
+    }>(`select event_id,participant_id,profile_version,profile_payload from event_ops_profile_versions
+        where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId])).rows[0];
+    assert.ok(missingAnswers);
+    const payload = structuredClone(missingAnswers.profile_payload);
+    delete payload.participant.profileAnswers;
+    await pool.query(`update event_ops_profile_versions set profile_payload=$5,profile_hash=$6
+      where workspace_id=$1 and event_id=$2 and participant_id=$3 and profile_version=$4`,
+    [workspaceId, missingAnswers.event_id, missingAnswers.participant_id, missingAnswers.profile_version,
+      JSON.stringify(payload), createHash("sha256").update(JSON.stringify(stableProfileRepairValue(payload))).digest("hex")]);
+    await pool.query(`insert into orbit_records (workspace_id,collection_name,record_id,source_type,
+      source_id,payload,created_at,updated_at) values ($1,'unrelated-fixture','sentinel','manual',
+      'synthetic-cli-test','{"preserve":true}',now(),now())`, [workspaceId]);
     const admission = (await pool.query<{ actor_id: string; event_id: string; membership_version: number; registered_at: Date }>(
       `select event_id,actor_id,membership_version,registered_at from event_ops_membership_versions
         where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId],
@@ -96,6 +113,7 @@ async function createTemporaryFixture() {
       pool,
       schema,
       scopedUrl,
+      workspaceId,
       close,
     };
   } catch (error) {
@@ -105,12 +123,12 @@ async function createTemporaryFixture() {
 }
 
 test("isolated CLI dry run is read-only and does not disclose operator inputs", {
-  skip: connectionString && workspaceId ? false : "ORBIT_EVENT_DATABASE_URL/ORBIT_WORKSPACE_ID is not configured",
+  skip: connectionString ? false : "ORBIT_EVENT_DATABASE_URL is not configured",
   timeout: 120_000,
 }, async (t) => {
   const fixture = await createTemporaryFixture();
   t.after(fixture.close);
-  const { pool, scopedUrl: connectionString } = fixture;
+  const { pool, scopedUrl: connectionString, workspaceId } = fixture;
   const directory = await mkdtemp(join(tmpdir(), "profile-repair-cli-main-"));
   try {
     const before = await pool.query<{ version: string; legacy: string }>(
@@ -148,16 +166,18 @@ test("isolated CLI dry run is read-only and does not disclose operator inputs", 
 });
 
 test("temporary-schema CLI applies only the reviewed 24-target manifest without leaking operator inputs", {
-  skip: connectionString && workspaceId ? false : "ORBIT_EVENT_DATABASE_URL/ORBIT_WORKSPACE_ID is not configured",
+  skip: connectionString ? false : "ORBIT_EVENT_DATABASE_URL is not configured",
   timeout: 120_000,
-}, async () => {
+}, async (t) => {
   const fixture = await createTemporaryFixture();
+  t.after(fixture.close);
+  const workspaceId = fixture.workspaceId;
   const directory = await mkdtemp(join(tmpdir(), "profile-repair-cli-postgres-"));
   const outputs: string[] = [];
   const invoke = (args: readonly string[]) => {
     const result = command(args, {
       ...process.env,
-      ORBIT_EVENT_DATABASE_URL: connectionString,
+      ORBIT_EVENT_DATABASE_URL: fixture.scopedUrl,
       ORBIT_WORKSPACE_ID: workspaceId,
       PGOPTIONS: `-c search_path=${fixture.schema}`,
     });
@@ -190,6 +210,10 @@ test("temporary-schema CLI applies only the reviewed 24-target manifest without 
     const events = fixture.plan.events.map((event) => event.eventId);
     await writeManifest(events);
     const dryArgs = ["--dry-run", "--workspace-id", workspaceId!, "--scope-manifest", manifest] as const;
+    const noOpProfilesQuery = `select coalesce(jsonb_agg(to_jsonb(profile) order by profile.event_id), '[]'::jsonb) as value
+      from event_ops_profile_versions profile where actor_id like '%:12'`;
+    const noOpProfilesBefore = (await fixture.pool.query(noOpProfilesQuery)).rows[0]?.value;
+    assert.equal(noOpProfilesBefore.length, 2, "each event retains one already-valid control profile");
     const before = await stableSnapshot();
     const dry = invoke(dryArgs);
     assert.equal(dry.status, 0, dry.stderr);
@@ -250,6 +274,10 @@ test("temporary-schema CLI applies only the reviewed 24-target manifest without 
     assert.equal(output<{ status: string }>(replay).status, "already_applied");
     assert.notEqual(invoke(applyArgs("repair:duplicate-plan", 24, refreshed.planHash)).status, 0);
     assert.deepEqual(await counts(), { items: "24", runs: "1" });
+    assert.deepEqual((await fixture.pool.query(noOpProfilesQuery)).rows[0]?.value, noOpProfilesBefore,
+      "already-valid profiles must not receive new versions or payload changes");
+    assert.equal(Number((await fixture.pool.query("select count(*) as count from event_ops_profile_versions")).rows[0]?.count), 50,
+      "26 original profiles plus exactly 24 repaired versions");
     const legacyAfter = await fixture.pool.query(`select coalesce(jsonb_agg(to_jsonb(item) order by to_jsonb(item)::text), '[]'::jsonb) as value from orbit_records item`);
     const legacyBefore = JSON.parse(before) as Array<{ table: string; value: unknown }>;
     assert.deepEqual(legacyAfter.rows[0]?.value, legacyBefore.find((row) => row.table === "orbit_records")?.value);
@@ -265,11 +293,10 @@ test("temporary-schema CLI applies only the reviewed 24-target manifest without 
     assert.ok(answerFragment.length > 0, "fixture must provide a real answer fragment to redact");
     const cliText = outputs.join("\n");
     for (const [name, secret] of [
-      ["connection string", connectionString!], ["manifest path", manifest], ["actor", actorId],
+      ["connection string", connectionString!], ["scoped connection string", fixture.scopedUrl], ["manifest path", manifest], ["actor", actorId],
       ["participant", participantId], ["answer fragment", answerFragment],
     ] as const) assert.ok(!cliText.includes(secret), `${name} leaked from CLI output`);
   } finally {
-    await fixture.close();
     await rm(directory, { force: true, recursive: true });
   }
 });

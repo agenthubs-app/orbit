@@ -77,6 +77,13 @@ test(
   async (context) => {
     assert.ok(databaseUrl);
     const { pool, connectionString } = await createCanonicalMembershipV11Fixture(context, databaseUrl);
+    const migrationsBefore = (await pool.query("select * from event_ops_schema_migrations order by version")).rows;
+    assert.equal(migrationsBefore.length, 11);
+    assert.equal(migrationsBefore.at(-1)?.version, 11);
+    const tablesBefore = (await pool.query<{ tablename: string }>(
+      "select tablename from pg_tables where schemaname=current_schema() order by tablename",
+    )).rows;
+    assert.equal(tablesBefore.some((row) => row.tablename.startsWith("event_ops_canonical_membership_migration_")), false);
     const before = await pool.query(
       `select coalesce(max(version),0)::text as version
          from event_ops_schema_migrations`,
@@ -106,5 +113,7 @@ test(
       ).rows[0],
       before.rows[0],
     );
+    assert.deepEqual((await pool.query("select * from event_ops_schema_migrations order by version")).rows, migrationsBefore);
+    assert.deepEqual((await pool.query("select tablename from pg_tables where schemaname=current_schema() order by tablename")).rows, tablesBefore);
   },
 );

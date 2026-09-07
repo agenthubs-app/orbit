@@ -84,7 +84,7 @@ export function OrbitTodayDecisionPanelBody({
           padding: "12px 14px",
         }}
       >
-        消息只保存为草稿，不会自动发送；已执行的操作可在「操作记录」里撤销。
+        消息只保存为草稿，不会自动发送；已执行的操作可在「全部安排」里撤销。
       </p>
 
       {editable ? (

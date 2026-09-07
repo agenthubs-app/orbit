@@ -12,6 +12,18 @@ import { notificationPermissionFromNative } from "./notification-model";
 import { syncLocalReminderNotifications, type LocalNotificationAdapter } from "./notification-sync";
 
 const DEVICE_ID_KEY = "orbit.notifications.device-id.v1";
+let pendingReminderOperation: Promise<unknown> = Promise.resolve();
+let reminderGeneration = 0;
+
+export function getReminderNotificationGeneration(): number {
+  return reminderGeneration;
+}
+
+function enqueueReminderOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const pending = pendingReminderOperation.then(operation);
+  pendingReminderOperation = pending.catch(() => undefined);
+  return pending;
+}
 
 function nativePermission(status: Notifications.NotificationPermissionsStatus) {
   return {
@@ -63,27 +75,34 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 export async function syncReminderNotifications(
   client: OrbitApiClient,
+  generation = reminderGeneration,
 ): Promise<{ cancelled: number; permission: NotificationPermission; scheduled: number } | null> {
   if (Platform.OS !== "ios") return null;
-  const result = await client.get<{ reminders: ReminderPlanContract[] }>(remindersPath());
-  if (!result.success) return null;
-  return syncLocalReminderNotifications({
-    adapter: expoLocalNotificationAdapter,
-    now: new Date().toISOString(),
-    plans: result.data.reminders,
+  return enqueueReminderOperation(async () => {
+    if (generation !== reminderGeneration) return null;
+    const result = await client.get<{ reminders: ReminderPlanContract[] }>(remindersPath());
+    if (generation !== reminderGeneration || !result.success) return null;
+    return syncLocalReminderNotifications({
+      adapter: expoLocalNotificationAdapter,
+      now: new Date().toISOString(),
+      plans: result.data.reminders,
+    });
   });
 }
 
 export async function cancelOrbitManagedNotifications(): Promise<number> {
   if (Platform.OS !== "ios") return 0;
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  const orbitManaged = scheduled.filter(
-    (item) => typeof item.content.data?.orbitReminderPlanId === "string",
-  );
-  for (const item of orbitManaged) {
-    await Notifications.cancelScheduledNotificationAsync(item.identifier);
-  }
-  return orbitManaged.length;
+  reminderGeneration++;
+  return enqueueReminderOperation(async () => {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const orbitManaged = scheduled.filter(
+      (item) => typeof item.content.data?.orbitReminderPlanId === "string",
+    );
+    for (const item of orbitManaged) {
+      await Notifications.cancelScheduledNotificationAsync(item.identifier);
+    }
+    return orbitManaged.length;
+  });
 }
 
 function projectId(): string | null {

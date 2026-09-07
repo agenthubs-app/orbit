@@ -3,6 +3,17 @@
 Orbit keeps account identity, browser sessions, and mobile session delivery in
 one authentication boundary:
 
+Password recovery now uses a durable, encrypted mail queue on the canonical user
+record. `password-reset-service.ts` owns request and one-time redemption;
+`password-reset-store.ts` atomically replaces the password and consumes the
+token. Auth.js checks `passwordChangedAt` against the original authentication
+time on subsequent session reads, including the cookies issued to mobile.
+SMTP configuration follows party-app; a Resend adapter is also available.
+Vercel uses `after()` for immediate dispatch and a secret-protected worker route
+for scheduled retries. Deployment and external acceptance requirements are in
+`docs/operations/password-recovery.md`; passing local tests does not establish
+mailbox receipt or scheduler operation.
+
 - `auth_users` is the canonical account collection. Both credentials and
   Google sign-in resolve to the same user record, and users with the same
   verified email are not forked into separate accounts.

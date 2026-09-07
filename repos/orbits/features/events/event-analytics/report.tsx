@@ -95,6 +95,18 @@ function OrganizerAggregate({ value }: { value: EventAnalyticsOrganizerAggregate
     value.appointments.completed,
     appointmentTotal,
   );
+  const mutualConnectionParticipationRate = explainedRate(
+    value.roi.metrics.mutualConnections.participationRate.numerator,
+    value.roi.metrics.mutualConnections.participationRate.denominator,
+  );
+  const attributionCoverageRate = explainedRate(
+    value.roi.metrics.attributionCoverage.rate.numerator,
+    value.roi.metrics.attributionCoverage.rate.denominator,
+  );
+  const effectiveConnectionRate = explainedRate(
+    value.roi.metrics.effectiveConnectionRate.numerator,
+    value.roi.metrics.effectiveConnectionRate.denominator,
+  );
   return (
     <div data-event-analytics-kind="organizer_aggregate" style={{ display: "grid", gap: 12 }}>
       <Section title="活动聚合分析">
@@ -132,6 +144,59 @@ function OrganizerAggregate({ value }: { value: EventAnalyticsOrganizerAggregate
           <RateMetric label="签到率" value={attendanceRate.value} detail={attendanceRate.detail} />
           <RateMetric label="联系同意率" value={contactAcceptanceRate.value} detail={contactAcceptanceRate.detail} />
           <RateMetric label="完成约谈率" value={appointmentCompletionRate.value} detail={appointmentCompletionRate.detail} />
+        </div>
+      </Section>
+      <Section title="双向连接与后续行动">
+        <div style={{ color: "var(--text-3)", fontSize: 12 }}>
+          双向连接参与仅统计已接受关系中双方均签到的参会者；后续行动仅统计完成账本中带完整强 eventOrigin 的操作，不按标题或联系人反推活动。
+        </div>
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(152px, 1fr))" }}>
+          <Metric
+            label="已接受双向关系"
+            value={value.roi.metrics.mutualConnections.acceptedRelationshipPairs}
+          />
+          <Metric
+            label="双方均签到关系"
+            value={value.roi.metrics.mutualConnections.mutuallyCheckedInPairs}
+          />
+          <Metric
+            label="强归因完成行动"
+            value={value.roi.metrics.completedAttributedAgentOperations}
+          />
+          <Metric
+            label="有效连接关系"
+            value={value.roi.metrics.effectiveConnectionPairs}
+          />
+          <Metric
+            label="有效连接参与者"
+            value={value.roi.metrics.effectiveConnectionParticipants}
+          />
+          <RateMetric
+            label="双向连接参与率"
+            value={mutualConnectionParticipationRate.value}
+            detail={mutualConnectionParticipationRate.detail}
+          />
+          <RateMetric
+            label="行动归因覆盖率"
+            value={attributionCoverageRate.value}
+            detail={attributionCoverageRate.detail}
+          />
+          <RateMetric
+            label="有效连接率"
+            value={effectiveConnectionRate.value}
+            detail={effectiveConnectionRate.detail}
+          />
+        </div>
+        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(152px, 1fr))" }}>
+          <Metric label="强行动·交流记录" value={value.roi.metrics.strongActions.humanEncounterNotes} />
+          <Metric label="强行动·消息草稿" value={value.roi.metrics.strongActions.messageDrafts} />
+          <Metric label="强行动·跟进提醒" value={value.roi.metrics.strongActions.followupReminders} />
+          <Metric label="强行动·非取消约谈" value={value.roi.metrics.strongActions.appointments} />
+        </div>
+        <div style={{ color: "var(--text-3)", fontSize: 12 }}>
+          ROI 窗口截止：{new Date(value.roi.snapshot.windowEndsAt).toLocaleString()} · {value.roi.snapshot.status === "finalized"
+            ? `不可变快照 revision ${value.roi.snapshot.revision}`
+            : "当前为实时值，活动结束 7 天后才可固化"}
         </div>
       </Section>
       <Section title="约谈进展">

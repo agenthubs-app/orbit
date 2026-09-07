@@ -23,7 +23,10 @@ type SqlRow = Record<string, unknown>;
 
 interface ProfilePayload {
   participant: EventOperationsParticipant;
-  registrationProfile?: Pick<EventParticipantProfile, "answers">;
+  registrationProfile?: Pick<
+    EventParticipantProfile,
+    "answers" | "questionSetHash" | "questionSetVersion"
+  >;
 }
 
 function clone<TValue>(value: TValue): TValue {
@@ -281,6 +284,12 @@ export async function readFrozenGenerationSnapshot(input: {
       ),
       participantId,
       profileVersion: positiveInteger(row.profile_version, "profile_version"),
+      ...(payload.registrationProfile?.questionSetHash
+        ? { questionSetHash: payload.registrationProfile.questionSetHash }
+        : {}),
+      ...(payload.registrationProfile?.questionSetVersion
+        ? { questionSetVersion: payload.registrationProfile.questionSetVersion }
+        : {}),
     });
   }
   return {

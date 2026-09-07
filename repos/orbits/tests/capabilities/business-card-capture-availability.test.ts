@@ -48,6 +48,22 @@ test("business card capture availability reports missing durable contact storage
   assert.equal(result.contactStorageConfigured, false);
 });
 
+test("business card capture is ready with only a DeepSeek key in live mode", () => {
+  const result = resolveBusinessCardCaptureAvailability({
+    ...DATABASE_ENV,
+    DEEPSEEK_API_KEY: "configured-for-test",
+    ORBIT_MODULE_MODE: "live",
+  });
+
+  assert.deepEqual(result, {
+    available: true,
+    contactStorageConfigured: true,
+    mode: "live",
+    ocrProviderConfigured: true,
+    reason: "ready",
+  });
+});
+
 test("business card capture becomes ready only when live OCR and storage are configured", () => {
   const result = resolveBusinessCardCaptureAvailability({
     ...DATABASE_ENV,

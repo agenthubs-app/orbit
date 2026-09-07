@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import { Pool } from "pg";
@@ -109,6 +110,18 @@ test(
            and event_id = 'event-canonical-registration'
            and action = 'registration_migration_activated'`,
         [JSON.stringify(activationAuditV2.rows[0]!.after_payload)],
+      );
+
+      // This repository test starts from saveConfiguration, which creates a draft.
+      // Verify that drafts cannot enroll, then arrange the published fixture.
+      await assert.rejects(
+        repository.registerCanonicalParticipant({ eventId: "event-canonical-registration", userId: "actor-before-publish" }),
+        (error: unknown) => error instanceof EventRegistrationWindowError && error.code === "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+      );
+      await scopedPool.query(
+        `update event_ops_events set lifecycle_state_v2 = 'published'
+         where workspace_id = $1 and event_id = $2`,
+        ["workspace-registration-test", "event-canonical-registration"],
       );
 
       const firstAnswers = { industry: "Climate", valueOffered: "Grid operations" };
@@ -271,6 +284,11 @@ test(
         tableSize: 6,
         updatedAt: at(base, 0),
       });
+      await scopedPool.query(
+        `update event_ops_events set lifecycle_state_v2 = 'published'
+         where workspace_id = $1 and event_id = $2`,
+        ["workspace-registration-test", "event-closed-registration"],
+      );
       await repository.activateCanonicalRegistrations(
         "event-closed-registration",
         [],
@@ -284,6 +302,40 @@ test(
           error instanceof EventRegistrationWindowError &&
           error.code === "EVENT_REGISTRATION_CUTOFF_PASSED",
       );
+
+      // Public runtime reads also require canonical event identity and temporal fields.
+      for (const eventId of ["event-canonical-registration", "event-closed-registration"]) {
+        await scopedPool.query(
+          `update event_ops_events set title = $2, description = 'Registration fixture',
+             venue = 'Tokyo', timezone = 'Asia/Tokyo', starts_at = $3, ends_at = $4
+           where workspace_id = $1 and event_id = $2`,
+          ["workspace-registration-test", eventId, at(base, 30), at(base, 180)],
+        );
+        await scopedPool.query(
+          `insert into event_aliases (workspace_id, normalized_alias, alias_value, alias_type, event_id, source_payload)
+           values ($1, lower($2), $2, 'event_id', $2, '{}') on conflict do nothing`,
+          ["workspace-registration-test", eventId],
+        );
+      }
+      await scopedPool.query(
+        `insert into event_aliases (workspace_id, normalized_alias, alias_value, alias_type, event_id, source_payload)
+         values ($1, 'reg-closed', 'REG-CLOSED', 'public_code', 'event-closed-registration', '{}')`,
+        ["workspace-registration-test"],
+      );
+      const runtimeUrl = new URL(databaseUrl);
+      runtimeUrl.searchParams.set("options", `-c search_path=${schema}`);
+      const runtimeModule = new URL("../../features/events/registration/runtime.ts", import.meta.url).href;
+      const runtimeRead = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+        `const module = await import(${JSON.stringify(runtimeModule)});
+         const read = (module.default ?? module).readRuntimeEventRegistrationAvailability;
+         console.log(JSON.stringify(await Promise.all(["event-canonical-registration", "event-closed-registration", "REG-CLOSED", "event-missing"].map(read))));
+         process.exit(0);`,
+      ], {
+        encoding: "utf8", timeout: 15_000,
+        env: { ...process.env, ORBIT_EVENT_DATABASE_URL: runtimeUrl.href, ORBIT_WORKSPACE_ID: "workspace-registration-test", ORBIT_MODULE_MODE: "live", ORBIT_FEATURE_MODE: "live" },
+      });
+      assert.equal(runtimeRead.status, 0, "isolated runtime read must succeed");
+      assert.deepEqual(JSON.parse(runtimeRead.stdout), ["open", "registration_closed", "registration_closed", "unavailable"], "public runtime must honor the same database window as registration writes");
 
       const legacyProvider = createMemoryEventRegistrationProvider();
       const legacyService = createEventRegistrationService({
@@ -313,6 +365,11 @@ test(
         tableSize: 6,
         updatedAt: at(base, 0),
       });
+      await scopedPool.query(
+        `update event_ops_events set lifecycle_state_v2 = 'published'
+         where workspace_id = $1 and event_id = $2`,
+        ["workspace-registration-test", "event-shadow-import"],
+      );
       const canonicalService = {
         cancel: repository.cancelCanonicalRegistration.bind(repository),
         get: ({ eventId, userId }: { eventId: string; userId: string }) =>

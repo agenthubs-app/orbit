@@ -9,7 +9,7 @@
  *
  * `OrbitTodayTimeSpine` 是新增的组合层（不是搬运）：把月历 + 当日/本月面板
  * 竖直堆叠成 Today 左栏需要的形状，并让选日期的动作走 URL（?date=），而不是
- * 纯本地 state——这样右栏的"可复核安排"淡化才能在服务端按选中日期计算。
+ * 纯本地 state——这样服务端渲染和深链可以共享同一日期。
  * ScheduleListPanel 的 mode 也可选受控（?view=day|month），不传时行为和
  * followups 里完全一样（未受控、点选日期自动回到当日）。
  *
@@ -557,8 +557,8 @@ function dateKey(view: CalendarView): string | null {
 
 /**
  * Today 左栏的组合层：月历 + 当日|本月 面板竖直堆叠，选日期时把 ?date= 写进
- * URL（沿用 ?entry= 的 URL-驱动模式），这样右栏"可复核安排"的淡化能在服务端
- *按选中日期重新计算，而不是只在这个客户端组件内部生效。
+ * URL（沿用 ?entry= 的 URL-驱动模式），这样服务端渲染和深链可以共享同一日期，
+ * 而不是只在这个客户端组件内部生效。
  */
 export function OrbitTodayTimeSpine({
   initialSelected,

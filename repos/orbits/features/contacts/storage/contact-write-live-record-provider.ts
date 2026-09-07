@@ -250,6 +250,7 @@ export function createStorageBusinessCardContactWriteProvider({
           contact.primaryEmail,
           contact.primaryPhone,
           contact.profileSnippet,
+          contact.notes,
         ]
           .filter(Boolean)
           .join(" "),

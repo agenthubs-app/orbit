@@ -278,10 +278,7 @@ export function createAgentNaturalLanguageActionProposalService(input: {
         const operation: AgentActionOperationPayload = {
           compensation: {
             executorKey: capability.executorKey,
-            supported:
-              request.capabilityId === "calendar.syncEvent"
-                ? false
-                : capability.compensationSupported,
+            supported: capability.compensationSupported,
           },
           executorKey: capability.executorKey,
           idempotencyKey: `${actionId}:v1`,

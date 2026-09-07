@@ -1880,43 +1880,39 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
 
 test("live Orbit Agent localizes live event artifact copy from the request locale", async () => {
   const requests: unknown[] = [];
-  const liveModule = await importProjectModule<{
-    createLiveOrbitAgentConversationService: (config: {
-      apiKey: string;
-      fetchImplementation: typeof fetch;
-      maxLoopSteps?: number;
-      model: string;
-    }) => {
-      sendMessage: (input: {
-        locale?: string | null;
-        message?: string | null;
-      }) => Promise<{
-        success: boolean;
-        data?: {
-          artifacts: readonly {
-            result: {
-              generatedView: {
-                sections: readonly {
-                  items: readonly {
-                    actions: readonly { label: string }[];
-                    metadata: readonly { label: string; value: string }[];
-                    reason?: string;
-                  }[];
-                  title: string;
-                }[];
-                summary: string;
-              } | null;
-              nextAction: string;
-              presentation: { subtitle?: string; title: string };
-            };
-          }[];
-          nextAction: string;
+  const liveModule = await import("../../features/orbit-ai/live-conversation-service");
+  const { createOrbitAgentEventRecommendationArtifactService } = await import("../../features/orbit-ai/event-recommendation-artifact-service");
+  const { createEventsRecommendationTool } = await import("../../features/events/event-recommendation-tool");
+  const { createMockEventCrudAndImportService } = await import("../../features/events/event-crud-and-import/mock-service");
+  const mockEvents = createMockEventCrudAndImportService();
+  const fixtures = await mockEvents.listEvents({});
+  assert.equal(fixtures.success, true);
+  const event = fixtures.data.events[0];
+  assert.ok(event);
+  let catalogueState: "ready" | "empty" | "failure" = "ready";
+  let catalogueReads = 0;
+  const recommendationTool = createEventsRecommendationTool({
+    now: () => Date.parse("2026-07-01T00:00:00.000Z"),
+    eventService: { ...mockEvents, listEvents: () => mockEvents.listEvents({ scenario: "empty" }) },
+    canonicalReader: {
+      async read(now) {
+        catalogueReads += 1;
+        if (catalogueState === "failure") throw new Error("Controlled catalogue read failure");
+        return {
+          collectedAt: now.toISOString(),
+          evidenceIds: event.evidence.map((item) => item.evidenceId),
+          records: catalogueState === "empty" ? [] : [{
+            ...event, startsAt: "2026-07-08T10:00:00.000Z", endsAt: "2026-07-08T12:00:00.000Z",
+            sourceMetadata: { ...event.sourceMetadata, provider: "event-core-postgres" },
+          }],
+          source: "event-core-postgres", sourceLabel: "Canonical Event Core",
         };
-      }>;
-    };
-  }>("features/orbit-ai/live-conversation-service.ts");
+      },
+    },
+  });
 
   const service = liveModule.createLiveOrbitAgentConversationService({
+    artifactTaskService: createOrbitAgentEventRecommendationArtifactService({ recommendationTool }),
     apiKey: "test-gemini-key",
     fetchImplementation: (async (_url, init) => {
       requests.push(init);
@@ -1953,6 +1949,7 @@ test("live Orbit Agent localizes live event artifact copy from the request local
     locale: "zh",
     message: "帮我推荐下周适合认识投资人的活动。",
   });
+  assert.equal(result.success, true);
   const artifact = result.data?.artifacts[0];
   const artifactText = JSON.stringify(artifact);
 
@@ -1976,6 +1973,18 @@ test("live Orbit Agent localizes live event artifact copy from the request local
   assert.match(result.data?.nextAction ?? "", /复核/);
   assert.doesNotMatch(artifactText, /Review plan|Orbit prepared|Recommended events/);
   assert.doesNotMatch(result.data?.nextAction ?? "", /Review|synthesis is skipped/i);
+  assert.equal(catalogueReads, 1);
+  for (catalogueState of ["empty", "failure"] as const) {
+    const unavailable = await service.sendMessage({ locale: "zh", message: "帮我推荐下周适合认识投资人的活动。" });
+    assert.equal(unavailable.success, true);
+    const view = unavailable.data.artifacts[0]?.result.generatedView;
+    assert.equal(view?.sections.flatMap((section) => section.items).length ?? 0, 0);
+    assert.doesNotMatch(view?.summary ?? "", /可复核/);
+    if (catalogueState === "failure") assert.match(view?.summary ?? "", /无法.*加载活动/);
+    assert.equal(unavailable.data.provenance.safety.externalSideEffectsExecuted, false);
+  }
+  assert.equal(catalogueReads, 3);
+
 });
 
 test("live Orbit Agent defaults interactive turns to artifact generation without synthesis", async () => {

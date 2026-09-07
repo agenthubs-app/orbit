@@ -168,8 +168,8 @@ export function OrbitRealToday({
   language?: OrbitLanguage;
   /** Render only the listed sections (still in canonical decide/prepared/
    *  recent order). Omit to render all of them — used by the merged Today
-   *  page to slot "可复核安排" between the decide section and the
-   *  collapsed prepared/recent sections (see today/page.tsx). */
+   *  page to place the confirmed schedule beside decisions without
+   *  duplicating ledger state (see today/page.tsx). */
   onlyKeys?: readonly TodaySectionKey[];
   /** ?date=/?view= from the current request, merged into every entry link
    *  so opening/closing a decision card never drops the selected calendar
@@ -257,7 +257,7 @@ export function OrbitRealToday({
           </div>
         );
 
-        // "需要你决定" stays expanded; "ORBIT 已准备"/"最近动态" default to
+        // "需要你决定" stays expanded; "已准备的操作"/"最近动态" default to
         // collapsed (content-priority — completed/queued work shouldn't
         // compete with pending decisions for attention). A native
         // disclosure element needs no client state and adds no hand-rolled
@@ -279,6 +279,20 @@ export function OrbitRealToday({
                 {heading}
               </div>
               {rows}
+              {viewModel.hiddenDecisionCount > 0 ? (
+                <a
+                  className="btn btn-ghost btn-sm"
+                  data-orbit-today-hidden-decisions
+                  href="/app/contacts/all-actions"
+                  style={{ marginTop: 10 }}
+                >
+                  {language === "zh"
+                    ? `另外 ${viewModel.hiddenDecisionCount} 项已按联系人收进全部安排`
+                    : language === "ja"
+                      ? `残り ${viewModel.hiddenDecisionCount} 件は連絡先ごとに「すべての予定」へ整理済み`
+                      : `${viewModel.hiddenDecisionCount} more grouped by contact in All arrangements`}
+                </a>
+              ) : null}
             </section>
           );
         }

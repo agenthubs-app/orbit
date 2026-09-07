@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 
+import { ORBIT_Z } from "../orbit-z";
 import { AccountTopNav, orbitNavigate } from "../orbit-account-shell";
 import { EventCover } from "../events/orbit-event-cover";
 import type { OrbitHomeAccountView, OrbitHomeViewModel } from "../orbit-home-route-view-model";
@@ -605,7 +606,7 @@ function AgentDock({ state, t }: { state: AgentDockState; t: Translate }) {
     orbitNavigate(`/agent?q=${encodeURIComponent(draft.trim() || hint)}`);
   };
   return (
-    <div style={{ bottom: "calc(18px + env(safe-area-inset-bottom))", left: "50%", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: 60 }}>
+    <div style={{ bottom: "calc(18px + env(safe-area-inset-bottom))", left: "50%", position: "fixed", transform: "translateX(-50%)", width: "min(680px, calc(100vw - 32px))", zIndex: ORBIT_Z.sticky }}>
       <form
         onSubmit={(submitEvent) => { submitEvent.preventDefault(); ask(); }}
         style={{ alignItems: "center", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)", background: "color-mix(in srgb, var(--surface) 62%, transparent)", border: "1px solid color-mix(in srgb, var(--surface) 80%, transparent)", borderRadius: "var(--r-pill)", boxShadow: "0 12px 40px rgba(23,33,31,.16)", display: "flex", gap: 10, outline: "1px solid var(--border)", padding: "8px 8px 8px 18px" }}

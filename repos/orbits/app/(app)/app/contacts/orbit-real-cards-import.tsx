@@ -9,6 +9,7 @@ import { OrbitCardsInteractions } from "./orbit-cards-interactions";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { Icon } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
+import { BusinessCardBatchEntry } from "./business-card-batch-entry";
 import { BusinessCardCaptureWorkspace } from "./business-card-capture-workspace";
 
 type Translate = (copy: { en: string; zh: string }) => string;
@@ -244,6 +245,8 @@ export function OrbitRealCardsImport({
                     zh: "所有来源都先生成待确认草稿，确认前不写入联系人库。",
                   })}</span>
                 </div>
+
+                {businessCardAvailability.available ? <BusinessCardBatchEntry /> : null}
               </section>
 
               {/* RIGHT · real business-card capture and confirmation flow */}
@@ -269,6 +272,8 @@ export function OrbitRealCardsImport({
           <BusinessCardCaptureWorkspace
             availability={businessCardAvailability}
           />
+
+          {businessCardAvailability.available ? <BusinessCardBatchEntry /> : null}
 
           <hr className="nc-divider" style={{ margin: "20px 0 14px" }} />
           <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 10 }}>

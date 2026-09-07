@@ -21,7 +21,11 @@ export interface AgentDomainExecutorDependencies {
       payload: Readonly<Record<string, unknown>>,
       idempotencyKey: string,
     ) => Promise<{ providerRecordId: string }>;
-    deleteEvent?: (providerRecordId: string) => Promise<void>;
+    deleteEvent?: (
+      providerRecordId: string,
+      payload: Readonly<Record<string, unknown>>,
+      idempotencyKey: string,
+    ) => Promise<void>;
   };
 }
 
@@ -356,15 +360,18 @@ export function createAgentDomainExecutors(
           summary: "Calendar event created after explicit confirmation.",
         };
       },
-      async compensate(payload) {
-        const providerRecordId = optionalString(payload, "providerRecordId");
+      async compensate(payload, context) {
+        // Only the successful execution receipt can identify the created event.
+        const providerRecordId = context.resultRef?.startsWith("calendar:")
+          ? context.resultRef.slice("calendar:".length).trim()
+          : undefined;
         if (
           !providerRecordId ||
           !dependencies.calendar?.deleteEvent
         ) {
           throw new Error("Calendar event cannot be compensated.");
         }
-        await dependencies.calendar.deleteEvent(providerRecordId);
+        await dependencies.calendar.deleteEvent(providerRecordId, payload, context.idempotencyKey);
         return {
           resultRef: `calendar:${providerRecordId}`,
           summary: "Calendar event removed.",

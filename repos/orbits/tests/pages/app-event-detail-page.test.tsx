@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
+import { OrbitAgentDashboard } from "../../app/(app)/app/agent/orbit-agent-dashboard";
 import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -25,7 +26,6 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={eventDetailRouteToOrbitLandingEventView(routeModel)}
-      registrationAvailability="open"
     />,
   );
 }
@@ -52,6 +52,10 @@ test("event detail replaces the legacy surface with the green three-card journey
   assert.match(html, /活动现场|Event floor/);
   assert.match(html, /会后中心|Post-event center/);
   assert.match(html, /向 iOrbit 询问这场活动|Ask iOrbit about this event/);
+  assert.match(html, /线下活动|In person/);
+  assert.match(html, /已确认|Confirmed/);
+  assert.match(html, /日历已同步|Calendar synced/);
+  assert.doesNotMatch(html, />live<|>confirmed<|>calendar_sync</);
   assert.doesNotMatch(html, /Event workspace could not load/);
   assert.doesNotMatch(html, /<details/i);
 });
@@ -79,12 +83,12 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
   const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
   const pre = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} registrationAvailability="open" />);
-  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
-  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability="registration_closed" workspaceAvailable />);
+  const joined = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+  const post = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
 
   assert.match(pre, /data-event-journey-state="pre"/);
-  assert.match(pre, /回答 2 题并报名|Answer 2 questions &amp; register/);
-  assert.match(pre, /AI 示例|AI sample/);
+  assert.match(pre, />报名<|>Register</);
+  assert.match(pre, /功能示例|Feature sample/);
   assert.match(joined, /data-event-journey-state="joined"/);
   assert.match(joined, /已报名|Registered/);
   assert.match(joined, /查看活动准备|进入活动|View event preparation|Enter event/);
@@ -109,7 +113,6 @@ test("registered attendees can open the normal preparation workspace before the 
         stats: { ...event.stats, youRsvped: true },
         youRsvped: true,
       }}
-      registrationAvailability="registration_closed"
       workspaceAvailable
     />,
   );
@@ -119,7 +122,7 @@ test("registered attendees can open the normal preparation workspace before the 
   assert.doesNotMatch(html, />未开始<|>Not started</);
 });
 
-test("unavailable registration windows disable every detail-page registration entry", async () => {
+test("an upcoming event without a window never implies that registration is open", async () => {
   const routeModel = await loadAppEventDetailRoute({
     eventId: "demo-event-1",
     mode: "mock",
@@ -135,14 +138,16 @@ test("unavailable registration windows disable every detail-page registration en
         stats: { ...event.stats, youRsvped: false },
         youRsvped: false,
       }}
-      registrationAvailability="unavailable"
     />,
   );
 
-  assert.match(html, /报名暂不可用|Registration unavailable/);
-  assert.match(html, /disabled=""/);
-  assert.doesNotMatch(html, /href="\/app\/events\/[^"]+\/register"/);
+  assert.match(html, /报名|Register/);
+  assert.match(html, /暂时无法确认报名状态|Registration status unavailable/);
+  assert.match(html, /class="btn is-disabled" disabled=""/);
   assert.doesNotMatch(html, /报名中|Registration open/);
+  assert.doesNotMatch(html, /报名暂不可用|Registration unavailable/);
+  assert.doesNotMatch(html, /开放报名时提醒我|Remind me when registration opens/);
+  assert.doesNotMatch(html, /查看其他可报名活动|View other events accepting registration/);
 });
 
 test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {
@@ -176,4 +181,48 @@ test("/app/events/[id] resolves public and authorized private details through ca
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.doesNotMatch(pageSource, /action: readSearchParam/);
   assert.doesNotMatch(pageSource, /targetContactId: readSearchParam/);
+});
+
+
+test("detail and dashboard agree on canonical registration availability before event start", async () => {
+  const route = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(route.routeState, "success");
+  if (route.routeState !== "success") return;
+  const base = eventDetailRouteToOrbitLandingEventView(route);
+  const event = { ...base, status: "upcoming" as const, youRsvped: false, stats: { ...base.stats, youRsvped: false } };
+  for (const [availability, expectedLabel, canRegister] of [
+    ["open", "报名开放", true],
+    ["profile_edit_closed", "报名资料已锁定", false],
+    ["registration_closed", "报名已结束", false],
+    ["unavailable", "暂时无法确认报名状态", false],
+  ] as const) {
+    const detail = renderToStaticMarkup(<OrbitRealEventDetail event={event} registrationAvailability={availability} />);
+    const dashboard = renderToStaticMarkup(<OrbitAgentDashboard
+      home={{ account: { fullName: "Test", headline: "", initial: "T" }, events: [event], stats: { events: 1, people: 1, inProgress: 0 } }}
+      language="zh" navigate={() => undefined} onAsk={() => undefined}
+      registrationAvailabilityByEventId={{ [event.id]: availability }} t={(copy) => copy.zh}
+    />);
+    assert.ok(detail.includes(expectedLabel), `detail: ${availability}`);
+    assert.ok(dashboard.includes(expectedLabel), `dashboard: ${availability}`);
+    const registerButton = [...detail.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
+      .find((match) => /^(报名|Register)$/.test(match[2].replace(/<[^>]*>/g, "")));
+    assert.equal(Boolean(registerButton), canRegister);
+    if (registerButton) assert.doesNotMatch(registerButton[1], /disabled/);
+    if (!canRegister) {
+      assert.doesNotMatch(dashboard, /报名开放|目前有活动正在开放报名|查看开放报名活动/);
+      assert.doesNotMatch(detail, /报名中|Registration open|只需 2 个问题|Just 2 questions/);
+    }
+    const registered = renderToStaticMarkup(<OrbitRealEventDetail event={{ ...event, stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability={availability} />);
+    assert.match(registered, /data-event-journey-state="joined"/);
+    assert.match(registered, /管理报名|Manage registration/);
+  }
+  const unavailable = renderToStaticMarkup(<OrbitRealEventDetail event={event} />);
+  assert.match(unavailable, /class="btn is-disabled" disabled=""/);
+});
+
+test("detail consumes one server registration snapshot for its sidebar and primary action", () => {
+  const page = source("app/(app)/app/events/[id]/page.tsx");
+  const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
+  assert.match(page, /registrationAvailability=\{resolution.registrationAvailability\}/);
+  assert.doesNotMatch(detail, /registration\?questions=false|setRegistrationStatus/);
 });

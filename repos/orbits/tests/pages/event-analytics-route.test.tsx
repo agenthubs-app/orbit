@@ -38,6 +38,53 @@ function organizerAggregate() {
     },
     kind: "organizer_aggregate",
     registrations: { active: 2, cancelled: 0 },
+    roi: {
+      metrics: {
+        attributionCoverage: {
+          declaredCompletedOperations: 1,
+          stronglyAttributedCompletedOperations: 1,
+          rate: { denominator: 1, numerator: 1, value: 1 },
+        },
+        checkedInParticipants: 2,
+        completedAttributedAgentOperations: 1,
+        effectiveConnectionPairs: 1,
+        effectiveConnectionParticipants: 2,
+        effectiveConnectionRate: { denominator: 2, numerator: 2, value: 1 },
+        mutualConnections: {
+          acceptedRelationshipPairs: 1,
+          distinctConnectedCheckIns: 2,
+          mutuallyCheckedInPairs: 1,
+          participationRate: { denominator: 2, numerator: 2, value: 1 },
+        },
+        strongActions: {
+          appointments: 1,
+          followupReminders: 1,
+          humanEncounterNotes: 1,
+          messageDrafts: 1,
+        },
+      },
+      snapshot: {
+        finalizedAt: null,
+        formulaHash: "formula:test",
+        metricVersion: "event-roi-v1",
+        revision: null,
+        sourceWatermark: {
+          appointmentCount: 0,
+          appointmentUpdatedAt: null,
+          checkInCount: 2,
+          checkInRevision: 1,
+          completedAgentReceiptCount: 1,
+          completedAgentReceiptUpdatedAt: null,
+          configurationVersion: 1,
+          membershipCount: 2,
+          membershipRevision: 1,
+          relationshipPairCount: 1,
+          relationshipAcceptedAt: null,
+        },
+        status: "live",
+        windowEndsAt: "2026-08-12T08:00:00.000Z",
+      },
+    },
   };
 }
 

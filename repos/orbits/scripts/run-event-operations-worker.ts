@@ -7,6 +7,8 @@ import { runAppointmentMigrations } from "../features/appointments/storage/migra
 import { createStorageBusinessCardContactWriteProvider } from "../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresHumanEncounterProjectionRepository } from "../features/encounters/projection-repository";
 import { projectPendingHumanEncounters } from "../features/encounters/projector";
+import { runEventAnalyticsMigrations } from "../features/events/event-analytics/migrations";
+import { runEventExperienceMigrations } from "../features/events/experience/storage/migrations";
 import { processAttendeePostEventAiTask } from "../features/events/post-event-artifact/processor";
 import { resolveAttendeePostEventAiProviderConfiguration } from "../features/events/post-event-artifact/provider-config";
 import { createAttendeePostEventAiTaskRepository } from "../features/events/post-event-artifact/task-repository";
@@ -54,6 +56,8 @@ async function main(): Promise<void> {
   }
 
   await runEventOperationsMigrations(runtime.client);
+  await runEventAnalyticsMigrations(runtime.client);
+  await runEventExperienceMigrations(runtime.client);
   await runAppointmentMigrations(runtime.client);
 
   const workerId =

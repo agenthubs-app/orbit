@@ -18,6 +18,7 @@ import type { OrbitLanguage } from "../orbit-language-context";
 import { Avatar, Icon } from "../orbit-reference-primitives";
 import { AgentStar } from "./orbit-real-agent";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
+import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../orbit-event-registration-view-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -68,12 +69,13 @@ function greeting(t: Translate, now: Date): string {
 
 function journeyStageBadge(
   event: OrbitHomeViewModel["events"][number],
+  registrationAvailability: EventRegistrationAvailability,
   t: Translate,
 ): { label: string; tone: "act" | "done" | "wait" } {
   if (event.status === "ended") return { label: t({ en: "Ended", zh: "已结束" }), tone: "done" };
   if (event.status === "active") return { label: t({ en: "Live now", zh: "进行中" }), tone: "act" };
   if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Waiting for matches", zh: "等待匹配发布" }), tone: "wait" };
-  return { label: t({ en: "Upcoming", zh: "即将开始" }), tone: "wait" };
+  return { label: t(eventRegistrationLabel(registrationAvailability)), tone: eventRegistrationIsOpen(registrationAvailability) ? "act" : "wait" };
 }
 
 const APPOINTMENT_TZ = "Asia/Tokyo";
@@ -89,16 +91,19 @@ export function OrbitAgentDashboard({
   language,
   navigate,
   onAsk,
+  registrationAvailabilityByEventId,
   t,
 }: {
   home: OrbitHomeViewModel;
   language: OrbitLanguage;
   navigate: (href: string) => void;
   onAsk: (query: string) => void;
+  registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   t: Translate;
 }) {
   const [appointments, setAppointments] = useState<AppointmentView[]>([]);
   const [briefText, setBriefText] = useState("");
+  const [showEmptyAccountDemo, setShowEmptyAccountDemo] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -126,6 +131,19 @@ export function OrbitAgentDashboard({
   const journeys = home.events.slice(0, 5);
   const nextEvent = journeys.find((event) => event.status !== "ended") ?? null;
   const endedPending = journeys.find((event) => event.status === "ended") ?? null;
+  const nextEventRegistrationAvailability = nextEvent
+    ? registrationAvailabilityByEventId[nextEvent.id] ?? "unavailable"
+    : "unavailable";
+  const nextEventRegistered = Boolean(
+    nextEvent && (nextEvent.youRsvped || nextEvent.stats.youRsvped),
+  );
+  const openUnregisteredEvent = journeys.find(
+    (event) =>
+      event.status === "upcoming" &&
+      !event.youRsvped &&
+      !event.stats.youRsvped &&
+      eventRegistrationIsOpen(registrationAvailabilityByEventId[event.id] ?? "unavailable"),
+  );
 
   const nextEventDate = nextEvent ? eventTemporalBounds(nextEvent.startsAt, nextEvent.endsAt).start : null;
   const daysToNext = nextEventDate ? Math.max(0, Math.ceil((nextEventDate.getTime() - now.getTime()) / 86_400_000)) : null;
@@ -244,6 +262,63 @@ export function OrbitAgentDashboard({
             zh: "iOrbit 只根据你已授权的活动与人脉数据回答；涉及对外动作会先经你确认。",
           })}
         </p>
+
+        {home.stats.people === 0 ? (
+          <section
+            data-orbit-agent-empty-account-demo
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)",
+              display: "grid",
+              gap: 12,
+              marginTop: 16,
+              padding: 16,
+            }}
+          >
+            <div>
+              <b>{t({ en: "Try the decision flow before importing", zh: "还没导入联系人，也可以先体验决策流程" })}</b>
+              <p style={{ color: "var(--text-2)", fontSize: 13, margin: "5px 0 0" }}>
+                {t({
+                  en: "This uses three clearly labeled archetypes, not real people or account data.",
+                  zh: "这里使用 3 个明确标注的角色示例，不会冒充真实联系人或账号数据。",
+                })}
+              </p>
+            </div>
+            <button
+              aria-expanded={showEmptyAccountDemo}
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowEmptyAccountDemo((value) => !value)}
+              type="button"
+            >
+              {showEmptyAccountDemo
+                ? t({ en: "Hide example", zh: "收起示例结果" })
+                : t({ en: "Preview a top-3 result", zh: "预览“最值得联系的 3 位”" })}
+            </button>
+            {showEmptyAccountDemo ? (
+              <div data-orbit-agent-demo-result style={{ display: "grid", gap: 8 }}>
+                {[
+                  t({ en: "1 · Potential customer — validate a current need", zh: "1 · 潜在客户角色——先验证当前需求" }),
+                  t({ en: "2 · Trusted peer — ask for a focused introduction", zh: "2 · 熟悉的同行角色——提出一次明确引荐" }),
+                  t({ en: "3 · Channel partner — test a small joint next step", zh: "3 · 渠道伙伴角色——验证一个小型合作下一步" }),
+                ].map((item) => (
+                  <div key={item} style={{ background: "var(--surface-2)", borderRadius: "var(--r-sm)", color: "var(--text)", fontSize: 13, padding: "10px 12px" }}>
+                    {item}
+                  </div>
+                ))}
+                <p style={{ color: "var(--text-2)", fontSize: 12, margin: 0 }}>
+                  {t({
+                    en: "After you import contacts, iOrbit replaces these archetypes with your authorized records, evidence, and editable drafts.",
+                    zh: "导入联系人后，iOrbit 会用你已授权的真实记录、依据和可编辑草稿替换这些角色示例。",
+                  })}
+                </p>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate("/app/contacts/new")} type="button">
+                  {t({ en: "Import contacts when ready", zh: "准备好后导入联系人" })}
+                </button>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </section>
 
       {/* ── 即将到来的约谈 ── */}
@@ -272,10 +347,10 @@ export function OrbitAgentDashboard({
             <div className="appt-main">
               <div className="appt-title-row">
                 <b>{t({ en: "Online appointment", zh: "线上约谈" })}</b>
-                <span className="badge badge-ok">confirmed</span>
+                <span className="badge badge-ok">{t({ en: "Confirmed by both", zh: "双方已确认" })}</span>
               </div>
               <div className="appt-who">
-                <span className="mono" style={{ color: "var(--text-3)", fontSize: 12.5 }}>{appointmentTz}</span>
+                <span className="mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{appointmentTz}</span>
               </div>
               <div className="appt-actions">
                 {upcomingAppointment.contactId ? (
@@ -307,14 +382,18 @@ export function OrbitAgentDashboard({
               <b>{nextEvent.name || nextEvent.code}</b>
             </div>
             <div className="stage-row">
-              <span className={`stage${nextEvent.youRsvped || nextEvent.stats.youRsvped ? " done" : " now"}`}>
+              <span className={`stage${nextEventRegistered ? " done" : eventRegistrationIsOpen(nextEventRegistrationAvailability) ? " now" : ""}`}>
                 <span className="s-dot">
-                  {nextEvent.youRsvped || nextEvent.stats.youRsvped ? <Icon name="check" size={11} /> : null}
-                  {t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })}
+                  {nextEventRegistered ? <Icon name="check" size={11} /> : null}
+                  {nextEventRegistered
+                    ? t({ en: "Registration complete", zh: "已完成报名" })
+                    : eventRegistrationIsOpen(nextEventRegistrationAvailability)
+                      ? t({ en: "Register + answer 2 questions", zh: "报名与回答 2 题" })
+                      : journeyStageBadge(nextEvent, nextEventRegistrationAvailability, t).label}
                 </span>
               </span>
               <span className="stage"><span className="s-link" /></span>
-              <span className={`stage${nextEvent.youRsvped || nextEvent.stats.youRsvped ? " now" : ""}`}>
+              <span className={`stage${nextEventRegistered ? " now" : ""}`}>
                 <span className="s-dot">{t({ en: "Event profile", zh: "完成活动画像" })}</span>
               </span>
               <span className="stage"><span className="s-link" /></span>
@@ -356,9 +435,15 @@ export function OrbitAgentDashboard({
             <span className="act-ic ic-amber"><Icon name="search" size={17} /></span>
             <b>{t({ en: "Find your next event", zh: "发现下一场活动" })}</b>
           </div>
-          <p>{t({ en: "Browse open events and register by answering two questions.", zh: "浏览可报名的活动，回答两题即可完成报名。" })}</p>
+          <p>
+            {openUnregisteredEvent
+              ? t({ en: "There are events accepting registration now. Review their requirements to register.", zh: "目前有活动正在开放报名，可查看要求后提交报名。" })
+              : t({ en: "Review upcoming events and their current registration status.", zh: "查看近期活动及各自的真实报名状态。" })}
+          </p>
           <button className="btn btn-soft btn-sm" onClick={() => navigate("/app/events")} type="button">
-            {t({ en: "Browse", zh: "去看看" })}
+            {openUnregisteredEvent
+              ? t({ en: "Browse open events", zh: "查看开放报名活动" })
+              : t({ en: "View event status", zh: "查看活动状态" })}
           </button>
         </article>
 
@@ -383,7 +468,11 @@ export function OrbitAgentDashboard({
       {journeys.length ? (
         <section className="card journeys">
           {journeys.map((event) => {
-            const badge = journeyStageBadge(event, t);
+            const badge = journeyStageBadge(
+              event,
+              registrationAvailabilityByEventId[event.id] ?? "unavailable",
+              t,
+            );
             const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
             const date = eventDateLabel(bounds.start);
             const timeLabel = bounds.start
@@ -404,7 +493,7 @@ export function OrbitAgentDashboard({
         </section>
       ) : (
         <section className="card journeys">
-          <div style={{ color: "var(--text-2)", fontSize: 13.5, padding: "16px 18px" }}>
+          <div style={{ color: "var(--text-2)", fontSize: 14, padding: "16px 18px" }}>
             {t({ en: "No event journeys yet — register for one and it appears here, from registration to debrief.", zh: "还没有活动旅程——报名一场活动后，从报名到复盘都会出现在这里。" })}
           </div>
         </section>

@@ -9,6 +9,8 @@ export interface AgentExecutorContext {
   operationId: string;
   idempotencyKey: string;
   now: string;
+  /** Persisted successful execution reference, supplied only during compensation. */
+  resultRef?: string;
 }
 
 export interface AgentExecutorResult {

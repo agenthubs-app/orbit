@@ -5,8 +5,22 @@ export interface OrbitPushMessage {
   data: Readonly<Record<string, string>>;
 }
 
+export type OrbitPushReceipt =
+  | { status: "pending" }
+  | { status: "ok" }
+  | { status: "error"; error?: string };
+
 export interface OrbitPushAdapter {
-  send: (message: OrbitPushMessage) => Promise<{ receiptId: string }>;
+  /**
+   * A successful send is a provider ticket, not proof that the device received
+   * the notification. Adapters may set verified only when they have already
+   * validated a provider receipt.
+   */
+  send: (message: OrbitPushMessage) => Promise<{
+    receiptId: string;
+    verified?: boolean;
+  }>;
+  getReceipt?: (receiptId: string) => Promise<OrbitPushReceipt>;
 }
 
 export function createConfiguredExpoPushAdapter(
@@ -15,8 +29,9 @@ export function createConfiguredExpoPushAdapter(
   const endpoint = env.ORBIT_EXPO_PUSH_ENDPOINT?.trim();
   const accessToken = env.ORBIT_EXPO_PUSH_ACCESS_TOKEN?.trim();
   if (!endpoint || !accessToken) return null;
+  const receiptEndpoint = env.ORBIT_EXPO_PUSH_RECEIPT_ENDPOINT?.trim();
 
-  return {
+  const adapter: OrbitPushAdapter = {
     async send(message) {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -45,6 +60,33 @@ export function createConfiguredExpoPushAdapter(
       return { receiptId: result.data.id };
     },
   };
+  if (receiptEndpoint) {
+    adapter.getReceipt = async (receiptId) => {
+      const response = await fetch(receiptEndpoint, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ ids: [receiptId] }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        data?: Record<string, { status?: unknown; message?: unknown; details?: { error?: unknown } }>;
+      };
+      const receipt = result.data?.[receiptId];
+      if (!response.ok || !receipt || typeof receipt.status !== "string") {
+        throw new Error(`Expo receipt adapter returned HTTP ${response.status}.`);
+      }
+      if (receipt.status === "ok") return { status: "ok" };
+      if (receipt.status === "pending") return { status: "pending" };
+      const error = receipt.details?.error ?? receipt.message;
+      return {
+        status: "error",
+        error: typeof error === "string" ? error : "Expo receipt reported an error.",
+      };
+    };
+  }
+  return adapter;
 }
 
 export function shouldSendPreEventNudge(input: {

@@ -132,19 +132,66 @@ function dataForResult(result: FollowupTaskGenerationResult): FollowupArtifactDa
   return result.success === true ? dataForSuccess(result.data) : dataForFailure(result);
 }
 
-function dueLabelFor(days: number, locale: ArtifactLocale): string {
-  if (days <= 0) {
-    return localize(locale, { en: "Today", zh: "今天" });
+// 「3 天后」既不能对日历也不能判断是否已过期，跟进队列是时间敏感的决策面，
+// 相对时间后面要跟一个绝对日期。但只在 task.dueAt 这个**真实截止时间**存在时才给：
+// relationshipSuggestions 派生出来的任务没有 dueAt，它的 dueInDays 是按关系阶段
+// 查表得到的固定桶（1/3/7/14/30），拿它反推出一个精确到「几月几日周几」的日期
+// 等于凭空造精度。没有就只显示相对时间，不编。
+function absoluteDueLabel(dueAt: string, locale: ArtifactLocale): string {
+  const due = new Date(dueAt);
+
+  if (!Number.isFinite(due.getTime())) {
+    return "";
   }
 
-  if (days === 1) {
-    return localize(locale, { en: "Tomorrow", zh: "明天" });
+  const day = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+    day: "numeric",
+    month: locale === "zh" ? "long" : "short",
+    timeZone: "Asia/Tokyo",
+  }).format(due);
+  const weekday = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+    timeZone: "Asia/Tokyo",
+    weekday: "short",
+  }).format(due);
+
+  return locale === "zh" ? `${day}（${weekday}）` : `${day} (${weekday})`;
+}
+
+// dueInDays 在 live-service 的 daysUntil 里被 Math.max(0, …) 夹住，所以一条早已过期
+// 的任务会以 0 天传进来，显示成「今天」——而它自己的 dueAt 明明写着上个月。这里不
+// 改动领域层的 dueInDays（它还驱动 priority 排序），只在展示层用 dueAt 和同一个参照
+// 时间比一次：确实已经过去的，就说逾期，不说今天。
+function overdueDaysFor(dueAt: string, reference: string): number {
+  const due = new Date(dueAt).getTime();
+  const base = new Date(reference).getTime();
+
+  if (!Number.isFinite(due) || !Number.isFinite(base)) {
+    return 0;
   }
 
-  return localize(locale, {
-    en: `${days} days`,
-    zh: `${days} 天后`,
-  });
+  return Math.max(0, Math.floor((base - due) / 86_400_000));
+}
+
+function dueLabelFor(
+  days: number,
+  dueAt: string | undefined,
+  overdue: number,
+  locale: ArtifactLocale,
+): string {
+  const relative =
+    overdue > 0
+      ? localize(locale, {
+          en: `Overdue by ${overdue} day(s)`,
+          zh: `已逾期 ${overdue} 天`,
+        })
+      : days <= 0
+        ? localize(locale, { en: "Today", zh: "今天" })
+        : days === 1
+          ? localize(locale, { en: "Tomorrow", zh: "明天" })
+          : localize(locale, { en: `${days} days`, zh: `${days} 天后` });
+  const absolute = dueAt ? absoluteDueLabel(dueAt, locale) : "";
+
+  return absolute ? `${relative} · ${absolute}` : relative;
 }
 
 function priorityLabelFor(priority: FollowupTask["priority"], locale: ArtifactLocale): string {
@@ -185,6 +232,78 @@ function presentationFor(
 // 卡片文案在这里确定性重组：模板标题换成"跟进 <姓名>"，来源方式翻成当前语言。
 const templateTaskTitle = /^Review follow-up for contact_/i;
 
+// connection.summary / suggestedActions 是各写入方（onsite-operations-repository 等）
+// 持久化的英文自由文本。此前 displayXxxFor 只在命中 templateTaskTitle 这一个正则时
+// 才本地化，其余一律 `return 原文`——中文界面因此漏出整句英文，还把
+// `event_signup_01`、`event:e2e:orbit-connection-night` 这类内部 ID 原样摆给用户。
+// 白名单式本地化每新增一个文案源就漏一句，所以这里改成「已知短语翻译 + 兜底清洗」：
+// 认识的整句换成当前语言，不认识的至少把裸 ID humanize 掉，绝不再穿透原始标识符。
+// （contact-recommendation-artifact-service.ts 里有一份同类的 humanizeIdentifiers，
+// 那条链路已单独验证过，这里不动它，先在跟进链路把口子堵上。）
+const RELATIONSHIP_ID_TOKEN = /\b[A-Za-z0-9]+(?:[:_][A-Za-z0-9-]+)+\b/g;
+
+function humanizeRelationshipId(value: string): string {
+  return value
+    .replace(/^event[:_]/i, "")
+    .replace(/\be2e\b[:_-]?/gi, "")
+    .replace(/[:_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function humanizeRelationshipIds(value: string): string {
+  return value.replace(RELATIONSHIP_ID_TOKEN, (token) =>
+    humanizeRelationshipId(token),
+  );
+}
+
+const relationshipPhrases: readonly {
+  copy: (subject: string) => Record<ArtifactLocale, string>;
+  pattern: RegExp;
+}[] = [
+  {
+    copy: () => ({
+      en: "Follow up on the connection you both accepted at the event.",
+      zh: "跟进这次双方都已确认的活动连接。",
+    }),
+    pattern: /^Follow up on the mutually accepted event connection\.?$/i,
+  },
+  {
+    copy: (subject) => ({
+      en: `Both sides accepted a business-card exchange at ${subject}.`,
+      zh: `在「${subject}」双方确认交换名片。`,
+    }),
+    pattern: /^Mutual business-card consent at event (.+?)\.?$/i,
+  },
+  {
+    // 旧数据里可能还留着这句"有证据可供复核"的英文兜底。它什么都没说明，
+    // 与其翻译成一句同样没内容的中文，不如直接判空，让调用方不渲染这一行。
+    copy: () => ({ en: "", zh: "" }),
+    pattern: /^Live task evidence is available for review\.?$/i,
+  },
+];
+
+function localizeRelationshipText(value: string, locale: ArtifactLocale): string {
+  const text = value.trim();
+
+  if (!text) {
+    return "";
+  }
+
+  for (const phrase of relationshipPhrases) {
+    const match = text.match(phrase.pattern);
+
+    if (match) {
+      return localize(
+        locale,
+        phrase.copy(humanizeRelationshipId(match[1] ?? "")),
+      );
+    }
+  }
+
+  return humanizeRelationshipIds(text);
+}
+
 const captureMethodLabels: Record<string, Record<ArtifactLocale, string>> = {
   "Business card exchange": { en: "business card exchange", zh: "名片交换" },
   "Confirmed offline meeting note": {
@@ -197,7 +316,7 @@ const captureMethodLabels: Record<string, Record<ArtifactLocale, string>> = {
 
 function displayTitleFor(task: FollowupTask, locale: ArtifactLocale): string {
   if (!templateTaskTitle.test(task.title)) {
-    return task.title;
+    return localizeRelationshipText(task.title, locale);
   }
 
   return localize(locale, {
@@ -212,7 +331,7 @@ function displayReasonFor(task: FollowupTask, locale: ArtifactLocale): string {
   );
 
   if (!pattern) {
-    return task.rationale;
+    return localizeRelationshipText(task.rationale, locale);
   }
 
   const method =
@@ -242,7 +361,7 @@ function sourceLabelFor(label: string, locale: ArtifactLocale): string {
 
 function displayActionFor(task: FollowupTask, locale: ArtifactLocale): string {
   if (!templateTaskTitle.test(task.recommendedAction)) {
-    return task.recommendedAction;
+    return localizeRelationshipText(task.recommendedAction, locale);
   }
 
   return localize(locale, {
@@ -251,7 +370,18 @@ function displayActionFor(task: FollowupTask, locale: ArtifactLocale): string {
   });
 }
 
-function itemFor(task: FollowupTask, locale: ArtifactLocale) {
+function itemFor(task: FollowupTask, locale: ArtifactLocale, reference: string) {
+  const title = displayTitleFor(task, locale);
+  const action = displayActionFor(task, locale);
+  const overdue = task.dueAt ? overdueDaysFor(task.dueAt, reference) : 0;
+  // priority 同样是从被夹住的 dueInDays 推出来的，逾期任务会带着「今天」这个标记，
+  // 和下面「已逾期 N 天」的到期行直接打架。优先级和到期共用同一个判断，逾期时两边
+  // 都说逾期——展示层再由前缀判等收掉重复的那一个。
+  const priorityLabel =
+    overdue > 0
+      ? localize(locale, { en: "Overdue", zh: "已逾期" })
+      : priorityLabelFor(task.priority, locale);
+
   return {
     actions: [
       {
@@ -263,10 +393,19 @@ function itemFor(task: FollowupTask, locale: ArtifactLocale) {
         requiresConfirmation: true,
       },
     ],
-    body: displayActionFor(task, locale),
-    confidenceLabel: priorityLabelFor(task.priority, locale),
+    // live-service 的两个构造器都把同一个字符串同时写进 title 和 recommendedAction
+    // （toTask: `recommendedAction: task.title`；relationshipSuggestions:
+    // `title: recommendedAction`），所以 body 会把标题一字不差复读一遍。这里在唯一的
+    // 展示出口判等，相等就不发 body——两条构造路径都覆盖，也兼容已持久化的旧数据。
+    body: action === title ? "" : action,
+    confidenceLabel: priorityLabel,
+    // 机器可读增量字段：客户端按人分组要 contactId（此前只能拿姓名反查），
+    // 「承诺 / 线索」分区要 triggerKind，右上角到期和排序要原始 dueAt。
+    contactId: task.contactId ?? undefined,
+    dueAt: task.dueAt,
     evidenceIds: task.evidenceIds,
     id: `followup:${task.taskId}`,
+    triggerKind: task.triggerKind,
     metadata: [
       {
         label: localize(locale, { en: "Organization", zh: "组织" }),
@@ -274,11 +413,11 @@ function itemFor(task: FollowupTask, locale: ArtifactLocale) {
       },
       {
         label: localize(locale, { en: "Due", zh: "到期" }),
-        value: dueLabelFor(task.dueInDays, locale),
+        value: dueLabelFor(task.dueInDays, task.dueAt, overdue, locale),
       },
       {
         label: localize(locale, { en: "Priority", zh: "优先级" }),
-        value: priorityLabelFor(task.priority, locale),
+        value: priorityLabel,
       },
       {
         label: localize(locale, { en: "Source", zh: "来源" }),
@@ -287,7 +426,7 @@ function itemFor(task: FollowupTask, locale: ArtifactLocale) {
     ],
     reason: displayReasonFor(task, locale),
     subtitle: task.contactName,
-    title: displayTitleFor(task, locale),
+    title,
   };
 }
 
@@ -328,7 +467,7 @@ function generatedViewFor(
           en: `Source: ${data.sourceLabel}`,
           zh: `来源：${data.sourceLabel}`,
         }),
-        items: data.tasks.map((task) => itemFor(task, locale)),
+        items: data.tasks.map((task) => itemFor(task, locale, data.generatedAt)),
         title: localize(locale, {
           en: "Suggested follow-ups",
           zh: "建议跟进",

@@ -4,11 +4,15 @@ export interface EventRegistrationQuestionView {
   id: string;
   options: string[];
   prompt: string;
+  /** Legacy payloads omit this and remain skippable; V1/V2 APIs now send it. */
+  required?: boolean;
 }
 
 export interface EventRegistrationView {
   canCancel: boolean;
   confirmLabel: string;
+  questionSetHash: string | null;
+  questionSetVersion: number | null;
   questions: EventRegistrationQuestionView[];
   statusDetail: string;
   statusLabel: string;
@@ -185,7 +189,8 @@ function questionsFromPayload(
         field,
         id,
         options,
-        prompt
+        prompt,
+        required: question.required === true && question.optional !== true
       };
     })
     .filter((question) => question.field && question.prompt);
@@ -196,10 +201,21 @@ export function eventRegistrationToView(data: unknown): EventRegistrationView {
   const registration = registrationRecord(payload);
   const status = stringField(registration, "status", "unregistered");
   const answers = answerMap(registration);
+  const questionSetHash = stringField(
+    nestedRecord(payload, "questionSet"),
+    "questionSetHash"
+  );
+  const questionSetVersionValue = nestedRecord(payload, "questionSet").questionSetVersion;
 
   return {
     canCancel: status === "rsvped",
     confirmLabel: confirmLabel(status),
+    questionSetHash: questionSetHash || null,
+    questionSetVersion:
+      typeof questionSetVersionValue === "number" &&
+      Number.isSafeInteger(questionSetVersionValue)
+        ? questionSetVersionValue
+        : null,
     questions: questionsFromPayload(payload, answers),
     statusDetail: statusDetail(status),
     statusLabel: statusLabel(status)
