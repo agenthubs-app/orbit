@@ -1,3 +1,4 @@
+import { persistNewBusinessCardBatch } from "./storage/business-card-new-batch";
 import { randomUUID } from "node:crypto";
 import { AppError } from "../../shared/errors/app-error";
 import { createLiveBusinessCardContactWriteService } from "../contacts/live-contact-write-service";
@@ -11,7 +12,6 @@ import type {
   BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
 import {
-  BUSINESS_CARD_BATCH_EXPIRY_DAYS,
   BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
   BUSINESS_CARD_BATCH_ITEM_MAX_ATTEMPTS,
   BUSINESS_CARD_BATCH_MAX_ITEMS,
@@ -314,59 +314,15 @@ export function createBusinessCardBatchService({
       }
 
       const batchId = idFactory();
-      const expiresAt = new Date(
-        Date.parse(input.now) + BUSINESS_CARD_BATCH_EXPIRY_DAYS * 86_400_000,
-      ).toISOString();
-
-      for (const newItem of input.items) {
-        const itemId = idFactory();
-        const imagePath = await imageStore.save(
-          batchId,
-          itemId,
-          Buffer.from(newItem.imageJpegBase64, "base64"),
-        );
-
-        await saveItem({
-          actorId: input.actorId,
-          attempts: 0,
-          batchId,
-          confirmedContactId: null,
-          createdAt: input.now,
-          errorCode: null,
-          extraction: null,
-          id: itemId,
-          imageDigest: newItem.imageDigest,
-          imagePath,
-          leaseOwner: null,
-          leasedAt: null,
-          reviewIssues: [],
-          seq: newItem.seq,
-          sourceFileName: newItem.sourceFileName,
-          sourcePage: newItem.sourcePage,
-          status: "pending",
-          updatedAt: input.now,
-          uploadMimeType: newItem.uploadMimeType,
-          usage: null,
-        });
+      async function* preparedItems() {
+        for (const newItem of input.items) {
+          const id = idFactory();
+          const imagePath = await imageStore.save(batchId, id, Buffer.from(newItem.imageJpegBase64, "base64"));
+          yield { ...newItem, id, imagePath };
+        }
       }
-
-      const batch: BusinessCardBatchDTO = {
-        actorId: input.actorId,
-        confirmedItems: 0,
-        createdAt: input.now,
-        expiresAt,
-        failedItems: 0,
-        id: batchId,
-        processedItems: 0,
-        skippedItems: 0,
-        sourceFiles: input.sourceFiles,
-        status: "processing",
-        totalItems: input.items.length,
-        updatedAt: input.now,
-      };
-      await saveBatch(batch);
-
-      return batch;
+      return persistNewBusinessCardBatch({ store, workspaceId, batchId, actorId: input.actorId,
+        now: input.now, totalItems: input.items.length, sourceFiles: input.sourceFiles, items: preparedItems() });
     },
 
     async listBatches(actorId) {
