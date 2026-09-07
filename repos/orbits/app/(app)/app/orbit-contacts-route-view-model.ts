@@ -31,6 +31,7 @@ export interface OrbitContactView {
   editableTags?: { value: string; label: string }[];
   nextAction: { text: string; reason: string; evidenceId?: string } | null;
   lastInteraction: string;
+  editableInteraction?: { channel: string; occurredAt: string; summary: string };
   dormant: boolean;
 }
 

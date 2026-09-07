@@ -22,7 +22,8 @@ import { agentHrefForContext } from "../orbit-agent-context-href";
 import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/industries";
 import { ContactIndustryEditor } from "./contact-industry-editor";
 import { ContactTagEditor } from "./contact-tag-editor";
-import { tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
+import { ContactInteractionEditor } from "./contact-interaction-editor";
+import { displayText, tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -87,7 +88,7 @@ function Frow({ icon, k, children }: { icon: string; k: string; children: ReactN
   );
 }
 
-function ContactCard({ contact, t, onEditIndustry }: { contact: OrbitContactView; t: Translate; onEditIndustry: () => void }) {
+function ContactCard({ contact, t, onEditIndustry, onEditInteraction }: { contact: OrbitContactView; t: Translate; onEditIndustry: () => void; onEditInteraction: () => void }) {
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="user">{t({ en: "Contact", zh: "联系方式" })}</CardTitle>
@@ -100,7 +101,10 @@ function ContactCard({ contact, t, onEditIndustry }: { contact: OrbitContactView
       </Frow>
       {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
       {contact.met ? <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
-      {contact.lastInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>{contact.lastInteraction}</Frow> : null}
+      {contact.lastInteraction || contact.editableInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>
+        <span>{contact.lastInteraction || t({ en: "No interaction recorded", zh: "暂无互动记录" })}</span>{" "}
+        {contact.editableInteraction ? <button type="button" className="btn btn-quiet btn-sm" aria-label={t({ en: "Edit last interaction", zh: "编辑最近互动" })} onClick={onEditInteraction}>{t({ en: "Edit", zh: "编辑" })}</button> : null}
+      </Frow> : null}
     </div>
   );
 }
@@ -331,12 +335,15 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null } | null>(null);
   const [tagEditContactId, setTagEditContactId] = useState<string | null>(null);
   const [tagUpdate, setTagUpdate] = useState<{ source: OrbitContactView; tags: { value: string; label: string }[] } | null>(null);
+  const [interactionEditContactId, setInteractionEditContactId] = useState<string | null>(null);
+  const [interactionUpdate, setInteractionUpdate] = useState<{ source: OrbitContactView; value: NonNullable<OrbitContactView["editableInteraction"]> } | null>(null);
   const industryContact = industryUpdate?.source === sourceContact ? {
     ...sourceContact,
     primaryIndustryId: industryUpdate.value ?? undefined,
     industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
   } : sourceContact;
-  const contact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
+  const tagContact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
+  const contact = interactionUpdate?.source === sourceContact ? { ...tagContact, editableInteraction: interactionUpdate.value, lastInteraction: displayText(interactionUpdate.value.summary, language) } : tagContact;
   const askAgentHref = agentHrefForContext({
     details: crmRole(contact, t),
     id: contactId,
@@ -397,7 +404,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <div className="nc-cols">
               <div className="nc-stack">
                 <AboutCard contact={contact} t={t} />
-                <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
+                <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
                 <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
                 <TwoWayCard contact={contact} t={t} />
               </div>
@@ -444,7 +451,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
-            <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} />
+            <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
             <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
             <TwoWayCard contact={contact} t={t} />
             <TimelineCard contact={contact} t={t} />
@@ -452,6 +459,13 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
           </div>
         </div>
       </div>
+
+      {interactionEditContactId === contact.id && contact.editableInteraction ? (
+        <ContactInteractionEditor key={contact.id} contactId={contact.id} initialInteraction={contact.editableInteraction} language={language} onClose={() => setInteractionEditContactId(null)} onSaved={(value) => {
+          setInteractionUpdate({ source: sourceContact, value });
+          setInteractionEditContactId(null);
+        }} />
+      ) : null}
 
       {tagEditContactId === contact.id && contact.editableTags ? (
         <ContactTagEditor key={contact.id} contactId={contact.id} initialTags={contact.editableTags} language={language} onClose={() => setTagEditContactId(null)} onSaved={(values) => {

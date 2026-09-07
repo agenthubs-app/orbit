@@ -251,7 +251,7 @@ function displaySegment(value: string, language: OrbitLanguage): string {
   );
 }
 
-function displayText(value: string, language: OrbitLanguage): string {
+export function displayText(value: string, language: OrbitLanguage): string {
   const langKey = language === "ja" ? "en" : language;
   const localizedValue = displaySegment(value, language);
   const withoutRawTokens = localizedValue.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
@@ -458,6 +458,11 @@ export function contactDetailRouteToOrbitContactsViewModel(
           evidenceId: model.contact.lastInteraction.evidenceIds[0],
         }
       : null,
+    editableInteraction: {
+      channel: model.contact.lastInteraction.channel,
+      occurredAt: model.contact.lastInteraction.occurredAt,
+      summary: model.contact.lastInteraction.summary,
+    },
     lastInteraction: displayText(
       model.contact.lastInteraction.summary,
       language,
