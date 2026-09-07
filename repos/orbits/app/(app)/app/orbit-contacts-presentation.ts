@@ -6,6 +6,7 @@
 // translate via small token dictionaries here.
 
 import type { OrbitLanguage } from "./orbit-language-core";
+import { industryLabel, isIndustryIdCode } from "../../../shared/domain/industries";
 import type {
   OrbitContactView,
   OrbitContactsViewModel,
@@ -122,11 +123,23 @@ function localizeContact(
   contact: OrbitContactView,
   language: OrbitLanguage,
 ): OrbitContactView {
+  const industry = isIndustryIdCode(contact.primaryIndustryId)
+    ? industryLabel(contact.primaryIndustryId, language)
+    : contact.industry;
   return {
     ...contact,
     company: localizeCompany(contact.company, language),
     title: tr(ROLE, contact.title, language),
-    industry: tr(LOCATION, contact.industry, language),
+    industry,
+    encounters: isIndustryIdCode(contact.primaryIndustryId)
+      ? contact.encounters.map((encounter) => ({
+          ...encounter,
+          context: {
+            ...encounter.context,
+            publicProfile: { ...encounter.context.publicProfile, industry },
+          },
+        }))
+      : contact.encounters,
     location: contact.location ? tr(LOCATION, contact.location, language) : contact.location,
     valueTags: contact.valueTags.map((tag) => tr(VALUE_TAG, tag, language)),
     nextAction: contact.nextAction

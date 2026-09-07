@@ -387,6 +387,7 @@ export function filterConnections(
       item.company,
       item.title,
       item.industry,
+      item.location,
       item.offering,
       item.seeking,
       item.nextAction?.text,

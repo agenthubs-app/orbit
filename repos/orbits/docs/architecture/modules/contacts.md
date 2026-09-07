@@ -39,6 +39,13 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 - 验证覆盖真实适配器、列表搜索与分组、列表／看板／详情的 React 渲染；新增 8 项回归从失败转为通过。连同周边测试共 40 项通过，Web 全量类型检查通过；未执行真实账号跨端回读或生产部署。
 - 基线维护：移除只约束 `actorId` 属性简写的旧源码断言（actor 传递已有 focused provider 行为测试），更新二维码来源的运行时中文预期，以匹配现行本地化规则。
 
+## Web 主行业展示修复（2026-09-07）
+
+- 列表 route view model 保留现有契约的 `primaryIndustryId` 与 `primaryIndustryLabel`。列表、子路由及详情优先用稳定行业 ID 从共享字典取得名称；没有 ID 时只接受明确提供的主行业名称，不再从地区、自定义标签或旧简介推断。
+- 缺少主行业的联系人保留在分布中，归入“未分类”，但不计入行业数；行业数不受图表前六项展示上限影响。城市保留为独立 `location` 并继续可搜索，自定义标签继续作为标签／话题。主行业编辑入口与服务端四维分析接入不在本次范围。
+- 共用展示层按中／英／日语言转换同一行业 ID，并保持卡片和资料区名称一致；没有行业 ID 的旧资料文案不被该展示层覆盖。共享 API、字典及 App 文件均未修改，没有迁移存量联系人。
+- 新增 8 项回归覆盖内存 provider → 真实 live 查询服务 → route → 两套页面适配器、详情、三语名称、城市搜索、行业计数、表盘未分类及旧资料保留；与周边回归共 51 项通过。真实账号跨端回读和生产部署仍未执行。
+
 ## 热拔插边界
 
 调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter、detail/tag/status 和 business-card contact-write 服务。真实联系人存储可以独立接入，不改变页面或 API route。

@@ -1,3 +1,4 @@
+import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import type {
   ContactDetailSourceReference,
   ContactDetailStatusOption,
@@ -351,6 +352,7 @@ function encounterFor(
   model: AppContactDetailSuccessModel,
   eventId: string,
   language: OrbitLanguage,
+  industry: string,
 ): OrbitContactEncounterView {
   const profile = model.contact.publicProfile;
   const bio = displayText(profile.bio, language);
@@ -365,7 +367,7 @@ function encounterFor(
       publicProfile: {
         bio,
         conversationPrompts: displayTexts(profile.conversationPrompts, language),
-        industry: displayText(profile.industry, language),
+        industry,
         intro: sameDisplayCopy(bio, intro) ? "" : intro,
         offering: displayTexts(profile.offering, language),
         seeking: displayTexts(profile.seeking, language),
@@ -398,14 +400,18 @@ export function contactDetailRouteToOrbitContactsViewModel(
   const eventId = eventIdFor(model);
   const eventName = displayText(eventNameFor(model, eventId), language);
   const notes = noteViews(model, language);
+  const industry = isIndustryIdCode(model.contact.primaryIndustryId)
+    ? industryLabel(model.contact.primaryIndustryId, language)
+    : model.contact.primaryIndustryLabel?.trim() ?? "";
   const contact: OrbitContactView = {
     company: model.contact.organization,
     displayName: model.contact.displayName,
     email: model.contact.primaryEmail ?? "",
-    encounters: [encounterFor(model, eventId, language)],
+    encounters: [encounterFor(model, eventId, language, industry)],
     g: "g-violet",
     id: model.contact.id,
-    industry: displayText(model.contact.publicProfile.industry, language),
+    industry,
+    primaryIndustryId: model.contact.primaryIndustryId,
     initial:
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),

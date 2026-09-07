@@ -9,6 +9,7 @@ export interface OrbitContactView {
   g: string;
   id: string;
   industry: string;
+  primaryIndustryId?: string;
   initial: string;
   lineId: string;
   location?: string;

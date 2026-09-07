@@ -1,3 +1,4 @@
+import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import type {
   AppContactListItemViewModel,
   AppContactsRouteViewModel,
@@ -105,6 +106,9 @@ function contactToOrbitView(
   index: number,
 ): OrbitContactView {
   const eventId = eventIdFor(contact);
+  const industry = isIndustryIdCode(contact.primaryIndustryId)
+    ? industryLabel(contact.primaryIndustryId, "zh")
+    : contact.primaryIndustryLabel?.trim() ?? "";
   const relationshipContext =
     contact.relationshipContextCopy || contact.profileSnippet || contact.nextAction;
 
@@ -119,7 +123,7 @@ function contactToOrbitView(
           publicProfile: {
             bio: contact.profileSnippet,
             conversationPrompts: [contact.nextAction].filter(Boolean),
-            industry: contact.location || contact.tags[0] || "",
+            industry,
             intro: relationshipContext,
             offering: contact.relationshipValueLabels.length
               ? Array.from(contact.relationshipValueLabels)
@@ -138,7 +142,9 @@ function contactToOrbitView(
     ],
     g: "g-violet",
     id: contact.id,
-    industry: contact.location || contact.tags[0] || "",
+    industry,
+    primaryIndustryId: contact.primaryIndustryId,
+    location: contact.location,
     initial: initialFor(contact.displayName),
     lastEventId: eventId,
     lineId: "",

@@ -1,4 +1,5 @@
 import { StateView } from "../../../../../shared/ui/state-view";
+import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import type {
   OrbitContactView,
   OrbitContactsViewModel,
@@ -102,6 +103,9 @@ function contactToOrbitView(
   index: number,
 ): OrbitContactView {
   const eventId = eventIdForSource(contact.sourceLabel);
+  const industry = isIndustryIdCode(contact.primaryIndustryId)
+    ? industryLabel(contact.primaryIndustryId, "zh")
+    : contact.primaryIndustryLabel?.trim() ?? "";
   const note =
     contact.relationshipContextCopy ||
     contact.profileSnippet ||
@@ -123,7 +127,7 @@ function contactToOrbitView(
             conversationPrompts: [contact.nextAction, contact.valueRationale]
               .filter(Boolean)
               .slice(0, 2),
-            industry: contact.tags[0] ?? "Relationship",
+            industry,
             intro: note,
             offering: [offering],
             seeking: [seeking],
@@ -142,7 +146,9 @@ function contactToOrbitView(
     ],
     g: "g-violet",
     id: contact.id,
-    industry: contact.tags[0] ?? "Relationship",
+    industry,
+    primaryIndustryId: contact.primaryIndustryId,
+    location: contact.location,
     initial: initialFor(contact.displayName),
     lastEventId: eventId,
     lineId: "",

@@ -52,6 +52,8 @@ export interface AppContactListItemViewModel {
   needsAttention: boolean;
   nextAction: string;
   organization: string;
+  primaryIndustryId?: ContactListItem["primaryIndustryId"];
+  primaryIndustryLabel?: string;
   profileSnippet: string;
   relationshipContextCopy: string;
   relationshipValueLabels: readonly string[];
@@ -302,6 +304,8 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
     needsAttention: contact.status === "needs_follow_up",
     nextAction: contact.nextAction,
     organization: contact.organization,
+    primaryIndustryId: contact.primaryIndustryId,
+    primaryIndustryLabel: contact.primaryIndustryLabel,
     profileSnippet: contact.profileSnippet,
     relationshipContextCopy: relationshipContextCopy(contact),
     relationshipValueLabels,
