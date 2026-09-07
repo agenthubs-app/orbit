@@ -1,64 +1,11 @@
-/**
- * 联系人关系图页 route adapter。
- *
- * 复用 live-capable contacts route model，图谱渲染和关系布局由 `OrbitRealCardsGraph` 负责。
- */
-import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import {
-  ContactsSubrouteStateBoundary,
-  contactsRouteToOrbitContactsViewModel,
-} from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter";
-import {
-  loadAppContactsRouteViewModel,
-  type AppContactsSearchParams,
-} from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { OrbitRealCardsGraph } from "../orbit-real-contacts";
-import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
-import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
-
-interface AppContactsGraphPageProps {
-  searchParams?: Promise<AppContactsSearchParams>;
-}
+import { normalizeOrbitLanguage, withOrbitLanguageHref } from "../../orbit-language-core";
 
 export default async function AppContactsGraphPage({
   searchParams,
-}: AppContactsGraphPageProps = {}) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fcontacts%2Fgraph");
-  }
-  const actor = await resolveAuthenticatedApiActorFromSession({
-    email: session.user.email,
-    name: session.user.name,
-    userId: session.user.id,
-  });
-  if (!actor) {
-    throw new Error("Authenticated Orbit account membership is unavailable.");
-  }
-
-  const routeModel = await loadAppContactsRouteViewModel(
-    await searchParams,
-    actor.id,
-  );
-
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
-        <div data-orbit-route="app-contacts-graph-route">
-          <OrbitRealCardsGraph
-            viewModel={contactsRouteToOrbitContactsViewModel(routeModel.payload)}
-          />
-        </div>
-      ) : (
-        <ContactsSubrouteStateBoundary
-          marker="app-contacts-graph-route"
-          routeModel={routeModel}
-        />
-      )}
-    </>
-  );
+}: { searchParams?: Promise<{ lang?: string | string[] }> } = {}) {
+  const params = await searchParams;
+  const language = normalizeOrbitLanguage(typeof params?.lang === "string" ? params.lang : undefined);
+  // Compatibility entry; the destination retains the authenticated, actor-scoped boundary.
+  redirect(withOrbitLanguageHref("/app/contacts/dashboard?tab=structure", language));
 }

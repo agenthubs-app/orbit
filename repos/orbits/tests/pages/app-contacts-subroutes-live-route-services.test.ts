@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import AppContactsGraphPage from "../../app/(app)/app/contacts/graph/page";
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function source(path: string): string {
@@ -15,14 +16,24 @@ const subroutes = [
     sourcePath: "app/(app)/app/contacts/pipeline/page.tsx",
   },
   {
-    marker: "app-contacts-graph-route",
-    sourcePath: "app/(app)/app/contacts/graph/page.tsx",
-  },
-  {
     marker: "app-contacts-intros-route",
     sourcePath: "app/(app)/app/contacts/intros/page.tsx",
   },
 ] as const;
+
+test("legacy graph opens network structure and preserves only a valid language", async () => {
+  for (const [lang, href] of [
+    [undefined, "/app/contacts/dashboard?tab=structure"],
+    ["en", "/app/contacts/dashboard?tab=structure&lang=en"],
+    ["ja", "/app/contacts/dashboard?tab=structure&lang=ja"],
+    [["en", "ja"], "/app/contacts/dashboard?tab=structure"],
+  ] as const) {
+    await assert.rejects(AppContactsGraphPage({ searchParams: Promise.resolve({ lang: Array.isArray(lang) ? [...lang] : lang as string | undefined }) }), (error: unknown) => {
+      assert.equal((error as { digest?: string }).digest, `NEXT_REDIRECT;replace;${href};307;`);
+      return true;
+    });
+  }
+});
 
 for (const subroute of subroutes) {
   test(`${subroute.marker} uses the live contacts route service boundary`, async () => {

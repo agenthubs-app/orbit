@@ -5,6 +5,8 @@ Live mode reads the generated operator profile from shared live record storage
 and writes manual profile edits back to the same `profiles` record. Mock mode
 remains deterministic for local tests and fixture-driven debug views.
 
+2026-09-08：mock 与 live 都允许增量资料更新。未传 `displayName` 时保留原姓名，显式空姓名仍返回校验错误；仅发送 `relationshipGoal` 可以更新或明确清空目标，未发送的字段保留。mock 仍按 fixture 返回确定性结果，不新增真实存储写入。
+
 ## Live Service And Provider Files
 
 - Keep `features/profile/service.ts` as the stable service interface consumed by

@@ -40,9 +40,8 @@ function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode | "allAct
   return [
     { key: "list", href: "/home/cards", label: t({ en: "All", zh: "全部" }) },
     { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Relationship progress", zh: "关系进展" }) },
-    { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
     { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
-    { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Dashboard", zh: "表盘" }) },
+    { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Network analysis", zh: "人脉分析" }) },
     { key: "allActions", href: "/app/contacts/all-actions", label: t({ en: "All actions", zh: "操作记录" }) },
   ];
 }

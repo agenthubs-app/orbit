@@ -25,7 +25,7 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 - Contacts live provider 保留全图读取 API，同时为列表和详情提供 focused reads：列表按 search input 缩小 contact set 后只读取 listed contacts 与其 connections 引用的 evidence；详情按 `contactId` 只读取该 contact、对应 connection 和相关 evidence。
 - 联系人详情页不是新的数据层。它组合 Contacts、Connections 和 Analysis 三个 feature service；live 模式下先按 `contactId` 读取一次 shared focused graph，再把同一 graph 复用给 contact detail、connection evidence 和 relationship value scoring，避免重复读取全量 `contacts` / `connections` / `evidence`。
 - `/app/contacts/[id]` 现在通过 `loadAppContactDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有详情 UI 的 `OrbitContactsViewModel` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
-- `/app/contacts/pipeline`、`/app/contacts/graph` 和 `/app/contacts/intros` 现在也通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。
+- `/app/contacts/pipeline` 和 `/app/contacts/intros` 通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。旧 `/app/contacts/graph` 自 2026-09-08 起兼容跳转到人脉分析的结构页签，见下文。
 - 复核后的名片草稿通过独立的 `BusinessCardContactWriteService` 写入 `contacts`。`POST /api/contacts/business-card/confirm` 要求显式 `confirmed=true`、纠正后的字段、图片摘要和 evidence ids；服务用 draft id 派生稳定 contact id，实现同草稿幂等。
 - 写入前按规范化邮箱，再按姓名/公司组合检查现有联系人。命中重复项时返回 `duplicate_review` 并执行零写入；成功创建使用现有关系阶段 `captured` 和 `business_card_ocr` source。原始名片图片不属于 Contacts 数据。
 
@@ -84,6 +84,20 @@ live 与 mock 的标签校验不再把 `removeTags` 算作新增标签：已存�
 保存中锁定重复操作；网络失败、错误联系人响应、非法响应时间或本次写入字段不匹配时保留草稿并提供重试。只有确认响应后才更新当前详情与重新打开时的初值。未发送的时间／摘要采用服务端回读值，保留另一端在弹窗打开后做的合法修改，不与旧表单基线作隐含版本锁定。服务端 props 刷新不覆盖已打开弹窗的草稿；离开联系人后的迟到响应不更新其他联系人。草稿不跨完整页面重载保存。
 
 测试覆盖页面入口、字段增量、非法日期、失败重试和真实 PATCH → live service → 内存存储回读；丢失成功响应后重试仍保留标签、行业、状态与记录。浏览器脚本 `app-contact-interaction-editor.browser.mjs` 用隔离 mock 预览验证 1440px／390px 的时区转换、失败重试、保存回显和焦点恢复。未执行真实账号跨端验收。
+
+## Web 人脉分析（2026-09-08）
+
+`/app/contacts/dashboard` 合并为“人脉分析”，提供概览／结构／机会三个页签，`?tab=structure` 与 `?tab=opportunities` 可直达相应页签。旧 graph 地址跳转到结构页签并保留有效语言参数；认证和账号 actor 解析在目标页执行。共享侧栏、联系人列表与操作记录的窄屏导航统一入口。未被产品路由装配的旧展示组件没有批量删除或改名。
+
+页面适配层位于 `app/(app)/app/contacts/analysis/`，复用 `createConfiguredMobileContactsDashboardService`，与 App 使用同一聚合服务及运行时 Schema，不新增 Web 专属统计算法。总人脉、高价值、待联系、沉睡数来自服务端汇总；结构直接显示行业／地区／角色／关系四维的桶 ID、人数和百分比，不以已加载列表或最大桶重新计算比例。图形与键盘可操作的分组按钮同步选择，行业名称按共享三语字典显示，用户自定义文字保持原样。
+
+`/app/contacts/analysis/:dimension/:bucketId` 在认证后复用现有 `getStructureDetail`，live 工厂仍按账号加载。页面验证维度、桶和返回数据，显示真实匹配联系人、关系质量、共同标签与服务端解读。路由参数由框架解码一次，跳转链接编码稳定 ID。现有 mock 分组服务仍明确返回找不到桶，页面展示可恢复错误；它不伪造分组联系人。
+
+关系目标弹窗只向现有 `PUT /api/profile` 写 `relationshipGoal`，留空明确清除目标。保存中防重复，失败保留草稿，不随外部 props 改写草稿；只有同一资料 ID 和目标值的确认响应才更新页面。保存后保留确认值，不立即用旧聚合快照覆盖；明确提示现有建议仍属上次分析，需在机会页重算。机会使用原有重算接口，确认完成后重新读取聚合数据；重算成功但读取失败会分别说明。建议呈现已有依据、步骤和站内行动链接；没有 action brief 的旧数据使用经过校验的来源名称，缺少可读依据则明确提示，不编造依据、不自动创建任务、发送消息或安排日程。mock 资料服务同时修正了仅更新目标时误要求重传姓名的校验，仍不提供跨读取持久化。
+
+必需汇总无效／失败时显示整体错误或等待态；可选模块缺失与 pending 分别提示，不转换成零分或“没有机会”。刷新失败保留当前数据并提示重试。页面只保留本次挂载期间的状态，浏览器整页重载不恢复未保存草稿；没有新增跨端实时推送或版本冲突锁。
+
+验证覆盖聚合映射、部分失败、四维选择与真实 live 分组服务的内存数据、目标编辑和真实 profile service 写入后丢失响应／重试／冷读。`tests/pages/app-contacts-analysis.browser.mjs` 在隔离 mock 预览检查 1440px／390px 的产品路由、三页签、四维选择、目标失败重试、机会重算、刷新失败保留、旧地址及详情恢复入口、未登录跳转和无 hydration 错误。截图存于临时目录，不加入仓库。共享契约、API、App 与真实业务数据未修改；真实同账号 Web／App 双向写入回读仍未验收。
 
 ## 热拔插边界
 
