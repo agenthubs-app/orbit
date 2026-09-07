@@ -392,11 +392,10 @@ export function buildContactAcquisitionRequest(
     };
   }
 
-  const imageText = optionalField(form.imageText);
   const imageBase64 = optionalField(form.imageBase64);
 
-  if (!imageText && !imageBase64) {
-    return { error: "先选择名片图片或粘贴名片文字。", success: false };
+  if (!imageBase64) {
+    return { error: "请先拍摄或选择名片图片。只有文字信息时，请使用手动录入。", success: false };
   }
 
   return {
@@ -408,7 +407,6 @@ export function buildContactAcquisitionRequest(
           typeof form.imageSizeBytes === "number" && form.imageSizeBytes > 0
             ? form.imageSizeBytes
             : undefined,
-        imageText,
         mimeType: optionalField(form.imageMimeType)
       }),
       endpoint: ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan

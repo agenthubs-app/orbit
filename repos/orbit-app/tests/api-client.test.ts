@@ -124,10 +124,8 @@ test("Orbit API client localizes business-card OCR failures from stable context"
     assert.fail("Expected a failed API result");
   }
   assert.equal(result.error.code, "SERVICE_UNAVAILABLE");
-  assert.equal(
-    result.error.message,
-    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先粘贴名片文字，或稍后再试。"
-  );
+  assert.match(result.error.message, /手动录入/u);
+  assert.doesNotMatch(result.error.message, /粘贴名片文字/u);
   assert.equal(
     result.error.context?.businessCardScanOcrErrorCode,
     "BUSINESS_CARD_OCR_UNCONFIGURED"

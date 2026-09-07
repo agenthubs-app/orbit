@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acquisitionResultToSummary } from "../src/view-models/contact-acquisition";
+import { acquisitionResultToSummary, buildContactAcquisitionRequest, type ContactAcquisitionFormState } from "../src/view-models/contact-acquisition";
 
 test("scan risks survive the summary adapter with usable Chinese review instructions", () => {
   const summary = acquisitionResultToSummary({
@@ -34,4 +34,17 @@ test("unknown risk codes cannot resolve object prototype properties as display c
   });
   assert.equal(typeof summary.reviewIssues?.[0]?.message, "string");
   assert.match(summary.reviewIssues![0]!.message, /请对照名片/u);
+});
+
+test("text-only card input is rejected instead of being sent to image OCR", () => {
+  const form: ContactAcquisitionFormState = {
+    displayName: "", followUpHint: "", imageName: "card", imageText: "New Person\nnew@example.invalid",
+    note: "", organization: "", qrText: "", role: "", scanLabel: "", tagsText: "",
+  };
+  const textOnly = buildContactAcquisitionRequest("businessCard", form);
+  assert.equal(textOnly.success, false);
+  if (!textOnly.success) assert.match(textOnly.error, /图片/u);
+  const image = buildContactAcquisitionRequest("businessCard", { ...form, imageBase64: "test-image", imageMimeType: "image/png" });
+  assert.equal(image.success, true);
+  if (image.success) assert.equal("imageText" in image.request.body, false);
 });

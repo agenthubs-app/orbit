@@ -80,9 +80,9 @@ const BUSINESS_CARD_SCAN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   BUSINESS_CARD_IMAGE_UNSUPPORTED:
     "仅支持 JPEG、PNG 或 WebP 名片图片，请更换文件后再试。",
   BUSINESS_CARD_OCR_PROVIDER_FAILED:
-    "这张名片暂时无法识别。当前不会生成候选或写入联系人，请换一张更清晰的图片，或粘贴名片文字。",
+    "这张名片暂时无法识别。当前不会生成候选或写入联系人，请换一张更清晰的图片，或使用手动录入。",
   BUSINESS_CARD_OCR_UNCONFIGURED:
-    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先粘贴名片文字，或稍后再试。",
+    "名片识别服务尚未配置。当前不会生成候选或写入联系人；你可以先使用手动录入，或稍后再试。",
   BUSINESS_CARD_SCAN_OCR_LIVE_STORE_FAILED:
     "名片识别记录暂时无法读取，请稍后再试。",
   BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED:

@@ -146,3 +146,11 @@ test("a new scan of the same draft displays the newly returned fields", async (t
   await page.getByPlaceholder("New recognition", { exact: true }).waitFor();
   assert.equal(await page.getByPlaceholder("New recognition", { exact: true }).inputValue(), "New recognition");
 });
+
+test("card capture offers image input and directs text users to manual entry", async (t) => {
+  const page = await openScan(t);
+  assert.equal(await page.getByPlaceholder("图片不清楚时，可粘贴：姓名\n公司\n职位\n邮箱或电话", { exact: true }).count(), 0);
+  await page.getByText("只有文字信息时，请使用手动录入。", { exact: true }).waitFor();
+  await page.getByRole("tab", { name: "手动", exact: true }).click();
+  await page.getByPlaceholder("例如：王小雨", { exact: true }).waitFor();
+});

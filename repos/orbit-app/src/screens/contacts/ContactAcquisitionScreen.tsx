@@ -1047,7 +1047,7 @@ function formDetail(mode: ContactAcquisitionMode): string {
   }
 
   if (mode === "businessCard") {
-    return "拍照或上传图片，也可以粘贴文字";
+    return "拍照或上传图片，识别后逐项核对";
   }
 
   return "适合刚聊完的人";
@@ -1263,13 +1263,7 @@ function BusinessCardFields({
       <Text style={styles.helperText}>
         图片会先生成待确认候选；你确认前不会写入联系人。
       </Text>
-      <Input
-        label="名片文字"
-        multiline
-        onChangeText={(value) => updateField("imageText", value)}
-        placeholder={"图片不清楚时，可粘贴：姓名\n公司\n职位\n邮箱或电话"}
-        value={form.imageText}
-      />
+      <Text style={styles.helperText}>只有文字信息时，请使用手动录入。</Text>
       <Input
         label="备注名"
         onChangeText={(value) => updateField("imageName", value)}
