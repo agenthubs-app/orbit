@@ -4,13 +4,19 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Image,
   ImageBackground,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
   ORBIT_API_ENDPOINTS,
@@ -19,11 +25,11 @@ import {
   taskSuggestionAcceptPath,
   taskSuggestionDismissPath
 } from "../../api/endpoints";
-import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -38,6 +44,9 @@ import {
   conversationInlinePanelsForThread,
   conversationPayloadToThreadView,
   conversationQuickRoutes,
+  conversationRecordLinks,
+  conversationTaskDetailHref,
+  conversationAcceptedTaskId,
   markdownBlocksFor,
   pendingConversationThreadView,
   prioritizeConversationContacts,
@@ -98,6 +107,8 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function AiConversationScreen() {
+  const { colors, styles } = useStyles();
+  const insets = useSafeAreaInsets();
   const { id, initialMessage, source } = useLocalSearchParams<{
     id?: string | string[];
     initialMessage?: string | string[];
@@ -149,6 +160,7 @@ export function AiConversationScreen() {
   const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
+  const [acceptedTaskId, setAcceptedTaskId] = useState<string | null>(null);
   const [taskInteractionResolution, setTaskInteractionResolution] = useState<
     "accepted" | "dismissed" | null
   >(null);
@@ -253,6 +265,7 @@ export function AiConversationScreen() {
     if (result.success) {
       const nextThread = conversationPayloadToThreadView(result.data);
       setTaskInteractionResolution(null);
+      setAcceptedTaskId(null);
       setLatestData(result.data);
       setResolvedConversationId(nextThread.activeConversationId);
       setDraftMessage("");
@@ -308,6 +321,7 @@ export function AiConversationScreen() {
         if (result.success) {
           const nextThread = conversationPayloadToThreadView(result.data);
           setTaskInteractionResolution(null);
+          setAcceptedTaskId(null);
           setLatestData(result.data);
           setResolvedConversationId(nextThread.activeConversationId);
           await persistAndCanonicalizeDraftConversation(result.data, nextThread);
@@ -362,6 +376,7 @@ export function AiConversationScreen() {
     });
 
     if (result.success) {
+      setAcceptedTaskId(action === "accept" ? conversationAcceptedTaskId(result.data) : null);
       setTaskInteractionResolution(
         action === "accept" ? "accepted" : "dismissed"
       );
@@ -418,18 +433,11 @@ export function AiConversationScreen() {
     : null;
 
   return (
-    <AppScreen
-      eyebrow="Orbit AI"
-      refreshControl={
-        <RefreshControl
-          onRefresh={refresh}
-          refreshing={state.refreshing}
-          tintColor={colors.accent}
-        />
-      }
-      showBack={false}
-      title="对话"
-    >
+    <SafeAreaView edges={["top", "bottom"]} style={styles.readingSafeArea}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={styles.readingRoot}>
+      {!thread ? <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+        <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
+      </Pressable> : null}
       {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
       {!isDraftConversation && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
@@ -467,6 +475,8 @@ export function AiConversationScreen() {
           profile={profile}
           profileStateKind={profileState.kind}
           pendingAiRunId={pendingAiRunId}
+          onRefresh={refresh}
+          refreshing={state.refreshing}
           runReferences={runReferences}
           scheduleItems={scheduleItems}
           scheduleStateKind={tasksState.kind}
@@ -475,10 +485,11 @@ export function AiConversationScreen() {
           sending={sending}
           taskInteractionBusy={taskInteractionBusy}
           taskInteractionResolution={taskInteractionResolution}
-          thread={thread}
+          thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
         />
       ) : null}
-    </AppScreen>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -504,6 +515,8 @@ function ConversationThread({
   profile,
   profileStateKind,
   pendingAiRunId,
+  onRefresh,
+  refreshing,
   runReferences,
   scheduleItems,
   scheduleStateKind,
@@ -530,11 +543,13 @@ function ConversationThread({
   onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
+  onOpenHref: (href: string) => void;
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
   pendingAiRunId: string | null;
+  onRefresh: () => void;
+  refreshing: boolean;
   runReferences: ConversationAiRunReferenceView[];
   scheduleItems: ScheduleItem[];
   scheduleStateKind: ResourceKind;
@@ -545,6 +560,10 @@ function ConversationThread({
   taskInteractionResolution: "accepted" | "dismissed" | null;
   thread: ConversationThreadView;
 }) {
+  const { colors, styles } = useStyles();
+  const [routesOpen, setRoutesOpen] = useState(false);
+  const historyScroll = useRef<ScrollView>(null);
+  const followNewMessages = useRef(false);
   const inlinePanelAnchorIndex = thread.messages.reduce(
     (lastIndex, message, index) => (message.role === "user" ? index : lastIndex),
     -1
@@ -552,28 +571,45 @@ function ConversationThread({
 
   return (
     <View style={styles.threadSurface}>
-      <View style={styles.threadHeader}>
+      <View accessibilityLabel="对话导航" style={styles.threadHeader}>
+        <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); onBack(); }} style={styles.backButton}>
+          <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
+        </Pressable>
         <View style={styles.threadTitleBlock}>
           <Text style={styles.threadEyebrow}>Orbit AI</Text>
-          <Text numberOfLines={2} style={styles.threadTitle}>
+          <Text numberOfLines={1} style={styles.threadTitle}>
             {thread.title}
-          </Text>
-          <Text numberOfLines={2} style={styles.threadNextAction}>
-            {thread.nextAction}
           </Text>
         </View>
         <Pressable
-          accessibilityLabel="返回 Orbit AI"
+          accessibilityLabel="更多对话选项"
           accessibilityRole="button"
-          onPress={onBack}
+          accessibilityState={{ expanded: routesOpen }}
+          onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }}
           style={({ pressed }) => [
             styles.backButton,
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="arrow-back-outline" size={17} />
+          <Ionicons color={colors.ink} name="ellipsis-horizontal" size={24} />
         </Pressable>
       </View>
+      {routesOpen ? <View style={styles.routesPanel}><QuickRouteDock onOpenHref={(href) => { setRoutesOpen(false); onOpenHref(href); }} /></View> : null}
+      <ScrollView
+        ref={historyScroll}
+        testID="conversation-history"
+        contentContainerStyle={styles.readingContent}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          followNewMessages.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
+        }}
+        scrollEventThrottle={100}
+        onContentSizeChange={() => { if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true }); }}
+        refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accent} />}
+        style={styles.readingHistory}
+      >
       <View style={styles.messagePanel}>
         {thread.messages.length === 0 ? (
           <EmptyState message="这条对话还没有消息。" title="没有消息" />
@@ -581,7 +617,7 @@ function ConversationThread({
           <View style={styles.messageStack}>
             {thread.messages.map((message, index) => (
               <Fragment key={message.id}>
-                <MessageBubble message={message} />
+                <MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} />
                 {index === inlinePanelAnchorIndex && inlinePanels.length > 0 ? (
                   <ConversationInlinePanels
                     baseUrl={baseUrl}
@@ -612,6 +648,7 @@ function ConversationThread({
           busy={taskInteractionBusy}
           interaction={thread.taskInteraction}
           onResolve={onResolveTaskSuggestion}
+          onOpenHref={onOpenHref}
           resolution={taskInteractionResolution}
         />
       ) : null}
@@ -635,32 +672,40 @@ function ConversationThread({
           runReferences={runReferences}
         />
       ) : null}
-      <View style={styles.composerPanel}>
+      {sending ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>正在回复…</Text> : null}
+      </ScrollView>
+      <View testID="conversation-composer" style={styles.composerPanel}>
         <TextInput
+          accessibilityLabel="继续聊聊"
           multiline
           onChangeText={onChangeDraft}
-          placeholder="继续问一个具体问题"
+          placeholder="继续聊聊…"
           placeholderTextColor={colors.text4}
           style={styles.input}
           textAlignVertical="top"
           value={draftMessage}
         />
         {sendError ? <Text style={styles.errorText}>{sendError}</Text> : null}
+        <View style={styles.composerActions}>
+        <Pressable accessibilityLabel="打开快捷入口" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.backButton}>
+          <Ionicons color={colors.text3} name="add-circle-outline" size={27} />
+        </Pressable>
         <Pressable
+          accessibilityLabel="发送消息"
           accessibilityRole="button"
-          disabled={sending}
-          onPress={onSend}
+          accessibilityState={{ disabled: sending || !draftMessage.trim(), busy: sending }}
+          disabled={sending || !draftMessage.trim()}
+          onPress={() => { followNewMessages.current = true; onSend(); }}
           style={({ pressed }) => [
             styles.sendButton,
-            sending ? styles.disabled : null,
+            sending || !draftMessage.trim() ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.onAccent} name="send-outline" size={17} />
-          <Text style={styles.sendButtonText}>{sending ? "发送中" : "发送"}</Text>
+          <Ionicons color={colors.onAccent} name={sending ? "ellipsis-horizontal" : "send-outline"} size={20} />
         </Pressable>
+        </View>
       </View>
-      <QuickRouteDock onOpenHref={onOpenHref} />
     </View>
   );
 }
@@ -669,13 +714,16 @@ function TaskInteractionCard({
   busy,
   interaction,
   onResolve,
+  onOpenHref,
   resolution
 }: {
   busy: boolean;
   interaction: TaskInteractionView;
   onResolve: (action: "accept" | "dismiss") => void;
+  onOpenHref: (href: string) => void;
   resolution: "accepted" | "dismissed" | null;
 }) {
+  const { colors, styles } = useStyles();
   const completed = interaction.state === "created" || resolution === "accepted";
   const dismissed = resolution === "dismissed";
   const failed = interaction.state === "failed";
@@ -734,6 +782,11 @@ function TaskInteractionCard({
           </Pressable>
         </View>
       ) : null}
+      {completed && conversationTaskDetailHref(interaction.taskId) ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`打开待办详情：${interaction.title}`} onPress={() => onOpenHref(conversationTaskDetailHref(interaction.taskId)!)} style={styles.recordLink}>
+          <Text style={styles.recordLinkText}>查看待办</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -751,6 +804,7 @@ function AiRunAuditPanel({
   pendingAiRunId: string | null;
   runReferences: ConversationAiRunReferenceView[];
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.aiRunPanel}>
       <View style={styles.aiRunHeader}>
@@ -842,7 +896,7 @@ function ConversationInlinePanels({
   followupsStateKind: ResourceKind;
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
+  onOpenHref: (href: string) => void;
   panels: ConversationInlinePanelView[];
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
@@ -850,6 +904,7 @@ function ConversationInlinePanels({
   scheduleStateKind: ResourceKind;
   thread: ConversationThreadView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.inlinePanelStack}>
       {panels.map((panel) => {
@@ -938,6 +993,7 @@ function EventInlinePanel({
   panel: ConversationInlinePanelView;
   thread: ConversationThreadView;
 }) {
+  const { colors, styles } = useStyles();
   const prioritizedEvents = prioritizeConversationEvents(thread, eventCards);
 
   return (
@@ -1054,6 +1110,7 @@ function PeopleInlinePanel({
   panel: ConversationInlinePanelView;
   thread: ConversationThreadView;
 }) {
+  const { colors, styles } = useStyles();
   const prioritizedContacts = prioritizeConversationContacts(thread, contactCards);
 
   return (
@@ -1102,7 +1159,7 @@ function PeopleInlinePanel({
                 <View
                   style={[
                     styles.contactAvatar,
-                    contactAvatarToneStyle(avatar.tone)
+                    contactAvatarToneStyle(avatar.tone, styles)
                   ]}
                 >
                   {contact.imageUrl ? (
@@ -1150,9 +1207,10 @@ function FollowupsInlinePanel({
 }: {
   followupTasks: FollowupTaskView[];
   followupsStateKind: ResourceKind;
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
+  onOpenHref: (href: string) => void;
   panel: ConversationInlinePanelView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1183,8 +1241,10 @@ function FollowupsInlinePanel({
           {followupTasks.slice(0, 3).map((task) => (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`打开待办详情：${task.title}`}
+              disabled={!conversationTaskDetailHref(task.id)}
               key={task.id}
-              onPress={() => onOpenHref("/followups")}
+              onPress={() => onOpenHref(conversationTaskDetailHref(task.id)!)}
               style={({ pressed }) => [
                 styles.followupSuggestionCard,
                 pressed ? styles.pressed : null
@@ -1205,6 +1265,7 @@ function FollowupsInlinePanel({
                   {task.recommendedAction}
                 </Text>
               </View>
+              <Ionicons color={colors.accent} name="chevron-forward" size={18} />
             </Pressable>
           ))}
         </View>
@@ -1221,11 +1282,12 @@ function ScheduleInlinePanel({
   scheduleItems,
   scheduleStateKind
 }: {
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
+  onOpenHref: (href: string) => void;
   panel: ConversationInlinePanelView;
   scheduleItems: ScheduleItem[];
   scheduleStateKind: ResourceKind;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1256,8 +1318,10 @@ function ScheduleInlinePanel({
           {scheduleItems.slice(0, 3).map((item) => (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`打开待办详情：${item.title}`}
+              disabled={!conversationTaskDetailHref(item.id)}
               key={item.id}
-              onPress={() => onOpenHref("/schedule")}
+              onPress={() => onOpenHref(conversationTaskDetailHref(item.id)!)}
               style={({ pressed }) => [
                 styles.scheduleSuggestionCard,
                 pressed ? styles.pressed : null
@@ -1303,6 +1367,7 @@ function ProfileInlinePanel({
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1365,7 +1430,7 @@ function ProfileInlinePanel({
   );
 }
 
-function contactAvatarToneStyle(tone: ReturnType<typeof contactAvatarFor>["tone"]) {
+function contactAvatarToneStyle(tone: ReturnType<typeof contactAvatarFor>["tone"], styles: ReturnType<typeof useStyles>["styles"]) {
   if (tone === "amber") return styles.contactAvatarAmber;
   if (tone === "emerald") return styles.contactAvatarEmerald;
   if (tone === "rose") return styles.contactAvatarRose;
@@ -1378,6 +1443,7 @@ function QuickRouteDock({
 }: {
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
 }) {
+  const { colors, styles } = useStyles();
   const iconForRoute = (
     href: ConversationQuickRouteView["href"]
   ): keyof typeof Ionicons.glyphMap => {
@@ -1419,15 +1485,35 @@ function QuickRouteDock({
   );
 }
 
-function MessageBubble({ message }: { message: ChatMessageView }) {
+function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void }) {
+  const { colors, styles } = useStyles();
   const isUser = message.role === "user";
-  const messageTime = message.createdAt.replace("T", " ").slice(0, 16);
+  const links = conversationRecordLinks(message.content, baseUrl);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   return (
-    <View style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
-      <Text style={styles.messageLabel}>{isUser ? "我" : "Orbit AI"}</Text>
-      <MarkdownContent content={message.content} isUser={isUser} />
-      {messageTime ? <Text style={styles.messageTime}>{messageTime}</Text> : null}
+    <View accessibilityLabel={isUser ? "我的消息" : "Orbit AI 回复"} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
+      {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} />}
+      {links.map((link) => (
+        <Pressable
+          accessibilityLabel={`打开${link.kind}详情：${link.id}`}
+          accessibilityRole="link"
+          key={link.href}
+          onPress={() => {
+            Keyboard.dismiss();
+            setLinkError(null);
+            if (link.external) void Linking.openURL(link.href).catch(() => setLinkError("链接暂时无法打开，请稍后重试。"));
+            else onOpenHref(link.href);
+          }}
+          style={styles.recordLink}
+        >
+          <Ionicons color={colors.accent} name={link.kind === "人脉" ? "person-outline" : link.kind === "待办" ? "checkbox-outline" : link.kind === "行动" ? "flash-outline" : "calendar-outline"} size={20} />
+          <Text style={styles.recordLinkText}>{link.kind}详情 · {link.id}{link.external ? " · 网页" : ""}</Text>
+          <Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+        </Pressable>
+      ))}
+      {/(?:https?:\/\/|orbit:\/\/|\]\()/iu.test(message.content) ? <Text style={styles.linkBoundary}>详情入口仅支持当前服务的记录；未提供入口的链接不会跳转。</Text> : null}
+      {linkError ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{linkError}</Text> : null}
     </View>
   );
 }
@@ -1439,6 +1525,7 @@ function MarkdownContent({
   content: string;
   isUser: boolean;
 }) {
+  const { styles } = useStyles();
   const blocks = markdownBlocksFor(content);
 
   if (blocks.length === 0) {
@@ -1461,6 +1548,7 @@ function MarkdownBlock({
   block: MarkdownBlockView;
   isUser: boolean;
 }) {
+  const { styles } = useStyles();
   const textStyle = [
     styles.messageText,
     block.quote ? styles.markdownQuoteText : null,
@@ -1492,7 +1580,7 @@ function MarkdownBlock({
   }
 
   const paragraph = (
-    <Text style={textStyle}>
+    <Text selectable style={textStyle}>
       {block.segments.map((segment, index) => (
         <MarkdownSegment
           isUser={isUser}
@@ -1517,6 +1605,7 @@ function MarkdownSegment({
   isUser: boolean;
   segment: MarkdownInlineView;
 }) {
+  const { styles } = useStyles();
   return (
     <Text
       style={[
@@ -1530,14 +1619,22 @@ function MarkdownSegment({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  readingSafeArea: { backgroundColor: colors.surface, flex: 1 },
+  readingRoot: { flex: 1 },
+  readingHistory: { flex: 1 },
+  readingContent: { gap: spacing.lg, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24 },
+  routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
+  recordLinkText: { flex: 1, color: colors.accent, fontSize: typography.small, fontWeight: "600", lineHeight: 20 },
+  linkBoundary: { color: colors.muted, fontSize: typography.small, lineHeight: 20 },
   backButton: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
     borderRadius: radius.pill,
-    height: 40,
+    height: 44,
     justifyContent: "center",
-    width: 40
+    width: 44
   },
   bodyText: {
     color: colors.text,
@@ -1635,7 +1732,16 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   composerPanel: {
-    gap: spacing.md
+    backgroundColor: colors.surface,
+    borderColor: colors.border2,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 4,
+    marginHorizontal: 16,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6
   },
   contactAvatar: {
     alignItems: "center",
@@ -1690,15 +1796,14 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
     color: colors.text,
     fontSize: typography.body,
-    lineHeight: 21,
-    minHeight: 94,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md
+    lineHeight: 25,
+    minHeight: 48,
+    maxHeight: 120,
+    paddingHorizontal: 7,
+    paddingTop: 2,
+    paddingBottom: 2
   },
   eventCardStack: {
     gap: spacing.sm
@@ -1961,10 +2066,9 @@ const styles = StyleSheet.create({
   inlinePanel: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderTopWidth: 1,
     gap: spacing.md,
-    padding: spacing.md
+    paddingVertical: spacing.lg
   },
   inlinePanelAction: {
     alignItems: "center",
@@ -2033,14 +2137,8 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   messageBubble: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    maxWidth: "92%",
-    padding: spacing.md
+    alignSelf: "stretch",
+    gap: spacing.sm
   },
   messageLabel: {
     color: colors.text3,
@@ -2048,18 +2146,19 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   messageStack: {
-    gap: spacing.sm
+    gap: spacing.lg
   },
   messagePanel: {
     gap: spacing.sm
   },
   messageText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    fontSize: typography.body,
+    lineHeight: 27
   },
   messageTextUser: {
-    color: colors.onAccent
+    color: colors.accentPress,
+    fontWeight: "600"
   },
   messageTime: {
     color: colors.text4,
@@ -2148,15 +2247,11 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     alignItems: "center",
-    alignSelf: "flex-start",
     backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    flexDirection: "row",
-    gap: spacing.xs,
+    borderRadius: radius.pill,
+    height: 44,
+    width: 44,
     justifyContent: "center",
-    minHeight: 42,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm
   },
   sendButtonText: {
     color: colors.onAccent,
@@ -2165,14 +2260,18 @@ const styles = StyleSheet.create({
   },
   threadEyebrow: {
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontSize: 16,
+    fontWeight: "600"
   },
   threadHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between"
+    gap: spacing.xs,
+    minHeight: 68,
+    paddingHorizontal: 8,
+    paddingBottom: 8
   },
   threadNextAction: {
     color: colors.text3,
@@ -2180,18 +2279,14 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   threadSurface: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.lg,
-    padding: spacing.lg
+    backgroundColor: colors.surface,
+    flex: 1
   },
   threadTitle: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 25
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22
   },
   threadTitleBlock: {
     flex: 1,
@@ -2199,8 +2294,14 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   userBubble: {
-    alignSelf: "flex-end",
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentSofter,
+    borderColor: colors.accentSoft,
+    borderWidth: 1,
+    borderLeftColor: colors.accent,
+    borderLeftWidth: 3,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6
   }
-});
+}));

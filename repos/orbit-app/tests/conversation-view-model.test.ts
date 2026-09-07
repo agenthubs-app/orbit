@@ -1,6 +1,59 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import * as conversationViewModel from "../src/view-models/conversations";
+
+test("conversation record links preserve native record identity and reject unsafe destinations", () => {
+  const links = (conversationViewModel as unknown as { conversationRecordLinks?: (text: string, baseUrl: string) => Array<{ href: string; kind: string; id: string; external: boolean }> }).conversationRecordLinks;
+  assert.equal(typeof links, "function");
+  assert.deepEqual(links!("[交流会](https://orbit.test/app/events/event-one) orbit://contacts/person-one /tasks/task%3Aone /schedule/events/event-two", "https://orbit.test"), [
+    { href: "/events/event-one", id: "event-one", kind: "活动", external: false },
+    { href: "/contacts/person-one", id: "person-one", kind: "人脉", external: false },
+    { href: "/tasks/task%3Aone", id: "task:one", kind: "待办", external: false },
+    { href: "/schedule/events/event-two", id: "event-two", kind: "日历活动", external: false }
+  ]);
+  assert.deepEqual(links!("javascript:alert(1) https://elsewhere.test/app/events/x orbit://contacts/new orbit://tasks/ orbit://events/%2Fbad", "https://orbit.test"), []);
+  assert.deepEqual(links!("orbit://events/e1 orbit://events/e1", "https://orbit.test").map((link) => link.href), ["/events/e1"]);
+});
+
+test("action references use the verified web entry route, never the unscoped native ledger", () => {
+  const links = (conversationViewModel as unknown as { conversationRecordLinks?: (text: string, baseUrl: string) => Array<{ href: string; kind: string; id: string; external: boolean }> }).conversationRecordLinks;
+  assert.equal(typeof links, "function");
+  const href = "https://orbit.test/app/contacts/all-actions?entry=action%3Afollowup%3Aone";
+  assert.deepEqual(links!(href, "https://orbit.test"), [
+    { href, id: "action:followup:one", kind: "行动", external: true }
+  ]);
+  assert.deepEqual(links!("orbit://contacts/all-actions?entry=x https://orbit.test/app/contacts/all-actions", "https://orbit.test"), []);
+});
+
+test("task detail links encode the actual ID and reject fallback identities", () => {
+  const href = (conversationViewModel as unknown as { conversationTaskDetailHref?: (id: string) => string | null }).conversationTaskDetailHref;
+  assert.equal(typeof href, "function");
+  assert.equal(href!("task:followup:one"), "/tasks/task%3Afollowup%3Aone");
+  assert.equal(href!("task:one/two"), "/tasks/task%3Aone%2Ftwo");
+  assert.equal(href!(""), null);
+  assert.equal(href!("task"), null);
+  assert.equal(href!(" task "), null);
+});
+
+test("record references never promote a path inside an unrelated token", () => {
+  for (const value of ["docs/events/not-a-record", "api/tasks/not-a-record", "[/tmp/events/not-a-record]", "ftp://elsewhere/app/events/x", "//elsewhere/app/events/x", "javascript:https://orbit.test/app/events/x", "data:text/plain,https://orbit.test/app/events/x", "ftp://https://orbit.test/app/events/x", "mailto:https://orbit.test/app/events/x"]) {
+    assert.deepEqual(conversationViewModel.conversationRecordLinks(value, "https://orbit.test"), [], value);
+  }
+});
+
+test("absolute references can follow Chinese prose without a space", () => {
+  for (const content of ["查看https://orbit.test/app/events/one", "活动：https://orbit.test/app/events/one", "打开orbit://events/one"]) {
+    assert.equal(conversationViewModel.conversationRecordLinks(content, "https://orbit.test")[0]?.href, "/events/one");
+  }
+});
+
+test("acceptance retains only the canonical task identity returned by the server", () => {
+  const accepted = (conversationViewModel as unknown as { conversationAcceptedTaskId: (data: unknown) => string | null }).conversationAcceptedTaskId;
+  assert.equal(typeof accepted, "function");
+  assert.equal(accepted({ task: { id: "task:one/two" } }), "task:one/two");
+  assert.equal(accepted({ suggestionId: "suggestion-one" }), null);
+  assert.equal(accepted({ task: { id: "task" } }), null);
+});
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,

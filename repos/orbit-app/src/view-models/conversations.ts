@@ -18,6 +18,75 @@ export interface ChatMessageView {
   role: string;
 }
 
+export interface ConversationRecordLink {
+  external: boolean;
+  href: string;
+  id: string;
+  kind: "活动" | "人脉" | "待办" | "日历活动" | "行动";
+}
+
+function validConversationRecordId(id: string): boolean {
+  return Boolean(id.trim()) && !/[\s/\\\u0000-\u001f]/u.test(id) &&
+    ![".", "..", "task", "contact", "event"].includes(id);
+}
+
+export function conversationTaskDetailHref(id: string): string | null {
+  // Server-issued task IDs can contain slashes; encode them as one route segment.
+  return id.trim() && !/[\u0000-\u001f]/u.test(id) && ![".", "..", "task"].includes(id.trim())
+    ? `/tasks/${encodeURIComponent(id)}` : null;
+}
+
+export function conversationAcceptedTaskId(data: unknown): string | null {
+  const task = isRecord(data) && isRecord(data.task) ? data.task : {};
+  return typeof task.id === "string" && conversationTaskDetailHref(task.id) ? task.id : null;
+}
+
+// Only existing record routes on this app's configured server are promoted.
+// Other URLs remain message text; never turn a module home into a record detail.
+export function conversationRecordLinks(content: string, baseUrl: string): ConversationRecordLink[] {
+  // Consume whole URI tokens, including unsupported schemes, so a nested
+  // https URL inside javascript:/data:/ftp: can never become a record link.
+  const candidates = content.matchAll(/(?<![a-z0-9+./-])([a-z][a-z0-9+.-]*:[^\s<>"，。；！？）]+)|(?:^|[\s([<"，。；！？（])((?:\/app)?\/(?:schedule\/events|events|contacts|tasks)\/[^\s<>"，。；！？）]+)/giu);
+  const links: ConversationRecordLink[] = [];
+  for (const [, absolute, relative] of candidates) {
+    const candidate = absolute ?? relative;
+    if (!candidate) continue;
+    const href = candidate.replace(/[)\],.;]+$/u, "");
+    try {
+      const url = new URL(href, baseUrl);
+      if (!["http:", "https:", "orbit:"].includes(url.protocol)) continue;
+      const native = url.protocol === "orbit:";
+      if (url.username || url.password || (native && url.port)) continue;
+      if (!native && url.origin !== new URL(baseUrl).origin) continue;
+      const path = native ? `${url.hostname ? `/${url.hostname}` : ""}${url.pathname}` : url.pathname.replace(/^\/app(?=\/)/u, "");
+      let link: ConversationRecordLink;
+      if (!native && path === "/contacts/all-actions" && url.searchParams.getAll("entry").length === 1) {
+        const id = url.searchParams.get("entry") ?? "";
+        if (!validConversationRecordId(id)) continue;
+        link = { external: true, href: url.href, id, kind: "行动" };
+      } else {
+        const match = path.match(/^\/(events|contacts|tasks|schedule\/events)\/([^/]+)$/u);
+        if (!match?.[1] || !match[2]) continue;
+        const route = match[1];
+        const id = decodeURIComponent(match[2]);
+        if (!validConversationRecordId(id)) continue;
+        if (route === "contacts" && ["all-actions", "new", "intros", "graph", "pipeline", "list", "dashboard"].includes(id)) continue;
+        if (route === "events" && ["center", "new"].includes(id)) continue;
+        link = {
+          external: false,
+          href: `/${route}/${encodeURIComponent(id)}`,
+          id,
+          kind: route === "contacts" ? "人脉" : route === "tasks" ? "待办" : route === "schedule/events" ? "日历活动" : "活动"
+        };
+      }
+      if (!links.some((existing) => existing.href === link.href)) links.push(link);
+    } catch {
+      // A malformed address is kept as ordinary text, not replaced with a fake ID.
+    }
+  }
+  return links;
+}
+
 export type MarkdownInlineKind = "code" | "strong" | "text";
 export type MarkdownBlockKind = "listItem" | "paragraph";
 
