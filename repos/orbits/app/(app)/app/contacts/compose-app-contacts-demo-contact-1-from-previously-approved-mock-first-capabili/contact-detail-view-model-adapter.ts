@@ -39,7 +39,7 @@ function pipelineStatusFor(
   }
 
   if (status === "archived") {
-    return "partnered";
+    return "archived";
   }
 
   return "in_progress";
@@ -472,6 +472,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },
+      { value: "archived", label: "已归档" },
     ],
   };
 }

@@ -51,13 +51,11 @@ function sourceFor(
 function pipelineStatusFor(
   contact: AppContactListItemViewModel,
 ): OrbitContactPipelineStatus {
-  const status = contact.statusLabel.toLowerCase();
-
-  if (status.includes("archived")) {
-    return "partnered";
+  if (contact.status === "archived") {
+    return "archived";
   }
 
-  if (status.includes("follow")) {
+  if (contact.status === "needs_follow_up") {
     return "to_contact";
   }
 
@@ -187,6 +185,7 @@ export function contactsRouteToOrbitContactsViewModel(
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },
+      { value: "archived", label: "已归档" },
     ],
   };
 }

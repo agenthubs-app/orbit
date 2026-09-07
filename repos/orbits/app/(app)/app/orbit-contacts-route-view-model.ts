@@ -1,4 +1,4 @@
-export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered";
+export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived";
 export type OrbitIntroStatus = "draft" | "sent";
 
 export interface OrbitContactView {

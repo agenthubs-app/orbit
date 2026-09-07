@@ -31,6 +31,14 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 
 如果 live storage 未配置，feature service 和 page-level route 都必须返回受控失败，不能回退到 mock 数据。
 
+## Web 归档状态修复（2026-09-07）
+
+- 列表、子路由与详情的页面适配器将联系人 `status: archived` 映射为独立的 `archived / 已归档` 展示状态，不再解释为 `partnered / 已合作`。列表按原始状态枚举判断，不解析翻译后的 `statusLabel`。
+- 归档联系人保留在列表、看板和图谱数据中；可按归档状态筛选或搜索，计数与详情标签采用同一含义。已有 `partnered` 展示值保持兼容，不迁移任何存储数据。
+- 本次只修正 Web 展示语义，没有修改共享 API、契约或 App。App 的完整关系四阶段、阶段编辑、行业与导航同步仍是后续任务，不能据此标记整个人脉模块对齐完成。
+- 验证覆盖真实适配器、列表搜索与分组、列表／看板／详情的 React 渲染；新增 8 项回归从失败转为通过。连同周边测试共 40 项通过，Web 全量类型检查通过；未执行真实账号跨端回读或生产部署。
+- 基线维护：移除只约束 `actorId` 属性简写的旧源码断言（actor 传递已有 focused provider 行为测试），更新二维码来源的运行时中文预期，以匹配现行本地化规则。
+
 ## 热拔插边界
 
 调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter、detail/tag/status 和 business-card contact-write 服务。真实联系人存储可以独立接入，不改变页面或 API route。

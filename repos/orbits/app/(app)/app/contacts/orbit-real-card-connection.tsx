@@ -46,7 +46,12 @@ function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; 
 
 function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
   const label = viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? status;
-  return <span className={`nc-status nc-ps-${status}`}><span className="nc-dot" />{label}</span>;
+  const archived = status === "archived";
+  return (
+    <span className={`nc-status nc-ps-${status}`} style={archived ? { background: "var(--surface-3)", color: "var(--text-3)" } : undefined}>
+      <span className="nc-dot" style={archived ? { background: "currentColor" } : undefined} />{label}
+    </span>
+  );
 }
 
 function StatusPicker({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {

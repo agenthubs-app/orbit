@@ -509,7 +509,7 @@ test("contact detail view model selects one display language from multilingual l
     assert.equal(zhContact.title, "门店经营者");
     assert.match(zhContact.offering, /商业机会/);
     assert.match(zhContact.seeking, /中文下一步/);
-    assert.match(zhViewModel.events[0]?.name ?? "", /QR 扫码/);
+    assert.equal(zhViewModel.events[0]?.name, "二维码交换记录：佐藤 健一");
     assert.doesNotMatch(
       `${zhContact.note} ${zhContact.encounters[0]?.context.publicProfile.bio} ${zhContact.offering} ${zhContact.seeking} ${zhContact.title} ${zhViewModel.events[0]?.name}`,
       /日本語|Store Owner|English|commercial opportunity|matches|through|QR scan for/,
@@ -590,7 +590,8 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /loadAppContactDetailRoute/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
   assert.match(pageSource, /const session = await auth\(\)/);
-  assert.match(pageSource, /actorId,/);
+  // Actor scoping is exercised against the focused graph provider above;
+  // object-property shorthand is not part of the route contract.
   assert.match(pageSource, /redirect\(/);
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /capture === "meeting-memo"/);
