@@ -319,3 +319,9 @@ V1 上传也在写入 Blob 前持久化回收记录。独立连接池提交写�
 验证：首轮 30 项相关测试通过，补充 V2 仓库、worker、API 与 V1 回归 30 项通过（其中 V1 三项重复），均使用真实 PostgreSQL 且无跳过；生产构建通过。测试覆盖事务回滚后的回收、四个并发批次、工作区隔离和迟到引用拒绝。证据 `/tmp/orbit-v1-image-journal-tests.log`、`/tmp/orbit-v1-image-journal-regressions.log`、`/tmp/orbit-v1-image-journal-build.log`。
 
 本次 V1 扩展尚未部署验证；历史未登记图片、24 小时后的真实云端回收及独立定时扫描仍待验收。
+
+### 2026-09-07：V1 写前登记部署与验收缺口
+
+`c62f24d0` 已部署至 https://orbit-n7p06dttc-liqys-projects-33c8ddec.vercel.app ，固定 Preview 地址已指向该部署。V2 合成图片上传、读取、匿名鉴权及取消全部通过，读取结果为 96×64 JPEG；测试批次 `bcb2:fc1c0329-4c52-4c0d-a349-aab8bb70b273` 已取消。20:22:26、20:22:32、20:22:43（JST）的三次固定名片队列执行标记均返回 200。V1 匿名列表返回 401，登录后列表返回 200，验证了独立连接池的迁移准备和批次事务入口；隔离 QA 账户的 V1 批次数为零。
+
+尚未执行 V1 线上上传：代码确认 pending/processing 项不能 skip，finish 也拒绝未处理项，当前无取消入口；OCR 不可用时测试数据会停留在处理中。实际产品 V1 页面也缺少取消操作，且离线提示直接展示启动 worker 的命令。需补齐用户可操作的取消和恢复流程后再做完整 V1 上传验收。上述只读检查不证明 V1 Blob 上传或延迟回收已在线通过，也不替代真实 OCR、邮箱收件、独立调度和用户试用。证据 `/tmp/orbit-v1-image-journal-live-v1.log`、`/tmp/orbit-v1-image-journal-live-v2.log`、`/tmp/orbit-v1-image-journal-live-markers.log`。
