@@ -1,5 +1,8 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getConfiguredCardUploadSources } from "../../../../../features/acquisition/storage/business-card-upload-source-runtime";
+import { getConfiguredIngestV2SourceConsumer } from "../../../../../features/acquisition/business-card-ingest-v2/configured-source-consumer";
+import { IngestConflictError } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
+import { IngestImageInvalidError } from "../../../../../features/acquisition/business-card-ingest-v2/normalization";
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../_shared/authenticated-actor";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -36,10 +39,12 @@ export function createCardUploadHandlers({
   resolveActor = resolveAuthenticatedApiActor,
   configured = getConfiguredCardUploadSources,
   issue = handleUpload,
+  consumeV2 = getConfiguredIngestV2SourceConsumer,
 }: {
   resolveActor?: ResolveAuthenticatedApiActor;
   configured?: typeof getConfiguredCardUploadSources;
   issue?: typeof handleUpload;
+  consumeV2?: typeof getConfiguredIngestV2SourceConsumer;
 } = {}) {
   async function authenticate(request: Request) {
     // These cookie-authenticated mutations are initiated only by our own UI.
@@ -91,5 +96,30 @@ export function createCardUploadHandlers({
       return Response.json(result, { headers });
     } catch { return error(503, "UPLOAD_TOKEN_UNAVAILABLE"); }
   }
-  return { reserve, token };
+  async function consume(request: Request): Promise<Response> {
+    try {
+      const actor = await authenticate(request); if (actor instanceof Response) return actor;
+      let body: Record<string, unknown>;
+      try { body = await metadata(request); } catch { return error(400, "INVALID_UPLOAD_METADATA"); }
+      if (typeof body.sourceId !== "string" || !UUID.test(body.sourceId) ||
+          typeof body.batchId !== "string" || !body.batchId.trim() || body.batchId.length > 100 ||
+          typeof body.itemId !== "string" || !body.itemId.trim() || body.itemId.length > 100 ||
+          (body.operation !== "upload" && body.operation !== "replace") ||
+          Object.keys(body).some((key) => !["sourceId", "batchId", "itemId", "operation", "expectedVersion"].includes(key)) ||
+          (body.operation === "replace" && (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1))) {
+        return error(400, "INVALID_UPLOAD_METADATA");
+      }
+      const consumer = await consumeV2(); if (!consumer) return error(503, "UPLOAD_UNAVAILABLE");
+      const result = await consumer({ actorId: actor.id, sourceId: body.sourceId,
+        batchId: body.batchId, itemId: body.itemId, operation: body.operation,
+        expectedVersion: body.operation === "replace" ? Number(body.expectedVersion) : undefined,
+      });
+      return Response.json({ data: result }, { headers });
+    } catch (cause) {
+      if (cause instanceof IngestConflictError) return error(cause.code === "BATCH_GONE" ? 404 : 409, cause.code);
+      if (cause instanceof IngestImageInvalidError) return error(400, "IMAGE_INVALID");
+      return error(503, "UPLOAD_CONSUMPTION_UNAVAILABLE");
+    }
+  }
+  return { reserve, token, consume };
 }
