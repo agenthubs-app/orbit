@@ -228,7 +228,17 @@ export interface InboxAlertsViewModel {
   proactive: readonly InboxProactiveAlert[];
 }
 
-// 提醒条目点击后跳转到"承诺工作流"页面。
+// Canonical task reminders share App deep links; adapt them at the Web boundary.
+function reminderWebHref(href: string | undefined): string {
+  if (href?.startsWith("/app/")) return href;
+  if (href && /^\/tasks\/[^/?#]+$/u.test(href)) {
+    try {
+      if (!decodeURIComponent(href).includes("..")) return `/app${href}`;
+    } catch { /* Invalid encoded paths keep the legacy fallback. */ }
+  }
+  return "/app/followups";
+}
+
 export function toReminderAlerts(
   payload: ReminderScheduleNotificationPayload,
   language: OrbitLanguage = "zh",
@@ -243,7 +253,7 @@ export function toReminderAlerts(
       language,
     ),
     priority: reminder.priority,
-    href: reminder.href?.startsWith("/app/") ? reminder.href : "/app/followups",
+    href: reminderWebHref(reminder.href),
   }));
 }
 

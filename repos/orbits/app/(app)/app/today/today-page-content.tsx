@@ -34,6 +34,7 @@ import { OrbitTodayArrangements } from "./orbit-today-arrangements";
 import { OrbitTodayHeaderActions } from "./orbit-today-header-actions";
 import { presentTodaySectionTitles } from "./today-section-presentation";
 import { OrbitTodayTimeSpine } from "./orbit-today-time-spine";
+import { TodayTasksSummary } from "../tasks/today-tasks-summary";
 
 function readRawParam(
   searchParams: AppTodayMergedSearchParams | undefined,
@@ -264,6 +265,7 @@ export default async function AppTodayPageContent({
                 preserveParams={preserveParams}
                 viewModel={localizedToday}
               />
+              <TodayTasksSummary />
             </div>
 
             <div data-orbit-today-arrangements-column id="arrangements">
