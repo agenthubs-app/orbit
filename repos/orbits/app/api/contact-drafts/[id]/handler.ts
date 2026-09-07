@@ -12,6 +12,7 @@ import {
   businessCardScanOcrFailureToAppError,
 } from "../../../../features/acquisition/business-card-contract";
 import {
+  BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX,
   BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX,
   businessCardReviewFailureContext,
   businessCardReviewFailureToAppError,
@@ -101,7 +102,10 @@ export function createContactDraftGetHandler(
     const { id } = await context.params;
     const scenario = new URL(request.url).searchParams.get("scenario");
 
-    if (id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX)) {
+    if (
+      id.startsWith(BUSINESS_CARD_REVIEW_LIVE_DRAFT_ID_PREFIX) ||
+      id.startsWith(BUSINESS_CARD_REVIEW_CLOUD_DRAFT_ID_PREFIX)
+    ) {
       const reviewService = createBusinessCardReviewService(mode);
       const result = await reviewService.getReviewDraft({
         actorId: actor.id,

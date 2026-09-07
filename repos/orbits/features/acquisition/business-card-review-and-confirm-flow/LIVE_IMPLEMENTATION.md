@@ -8,6 +8,14 @@
 - 演示服务的复核响应遵循同一空值规则；保留其既有无持久化的固定场景行为，不将其回读结果当作 live 存储验收。
 - `business-card-review-live-store.test.ts` 新增存储回读与确认回归，复核操作保持不写入联系人。此处为内存存储验证，不代表真实账号跨端或实机验收。
 
+## 2026-09-07：云识别草稿 HTTP 回读交接
+
+- `GET /api/contact-drafts/:id` 将 `business-card-review:cloud:` 与 `business-card-review:live:` 两类编号交给复核服务；其余编号保留原有识别服务查询路径。此前云草稿 PATCH 保存成功后，GET 会误入识别服务并返回 404。
+- App 字段映射/提交版本：`4a28e209c`；Web 复核值持久化版本：`57a36421c`。本条随云草稿 GET 修复提交，两端不需要新增或同步契约副本。
+- `tests/api/business-card-review-readback.test.ts` 通过真实 HTTP handler、live 服务和内存记录存储验证 PATCH → GET，覆盖空值、独立服务实例、其他账号不可见及不创建联系人。
+- 本批验证：App 全量 775 项、Web 名片相关 49 项测试通过，两端全量类型检查通过；不包含 Web 全量测试、实机或真实账号双向写入验收，未部署。
+- 未完成：移动端识别风险提示/最终复核门槛、重复项处理和跨端草稿恢复入口不在本次清空/回读修复范围；不能据此标记整个名片流程已对齐。
+
 ## Live service and provider files
 
 - Keep the public contract in `features/acquisition/business-card-review-contract.ts`.
