@@ -920,21 +920,29 @@ function persistedStateFor(input: {
   actorId: string;
   collectedAt: string;
   contact: ContactDetail;
+  persistedState: LiveContactDetailState | null;
 }): LiveContactDetailState {
+  const storedNoteIds = new Set(
+    input.persistedState?.notes.map((note) => note.noteId),
+  );
   return {
     actorId: input.actorId,
     contactId: input.contact.id,
     tags: [...input.contact.tags],
     status: input.contact.status,
     notes: input.contact.notes
-      .filter((note) =>
-        note.noteId.startsWith("note:live-contact-detail-update:"),
+      .filter(
+        (note) =>
+          storedNoteIds.has(note.noteId) ||
+          note.noteId.startsWith("note:live-contact-detail-update:"),
       )
       .map((note) => ({
         noteId: note.noteId,
         body: note.body,
         authorLabel: note.authorLabel,
         createdAt: note.createdAt,
+        privacy: note.privacy,
+        sourceLabel: note.sourceLabel,
       })),
     lastInteraction: {
       channel: input.contact.lastInteraction.channel,
@@ -998,20 +1006,29 @@ export function createLiveContactDetailTagStatusService({
     contactId: string;
     collectedAt: string;
     language?: OrbitLanguage;
-  }): Promise<ContactDetailTagStatusResult> {
+  }): Promise<{
+    result: ContactDetailTagStatusResult;
+    persistedState: LiveContactDetailState | null;
+  }> {
     const actorId = input.actorId?.trim();
     if (!actorId) {
-      return failure("CONTACT_DETAIL_ACTOR_REQUIRED", {
-        collectedAt: input.collectedAt,
-        provider,
-      });
+      return {
+        persistedState: null,
+        result: failure("CONTACT_DETAIL_ACTOR_REQUIRED", {
+          collectedAt: input.collectedAt,
+          provider,
+        }),
+      };
     }
 
     if (!provider) {
-      return failure("CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED", {
-        collectedAt: input.collectedAt,
-        provider,
-      });
+      return {
+        persistedState: null,
+        result: failure("CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED", {
+          collectedAt: input.collectedAt,
+          provider,
+        }),
+      };
     }
 
     const [graph, persistedState] = await Promise.all([
@@ -1026,37 +1043,44 @@ export function createLiveContactDetailTagStatusService({
       graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
 
     if (!contact) {
-      return failure("CONTACT_DETAIL_NOT_FOUND", {
-        collectedAt: input.collectedAt,
-        databaseReadExecuted: true,
-        provider,
-      });
+      return {
+        persistedState: null,
+        result: failure("CONTACT_DETAIL_NOT_FOUND", {
+          collectedAt: input.collectedAt,
+          databaseReadExecuted: true,
+          provider,
+        }),
+      };
     }
 
     return {
-      success: true,
-      data: clonePayload(
-        payloadFor({
-          collectedAt: input.collectedAt,
-          contact,
-          connection: connectionFor(contact, graph.connections),
-          evidence: graph.evidence,
-          language: resolveOrbitLanguage({ requestLanguage: input.language }),
-          persistedState,
-          provider,
-        }),
-      ),
+      persistedState,
+      result: {
+        success: true,
+        data: clonePayload(
+          payloadFor({
+            collectedAt: input.collectedAt,
+            contact,
+            connection: connectionFor(contact, graph.connections),
+            evidence: graph.evidence,
+            language: resolveOrbitLanguage({ requestLanguage: input.language }),
+            persistedState,
+            provider,
+          }),
+        ),
+      },
     };
   }
 
   return {
     async getContactDetail(input): Promise<ContactDetailTagStatusResult> {
-      return loadPayload({
+      const loaded = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
         collectedAt: now(),
         language: input.language,
       });
+      return loaded.result;
     },
 
     async updateContactDetail(input): Promise<ContactDetailTagStatusResult> {
@@ -1098,7 +1122,7 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
-      const loaded = await loadPayload({
+      const { result: loaded, persistedState } = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
         collectedAt,
@@ -1166,6 +1190,7 @@ export function createLiveContactDetailTagStatusService({
               actorId,
               collectedAt,
               contact: preview.contact,
+              persistedState,
             }),
           );
         }
@@ -1177,7 +1202,7 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
-      const reloaded = await loadPayload({
+      const { result: reloaded } = await loadPayload({
         actorId,
         contactId: input.contactId,
         collectedAt,
