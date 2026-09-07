@@ -281,3 +281,11 @@ Vercel 配置工厂在用户操作持久化成功后发布只包含版本和 pip
 `2de8d3c9`（包含名片队列及图片引用保护）生产构建和云端部署通过，固定预览 https://orbit-preview-li-qy.vercel.app 已切至 https://orbit-arjh8sahe-liqys-projects-33c8ddec.vercel.app 。通过正常应用注册和登录创建一个隔离 QA 账户，使用仓库合成 HEIC 图片：创建批次 201，上传 200，独立请求读取 200，解码验证得到 96×64 JPEG；无应用会话访问集合及图片均为 401。取消批次返回 200，后续图片访问 404。测试批次 `bcb2:2b4709a3-af67-4f5b-a734-a0f78498b8b8` 已取消。没有读取或导出配置密钥、没有发送邮件、没有导入真实个人名片。日志 `/tmp/orbit-card-live-smoke.log`。
 
 该验证证明真实私有 Blob 的应用上传与读取、应用权限及取消后的引用撤销，不能证明物理删除或 OCR。取消会立即清空数据库图片引用，因此 404 不是 Blob 删除证据。固定标记 `business_card_execution_tick` 及队列入口的非展开请求摘要均未找到记录，取消后的后台清理消费仍未验收，不能将查不到日志解释为成功或未执行。已排除 CLI 自动分支过滤后仍无记录。官方队列规则说明 push 消息默认回到发布它的同一 deployment（https://vercel.com/docs/queues/concepts#deployments-and-versioning）；下一步需要定位云端消费状态，不能假定换别名就会迁移旧消息。
+
+### 2026-09-07：找到云端消费记录，补上数据库重扫入口
+
+进一步用部署 ID `dpl_GuMoDsJG5kTSTiap3csH1jEJ5ECW` 和实际测试时间查询，发现此前短时间窗口漏掉了记录。一小时窗口内，固定标记 `business_card_execution_tick` 匹配到 00:57:29、00:57:57、00:58:08（JST）三次 POST `/api/queues/business-card`，均返回 200，其中包括测试取消后的消费。证据 `/tmp/orbit-card-queue-hour-markers.log`，仅查看未展开摘要；没有读取原始日志或配置密钥。这证明消费者实际被执行；根据消费者实现，正常完成要求数据库无待办，但尚未直接核对 Blob 对象物理不存在。
+
+新增 GET `/api/internal/business-card/dispatch`：沿用 `CRON_SECRET` Bearer 的恒定时间校验、最短 32 字符和禁止查询参数的约束，工作区只取服务端配置。扫描两代数据库待办，每代最多补发一条唤醒，只返回 examined/published/failed 汇总，不修改业务状态或落下阻止下次重扫的发布标记。失败返回 503，下一轮仍可重扫。此入口需独立定时服务调用；Preview 的持续调度仍未配置，不能将入口存在等同于定期运行。
+
+待办判定新增已到期批次，避免 V2 每轮最多清理 20 个批次后，剩余无图片的过期批次使队列提前结束；查询无有效布尔结果时失败，不再当作无待办。真实 PostgreSQL 隔离 schema 测试覆盖两代未发布任务、单代发布失败后重扫、精确工作区边界、21 个过期批次、未来租约和清理退避；加 API/队列回归共 13 项通过，无跳过。类型检查 109 条既有诊断，无新增。证据 `/tmp/orbit-card-dispatch-scan-tests.log`。

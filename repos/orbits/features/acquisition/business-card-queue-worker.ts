@@ -32,13 +32,21 @@ export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceI
         AND b.payload->'batch'->>'status' = 'processing'
         AND i.payload->'item'->>'status' IN ('pending', 'processing'))
     OR EXISTS (SELECT 1 FROM orbit_records b WHERE ${READY_V1})
+    OR EXISTS (SELECT 1 FROM orbit_records b WHERE b.workspace_id = $1
+      AND b.collection_name = 'businessCardBatches' AND b.lifecycle_state <> 'deleted'
+      AND b.payload->'batch'->>'status' <> 'completed'
+      AND (b.payload->'batch'->>'expiresAt')::timestamptz < now())
   ) AS pending` : `SELECT (
     EXISTS (SELECT 1 FROM bc_ingest_items WHERE workspace_id = $1 AND status IN ('queued','processing'))
     OR EXISTS (SELECT 1 FROM bc_ingest_notifications WHERE workspace_id = $1 AND status = 'pending')
     OR EXISTS (SELECT 1 FROM bc_ingest_cleanup_tasks WHERE workspace_id = $1 AND status = 'pending')
+    OR EXISTS (SELECT 1 FROM bc_ingest_batches WHERE workspace_id = $1
+      AND status IN ('collecting','processing','ready_for_review') AND expires_at < now())
   ) AS pending`;
   const result = await client.query<{ pending: boolean }>(sql, [workspaceId]);
-  return result.rows[0]?.pending === true;
+  const pending = result.rows[0]?.pending;
+  if (typeof pending !== "boolean") throw new Error("Business-card pending state unavailable.");
+  return pending;
 }
 
 export async function processCardQueueTick(pipeline: CardPipeline, runtime: {
