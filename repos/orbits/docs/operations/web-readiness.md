@@ -347,3 +347,5 @@ V1 新增取消入口及 cancelled 状态。取消事务撤销未收录项的处
 真实 PostgreSQL 和关联服务/API 测试 28 项通过，页面测试 5 项通过；包含数据库锁等待证据、写联系人后故障回滚、取消先行与确认先行、工作区/actor 隔离、发布失败后重复确认和删除中断。类型检查保持 109 条既有诊断、无新增，生产构建通过。证据 `/tmp/orbit-v1-confirm-tests.log`、`/tmp/orbit-v1-confirm-ui-tests.log`、`/tmp/orbit-v1-confirm-build.log`。这证明本机数据库事务行为，尚不代表真实 OCR 到线上确认的完整链路已通过。
 
 本轮真实浏览器访问固定 Preview 再次停在 Vercel 登录保护页，已保留登录页并请求用户完成登录。未关闭保护、导出绕过凭证或读取配置密钥；完整网页旅程仍需登录及真实外部服务。
+
+部署复核：`b2933177` 已部署至 https://orbit-bfgeyy0a8-liqys-projects-33c8ddec.vercel.app 。复用既有隔离 QA 账户及已取消批次 `ac578414-55b4-4288-9fd4-f716e27be03c`，线上确认请求返回 409，随后回读仍为 cancelled/skipped，confirmedContactId 仍为空。证据 `/tmp/orbit-v1-confirm-live-smoke.log`。这验证取消后的线上拒绝分支；正向收录、真实 OCR 和完整浏览器流程仍未以云端端到端证据证明。
