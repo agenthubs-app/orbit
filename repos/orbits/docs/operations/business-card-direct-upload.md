@@ -146,3 +146,9 @@ Preview `https://orbit-pthokrt1h-liqys-projects-33c8ddec.vercel.app`（代码提
 8 项客户端与真实提交函数测试通过，覆盖 6 MiB 图片、49 MiB PDF、500 文件上限、响应丢失恢复、超时及文件选择器重置。生产构建通过。此处为代码及受控测试结果，尚未完成部署后的浏览器交互验收，不替代实际 OCR 或完整用户旅程。证据：`/tmp/orbit-push-web-tests.log`、`/tmp/orbit-push-web-build.log`。
 
 部署与交互复核：`a7d52221` 已在 `https://orbit-2x2itzjtj-liqys-projects-33c8ddec.vercel.app` 完成云端构建和 Preview 部署（`/tmp/orbit-v1-web-deploy.log`）。真实 React 进度组件在本机受控 API 中呈现首次 503 提示，自动恢复到 1/2 文件、6 页进度；通过 Tab 聚焦取消按钮并按 Return 取消。服务确认取消请求一次、迟到的旧进度响应已返回后，浏览器仍显示“已取消”。这是受控交互验证，截图仅为 390px 内容宽度，不是移动设备视口验收。重新访问固定 Preview 地址仍到 Vercel 登录保护页，完整线上浏览器流程尚未通过。
+
+### 2026-09-08：识别不可用时的手工收录退路
+
+Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KEY` 或 `GOOGLE_API_KEY`，因此当前云端无法执行真实 OCR。V1 复核页现在允许失败项保留原图并进入手工录入；姓名必填，提交走独立的 `manual-entry` 端点。普通确认端点仍拒绝失败项，只有明确的手工录入请求才能把失败项和联系人写入同一事务，并同步修正批次的失败、处理和确认数量。重复联系人仍走原有复核，不会提前结算项目。
+
+31 项 V1 API、页面、请求控制、worker、服务和事务回归通过，无跳过；其中隔离 PostgreSQL 测试证明手工联系人、项目状态和批次数量原子提交。类型检查保持 109 条既有诊断且本轮无新增，生产构建通过。证据：`/tmp/orbit-v1-manual-regression.log`、`/tmp/orbit-v1-manual-typecheck-final.log`、`/tmp/orbit-v1-manual-build.log`。该退路让用户在缺少识别凭证时仍可完成核心收录，但不等于真实 OCR 已验收。

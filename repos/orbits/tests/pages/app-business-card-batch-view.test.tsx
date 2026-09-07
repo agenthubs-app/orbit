@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create } from "react-test-renderer";
 
 import type {
   BusinessCardBatchDTO,
   BusinessCardBatchItemDTO,
 } from "../../features/acquisition/business-card-batch-contract";
-import { BusinessCardBatchViewPure } from "../../app/(app)/app/contacts/new/batch/[id]/business-card-batch-view";
+import { BusinessCardBatchViewPure, type BusinessCardBatchFixedFields } from "../../app/(app)/app/contacts/new/batch/[id]/business-card-batch-view";
 
 const NOW = "2026-08-26T15:00:00.000Z";
 
@@ -162,12 +163,47 @@ test("failed cards offer retry, and a fully settled batch offers finish", () => 
   });
   assert.ok(failedHtml.includes("识别失败"));
   assert.ok(failedHtml.includes("重试识别"));
+  assert.ok(failedHtml.includes("手工录入"));
 
   const finishHtml = render({
     batch: batch({ confirmedItems: 1, processedItems: 1, status: "ready_for_review", totalItems: 1 }),
     items: [item({ status: "confirmed", imagePath: null })],
   });
   assert.ok(finishHtml.includes("完成批次"));
+});
+
+test("failed cards can be typed in and submitted only after a name is provided", async () => {
+  let submitted: { fields: BusinessCardBatchFixedFields; manual?: boolean } | null = null;
+  let renderer: ReturnType<typeof create> | undefined;
+  await act(async () => {
+    renderer = create(<BusinessCardBatchViewPure
+      batch={batch({ failedItems: 1, status: "ready_for_review", totalItems: 1 })}
+      busy={false}
+      duplicateItemId={null}
+      items={[item({ errorCode: "OCR_PROVIDER_FAILED", status: "failed" })]}
+      nowMs={Date.parse(NOW)}
+      onCancel={noop}
+      onConfirm={(_item, fields, _allowDuplicate, manual) => { submitted = { fields, manual }; }}
+      onFinish={noop}
+      onRetry={noop}
+      onSkip={noop}
+    />);
+  });
+  const button = (label: string) => renderer!.root.findAllByType("button").find((entry) => entry.props.children === label)!;
+  await act(async () => button("手工录入").props.onClick());
+  assert.equal(button("保存手工录入").props.disabled, true);
+  const name = renderer!.root.findAllByType("input")[0]!;
+  await act(async () => name.props.onChange({ target: { value: "手工联系人" } }));
+  assert.equal(button("保存手工录入").props.disabled, false);
+  await act(async () => button("保存手工录入").props.onClick());
+  assert.deepEqual(submitted, {
+    fields: {
+      displayName: "手工联系人", email: "", notes: "", organization: "", phone: "",
+      relationshipContext: "批量导入 · cards.pdf · 第1页", role: "",
+    },
+    manual: true,
+  });
+  await act(async () => renderer!.unmount());
 });
 
 

@@ -140,3 +140,29 @@ test("dispatch failure leaves a retryable confirmation; duplicate review does no
     assert.equal((await pool.query("SELECT count(*)::int AS count FROM orbit_records WHERE collection_name = 'contacts'")).rows[0].count, 1);
   });
 });
+
+test("manual entry atomically converts a terminal OCR failure into a saved contact", { skip }, async () => {
+  await fixture(async ({ service, pool }) => {
+    const first = service();
+    const batch = await first.createBatch({ actorId, now, sourceFiles: [], items: [{
+      seq: 0, sourceFileName: "unreadable.jpg", sourcePage: null,
+      imageDigest: "sha256:manual", imageJpegBase64: "eA==", uploadMimeType: "image/jpeg",
+    }] });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const [claimed] = await first.claimPendingItems({ workerId: `qa-${attempt}`, now, limit: 1 });
+      await first.failItem({ itemId: claimed!.id, batchId: batch.id, workerId: `qa-${attempt}`,
+        now, errorCode: "OCR_PROVIDER_FAILED" });
+    }
+    const detail = (await first.getBatch(actorId, batch.id))!;
+    const input = { actorId, actorLabel: "QA", batchId: batch.id, itemId: detail.items[0]!.id,
+      now, fields: { ...fields, displayName: "手工联系人" } };
+    await assert.rejects(first.confirmContact(input), /no longer available/);
+    const saved = await first.confirmContact({ ...input, allowFailed: true });
+    assert.equal(saved.success, true);
+    const after = (await first.getBatch(actorId, batch.id))!;
+    assert.equal(after.items[0]?.status, "confirmed");
+    assert.equal(after.batch.confirmedItems, 1);
+    assert.equal(after.batch.failedItems, 0);
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM orbit_records WHERE collection_name = 'contacts'")).rows[0].count, 1);
+  });
+});

@@ -86,7 +86,7 @@ export interface BusinessCardBatchViewPureProps {
   nowMs: number;
   busy: boolean;
   duplicateItemId: string | null;
-  onConfirm: (item: BusinessCardBatchItemDTO, fields: BusinessCardBatchFixedFields, allowDuplicate: boolean) => void;
+  onConfirm: (item: BusinessCardBatchItemDTO, fields: BusinessCardBatchFixedFields, allowDuplicate: boolean, manual?: boolean) => void;
   onSkip: (item: BusinessCardBatchItemDTO) => void;
   onRetry: (item: BusinessCardBatchItemDTO) => void;
   onFinish: () => void;
@@ -119,11 +119,13 @@ export function BusinessCardBatchViewPure({
   const [editedItemId, setEditedItemId] = useState<string | null>(
     currentItem?.id ?? null,
   );
+  const [manualItemId, setManualItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentItem && currentItem.id !== editedItemId) {
       setFields(initialFixedFields(currentItem));
       setEditedItemId(currentItem.id);
+      setManualItemId(null);
     }
   }, [currentItem, editedItemId]);
 
@@ -269,7 +271,7 @@ export function BusinessCardBatchViewPure({
               {currentItem.errorCode ? ` · ${currentItem.errorCode}` : ""}
             </div>
           ) : null}
-          {fields && currentItem.status === "extracted" ? (
+          {fields && (currentItem.status === "extracted" || manualItemId === currentItem.id) ? (
             <>
               {(
                 [
@@ -356,6 +358,25 @@ export function BusinessCardBatchViewPure({
                   </button>
                 </>
               )
+            ) : manualItemId === currentItem.id && fields ? (
+              <>
+                <button
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setManualItemId(null)}
+                  type="button"
+                >
+                  {t({ en: "Back", zh: "返回" })}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  disabled={busy || !fields.displayName.trim()}
+                  onClick={() => onConfirm(currentItem, fields, duplicateItemId === currentItem.id, true)}
+                  type="button"
+                >
+                  {t({ en: "Save manual entry", zh: "保存手工录入" })}
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -365,6 +386,14 @@ export function BusinessCardBatchViewPure({
                   type="button"
                 >
                   {t({ en: "Skip", zh: "跳过" })}
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setManualItemId(currentItem.id)}
+                  type="button"
+                >
+                  {t({ en: "Type it in", zh: "手工录入" })}
                 </button>
                 <button
                   className="btn btn-primary"
@@ -491,10 +520,10 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
       duplicateItemId={duplicateItemId}
       items={items}
       nowMs={nowMs}
-      onConfirm={(item, fields, allowDuplicate) =>
+      onConfirm={(item, fields, allowDuplicate, manual = false) =>
         void withBusy(async () => {
           const body = await post(
-            `/api/contact-drafts/business-card/batches/${batch.id}/items/${item.id}/confirm`,
+            `/api/contact-drafts/business-card/batches/${batch.id}/items/${item.id}/${manual ? "manual-entry" : "confirm"}`,
             { ...fields, allowDuplicate },
           );
           if (!["duplicate_review", "created", "already_confirmed"].includes(body?.data?.state)) throw new BatchRequestFailure(502);

@@ -99,6 +99,7 @@ export interface BusinessCardBatchService {
   }): Promise<void>;
   confirmContact(input: {
     actorId: string; actorLabel: string; batchId: string; itemId: string; now: string;
+    allowFailed?: boolean;
     fields: Omit<ConfirmBusinessCardContactInput, "actorId" | "actorLabel" | "draftId" | "confirmed" | "evidenceIds" | "imageDigest">;
     writeService?: BusinessCardContactWriteService;
   }): Promise<BusinessCardContactWriteResult>;
@@ -500,8 +501,9 @@ export function createBusinessCardBatchService({
       if (!batch || batch.actorId !== input.actorId || !item || item.actorId !== input.actorId || item.batchId !== batch.id) {
         throw new AppError("NOT_FOUND", "Business-card batch item was not found.");
       }
-      if (batch.status === "cancelled" || batch.status === "completed" ||
-          (item.status !== "extracted" && item.status !== "confirmed")) {
+      const confirmable = item.status === "extracted" || item.status === "confirmed" ||
+        (input.allowFailed === true && item.status === "failed");
+      if (batch.status === "cancelled" || batch.status === "completed" || !confirmable) {
         throw new AppError("CONFLICT", "This card is no longer available for confirmation.");
       }
       // The configured service binds this provider to the same transaction

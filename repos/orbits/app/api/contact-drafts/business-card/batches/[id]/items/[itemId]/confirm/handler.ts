@@ -32,7 +32,8 @@ function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-export function createBusinessCardBatchItemConfirmHandler(
+function createConfirmLikeHandler(
+  allowFailed: boolean,
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   batchService: BusinessCardBatchService | null = createConfiguredBusinessCardBatchService(),
   writeService: BusinessCardContactWriteService | null = null,
@@ -70,6 +71,7 @@ export function createBusinessCardBatchItemConfirmHandler(
     try {
       result = await batchService.confirmContact({
         actorId: actor.id, actorLabel: actor.name ?? actor.id, batchId: id, itemId,
+        allowFailed,
         now: new Date().toISOString(),
         // Non-live modes retain their disabled provider; explicit test injection
         // is supported without changing the production transaction binding.
@@ -101,4 +103,20 @@ export function createBusinessCardBatchItemConfirmHandler(
       { headers: runtimeBoundaryHeaders(mode), status: 200 },
     );
   };
+}
+
+export function createBusinessCardBatchItemConfirmHandler(
+  resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  batchService: BusinessCardBatchService | null = createConfiguredBusinessCardBatchService(),
+  writeService: BusinessCardContactWriteService | null = null,
+) {
+  return createConfirmLikeHandler(false, resolveActor, batchService, writeService);
+}
+
+export function createBusinessCardBatchItemManualEntryHandler(
+  resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  batchService: BusinessCardBatchService | null = createConfiguredBusinessCardBatchService(),
+  writeService: BusinessCardContactWriteService | null = null,
+) {
+  return createConfirmLikeHandler(true, resolveActor, batchService, writeService);
 }
