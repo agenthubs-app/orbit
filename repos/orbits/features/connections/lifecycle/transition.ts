@@ -40,6 +40,8 @@ function instant(value: unknown, code: RelationshipLifecycleErrorCode): string {
   return new Date(timestamp).toISOString();
 }
 
+export { instant as normalizeRelationshipLifecycleInstant };
+
 function checkVersion(expected: number, actual: number): void {
   if (!Number.isSafeInteger(expected) || expected < 1 || !Number.isSafeInteger(actual) || actual < 1 || actual >= Number.MAX_SAFE_INTEGER || expected !== actual) {
     throw new RelationshipLifecycleError("CONFLICT", "The record version has changed or is invalid.");
