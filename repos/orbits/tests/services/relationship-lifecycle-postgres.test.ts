@@ -6,7 +6,8 @@ import { createPostgresRelationshipLifecycleRepository } from "../../features/co
 import { applyRelationshipStageCommand, applyRelationshipTaskCompletion } from "../../features/connections/lifecycle/transition";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
-import { createTransactionalPostgresClient, type TransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import { createConfiguredTransactionalPostgresRuntime, createTransactionalPostgresClient, type TransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import { createConfiguredRelationshipLifecycleService } from "../../features/connections/lifecycle/service-factory";
 
 const now = "2026-08-21T01:00:00.000Z";
 const workspaceId = "workspace:lifecycle-test";
@@ -278,4 +279,23 @@ test("PostgreSQL normalizes valid stored timestamps to UTC before persisting rec
   const first = await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
   assert.equal(first.snapshot.connection.createdAt, "2026-08-21T01:00:00.000Z");
   assert.deepEqual((await repo.mutate(mutation, () => { throw new Error("must replay"); })).snapshot, first.snapshot);
+}));
+
+test("configured lifecycle service persists to the configured workspace and replays through a cold service", databaseTest, async () => withDatabase(async ({ client, repo }) => {
+  const searchPath = await client.query<{ search_path: string }>("show search_path");
+  const url = new URL(databaseUrl!);
+  url.searchParams.set("options", `-c search_path=${searchPath.rows[0].search_path} -c statement_timeout=5000`);
+  const env = { ORBIT_LIVE_DATABASE_URL: url.toString(), ORBIT_WORKSPACE_ID: workspaceId };
+  try {
+    const service = createConfiguredRelationshipLifecycleService({ env, now: () => now });
+    assert.ok(service);
+    const first = await service.changeStage(command);
+    assert.equal(first.snapshot.connection.version, 4);
+    assert.deepEqual(await repo.read(actorId, connectionId), first.snapshot);
+    const cold = createConfiguredRelationshipLifecycleService({ env, now: () => now });
+    assert.equal((await cold!.changeStage(command)).replayed, true);
+    assert.equal((await counts(client)).receipts, "1");
+  } finally {
+    await createConfiguredTransactionalPostgresRuntime({ env })?.client.close();
+  }
 }));
