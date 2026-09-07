@@ -685,7 +685,6 @@ function unsupportedTagFailure(
   const requestedTags = [
     ...normalizedValues(input.tags),
     ...normalizedValues(input.addTags),
-    ...normalizedValues(input.removeTags),
   ];
   const uniqueRequestedTags = new Set(
     requestedTags.map((tag) => tag.toLocaleLowerCase()),

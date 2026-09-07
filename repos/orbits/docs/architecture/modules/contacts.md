@@ -61,6 +61,10 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 
 验证包括真实页面双入口渲染、编辑交互、PATCH handler → live service → 内存存储的保存／清空及新实例回读，确认标签与状态不变。浏览器脚本 `tests/pages/app-contact-industry-editor.browser.mjs` 在隔离 mock 预览中检查 1440px／390px 的失败、重试、清空、重开和键盘焦点；全部浏览器 API 被拦截，不访问业务数据库。本项不修改共享契约或 App，不执行行业迁移，也不宣称真实账号的跨端同步已验收。
 
+## 旧标签移除兼容（2026-09-08）
+
+live 与 mock 的标签校验不再把 `removeTags` 算作新增标签：已存在的超长标签、一次移除超过 20 个旧标签均可处理。`tags` 替换及 `addTags` 新增仍执行原有数量与长度限制。内存 live provider 回归确认移除后其他标签保留、冷读一致，非法新增零写入。本项不迁移或主动删除用户标签；只有用户提交的移除请求才会改变数据。
+
 ## 热拔插边界
 
 调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter、detail/tag/status 和 business-card contact-write 服务。真实联系人存储可以独立接入，不改变页面或 API route。
