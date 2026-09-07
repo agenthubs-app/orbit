@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -19,8 +20,8 @@ function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function mutationKey(action: string) {
-  return `ios:${action}:${Date.now()}`;
+function mutationKey() {
+  return `ios:task:${Crypto.randomUUID()}`;
 }
 
 function dateLabel(value?: string): string {
@@ -65,6 +66,50 @@ export function TaskDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>() }), [client, taskId]);
+  const scopeRef = useRef(mutationScope);
+  scopeRef.current = mutationScope;
+
+  useEffect(() => {
+    mutationScope.active = true;
+    setSaving(false);
+    setMutationError(null);
+    setReminderMessage(null);
+    setMoreOpen(false);
+    return () => { mutationScope.active = false; mutationScope.keys.clear(); };
+  }, [mutationScope]);
+
+  async function mutate(
+    method: "patch" | "post" | "delete",
+    path: string,
+    body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
+    onSuccess: (data: unknown) => void,
+  ) {
+    const scope = mutationScope;
+    const isCurrent = () => scope.active && scopeRef.current === scope;
+    if (!isCurrent() || scope.busy) return;
+    scope.busy = true;
+    setSaving(true);
+    setMutationError(null);
+    try {
+      const payload = typeof body === "function" ? await body() : body;
+      if (!isCurrent()) return;
+      const fingerprint = JSON.stringify([method, path, payload]);
+      const key = scope.keys.get(fingerprint) ?? mutationKey();
+      scope.keys.set(fingerprint, key);
+      const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key } });
+      if (!isCurrent()) return;
+      if (result.success) {
+        scope.keys.delete(fingerprint);
+        onSuccess(result.data);
+      } else setMutationError(result.error.message);
+    } catch {
+      if (isCurrent()) setMutationError("操作未完成，请重试。");
+    } finally {
+      scope.busy = false;
+      if (isCurrent()) setSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!detail) return;
@@ -97,106 +142,74 @@ export function TaskDetailScreen() {
     }
     if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
     const revisionAtStart = latest?.updatedAt;
-    setSaving(true);
-    setMutationError(null);
-    try {
-      const result = await client.patch<unknown>(taskPath(taskId), {
-        body: {
-          action: "update",
-          expectedUpdatedAt: baseline.updatedAt,
-          idempotencyKey: mutationKey(`update:${taskId}`),
-          patch: {
-            ...(normalizedNotes ? { notes: normalizedNotes } : {}),
-            title: normalizedTitle,
-          },
-        },
-      });
+    await mutate("patch", taskPath(taskId), {
+      action: "update",
+      expectedUpdatedAt: baseline.updatedAt,
+      patch: {
+        ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+        title: normalizedTitle,
+      },
+    }, (data) => {
       if (latestRef.current?.id !== baseline.id) return;
-      if (result.success) {
-        const updated = taskDetailToView(result.data);
-        if (updated) {
-          if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
-          setBaseline(updated);
-          setTitle(updated.title);
-          setNotes(updated.notes);
-        }
-        refresh();
-      } else setMutationError(result.error.message);
-    } finally {
-      setSaving(false);
-    }
+      const updated = taskDetailToView(data);
+      if (updated) {
+        if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
+        setBaseline(updated);
+        setTitle(updated.title);
+        setNotes(updated.notes);
+      }
+      refresh();
+    });
   }
 
   async function changeStatus() {
     if (!detail) return;
-    setSaving(true);
-    setMutationError(null);
     const action = detail.status === "completed" ? "reopen" : "complete";
-    const result = await client.patch<unknown>(taskPath(taskId), {
-      body: { action, idempotencyKey: mutationKey(`${action}:${taskId}`) },
-    });
-    if (result.success) {
+    await mutate("patch", taskPath(taskId), { action }, () => {
       notifyReminderPlansChanged();
       refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function deleteTask() {
-    setSaving(true);
-    setMutationError(null);
-    const result = await client.delete<unknown>(taskPath(taskId), {
-      body: { idempotencyKey: mutationKey(`delete:${taskId}`) },
-    });
-    if (result.success) {
+    await mutate("delete", taskPath(taskId), {}, () => {
       notifyReminderPlansChanged();
       setMoreOpen(false);
       router.replace("/tasks" as Href);
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function addReminder(fireAt: string) {
     if (!detail) return;
-    setSaving(true);
-    setMutationError(null);
-    setReminderMessage(null);
-    const permission = await requestNotificationPermission().catch(() => "denied" as const);
-    const systemEnabled = permission === "granted" || permission === "provisional";
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.reminders, {
-      body: {
+    let systemEnabled = false;
+    await mutate("post", ORBIT_API_ENDPOINTS.reminders, async () => {
+      setReminderMessage(null);
+      const permission = await requestNotificationPermission().catch(() => "denied" as const);
+      systemEnabled = permission === "granted" || permission === "provisional";
+      return {
         body: detail.title,
         channels: systemEnabled ? ["in_app", "ios_push"] : ["in_app"],
         createdBy: "user",
         deepLink: `/tasks/${encodeURIComponent(taskId)}`,
         fireAt,
-        idempotencyKey: mutationKey(`reminder:${taskId}:${fireAt}`),
         targetId: taskId,
         targetType: "task",
         timeZone: "Asia/Tokyo",
         title: "待办提醒",
-      },
-    });
-    if (result.success) {
+      };
+    }, () => {
       setReminderMessage(systemEnabled ? "提醒已设置" : "已添加站内提醒；可在系统设置开启通知");
       notifyReminderPlansChanged();
       remindersState.refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function cancelReminder(reminderId: string) {
-    setSaving(true);
-    setMutationError(null);
-    const result = await client.patch<unknown>(reminderPath(reminderId), {
-      body: { action: "cancel", idempotencyKey: mutationKey(`cancel-reminder:${reminderId}`) },
-    });
-    if (result.success) {
+    await mutate("patch", reminderPath(reminderId), { action: "cancel" }, () => {
       setReminderMessage("提醒已取消");
       notifyReminderPlansChanged();
       remindersState.refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   return (
@@ -249,7 +262,7 @@ export function TaskDetailScreen() {
             </View>
           </View>
 
-          {mutationError ? <Text style={styles.errorText}>{mutationError}</Text> : null}
+          {mutationError && !moreOpen ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
           {reminderMessage ? <Text style={styles.successText}>{reminderMessage}</Text> : null}
 
           {detail.status !== "cancelled" ? (
@@ -270,6 +283,7 @@ export function TaskDetailScreen() {
                   </Pressable>
                 </View>
                 <ScrollView contentContainerStyle={styles.sheetBody}>
+                  {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
                   <Text style={styles.sheetSection}>提醒选项</Text>
                   {reminders.map((item) => (
                     <Pressable key={item.id} onPress={() => void cancelReminder(item.id)} style={styles.sheetRow}>

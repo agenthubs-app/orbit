@@ -12,10 +12,6 @@ const tasksSource = readFileSync(
   join(repoRoot, "src", "screens", "tasks", "TasksScreen.tsx"),
   "utf8",
 );
-const detailSource = readFileSync(
-  join(repoRoot, "src", "screens", "tasks", "TaskDetailScreen.tsx"),
-  "utf8",
-);
 
 test("Today is a compact task-first workspace with schedule kept distinct", () => {
   assert.match(todaySource, /title="今天"/u);
@@ -52,21 +48,9 @@ test("native Today route points to the task and schedule workspace", () => {
   assert.doesNotMatch(route, /TodayAgentLedgerScreen/u);
 });
 
-test("task detail keeps the note visible and moves metadata out of the main surface", () => {
-  assert.match(detailSource, /expectedUpdatedAt/u);
-  assert.match(detailSource, /action: "update"/u);
-  assert.match(detailSource, /client\.delete<unknown>\(taskPath\(taskId\)/u);
-  assert.match(detailSource, /remindersPath\("task", taskId\)/u);
-  assert.match(detailSource, /requestNotificationPermission/u);
-  assert.match(detailSource, /notifyReminderPlansChanged/u);
-  assert.match(detailSource, /action: "cancel"/u);
-  assert.match(detailSource, /accessibilityLabel="备注"/u);
-  assert.match(detailSource, /onBlur=\{save/u);
-  assert.match(detailSource, /accessibilityLabel="更多待办操作"/u);
-  assert.match(detailSource, /"标记完成"/u);
-  assert.doesNotMatch(detailSource, /const categories/u);
-  assert.doesNotMatch(detailSource, />类别</u);
-  assert.doesNotMatch(detailSource, />记录</u);
+test("native task detail route points to TaskDetailScreen", () => {
+  // Native router wiring is source-checked; task-detail-interactions.test.ts
+  // executes the actual editor, mutation payloads and reminder controls.
   const route = readFileSync(join(repoRoot, "app", "tasks", "[id].tsx"), "utf8");
   assert.match(route, /TaskDetailScreen/u);
 });
