@@ -176,6 +176,12 @@ create trigger bc_ingest_attach_image_write_trigger
   for each row execute function bc_ingest_attach_image_write();
 `,
   },
+  {
+    name: "business-card-image-write-pipelines",
+    version: 3,
+    sql: `alter table bc_ingest_image_writes add column pipeline text not null default 'v2'
+      check (pipeline in ('v1', 'v2'));`,
+  },
 ];
 
 function checksum(sql: string): string {

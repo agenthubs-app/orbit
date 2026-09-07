@@ -1,5 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
+import { configuredV1CardImageJournal } from "./business-card-v1-image-journal";
+import { reapUnattachedCardImages, registerCardImageWrite } from "../business-card-ingest-v2/image-write-journal";
 import {
   createPrivateBlobBatchImageStore,
   usesPrivateBusinessCardBlob,
@@ -10,6 +13,8 @@ export interface BusinessCardBatchImageStore {
   read(imagePath: string): Promise<Buffer | null>;
   removeItemImage(imagePath: string): Promise<void>;
   removeBatchImages(batchId: string): Promise<void>;
+  prepareWrites?(): Promise<void>;
+  reapUnattachedWrites?(): Promise<number>;
 }
 
 /**
@@ -23,9 +28,29 @@ export function createBusinessCardBatchImageStore({
   rootDir = env.ORBIT_BATCH_UPLOAD_DIR ?? ".orbit-batch-uploads",
 }: { env?: Record<string, string | undefined>; rootDir?: string } = {}): BusinessCardBatchImageStore {
   if (usesPrivateBusinessCardBlob(env)) {
-    return createPrivateBlobBatchImageStore({
-      workspaceId: env.ORBIT_WORKSPACE_ID?.trim() || "workspace:default",
+    const workspaceId = env.ORBIT_WORKSPACE_ID?.trim() || "workspace:default";
+    function journal() {
+      const config = resolveLiveDatabaseConnectionConfig(env);
+      if (!config) throw new Error("V1 card image journal unavailable.");
+      return configuredV1CardImageJournal(config.connectionString);
+    }
+    const store = createPrivateBlobBatchImageStore({
+      workspaceId,
+      lifecycle: {
+        prepare: () => journal().prepare(),
+        async beforePut(objectKey) {
+          const runtime = journal(); await runtime.prepare();
+          await registerCardImageWrite({ pool: runtime.pool, workspaceId, objectKey, pipeline: "v1",
+            ...(env.VERCEL === "1" ? {} : { wake: async () => {} }),
+          });
+        },
+        async reap() {
+          const runtime = journal(); await runtime.prepare();
+          return reapUnattachedCardImages({ pool: runtime.pool, workspaceId, pipeline: "v1", remove: (key) => store.removeItemImage(key) });
+        },
+      },
     });
+    return store;
   }
   const absoluteRoot = resolve(rootDir);
 

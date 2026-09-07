@@ -24,14 +24,17 @@ export function createTransactionalBusinessCardBatchService({
   pool,
   workspaceId,
   createService,
+  prepare,
 }: {
   pool: Pick<Pool, "connect">;
   workspaceId: string;
   createService: (store: LiveRecordStoreLike<Record<string, unknown>>) => BusinessCardBatchService;
+  prepare?: () => Promise<void>;
 }): BusinessCardBatchService {
   if (!workspaceId.trim()) throw new Error("Business-card workspace is required.");
 
   async function run<T>(operation: (service: BusinessCardBatchService) => Promise<T>): Promise<T> {
+    await prepare?.();
     const connection = await pool.connect().catch(() => {
       throw new Error("Business-card batch storage unavailable.");
     });

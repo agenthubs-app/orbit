@@ -36,11 +36,13 @@ export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceI
       AND b.collection_name = 'businessCardBatches' AND b.lifecycle_state <> 'deleted'
       AND b.payload->'batch'->>'status' <> 'completed'
       AND (b.payload->'batch'->>'expiresAt')::timestamptz < now())
+    OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1 AND pipeline = 'v1'
+      AND (state = 'deleting' OR (state = 'pending' AND next_attempt_at <= now())))
   ) AS pending` : `SELECT (
     EXISTS (SELECT 1 FROM bc_ingest_items WHERE workspace_id = $1 AND status IN ('queued','processing'))
     OR EXISTS (SELECT 1 FROM bc_ingest_notifications WHERE workspace_id = $1 AND status = 'pending')
     OR EXISTS (SELECT 1 FROM bc_ingest_cleanup_tasks WHERE workspace_id = $1 AND status = 'pending')
-    OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1
+    OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1 AND pipeline = 'v2'
       AND (state = 'deleting' OR (state = 'pending' AND next_attempt_at <= now())))
     OR EXISTS (SELECT 1 FROM bc_ingest_batches WHERE workspace_id = $1
       AND status IN ('collecting','processing','ready_for_review') AND expires_at < now())

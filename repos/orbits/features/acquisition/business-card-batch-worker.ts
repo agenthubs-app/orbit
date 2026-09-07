@@ -110,6 +110,7 @@ export function createBusinessCardBatchWorker({
         }),
       );
 
+      await imageStore.reapUnattachedWrites?.();
       return { claimed: claimed.length, completed, failed, notifyFailures, swept };
     },
   };

@@ -311,3 +311,11 @@ V2 私有图片现在先在新增的 `bc_ingest_image_writes` 表登记 pending 
 `f8f5d619` 的生产构建和 Preview 部署通过，部署 https://orbit-4fhp8g61f-liqys-projects-33c8ddec.vercel.app 。复用隔离 QA 账户，合成图片创建批次 201、上传 200、读取 200（96×64 JPEG）、匿名图片访问 401、取消 200、取消后图片访问 404。测试批次 `bcb2:a0b84cd2-068f-465a-9d1f-bef7b204c5b0` 已取消。新部署在 19:56:09、19:56:15、19:56:26（JST）有三次固定名片队列标记，均返回 HTTP 200。证据 `/tmp/orbit-card-image-journal-live-smoke.log`、`/tmp/orbit-card-image-journal-live-markers.log`。
 
 这验证了新增迁移、写前登记及正常引用流程可在线运行；未实际制造云端进程中断，也未等待 24 小时后的延迟消费，不能替代真实未关联图片回收验收。正常上传会将记录置为 attached，因此本次成功上传对应的延迟消息届时应为空操作，不能把该消息成功消费算作孤立图片已实际删除。
+
+### 2026-09-07：V1 私有图片写前登记
+
+V1 上传也在写入 Blob 前持久化回收记录。独立连接池提交写入意图，批次事务回滚后仍能查到待回收图片；迁移准备在批次获取事务连接之前完成，避免并发批次占满连接池后等待写入意图。新增迁移区分 V1/V2，保持此前迁移内容不变。V1 记录触发器在引用事务中锁定并关联图片，拒绝关联已经进入删除流程的图片；无 OCR 的 worker 也能回收到期孤立图片。
+
+验证：首轮 30 项相关测试通过，补充 V2 仓库、worker、API 与 V1 回归 30 项通过（其中 V1 三项重复），均使用真实 PostgreSQL 且无跳过；生产构建通过。测试覆盖事务回滚后的回收、四个并发批次、工作区隔离和迟到引用拒绝。证据 `/tmp/orbit-v1-image-journal-tests.log`、`/tmp/orbit-v1-image-journal-regressions.log`、`/tmp/orbit-v1-image-journal-build.log`。
+
+本次 V1 扩展尚未部署验证；历史未登记图片、24 小时后的真实云端回收及独立定时扫描仍待验收。

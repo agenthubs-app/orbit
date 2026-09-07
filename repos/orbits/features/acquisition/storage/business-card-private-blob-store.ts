@@ -70,9 +70,11 @@ async function storageCall<T>(operation: () => Promise<T>): Promise<T> {
 export function createPrivateBlobBatchImageStore({
   workspaceId,
   client = blobClient,
+  lifecycle,
 }: {
   workspaceId: string;
   client?: PrivateCardBlobClient;
+  lifecycle?: { prepare(): Promise<void>; beforePut(pathname: string): Promise<void>; reap(): Promise<number> };
 }): BusinessCardBatchImageStore {
   const prefix = `orbit-card-images/${digestIdentifier(workspaceId)}/v1/`;
   function validate(pathname: string): string {
@@ -84,8 +86,11 @@ export function createPrivateBlobBatchImageStore({
   }
 
   return {
+    prepareWrites: lifecycle?.prepare,
+    reapUnattachedWrites: lifecycle?.reap,
     async save(batchId, itemId, bytes) {
       const pathname = `${prefix}${digestIdentifier(batchId)}/${digestIdentifier(itemId)}.jpg`;
+      await lifecycle?.beforePut(pathname);
       await storageCall(() => client.put(pathname, bytes));
       return pathname;
     },

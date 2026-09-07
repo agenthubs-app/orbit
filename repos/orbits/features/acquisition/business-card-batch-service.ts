@@ -590,6 +590,7 @@ export function createConfiguredBusinessCardBatchService({
   const service = createTransactionalBusinessCardBatchService({
     pool: configuredBusinessCardBatchPool(config.connectionString),
     workspaceId: config.workspaceId,
+    prepare: images.prepareWrites,
     createService: (store) => createBusinessCardBatchService({
       imageStore: images,
       store,
