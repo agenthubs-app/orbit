@@ -39,3 +39,7 @@ PostgreSQL 生命周期仓储在同一事务内读取回执、锁定账号/works
 `createRelationshipLifecycleService(repository, now)` 提供 `changeStage` 和 `completeTask`。服务先校验账号、连接、幂等键和版本，复制请求，再对排好对象键序的命令 JSON 计算 SHA-256；哈希包含命令种类、不包含幂等键。事务重试使用同一请求与时间。结果返回提交快照和 `replayed`，仓储错误原样抛出；不会发送消息、调用 AI 或写入外部系统，也不把内存验证表述为数据库写入。
 
 正式装配入口为 `createConfiguredRelationshipLifecycleService()`：只创建配置对应的 PostgreSQL 实现，缺少数据库配置时返回 `null`，不会回退到 fixture 或阶段预览。基础阶段已具备契约、转换、事务仓储及命令服务，但现有 Web/iOS 路由与页面仍未切换；后续必须先完成旧数据迁移检查、读取投影和接口兼容，再验证两端实际读写。
+
+`assessRelationshipLifecycleMigration` 是不执行 I/O 的迁移预检器，接收明确提供的账号/workspace 记录快照，检查 ownership、唯一连接、整数版本及阶段任务约束。报告只含范围、计数、记录 ID 和问题代码，不包含私人目标、任务标题或笔记；输入不会被改动，报告不受记录顺序影响。
+
+任何待修复项都会使 `readyForCutover` 为 `false`。缺少 owner/version、缺少目标/日期、采集阶段、重复连接与跨账号引用均须显式处理；预检不会代替人工迁移、用旧 Contact 状态覆盖 Connection，或取消任务。`true` 仅说明这份输入快照通过这些预检，不证明数据完整、仍然新鲜，也不授权迁移或切换现有路由。
