@@ -144,3 +144,5 @@ Preview `https://orbit-pthokrt1h-liqys-projects-33c8ddec.vercel.app`（代码提
 网页入口已接入私有文件直传、上传回执恢复和幂等任务提交，保留本地存储模式的旧入口。新增准备进度页和导入任务列表，提供轮询、取消、失败重试及重新登录入口。同步锁防止连续点击重复提交，取消后的旧轮询响应不会覆盖更新状态。
 
 8 项客户端与真实提交函数测试通过，覆盖 6 MiB 图片、49 MiB PDF、500 文件上限、响应丢失恢复、超时及文件选择器重置。生产构建通过。此处为代码及受控测试结果，尚未完成部署后的浏览器交互验收，不替代实际 OCR 或完整用户旅程。证据：`/tmp/orbit-push-web-tests.log`、`/tmp/orbit-push-web-build.log`。
+
+部署与交互复核：`a7d52221` 已在 `https://orbit-2x2itzjtj-liqys-projects-33c8ddec.vercel.app` 完成云端构建和 Preview 部署（`/tmp/orbit-v1-web-deploy.log`）。真实 React 进度组件在本机受控 API 中呈现首次 503 提示，自动恢复到 1/2 文件、6 页进度；通过 Tab 聚焦取消按钮并按 Return 取消。服务确认取消请求一次、迟到的旧进度响应已返回后，浏览器仍显示“已取消”。这是受控交互验证，截图仅为 390px 内容宽度，不是移动设备视口验收。重新访问固定 Preview 地址仍到 Vercel 登录保护页，完整线上浏览器流程尚未通过。
