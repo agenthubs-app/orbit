@@ -309,7 +309,7 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <a className={`btn btn-quiet btn-sm${compact ? " btn-block" : ""}`} href="/app/contacts/pipeline">
-          {t({ en: "View pipeline", zh: "查看跟进管线" })}
+          {t({ en: "View relationship progress", zh: "查看关系进展" })}
         </a>
       </div>
     </div>

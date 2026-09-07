@@ -46,6 +46,13 @@ Contacts live mode 读取共享 live storage 的 generated relationship graph：
 - 共用展示层按中／英／日语言转换同一行业 ID，并保持卡片和资料区名称一致；没有行业 ID 的旧资料文案不被该展示层覆盖。共享 API、字典及 App 文件均未修改，没有迁移存量联系人。
 - 新增 8 项回归覆盖内存 provider → 真实 live 查询服务 → route → 两套页面适配器、详情、三语名称、城市搜索、行业计数、表盘未分类及旧资料保留；与周边回归共 51 项通过。真实账号跨端回读和生产部署仍未执行。
 
+## Web 关系进展入口用词（2026-09-08）
+
+- 对齐 App 的“关系进展”名称：现行 pipeline 页的桌面／窄屏标题、共享侧栏、联系人列表／操作记录窄屏导航和联系人详情下一步链接统一用词；英文对应 `Relationship progress`。
+- 保留 `/app/contacts/pipeline` 及旧导航路径映射、人数标记、既有布局和只读说明，不更改 API 或阶段值。历史未装配的 pipeline／导入侧栏组件不作为本次业务同步基准。
+- App 对应术语版本 `b45641788` 同时保留“待跟进”旧数据别名。Web 的四阶段、阶段写入、关联待办仍待接入，本次不代表这些业务已对齐。
+- 10 项中／英真实页面渲染回归先失败后通过，覆盖链接名称与目的地、两种宽度的标题和侧栏人数；周边共 52 项通过，Web 类型检查通过。未执行真实账号写入或跨端回读。
+
 ## 热拔插边界
 
 调用方必须通过 `features/contacts/service-factory.ts` 获取 list/search/filter、detail/tag/status 和 business-card contact-write 服务。真实联系人存储可以独立接入，不改变页面或 API route。

@@ -50,7 +50,7 @@ export default async function AppAllActionsPage({
           <div style={{ overflowY: "auto", padding: "28px 32px 80px" }}>
             <nav aria-label="人脉分区" className="orbit-all-actions-mtabs scroll noscroll">
               <a className="chip" href="/app/contacts">全部</a>
-              <a className="chip" href="/app/contacts/pipeline">管线</a>
+              <a className="chip" href="/app/contacts/pipeline">{language === "zh" ? "关系进展" : "Relationship progress"}</a>
               <a className="chip" href="/app/contacts/graph">图谱</a>
               <a className="chip" href="/app/contacts/intros">引荐</a>
               <a aria-current="page" className="chip is-active" href="/app/contacts/all-actions">All actions</a>

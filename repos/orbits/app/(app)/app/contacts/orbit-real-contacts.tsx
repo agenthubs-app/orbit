@@ -39,7 +39,7 @@ function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode | "allAct
   // 移动端到不了（采集入口不在此列——标题行的扫描按钮已直达 /app/contacts/new）。
   return [
     { key: "list", href: "/home/cards", label: t({ en: "All", zh: "全部" }) },
-    { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Pipeline", zh: "管线" }) },
+    { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Relationship progress", zh: "关系进展" }) },
     { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
     { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
     { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Dashboard", zh: "表盘" }) },

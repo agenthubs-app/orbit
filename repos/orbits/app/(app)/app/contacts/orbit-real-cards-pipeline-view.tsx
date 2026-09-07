@@ -211,7 +211,7 @@ export function OrbitRealCardsPipelineView({
             >
               <div>
                 <h1 className="h-display" style={{ margin: 0 }}>
-                  {t({ en: "Pipeline", zh: "跟进管线" })}
+                  {t({ en: "Relationship progress", zh: "关系进展" })}
                 </h1>
                 <div
                   style={{
@@ -278,7 +278,7 @@ export function OrbitRealCardsPipelineView({
           <div className="nc-mobile-head">
             <div>
               <h1 className="h-title" style={{ margin: 0 }}>
-                {t({ en: "Pipeline", zh: "跟进管线" })}
+                {t({ en: "Relationship progress", zh: "关系进展" })}
               </h1>
               <div
                 style={{
