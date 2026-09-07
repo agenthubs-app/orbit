@@ -90,6 +90,7 @@ export interface BusinessCardBatchViewPureProps {
   onSkip: (item: BusinessCardBatchItemDTO) => void;
   onRetry: (item: BusinessCardBatchItemDTO) => void;
   onFinish: () => void;
+  onCancel: () => void;
 }
 
 export function BusinessCardBatchViewPure({
@@ -102,6 +103,7 @@ export function BusinessCardBatchViewPure({
   onSkip,
   onRetry,
   onFinish,
+  onCancel,
 }: BusinessCardBatchViewPureProps) {
   const { t } = useOrbitLanguage();
   const currentItem = useMemo(
@@ -130,6 +132,21 @@ export function BusinessCardBatchViewPure({
     batch.status === "processing" &&
     nowMs - Date.parse(batch.updatedAt) > WORKER_STALL_MS &&
     !items.some((item) => item.status === "processing");
+
+  if (batch.status === "cancelled") {
+    return <section className="bcb-shell" data-batch-state="cancelled">
+      <style>{BATCH_STYLE}</style>
+      <h2>{t({ en: "Batch cancelled", zh: "批次已取消" })}</h2>
+      <p className="bcb-lede">{t({ en: "Processing has stopped. Contacts already saved remain in your contacts.", zh: "已停止处理，已经收录的联系人会保留。" })}</p>
+      <p className="bcb-lede">{batch.imagesDeletedAt ? t({ en: "Card images have been deleted.", zh: "卡图已删除。" }) : t({ en: "Card images are being deleted in the background.", zh: "正在后台删除卡图。" })}</p>
+      <a className="btn btn-primary" href="/app/contacts">{t({ en: "Open contacts", zh: "查看名片夹" })}</a>
+    </section>;
+  }
+
+  const cancelControl = <div>
+    <button className="btn btn-ghost" disabled={busy} onClick={onCancel} type="button">{t({ en: "Cancel remaining import", zh: "取消剩余导入" })}</button>
+    <p className="bcb-lede">{t({ en: "Stops processing and deletes card images. Contacts already saved are kept.", zh: "停止处理并删除卡图，保留已收录的联系人。" })}</p>
+  </div>;
 
   if (batch.status === "completed") {
     return (
@@ -164,8 +181,8 @@ export function BusinessCardBatchViewPure({
         {workerStalled ? (
           <div className="bcb-warn">
             {t({
-              en: "The processing service looks offline. Start the batch worker: npx tsx scripts/run-business-card-batch-worker.ts",
-              zh: "处理服务未运行。请启动批量识别 worker：npx tsx scripts/run-business-card-batch-worker.ts",
+              en: "Processing is taking longer than expected. You can return later, or cancel this import and add contacts manually.",
+              zh: "处理时间比预期长。你可以稍后回来，也可以取消本次导入后手动添加联系人。",
             })}
           </div>
         ) : null}
@@ -193,6 +210,7 @@ export function BusinessCardBatchViewPure({
             </div>
           ))}
         </div>
+        {cancelControl}
         <PrivacyNote t={t} />
       </section>
     );
@@ -213,6 +231,7 @@ export function BusinessCardBatchViewPure({
         <button className="btn btn-primary" disabled={busy} onClick={onFinish} type="button">
           {t({ en: "Finish batch", zh: "完成批次" })}
         </button>
+        {cancelControl}
         <PrivacyNote t={t} />
       </section>
     );
@@ -360,12 +379,15 @@ export function BusinessCardBatchViewPure({
           </div>
         </div>
       </div>
+      {cancelControl}
       <PrivacyNote t={t} />
     </section>
   );
 }
 
 export function BusinessCardBatchView({ batchId }: { batchId: string }) {
+  const { t } = useOrbitLanguage();
+  const [actionError, setActionError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BusinessCardBatchDTO | null>(null);
   const [items, setItems] = useState<readonly BusinessCardBatchItemDTO[]>([]);
   const [busy, setBusy] = useState(false);
@@ -431,6 +453,8 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
   }
 
   return (
+    <>
+    {actionError ? <p role="alert">{actionError}</p> : null}
     <BusinessCardBatchViewPure
       batch={batch}
       busy={busy}
@@ -452,6 +476,15 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
           }
         })
       }
+      onCancel={() => void withBusy(async () => {
+        setActionError(null);
+        try {
+          const response = await post(`/api/contact-drafts/business-card/batches/${batch.id}/cancel`);
+          if (!response.ok) throw new Error("cancel unavailable");
+        } catch {
+          setActionError(t({ en: "Cancellation could not be confirmed. Check the batch status below and retry if needed.", zh: "暂时无法确认取消结果，请查看下方批次状态，必要时重试。" }));
+        }
+      })}
       onFinish={() =>
         void withBusy(async () => {
           await post(`/api/contact-drafts/business-card/batches/${batch.id}/finish`);
@@ -473,6 +506,7 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
         })
       }
     />
+    </>
   );
 }
 

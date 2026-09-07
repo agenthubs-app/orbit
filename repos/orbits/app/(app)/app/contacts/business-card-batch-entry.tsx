@@ -51,6 +51,7 @@ const BATCH_STATUS_COPY: Record<
   BusinessCardBatchDTO["status"],
   { en: string; zh: string }
 > = {
+  cancelled: { en: "Cancelled", zh: "已取消" },
   completed: { en: "Completed", zh: "已完成" },
   processing: { en: "Processing", zh: "识别中" },
   ready_for_review: { en: "Ready to review", zh: "待确认" },

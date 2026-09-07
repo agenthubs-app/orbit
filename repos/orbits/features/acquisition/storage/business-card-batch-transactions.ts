@@ -76,6 +76,8 @@ export function createTransactionalBusinessCardBatchService({
     confirmItem: (input) => run((service) => service.confirmItem(input)),
     skipItem: (input) => run((service) => service.skipItem(input)),
     finishBatch: (input) => run((service) => service.finishBatch(input)),
+    cancelBatch: (input) => run((service) => service.cancelBatch(input)),
+    sweepCancelled: (now) => run((service) => service.sweepCancelled(now)),
     sweepExpired: (now) => run((service) => service.sweepExpired(now)),
   };
 }

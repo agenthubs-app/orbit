@@ -66,6 +66,7 @@ function render(
       duplicateItemId={null}
       items={[]}
       nowMs={Date.parse(NOW)}
+      onCancel={noop}
       onConfirm={noop}
       onFinish={noop}
       onRetry={noop}
@@ -85,7 +86,8 @@ test("processing view shows progress, per-card cells, and a stalled-worker warni
 
   assert.ok(html.includes("正在识别名片"));
   assert.ok(html.includes("1/2"));
-  assert.ok(html.includes("run-business-card-batch-worker"));
+  assert.ok(html.includes("取消剩余导入"));
+  assert.ok(!html.includes("run-business-card-batch-worker"));
   assert.ok(html.includes("cards.pdf"));
   assert.ok(html.includes("卡图保留至你完成确认"));
 });
@@ -166,4 +168,15 @@ test("failed cards offer retry, and a fully settled batch offers finish", () => 
     items: [item({ status: "confirmed", imagePath: null })],
   });
   assert.ok(finishHtml.includes("完成批次"));
+});
+
+
+test("cancelled view distinguishes pending deletion from completed cleanup and offers no import actions", () => {
+  const pending = render({ batch: batch({ status: "cancelled" }) });
+  assert.ok(pending.includes("批次已取消"));
+  assert.ok(pending.includes("正在后台删除卡图"));
+  assert.ok(!pending.includes("取消剩余导入"));
+  const deleted = render({ batch: batch({ status: "cancelled", imagesDeletedAt: NOW }) });
+  assert.ok(deleted.includes("卡图已删除"));
+  assert.ok(!deleted.includes("正在后台删除卡图"));
 });

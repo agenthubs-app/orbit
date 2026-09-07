@@ -48,7 +48,7 @@ export function createBusinessCardBatchWorker({
       workerId: string;
       now: string;
     }): Promise<BusinessCardBatchWorkerRunResult> {
-      const swept = await service.sweepExpired(input.now);
+      const swept = await service.sweepCancelled(input.now) + await service.sweepExpired(input.now);
       const claimed = provider ? await service.claimPendingItems({
         limit: concurrency,
         now: input.now,
@@ -89,6 +89,9 @@ export function createBusinessCardBatchWorker({
             });
             completed += 1;
           } catch (error) {
+            // Cancellation clears the lease while OCR may still be in flight.
+            // Its late result is discarded without retrying or notifying.
+            if ((await service.getBatch(item.actorId, item.batchId))?.batch.status === "cancelled") return;
             outcome = await service.failItem({
               batchId: item.batchId,
               errorCode: errorCodeFor(error),

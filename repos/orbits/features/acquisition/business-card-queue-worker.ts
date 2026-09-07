@@ -34,8 +34,11 @@ export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceI
     OR EXISTS (SELECT 1 FROM orbit_records b WHERE ${READY_V1})
     OR EXISTS (SELECT 1 FROM orbit_records b WHERE b.workspace_id = $1
       AND b.collection_name = 'businessCardBatches' AND b.lifecycle_state <> 'deleted'
-      AND b.payload->'batch'->>'status' <> 'completed'
+      AND b.payload->'batch'->>'status' NOT IN ('completed', 'cancelled')
       AND (b.payload->'batch'->>'expiresAt')::timestamptz < now())
+    OR EXISTS (SELECT 1 FROM orbit_records b WHERE b.workspace_id = $1
+      AND b.collection_name = 'businessCardBatches' AND b.lifecycle_state <> 'deleted'
+      AND b.payload->'batch'->>'status' = 'cancelled' AND b.payload->'batch'->>'imagesDeletedAt' IS NULL)
     OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1 AND pipeline = 'v1'
       AND (state = 'deleting' OR (state = 'pending' AND next_attempt_at <= now())))
   ) AS pending` : `SELECT (

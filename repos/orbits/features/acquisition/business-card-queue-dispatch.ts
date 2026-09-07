@@ -34,6 +34,7 @@ export function withQueuedCardBatches(service: BusinessCardBatchService, publish
     confirmItem: (input) => changed(() => service.confirmItem(input), publish),
     skipItem: (input) => changed(() => service.skipItem(input), publish),
     finishBatch: (input) => changed(() => service.finishBatch(input), publish),
+    cancelBatch: (input) => changed(() => service.cancelBatch(input), publish),
   };
 }
 

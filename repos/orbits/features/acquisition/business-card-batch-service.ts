@@ -93,6 +93,8 @@ export interface BusinessCardBatchService {
     batchId: string;
     now: string;
   }): Promise<void>;
+  cancelBatch(input: { actorId: string; batchId: string; now: string }): Promise<void>;
+  sweepCancelled(now: string): Promise<number>;
   sweepExpired(now: string): Promise<number>;
 }
 
@@ -526,6 +528,39 @@ export function createBusinessCardBatchService({
       await recomputeCounts(input.batchId, input.now);
     },
 
+    async cancelBatch(input) {
+      const batch = await readBatch(input.batchId);
+      if (!batch || batch.actorId !== input.actorId) throw new Error("Business-card batch was not found.");
+      if (batch.status === "cancelled") return;
+      if (batch.status === "completed") throw new Error("Completed batches cannot be cancelled.");
+      const items = await listItems(batch.id);
+      for (const item of items) {
+        if (item.status === "confirmed") continue;
+        await saveItem({ ...item, status: "skipped", leaseOwner: null, leasedAt: null,
+          extraction: null, reviewIssues: [], errorCode: null, usage: null, updatedAt: input.now });
+      }
+      const confirmedItems = items.filter((item) => item.status === "confirmed").length;
+      await saveBatch({ ...batch, status: "cancelled", confirmedItems,
+        skippedItems: items.length - confirmedItems, failedItems: 0, processedItems: items.length,
+        updatedAt: input.now });
+    },
+
+    async sweepCancelled(now) {
+      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId });
+      const cancelled = records.map(batchFromRecord).filter((batch): batch is BusinessCardBatchDTO =>
+        batch !== null && batch.status === "cancelled" && !batch.imagesDeletedAt).slice(0, 20);
+      for (const batch of cancelled) {
+        // Cancellation already committed: a delete failure or a rollback here
+        // cannot restore processing. Repeating a physical delete is safe.
+        await imageStore.removeBatchImages(batch.id);
+        for (const item of await listItems(batch.id)) {
+          if (item.imagePath) await saveItem({ ...item, imagePath: null, updatedAt: now });
+        }
+        await saveBatch({ ...batch, imagesDeletedAt: now, updatedAt: now });
+      }
+      return cancelled.length;
+    },
+
     async finishBatch(input) {
       const batch = await readBatch(input.batchId);
 
@@ -533,6 +568,7 @@ export function createBusinessCardBatchService({
         throw new Error(`Business-card batch ${input.batchId} was not found.`);
       }
 
+      if (batch.status === "cancelled") throw new Error("Cancelled batches cannot be finished.");
       const items = await listItems(input.batchId);
       const unsettled = items.some(
         (item) =>
@@ -562,7 +598,7 @@ export function createBusinessCardBatchService({
       const expired = records
         .map(batchFromRecord)
         .filter((batch): batch is BusinessCardBatchDTO => batch !== null)
-        .filter((batch) => batch.status !== "completed" && batch.expiresAt < now);
+        .filter((batch) => batch.status !== "completed" && batch.status !== "cancelled" && batch.expiresAt < now);
 
       for (const batch of expired) {
         await expireBatch(batch, now);

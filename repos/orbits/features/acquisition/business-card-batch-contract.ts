@@ -15,7 +15,8 @@ export const BUSINESS_CARD_BATCH_ITEM_MAX_ATTEMPTS = 2;
 export type BusinessCardBatchStatus =
   | "processing"
   | "ready_for_review"
-  | "completed";
+  | "completed"
+  | "cancelled";
 export type BusinessCardBatchItemStatus =
   | "pending"
   | "processing"
@@ -47,6 +48,8 @@ export interface BusinessCardBatchDTO {
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
+  /** Set only after cancelled-batch image deletion succeeds. */
+  imagesDeletedAt?: string;
 }
 
 export interface BusinessCardBatchItemDTO {
