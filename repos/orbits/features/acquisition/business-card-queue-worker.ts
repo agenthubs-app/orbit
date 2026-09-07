@@ -9,6 +9,7 @@ import { getConfiguredIngestV2 } from "./business-card-ingest-v2/configured";
 import { createIngestV2Worker } from "./business-card-ingest-v2/worker";
 import { createBusinessCardBatchImageStore } from "./storage/business-card-batch-image-store";
 import type { CardPipeline } from "./business-card-queue-dispatch";
+import { getConfiguredCardUploadSources } from "./storage/business-card-upload-source-runtime";
 
 const NOTIFIED = "businessCardBatchReadyNotifications";
 const READY_V1 = `
@@ -44,12 +45,18 @@ export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceI
       AND b.payload->'batch'->>'status' = 'cancelled' AND b.payload->'batch'->>'imagesDeletedAt' IS NULL)
     OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1 AND pipeline = 'v1'
       AND (state = 'deleting' OR (state = 'pending' AND next_attempt_at <= now())))
+    OR EXISTS (SELECT 1 FROM bc_ingest_raw_uploads WHERE workspace_id = $1 AND pipeline = 'v1'
+      AND (state = 'deleting' OR (state = 'consumed' AND next_attempt_at <= now())
+        OR (state IN ('reserved','processing') AND expires_at <= now())))
   ) AS pending` : `SELECT (
     EXISTS (SELECT 1 FROM bc_ingest_items WHERE workspace_id = $1 AND status IN ('queued','processing'))
     OR EXISTS (SELECT 1 FROM bc_ingest_notifications WHERE workspace_id = $1 AND status = 'pending')
     OR EXISTS (SELECT 1 FROM bc_ingest_cleanup_tasks WHERE workspace_id = $1 AND status = 'pending')
     OR EXISTS (SELECT 1 FROM bc_ingest_image_writes WHERE workspace_id = $1 AND pipeline = 'v2'
       AND (state = 'deleting' OR (state = 'pending' AND next_attempt_at <= now())))
+    OR EXISTS (SELECT 1 FROM bc_ingest_raw_uploads WHERE workspace_id = $1 AND pipeline = 'v2'
+      AND (state = 'deleting' OR (state = 'consumed' AND next_attempt_at <= now())
+        OR (state IN ('reserved','processing') AND expires_at <= now())))
     OR EXISTS (SELECT 1 FROM bc_ingest_batches WHERE workspace_id = $1
       AND status IN ('collecting','processing','ready_for_review') AND expires_at < now())
   ) AS pending`;
@@ -77,6 +84,7 @@ export async function processCardQueueTick(pipeline: CardPipeline, runtime: {
 export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promise<void> {
   const configured = createConfiguredPostgresLiveRecordStore();
   if (!configured) throw new Error("Business-card background storage unavailable.");
+  const sources = await getConfiguredCardUploadSources();
   const provider = createConfiguredBusinessCardCloudOcrProvider();
   const notify = async (actorId: string, batchId: string, generation?: number) => {
     // Account-level in-app delivery has no dependency on a push device.
@@ -108,6 +116,7 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
     });
     await processCardQueueTick(pipeline, {
       async run() {
+        await sources?.reap(pipeline);
         const result = await worker.runOnce({ workerId: `vercel-card:${randomUUID()}`, now: new Date().toISOString() });
         // Retry materialization even when an earlier completion already changed
         // the batch to ready_for_review and its best-effort notify failed.
@@ -129,7 +138,10 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
       notify: ({ actorId, batchId, reviewGeneration }) => notify(actorId, batchId, reviewGeneration),
     });
     await processCardQueueTick(pipeline, {
-      run: () => worker.runOnce(),
+      async run() {
+        await sources?.reap(pipeline);
+        return worker.runOnce();
+      },
       pending: () => hasPendingCardWork(configured.client, configured.workspaceId, pipeline),
     });
   }
