@@ -152,3 +152,7 @@ Preview `https://orbit-pthokrt1h-liqys-projects-33c8ddec.vercel.app`（代码提
 Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KEY` 或 `GOOGLE_API_KEY`，因此当前云端无法执行真实 OCR。V1 复核页现在允许失败项保留原图并进入手工录入；姓名必填，提交走独立的 `manual-entry` 端点。普通确认端点仍拒绝失败项，只有明确的手工录入请求才能把失败项和联系人写入同一事务，并同步修正批次的失败、处理和确认数量。重复联系人仍走原有复核，不会提前结算项目。
 
 31 项 V1 API、页面、请求控制、worker、服务和事务回归通过，无跳过；其中隔离 PostgreSQL 测试证明手工联系人、项目状态和批次数量原子提交。类型检查保持 109 条既有诊断且本轮无新增，生产构建通过。证据：`/tmp/orbit-v1-manual-regression.log`、`/tmp/orbit-v1-manual-typecheck-final.log`、`/tmp/orbit-v1-manual-build.log`。该退路让用户在缺少识别凭证时仍可完成核心收录，但不等于真实 OCR 已验收。
+
+首轮线上手工退路验收进一步暴露了 worker 根因：provider 为空时 V1 worker 不领取任何待处理项目，队列虽然持续保留，批次却永远停在 `processing`，所以手工入口无法到达。现在 worker 无论 provider 是否存在都会领取项目；未配置 provider 走与请求失败相同的受控失败计数，第二次尝试后变为 `failed` 并使批次进入 `ready_for_review`。这保留了真实 provider 的超时、结构校验和重试语义，也让无凭证环境最终可手工处理。
+
+36 项关联回归通过，覆盖无 provider 的 pending→pending→failed 转换、队列续发、清理、API、页面和真实 PostgreSQL 手工收录事务；类型检查仍为 109 条既有诊断、无新增，生产构建通过。证据：`/tmp/orbit-v1-no-ocr-regression.log`、`/tmp/orbit-v1-no-ocr-typecheck.log`、`/tmp/orbit-v1-no-ocr-build.log`。修复后的线上闭环仍需重新部署后复核；失败的首轮线上观察记录为 `/tmp/orbit-v1-manual-live-smoke.log`，不能计作通过。

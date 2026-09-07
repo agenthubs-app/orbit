@@ -71,7 +71,8 @@ test("durable batches survive dispatch failure; internal work never recursively 
       sourceFileName: "test.jpg", sourcePage: null, uploadMimeType: "image/jpeg",
     }] }), { message: "Business-card changes were saved, but background dispatch is unavailable." });
     const worker = createBusinessCardBatchWorker({ service: queued, imageStore, provider: null, notify: async () => {} });
-    assert.equal((await worker.runOnce({ workerId: "test", now })).claimed, 0);
+    assert.equal((await worker.runOnce({ workerId: "test", now })).claimed, 1,
+      "missing OCR must settle into the normal retry path instead of leaving work permanently pending");
     assert.equal((await queued.claimPendingItems({ workerId: "test", now, limit: 1 })).length, 1);
     assert.equal(published, 1);
     const expired = await worker.runOnce({ workerId: "test", now: "2026-10-07T00:00:00.000Z" });

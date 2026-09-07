@@ -49,21 +49,23 @@ export function createBusinessCardBatchWorker({
       now: string;
     }): Promise<BusinessCardBatchWorkerRunResult> {
       const swept = await service.sweepConfirmedImages(input.now) + await service.sweepCancelled(input.now) + await service.sweepExpired(input.now);
-      const claimed = provider ? await service.claimPendingItems({
+      const claimed = await service.claimPendingItems({
         limit: concurrency,
         now: input.now,
         workerId: input.workerId,
-      }) : [];
+      });
       let completed = 0;
       let failed = 0;
       let notifyFailures = 0;
 
       await Promise.all(
         claimed.map(async (item) => {
-          if (!provider) return;
           let outcome: { batchBecameReady: boolean };
 
           try {
+            if (!provider) {
+              throw new Error("Business-card OCR provider is not configured.");
+            }
             const imageBytes = item.imagePath
               ? await imageStore.read(item.imagePath)
               : null;
