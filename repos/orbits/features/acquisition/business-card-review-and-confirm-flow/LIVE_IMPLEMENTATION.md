@@ -1,5 +1,13 @@
 # Business Card Review And Confirm Flow Live Implementation
 
+## 2026-09-07：清空字段的保存与回读
+
+- 复核提交区分“字段未提供”与“字段明确为空”；只有未提供时才沿用原值，空字符串和纯空白输入保存为空。
+- 待复核字段显示识别原值；完成复核后，包括空值在内均使用复核值。重新创建服务实例后回读、确认候选也不得恢复原始公司、职位或联系方式。
+- 对尚无联系人记录的云识别草稿同样保留空公司与职位，不把内部占位文本写回复核字段。
+- 演示服务的复核响应遵循同一空值规则；保留其既有无持久化的固定场景行为，不将其回读结果当作 live 存储验收。
+- `business-card-review-live-store.test.ts` 新增存储回读与确认回归，复核操作保持不写入联系人。此处为内存存储验证，不代表真实账号跨端或实机验收。
+
 ## Live service and provider files
 
 - Keep the public contract in `features/acquisition/business-card-review-contract.ts`.

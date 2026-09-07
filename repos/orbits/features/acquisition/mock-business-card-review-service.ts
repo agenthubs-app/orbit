@@ -173,7 +173,7 @@ function buildRuleBasedField(
 ) {
   // 字段值没变就是 accepted；被 reviewer 改过则标记为 edited。
   const baseField = mockBusinessCardReviewDraft.extractedFields[fieldName];
-  const reviewedValue = reviewedFields[fieldName]?.trim() || baseField.value;
+  const reviewedValue = reviewedFields[fieldName]?.trim() ?? baseField.value;
 
   return {
     ...baseField,
