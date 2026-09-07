@@ -1,5 +1,14 @@
 # Business Card Scan OCR Live Implementation
 
+## 2026-09-08：纯文字输入边界
+
+- 当前正式识别路径是上传图片后调用云 OCR；仅提交 `imageText`（包括空字符串）不代表已支持文字解析，live 服务现在明确返回 `BUSINESS_CARD_IMAGE_REQUIRED`，不再把已有联系人误当作这次文字的识别结果。
+- 拒绝发生在存储读取和 OCR 请求之前。带图片的上传路径不变；未提供文字或图片的旧存储预览、按草稿 ID 回读及 mock 验证路径维持兼容。
+- App 将撤下不成立的纯文字扫描入口，文字信息仍可通过手动录入；这不是新增文本 OCR，也不改变已保存联系人。
+- 验证：扫描、云 OCR、mock 相关 28 项通过，0 跳过，Web 全量类型检查通过；用纯内存已有联系人夹具复现后修复，没有真实账号或云服务写入验收。
+
+以下历史说明描述的是旧存储预览路径，不适用于后来加入的图片云 OCR 路径。
+
 ## Live Service Boundary
 
 The storage-backed live implementation now lives in

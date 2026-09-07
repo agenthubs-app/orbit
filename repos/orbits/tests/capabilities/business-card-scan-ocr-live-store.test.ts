@@ -143,6 +143,21 @@ test("business card scan live service fails closed when storage is unconfigured"
   assert.equal(result.error.provenance.databaseWriteExecuted, false);
 });
 
+test("text-only live scans do not substitute an existing contact for the submitted text", async () => {
+  const store = await createSeedStore();
+  const provider = createStorageBusinessCardScanOcrProvider({ store, workspaceId: WORKSPACE_ID });
+  const service = createLiveBusinessCardScanOcrService({ now: () => NOW, provider });
+  const before = store.listRecords({ workspaceId: WORKSPACE_ID });
+  for (const imageText of ["New Person\nNew Company\nnew@example.invalid", ""]) {
+    const result = await service.scanBusinessCard({ actorId: ACTOR_ID, imageText });
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "BUSINESS_CARD_IMAGE_REQUIRED");
+    assert.equal(result.error.provenance.liveDatabaseReadExecuted, false);
+    assert.equal(result.error.provenance.ocrProviderRequested, false);
+  }
+  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID }), before);
+});
+
 test("business card scan live service extracts an uploaded image without reading or writing storage", async () => {
   const service = createLiveBusinessCardScanOcrService({
     cloudOcrProvider: {
