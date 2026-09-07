@@ -16,6 +16,32 @@ test("card queue accepts only a version and pipeline, never private card content
     { version: 1, pipeline: "v1", image: "private" }]) assert.equal(isCardQueueWake(value), false);
 });
 
+test("successful chunks publish their continuation before acknowledgement, while idle and failed sends remain retryable", async () => {
+  for (const pipeline of ["v1", "v2"] as const) {
+    const phases: string[] = [];
+    let release!: () => void, published!: () => void;
+    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { published = resolve; });
+    let acknowledged = false;
+    const tick = processCardQueueTick(pipeline, {
+      run: async () => { phases.push("committed"); return { claimed: 1 }; },
+      pending: async () => true,
+      continueAfterProgress: async () => { phases.push("publishing"); published(); await waiting; phases.push("sent"); },
+    }).then(() => { acknowledged = true; });
+    await started; assert.equal(acknowledged, false); assert.deepEqual(phases, ["committed", "publishing"]);
+    release(); await tick; assert.deepEqual(phases, ["committed", "publishing", "sent"]);
+    await assert.rejects(processCardQueueTick(pipeline, { run: async () => ({ claimed: 1 }), pending: async () => true,
+      continueAfterProgress: async () => { throw new Error("synthetic-private-provider"); },
+    }), { message: "Business-card background execution unavailable." });
+    await assert.rejects(processCardQueueTick(pipeline, { run: async () => ({ claimed: 0 }), pending: async () => true,
+      continueAfterProgress: async () => { assert.fail("idle work must not create a fresh message loop"); },
+    }), (error) => error instanceof CardWorkPending && error.afterSeconds === 60);
+    await processCardQueueTick(pipeline, { run: async () => ({ claimed: 1 }), pending: async () => false,
+      continueAfterProgress: async () => { assert.fail("completed work needs no continuation"); },
+    });
+  }
+});
+
 test("card queue retains delivery while work or a future lease remains; errors are sanitized", async () => {
   for (const claimed of [0, 1]) {
     await assert.rejects(processCardQueueTick("v1", {

@@ -51,6 +51,12 @@ const nextConfig = {
   // 批量名片导入的 PDF 拆页/HEIC 转码依赖原生二进制；必须留在 Node 运行时
   // 由 require 加载，不能进 webpack bundle。
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist", "heic-convert", "sharp"],
+  // pdf.js imports its Node worker through a computed path. Next's static
+  // tracing includes pdf.mjs but cannot discover this runtime dependency.
+  outputFileTracingIncludes: {
+    "/api/queues/business-card": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+    "/api/contact-drafts/business-card/batches": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+  },
 };
 
 module.exports = nextConfig;

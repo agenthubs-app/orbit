@@ -8,7 +8,7 @@ import { createConfiguredBusinessCardCloudOcrProvider } from "./business-card-oc
 import { getConfiguredIngestV2 } from "./business-card-ingest-v2/configured";
 import { createIngestV2Worker } from "./business-card-ingest-v2/worker";
 import { createBusinessCardBatchImageStore } from "./storage/business-card-batch-image-store";
-import type { CardPipeline } from "./business-card-queue-dispatch";
+import { enqueueCardBatch, type CardPipeline } from "./business-card-queue-dispatch";
 import { getConfiguredCardUploadSources } from "./storage/business-card-upload-source-runtime";
 import { getConfiguredV1Preparation } from "./business-card-v1-preparation/configured";
 
@@ -73,12 +73,19 @@ export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceI
 export async function processCardQueueTick(pipeline: CardPipeline, runtime: {
   run(): Promise<{ claimed: number }>;
   pending(): Promise<boolean>;
+  continueAfterProgress?(): Promise<void>;
 }): Promise<void> {
   try {
     const result = await runtime.run();
     const pending = await runtime.pending();
     console.info(JSON.stringify({ event: "business_card_execution_tick", pipeline, claimed: result.claimed, pending }));
-    if (pending) throw new CardWorkPending(result.claimed > 0 ? 1 : 60);
+    if (pending) {
+      // Successful chunks are new work, not failed deliveries. Confirm this
+      // wake only after publishing its successor; a failed publish still throws
+      // so the original durable message can retry. Idle waits keep backoff.
+      if (result.claimed > 0 && runtime.continueAfterProgress) await runtime.continueAfterProgress();
+      else throw new CardWorkPending(result.claimed > 0 ? 1 : 60);
+    }
   } catch (error) {
     if (error instanceof CardWorkPending) throw error;
     throw new Error("Business-card background execution unavailable.");
@@ -137,6 +144,7 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
         return result;
       },
       pending: () => hasPendingCardWork(configured.client, configured.workspaceId, pipeline),
+      continueAfterProgress: () => enqueueCardBatch(pipeline),
     });
   } else {
     const ingest = getConfiguredIngestV2();
@@ -152,6 +160,7 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
         return worker.runOnce();
       },
       pending: () => hasPendingCardWork(configured.client, configured.workspaceId, pipeline),
+      continueAfterProgress: () => enqueueCardBatch(pipeline),
     });
   }
 }
