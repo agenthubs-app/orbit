@@ -24,7 +24,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
 import {
@@ -96,6 +97,7 @@ function overviewFilterFor(
 }
 
 export function ContactsDashboardScreen() {
+  const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
   const [recomputing, setRecomputing] = useState(false);
@@ -298,6 +300,7 @@ function ContactsDashboardContent({
   savingRelationshipGoal: boolean;
   summary: unknown;
 }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const [analysisSegment, setAnalysisSegment] =
     useState<AnalysisSegment>("overview");
@@ -542,6 +545,7 @@ function OpportunityActionBriefSheet({
   onOpenSecondary: (action: ContactsAnalysisBriefActionView) => void;
   visible: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const brief = action?.brief;
 
   return (
@@ -676,6 +680,7 @@ function OpportunityActionBriefSheet({
 }
 
 function GoalBar({ goal, onEdit }: { goal: string; onEdit: () => void }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel={`当前目标：${goal}，编辑目标`}
@@ -708,6 +713,7 @@ function AnalysisDiagnosisCard({
   onRecompute: () => void;
   recomputing: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.analysisDiagnosisCard}>
       <View style={styles.analysisDiagnosisIcon}>
@@ -746,6 +752,7 @@ function AnalysisSegmentedControl({
   onSelect: (segment: AnalysisSegment) => void;
   selected: AnalysisSegment;
 }) {
+  const { styles } = useStyles();
   const segments: { id: AnalysisSegment; label: string }[] = [
     { id: "overview", label: "概览" },
     { id: "structure", label: "结构" },
@@ -790,6 +797,7 @@ function AnalysisSnapshotCard({
 }: {
   dimensions: ContactsAnalysisDimensionView[];
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -812,6 +820,7 @@ function StructureDimensionControl({
   onSelect: (dimension: ContactsAnalysisStructureDimensionId) => void;
   selected: ContactsAnalysisStructureDimensionId;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.structureDimensionControl}>
       {dimensions.map((dimension) => {
@@ -861,10 +870,11 @@ function StructureBreakdownCard({
   onSelectItem: (item: ContactsAnalysisStructureItemView) => void;
   selectedId: string;
 }) {
+  const { colors, styles } = useStyles();
   const selectedItem =
     dimension.items.find((item) => item.id === selectedId) ?? dimension.items[0];
   const pieItems = dimension.items.map((item, index) => ({
-    color: structurePieColor(index),
+    color: structurePieColor(index, colors),
     countLabel: item.countLabel,
     id: item.id,
     label: item.label,
@@ -941,10 +951,11 @@ function AnalysisDimensionSummary({
 }: {
   dimensions: ContactsAnalysisDimensionView[];
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.analysisDimensionGrid}>
       {dimensions.map((dimension, index) => {
-        const visual = analysisToneVisual(dimension.tone);
+        const visual = analysisToneVisual(dimension.tone, colors);
 
         return (
           <View
@@ -989,6 +1000,7 @@ function AnalysisActivityCard({
 }: {
   activity: ContactsAnalysisActivityView[];
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.activityTitleRow}>
@@ -997,7 +1009,7 @@ function AnalysisActivityCard({
       </View>
       <View style={styles.activityGrid}>
         {activity.map((item, index) => {
-          const visual = analysisToneVisual(item.tone);
+          const visual = analysisToneVisual(item.tone, colors);
 
           return (
             <View
@@ -1163,7 +1175,7 @@ function structureDimensionIcon(
   return "business-outline";
 }
 
-function structurePieColor(index: number): string {
+function structurePieColor(index: number, colors: OrbitColors): string {
   return [
     colors.accent,
     colors.live,
@@ -1178,7 +1190,7 @@ function structurePieColor(index: number): string {
 }
 
 function analysisToneVisual(
-  tone: ContactsAnalysisActivityView["tone"] | ContactsAnalysisDimensionView["tone"]
+  tone: ContactsAnalysisActivityView["tone"] | ContactsAnalysisDimensionView["tone"], colors: OrbitColors
 ): { backgroundColor: string; color: string } {
   if (tone === "live") {
     return { backgroundColor: colors.liveSoft, color: colors.live };
@@ -1234,6 +1246,7 @@ function GoalCoverageCard({
   primaryActionLabel: string;
   recomputing: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -1291,6 +1304,7 @@ function GoalCoverageCard({
 }
 
 function CoverageOrbit({ scoreLabel }: { scoreLabel: string }) {
+  const { styles } = useStyles();
   return (
     <View
       accessibilityLabel={`目标覆盖 ${scoreLabel}`}
@@ -1321,7 +1335,8 @@ function CoverageSignal({
   onPress: () => void;
   signal: ContactsAnalysisCoverageSignalView;
 }) {
-  const visual = coverageSignalVisual(signal.id);
+  const { colors, styles } = useStyles();
+  const visual = coverageSignalVisual(signal.id, colors);
 
   return (
     <Pressable
@@ -1353,7 +1368,7 @@ function CoverageSignal({
 }
 
 function coverageSignalVisual(
-  id: ContactsAnalysisCoverageSignalView["id"]
+  id: ContactsAnalysisCoverageSignalView["id"], colors: OrbitColors
 ): { backgroundColor: string; color: string; icon: keyof typeof Ionicons.glyphMap } {
   if (id === "strong") {
     return {
@@ -1393,6 +1408,7 @@ function RecommendedActionsCard({
   subtitle: string;
   title?: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -1455,10 +1471,11 @@ function ActionLeading({
   contact: ContactSummary | undefined;
   rank: number;
 }) {
+  const { colors, styles } = useStyles();
   const avatar = contact ? contactAvatarFor(contact) : null;
   const visual = avatar
-    ? contactAvatarVisual(avatar.tone)
-    : actionVisual(action.tone);
+    ? contactAvatarVisual(avatar.tone, colors)
+    : actionVisual(action.tone, colors);
 
   return (
     <View style={styles.actionLeading}>
@@ -1502,7 +1519,7 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-function actionVisual(tone: ContactsAnalysisActionView["tone"]): {
+function actionVisual(tone: ContactsAnalysisActionView["tone"], colors: OrbitColors): {
   backgroundColor: string;
   color: string;
 } {
@@ -1517,7 +1534,7 @@ function actionVisual(tone: ContactsAnalysisActionView["tone"]): {
   return { backgroundColor: colors.accentSofter, color: colors.accent };
 }
 
-function contactAvatarVisual(tone: ContactAvatarTone): {
+function contactAvatarVisual(tone: ContactAvatarTone, colors: OrbitColors): {
   backgroundColor: string;
   color: string;
 } {
@@ -1544,6 +1561,7 @@ function RelationshipHealthCard({
   health: ContactsAnalysisHealthView[];
   onToggle: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel={`关系健康，${health
@@ -1594,7 +1612,8 @@ function HealthItem({
   health: ContactsAnalysisHealthView;
   showDivider: boolean;
 }) {
-  const visual = healthVisual(health.tone);
+  const { colors, styles } = useStyles();
+  const visual = healthVisual(health.tone, colors);
 
   return (
     <View
@@ -1621,7 +1640,7 @@ function HealthItem({
   );
 }
 
-function healthVisual(tone: ContactsAnalysisHealthView["tone"]): {
+function healthVisual(tone: ContactsAnalysisHealthView["tone"], colors: OrbitColors): {
   backgroundColor: string;
   color: string;
 } {
@@ -1651,6 +1670,7 @@ function ContactDashboardGoalCard({
   onSave: () => void;
   saving: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail="会影响推荐和机会排序" title="关系目标">
       <TextInput
@@ -1685,6 +1705,7 @@ function ContactDashboardGoalCard({
 }
 
 function OrbitMap({ view }: { view: ContactsDashboardView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.mapSection}>
       <View style={styles.orbitStage}>
@@ -1708,6 +1729,7 @@ function OrbitMap({ view }: { view: ContactsDashboardView }) {
 }
 
 function RingLegend({ rings }: { rings: DashboardStrengthView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.ringLegend}>
       {rings.map((ring) => (
@@ -1730,6 +1752,7 @@ function OverviewGrid({
   items: ContactsDashboardOverviewItem[];
   onOpenFilter: (filter: ContactsDashboardOverviewFilter) => void;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.overviewGrid}>
       {items.map((item) => {
@@ -1767,6 +1790,7 @@ function PriorityCard({
   onOpenContact: () => void;
   priority: DashboardPriorityView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={`${priority.organization} · ${priority.dueLabel}`} title="优先推进">
       <View style={styles.listStack}>
@@ -1805,6 +1829,7 @@ function PriorityCard({
 }
 
 function GapCard({ gaps }: { gaps: DashboardGapView[] }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={`${gaps.length} 个需要补齐的方向`} title="覆盖缺口">
       <View style={styles.listStack}>
@@ -1830,6 +1855,7 @@ function IndustryCard({
 }: {
   industries: DashboardIndustryView[];
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="看哪些圈层已经够厚，哪些还薄" title="行业分布">
       <View style={styles.listStack}>
@@ -1866,6 +1892,7 @@ function ValueTypeCard({
 }: {
   valueTypes: DashboardValueTypeView[];
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="每段关系到底能帮什么忙" title="价值类型">
       <View style={styles.chipWrap}>
@@ -1886,6 +1913,7 @@ function ActivityCard({
 }: {
   activities: DashboardActivityView[];
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="最近进入系统的关系变化" title="最近动态">
       <View style={styles.listStack}>
@@ -1907,7 +1935,7 @@ function ActivityCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionCopy: {
     flex: 1,
     gap: spacing.xs,
@@ -2034,9 +2062,9 @@ const styles = StyleSheet.create({
   },
   analysisDiagnosisRefresh: {
     alignItems: "center",
-    height: 36,
+    height: 44,
     justifyContent: "center",
-    width: 32
+    width: 44
   },
   analysisDiagnosisScore: {
     alignItems: "flex-end",
@@ -2179,7 +2207,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     flex: 1,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md
   },
   analysisSegmentedControl: {
@@ -2224,7 +2252,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 38,
+    minHeight: 44,
     paddingHorizontal: spacing.xs
   },
   structureDetailButtonText: {
@@ -2242,7 +2270,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 3,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
     minWidth: 0,
     paddingHorizontal: spacing.xs
   },
@@ -2390,7 +2418,7 @@ const styles = StyleSheet.create({
     lineHeight: 24
   },
   coverageScoreLabel: {
-    color: colors.text4,
+    color: colors.onAccent,
     fontSize: 10,
     fontWeight: "700",
     lineHeight: 13
@@ -2549,9 +2577,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     borderWidth: 1,
-    height: 40,
+    height: 44,
     justifyContent: "center",
-    width: 40
+    width: 44
   },
   barFill: {
     backgroundColor: colors.live,
@@ -3034,4 +3062,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20
   }
-});
+}));

@@ -229,7 +229,7 @@ test("Orbit AI home does not auto-scroll past next actions", () => {
 });
 
 test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent history", () => {
-  assert.match(screenSource, /const toneStyles: Record<CapabilityTone/u);
+  assert.match(screenSource, /const toneStyles = \(colors: OrbitColors\): Record<CapabilityTone/u);
   assert.match(screenSource, /CapabilityRow/u);
   assert.match(screenSource, /styles\.capabilityIcon, \{ backgroundColor: tone\.surface \}/u);
   assert.match(screenSource, /styles\.drawerRowGroup/u);

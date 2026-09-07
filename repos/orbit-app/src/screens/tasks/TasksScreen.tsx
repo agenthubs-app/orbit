@@ -8,7 +8,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { tasksToListView } from "../../view-models/today-tasks";
@@ -25,6 +26,7 @@ function mutationKey(action: string) {
 }
 
 export function TasksScreen() {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ view?: string | string[] }>();
   const router = useRouter();
   const client = useOrbitApiClient();
@@ -129,6 +131,7 @@ function TaskModeSwitcher({
   mode: TaskListMode;
   onChange: (mode: TaskListMode) => void;
 }) {
+  const { styles } = useStyles();
   const options: Array<{ label: string; value: TaskListMode }> = [
     { label: "待办", value: "open" },
     { label: "已完成", value: "completed" },
@@ -155,7 +158,7 @@ function TaskModeSwitcher({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   checkButton: { alignItems: "center", height: 48, justifyContent: "center", width: 42 },
   completedTitle: { color: colors.text3, textDecorationLine: "line-through" },
   errorText: { color: colors.rose, fontSize: typography.small },
@@ -171,4 +174,4 @@ const styles = StyleSheet.create({
   tabs: { backgroundColor: colors.surface3, borderRadius: radius.md, flexDirection: "row", padding: 3 },
   tabText: { color: colors.text3, fontSize: typography.small, fontWeight: "600" },
   tabTextSelected: { color: colors.ink },
-});
+}));

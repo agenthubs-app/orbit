@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import {
   filterEventCheckInParticipants,
   type EventCheckInRosterView,
@@ -19,6 +20,7 @@ export type EventCheckInContentState =
   | { kind: "failure"; message: string };
 
 function Segment({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -52,6 +54,7 @@ export function EventCheckInContent({
   segment: EventCheckInSegment;
   state: EventCheckInContentState;
 }) {
+  const { colors, styles } = useStyles();
   if (state.kind === "loading") {
     return (
       <DataCard title="正在读取签到名单">
@@ -152,7 +155,7 @@ export function EventCheckInContent({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   checkInButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
   checkInButtonDone: { backgroundColor: colors.liveSoft },
   checkInButtonText: { color: colors.onAccent, fontSize: typography.caption, fontWeight: "800" },
@@ -183,4 +186,4 @@ const styles = StyleSheet.create({
   summary: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   summaryEyebrow: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   summaryValue: { color: colors.ink, fontSize: typography.title, fontWeight: "800", marginTop: spacing.xs }
-});
+}));

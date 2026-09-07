@@ -25,7 +25,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import {
   type ApiResourceState,
   useApiResource
@@ -59,6 +60,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function EventDetailScreen() {
+  const { colors } = useOrbitTheme();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const { baseUrl } = useOrbitApiBaseUrl();
@@ -146,6 +148,7 @@ function EventActionButton({
   onPress: () => void;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -177,6 +180,7 @@ function EventDetailCard({
   data: unknown;
   personalizedModules: ReactNode;
 }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const event = eventDetailToSummary(data);
   const hero = eventDetailHeroToView(event);
@@ -289,6 +293,7 @@ function EventRegistrationModule({
   onOpenLive: () => void;
   onRegister: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const registrationStatusLabel =
     event.status === "已确认"
       ? "活动已确认"
@@ -361,6 +366,7 @@ function EventAttendeePreviewPill({
 }: {
   attendee: EventDetailAttendeePreviewView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.attendeePreviewPill}>
       <View style={styles.attendeePreviewAvatar}>
@@ -385,6 +391,7 @@ function EventAboutModule({
 }: {
   sections: EventDetailAboutSectionView[];
 }) {
+  const { colors, styles } = useStyles();
   if (sections.length === 0) {
     return null;
   }
@@ -417,6 +424,7 @@ function EventAgendaModule({
 }: {
   agenda: EventDetailAgendaItemView[];
 }) {
+  const { styles } = useStyles();
   if (agenda.length === 0) {
     return null;
   }
@@ -452,6 +460,7 @@ function EventAgendaModule({
 }
 
 function EventOrganizerModule({ event }: { event: EventDetailSummary }) {
+  const { styles } = useStyles();
   const initial = event.organizerName.slice(0, 1) || "O";
   const organizerDetail =
     event.organizerName === "主办方待确认"
@@ -486,6 +495,7 @@ function EventReadinessModule({
   onGoalConfirmed: () => void;
   state: ApiResourceState<unknown>;
 }) {
+  const { colors, styles } = useStyles();
   const client = useOrbitApiClient();
   const [goalPending, setGoalPending] = useState(false);
   const [goalDraft, setGoalDraft] = useState("");
@@ -686,6 +696,7 @@ function EventRecommendationsModule({
   eventId: string;
   state: ApiResourceState<unknown>;
 }) {
+  const { colors, styles } = useStyles();
   const client = useOrbitApiClient();
   const [openersByPersonId, setOpenersByPersonId] = useState<
     Record<string, string>
@@ -821,6 +832,7 @@ function RecommendedPersonAvatar({
   initial: string;
   rankLabel: string;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.recommendationAvatarWrap}>
       <View style={styles.recommendationAvatar}>
@@ -842,6 +854,7 @@ function EventPostEventReviewModule({
   onConfirmed: () => void;
   state: ApiResourceState<unknown>;
 }) {
+  const { colors, styles } = useStyles();
   const client = useOrbitApiClient();
   const router = useRouter();
   const [confirmPending, setConfirmPending] = useState(false);
@@ -973,7 +986,7 @@ function EventPostEventReviewModule({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -1216,7 +1229,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   eventHeroTitle: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: 26,
     fontWeight: "800",
     lineHeight: 31
@@ -1229,7 +1242,7 @@ const styles = StyleSheet.create({
   eventStatusBadge: {
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: radius.pill,
-    color: colors.ink,
+    color: colors.imageBadgeText,
     fontSize: typography.caption,
     fontWeight: "700",
     overflow: "hidden",
@@ -1299,7 +1312,7 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   goalSuggestionDetailSelected: {
-    color: "rgba(255,255,255,0.78)"
+    color: colors.onAccent
   },
   goalSuggestionGoal: {
     color: colors.text,
@@ -1628,4 +1641,4 @@ const styles = StyleSheet.create({
   stack: {
     gap: 8
   }
-});
+}));

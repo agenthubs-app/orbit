@@ -4,7 +4,8 @@ import { Text, View, StyleSheet } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { colors, spacing, typography } from "../../design/tokens";
+import { spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 
 const settingsDestinations = [
   {
@@ -29,6 +30,7 @@ const settingsDestinations = [
 ] as const;
 
 export function SettingsScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
 
@@ -62,7 +64,7 @@ export function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   destination: {
     alignItems: "center",
     flexDirection: "row",
@@ -73,4 +75,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "600"
   }
-});
+}));

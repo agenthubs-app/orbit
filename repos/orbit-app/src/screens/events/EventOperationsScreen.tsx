@@ -4,7 +4,7 @@ import { Alert, RefreshControl } from "react-native";
 
 import { eventOperationsAdminPath, eventOperationsGenerationActionPath, eventOperationsGenerationsPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { colors } from "../../design/tokens";
+import { useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { eventOperationsGenerationMutationMatches, eventOperationsPublishedResultMatches, eventOperationsToView, type EventOperationsGenerationView } from "../../view-models/event-operations";
@@ -15,6 +15,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function EventOperationsScreen() {
+  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
   const router = useRouter();

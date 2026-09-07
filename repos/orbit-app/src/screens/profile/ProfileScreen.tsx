@@ -22,7 +22,8 @@ import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SectionHeader } from "../../components/SectionHeader";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import {
   type ApiResourceState,
   useApiResource
@@ -50,6 +51,7 @@ import {
 } from "../../view-models/profile";
 
 export function ProfileScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
@@ -334,6 +336,7 @@ function ProfileCard({
   savingProfile: boolean;
   suggestionsState: ApiResourceState<unknown>;
 }) {
+  const { styles } = useStyles();
   const storedProfile = profileToSummary(data);
   const displayProfile = profileSummaryForMobileUser(
     storedProfile,
@@ -406,6 +409,7 @@ function ProfileDocumentExtractionCard({
   ) => void;
   result: unknown;
 }) {
+  const { styles } = useStyles();
   const [sourceText, setSourceText] = useState("");
   const [pickerError, setPickerError] = useState<string | null>(null);
   const view = result ? profileDocumentExtractionToView(result) : null;
@@ -562,6 +566,7 @@ function ProfileExtractionButton({
   label: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel={label}
@@ -587,6 +592,7 @@ function ProfileDocumentExtractionResult({
   onApply: () => void;
   view: ProfileDocumentExtractionView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.profileExtractionResult}>
       <View style={styles.profileExtractionResultHeader}>
@@ -682,6 +688,7 @@ function ProfileManualEditCard({
   profile: ProfileSummary;
   saving: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const profileFingerprint = [
     profile.bio,
     profile.displayName,
@@ -807,6 +814,7 @@ function ProfileAcceptedPatchNotice({
 }: {
   view: ProfileAcceptedPatchView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.acceptedPatchNotice}>
       <View style={styles.acceptedPatchHeader}>
@@ -837,6 +845,7 @@ function ProfileTextInput({
   placeholder?: string;
   value: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.profileInputGroup}>
       <Text style={styles.profileInputLabel}>{label}</Text>
@@ -861,6 +870,7 @@ function BusinessCardTagRow({
   group: ProfileBusinessCardTagGroup;
   label: string;
 }) {
+  const { styles } = useStyles();
   if (group.values.length === 0) {
     return null;
   }
@@ -888,6 +898,7 @@ function BusinessCardTagRow({
 }
 
 function OrbitBusinessCard({ profile }: { profile: ProfileSummary }) {
+  const { styles } = useStyles();
   const card = profileBusinessCard(profile);
 
   return (
@@ -948,6 +959,7 @@ function ProfileUpdateSuggestionsCard({
   onAcceptSuggestion: (id: string) => void;
   state: ApiResourceState<unknown>;
 }) {
+  const { colors, styles } = useStyles();
   if (state.kind !== "success" && state.kind !== "empty") {
     return null;
   }
@@ -1033,6 +1045,7 @@ function ProfileTagSection({
   items: string[];
   title: string;
 }) {
+  const { styles } = useStyles();
   if (items.length === 0) {
     return null;
   }
@@ -1051,7 +1064,7 @@ function ProfileTagSection({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -1505,4 +1518,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7
   }
-});
+}));

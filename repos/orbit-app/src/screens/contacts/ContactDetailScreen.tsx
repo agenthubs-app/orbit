@@ -22,7 +22,8 @@ import {
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import {
   useApiResource,
   type ApiResourceState
@@ -62,6 +63,7 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function ContactDetailScreen() {
+  const { colors, styles } = useStyles();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = firstParam(id);
   const client = useOrbitApiClient();
@@ -342,11 +344,12 @@ function ContactDetailCard({
   relationshipValueState: ApiResourceState<unknown>;
   statusPending: boolean;
 }) {
+  const { colors } = useOrbitTheme();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const contact = contactDetailToSummary(data);
   const hero = contactDetailHeroToView(contact);
-  const toneStyle = avatarToneStyles[hero.avatar.tone];
+  const toneStyle = avatarToneStyles(colors)[hero.avatar.tone];
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [editingExpanded, setEditingExpanded] = useState(false);
   const inboxHref =
@@ -415,6 +418,7 @@ function ContactIdentityHeader({
   hero: ReturnType<typeof contactDetailHeroToView>;
   toneStyle: { backgroundColor: string; color: string };
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.contactHero}>
       <View style={styles.contactHeroHeader}>
@@ -459,6 +463,7 @@ function NextStepCard({
   action: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.nextStepCard}>
       <View style={styles.nextStepHeader}>
@@ -488,6 +493,7 @@ function NextStepCard({
 }
 
 function ContactOverview({ contact }: { contact: ContactDetailSummary }) {
+  const { styles } = useStyles();
   const exchange = relationshipExchangeFor(contact);
 
   return (
@@ -517,6 +523,7 @@ function ExchangeValueRow({
   label: string;
   values: string[];
 }) {
+  const { styles } = useStyles();
   const visibleValues = values.slice(0, 2);
   const remaining = values.length - visibleValues.length;
 
@@ -536,6 +543,7 @@ function LatestActivityPreview({
 }: {
   contact: ContactDetailSummary;
 }) {
+  const { colors, styles } = useStyles();
   const hasInteraction = contact.lastInteractionAt !== "暂无记录";
   const latest = hasInteraction ? contact.noteSummaries[0] : undefined;
   const meta = compactInteractionDate(contact.lastInteractionAt);
@@ -567,6 +575,7 @@ function DisclosureSection({
   onPress: () => void;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.disclosureSurface}>
       <Pressable
@@ -608,6 +617,7 @@ function FullDetailsPanel({
   relationshipValuePending: boolean;
   relationshipValueState: ApiResourceState<unknown>;
 }) {
+  const { styles } = useStyles();
   const publicTags = uniqueDisplayItems([
     ...contact.publicTopics,
     ...contact.valueLabels
@@ -684,6 +694,7 @@ function UpdateContactPanel({
   onStatusAction: (action: ContactDetailStatusActionView) => void;
   statusPending: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const statusCardDetail = "关系阶段和处理动作";
 
   return (
@@ -847,6 +858,7 @@ function IndustryPicker({
   selectedId: IndustryIdCode | undefined;
   selectedLabel: string | undefined;
 }) {
+  const { colors, styles } = useStyles();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -926,6 +938,7 @@ function DetailSection({
   detail?: string;
   title: string;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.detailSection}>
       <View style={styles.sectionHeader}>
@@ -942,6 +955,7 @@ function DetailSection({
 }
 
 function SectionDivider() {
+  const { styles } = useStyles();
   return <View style={styles.sectionDivider} />;
 }
 
@@ -993,18 +1007,19 @@ function compactInteractionDate(value: string): string {
   return `${Number(dateMatch[2])}月${Number(dateMatch[3])}日`;
 }
 
-const avatarToneStyles: Record<
+const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
-> = {
+> => ({
   amber: { backgroundColor: colors.amberSoft, color: colors.amber },
   emerald: { backgroundColor: colors.liveSoft, color: colors.live },
   rose: { backgroundColor: colors.roseSoft, color: colors.rose },
   sky: { backgroundColor: colors.skySoft, color: colors.sky },
   violet: { backgroundColor: colors.accentSofter, color: colors.accent }
-};
+});
 
 function TagList({ items }: { items: string[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.tagsRow}>
       {items.map((label) => (
@@ -1017,6 +1032,7 @@ function TagList({ items }: { items: string[] }) {
 }
 
 function PromptList({ prompts }: { prompts: string[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.promptStack}>
       {prompts.map((prompt) => (
@@ -1029,6 +1045,7 @@ function PromptList({ prompts }: { prompts: string[] }) {
 }
 
 function EvidenceList({ contact }: { contact: ContactDetailSummary }) {
+  const { styles } = useStyles();
   if (contact.evidenceExcerpts.length === 0) {
     return <Text style={styles.bodyText}>这条关系有来源记录。</Text>;
   }
@@ -1055,6 +1072,7 @@ function RelationshipValueCard({
   pending: boolean;
   state: ApiResourceState<unknown>;
 }) {
+  const { styles } = useStyles();
   if (!overrideData && state.kind === "loading") {
     return (
       <View style={styles.relationshipValueContent}>
@@ -1112,6 +1130,7 @@ function RelationshipRecomputeButton({
   onPress: () => void;
   pending: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -1131,7 +1150,7 @@ function RelationshipRecomputeButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -1681,4 +1700,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20
   }
-});
+}));

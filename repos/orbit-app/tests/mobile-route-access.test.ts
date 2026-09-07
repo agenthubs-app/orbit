@@ -166,7 +166,7 @@ test("root navigator stays mounted while grouped and root-level private entries 
   assert.ok(boundary > provider);
   assert.match(
     boundarySource,
-    /export function OrbitRouteAccessBoundary\(\) \{\s*return <Stack screenOptions=/u
+    /export function OrbitRouteAccessBoundary\(\) \{\s*const \{ colors \} = useOrbitTheme\(\);\s*return <Stack screenOptions=/u
   );
   assert.match(boundarySource, /return <Redirect href=\{mobileLoginHref/u);
   assert.match(boundarySource, /withOrbitPrivateRoute/u);

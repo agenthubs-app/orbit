@@ -17,7 +17,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   eventDiscoveryFilterCounts,
@@ -84,6 +85,7 @@ function homeEventDateChip(startsAt: string): { date: string; detail: string } {
 }
 
 export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
+  const { colors } = useOrbitTheme();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const [filter, setFilter] = useState<HomeEventFilter>("all");
@@ -211,6 +213,7 @@ function HomeHubContent({
   onOpenEvents: () => void;
   view: HomeView;
 }) {
+  const { colors, styles } = useStyles();
   const previewEvents = view.events.slice(0, view.layout.secondaryEventLimit);
   const [askDraft, setAskDraft] = useState("");
   const [askError, setAskError] = useState<string | null>(null);
@@ -346,6 +349,7 @@ function HomeProfilePanel({
   onPress: () => void;
   panel: HomeProfilePanelView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={panel.goal} onPress={onPress} title={panel.title}>
       {panel.bio ? <Text style={styles.profileBio}>{panel.bio}</Text> : null}
@@ -373,6 +377,7 @@ function HomeProfilePanel({
 }
 
 function HomeProfileGroup({ group }: { group: HomeProfileGroupView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.profileGroup}>
       <Text style={styles.profileGroupTitle}>{group.title}</Text>
@@ -475,6 +480,7 @@ function HomeEventDiscoveryControls({
   topicFilter: string;
   topics: string[];
 }) {
+  const { colors, styles } = useStyles();
   const hasQuery = query.trim().length > 0;
 
   return (
@@ -573,6 +579,7 @@ function EventImageList({
   events: HomeEventView[];
   onPress: (eventId: string) => void;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.homeEventImageList}>
       {events.map((event) => (
@@ -596,6 +603,7 @@ function EventImageCard({
   event: HomeEventView;
   onPress: (eventId: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   const dateChip = homeEventDateChip(event.startsAt);
 
   return (
@@ -642,14 +650,14 @@ function EventImageCard({
             </View>
             <View style={styles.homeEventImageMetaRow}>
               <View style={styles.homeEventImageMetaLine}>
-                <Ionicons color={colors.onAccent} name="time-outline" size={14} />
+                <Ionicons color={colors.onImage} name="time-outline" size={14} />
                 <Text numberOfLines={1} style={styles.homeEventImageDetail}>
                   {event.startsAt}
                 </Text>
               </View>
               {event.location ? (
                 <View style={styles.homeEventImageMetaLine}>
-                  <Ionicons color={colors.onAccent} name="location-outline" size={14} />
+                  <Ionicons color={colors.onImage} name="location-outline" size={14} />
                   <Text numberOfLines={1} style={styles.homeEventImageDetail}>
                     {event.location}
                   </Text>
@@ -670,6 +678,7 @@ function EventImageCard({
 }
 
 function PipelineRail({ items }: { items: HomePipelineItemView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.pipelineRail}>
       {items.map((item, index) => (
@@ -683,6 +692,7 @@ function PipelineRail({ items }: { items: HomePipelineItemView[] }) {
 }
 
 function PipelineCell({ item }: { item: HomePipelineItemView }) {
+  const { styles } = useStyles();
   const textStyle =
     item.tone === "live"
       ? styles.pipelineValueLive
@@ -718,6 +728,7 @@ function EntryTile({
   onPress: (href: HomeEntryView["href"]) => void;
   variant?: HomeView["layout"]["entryVariant"];
 }) {
+  const { colors, styles } = useStyles();
   const iconName =
     entry.href === "/profile"
       ? "person-outline"
@@ -755,7 +766,7 @@ function EntryTile({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   askComposer: {
     alignItems: "flex-end",
     backgroundColor: colors.surface,
@@ -968,7 +979,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(8,8,12,0.34)"
   },
   homeEventImageCta: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.caption,
     fontWeight: "800",
     lineHeight: 17
@@ -985,13 +996,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs
   },
   homeEventImageDateDetail: {
-    color: colors.text2,
+    color: colors.imageBadgeText,
     fontSize: 10,
     fontWeight: "700",
     lineHeight: 13
   },
   homeEventImageDateValue: {
-    color: colors.ink,
+    color: colors.imageBadgeText,
     fontSize: typography.caption,
     fontWeight: "900",
     lineHeight: 17
@@ -1109,7 +1120,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.88)",
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.imageBadgeText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14,
@@ -1124,7 +1135,7 @@ const styles = StyleSheet.create({
     lineHeight: 16
   },
   homeEventImageTitle: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: 24,
     fontWeight: "900",
     lineHeight: 30
@@ -1371,4 +1382,4 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 18
   }
-});
+}));

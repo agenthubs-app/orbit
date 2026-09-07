@@ -5,10 +5,12 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { adminLoginToView } from "../../view-models/admin";
 
 export function AdminLoginScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const view = adminLoginToView({ signedIn: auth.signedIn });
@@ -47,7 +49,7 @@ export function AdminLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionStack: {
     gap: spacing.md
   },
@@ -75,4 +77,4 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: "700"
   }
-});
+}));

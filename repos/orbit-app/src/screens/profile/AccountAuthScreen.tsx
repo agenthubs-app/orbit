@@ -11,7 +11,8 @@ import {
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
   nextHrefForAccountAuthSubmit,
@@ -36,6 +37,7 @@ function fieldValue(
 }
 
 export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{
     created?: string | string[];
     email?: string | string[];
@@ -276,6 +278,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
 }
 
 function OrbitAuthLogo() {
+  const { styles } = useStyles();
   return (
     <View style={styles.brandHeader}>
       <View accessibilityLabel="Orbit" style={styles.brandMark}>
@@ -297,6 +300,7 @@ function AuthField({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const { colors, styles } = useStyles();
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   return (
@@ -339,7 +343,7 @@ function AuthField({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   brandCore: {
     backgroundColor: colors.onAccent,
     borderRadius: radius.pill,
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
     lineHeight: 31
   },
   brandRingPrimary: {
-    borderColor: "rgba(255,255,255,0.82)",
+    borderColor: colors.onAccent,
     borderRadius: radius.pill,
     borderWidth: 1.5,
     height: 23,
@@ -404,11 +408,11 @@ const styles = StyleSheet.create({
     lineHeight: 16
   },
   errorText: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FECACA",
+    backgroundColor: colors.roseSoft,
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
-    color: "#B42318",
+    color: colors.rose,
     fontSize: typography.small,
     lineHeight: 19,
     padding: spacing.md
@@ -544,4 +548,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 18
   }
-});
+}));

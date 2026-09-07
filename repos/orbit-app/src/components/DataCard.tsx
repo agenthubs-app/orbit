@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radius, shadows, spacing, typography } from "../design/tokens";
+import { radius, shadows, spacing, typography } from "../design/tokens";
+import { createThemedStyles } from "../design/theme";
 
 interface DataCardProps extends PropsWithChildren {
   detail?: string;
@@ -9,6 +10,7 @@ interface DataCardProps extends PropsWithChildren {
 }
 
 export function DataCard({ children, detail, onPress, title }: DataCardProps) {
+  const { styles } = useStyles();
   const content = (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -40,7 +42,7 @@ export function DataCard({ children, detail, onPress, title }: DataCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   body: {
     gap: spacing.sm
   },
@@ -74,4 +76,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 20
   }
-});
+}));

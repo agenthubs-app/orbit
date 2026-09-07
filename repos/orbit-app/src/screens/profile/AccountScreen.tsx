@@ -8,7 +8,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   accountSessionToView,
@@ -16,6 +17,7 @@ import {
 } from "../../view-models/account-session";
 
 export function AccountScreen() {
+  const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.accountMe,
@@ -80,6 +82,7 @@ function AccountContent({
   signedIn: boolean;
   view: AccountSessionView;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -224,6 +227,7 @@ function AccountContent({
 }
 
 function InfoCell({ label, value }: { label: string; value: string }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.infoCell}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -234,18 +238,18 @@ function InfoCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
     lineHeight: 20
   },
   feedbackText: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FECACA",
+    backgroundColor: colors.roseSoft,
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
-    color: "#B42318",
+    color: colors.rose,
     fontSize: typography.small,
     lineHeight: 19,
     padding: spacing.md
@@ -369,4 +373,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 18
   }
-});
+}));

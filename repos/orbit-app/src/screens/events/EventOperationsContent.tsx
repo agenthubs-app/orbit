@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type { EventOperationsGenerationView, EventOperationsView } from "../../view-models/event-operations";
 
 export type EventOperationsContentState =
@@ -16,6 +17,7 @@ export type EventOperationsContentState =
   | { kind: "failure"; message: string };
 
 function Shortcut({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.shortcut, pressed ? styles.pressed : null]}>
       <Ionicons color={colors.accent} name={icon} size={18} />
@@ -25,6 +27,7 @@ function Shortcut({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphM
 }
 
 function GenerationRow({ busy, generation, onAction }: { busy: boolean; generation: EventOperationsGenerationView; onAction: () => void }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.generationRow}>
       <View style={styles.rowHeading}>
@@ -57,6 +60,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
   state: EventOperationsContentState;
   view: EventOperationsView;
 }) {
+  const { colors, styles } = useStyles();
   if (state.kind === "loading") return <DataCard title="正在读取运营状态"><Text style={styles.rowDetail}>正在同步指标、时间门禁与生成任务。</Text></DataCard>;
   if (state.kind === "offline" || state.kind === "failure") return <ErrorState message={state.message} />;
   if (state.kind === "unconfigured") return <EmptyState message="请先在 Web 运营台确认活动档期并设置时间门禁；保存后移动端会同步生成、发布与分桌状态。" title="尚未配置运营规则" />;
@@ -102,7 +106,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cardSection: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   content: { gap: spacing.lg },
   disabled: { opacity: 0.45 },
@@ -143,4 +147,4 @@ const styles = StyleSheet.create({
   statusDanger: { backgroundColor: colors.roseSoft, color: colors.rose },
   statusLive: { backgroundColor: colors.liveSoft, color: colors.live },
   tableRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingTop: spacing.sm }
-});
+}));

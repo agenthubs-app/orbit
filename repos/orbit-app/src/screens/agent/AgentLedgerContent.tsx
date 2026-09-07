@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { AgentLedgerTransitionContract } from "../../api/agent-ledger-contract";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type {
   AgentLedgerEntryView,
   AgentLedgerSurfaceView,
@@ -34,6 +35,7 @@ export function AgentLedgerContent({
   pending,
   view
 }: AgentLedgerContentProps) {
+  const { styles } = useStyles();
   return (
     <>
       <DataCard detail={view.summary} title={view.title}>
@@ -83,6 +85,7 @@ function AgentLedgerEntryCard({
   onTransition: AgentLedgerContentProps["onTransition"];
   pending: PendingTransition | null;
 }) {
+  const { styles } = useStyles();
   const [selectedOperationIds, setSelectedOperationIds] = useState<
     readonly string[]
   >(
@@ -232,6 +235,7 @@ function TransitionButton({
   pending: boolean;
   transition: AgentLedgerTransitionView;
 }) {
+  const { styles } = useStyles();
   const primary = transition.tone === "primary";
 
   return (
@@ -256,7 +260,7 @@ function TransitionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -452,4 +456,4 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md
   }
-});
+}));

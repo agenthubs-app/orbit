@@ -25,7 +25,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -223,16 +224,16 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-const avatarToneStyles: Record<
+const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
-> = {
+> => ({
   amber: { backgroundColor: colors.amberSoft, color: colors.amber },
   emerald: { backgroundColor: colors.liveSoft, color: colors.live },
   rose: { backgroundColor: colors.roseSoft, color: colors.rose },
   sky: { backgroundColor: colors.skySoft, color: colors.sky },
   violet: { backgroundColor: colors.accentSofter, color: colors.accent }
-};
+});
 
 function hasContactData(
   state: ReturnType<typeof useApiResource<unknown>>
@@ -291,6 +292,7 @@ function StatusFilterChip({
   option: ContactStatusFilterOption;
   onPress: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityState={{ selected: option.selected }}
@@ -352,6 +354,7 @@ function ContactFilterToolbar({
   selectedRelationshipIndustries: string[];
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
 }) {
+  const { colors, styles } = useStyles();
   const [activeMenu, setActiveMenu] = useState<ContactFilterMenuId | null>(null);
   const advancedCount = advancedFilterSections.reduce(
     (total, section) =>
@@ -574,8 +577,9 @@ function ContactCard({
   isLast: boolean;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const avatar = contactAvatarFor(contact);
-  const toneStyle = avatarToneStyles[avatar.tone];
+  const toneStyle = avatarToneStyles(colors)[avatar.tone];
   const detail = contactDetail(contact);
   const identityDetail = [contact.organization, contact.role]
     .filter(Boolean)
@@ -642,8 +646,9 @@ function SearchResultAvatar({
   imageUrl: string | undefined;
   name: string;
 }) {
+  const { colors, styles } = useStyles();
   const avatar = contactAvatarFor({ id: id, name: name });
-  const toneStyle = avatarToneStyles[avatar.tone];
+  const toneStyle = avatarToneStyles(colors)[avatar.tone];
 
   return (
     <View
@@ -676,6 +681,7 @@ function ContactSearchResultCard({
   onOpenContact: (id: string) => void;
   search: ContactsSearchView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={search.summary} title={search.title}>
       <Text style={styles.searchResultLead}>{search.nextAction}</Text>
@@ -707,6 +713,7 @@ function ContactSearchResultItem({
   onPress: () => void;
   result: ContactSearchResultView;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -761,6 +768,7 @@ function RelationshipSearchResultCard({
   onOpenContact: (id: string) => void;
   search: RelationshipSearchView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={search.summary} title={search.title}>
       <Text style={styles.searchResultLead}>{search.queryLabel}</Text>
@@ -793,6 +801,7 @@ function RelationshipSearchResultItem({
   onPress: () => void;
   result: RelationshipSearchResultView;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -853,6 +862,7 @@ function RelationshipSearchSuggestionsRow({
   ) => void;
   view: RelationshipSearchSuggestionsView;
 }) {
+  const { styles } = useStyles();
   if (view.suggestions.length === 0) {
     return null;
   }
@@ -899,6 +909,7 @@ function RecentRelationshipSearchesRow({
   onSelectRecentRelationshipSearch: (search: RecentRelationshipSearch) => void;
   searches: RecentRelationshipSearch[];
 }) {
+  const { colors, styles } = useStyles();
   if (searches.length === 0) {
     return null;
   }
@@ -944,10 +955,11 @@ function RecentRelationshipSearchesRow({
 }
 
 function OverviewToolGrid({ children }: { children: ReactNode }) {
+  const { styles } = useStyles();
   return <View style={styles.overviewToolGrid}>{children}</View>;
 }
 
-function overviewToolTone(tone: OverviewToolTone) {
+function overviewToolTone(tone: OverviewToolTone, colors: OrbitColors) {
   if (tone === "amber") {
     return {
       backgroundColor: colors.amberSoft,
@@ -992,7 +1004,8 @@ function OverviewToolCard({
   title: string;
   tone: OverviewToolTone;
 }) {
-  const toneStyle = overviewToolTone(tone);
+  const { colors, styles } = useStyles();
+  const toneStyle = overviewToolTone(tone, colors);
 
   return (
     <Pressable
@@ -1035,6 +1048,7 @@ function ContactsLibraryEntry({
   contactsLabel: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -1074,6 +1088,7 @@ function NetworkPriorityCard({
   route: NetworkPriorityRoute;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -1226,6 +1241,7 @@ function ContactsListContent({
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
 }) {
+  const { colors, styles } = useStyles();
   const loadedWithoutContacts =
     (state.kind === "empty" || state.kind === "success") &&
     contacts.length === 0;
@@ -1379,6 +1395,7 @@ function ContactsOverviewScreen() {
 }
 
 function ContactsListScreen() {
+  const { colors } = useOrbitTheme();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const {
@@ -1766,7 +1783,7 @@ export function ContactsScreen({
   return mode === "overview" ? <ContactsOverviewScreen /> : <ContactsListScreen />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   avatar: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -2381,4 +2398,4 @@ const styles = StyleSheet.create({
     minWidth: 42,
     paddingHorizontal: spacing.sm
   }
-});
+}));

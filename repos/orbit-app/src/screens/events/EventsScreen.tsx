@@ -23,7 +23,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import {
   useApiResource,
   type ApiResourceState
@@ -142,6 +143,7 @@ function CompactEventRow({
   event: EventSummary;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const subtitle = publicEventSubtitle(event.subtitle);
   const status = publicEventStatus(event.status);
 
@@ -195,6 +197,7 @@ function EventFilterChip({
   onPress: () => void;
   selected: boolean;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityState={{ selected }}
@@ -230,6 +233,7 @@ function EventFilterRail({
   onChange: (value: string) => void;
   values: string[];
 }) {
+  const { styles } = useStyles();
   if (values.length === 0) {
     return null;
   }
@@ -285,6 +289,7 @@ function EventDiscoveryControls({
   topicFilter: string;
   topics: string[];
 }) {
+  const { colors, styles } = useStyles();
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const hasQuery = query.trim().length > 0;
   const selectedFilterCount = Number(Boolean(locationFilter)) + Number(Boolean(topicFilter));
@@ -379,6 +384,7 @@ function SectionHeader({
   onAction?: () => void;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionHeaderCopy}>
@@ -411,6 +417,7 @@ function CompactEventList({
   events: EventSummary[];
   onOpenEvent: (id: string) => void;
 }) {
+  const { styles } = useStyles();
   if (events.length === 0) {
     return null;
   }
@@ -434,6 +441,7 @@ function eventSummaryById(events: EventSummary[]): Map<string, EventSummary> {
 }
 
 function EventCenterEntry({ onPress }: { onPress: () => void }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel="打开活动运营中心"
@@ -452,6 +460,7 @@ function EventCenterEntry({ onPress }: { onPress: () => void }) {
 }
 
 export function EventsScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const { signedIn } = useOrbitAuthSession();
@@ -720,6 +729,7 @@ function EventValueRecommendationsModule({
   pendingAcceptEventId: string | null;
   state: ApiResourceState<unknown>;
 }) {
+  const { styles } = useStyles();
   if (state.kind === "failure" || state.kind === "offline") {
     return (
       <View style={styles.recommendationNotice}>
@@ -784,6 +794,7 @@ function EventRecommendationRail({
   pendingAcceptEventId: string | null;
   recommendations: EventValueRecommendationCardView[];
 }) {
+  const { styles } = useStyles();
   return (
     <ScrollView
       contentContainerStyle={styles.recommendationRailContent}
@@ -829,6 +840,7 @@ function EventRecommendationCard({
   pending: boolean;
   recommendation: EventValueRecommendationCardView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.recommendationCard}>
       {coverPath ? (
@@ -916,6 +928,7 @@ function EventValueRecommendationAcceptedCard({
   onRegister: () => void;
   view: EventValueRecommendationAcceptanceView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.acceptedCard}>
       <Text style={styles.recommendationTitle}>{view.title}</Text>
@@ -951,7 +964,7 @@ function EventValueRecommendationAcceptedCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   acceptedCard: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
@@ -970,7 +983,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.pill,
+    borderRadius: radius.control,
     borderWidth: 1,
     minHeight: 44,
     paddingHorizontal: spacing.md,
@@ -1055,7 +1068,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.control,
+    borderRadius: radius.input,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1208,7 +1221,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   eventImageCta: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.caption,
     fontWeight: "800",
     lineHeight: 17
@@ -1225,13 +1238,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs
   },
   eventImageDateDetail: {
-    color: colors.text2,
+    color: colors.imageBadgeText,
     fontSize: 10,
     fontWeight: "700",
     lineHeight: 13
   },
   eventImageDateValue: {
-    color: colors.ink,
+    color: colors.imageBadgeText,
     fontSize: typography.caption,
     fontWeight: "900",
     lineHeight: 17
@@ -1269,7 +1282,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.88)",
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.imageBadgeText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14,
@@ -1284,7 +1297,7 @@ const styles = StyleSheet.create({
     lineHeight: 16
   },
   eventImageTitle: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: 24,
     fontWeight: "900",
     lineHeight: 30
@@ -1427,13 +1440,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs
   },
   recommendationCoverScoreText: {
-    color: colors.ink,
+    color: colors.imageBadgeText,
     fontSize: typography.caption,
     fontWeight: "900",
     lineHeight: 16
   },
   recommendationCoverTitle: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.section,
     fontWeight: "900",
     lineHeight: 22
@@ -1577,7 +1590,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.88)",
     borderRadius: radius.pill,
     borderWidth: 1,
-    color: colors.accent,
+    color: colors.imageBadgeText,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 14,
@@ -1587,4 +1600,4 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     textAlign: "center"
   }
-});
+}));

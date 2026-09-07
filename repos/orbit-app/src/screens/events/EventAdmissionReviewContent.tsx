@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type {
   EventAdmissionApplicationView,
   EventAdmissionDecision,
@@ -28,6 +29,7 @@ function Segment({
   label: string;
   onPress: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="tab"
@@ -57,6 +59,7 @@ function ApplicationDetail({
   onBack: () => void;
   onDecision: (decision: EventAdmissionDecision) => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.detail}>
       <Pressable
@@ -175,6 +178,7 @@ export function EventAdmissionReviewContent({
   onSelectApplicant: (actorId: string) => void;
   state: EventAdmissionReviewContentState;
 }) {
+  const { colors, styles } = useStyles();
   if (detailLoading) {
     return (
       <DataCard title="正在读取完整申请">
@@ -262,7 +266,7 @@ export function EventAdmissionReviewContent({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   applicant: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 72, padding: spacing.md },
   applicantAvatar: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 42, justifyContent: "center", width: 42 },
   applicantAvatarText: { color: colors.accent, fontSize: typography.section, fontWeight: "800" },
@@ -313,4 +317,4 @@ const styles = StyleSheet.create({
   stateText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
   statusBadge: { backgroundColor: colors.amberSoft, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   statusBadgeText: { color: colors.amber, fontSize: 11, fontWeight: "800" }
-});
+}));

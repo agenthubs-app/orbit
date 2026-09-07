@@ -12,10 +12,12 @@ import { createOrbitApiClient } from "../../api/client";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { healthPayloadToSummary } from "../../view-models/health";
 
 export function ApiSettingsScreen() {
+  const { colors, styles } = useStyles();
   const { baseUrl, error, ready, resetBaseUrl, setBaseUrl } =
     useOrbitApiBaseUrl();
   const [draftBaseUrl, setDraftBaseUrl] = useState(baseUrl);
@@ -138,7 +140,7 @@ export function ApiSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actions: {
     flexDirection: "row",
     gap: spacing.sm
@@ -198,4 +200,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "600"
   }
-});
+}));

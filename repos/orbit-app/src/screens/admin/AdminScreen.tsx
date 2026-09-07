@@ -18,7 +18,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   adminToView,
@@ -38,6 +39,7 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function AdminScreen({ surface = "dashboard" }: { surface?: AdminSurface }) {
+  const { colors } = useOrbitTheme();
   const eventsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.events,
     (data) => adminToView({ events: data }).events.length === 0
@@ -117,6 +119,7 @@ function AdminContent({
   profile: unknown;
   surface: AdminSurface;
 }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const view = adminToView({
     dashboard,
@@ -177,6 +180,7 @@ function AdminNav({
   }[];
   onNavigate: (href: string) => void;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.navRow}>
       {nav.map((item) => {
@@ -203,6 +207,7 @@ function AdminNav({
 }
 
 function StatGrid({ stats }: { stats: AdminStatView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.statGrid}>
       {stats.map((stat) => (
@@ -235,6 +240,7 @@ function EventsCard({
   onOpenEvent: (href: AdminEventView["href"]) => void;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   const { baseUrl } = useOrbitApiBaseUrl();
 
   if (events.length === 0) {
@@ -318,6 +324,7 @@ function AccessCard({
   boundary: string;
   members: AdminMemberView[];
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={boundary} title="访问成员">
       <MemberList members={members} />
@@ -332,6 +339,7 @@ function AccessCard({
 }
 
 function MemberList({ members }: { members: AdminMemberView[] }) {
+  const { styles } = useStyles();
   if (members.length === 0) {
     return (
       <Text style={styles.bodyText}>
@@ -364,7 +372,7 @@ function MemberList({ members }: { members: AdminMemberView[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   accessNote: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -571,4 +579,4 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "700"
   }
-});
+}));

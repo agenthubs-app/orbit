@@ -23,7 +23,8 @@ import {
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -134,6 +135,7 @@ function keepBusinessCardWriteCandidate(
 }
 
 export function ContactAcquisitionScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const { eventId: eventIdParam } = useLocalSearchParams<{
     eventId?: string | string[];
@@ -1089,6 +1091,7 @@ function QrFields({
   qrPermissionPending: boolean;
   updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <>
       {qrCameraOpen ? (
@@ -1120,7 +1123,7 @@ function QrFields({
               pressed ? styles.pressed : null
             ]}
           >
-            <Ionicons color={colors.onAccent} name="close-outline" size={18} />
+            <Ionicons color={colors.onImage} name="close-outline" size={18} />
             <Text style={styles.scannerCloseText}>关闭扫描</Text>
           </Pressable>
         </View>
@@ -1171,6 +1174,7 @@ function BusinessCardFields({
   pickingImage: boolean;
   updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <>
       <View style={styles.cardImagePanel}>
@@ -1272,6 +1276,7 @@ function Input({
   placeholder: string;
   value: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.inputGroup}>
       <Text style={styles.inputLabel}>{label}</Text>
@@ -1299,6 +1304,7 @@ function EventContextDraftImportCard({
   onImport: () => void;
   view: EventAttendeeDraftImportView | null;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={eventId} title="导入活动名单">
       <Text style={styles.bodyText}>
@@ -1390,6 +1396,7 @@ function AcquisitionResultCard({
   result: ContactAcquisitionSummary;
   writingContact: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard
       detail={[result.stateLabel, result.writeState].filter(Boolean).join(" · ")}
@@ -1500,6 +1507,7 @@ function ContactBusinessCardWriteResultCard({
   onOpenContact: (contactId: string) => void;
   view: ContactBusinessCardWriteView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.contactWriteResult}>
       <View style={styles.contactWriteHeader}>
@@ -1542,6 +1550,7 @@ function BusinessCardReviewFields({
   reviewing: boolean;
   saveLabel: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.reviewPanel}>
       <View style={styles.reviewHeader}>
@@ -1597,6 +1606,7 @@ function ContactExternalCandidatesCard({
   selectedSource: string | null;
   view: ContactExternalCandidatesView;
 }) {
+  const { colors, styles } = useStyles();
   const activeSource = selectedSource?.trim() || null;
   const visibleCandidates = activeSource
     ? view.candidates.filter((candidate) => candidate.sourceKind === activeSource)
@@ -1672,6 +1682,7 @@ function SourceChip({
   onPress: () => void;
   stateLabel?: string;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="radio"
@@ -1699,6 +1710,7 @@ function ExternalCandidateItem({
 }: {
   candidate: ContactExternalCandidateView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.externalCandidateItem}>
       <View style={styles.draftQueueHeader}>
@@ -1736,6 +1748,7 @@ function ContactExternalImportResultCard({
   onDismiss: (draftId: string) => void;
   view: ContactExternalImportView;
 }) {
+  const { colors, styles } = useStyles();
   const visibleDrafts = view.drafts.filter(
     (draft) => !dismissedDraftIds.has(draft.draftId)
   );
@@ -1825,6 +1838,7 @@ function ReferralRecommendationsCard({
   stagingSource: string | null;
   view: ContactReferralRecommendationsView | null;
 }) {
+  const { colors, styles } = useStyles();
   const sources = view?.sources.length ? view.sources : referralSourceOptions;
   const activeSource = selectedSource;
   const visibleRecommendations = activeSource
@@ -1964,6 +1978,7 @@ function ReferralRecommendationItem({
   onConfirm: (recommendationId: string) => void;
   recommendation: ContactReferralRecommendationsView["recommendations"][number];
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.externalCandidateItem}>
       <View style={styles.draftQueueHeader}>
@@ -2016,6 +2031,7 @@ function RecommendedContactConfirmCard({
 }: {
   view: ContactRecommendedConfirmView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       {view.detail ? <Text style={styles.bodyText}>{view.detail}</Text> : null}
@@ -2048,6 +2064,7 @@ function ContactDraftQueueCard({
   onDismiss: (draftId: string) => void;
   queue: ContactDraftQueueView;
 }) {
+  const { colors, styles } = useStyles();
   const visibleDrafts = queue.drafts.filter(
     (draft) => !dismissedDraftIds.has(draft.draftId)
   );
@@ -2125,6 +2142,7 @@ function ContactDraftQueueCard({
 }
 
 function DismissDraftButton({ onPress }: { onPress: () => void }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -2149,6 +2167,7 @@ function ContactMergeReviewCard({
   onApply: (suggestion: ContactMergeSuggestionView) => void;
   review: ContactMergeReviewView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={review.summary} title="重复检查">
       <Text style={styles.bodyText}>{review.nextAction}</Text>
@@ -2219,6 +2238,7 @@ function ContactMergeApplyResultCard({
 }: {
   view: ContactMergeApplyView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       {view.detail ? <Text style={styles.bodyText}>{view.detail}</Text> : null}
@@ -2238,7 +2258,7 @@ function ContactMergeApplyResultCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -2531,7 +2551,7 @@ const styles = StyleSheet.create({
     top: 0
   },
   qrScanCorner: {
-    borderColor: colors.onAccent,
+    borderColor: colors.onImage,
     borderLeftWidth: 3,
     borderTopWidth: 3,
     height: 32,
@@ -2633,7 +2653,7 @@ const styles = StyleSheet.create({
     position: "absolute"
   },
   scannerCloseText: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.small,
     fontWeight: "800"
   },
@@ -2685,4 +2705,4 @@ const styles = StyleSheet.create({
     minHeight: 96,
     paddingTop: spacing.md
   }
-});
+}));

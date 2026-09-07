@@ -12,7 +12,8 @@ import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, shadows, spacing, typography } from "../../design/tokens";
+import { radius, shadows, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   japanCalendarDateInfo,
@@ -62,7 +63,7 @@ function currentTokyoMinute(now: Date): number {
   return value("hour") * 60 + value("minute");
 }
 
-function itemTone(item: ScheduleTimelineItem) {
+function itemTone(item: ScheduleTimelineItem, colors: OrbitColors) {
   if (item.kind === "followup") {
     return {
         backgroundColor: colors.accentSofter,
@@ -108,6 +109,7 @@ function monthGridDateKeys(selectedDateKey: string): string[] {
 }
 
 export function ScheduleScreen() {
+  const { colors } = useOrbitTheme();
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
   const eventsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
@@ -197,6 +199,7 @@ function ScheduleWorkspace({
   view: ScheduleCalendarView;
   viewMode: ScheduleViewMode;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.workspace}>
       <View style={styles.commandRow}>
@@ -241,6 +244,7 @@ function ScheduleWorkspace({
 }
 
 function ScheduleLegend({ color, label }: { color: string; label: string }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.legendItem}>
       <View style={[styles.legendDot, { backgroundColor: color }]} />
@@ -256,6 +260,7 @@ function ScheduleViewSwitcher({
   onChange: (mode: ScheduleViewMode) => void;
   value: ScheduleViewMode;
 }) {
+  const { styles } = useStyles();
   const options: Array<{ label: string; value: ScheduleViewMode }> = [
     { label: "日", value: "day" },
     { label: "周", value: "week" },
@@ -302,6 +307,7 @@ function ScheduleWeekStrip({
   onSelectDate: (dateKey: string) => void;
   view: ScheduleCalendarView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.calendarPanel}>
       <View style={styles.weekHeader}>
@@ -342,6 +348,7 @@ function ScheduleDayButton({
   day: ScheduleCalendarDay;
   onPress: (dateKey: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   const accessibilityHoliday = day.holidayName ? `，${day.holidayName}` : "";
 
   return (
@@ -386,7 +393,7 @@ function ScheduleDayButton({
               {
                 backgroundColor: day.isSelected
                   ? colors.onAccent
-                  : itemTone(item).color
+                  : itemTone(item, colors).color
               }
             ]}
           />
@@ -397,6 +404,7 @@ function ScheduleDayButton({
 }
 
 function ScheduleDayView({ now, view }: { now: Date; view: ScheduleCalendarView }) {
+  const { styles } = useStyles();
   const selectedHolidayName = view.selectedHolidayName;
 
   return (
@@ -442,6 +450,7 @@ function ScheduleTimeGrid({
   items: ScheduleTimelineItem[];
   now: Date;
 }) {
+  const { colors, styles } = useStyles();
   const itemMinutes = items
     .map((item) => minuteOfDay(item.timeLabel))
     .filter((value): value is number => value !== null);
@@ -513,8 +522,9 @@ function ScheduleTimeBlock({
   item: ScheduleTimelineItem;
   top: number;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
-  const tone = itemTone(item);
+  const tone = itemTone(item, colors);
   const compact = height < 56;
 
   return (
@@ -553,6 +563,7 @@ function ScheduleTimeBlock({
 }
 
 function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.agendaSection}>
       <View style={styles.sectionHeadingRow}>
@@ -607,6 +618,7 @@ function ScheduleMonthGrid({
   onSelectDate: (dateKey: string) => void;
   view: ScheduleCalendarView;
 }) {
+  const { colors, styles } = useStyles();
   const dateKeys = monthGridDateKeys(view.selectedDateKey);
   const selectedMonth = view.selectedDateKey.slice(0, 7);
 
@@ -689,7 +701,7 @@ function ScheduleMonthGrid({
                       {
                         backgroundColor: selected
                           ? colors.onAccent
-                          : itemTone(item).color
+                          : itemTone(item, colors).color
                       }
                     ]}
                   />
@@ -714,6 +726,7 @@ function ScheduleCompactAgenda({
   items: ScheduleTimelineItem[];
   title: string;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.agendaSection}>
       <View style={styles.sectionHeadingRow}>
@@ -741,8 +754,9 @@ function ScheduleCompactAgenda({
 }
 
 function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
-  const tone = itemTone(item);
+  const tone = itemTone(item, colors);
 
   return (
     <Pressable
@@ -770,7 +784,7 @@ function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agendaCopy: { flex: 1, minWidth: 0 },
   agendaIcon: {
     alignItems: "center",
@@ -1060,4 +1074,4 @@ const styles = StyleSheet.create({
   weekHeadingCopy: { alignItems: "center", gap: spacing.xxs },
   weekLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   workspace: { gap: spacing.md }
-});
+}));

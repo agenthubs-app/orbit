@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type {
   TodayHomeActionView,
   TodayHomeSummaryView,
@@ -24,6 +25,7 @@ export function OrbitNextActions({
   onRefresh,
   summary,
 }: OrbitNextActionsProps) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.section}>
       <View style={styles.header}>
@@ -107,7 +109,7 @@ export function OrbitNextActions({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   context: { color: colors.text3, fontSize: typography.caption, lineHeight: 17, marginTop: spacing.xxs },
   copy: { flex: 1, minWidth: 0 },
   count: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
@@ -118,7 +120,7 @@ const styles = StyleSheet.create({
   heading: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
   iconButton: { alignItems: "center", borderRadius: radius.pill, height: 44, justifyContent: "center", width: 44 },
   index: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.control, height: 32, justifyContent: "center", width: 32 },
-  indexText: { color: colors.accentPress, fontSize: typography.small, fontWeight: "800" },
+  indexText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
   list: { borderTopColor: colors.hairline, borderTopWidth: 1 },
   mark: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, height: 28, justifyContent: "center", width: 28 },
   pressed: { opacity: 0.72 },
@@ -131,4 +133,4 @@ const styles = StyleSheet.create({
   suggestionLink: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.lg },
   suggestionText: { color: colors.text2, flex: 1, fontSize: typography.caption, fontWeight: "600" },
   title: { color: colors.ink, fontSize: typography.body, fontWeight: "700", lineHeight: 20 },
-});
+}));

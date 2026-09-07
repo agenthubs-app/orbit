@@ -10,7 +10,8 @@ import {
   type RefreshControlProps
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, radius, spacing, typography } from "../design/tokens";
+import { radius, spacing, typography } from "../design/tokens";
+import { createThemedStyles } from "../design/theme";
 
 interface AppScreenProps extends PropsWithChildren {
   eyebrow?: string;
@@ -26,6 +27,7 @@ export function AppScreen({
   showBack,
   title
 }: AppScreenProps) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const pathname = usePathname();
   const canGoBack = router.canGoBack();
@@ -74,18 +76,17 @@ export function AppScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: {
     alignItems: "center",
     alignSelf: "flex-start",
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.control,
     borderWidth: 1,
     height: 44,
     justifyContent: "center",
     marginBottom: spacing.xs,
-    marginLeft: -spacing.xs,
     width: 44
   },
   backButtonPressed: {
@@ -125,4 +126,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 29
   }
-});
+}));

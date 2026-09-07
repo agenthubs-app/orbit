@@ -7,7 +7,8 @@ import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, t
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
@@ -37,6 +38,7 @@ function dateLabel(value?: string): string {
 }
 
 export function TaskDetailScreen() {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const taskId = first(params.id);
   const router = useRouter();
@@ -268,7 +270,7 @@ export function TaskDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   completeButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50 },
   completeButtonText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "800" },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
@@ -303,4 +305,4 @@ const styles = StyleSheet.create({
   successText: { color: colors.accent, fontSize: typography.small },
   titleInput: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 30, minHeight: 76, padding: spacing.md },
   topBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 40 },
-});
+}));

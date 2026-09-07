@@ -16,7 +16,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, shadows, spacing, typography } from "../../design/tokens";
+import { radius, shadows, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -36,6 +37,7 @@ import {
 type RelationshipProgressMode = "actions" | "stages";
 
 export function ContactPipelineScreen() {
+  const { colors } = useOrbitTheme();
   const contactsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.contacts,
     (data) =>
@@ -135,6 +137,7 @@ function PipelineContent({
   tasksPayload: unknown;
   tasksUnavailable: boolean;
 }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
@@ -254,6 +257,7 @@ function ModeButton({ active, label, onPress }: {
   label: string;
   onPress: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="tab"
@@ -280,6 +284,7 @@ function ActionPanel({ baseUrl, loading, onContactPress, onViewAll, tasks, unava
   tasks: ContactPipelineActionItemView[];
   unavailable: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.surface}>
       <View style={styles.sectionHeader}>
@@ -329,6 +334,7 @@ function ActionRow({ baseUrl, isFirst, onPress, task }: {
   onPress: () => void;
   task: ContactPipelineActionItemView;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel={`${task.contactName}，${task.title}，${task.dueLabel}`}
@@ -368,6 +374,7 @@ function DueBadge({ label, tone }: {
   label: string;
   tone: ContactPipelineActionDueTone;
 }) {
+  const { styles } = useStyles();
   return (
     <View
       style={[
@@ -399,6 +406,7 @@ function StageSnapshot({ onSelect, stages }: {
   onSelect: (stageId: ContactPipelineStageId) => void;
   stages: ContactPipelineStageView[];
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.snapshotSection}>
       <View style={styles.snapshotHeader}>
@@ -448,6 +456,7 @@ function StagePanel({
   setSelectedStageId: (stageId: ContactPipelineStageId) => void;
   stages: ContactPipelineStageView[];
 }) {
+  const { styles } = useStyles();
   return (
     <>
       <View style={styles.stageTabs}>
@@ -528,6 +537,7 @@ function StageContactRow({
   onPress: () => void;
   pending: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={[styles.stageContactRow, isFirst ? styles.actionRowFirst : null]}>
       <Pressable
@@ -575,16 +585,16 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/$/u, "")}/${path.replace(/^\//u, "")}`;
 }
 
-const avatarToneStyles: Record<
+const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
-> = {
+> => ({
   amber: { backgroundColor: colors.amberSoft, color: colors.amber },
   emerald: { backgroundColor: colors.liveSoft, color: colors.live },
   rose: { backgroundColor: colors.roseSoft, color: colors.rose },
   sky: { backgroundColor: colors.skySoft, color: colors.sky },
   violet: { backgroundColor: colors.accentSoft, color: colors.accent }
-};
+});
 
 function ContactAvatar({ baseUrl, id, imageUrl, name }: {
   baseUrl: string;
@@ -592,8 +602,9 @@ function ContactAvatar({ baseUrl, id, imageUrl, name }: {
   imageUrl: string | undefined;
   name: string;
 }) {
+  const { colors, styles } = useStyles();
   const avatar = contactAvatarFor({ id, name });
-  const visual = avatarToneStyles[avatar.tone];
+  const visual = avatarToneStyles(colors)[avatar.tone];
 
   return (
     <View style={[styles.avatar, { backgroundColor: visual.backgroundColor }]}>
@@ -612,7 +623,7 @@ function ContactAvatar({ baseUrl, id, imageUrl, name }: {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRow: {
     alignItems: "center",
     borderTopColor: colors.border,
@@ -781,4 +792,4 @@ const styles = StyleSheet.create({
     minHeight: 48
   },
   viewAllText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" }
-});
+}));

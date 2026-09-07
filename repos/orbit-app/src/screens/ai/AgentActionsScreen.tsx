@@ -17,7 +17,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -34,6 +35,7 @@ interface PendingAgentActionDecision {
 }
 
 export function AgentActionsScreen() {
+  const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
   const actionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.agentActions,
@@ -133,6 +135,7 @@ function AgentActionsContent({
   pendingDecision: PendingAgentActionDecision | null;
   view: AgentActionsView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <>
       <DataCard detail={view.summary} title="今天需要你决定什么">
@@ -194,6 +197,7 @@ function AgentActionCard({
   onDecision: (action: AgentActionCardView, decision: AgentActionDecision) => void;
   pendingDecision: PendingAgentActionDecision | null;
 }) {
+  const { colors, styles } = useStyles();
   const acceptPending =
     pendingDecision?.id === action.id && pendingDecision.decision === "accept";
   const dismissPending =
@@ -263,7 +267,7 @@ function AgentActionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButtonRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -436,4 +440,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 16
   }
-});
+}));
