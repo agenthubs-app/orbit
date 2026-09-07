@@ -359,3 +359,9 @@ V1 页面此前只有取消处理 HTTP 错误，确认/跳过/重试/完成可�
 本机浏览器使用实际 React 组件和受控 API 验证了首次 503 后恢复、确认 503 保留表单、再次确认成功进入完成状态，以及完成操作 401 时显示重新登录链接。该受控检查不等于已在 Vercel 浏览器登录或完成真实提供方流程。日志 `/tmp/orbit-v1-feedback-tests.log`、`/tmp/orbit-v1-feedback-build.log`。
 
 部署更新：`61021c5d` 已在 https://orbit-4uzy83c1n-liqys-projects-33c8ddec.vercel.app 完成云端构建和部署。此轮仅改页面，不重复把此前 API 回归计作新的线上页面验收。只读 `vercel env ls preview` 的名称清单仍未列出模型/OCR 凭证，SMTP 条目创建时间仍为一天前；未读取值，该清单也不能证明 SMTP 当前可认证。已请用户更新有效 SMTP 凭证，浏览器 Vercel 登录请求仍待完成。配置名称检查记录 `/tmp/orbit-readiness-preview-env-names.log`。
+
+### 2026-09-07：大文件上传的线上限制已复现
+
+使用既有隔离 QA 账户向 V1 上传 6 MiB 合成 JPEG，平台返回 413 / FUNCTION_PAYLOAD_TOO_LARGE，未创建批次；文件处于应用声明的 10 MiB 图片允许范围内。V1 的多文件合并请求及 50 MiB PDF、V2 的单项 10 MiB PUT 都需要修复传输通道。仅提高 Next.js 限制或降低产品允许大小不能完成该要求。
+
+当前尚未修改上传协议。已核对官方客户端直传方案及本项目 SDK 能力，并记录原文件授权、归属、幂等消费、取消、许可重放和回收的实现约束与验收清单，见 `business-card-direct-upload.md`。原始实测记录 `/tmp/orbit-large-upload-probe.log`；此问题明确仍未解决，不计为上传验收通过。
