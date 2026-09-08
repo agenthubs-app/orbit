@@ -16,6 +16,8 @@
     "db:smoke:live-runtime": "tsx scripts/smoke-live-runtime.ts",
     "agent:worker": "tsx scripts/run-agent-worker.ts",
     "notification:worker": "tsx scripts/run-notification-delivery-worker.ts",
+    "maintenance:scheduler": "tsx scripts/run-maintenance-scheduler.ts",
+    "maintenance:once": "tsx scripts/run-maintenance-scheduler.ts --once",
     "event-operations:worker": "tsx scripts/run-event-operations-worker.ts",
     "event-operations:attempt-report": "tsx scripts/report-event-operations-attempts.ts",
     "event-analytics:migrate": "tsx scripts/migrate-event-analytics.ts",
