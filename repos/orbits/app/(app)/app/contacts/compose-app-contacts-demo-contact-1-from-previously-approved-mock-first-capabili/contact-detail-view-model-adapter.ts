@@ -331,9 +331,9 @@ function noteViews(
   language: OrbitLanguage,
 ): OrbitContactNoteView[] {
   const sourceNotes = model.contact.notes.map((note) => ({
-    body: displayText(note.body, language),
+    body: note.privacy === "private" ? note.body : displayText(note.body, language),
     createdAt: note.createdAt,
-    id: note.evidenceIds[0] ?? note.noteId,
+    id: note.privacy === "private" ? note.noteId : note.evidenceIds[0] ?? note.noteId,
     privacy: note.privacy,
     sourceLabel: note.sourceLabel,
   }));

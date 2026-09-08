@@ -11,6 +11,9 @@ import {
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import type { OrbitApiClient } from "../../api/client";
+import { ContactNotesSection } from "./ContactNotesSection";
 import type { IndustryIdCode } from "../../api/contract/industries";
 import { INDUSTRY_CATALOG } from "../../api/domain/industries";
 import {
@@ -31,7 +34,6 @@ import {
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   buildContactDetailMetadataRequest,
-  buildContactDetailNoteRequest,
   contactDetailHeroToView,
   contactDetailToSummary,
   type ContactAvatarTone,
@@ -66,10 +68,12 @@ export function ContactDetailScreen() {
   const { colors, styles } = useStyles();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = firstParam(id);
+  const actorId = useOrbitAuthSession().user?.id ?? null;
   const client = useOrbitApiClient();
   const state = useApiResource<unknown>(
     contactDetailPath(contactId),
-    () => false
+    () => false,
+    { scopeKey: actorId }
   );
   const connectionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.connections,
@@ -87,7 +91,6 @@ export function ContactDetailScreen() {
     relationshipValueAnalysisPath(connectionId),
     relationshipValueStateIsEmpty
   );
-  const [noteDraft, setNoteDraft] = useState("");
   const [metadataDraft, setMetadataDraft] = useState<ContactDetailMetadataDraft>({
     channel: "手动记录",
     occurredAt: "",
@@ -96,7 +99,6 @@ export function ContactDetailScreen() {
   });
   const [metadataPending, setMetadataPending] = useState(false);
   const [industryPending, setIndustryPending] = useState(false);
-  const [notePending, setNotePending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
   const [relationshipValuePending, setRelationshipValuePending] = useState(false);
   const [relationshipValueOverride, setRelationshipValueOverride] =
@@ -186,38 +188,6 @@ export function ContactDetailScreen() {
     }
   }
 
-  async function saveNote() {
-    const request = buildContactDetailNoteRequest(noteDraft);
-
-    if (!request.success) {
-      setActionError(request.error);
-      setFeedback(null);
-      return;
-    }
-
-    setNotePending(true);
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.patch<unknown>(contactDetailPath(contactId), {
-        body: request.request.body
-      });
-
-      if (result.success) {
-        setFeedback(request.successMessage);
-        setNoteDraft("");
-        refreshAll();
-      } else {
-        setActionError("这条记录暂时保存不了。请刷新后再试一次。");
-      }
-    } catch {
-      setActionError("这条记录暂时保存不了。请刷新后再试一次。");
-    } finally {
-      setNotePending(false);
-    }
-  }
-
   function onChangeMetadataDraft(patch: Partial<ContactDetailMetadataDraft>) {
     setMetadataDraft((current) => ({
       ...current,
@@ -284,16 +254,16 @@ export function ContactDetailScreen() {
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
       {state.kind === "success" || state.kind === "empty" ? (
         <ContactDetailCard
+          actorId={actorId}
+          client={client}
+          contactId={contactId}
           data={state.data}
+          onNotesRefresh={state.refresh}
           industryPending={industryPending}
           metadataDraft={metadataDraft}
           metadataPending={metadataPending}
-          noteDraft={noteDraft}
-          notePending={notePending}
           onChangeMetadataDraft={onChangeMetadataDraft}
-          onChangeNoteDraft={setNoteDraft}
           onSaveMetadata={saveMetadata}
-          onSaveNote={saveNote}
           onRecompute={recomputeRelationshipValue}
           onSelectIndustry={updatePrimaryIndustry}
           onStatusAction={updateStatus}
@@ -308,16 +278,16 @@ export function ContactDetailScreen() {
 }
 
 function ContactDetailCard({
+  actorId,
+  client,
+  contactId,
   data,
+  onNotesRefresh,
   industryPending,
   metadataDraft,
   metadataPending,
-  noteDraft,
-  notePending,
   onChangeMetadataDraft,
-  onChangeNoteDraft,
   onSaveMetadata,
-  onSaveNote,
   onRecompute,
   onSelectIndustry,
   onStatusAction,
@@ -326,16 +296,16 @@ function ContactDetailCard({
   relationshipValueState,
   statusPending
 }: {
+  actorId: string | null;
+  client: OrbitApiClient;
+  contactId: string;
   data: unknown;
+  onNotesRefresh: () => void;
   industryPending: boolean;
   metadataDraft: ContactDetailMetadataDraft;
   metadataPending: boolean;
-  noteDraft: string;
-  notePending: boolean;
   onChangeMetadataDraft: (patch: Partial<ContactDetailMetadataDraft>) => void;
-  onChangeNoteDraft: (value: string) => void;
   onSaveMetadata: () => void;
-  onSaveNote: () => void;
   onRecompute: () => void;
   onSelectIndustry: (industryId: IndustryIdCode) => void;
   onStatusAction: (action: ContactDetailStatusActionView) => void;
@@ -369,6 +339,7 @@ function ContactDetailCard({
         onPress={() => router.push(inboxHref)}
       />
       <ContactOverview contact={contact} />
+      <ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} />
       <DisclosureSection
         detail="公开介绍、关系价值和来源记录"
         expanded={detailsExpanded}
@@ -384,7 +355,7 @@ function ContactDetailCard({
         />
       </DisclosureSection>
       <DisclosureSection
-        detail="状态、标签、互动和私人记录"
+        detail="状态、标签和互动"
         expanded={editingExpanded}
         onPress={() => setEditingExpanded((current) => !current)}
         title="更新联系人"
@@ -394,12 +365,8 @@ function ContactDetailCard({
           industryPending={industryPending}
           metadataDraft={metadataDraft}
           metadataPending={metadataPending}
-          noteDraft={noteDraft}
-          notePending={notePending}
           onChangeMetadataDraft={onChangeMetadataDraft}
-          onChangeNoteDraft={onChangeNoteDraft}
           onSaveMetadata={onSaveMetadata}
-          onSaveNote={onSaveNote}
           onSelectIndustry={onSelectIndustry}
           onStatusAction={onStatusAction}
           statusPending={statusPending}
@@ -670,12 +637,8 @@ function UpdateContactPanel({
   industryPending,
   metadataDraft,
   metadataPending,
-  noteDraft,
-  notePending,
   onChangeMetadataDraft,
-  onChangeNoteDraft,
   onSaveMetadata,
-  onSaveNote,
   onSelectIndustry,
   onStatusAction,
   statusPending
@@ -684,12 +647,8 @@ function UpdateContactPanel({
   industryPending: boolean;
   metadataDraft: ContactDetailMetadataDraft;
   metadataPending: boolean;
-  noteDraft: string;
-  notePending: boolean;
   onChangeMetadataDraft: (patch: Partial<ContactDetailMetadataDraft>) => void;
-  onChangeNoteDraft: (value: string) => void;
   onSaveMetadata: () => void;
-  onSaveNote: () => void;
   onSelectIndustry: (industryId: IndustryIdCode) => void;
   onStatusAction: (action: ContactDetailStatusActionView) => void;
   statusPending: boolean;
@@ -813,33 +772,6 @@ function UpdateContactPanel({
           <Ionicons color={colors.accent} name="pricetags-outline" size={16} />
           <Text style={styles.statusButtonText}>
             {metadataPending ? "保存中" : "保存标签和互动"}
-          </Text>
-        </Pressable>
-      </DetailSection>
-      <SectionDivider />
-      <DetailSection detail="只保存到这条关系记录" title="添加记录">
-        <TextInput
-          multiline
-          onChangeText={onChangeNoteDraft}
-          placeholder="记下刚聊到的事、承诺或下次要带的资料"
-          placeholderTextColor={colors.text4}
-          style={styles.noteInput}
-          textAlignVertical="top"
-          value={noteDraft}
-        />
-        <Pressable
-          accessibilityRole="button"
-          disabled={notePending}
-          onPress={onSaveNote}
-          style={({ pressed }) => [
-            styles.noteButton,
-            notePending ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.onAccent} name="document-text-outline" size={16} />
-          <Text style={styles.noteButtonText}>
-            {notePending ? "保存中" : "保存记录"}
           </Text>
         </Pressable>
       </DetailSection>

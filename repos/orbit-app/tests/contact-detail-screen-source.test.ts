@@ -10,14 +10,11 @@ const screenSource = readFileSync(
 );
 
 test("contact detail screen can save a reviewed note through the web PATCH route", () => {
-  assert.match(screenSource, /TextInput/u);
-  assert.match(screenSource, /buildContactDetailNoteRequest/u);
-  assert.match(screenSource, /noteDraft/u);
-  assert.match(screenSource, /saveNote/u);
-  assert.match(screenSource, /client\.patch<unknown>/u);
-  assert.match(screenSource, /body: request\.request\.body/u);
-  assert.match(screenSource, /title="添加记录"/u);
-  assert.match(screenSource, /placeholder="记下刚聊到的事、承诺或下次要带的资料"/u);
+  // Native provider wiring only; browser rendering and save behavior are covered
+  // by contact-notes-interactions.test.ts using the production API client.
+  assert.match(screenSource, /<ContactNotesSection actorId=\{actorId\} client=\{client\} colors=\{colors\} contactId=\{contactId\} data=\{data\} onRefresh=\{onNotesRefresh\}/u);
+  assert.match(screenSource, /scopeKey: actorId/u);
+  assert.match(screenSource, /onNotesRefresh=\{state\.refresh\}/u);
 });
 
 test("contact detail screen can update tags and last interaction metadata", () => {

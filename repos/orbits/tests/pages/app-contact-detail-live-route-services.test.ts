@@ -607,6 +607,9 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
 });
 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {
+  // Actor-key wiring is server-owned; local state reset is rendered in
+  // app-contact-notes.test.tsx rather than emulating authenticated RSC here.
+  assert.match(source("app/(app)/app/contacts/[id]/page.tsx"), /key=\{`\$\{actor\.id\}:\$\{contactId\}`\}/);
   const detailSource = source(
     "app/(app)/app/contacts/orbit-real-card-connection.tsx",
   );
@@ -619,7 +622,7 @@ test("contact detail UI exposes only source-backed relationship data and real na
   assert.match(detailSource, /No sourced next step is available/);
   assert.match(detailSource, /function formatTimelineDate/);
   assert.match(detailSource, /dateTime=\{item\.time\}/);
-  assert.match(adapterSource, /id: note\.evidenceIds\[0\] \?\? note\.noteId/);
+  assert.match(adapterSource, /id: note\.privacy === "private" \? note\.noteId : note\.evidenceIds\[0\] \?\? note\.noteId/);
   assert.match(detailSource, /href="\/app\/contacts\/pipeline"/);
   assert.doesNotMatch(detailSource, /stageDemo|timelineDemo|valueAToB|valueBToA/);
   assert.doesNotMatch(

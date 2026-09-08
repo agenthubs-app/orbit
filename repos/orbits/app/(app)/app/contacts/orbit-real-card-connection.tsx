@@ -23,6 +23,7 @@ import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/indus
 import { ContactIndustryEditor } from "./contact-industry-editor";
 import { ContactTagEditor } from "./contact-tag-editor";
 import { ContactInteractionEditor } from "./contact-interaction-editor";
+import { ContactNotesEditor } from "./contact-notes-editor";
 import { displayText, tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
 type Copy = { en: string; zh: string };
@@ -252,7 +253,7 @@ function formatTimelineDate(value: string, t: Translate): string {
 
 function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const items: TimelineItem[] = (contact.notes ?? [])
-    .filter((note) => note.body?.trim())
+    .filter((note) => note.privacy !== "private" && note.body?.trim())
     .map((note) => ({
       time: note.createdAt,
       body: note.body,
@@ -272,10 +273,8 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
             {item.privacy || item.sourceLabel ? (
               <span className="nc-tl-src">
                 <Icon name="lock" size={13} />
-                {item.privacy === "private"
-                  ? t({ en: "Private to you", zh: "仅自己可见" })
-                  : t({ en: "Relationship shared", zh: "关系双方可见" })}
-                {item.sourceLabel ? ` · ${item.sourceLabel}` : ""}
+                {item.privacy === "relationship_shared" ? t({ en: "Relationship shared", zh: "关系双方可见" }) : ""}
+                {item.sourceLabel ? `${item.privacy ? " · " : ""}${item.sourceLabel}` : ""}
               </span>
             ) : null}
             {item.evidenceId ? (
@@ -291,6 +290,28 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
         <p className="nc-empty-copy">{t({ en: "No sourced interaction evidence is available for this contact.", zh: "该联系人暂无可核验的互动证据。" })}</p>
       )}
     </div>
+  );
+}
+
+function ContactNotesCard({ contact, language, onAdd }: { contact: OrbitContactView; language: "zh" | "en" | "ja"; onAdd: () => void }) {
+  const copy = {
+    zh: { title: "联系人备注", privacy: "仅自己可见", add: "添加备注", label: "添加联系人备注", empty: "还没有备注，可以记下想留给自己看的信息。" },
+    en: { title: "Contact notes", privacy: "Only visible to you", add: "Add note", label: "Add contact note", empty: "No notes yet. Write something you want to remember." },
+    ja: { title: "連絡先メモ", privacy: "自分だけに表示", add: "メモを追加", label: "連絡先メモを追加", empty: "メモはまだありません。覚えておきたいことを記入できます。" },
+  }[language];
+  const notes = contact.notes.filter((note) => note.privacy === "private").sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return (
+    <section className="card nc-card-pad" aria-label={copy.title}>
+      <CardTitle icon="lock">{copy.title}</CardTitle>
+      <p className="nc-empty-copy">{copy.privacy}</p>
+      {notes.length ? notes.map((note) => (
+        <div key={note.id} style={{ marginBottom: 16 }}>
+          <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: "var(--text)", lineHeight: 1.6, margin: "0 0 5px" }}>{note.body}</p>
+          <time dateTime={note.createdAt} style={{ color: "var(--text-3)", fontSize: 12 }}>{Number.isFinite(Date.parse(note.createdAt)) ? new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(note.createdAt)) : note.createdAt}</time>
+        </div>
+      )) : <p className="nc-empty-copy">{copy.empty}</p>}
+      <button type="button" className="btn btn-quiet btn-sm" aria-label={copy.label} onClick={onAdd}>{copy.add}</button>
+    </section>
   );
 }
 
@@ -337,13 +358,24 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   const [tagUpdate, setTagUpdate] = useState<{ source: OrbitContactView; tags: { value: string; label: string }[] } | null>(null);
   const [interactionEditContactId, setInteractionEditContactId] = useState<string | null>(null);
   const [interactionUpdate, setInteractionUpdate] = useState<{ source: OrbitContactView; value: NonNullable<OrbitContactView["editableInteraction"]> } | null>(null);
+  const [noteEditContactId, setNoteEditContactId] = useState<string | null>(null);
+  // The route keys this component by authenticated actor + contact. Within that
+  // scope, confirmed notes must survive new source objects from a refresh.
+  const [noteUpdate, setNoteUpdate] = useState<{ contactId: string; notes: OrbitContactView["notes"] } | null>(null);
   const industryContact = industryUpdate?.source === sourceContact ? {
     ...sourceContact,
     primaryIndustryId: industryUpdate.value ?? undefined,
     industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
   } : sourceContact;
   const tagContact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
-  const contact = interactionUpdate?.source === sourceContact ? { ...tagContact, editableInteraction: interactionUpdate.value, lastInteraction: displayText(interactionUpdate.value.summary, language) } : tagContact;
+  const interactionContact = interactionUpdate?.source === sourceContact ? { ...tagContact, editableInteraction: interactionUpdate.value, lastInteraction: displayText(interactionUpdate.value.summary, language) } : tagContact;
+  const contact = noteUpdate?.contactId === sourceContact.id ? {
+    ...interactionContact,
+    notes: [
+      ...interactionContact.notes.filter((note) => note.privacy !== "private"),
+      ...new Map([...interactionContact.notes.filter((note) => note.privacy === "private"), ...noteUpdate.notes].map((note) => [note.id, note])).values(),
+    ],
+  } : interactionContact;
   const askAgentHref = agentHrefForContext({
     details: crmRole(contact, t),
     id: contactId,
@@ -409,6 +441,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 <TwoWayCard contact={contact} t={t} />
               </div>
               <div className="nc-stack">
+                <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
                 <TimelineCard contact={contact} t={t} />
                 <NextStepCard contact={contact} t={t} />
               </div>
@@ -454,11 +487,19 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
             <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
             <TwoWayCard contact={contact} t={t} />
+            <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
             <TimelineCard contact={contact} t={t} />
             <NextStepCard compact contact={contact} t={t} />
           </div>
         </div>
       </div>
+
+      {noteEditContactId === contact.id ? (
+        <ContactNotesEditor key={contact.id} contactId={contact.id} language={language} onClose={() => setNoteEditContactId(null)} onSaved={(notes) => {
+          setNoteUpdate({ contactId: sourceContact.id, notes });
+          setNoteEditContactId(null);
+        }} />
+      ) : null}
 
       {interactionEditContactId === contact.id && contact.editableInteraction ? (
         <ContactInteractionEditor key={contact.id} contactId={contact.id} initialInteraction={contact.editableInteraction} language={language} onClose={() => setInteractionEditContactId(null)} onSaved={(value) => {

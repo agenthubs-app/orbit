@@ -94,5 +94,6 @@ shared/api-schema/       运行时响应校验，单独同步到移动端 src/ap
 逐字一致，并在独立临时目录执行真实同步命令，验证白名单、过期副本清理和重复执行。
 
 零类型错误不等于所有接口都已做运行时校验。当前同步的运行时 Schema 为
-`mobile-contacts-dashboard.ts`；通用 API client 的响应壳检查和资源的 Schema 校验
+`mobile-contacts-dashboard.ts` 与 `contact-notes.ts`；后者仅校验联系人详情中的备注子集，
+保留正文原文与旧时间格式，并区分未知响应与真实空列表。通用 API client 的响应壳检查和资源的 Schema 校验
 是两个不同层次。剩余运行时回归仍需分别处理，不能用编译通过替代功能验收。

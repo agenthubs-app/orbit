@@ -6,15 +6,13 @@
  */
 import {
   getOrbitServerLanguage,
-  localizeOrbitTree,
 } from "../../orbit-language-server";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitRouteBoundaryFrame } from "../../orbit-route-boundary-frame";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../../shared/ui/state-view";
-import { contactDetailRouteToOrbitContactsViewModel } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
+import { contactDetailPageViewModel } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-page-view-model";
 import {
   loadAppContactDetailRoute,
   type AppContactDetailBoundaryModel,
@@ -125,14 +123,9 @@ export default async function AppContactDetailPage({
       <OrbitVisualFreezeRuntime />
       {routeModel.routeState === "success" ? (
         <OrbitRealCardConnection
+          key={`${actor.id}:${contactId}`}
           contactId={contactId}
-          viewModel={localizeOrbitTree(
-            applyOrbitContactsPresentation(
-              contactDetailRouteToOrbitContactsViewModel(routeModel, language),
-              language,
-            ),
-            language,
-          )}
+          viewModel={contactDetailPageViewModel(routeModel, language)}
         />
       ) : (
         <ContactDetailRouteStateView routeModel={routeModel} />
