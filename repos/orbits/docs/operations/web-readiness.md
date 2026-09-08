@@ -365,3 +365,7 @@ V1 页面此前只有取消处理 HTTP 错误，确认/跳过/重试/完成可�
 使用既有隔离 QA 账户向 V1 上传 6 MiB 合成 JPEG，平台返回 413 / FUNCTION_PAYLOAD_TOO_LARGE，未创建批次；文件处于应用声明的 10 MiB 图片允许范围内。V1 的多文件合并请求及 50 MiB PDF、V2 的单项 10 MiB PUT 都需要修复传输通道。仅提高 Next.js 限制或降低产品允许大小不能完成该要求。
 
 当前尚未修改上传协议。已核对官方客户端直传方案及本项目 SDK 能力，并记录原文件授权、归属、幂等消费、取消、许可重放和回收的实现约束与验收清单，见 `business-card-direct-upload.md`。原始实测记录 `/tmp/orbit-large-upload-probe.log`；此问题明确仍未解决，不计为上传验收通过。
+
+### 2026-09-08：独立后台调度已落地
+
+维护扫描、`CRON_SECRET` 内部入口、每日 Cron、队列心跳链与本机调度脚本已实现并部署到 Preview，云端已观察到心跳启动与首个周期执行；细节与证据见 `background-scheduler.md`。空账号线上全旅程与本机真实浏览器旅程的结果记录在 `business-card-direct-upload.md` 的同日章节。

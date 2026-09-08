@@ -1,6 +1,6 @@
 # 独立后台调度：维护通道与队列心跳
 
-状态：代码、单元与真实 PostgreSQL 测试、本机单次运行已完成；云端心跳链尚未在部署后观察到自转（见「验收缺口」）。
+状态：代码、单元与真实 PostgreSQL 测试、本机单次运行已完成；提交 `aa2ef096` 已部署到 Preview `orbit-cbnyba82i`（固定地址已切换），云端心跳链已观察到启动与首个周期 tick（见「云端证据」）。
 
 ## 问题
 
@@ -41,8 +41,18 @@
 - 本机 `npm run maintenance:once`：队列任务在非 Vercel 环境按预期 skipped，其余任务对本机配置执行完成（结果见 `/tmp/orbit-maintenance-once.log`）。
 - 本机开发服务器：`/api/internal/maintenance` 无凭证与错误凭证均 401；`/api/queues/maintenance` 非队列请求 401。
 
+## 云端证据（2026-09-08，Preview `orbit-cbnyba82i-liqys-projects-33c8ddec.vercel.app`）
+
+部署自干净 worktree（不含工作区其他未提交改动）。用全新空账号跑一遍名片旅程后，`vercel logs` 显示：
+
+- 02:25:22Z `POST /api/queues/business-card` → `{"event":"maintenance_heartbeat_bootstrap","outcome":"started"}`：第一次名片队列唤醒即拉起心跳链，没有任何手工触发或 Cron。
+- 02:35:43Z `POST /api/queues/maintenance` 200 → `{"event":"maintenance_heartbeat_tick","seq":0,"outcome":"ran"}`：延迟 600 秒的首条消息按期到达并执行了一次维护扫描（实际间隔 621 秒）。
+- 02:45:54Z `POST /api/queues/maintenance` 200：第二次消费者调用，距首个 tick 611 秒，说明消费者自己发出的延迟消息也被队列按期投递；请求日志列表只保留了该请求的 pg SSL 告警行，seq 1 的 `outcome` 字段未在列表中捕获到，需要在后续周期或日志面板中确认。
+
+日志只查看 `event` 聚合字段，未读取任何配置密钥。证据文件：`/tmp/orbit-heartbeat-logs-1.jsonl`、`/tmp/orbit-heartbeat-logs-2.jsonl`、`/tmp/orbit-heartbeat-logs-4.jsonl`。本机 `.env.local` 指向的数据库与 Preview 不同（表不存在），无法从本机核对 Preview 的心跳行。
+
 ## 验收缺口
 
-- 部署后需要观察 `maintenance_heartbeat_bootstrap` 与 `maintenance_heartbeat_tick` 日志：第一条来自名片/agent 队列唤醒或内部 GET，之后每个周期应出现 `outcome: "ran"`。链是否真的在 Vercel 队列上自转、`delaySeconds` 是否被 queue/v2beta 尊重，只有云端日志能证明。
+- 已观察到启动、seq 0 执行与第二次调用；更长时间的自转（数小时、跨部署）与队列消息保留 7 天的实际行为仍需持续观察。
 - 生产 Cron 的 03:00 UTC 触发需要在生产部署后核对一次。
 - `CRON_SECRET` 已在 Preview 存在（仅核对名称），手工触发内部 GET 需要持有该密钥的人执行；本轮没有读取或使用它。

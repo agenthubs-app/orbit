@@ -156,3 +156,18 @@ Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KE
 首轮线上手工退路验收进一步暴露了 worker 根因：provider 为空时 V1 worker 不领取任何待处理项目，队列虽然持续保留，批次却永远停在 `processing`，所以手工入口无法到达。现在 worker 无论 provider 是否存在都会领取项目；未配置 provider 走与请求失败相同的受控失败计数，第二次尝试后变为 `failed` 并使批次进入 `ready_for_review`。这保留了真实 provider 的超时、结构校验和重试语义，也让无凭证环境最终可手工处理。
 
 36 项关联回归通过，覆盖无 provider 的 pending→pending→failed 转换、队列续发、清理、API、页面和真实 PostgreSQL 手工收录事务；类型检查仍为 109 条既有诊断、无新增，生产构建通过。证据：`/tmp/orbit-v1-no-ocr-regression.log`、`/tmp/orbit-v1-no-ocr-typecheck.log`、`/tmp/orbit-v1-no-ocr-build.log`。修复后的线上闭环仍需重新部署后复核；失败的首轮线上观察记录为 `/tmp/orbit-v1-manual-live-smoke.log`，不能计作通过。
+
+### 2026-09-08：空账号线上旅程与本机真实浏览器旅程
+
+**Preview API 级全旅程（空账号）**：在部署 `orbit-d8y1whb7q`（提交 `5f46e260`）上用全新 `@example.invalid` 账号走完 `注册 201 → 登录 200 → 私有直传（预约 201 / 令牌 200 / PUT / 核验 200）→ 导入任务 202 → 任务 completed（27 s）→ 批次 processing → 项目两次受控尝试后 failed/OCR_PROVIDER_FAILED → 批次 ready_for_review（自建批次 37 s）→ 手工录入 200 → 联系人详情字段一致 → 草稿 → 完成批次 200 → 归档联系人 200`。这证明无 provider 时批次不再永久停在 processing。草稿分两路：联系人级 `POST /api/chat/assist/email-draft` 在 Preview 返回 422 `MODEL_API_KEY_MISSING`（Gemini 未配置，干净失败）；通用 `POST /api/message-drafts` 规则草稿返回 200。同一脚本在部署 `orbit-cbnyba82i`（提交 `aa2ef096`）上再次全程通过。匿名访问受保护路由均 401。任务在 `completed` 前会经过中间态 `ready`，脚本不得把它当终态。证据：`/tmp/orbit-fresh-account-live-journey.log`、`/tmp/orbit-fresh-account-live-journey-2.log`；脚本在会话 scratchpad `orbit-fresh-account-live-journey*.cjs`。账号文件未打印。
+
+**本机真实浏览器旅程（Playwright + 系统 Chrome，`localhost:3000`，真实数据库与 DeepSeek）**：8/8 步通过，但范围有限：本机没有 `VERCEL=1`/私有 Blob，`GET /uploads` 返回 `directUpload:false`，浏览器走旧 multipart 入口，准备进度页 `/app/contacts/new/import/{jobId}` 本机不可达；本机没有队列消费者，批次由脚本外部调用 `runConfiguredCardQueueTick('v1')` 推进。`business-card-tiny.heic` 经真实 DeepSeek 返回 `extracted` 但所有字段为空，因此走的是"复核确认"而非"手工录入"分支。上传首个请求被拦截为网络失败时出现 `上传失败，请重试。` 与 `重试上传`，重试成功。联系人详情正确显示手填姓名/公司；`/api/chat/assist/email-draft` 本机约 15 s 返回可编辑主题与正文，创建对话线程 200。控制台除故意中断的请求外无错误。
+
+浏览器旅程暴露的问题（未修）：
+1. Today 不反映新联系人与已暂存草稿，仍显示"当前没有待你处理的事"。
+2. 顶部导航把 Today 标为"日程"，页面眉标却是"今天"，Today 与日程概念混淆。
+3. OCR 全空的项目以"已提取"呈现：无提示、缩略图空白、姓名为空也能点"确认并下一张"；`手工录入` 只对 `failed` 项目出现。
+4. 移动端 390×844：姓名聚焦时"确认并下一张"位于 y≈870（屏外），滚动后 y≈594–638，若系统键盘约 300 px 仍会被遮住；无头 Chrome 不能模拟键盘，此为几何推断。
+5. 注册页是带遮罩的模态卡（移动端底部抽屉，衬线 19–20 px 标题），Today 是全宽页面（无衬线 28 px 标题、完整导航），两页视觉不一致；390 px 下均无横向溢出。
+
+截图与 `report.json` 在会话 scratchpad `browser-journey/`；日志 `/tmp/orbit-local-browser-journey.log`。Vercel 登录保护下的 Preview 浏览器旅程仍未完成：内置浏览器停在 vercel.com 登录页，Chrome 扩展未连接。
