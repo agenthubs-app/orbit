@@ -183,3 +183,47 @@ database prerequisite is absent; no new skip exemption was retained.
 - No external service, credential, database write, browser layout check, native
   client check, deployment, or production migration was performed. The native
   and deployment limitations recorded above remain open.
+
+## 2026-09-10 Continuation: Completion Static Audit Task 1
+
+- 基于 `f0b56aad5`，在既有隔离工作树中修复三个永久禁用的状态按钮：
+  等待同意、拒绝交换、活动画像锁定现使用非交互 `span`，保留原文案、
+  数据属性、等待状态的 `aria-live` 和画像锁定的描述关联。撤回、重试、
+  已接受联系人链接及可编辑画像入口未变；请求处理中仍保留真实按钮。
+- 静态扫描器按 TypeScript AST 的词法作用域解析监听器及命名或内联回调，
+  仅为注册回调中受同一 host 保护且包含调用的静态 `closest` 分支记录证据。
+  `Form` 不再误判为原生 `form`；`entryTitle(...)` 只标为动态名称证据。
+  导航证据属于共享 React `OrbitTopNav`/`OrbitLangToggle`，提示提交与建议
+  的事件证据仍属于 `orbit-starfield-agent-prompt.ts`，每个文案保留四次出现。
+- 本地验证：AST 夹具 8/8、两组 UI 测试 15/15；完整相关测试合跑 32/33。
+  剩余失败为 `ProposalForm onSubmit` 的五条 P1 名称未解析记录，位于联系人、
+  活动详情和三个 Party 路由。未降低零 P1 阈值、排除记录或宣称运行时已验证。
+  两项 Web typecheck 均通过；P0 候选为零。
+- 本次未修改 App、API、共享契约、生成审计快照或 Bridge 台账；未访问真实
+  数据库、模型、邮件或其他外部业务服务，未提交或部署。完整功能运行时审计
+  的已知覆盖缺口保持开放，独立复核和提交仍由协调者负责。
+
+### 2026-09-10 Task 1 Review Fix Round 1
+
+- 修复扫描器的解构绑定身份、类等值空间遮蔽及回调内不可达分支误判。
+  对象和数组解构的不同 host 不再共享身份；`return`、`throw`、恒假分支
+  和不支持的控制流不能为后续不可达调用提供事件证据。
+- 按协调者裁定，只有本地组件可证明把 `onSubmit` 转交给其返回的原生
+  `form` 时，才记录为 `component-container` 非叶节点。保留回调表达式、
+  组件和表单的源码位置；原生表单和真实提交按钮继续保留。未知回调、
+  显式角色、其他真实控件和错误大小写属性仍按保守规则分类。
+- 本轮仅编辑扫描器、原有 manifest 测试和本说明，未改 `ProposalForm`
+  或任何生产 UI。此前五条 P1 已通过所有权证明解决，未删除阈值或断言。
+  完整 manifest 与两组 UI 测试合跑 48/48，通过零 P0/P1 断言；最终代码
+  修改后两项 Web typecheck 均通过。完整功能运行时审计仍待后续任务。
+
+### 2026-09-10 Task 1 Review Fix Round 2
+
+- 收紧表单所有权证明：返回的原生 `form` 只要声明了 `role`，包括动态角色，
+  就不再获得组件容器豁免；未命名的自定义控件保持名称未解析记录。
+- 对组件绑定进行词法身份关联的写入检查。赋值、解构写入、循环目标及更新
+  操作会使原函数实现的所有权证明失效；同名局部变量写入和函数属性更新
+  不视为组件绑定替换。不猜测 React 的执行时序，存在写入即保守放弃证明。
+- 仅修改扫描器、既有 manifest 测试及说明。新增测试 RED 为 11 失败、
+  1 通过；最终 manifest 与两组 UI 测试 60/60，零 P0/P1，最终代码修改后
+  两项 Web typecheck 均通过。运行时覆盖、独立复核和提交仍由后续流程负责。

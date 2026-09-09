@@ -288,8 +288,14 @@ test("recommendation card keeps a visible state action after business-card reque
       (node) => node.props["data-contact-request-state"] === "awaiting_target_consent",
     );
     assert.equal(postCount, 1);
-    assert.equal(waitingButton.type, "button");
-    assert.equal(waitingButton.props.disabled, true);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-contact-request-state"] === "awaiting_target_consent").length, 0);
+    assert.equal(waitingButton.type, "span");
+    assert.equal(waitingButton.props["aria-live"], "polite");
+    assert.equal(waitingButton.props.onClick, undefined);
+    const withdrawal = renderer.root.findAll((node) => node.props["data-contact-request-action"] === "withdraw");
+    assert.equal(withdrawal.length, 1);
+    assert.equal(withdrawal[0].type, "button");
+    assert.equal(typeof withdrawal[0].props.onClick, "function");
     assert.match(JSON.stringify(renderer.toJSON()), /等待对方同意/u);
 
     state = "accepted";
@@ -375,13 +381,44 @@ test("failed requests remain retryable while declined requests stay visible and 
     const declinedButton = renderer.root.find(
       (node) => node.props["data-contact-request-state"] === "declined",
     );
-    assert.equal(declinedButton.props.disabled, true);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-contact-request-state"] === "declined").length, 0);
+    assert.equal(declinedButton.type, "span");
+    assert.equal(declinedButton.props.onClick, undefined);
     assert.match(JSON.stringify(renderer.toJSON()), /对方暂不交换/u);
   } finally {
     globalThis.fetch = originalFetch;
     if (renderer) {
       await act(async () => renderer.unmount());
     }
+  }
+});
+
+test("a temporarily busy request remains a real button until the response arrives", async () => {
+  const originalFetch = globalThis.fetch;
+  let finishRequest!: (response: Response) => void;
+  const pendingResponse = new Promise<Response>((resolve) => { finishRequest = resolve; });
+  globalThis.fetch = (async (_url, init) => init?.method === "POST"
+    ? pendingResponse
+    : Response.json({ data: operations(), success: true })) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => {
+      renderer = create(createElement(OrbitEventMatchmaking, { eventId: "event:tokyo-ai-night" }));
+    });
+    const button = renderer.root.findByProps({ "data-contact-request-state": "none" });
+    await act(async () => { button.props.onClick(); });
+    assert.equal(button.type, "button");
+    assert.equal(button.props.disabled, true);
+    assert.equal(typeof button.props.onClick, "function");
+    await act(async () => {
+      finishRequest(Response.json({ success: false }, { status: 503 }));
+    });
+    assert.equal(button.props.disabled, false);
+    assert.equal(typeof button.props.onClick, "function");
+  } finally {
+    finishRequest(Response.json({ success: false }, { status: 503 }));
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => renderer.unmount());
   }
 });
 

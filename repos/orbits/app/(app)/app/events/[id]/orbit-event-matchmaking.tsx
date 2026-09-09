@@ -119,7 +119,7 @@ function CandidateContactAction({
   if (request.status === "awaiting_target_consent") {
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <button aria-live="polite" className="btn btn-ghost btn-sm" data-contact-request-state="awaiting_target_consent" disabled type="button">{t({ en: "Waiting for their consent", zh: "等待对方同意" })}</button>
+        <span aria-live="polite" className="chip" data-contact-request-state="awaiting_target_consent">{t({ en: "Waiting for their consent", zh: "等待对方同意" })}</span>
         {canWithdraw ? <button className="btn btn-ghost btn-sm" data-contact-request-action="withdraw" disabled={busy} onClick={() => void onWithdraw(request.requestId, request.revision)} type="button">{t({ en: "Withdraw request", zh: "撤回申请" })}</button> : null}
       </div>
     );
@@ -149,14 +149,12 @@ function CandidateContactAction({
   }
 
   return (
-    <button
-      className="btn btn-ghost btn-sm"
+    <span
+      className="chip"
       data-contact-request-state="declined"
-      disabled
-      type="button"
     >
       {t({ en: "Request declined", zh: "对方暂不交换" })}
-    </button>
+    </span>
   );
 }
 

@@ -318,7 +318,7 @@ function staticExpressionText(expression, source) {
     if (
       functionName === "t" ||
       functionName === "copy" ||
-      /(?:label|name|text)$/i.test(functionName)
+      /(?:label|name|text|title)$/i.test(functionName)
     ) {
       return `{${expression.getText(source)}}`;
     }
@@ -396,13 +396,12 @@ function getJsxParts(node) {
 }
 
 function interactionKind(tagName, attributes) {
-  const normalizedTag = tagName.toLowerCase();
   const role = attributes.get("role")?.toLowerCase();
   const names = new Set(attributes.keys());
 
-  if (normalizedTag === "button") return "button";
-  if (normalizedTag === "a" || tagName === "Link") return "link";
-  if (normalizedTag === "form") return "form-submit";
+  if (tagName === "button") return "button";
+  if (tagName === "a" || tagName === "Link") return "link";
+  if (tagName === "form") return "form-submit";
   if (role === "button") return "role-button";
   if (names.has("onkeydown") || names.has("onkeyup")) return "keyboard-handler";
   if (
@@ -419,7 +418,7 @@ function hasSubmitAncestor(node, source) {
   let parent = node.parent;
   while (parent && !ts.isSourceFile(parent)) {
     if (ts.isJsxElement(parent)) {
-      const tagName = parent.openingElement.tagName.getText(source).toLowerCase();
+      const tagName = parent.openingElement.tagName.getText(source);
       if (tagName === "form") {
         return true;
       }
@@ -493,20 +492,123 @@ function staticSelectorFromExpression(node, source, supportsIdHelper) {
   return discovered;
 }
 
+function lexicalDeclarationResolver(source) {
+  const scopes = new WeakMap();
+
+  function declarationFor(node) {
+    if (!node || !ts.isIdentifier(node)) return null;
+    for (let scope = scopes.get(node); scope; scope = scope.parent) {
+      if (scope.declarations.has(node.text)) return scope.declarations.get(node.text);
+    }
+    return null;
+  }
+
+  function declareName(name, declaration, scope) {
+    if (ts.isIdentifier(name)) {
+      scope.declarations.set(name.text, scope.declarations.has(name.text) ? null : declaration);
+    } else {
+      for (const element of name.elements) {
+        if (ts.isBindingElement(element)) declareName(element.name, element, scope);
+      }
+    }
+  }
+
+  function discoverVariables(node, parentScope = null) {
+    if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isEnumDeclaration(node) || ts.isModuleDeclaration(node)) && node.name && ts.isIdentifier(node.name)) {
+      declareName(node.name, node, parentScope);
+    }
+    const isFunction = ts.isFunctionLike(node);
+    const scope = ts.isSourceFile(node) || ts.isBlock(node) || isFunction || ts.isClassLike(node) || ts.isCatchClause(node) || ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node)
+      ? { parent: parentScope, declarations: new Map(), functionScope: isFunction || ts.isSourceFile(node) }
+      : parentScope;
+    scopes.set(node, scope);
+    if ((ts.isFunctionExpression(node) || ts.isClassExpression(node)) && node.name) declareName(node.name, node, scope);
+    if (ts.isImportClause(node) && node.name && !node.isTypeOnly) declareName(node.name, node, scope);
+    if ((ts.isImportSpecifier(node) && !node.isTypeOnly && !node.parent.parent.isTypeOnly) || ts.isNamespaceImport(node) || ts.isImportEqualsDeclaration(node)) declareName(node.name, node, scope);
+    if (ts.isVariableDeclaration(node) || ts.isParameter(node)) {
+      let owner = scope;
+      if (ts.isVariableDeclaration(node) && ts.isVariableDeclarationList(node.parent) && !(node.parent.flags & ts.NodeFlags.BlockScoped)) {
+        while (owner.parent && !owner.functionScope) owner = owner.parent;
+      }
+      declareName(node.name, node, owner);
+    }
+    ts.forEachChild(node, (child) => discoverVariables(child, scope));
+  }
+
+  discoverVariables(source);
+  return declarationFor;
+}
+
+function staticBoolean(node) {
+  if (ts.isParenthesizedExpression(node)) return staticBoolean(node.expression);
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
+    const value = staticBoolean(node.operand);
+    return value === null ? null : !value;
+  }
+  if (ts.isBinaryExpression(node)) {
+    const left = staticBoolean(node.left);
+    const right = staticBoolean(node.right);
+    if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return left === false || right === false ? false : left === true && right === true ? true : null;
+    }
+    if (node.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+      return left === true || right === true ? true : left === false && right === false ? false : null;
+    }
+  }
+  return null;
+}
+
+// Walk only structured, potentially reachable statements; never run source code.
+// Unknown branches may be inspected for ownership, but not delegated dispatch.
+function walkReachableStatements(node, visit, includeUnknownBranches = false) {
+  if (ts.isBlock(node)) {
+    for (const statement of node.statements) {
+      if (walkReachableStatements(statement, visit, includeUnknownBranches)) return true;
+    }
+    return false;
+  }
+  if (ts.isIfStatement(node)) {
+    const condition = staticBoolean(node.expression);
+    if (condition !== false) visit(node);
+    if (condition === true) return walkReachableStatements(node.thenStatement, visit, includeUnknownBranches);
+    if (condition === false) return node.elseStatement ? walkReachableStatements(node.elseStatement, visit, includeUnknownBranches) : false;
+    const branchVisit = includeUnknownBranches ? visit : () => {};
+    const thenStops = walkReachableStatements(node.thenStatement, branchVisit, includeUnknownBranches);
+    const elseStops = node.elseStatement ? walkReachableStatements(node.elseStatement, branchVisit, includeUnknownBranches) : false;
+    return thenStops && elseStops;
+  }
+  if (ts.isThrowStatement(node) || ts.isBreakStatement(node) || ts.isContinueStatement(node)) return true;
+  if (ts.isReturnStatement(node)) {
+    visit(node);
+    return true;
+  }
+  if (ts.isExpressionStatement(node) || ts.isVariableStatement(node) || ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isEmptyStatement(node)) {
+    visit(node);
+    return false;
+  }
+  // Loops, try/finally, switch and other unsupported control flow fail closed.
+  return true;
+}
+
 function collectImperativeBindings(filePaths) {
   const bindings = [];
 
   for (const filePath of filePaths) {
     const { source, sourceText } = sourceFileFor(filePath);
-    const selectorsByVariable = new Map();
+    const declarationFor = lexicalDeclarationResolver(source);
     const supportsIdHelper =
       /\bconst\s+\$\s*=\s*\(?\s*id\s*\)?\s*=>\s*host\.querySelector\(\s*["']#["']\s*\+\s*id\s*\)/.test(
         sourceText,
       );
 
-    function selectorForExpression(node) {
-      if (ts.isIdentifier(node) && selectorsByVariable.has(node.text)) {
-        return selectorsByVariable.get(node.text);
+    function selectorForExpression(node, seen = new Set()) {
+      if (ts.isIdentifier(node)) {
+        const declaration = declarationFor(node);
+        if (!declaration || seen.has(declaration) || !ts.isVariableDeclaration(declaration) || !declaration.initializer) return null;
+        seen.add(declaration);
+        return selectorForExpression(declaration.initializer, seen);
       }
       return staticSelectorFromExpression(node, source, supportsIdHelper);
     }
@@ -531,21 +633,67 @@ function collectImperativeBindings(filePaths) {
       });
     }
 
-    function discoverVariables(node) {
-      if (
-        ts.isVariableDeclaration(node) &&
-        ts.isIdentifier(node.name) &&
-        node.initializer
-      ) {
-        const selector = selectorForExpression(node.initializer);
-        if (selector) {
-          selectorsByVariable.set(node.name.text, selector);
-        }
-      }
-      ts.forEachChild(node, discoverVariables);
+    function sameReference(left, right) {
+      if (!left || !right || !ts.isIdentifier(left) || !ts.isIdentifier(right)) return false;
+      const declaration = declarationFor(left);
+      return declaration !== null && declaration === declarationFor(right);
     }
 
-    discoverVariables(source);
+    function conjunctions(node) {
+      if (ts.isParenthesizedExpression(node)) return conjunctions(node.expression);
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+        return [...conjunctions(node.left), ...conjunctions(node.right)];
+      }
+      return [node];
+    }
+
+    function hasDispatchCall(statement) {
+      let found = false;
+      walkReachableStatements(statement, (candidate) => {
+        if (!ts.isExpressionStatement(candidate) && !ts.isReturnStatement(candidate)) return;
+        const expression = candidate.expression;
+        if (expression && (ts.isCallExpression(expression) ||
+          (ts.isVoidExpression(expression) && ts.isCallExpression(expression.expression)))) found = true;
+      });
+      return found;
+    }
+
+    function discoverDelegatedBindings(call) {
+      let callback = call.arguments[1];
+      if (!callback) return;
+      if (ts.isIdentifier(callback)) {
+        callback = declarationFor(callback);
+        if (callback && ts.isVariableDeclaration(callback)) {
+          callback = callback.parent.flags & ts.NodeFlags.Const ? callback.initializer : null;
+        }
+      }
+      if (!callback || !(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback) || ts.isFunctionDeclaration(callback)) || !callback.body) return;
+      const eventParameter = callback.parameters[0]?.name;
+      const host = call.expression.expression;
+
+      // Only positive target/host guards in the registered callback prove dispatch.
+      // Nested functions and unrelated closest() expressions are not execution paths.
+      function visitDispatch(node) {
+        if (ts.isFunctionLike(node)) return;
+        if (ts.isIfStatement(node) && hasDispatchCall(node.thenStatement)) {
+          const guards = conjunctions(node.expression);
+          for (const guard of guards) {
+            if (!ts.isCallExpression(guard) || !ts.isPropertyAccessExpression(guard.expression) || guard.expression.name.text !== "contains" || !sameReference(guard.expression.expression, host)) continue;
+            const target = guard.arguments[0];
+            if (!target || !guards.some((part) => sameReference(part, target))) continue;
+            const declaration = declarationFor(target);
+            if (!declaration || !ts.isVariableDeclaration(declaration) || !(declaration.parent.flags & ts.NodeFlags.Const)) continue;
+            const closest = declaration.initializer;
+            if (!closest || !ts.isCallExpression(closest) || !ts.isPropertyAccessExpression(closest.expression) || closest.expression.name.text !== "closest") continue;
+            const receiver = closest.expression.expression;
+            if (!ts.isPropertyAccessExpression(receiver) || receiver.name.text !== "target" || !sameReference(receiver.expression, eventParameter)) continue;
+            const selector = closest.arguments[0];
+            if (selector && (ts.isStringLiteral(selector) || ts.isNoSubstitutionTemplateLiteral(selector))) recordBinding(selector.text, call);
+          }
+        }
+      }
+      walkReachableStatements(callback.body, visitDispatch);
+    }
 
     function discoverBindings(node) {
       if (
@@ -554,6 +702,7 @@ function collectImperativeBindings(filePaths) {
         node.expression.name.text === "addEventListener"
       ) {
         recordBinding(selectorForExpression(node.expression.expression), node);
+        discoverDelegatedBindings(node);
       }
 
       if (
@@ -572,14 +721,13 @@ function collectImperativeBindings(filePaths) {
           callback.parameters.length > 0 &&
           ts.isIdentifier(callback.parameters[0].name)
         ) {
-          const itemName = callback.parameters[0].name.text;
           function discoverItemBindings(child) {
+            if (ts.isFunctionLike(child)) return;
             if (
               ts.isCallExpression(child) &&
               ts.isPropertyAccessExpression(child.expression) &&
               child.expression.name.text === "addEventListener" &&
-              ts.isIdentifier(child.expression.expression) &&
-              child.expression.expression.text === itemName
+              sameReference(child.expression.expression, callback.parameters[0].name)
             ) {
               recordBinding(selector, child);
             }
@@ -634,15 +782,122 @@ function imperativeBindingFor(attributes, imperativeBindings) {
   return matching.length > 0 ? matching : null;
 }
 
+function bindingIsReassigned(binding, source, declarationFor) {
+  function writesBinding(target) {
+    if (ts.isIdentifier(target)) return declarationFor(target) === binding;
+    if (ts.isParenthesizedExpression(target) || ts.isAsExpression(target) || ts.isTypeAssertionExpression(target) || ts.isNonNullExpression(target)) return writesBinding(target.expression);
+    if (ts.isArrayLiteralExpression(target)) return target.elements.some(writesBinding);
+    if (ts.isObjectLiteralExpression(target)) return target.properties.some((property) => {
+      if (ts.isShorthandPropertyAssignment(property)) return writesBinding(property.name);
+      if (ts.isPropertyAssignment(property)) return writesBinding(property.initializer);
+      if (ts.isSpreadAssignment(property)) return writesBinding(property.expression);
+      return false;
+    });
+    if (ts.isSpreadElement(target)) return writesBinding(target.expression);
+    if (ts.isBinaryExpression(target) && target.operatorToken.kind === ts.SyntaxKind.EqualsToken) return writesBinding(target.left);
+    return false;
+  }
+
+  let reassigned = false;
+  function inspectWrites(candidate) {
+    if (reassigned) return;
+    if (ts.isBinaryExpression(candidate) && candidate.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && candidate.operatorToken.kind <= ts.SyntaxKind.LastAssignment) {
+      reassigned = writesBinding(candidate.left);
+    } else if ((ts.isPrefixUnaryExpression(candidate) || ts.isPostfixUnaryExpression(candidate)) &&
+      (candidate.operator === ts.SyntaxKind.PlusPlusToken || candidate.operator === ts.SyntaxKind.MinusMinusToken)) {
+      reassigned = writesBinding(candidate.operand);
+    } else if (ts.isForInStatement(candidate) || ts.isForOfStatement(candidate)) {
+      reassigned = writesBinding(candidate.initializer);
+    }
+    ts.forEachChild(candidate, inspectWrites);
+  }
+  // Any write invalidates this proof; do not guess when React invokes the component.
+  inspectWrites(source);
+  return reassigned;
+}
+
+function formCallbackOwnership(node, attributes, source, filePath, declarationFor) {
+  const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName;
+  const invocationAttributes = getJsxParts(node).attributes.properties;
+  if (!ts.isIdentifier(tag) || !/^[A-Z]/.test(tag.text) || !attributes.has("onsubmit") ||
+    !invocationAttributes.some((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "onSubmit") ||
+    attributes.has("role") || attributes.has("href") || attributes.has("__spread") ||
+    [...attributes.keys()].some((name) => name.startsWith("on") && name !== "onsubmit")) return null;
+  const component = declarationFor(tag);
+  if (!component || !ts.isFunctionDeclaration(component) || !component.body) return null;
+  if (bindingIsReassigned(component, source, declarationFor)) return null;
+  const parameter = component.parameters[0]?.name;
+  if (!parameter || !ts.isObjectBindingPattern(parameter)) return null;
+  const binding = parameter.elements.find((element) =>
+    !element.dotDotDotToken && ts.isIdentifier(element.name) &&
+    (element.propertyName ?? element.name).getText(source) === "onSubmit");
+  if (!binding) return null;
+
+  // A local component must return the owning intrinsic form, not merely mention one.
+  const statements = component.body.statements;
+  const returned = statements[statements.length - 1];
+  if (!returned || !ts.isReturnStatement(returned) ||
+    statements.slice(0, -1).some((statement) => !ts.isVariableStatement(statement) && !ts.isExpressionStatement(statement))) return null;
+  let form = returned.expression;
+  while (form && ts.isParenthesizedExpression(form)) form = form.expression;
+  if (!form || !ts.isJsxElement(form) || form.openingElement.tagName.getText(source) !== "form") return null;
+  const formAttributes = form.openingElement.attributes.properties;
+  if (formAttributes.some((attribute) => ts.isJsxSpreadAttribute(attribute) ||
+    (ts.isJsxAttribute(attribute) && attribute.name.getText(source).toLowerCase() === "role"))) return null;
+  const submit = formAttributes.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "onSubmit");
+  const handler = submit?.initializer && ts.isJsxExpression(submit.initializer) ? submit.initializer.expression : null;
+  if (!handler) return null;
+  const isCallback = (expression) => ts.isIdentifier(expression) && declarationFor(expression) === binding;
+  let forwards = isCallback(handler);
+  if (ts.isArrowFunction(handler) || ts.isFunctionExpression(handler)) {
+    function inspectCalls(candidate) {
+      while (ts.isParenthesizedExpression(candidate) || ts.isVoidExpression(candidate) || ts.isAwaitExpression(candidate)) candidate = candidate.expression;
+      if (ts.isCallExpression(candidate) && isCallback(candidate.expression)) forwards = true;
+    }
+    if (ts.isBlock(handler.body)) {
+      walkReachableStatements(handler.body, (statement) => {
+        if (ts.isExpressionStatement(statement) || ts.isReturnStatement(statement)) {
+          if (statement.expression) inspectCalls(statement.expression);
+        }
+      }, true);
+    } else inspectCalls(handler.body);
+  }
+  if (!forwards) return null;
+
+  // Any use outside the form's submit handler could be a separate actual control.
+  let otherUse = false;
+  function inspectUses(candidate) {
+    if (candidate === handler) return;
+    if (ts.isIdentifier(candidate) && declarationFor(candidate) === binding) {
+      const parent = candidate.parent;
+      const propertyName = (ts.isJsxAttribute(parent) || ts.isPropertyAccessExpression(parent) || ts.isPropertyAssignment(parent)) && parent.name === candidate;
+      if (!propertyName) otherUse = true;
+    }
+    ts.forEachChild(candidate, inspectUses);
+  }
+  inspectUses(component.body);
+  if (otherUse) return null;
+  return {
+    component: tag.text,
+    callbackProp: "onSubmit",
+    callbackExpression: attributes.get("onsubmit"),
+    sourceFile: relativeToWorkspace(filePath),
+    componentLine: source.getLineAndCharacterOfPosition(component.getStart(source)).line + 1,
+    formLine: source.getLineAndCharacterOfPosition(form.getStart(source)).line + 1,
+  };
+}
+
 function collectInteractions(filePath, imperativeBindings = []) {
   const { source, sourceText } = sourceFileFor(filePath);
   const interactions = [];
+  const declarationFor = lexicalDeclarationResolver(source);
 
   function visit(node) {
     const parts = getJsxParts(node);
     if (parts) {
       const attributes = attributeMap(parts.attributes, source);
-      const kind = interactionKind(parts.tagName, attributes);
+      const componentOwnershipEvidence = formCallbackOwnership(node, attributes, source, filePath, declarationFor);
+      const kind = componentOwnershipEvidence ? "component-container" : interactionKind(parts.tagName, attributes);
 
       if (kind) {
         const start = source.getLineAndCharacterOfPosition(node.getStart(source));
@@ -668,7 +923,7 @@ function collectInteractions(filePath, imperativeBindings = []) {
         );
         const sourceSlice = sourceText.slice(node.getStart(source), node.getEnd());
         const isSubmitButton =
-          parts.tagName.toLowerCase() === "button" &&
+          parts.tagName === "button" &&
           attributes.get("type") !== "button" &&
           hasSubmitAncestor(node, source);
         const behaviorEvidence =
@@ -683,7 +938,7 @@ function collectInteractions(filePath, imperativeBindings = []) {
           (parts.tagName.toLowerCase() === "input" &&
             attributes.has("value"));
         const accessibleNameEvidence =
-          kind === "form-submit"
+          kind === "form-submit" || kind === "component-container"
             ? "not-applicable-container"
             : attributes.get("aria-hidden") === "true"
               ? "intentionally-hidden-pointer-target"
@@ -720,6 +975,7 @@ function collectInteractions(filePath, imperativeBindings = []) {
                   (binding) => `addEventListener:${binding.event}`,
                 ) ?? []),
           behaviorEvidence: behaviorEvidenceStatus,
+          componentOwnershipEvidence,
           imperativeBehaviorEvidence:
             imperativeBehavior?.map((binding) => ({
               selector: binding.selector,
@@ -756,6 +1012,10 @@ function collectInteractions(filePath, imperativeBindings = []) {
 
   visit(source);
   return interactions;
+}
+
+export function scanProductSurfaceFile(filePath) {
+  return collectInteractions(filePath, collectImperativeBindings([filePath]));
 }
 
 function inferPurpose(route) {

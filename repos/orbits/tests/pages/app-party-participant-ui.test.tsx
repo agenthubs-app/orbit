@@ -213,8 +213,12 @@ test("Party renders both operational times and locks event-persona editing at th
         node.type === "button" &&
         node.props["data-event-profile-action"] === "locked",
     );
-    assert.equal(lockedActions.length, 1);
-    assert.equal(lockedActions[0].props.disabled, true);
+    assert.equal(lockedActions.length, 0);
+    const lockedStatus = renderer.root.find((node) => node.type === "span" && node.props["data-event-profile-action"] === "locked");
+    assert.equal(lockedStatus.props.onClick, undefined);
+    assert.equal(lockedStatus.children.filter((child) => typeof child === "string").join(""), "本场活动画像仅可查看");
+    const description = renderer.root.findByProps({ id: lockedStatus.props["aria-describedby"] });
+    assert.equal(description.props.role, "status");
     assert.equal(
       renderer.root.findAll(
         (node) =>

@@ -358,10 +358,10 @@ function PartyEventWindows({ t, viewModel }: { t: Translate; viewModel: OrbitPar
           {t({ en: "Edit event persona", zh: "编辑本场活动画像" })}
         </a>
       ) : (
-        <button aria-describedby={profileStatusId} className="btn btn-ghost" data-event-profile-action="locked" disabled type="button">
+        <span aria-describedby={profileStatusId} className="chip" data-event-profile-action="locked">
           <Icon name="lock" size={16} />
           {t({ en: "Event persona is read only", zh: "本场活动画像仅可查看" })}
-        </button>
+        </span>
       )}
       <p id={profileStatusId} role="status" style={{ color: "var(--text-3)", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
         {viewModel.profileEditable
