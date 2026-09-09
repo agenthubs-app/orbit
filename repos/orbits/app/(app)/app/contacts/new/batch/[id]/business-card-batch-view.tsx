@@ -10,7 +10,7 @@ import { aggregateBusinessCardNotes } from "../../../../../../../features/acquis
 import { Icon } from "../../../../orbit-reference-primitives";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
 
-type Translate = (copy: { en: string; zh: string }) => string;
+type Translate = (copy: { en: string; zh: string; ja?: string }) => string;
 
 const WORKER_STALL_MS = 60_000;
 
@@ -61,6 +61,42 @@ export function initialFixedFields(
     role: extraction?.title ?? "",
   };
 }
+
+/** Shape shared by the V1 and V2 review forms — enough to judge "nothing was read". */
+export type BusinessCardReviewFixedFields = Pick<
+  BusinessCardBatchFixedFields,
+  "displayName" | "organization" | "role" | "email" | "phone"
+>;
+
+/**
+ * True when none of the prefilled fixed fields carries a value. Both review
+ * pages (V1 batch, V2 ingest) feed their own prefill through this so the
+ * "fill it in by hand" notice is decided by one rule.
+ */
+export function hasNoFixedFields(fields: BusinessCardReviewFixedFields): boolean {
+  return [fields.displayName, fields.organization, fields.role, fields.email, fields.phone]
+    .every((value) => !value.trim());
+}
+
+/**
+ * True when OCR returned `extracted` but none of the fixed fields carried a
+ * value, so the reviewer must fill the card in from the image.
+ */
+export function extractionHasNoFields(item: BusinessCardBatchItemDTO): boolean {
+  return hasNoFixedFields(initialFixedFields(item));
+}
+
+export const EMPTY_EXTRACTION_NOTICE_COPY = {
+  en: "Recognition did not read any fields. Fill them in by hand from the card image.",
+  ja: "認識ではフィールドを読み取れませんでした。カード画像を見ながら手入力してください。",
+  zh: "识别没有读到任何字段，请对照卡图手工填写。",
+} as const;
+
+export const NAME_REQUIRED_HINT_COPY = {
+  en: "A name is required before this card can be saved as a contact.",
+  ja: "連絡先として保存するには氏名が必要です。",
+  zh: "需要填写姓名，才能把这张名片保存为联系人。",
+} as const;
 
 function PrivacyNote({ t }: { t: Translate }) {
   return (
@@ -242,6 +278,10 @@ export function BusinessCardBatchViewPure({
   const remaining = items.filter(
     (item) => item.status === "extracted" || item.status === "failed",
   ).length;
+  const emptyExtraction =
+    currentItem.status === "extracted" && extractionHasNoFields(currentItem);
+  // Mirrors the server: the write service rejects a blank displayName.
+  const nameMissing = fields !== null && !fields.displayName.trim();
 
   return (
     <section className="bcb-shell" data-batch-state="review">
@@ -269,6 +309,11 @@ export function BusinessCardBatchViewPure({
             <div className="bcb-warn">
               {t({ en: "Recognition failed", zh: "识别失败" })}
               {currentItem.errorCode ? ` · ${currentItem.errorCode}` : ""}
+            </div>
+          ) : null}
+          {emptyExtraction ? (
+            <div className="bcb-warn" data-batch-notice="empty-extraction" role="status">
+              {t(EMPTY_EXTRACTION_NOTICE_COPY)}
             </div>
           ) : null}
           {fields && (currentItem.status === "extracted" || manualItemId === currentItem.id) ? (
@@ -303,6 +348,7 @@ export function BusinessCardBatchViewPure({
                       previous ? { ...previous, notes: event.target.value } : previous,
                     )
                   }
+                  className="bcb-notes"
                   rows={6}
                   value={fields.notes}
                 />
@@ -314,6 +360,11 @@ export function BusinessCardBatchViewPure({
                     zh: "该联系人似乎已存在于你的名片夹。",
                   })}
                 </div>
+              ) : null}
+              {nameMissing ? (
+                <p className="bcb-hint" data-batch-hint="name-required">
+                  {t(NAME_REQUIRED_HINT_COPY)}
+                </p>
               ) : null}
             </>
           ) : null}
@@ -331,7 +382,7 @@ export function BusinessCardBatchViewPure({
                   </button>
                   <button
                     className="btn btn-primary"
-                    disabled={busy}
+                    disabled={busy || nameMissing}
                     onClick={() => onConfirm(currentItem, fields, true)}
                     type="button"
                   >
@@ -350,7 +401,7 @@ export function BusinessCardBatchViewPure({
                   </button>
                   <button
                     className="btn btn-primary"
-                    disabled={busy}
+                    disabled={busy || nameMissing}
                     onClick={() => onConfirm(currentItem, fields, false)}
                     type="button"
                   >
@@ -588,5 +639,13 @@ const BATCH_STYLE = `
 .bcb-field { display: flex; flex-direction: column; gap: 4px; }
 .bcb-field > span { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .bcb-field input, .bcb-field textarea { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--ink); font: inherit; font-size: 14px; padding: 9px 11px; resize: vertical; }
+.bcb-field textarea { line-height: 1.5; }
+.bcb-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
 .bcb-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+/* Narrow screens: keep the action row reachable above the software keyboard
+   and shorten the notes box so the fields stay in view (3 rows = 4.5em + padding). */
+@media (max-width: 760px) {
+  .bcb-field textarea.bcb-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
+  .bcb-actions { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; flex-wrap: wrap; margin: 4px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); position: sticky; z-index: 2; }
+}
 `;

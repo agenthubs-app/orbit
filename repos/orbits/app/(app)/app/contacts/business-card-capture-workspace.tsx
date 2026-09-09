@@ -380,7 +380,7 @@ export function BusinessCardCaptureWorkspace({
                 })}
               </summary>
               <code>ORBIT_MODULE_MODE=live</code>
-              <code>GEMINI_API_KEY or GOOGLE_API_KEY</code>
+              <code>DEEPSEEK_API_KEY, GEMINI_API_KEY or GOOGLE_API_KEY</code>
               <code>ORBIT_EVENT_DATABASE_URL or ORBIT_LIVE_DATABASE_URL</code>
             </details>
             <a className="btn btn-ghost" href="/app/contacts">

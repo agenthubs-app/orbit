@@ -123,8 +123,8 @@ Calendar action service 只根据已有 artifact 生成本地预览。只有卡�
 Live conversation 使用 server-side model provider API。必需环境变量：
 
 - `ORBIT_AGENT_CONVERSATION_MODE=live`
-- `ORBIT_AGENT_PROVIDER=gemini | deepseek | openai`
 - 对应 provider 的 server-side key：`GEMINI_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`
+- `ORBIT_AGENT_PROVIDER=gemini | deepseek | openai`（可选；未设置时按 gemini → deepseek → openai 顺序自动选第一个配置了 key 的 provider，显式设置则即使缺 key 也以设置为准并报 `MODEL_API_KEY_MISSING`）
 
 可选环境变量：
 

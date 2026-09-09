@@ -216,3 +216,72 @@ test("cancelled view distinguishes pending deletion from completed cleanup and o
   assert.ok(deleted.includes("卡图已删除"));
   assert.ok(!deleted.includes("正在后台删除卡图"));
 });
+
+const EMPTY_EXTRACTION = {
+  addresses: [],
+  certifications: [],
+  contactPoints: [],
+  departments: [],
+  detectedLanguages: [],
+  emails: [],
+  fullName: null,
+  nativeFullName: null,
+  organization: null,
+  romanizedFullName: null,
+  title: null,
+  website: null,
+} as const;
+
+test("an extracted card with no fields shows a hand-fill notice and blocks confirm until a name is typed", async () => {
+  const html = render({
+    batch: batch({ processedItems: 1, status: "ready_for_review", totalItems: 1 }),
+    items: [item({ extraction: EMPTY_EXTRACTION, status: "extracted" })],
+  });
+  assert.ok(html.includes("识别没有读到任何字段，请对照卡图手工填写。"));
+  assert.ok(html.includes('data-batch-hint="name-required"'));
+
+  let submitted: BusinessCardBatchFixedFields | null = null;
+  let renderer: ReturnType<typeof create> | undefined;
+  await act(async () => {
+    renderer = create(<BusinessCardBatchViewPure
+      batch={batch({ processedItems: 1, status: "ready_for_review", totalItems: 1 })}
+      busy={false}
+      duplicateItemId={null}
+      items={[item({ extraction: EMPTY_EXTRACTION, status: "extracted" })]}
+      nowMs={Date.parse(NOW)}
+      onCancel={noop}
+      onConfirm={(_item, fields) => { submitted = fields; }}
+      onFinish={noop}
+      onRetry={noop}
+      onSkip={noop}
+    />);
+  });
+  const button = (label: string) => renderer!.root.findAllByType("button").find((entry) => entry.props.children === label)!;
+  assert.equal(button("确认并下一张").props.disabled, true);
+  assert.equal(button("跳过").props.disabled, false);
+  assert.equal(renderer!.root.findAllByProps({ "data-batch-hint": "name-required" }).length > 0, true);
+
+  const name = renderer!.root.findAllByType("input")[0]!;
+  await act(async () => name.props.onChange({ target: { value: "   " } }));
+  assert.equal(button("确认并下一张").props.disabled, true);
+  await act(async () => name.props.onChange({ target: { value: "手填姓名" } }));
+  assert.equal(button("确认并下一张").props.disabled, false);
+  assert.equal(renderer!.root.findAllByProps({ "data-batch-hint": "name-required" }).length, 0);
+  // The empty-OCR notice stays as context while the reviewer fills the card in.
+  assert.equal(renderer!.root.findAllByProps({ "data-batch-notice": "empty-extraction" }).length > 0, true);
+
+  await act(async () => button("确认并下一张").props.onClick());
+  assert.equal(submitted!.displayName, "手填姓名");
+  await act(async () => renderer!.unmount());
+});
+
+test("a recognized card with a name shows neither the empty notice nor the name hint", () => {
+  const html = render({
+    batch: batch({ processedItems: 1, status: "ready_for_review", totalItems: 1 }),
+    items: [item({ extraction: { ...EMPTY_EXTRACTION, fullName: "青空 太郎", nativeFullName: "青空 太郎" }, status: "extracted" })],
+  });
+  assert.ok(!html.includes("识别没有读到任何字段"));
+  assert.ok(!html.includes('data-batch-hint="name-required"'));
+  assert.ok(html.includes('type="button">确认并下一张</button>'));
+  assert.ok(!html.includes('disabled="" type="button">确认并下一张'));
+});

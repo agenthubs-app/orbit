@@ -8,6 +8,11 @@ import type {
 } from "../../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import {
+  EMPTY_EXTRACTION_NOTICE_COPY,
+  NAME_REQUIRED_HINT_COPY,
+  hasNoFixedFields,
+} from "../../batch/[id]/business-card-batch-view";
 import { contentUploadErrorCopy } from "../ingest-v2-upload-feedback";
 import {
   INGEST_V2_API_BASE,
@@ -71,6 +76,14 @@ function initialFields(item: IngestItemDTO): FixedFields {
     relationshipContext: `批量导入 · ${item.sourceFileName}`,
     role: extraction?.title ?? "",
   };
+}
+
+/**
+ * V2 adapter for the shared "nothing was read" rule: judge the V2 prefill
+ * (CJK-first name, phone/mobile-only phone) rather than the V1 one.
+ */
+export function ingestExtractionHasNoFields(item: IngestItemDTO): boolean {
+  return hasNoFixedFields(initialFields(item));
 }
 
 const EMPTY_FIELDS: FixedFields = {
@@ -227,6 +240,7 @@ function FieldEditor({
       <label className="bci-field">
         <span>{t({ en: "Notes (nothing gets lost)", zh: "备注（其余信息都在这里）" })}</span>
         <textarea
+          className="bci-notes"
           onChange={(event) => onChange({ ...fields, notes: event.target.value })}
           rows={6}
           value={fields.notes}
@@ -715,7 +729,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
   }
 }
 
-function ReviewPane({
+export function ReviewPane({
   batchId,
   busy,
   duplicate,
@@ -756,6 +770,12 @@ function ReviewPane({
   }, [item, editedItemId]);
 
   const failed = item.status === "terminal_failed";
+  const editing = item.status === "extracted" || (failed && manual);
+  const emptyExtraction =
+    item.status === "extracted" && ingestExtractionHasNoFields(item);
+  // Mirrors the server: confirm/manual-entry forward displayName untouched and
+  // the contact write service rejects a blank one.
+  const nameMissing = !fields.displayName.trim();
 
   return (
     <>
@@ -786,10 +806,15 @@ function ReviewPane({
                 : ""}
             </div>
           ) : null}
+          {emptyExtraction ? (
+            <div className="bci-warn" data-batch-notice="empty-extraction" role="status">
+              {t(EMPTY_EXTRACTION_NOTICE_COPY)}
+            </div>
+          ) : null}
           {item.status === "extracted" ? (
             <ReviewIssueList issues={item.reviewIssues} t={t} />
           ) : null}
-          {item.status === "extracted" || (failed && manual) ? (
+          {editing ? (
             <FieldEditor fields={fields} onChange={setFields} t={t} />
           ) : null}
           {item.status === "extracted" && item.extraction ? (
@@ -803,6 +828,11 @@ function ReviewPane({
               })}
             </div>
           ) : null}
+          {editing && nameMissing ? (
+            <p className="bci-hint" data-batch-hint="name-required">
+              {t(NAME_REQUIRED_HINT_COPY)}
+            </p>
+          ) : null}
           <div className="bci-actions">
             <button className="btn btn-ghost" disabled={busy} onClick={onSkip} type="button">
               {duplicate
@@ -812,7 +842,7 @@ function ReviewPane({
             {item.status === "extracted" ? (
               <button
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || nameMissing}
                 onClick={() => onConfirm(fields, duplicate, false)}
                 type="button"
               >
@@ -827,7 +857,7 @@ function ReviewPane({
                 </button>
                 <button
                   className="btn btn-primary"
-                  disabled={busy || !fields.displayName.trim()}
+                  disabled={busy || nameMissing}
                   onClick={() => onConfirm(fields, duplicate, true)}
                   type="button"
                 >
@@ -891,4 +921,12 @@ const VIEW_STYLE = `
 .bci-field { display: flex; flex-direction: column; gap: 4px; }
 .bci-field > span { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .bci-field input, .bci-field textarea { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--ink); font: inherit; font-size: 14px; padding: 9px 11px; resize: vertical; }
+.bci-field textarea { line-height: 1.5; }
+.bci-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
+/* Narrow screens: keep the action row reachable above the software keyboard
+   and shorten the notes box so the fields stay in view (3 rows = 4.5em + padding). */
+@media (max-width: 760px) {
+  .bci-field textarea.bci-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
+  .bci-actions { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; margin: 4px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); position: sticky; z-index: 2; }
+}
 `;

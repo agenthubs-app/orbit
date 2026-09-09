@@ -183,3 +183,17 @@ Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KE
 - 联系人 API 只有 GET，无法绕过上传另建联系人，所以联系人详情与草稿步骤在 Preview 浏览器里本轮无法验证。
 - 登出后忘记密码：`POST /api/auth/password-reset/request` 202，页面显示中性的"申请已受理"文案（不泄露账号是否存在）；SMTP 仍 `535`，邮件不会真正送达。
 - Chrome 扩展未连接（`list_connected_browsers` 为空），本轮全部在桌面应用内置浏览器完成；视口偶发 0×0，重新导航即可恢复。
+
+### 2026-09-09：Preview 真实 OCR 浏览器旅程（DeepSeek 已配置）
+
+用户在 Vercel Preview 配置 `DEEPSEEK_API_KEY` 后，从干净 worktree 重新部署（`orbit-351wu6svc`，固定地址已切换），在内置浏览器用同一空账号走完 UI：
+
+- 导入中心不再显示门禁，出现"拍照扫描 / 上传图片 / 批量上传照片 / 上传 PDF"。
+- 页内 canvas 绘制的中英双语合成名片（1400×800 JPEG，75 KB）注入"批量上传照片"文件框 → 预约 201 → 令牌 200 → 私有直传 → 导入任务 202 → 进度页 `/app/contacts/new/import/{id}` 显示"准备名片导入 0/1" → 26 秒后"文件准备完成 1/1"，提供"查看识别批次"按钮（不自动跳转）。
+- DeepSeek 单张识别 3.3 秒（1109 入 / 275 出 token）：姓名"林 若曦"、罗马字"Ruoxi Lin"、职位、公司（中英合并为一个字段）、邮箱、电话、地址全部正确，`detectedLanguages: zh,en`。
+- 复核页显示卡图缩略与预填字段 → 确认 200 → 联系人 `contact:business-card:d3fad8c9a7564f6ff8fa1ed0` → 完成批次 200。
+- 联系人详情正确展示各字段与"名片扫描"标签；发现中文页面英文残留：头部"认识于 Business card confirmed by <账号邮箱>"、"下一步建议"正文"Review the live contact detail before taking action."、联系方式里"行业"值为字面量"relationship context"。
+- "起草邮件"→ 收件箱面板 "AI 起草邮件" → `POST /api/chat/assist/email-draft` 422 `MODEL_API_KEY_MISSING`：`resolveProvider` 在没有 `ORBIT_AGENT_PROVIDER` 时固定选 Gemini，不看已配置的 DeepSeek 密钥；面板把它显示成"出了点问题，请重试"。手填主题正文后"创建对话（确认）" 200，线程出现在对话历史。
+- Today 仍显示"当前没有待你处理的事"：Today 只读取 agent 账本 `awaiting_confirmation` 条目和待确认约见，用户自建的暂存草稿线程与新联系人不在其来源里（设计层面而非缺陷，见 `docs/superpowers/specs/2026-07-25-today-schedule-merge-design.md`）。
+
+同日修复（见提交记录）：注册后自动登录、导入中心 741 px 竖排标题、管理员提示补 `DEEPSEEK_API_KEY`、复核页全空识别提示与空姓名禁用确认、移动端操作栏吸底、Today 眉标改为与导航一致的"日程"、AI provider 按已配置密钥自动选择、AI 起草未配置的诚实提示、联系人详情英文残留。

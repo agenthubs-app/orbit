@@ -122,3 +122,18 @@ test("today is a member of the OrbitNavActive union", () => {
     `OrbitNavActive must include "today": ${declaration}`,
   );
 });
+
+// 页面眉标必须与导航入口名一致（设计 §7：入口名「日程」，路径保留 /app/today）。
+// 真实浏览器里曾出现导航写「日程」、页面眉标写「今天」的分裂。
+test("the /app/today page eyebrow uses the same 日程/Schedule wording as the nav entry", () => {
+  const todaySource = readFileSync(
+    join(projectRoot, "app/(app)/app/today/today-page-content.tsx"),
+    "utf8",
+  );
+  assert.match(
+    todaySource,
+    /export function todayEyebrowLabel\(language: OrbitLanguage\): string \{\s*return language === "zh" \? "日程" : "Schedule";/,
+  );
+  assert.match(todaySource, /className="eyebrow">\{todayEyebrowLabel\(language\)\}/);
+  assert.doesNotMatch(todaySource, /className="eyebrow">\{[^}]*"今天"/);
+});

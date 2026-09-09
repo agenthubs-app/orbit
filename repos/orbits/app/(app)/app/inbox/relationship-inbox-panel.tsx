@@ -226,6 +226,16 @@ export async function requestMessageDraft(input: {
   }
 }
 
+// 服务端 /api/chat/assist/email-draft 在模型 key 缺失时返回 422 + MODEL_API_KEY_MISSING；
+// 这是环境未配置而非临时故障，表单要区分展示，避免让用户徒劳重试。
+export const AI_DRAFT_UNCONFIGURED_ERROR_CODE = "MODEL_API_KEY_MISSING" as const;
+
+export type NewThreadFormError = "ai_unconfigured" | "generic" | null;
+
+export function newThreadFormErrorForDraftFailure(code: string | undefined): NewThreadFormError {
+  return code === AI_DRAFT_UNCONFIGURED_ERROR_CODE ? "ai_unconfigured" : "generic";
+}
+
 export async function generateMessageDraft(input: {
   contactId?: string;
   language: OrbitLanguage;
@@ -695,7 +705,7 @@ function NewThreadForm({
   initialSubject?: string;
   onCreated: (created: ReturnType<typeof toCreatedThread>) => void;
   onCancel: () => void;
-  t: (copy: { en: string; zh: string }) => string;
+  t: (copy: { en: string; zh: string; ja?: string }) => string;
 }) {
   const { language } = useOrbitLanguage();
   const [recipient, setRecipient] = useState(initialRecipient ?? "");
@@ -704,7 +714,9 @@ function NewThreadForm({
   const [body, setBody] = useState(initialBody ?? "");
   const requestIdRef = useRef<string | null>(null);
   const [busy, setBusy] = useState<"idle" | "generating" | "creating">("idle");
-  const [error, setError] = useState(false);
+  // "ai_unconfigured" = 服务端返回 MODEL_API_KEY_MISSING（当前环境没配模型 key），
+  // 这不是可重试的故障，提示用户手动填写；其余失败仍显示通用重试文案。
+  const [error, setError] = useState<NewThreadFormError>(null);
 
   if (!requestIdRef.current) {
     requestIdRef.current =
@@ -714,25 +726,25 @@ function NewThreadForm({
 
   const onGenerate = async () => {
     setBusy("generating");
-    setError(false);
-    const draft = await generateMessageDraft({
+    setError(null);
+    const result = await requestMessageDraft({
       contactId: initialContactId,
       language,
       recipientName: recipient,
       organization,
     });
-    if (draft) {
-      setSubject(draft.subject);
-      setBody(draft.body);
+    if (result.success === false) {
+      setError(newThreadFormErrorForDraftFailure(result.error.code));
     } else {
-      setError(true);
+      setSubject(result.data.subject);
+      setBody(result.data.body);
     }
     setBusy("idle");
   };
 
   const onCreate = async () => {
     setBusy("creating");
-    setError(false);
+    setError(null);
     const created = await createThreadFromDraft(
       {
         contactId: initialContactId,
@@ -747,7 +759,7 @@ function NewThreadForm({
     if (created) {
       onCreated(created);
     } else {
-      setError(true);
+      setError("generic");
       setBusy("idle");
     }
   };
@@ -786,7 +798,15 @@ function NewThreadForm({
         <span>{t({ en: "Creates a staged draft thread — nothing is sent, confirm before any real send.", zh: "创建的是本地暂存草稿线程 — 不发送任何消息，真实发送前需确认。" })}</span>
       </div>
 
-      {error ? (
+      {error === "ai_unconfigured" ? (
+        <div className="ri-new-error">
+          {t({
+            en: "AI drafting is not configured in this environment. Write the subject and body manually.",
+            zh: "AI 起草尚未在当前环境配置，请手动填写主题和正文。",
+            ja: "この環境では AI 下書きが設定されていません。件名と本文を手動で入力してください。",
+          })}
+        </div>
+      ) : error === "generic" ? (
         <div className="ri-new-error">{t({ en: "Something went wrong. Please try again.", zh: "出了点问题，请重试。" })}</div>
       ) : null}
 

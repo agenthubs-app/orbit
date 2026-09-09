@@ -47,6 +47,13 @@ function readRawParam(
   return undefined;
 }
 
+/** 页眉眉标与顶部导航 / 移动端页标题共用同一份文案。设计已拍板入口名「日程」
+ *  （docs/superpowers/specs/2026-07-25-today-schedule-merge-design.md §7），
+ *  /app/today 路径只保留决策收件箱语义。ja 与导航的 t() 一样回退英文。 */
+export function todayEyebrowLabel(language: OrbitLanguage): string {
+  return language === "zh" ? "日程" : "Schedule";
+}
+
 function greetingHeadline(merged: AppTodayMergedViewModel): string {
   if (merged.today.state === "failure" && merged.attention.total === 0) {
     return "今天的日程仍可查看。";
@@ -201,7 +208,7 @@ export default async function AppTodayPageContent({
             }}
           >
             <div>
-              <div className="eyebrow">{language === "zh" ? "今天" : language === "ja" ? "今日" : "Today"}</div>
+              <div className="eyebrow">{todayEyebrowLabel(language)}</div>
               <h1 style={{ fontSize: 28, lineHeight: 1.25, margin: "10px 0 8px" }}>
                 {greetingHeadline(merged)}
               </h1>

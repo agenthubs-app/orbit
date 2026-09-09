@@ -243,6 +243,7 @@ interface ResolvedOrbitAgentProvider {
   endpoint: string;
   model: string;
   provider: OrbitAgentModelProvider;
+  selection: OrbitAgentProviderSelection;
   source: OrbitAgentProviderSource;
 }
 
@@ -284,8 +285,14 @@ function requestErrorMessage(error: unknown, provider: OrbitAgentModelProvider) 
   return `${provider} request failed before a response was returned.`;
 }
 
-function normalizeProvider(value: unknown): OrbitAgentModelProvider {
+// 显式 provider 名归一化。空值返回 null（表示"未配置"，交给自动选择）；
+// 非空但无法识别的值沿用历史行为归到 gemini，让错误配置仍然在 gemini 路径上暴露。
+function normalizeProvider(value: unknown): OrbitAgentModelProvider | null {
   const provider = readString(value)?.toLowerCase();
+
+  if (!provider) {
+    return null;
+  }
 
   if (provider === "deepseek") {
     return "deepseek";
@@ -298,49 +305,132 @@ function normalizeProvider(value: unknown): OrbitAgentModelProvider {
   return "gemini";
 }
 
-// provider 选择顺序：
-// 1. 显式 config.provider；
+const PROVIDER_API_KEY_ENV_NAMES: Record<OrbitAgentModelProvider, string> = {
+  deepseek: "DEEPSEEK_API_KEY",
+  gemini: "GEMINI_API_KEY",
+  openai: "OPENAI_API_KEY",
+};
+
+// 只依赖字符串字典，避免 Next 的 ProcessEnv 增强类型（NODE_ENV 必填）拖累测试与局部 env。
+export type OrbitAgentProviderEnv = Readonly<Record<string, string | undefined>>;
+
+function readProviderApiKeyFromEnv(
+  provider: OrbitAgentModelProvider,
+  env: OrbitAgentProviderEnv,
+): string | null {
+  return readString(env[PROVIDER_API_KEY_ENV_NAMES[provider]]);
+}
+
+// explicit = config.provider 或 ORBIT_AGENT_PROVIDER 指定；
+// auto = 未指定，按 ORBIT_AGENT_MODEL_PROVIDERS 顺序选第一个配置了 key 的 provider；
+// fallback = 未指定且一个 key 都没有，沿用 gemini 并让调用方报 MODEL_API_KEY_MISSING。
+export type OrbitAgentProviderSelection = "explicit" | "auto" | "fallback";
+
+export interface OrbitAgentModelProviderSelectionResult {
+  provider: OrbitAgentModelProvider;
+  selection: OrbitAgentProviderSelection;
+}
+
+// provider 名选择的唯一入口（health 路由、缓存 fingerprint 等只需要 provider 名的地方也复用它），
+// 保证"自动选中的 provider"在所有报告点一致：
+// 1. 显式 configuredProvider（config.provider）；
 // 2. ORBIT_AGENT_PROVIDER；
-// 3. 默认 gemini。
+// 3. 未指定时，自动选择第一个配置了 API key 的 provider（gemini → deepseek → openai，
+//    gemini 在前以保持既有 Gemini 部署行为不变）；
+// 4. 一个 key 都没有时回落到 gemini，由调用方 fail closed。
+// 显式指定的 provider 即使缺 key 也保持胜出，这样错误配置仍会在原 provider 上暴露。
+export function resolveOrbitAgentModelProviderSelection(
+  input: {
+    configuredProvider?: unknown;
+    env?: OrbitAgentProviderEnv;
+  } = {},
+): OrbitAgentModelProviderSelectionResult {
+  const env = input.env ?? process.env;
+  const explicit = normalizeProvider(
+    input.configuredProvider ?? env.ORBIT_AGENT_PROVIDER,
+  );
+
+  if (explicit) {
+    return { provider: explicit, selection: "explicit" };
+  }
+
+  for (const provider of ORBIT_AGENT_MODEL_PROVIDERS) {
+    if (readProviderApiKeyFromEnv(provider, env)) {
+      return { provider, selection: "auto" };
+    }
+  }
+
+  return { provider: "gemini", selection: "fallback" };
+}
+
+// 供 MODEL_API_KEY_MISSING 使用：fallback 时把三种 key 都列出来，
+// 否则只报当前 provider 缺的那一个。
+function missingApiKeyMessage(provider: ResolvedOrbitAgentProvider): string {
+  if (provider.selection === "fallback") {
+    return (
+      "No model provider API key is configured. Set GEMINI_API_KEY, " +
+      "DEEPSEEK_API_KEY, or OPENAI_API_KEY (optionally with ORBIT_AGENT_PROVIDER)."
+    );
+  }
+
+  return `${provider.provider} API key is not configured.`;
+}
+
+// provider 选择顺序见 resolveOrbitAgentModelProviderSelection。
 // 各 provider 读取自己的 API key 和 model 环境变量。
+// 调用方直接传了 config.apiKey 却没传 provider 时，这个 key 历史上就是 gemini 的，
+// 此时不去看环境变量里有哪些 key（否则本机 DEEPSEEK_API_KEY 会把测试里的
+// gemini key 送到 DeepSeek），维持既有行为。
 function resolveProvider(
   config: GeminiOrbitAgentProviderConfig,
 ): ResolvedOrbitAgentProvider {
-  const provider = normalizeProvider(
-    config.provider ?? process.env.ORBIT_AGENT_PROVIDER,
-  );
+  const explicitApiKey = readString(config.apiKey);
+  const selected = resolveOrbitAgentModelProviderSelection({
+    configuredProvider: config.provider,
+    env: explicitApiKey
+      ? { ORBIT_AGENT_PROVIDER: process.env.ORBIT_AGENT_PROVIDER }
+      : process.env,
+  });
+  const provider = selected.provider;
+  const selection: OrbitAgentProviderSelection =
+    explicitApiKey && selected.selection === "fallback"
+      ? "explicit"
+      : selected.selection;
 
   if (provider === "deepseek") {
     return {
-      apiKey: readString(config.apiKey ?? process.env.DEEPSEEK_API_KEY),
+      apiKey: explicitApiKey ?? readString(process.env.DEEPSEEK_API_KEY),
       endpoint: config.endpoint ?? DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT,
       model:
         readString(config.model ?? process.env.ORBIT_DEEPSEEK_MODEL) ??
         DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
       provider,
+      selection,
       source: "provider:deepseek-chat-completions-api",
     };
   }
 
   if (provider === "openai") {
     return {
-      apiKey: readString(config.apiKey ?? process.env.OPENAI_API_KEY),
+      apiKey: explicitApiKey ?? readString(process.env.OPENAI_API_KEY),
       endpoint: config.endpoint ?? OPENAI_RESPONSES_ENDPOINT,
       model:
         readString(config.model ?? process.env.ORBIT_OPENAI_MODEL) ??
         DEFAULT_OPENAI_ORBIT_AGENT_MODEL,
       provider,
+      selection,
       source: "provider:openai-responses-api",
     };
   }
 
   return {
-    apiKey: readString(config.apiKey ?? process.env.GEMINI_API_KEY),
+    apiKey: explicitApiKey ?? readString(process.env.GEMINI_API_KEY),
     endpoint: config.endpoint ?? GEMINI_INTERACTIONS_ENDPOINT,
     model:
       readString(config.model ?? process.env.ORBIT_GEMINI_MODEL) ??
       DEFAULT_GEMINI_ORBIT_AGENT_MODEL,
     provider,
+    selection,
     source: "provider:gemini-interactions-api",
   };
 }
@@ -1156,7 +1246,7 @@ export async function runOrbitAgentModelText(input: {
     return {
       error: {
         code: "MODEL_API_KEY_MISSING",
-        message: `${provider.provider} API key is not configured.`,
+        message: missingApiKeyMessage(provider),
         provider: provider.provider,
         source: provider.source,
       },
@@ -1286,7 +1376,7 @@ export function createGeminiOrbitAgentPlanner(
         return {
           error: {
             code: "MODEL_API_KEY_MISSING",
-            message: `${provider.provider} API key is not configured.`,
+            message: missingApiKeyMessage(provider),
             provider: provider.provider,
             source: provider.source,
           },
@@ -1397,7 +1487,7 @@ export function createGeminiOrbitAgentPlanner(
         return {
           error: {
             code: "MODEL_API_KEY_MISSING",
-            message: `${provider.provider} API key is not configured.`,
+            message: missingApiKeyMessage(provider),
             provider: provider.provider,
             source: provider.source,
           },
