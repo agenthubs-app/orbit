@@ -50,7 +50,7 @@ const state = window.fixture = {
     if (kind === "wrong-event") { if (preview) data.version.eventId = "other"; else { data.head.eventId = "other"; if (data.draft) data.draft.eventId = "other"; if (data.published) data.published.eventId = "other"; } }
     const failure = ["first", "generic404", "access404", "forbidden", "unavailable", "conflict", "frozen"].includes(kind);
     const status = kind === "first" || kind.endsWith("404") ? 404 : kind === "forbidden" ? 403 : kind === "conflict" || kind === "frozen" ? 409 : kind === "unavailable" || kind === "http-error" ? 503 : 200;
-    const error = { code: status === 404 ? "NOT_FOUND" : status === 403 ? "FORBIDDEN" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: kind === "frozen" ? "已截止且没有已发布题集" : "测试请求未被接受", context: kind === "first" ? { service: "event-experience", eventExperienceCode: "EVENT_EXPERIENCE_NOT_FOUND" } : kind === "access404" ? { service: "event-capability-access", eventExperienceCode: "EVENT_EXPERIENCE_NOT_FOUND" } : {} };
+    const error = { code: status === 404 ? "NOT_FOUND" : status === 403 ? "FORBIDDEN" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: kind === "frozen" ? "The event experience needs a published question set before the profile-edit deadline." : "测试请求未被接受", context: patch.errorContext ?? (kind === "frozen" ? { service: "event-experience", eventExperienceCode: "EVENT_EXPERIENCE_FROZEN" } : kind === "first" ? { service: "event-experience", eventExperienceCode: "EVENT_EXPERIENCE_NOT_FOUND" } : kind === "access404" ? { service: "event-capability-access", eventExperienceCode: "EVENT_EXPERIENCE_NOT_FOUND" } : {}) };
     state.replies[index](new Response(JSON.stringify(failure ? { success: false, error } : { success: true, data }), { status, headers: { "content-type": "application/json" } }));
   },
   fill(label, value) { const field = document.querySelector('[aria-label="' + label + '"]'); if (!field) throw new Error("field missing: " + label); Object.getOwnPropertyDescriptor(field.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, "value").set.call(field, value); field.dispatchEvent(new Event("input", { bubbles: true })); },
@@ -248,6 +248,55 @@ test("deadline without published questions is blocked and server freeze 409 on f
   await press(p, "重新读取"); await reply(p, 1, "first"); await fill(p, "活动简介", "Retained");
   await press(p, "保存草稿"); await reply(p, 2, "frozen"); await p.getByRole("alert").waitFor();
   assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "Retained"); assert.equal(await count(p), 3);
+});
+
+test("F1 first-create frozen response explains the deadline prerequisite and preserves edits until confirmed reload", async t => {
+  const p = await open(t); await reply(p, 0, "first");
+  await fill(p, "活动简介", "Retain first draft"); await fill(p, "强调色", "#123456");
+  await press(p, "保存草稿");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests[1].body.expectedRevision), null);
+  await reply(p, 1, "frozen");
+  const message = await p.getByRole("alert").innerText();
+  assert.match(message, /截止/);
+  assert.match(message, /已发布.*题集/);
+  assert.match(message, /未发布.*无法保存/);
+  assert.match(message, /内容已保留/);
+  assert.doesNotMatch(message, /尚无已发布题集|当前状态已经变化/);
+  assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "Retain first draft");
+  assert.equal(await p.getByLabel("强调色", { exact: true }).inputValue(), "#123456");
+  assert.equal(await p.getByRole("button", { name: "发布题集", exact: true }).isDisabled(), true);
+  assert.equal(await count(p), 2, "frozen rejection must not automatically reload or publish");
+  await press(p, "重新读取"); assert.equal(await count(p), 2);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.alerts[0].buttons.map((b: any) => b.text)), ["取消", "丢弃修改并读取"]);
+  await p.evaluate(() => (window as any).fixture.alerts[0].buttons.find((b: any) => b.style === "cancel").onPress?.());
+  assert.equal(await count(p), 2);
+  assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "Retain first draft");
+  assert.equal(await p.getByLabel("强调色", { exact: true }).inputValue(), "#123456");
+  await press(p, "重新读取"); await confirm(p, 1, true); assert.equal(await count(p), 3);
+  await reply(p, 2, "first");
+  assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "");
+  assert.equal(await p.getByRole("button", { name: "发布题集", exact: true }).isDisabled(), true);
+});
+
+for (const errorContext of [
+  {},
+  { service: "event-experience" },
+  { eventExperienceCode: "EVENT_EXPERIENCE_FROZEN" },
+  { service: "event-capability-access", eventExperienceCode: "EVENT_EXPERIENCE_FROZEN" },
+  { service: "event-experience", eventExperienceCode: "EVENT_EXPERIENCE_CONFLICT" },
+]) test(`F1 ordinary 409 retains conflict recovery without matching domain context: ${JSON.stringify(errorContext)}`, async t => {
+  const p = await open(t); await reply(p, 0); await fill(p, "活动简介", "Keep conflict edit");
+  await press(p, "保存草稿"); await reply(p, 1, "frozen", { errorContext });
+  const message = await p.getByRole("alert").innerText();
+  assert.match(message, /当前状态已经变化/);
+  assert.match(message, /内容已保留，请确认后重新读取/);
+  assert.doesNotMatch(message, /截止|已发布.*题集/);
+  assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "Keep conflict edit");
+  assert.equal(await count(p), 2);
+  await press(p, "重新读取"); assert.equal(await count(p), 2);
+  await confirm(p, 0, true); assert.equal(await count(p), 3);
+  await reply(p, 2);
+  assert.equal(await p.getByLabel("活动简介", { exact: true }).inputValue(), "Accepted introduction");
 });
 
 test("question/option editing is bounded, blank option rows fail visibly and preview is invalidated", async t => {

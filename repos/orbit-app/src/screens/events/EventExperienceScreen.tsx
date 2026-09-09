@@ -89,6 +89,9 @@ export function EventExperienceScreen() {
   }
 
   function failureMessage(result: ApiResult<unknown>): string {
+    if (!result.success && result.status === 409 && result.error.context?.service === "event-experience" && result.error.context?.eventExperienceCode === "EVENT_EXPERIENCE_FROZEN") {
+      return "已到资料编辑截止时间，题集须与截止前已发布的题集一致；截止前未发布题集时无法保存。内容已保留，请确认后重新读取。";
+    }
     if (result.status === 409) return `${result.success ? "当前版本或截止状态已变化。" : result.error.message} 内容已保留，请确认后重新读取。`;
     return result.success ? "服务器返回的数据无法确认，请重试。" : result.error.message;
   }

@@ -107,9 +107,31 @@ const result = await client.put<EventExperienceSnapshotContract>(basePath, {
 - [x] Freeze question controls at the deadline while retaining legal introduction/accent edits. If the draft question set differs from published at freeze time, offer an explicit restore-published-questions action that keeps display edits; do not silently replace the draft. If no published version exists, explain the blocked deadline state. Tests must cover display-only save after freeze, forbidden question mutation, and stale frozen-state 409.
 - [x] Add a real operations navigation action to the new route and return link. Extend initial-route handling only for this route and add experience to the existing event path-param classification. Test encoded event IDs and removal of duplicate `id` query parameters in login return links. Do not broaden unrelated route permissions.
 - [x] Run new view-model/render/interaction tests, existing event operations/roles route/render tests, initial-route and mobile-route-access tests, contract/schema-sync tests, and App typecheck. Run the full App suite and record any still-missing batch routes rather than waiving parity. Update README with actual capabilities and verification boundaries.
-- [ ] Independent task and whole-feature review, change detection, controller commit. Follow with local HTTP/DB cross-client and simulator checks in the final runtime phase; no production publish is included here.
+- [x] Independent task and whole-feature review, change detection, controller commit. Follow with local HTTP/DB cross-client and simulator checks in the final runtime phase; no production publish is included here.
 
 ## Current Source Findings
+
+### Final Review Checkpoint
+
+Whole-feature review of6e81deb41..cfdd0da23 found oneImportantF1: first-creation
+deadline rejection lost its domain-specific explanation through client error
+localization. The single final fix wave adds a structured service/domain-code
+branch in the native screen and six real component regressions. It preserves
+edits and explicit reload, leaves ordinary conflicts unchanged and does not
+assert an unobserved publication state or alter backend policy. Scoped final
+re-review markedF1ADDRESSED with no new findings; no deferred or parked finding.
+
+BehavioralRED6tests5pass1expectedfailure became coveringGREEN89/89zeroSkip,
+workerAppTCexit0. Controller independently ran fullApp952tests951passoneexact
+three-batch-routeparityfailure, zeroSkip/cancel44.87seconds, and AppTCexit0.
+Logs: /tmp/orbit-completion-experience-final-fix-full-app-node22-20260910.log and
+/tmp/orbit-completion-experience-final-fix-typecheck-node22-20260910.log.
+GitNexus maps the two source/test files to five symbols and three expected
+Screen flows, MEDIUM; the production delta is only three error-branch lines.
+Diff checking passed. Local implementation/review is complete, not runtime
+acceptance. ActualHTTP/database/headercompatibility, native simulator behavior
+and cross-client readback remain required. ExistingWebruntimecoverage87/120
+and seven known runtime-audit failures receive no credit from this fix.
 
 ### Task 2 Checkpoint
 
