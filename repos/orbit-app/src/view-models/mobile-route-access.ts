@@ -74,6 +74,7 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
         segments[2] === "operations" &&
         (segments[3] === "admission" ||
           segments[3] === "check-in" ||
+          segments[3] === "experience" ||
           segments[3] === "roles")))
   ) {
     return ID_PATH_PARAM_KEYS;

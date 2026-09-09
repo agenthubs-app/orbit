@@ -216,6 +216,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "events/[id]/attendees.tsx",
     "events/[id]/operations/admission.tsx",
     "events/[id]/operations/check-in.tsx",
+    "events/[id]/operations/experience.tsx",
     "events/[id]/operations/roles.tsx",
     "events/[id]/operations.tsx",
     "events/[id]/analytics.tsx",
@@ -270,4 +271,9 @@ test("every root-level private entry uses the shared render gate", () => {
 
     assert.match(source, /withOrbitPrivateRoute/u, path);
   }
+});
+test("experience login return drops duplicate path ids and preserves other context", () => {
+  const path = "/events/event%3A%2F%20%E7%A9%BA/operations/experience";
+  assert.equal(isPrivateMobileRoute(path), true);
+  assert.equal(mobileLoginHref(path, { id: ["event:/ 空", "duplicate"], tab: "preview", "#": "questions" }), `/account/login?next=${encodeURIComponent(path + "?tab=preview#questions")}`);
 });

@@ -49,12 +49,13 @@ function GenerationRow({ busy, generation, onAction }: { busy: boolean; generati
   );
 }
 
-export function EventOperationsContent({ busy, notice, onGenerationAction, onOpenAnalytics, onOpenCheckIn, onOpenRoles, onStartGeneration, state, view }: {
+export function EventOperationsContent({ busy, notice, onGenerationAction, onOpenAnalytics, onOpenCheckIn, onOpenExperience, onOpenRoles, onStartGeneration, state, view }: {
   busy: string | null;
   notice?: string | null;
   onGenerationAction: (generation: EventOperationsGenerationView) => void;
   onOpenAnalytics: () => void;
   onOpenCheckIn: () => void;
+  onOpenExperience: () => void;
   onOpenRoles: () => void;
   onStartGeneration: () => void;
   state: EventOperationsContentState;
@@ -73,6 +74,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
         <Shortcut icon="checkmark-circle-outline" label="签到台" onPress={onOpenCheckIn} />
         <Shortcut icon="stats-chart-outline" label="活动分析" onPress={onOpenAnalytics} />
         <Shortcut icon="people-outline" label="角色" onPress={onOpenRoles} />
+        <Shortcut icon="options-outline" label="报名体验" onPress={onOpenExperience} />
       </View>
 
       <View style={styles.section}>

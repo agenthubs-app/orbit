@@ -4,6 +4,14 @@ import { describe, it } from "node:test";
 import { resolveInitialRouteHref } from "../src/view-models/initial-route";
 
 describe("resolveInitialRouteHref", () => {
+  it("opens only the experience operation route, including encoded event identifiers", () => {
+    assert.equal(resolveInitialRouteHref("/app/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions"), "/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions");
+    assert.equal(resolveInitialRouteHref("/events/e/operations/experience/extra"), "/ai");
+    assert.equal(resolveInitialRouteHref("/events/e/operations/unknown"), "/ai");
+    assert.equal(resolveInitialRouteHref("/events/%ZZ/operations/experience"), "/ai");
+    assert.equal(resolveInitialRouteHref("/events/event.demo!~/operations/experience"), "/events/event.demo!~/operations/experience");
+    assert.equal(resolveInitialRouteHref("/events/%2E%2E/operations/experience"), "/ai");
+  });
   it("supports the public reset entry and preserves its fragment", () => {
     assert.equal(resolveInitialRouteHref("account/reset-password"), "/account/reset-password");
     assert.ok(resolveInitialRouteHref("/app/account/reset-password#token=redacted") === "/account/reset-password#token=redacted");

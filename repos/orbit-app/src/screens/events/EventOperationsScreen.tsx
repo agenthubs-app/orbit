@@ -84,7 +84,7 @@ export function EventOperationsScreen() {
 
   return (
     <AppScreen eyebrow="活动运营" refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accent} />} title="运营控制台">
-      <EventOperationsContent busy={busy} notice={notice} onGenerationAction={confirmGenerationAction} onOpenAnalytics={() => router.push(`/events/${encodeURIComponent(eventId)}/analytics` as Href)} onOpenCheckIn={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/check-in` as Href)} onOpenRoles={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/roles` as Href)} onStartGeneration={confirmStart} state={contentState} view={view} />
+      <EventOperationsContent busy={busy} notice={notice} onGenerationAction={confirmGenerationAction} onOpenAnalytics={() => router.push(`/events/${encodeURIComponent(eventId)}/analytics` as Href)} onOpenCheckIn={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/check-in` as Href)} onOpenExperience={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/experience` as Href)} onOpenRoles={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/roles` as Href)} onStartGeneration={confirmStart} state={contentState} view={view} />
     </AppScreen>
   );
 }

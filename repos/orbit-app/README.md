@@ -249,6 +249,30 @@ on-site want-to-connect intent through `/api/events/:id/want-to-connect`, and
 can import the roster into review-only contact drafts through
 `/api/contact-drafts/event-attendees/import`.
 
+The event operations screen opens the native experience editor at
+`/events/:id/operations/experience`. It reads the event experience through the
+private route and HTTP API before enabling edits. Only the experience-specific
+authorized not-found response starts an unsaved default configuration; access
+errors and offline responses do not grant editing authority.
+
+Organizers can edit the introduction, accent color, standard required questions
+or up to four optional fixed-intent questions. Empty or duplicate option rows
+remain visible validation errors. Saving uses the accepted revision (null only
+for first creation); preview is ephemeral and has no registration submission.
+Publication requires a saved, unchanged draft and explicit version confirmation.
+Conflicts retain edits until a confirmed reload. At the question deadline,
+display edits remain available only with the published question set unchanged;
+a differing draft offers explicit restoration of published questions while
+keeping display edits. Covers and templates are not configurable.
+
+Changing account, server or event clears editor authority and invalidates pending
+responses and confirmations. Component tests execute the actual editor, React
+hooks, private wrapper, API client/parser and shared schemas against bounded
+native/provider/navigation/transport fixtures, with external requests blocked.
+They cover deferred/double actions, stale scope, deadline crossing and narrow/wide
+layouts. These checks do not establish actual HTTP/database interoperability,
+simulator behavior or real publication; those require separate runtime acceptance.
+
 Event detail screens link to the mobile party surface. It keeps `/app/party`,
 `/app/party/checkin`, and `/app/party/graph` available as native screens for
 simulator review while keeping real check-in writes behind a future staff

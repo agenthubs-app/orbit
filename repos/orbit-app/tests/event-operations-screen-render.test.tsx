@@ -10,6 +10,10 @@ import { eventOperationsToView } from "../src/view-models/event-operations";
 import { renderedText, renderToHtml } from "./helpers/render";
 
 const generationView = { ...eventOperationsToView(null), contractValid: true };
+test("operations exposes the experience editor shortcut", () => {
+  const text = renderedText(<EventOperationsContent busy={null} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenRoles={() => undefined} onOpenExperience={() => undefined} onStartGeneration={() => undefined} state={{ kind: "success" }} view={generationView} />);
+  assert.match(text, /报名体验/u);
+});
 const generationCases = [
   { busy: null, active: false, disabled: false },
   { busy: "start", active: false, disabled: true },
@@ -20,7 +24,7 @@ const generationCases = [
 
 for (const { busy, active, disabled } of generationCases) {
   test(`generation control renders its accessible name with busy=${JSON.stringify(busy)}, active=${active}`, () => {
-    const html = renderToHtml(<EventOperationsContent busy={busy} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={{ kind: "success" }} view={{ ...generationView, hasActiveGeneration: active }} />);
+    const html = renderToHtml(<EventOperationsContent busy={busy} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenExperience={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={{ kind: "success" }} view={{ ...generationView, hasActiveGeneration: active }} />);
     const button = html.match(/<[^>]+aria-label="开始生成匹配"[^>]*>/u)?.[0];
     assert.ok(button, "the rendered generation control must have an explicit accessible name");
     assert.match(button, /role="button"/u);
@@ -36,7 +40,7 @@ test("named generation control calls only its start callback and preserves both 
         const root = createRoot(document.getElementById("root"));
         window.calls = { start: 0, other: 0 };
         const other = () => window.calls.other++;
-        window.renderGeneration = ({ busy, active }) => root.render(<EventOperationsContent busy={busy} onGenerationAction={other} onOpenAnalytics={other} onOpenCheckIn={other} onOpenRoles={other} onStartGeneration={() => window.calls.start++} state={{ kind: "success" }} view={{ ...${JSON.stringify(generationView)}, hasActiveGeneration: active }} />);`,
+        window.renderGeneration = ({ busy, active }) => root.render(<EventOperationsContent busy={busy} onGenerationAction={other} onOpenAnalytics={other} onOpenCheckIn={other} onOpenExperience={other} onOpenRoles={other} onStartGeneration={() => window.calls.start++} state={{ kind: "success" }} view={{ ...${JSON.stringify(generationView)}, hasActiveGeneration: active }} />);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
@@ -81,7 +85,7 @@ test("event operations render the mobile operations hierarchy", () => {
     metrics: { acceptedContactRequests: 1, checkedIn: 3, contactRequests: 2, participantCount: 8, publishedGenerationId: null },
     publishedResult: null
   });
-  const text = renderedText(<EventOperationsContent busy={null} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={{ kind: "success" }} view={view} />);
+  const text = renderedText(<EventOperationsContent busy={null} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenExperience={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={{ kind: "success" }} view={view} />);
   assert.match(text, /运营概览/u);
   assert.match(text, /AI 匹配与发布/u);
   assert.match(text, /时间门禁/u);
@@ -96,7 +100,7 @@ for (const [state, expected] of [
   [{ kind: "failure", message: "当前账号没有权限" }, "当前账号没有权限"]
 ] as const) {
   test(`event operations render ${state.kind} state`, () => {
-    const text = renderedText(<EventOperationsContent busy={null} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={state as EventOperationsContentState} view={eventOperationsToView(null)} />);
+    const text = renderedText(<EventOperationsContent busy={null} onGenerationAction={() => undefined} onOpenAnalytics={() => undefined} onOpenCheckIn={() => undefined} onOpenExperience={() => undefined} onOpenRoles={() => undefined} onStartGeneration={() => undefined} state={state as EventOperationsContentState} view={eventOperationsToView(null)} />);
     assert.match(text, new RegExp(expected, "u"));
   });
 }

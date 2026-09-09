@@ -74,8 +74,8 @@ eventExperienceSnapshot: ContractMatches<EventExperienceSnapshot, EventExperienc
 
 **Interfaces:** Base path `/api/events/${encodeURIComponent(eventId)}/experience`; GET returns snapshot, PUT base or `/draft` accepts `{ configuration, expectedRevision }`, POST `/preview` accepts `{ configuration }` and returns `{ version }`, POST `/publish` accepts `{ expectedRevision }` and returns snapshot. Use the existing client methods with `{ body }`, not direct fetch or Web imports.
 
-- [ ] Run `npm run sync:contract`. Add red pure tests for initial configuration, draft-before-published precedence, question track switching, editable display fields, freeze semantics, and safe mutation paths. Standard track always uses the two required target/value questions in that order. Custom track allows zero to four unique fixed-intent optional questions. Options remain two to five unique nonempty strings; prompts maximum 240 characters and options 80. No new profile dimension can be entered.
-- [ ] Keep defaults and intent-to-field mapping aligned with the existing Web editor. The native view-model must use typed contract field access. Derive the payload from editor state without silently dropping invalid empty option rows; invalid input is a visible form error.
+- [x] Run `npm run sync:contract`. Add red pure tests for initial configuration, draft-before-published precedence, question track switching, editable display fields, freeze semantics, and safe mutation paths. Standard track always uses the two required target/value questions in that order. Custom track allows zero to four unique fixed-intent optional questions. Options remain two to five unique nonempty strings; prompts maximum 240 characters and options 80. No new profile dimension can be entered.
+- [x] Keep defaults and intent-to-field mapping aligned with the existing Web editor. The native view-model must use typed contract field access. Derive the payload from editor state without silently dropping invalid empty option rows; invalid input is a visible form error.
 
 ```ts
 export function initialEventExperienceConfiguration(): EventExperienceConfigurationContract;
@@ -83,8 +83,8 @@ export function eventExperienceConfigurationFromSnapshot(snapshot: EventExperien
 export function eventExperienceQuestionsForTrack(track: "v1" | "v2", questions: readonly EventExperienceQuestionContract[]): readonly EventExperienceQuestionContract[];
 ```
 
-- [ ] Add runtime RED tests executing real screen/content/view-model code with local API fixtures: GET success/404-first-creation/403/unavailable; PUT exact null/current revision; save failure preserves edits; wrong-event/malformed payload rejected; preview sends current configuration but does not save/publish; editing invalidates preview; explicit publish cancel sends nothing and confirm sends once; no draft/unsaved edits cannot publish; stale response after account/server/event change cannot update current state. Add deferred/double-press cases, not source-text substitutes.
-- [ ] Analyze impact for edited existing navigation/screens/tests. Implement the private route with the existing wrapper:
+- [x] Add runtime RED tests executing real screen/content/view-model code with local API fixtures: GET success/404-first-creation/403/unavailable; PUT exact null/current revision; save failure preserves edits; wrong-event/malformed payload rejected; preview sends current configuration but does not save/publish; editing invalidates preview; explicit publish cancel sends nothing and confirm sends once; no draft/unsaved edits cannot publish; stale response after account/server/event change cannot update current state. Add deferred/double-press cases, not source-text substitutes.
+- [x] Analyze impact for edited existing navigation/screens/tests. Implement the private route with the existing wrapper:
 
 ```tsx
 import { withOrbitPrivateRoute } from "../../../../src/components/OrbitRouteAccessBoundary";
@@ -92,9 +92,9 @@ import { EventExperienceScreen } from "../../../../src/screens/events/EventExper
 export default withOrbitPrivateRoute(EventExperienceScreen);
 ```
 
-- [ ] Implement event/client/account-scoped loading and form state. GET 404 creates an unsaved default editor; other failures must not grant editing access. Reset all data and mutations on scope change. Validate HTTP success payloads with the shared schemas plus exact requested eventId before accepting them. Require an online successful initial read or authorized NOT_FOUND response before any mutation; cached/offline content is not mutation authority.
-- [ ] Implement Content using AppScreen/themed components, compact unframed sections, and individual repeated question items. Include introduction, accent swatches with optional hex input/default reset, standard/custom segmented choice, bounded question and option editors, save/preview/publish controls, version/deadline metadata, retry/back navigation, and visible dirty/busy/error/notice states. Use existing Ionicons for add/remove/back/preview tools and accessibility labels. User-facing labels describe questions and status, not v1/v2, actor IDs, provider, hash, or database internals.
-- [ ] Save the exact local configuration and expected revision. On success accept server normalization and clear dirty state; on failure preserve edits. A 409 displays conflict and offers explicit reload of the authoritative snapshot. Reload warns before discarding unsaved edits; never silently overwrite them.
+- [x] Implement event/client/account-scoped loading and form state. GET 404 creates an unsaved default editor; other failures must not grant editing access. Reset all data and mutations on scope change. Validate HTTP success payloads with the shared schemas plus exact requested eventId before accepting them. Require an online successful initial read or authorized NOT_FOUND response before any mutation; cached/offline content is not mutation authority.
+- [x] Implement Content using AppScreen/themed components, compact unframed sections, and individual repeated question items. Include introduction, accent swatches with optional hex input/default reset, standard/custom segmented choice, bounded question and option editors, save/preview/publish controls, version/deadline metadata, retry/back navigation, and visible dirty/busy/error/notice states. Use existing Ionicons for add/remove/back/preview tools and accessibility labels. User-facing labels describe questions and status, not v1/v2, actor IDs, provider, hash, or database internals.
+- [x] Save the exact local configuration and expected revision. On success accept server normalization and clear dirty state; on failure preserve edits. A 409 displays conflict and offers explicit reload of the authoritative snapshot. Reload warns before discarding unsaved edits; never silently overwrite them.
 
 ```ts
 const result = await client.put<EventExperienceSnapshotContract>(basePath, {
@@ -102,14 +102,32 @@ const result = await client.put<EventExperienceSnapshotContract>(basePath, {
 });
 ```
 
-- [ ] Preview the current local configuration through the preview endpoint and render its introduction, accent, questions, and options without any registration submit action. Do not write the preview to snapshots or confuse it with published state. Invalidate preview whenever any configuration input changes.
-- [ ] Publish only a saved draft with no unsaved edits, after an Alert confirmation describing the persisted draft version. Send current accepted head.revision, never a fabricated next version. Keep publication capability errors and conflicts visible; do not treat them as successful saves.
-- [ ] Freeze question controls at the deadline while retaining legal introduction/accent edits. If the draft question set differs from published at freeze time, offer an explicit restore-published-questions action that keeps display edits; do not silently replace the draft. If no published version exists, explain the blocked deadline state. Tests must cover display-only save after freeze, forbidden question mutation, and stale frozen-state 409.
-- [ ] Add a real operations navigation action to the new route and return link. Extend initial-route handling only for this route and add experience to the existing event path-param classification. Test encoded event IDs and removal of duplicate `id` query parameters in login return links. Do not broaden unrelated route permissions.
-- [ ] Run new view-model/render/interaction tests, existing event operations/roles route/render tests, initial-route and mobile-route-access tests, contract/schema-sync tests, and App typecheck. Run the full App suite and record any still-missing batch routes rather than waiving parity. Update README with actual capabilities and verification boundaries.
+- [x] Preview the current local configuration through the preview endpoint and render its introduction, accent, questions, and options without any registration submit action. Do not write the preview to snapshots or confuse it with published state. Invalidate preview whenever any configuration input changes.
+- [x] Publish only a saved draft with no unsaved edits, after an Alert confirmation describing the persisted draft version. Send current accepted head.revision, never a fabricated next version. Keep publication capability errors and conflicts visible; do not treat them as successful saves.
+- [x] Freeze question controls at the deadline while retaining legal introduction/accent edits. If the draft question set differs from published at freeze time, offer an explicit restore-published-questions action that keeps display edits; do not silently replace the draft. If no published version exists, explain the blocked deadline state. Tests must cover display-only save after freeze, forbidden question mutation, and stale frozen-state 409.
+- [x] Add a real operations navigation action to the new route and return link. Extend initial-route handling only for this route and add experience to the existing event path-param classification. Test encoded event IDs and removal of duplicate `id` query parameters in login return links. Do not broaden unrelated route permissions.
+- [x] Run new view-model/render/interaction tests, existing event operations/roles route/render tests, initial-route and mobile-route-access tests, contract/schema-sync tests, and App typecheck. Run the full App suite and record any still-missing batch routes rather than waiving parity. Update README with actual capabilities and verification boundaries.
 - [ ] Independent task and whole-feature review, change detection, controller commit. Follow with local HTTP/DB cross-client and simulator checks in the final runtime phase; no production publish is included here.
 
 ## Current Source Findings
+
+### Task 2 Checkpoint
+
+Native editor, private route, operations entry and generated copies passed task
+review after one bounded fix round. Android Alert truncated the fixed-intent
+menu; it now uses a cross-platform inline option list with explicit cancellation.
+The reviewer marked I1 addressed, no new findings. Genuine native-limitRED1/10
+became10/10; allcoveringexperiencefiles83/83zeroSkip, AppTCexit0. Controller
+independently reproduced83/83 in37.89seconds. Log:
+/tmp/orbit-completion-experience-task2-fix1-independent-node22-20260910.log.
+
+Controller post-fix fullApp946tests945passoneknownthree-batch-routeparityfailure,
+zeroSkip/cancel42.25seconds. Log:
+/tmp/orbit-completion-experience-task2-fix1-full-app-node22-20260910.log.
+Pre-fix fullaffectedWebaudits170tests163pass7knownruntimefailzeroSkip established
+87/120coverage and33missing surfaces; the menu fix does not add runtime credit.
+ActualHTTP/database/headercompatibility, simulator behavior and wholefeature
+review remain pending. No real publish or provider execution was performed.
 
 ### Task 1 Checkpoint
 

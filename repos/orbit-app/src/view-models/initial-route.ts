@@ -162,6 +162,17 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
+  const experienceMatch = /^events\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)\/operations\/experience$/u.exec(routeKey);
+  if (experienceMatch) {
+    try {
+      const eventId = decodeURIComponent(experienceMatch[1]!);
+      if (eventId === "." || eventId === ".." || !eventId.trim()) return null;
+      return `/events/${encodeURIComponent(eventId)}/operations/experience` as InitialRoutePath;
+    } catch {
+      return null;
+    }
+  }
+
   const aiMatch = /^ai\/([A-Za-z0-9_-]+)$/u.exec(routeKey);
   if (aiMatch) {
     return `/ai/${aiMatch[1]}` as InitialRoutePath;
