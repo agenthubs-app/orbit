@@ -230,9 +230,21 @@ async function resolveContact(input: {
     : { success: false, code: "CONTACT_NOT_FOUND" };
 }
 
+// 邮件草稿是延迟敏感的单轮生成：DeepSeek 默认开启的 thinking 会把一次请求
+// 拖到 20 秒以上（Preview 实测超时），与名片 OCR 一样关掉推理、放宽超时。
+// 调用方显式传入的 modelConfig 仍然优先。
+export const AI_EMAIL_DRAFT_MODEL_DEFAULTS = {
+  deepseekThinking: false,
+  requestTimeoutMs: 45_000,
+} as const satisfies GeminiOrbitAgentProviderConfig;
+
 export function createAiEmailDraftService(
   options: AiEmailDraftServiceOptions = {},
 ) {
+  const modelConfig: GeminiOrbitAgentProviderConfig = {
+    ...AI_EMAIL_DRAFT_MODEL_DEFAULTS,
+    ...options.modelConfig,
+  };
   const contactsService =
     options.contactsService ?? createContactsListSearchAndFilterService("live");
   const contactDetailService =
@@ -306,7 +318,7 @@ export function createAiEmailDraftService(
         'Return strict JSON only with exactly two string fields: {"subject":"...","body":"..."}.',
       ].join(" ");
       let modelResult = await runOrbitAgentModelText({
-        config: options.modelConfig,
+        config: modelConfig,
         systemInstruction,
         userText: sourceBackedModelInput,
       });
@@ -326,7 +338,7 @@ export function createAiEmailDraftService(
 
       if (draft && unsupportedClaims.length > 0) {
         modelResult = await runOrbitAgentModelText({
-          config: options.modelConfig,
+          config: modelConfig,
           systemInstruction: `${systemInstruction} A previous attempt was rejected by the safety validator. Regenerate from the supplied record without any rejected claim category.`,
           userText: JSON.stringify(
             {

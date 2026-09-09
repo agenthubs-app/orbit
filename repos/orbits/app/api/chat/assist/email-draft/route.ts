@@ -4,6 +4,8 @@ import { resolveAuthenticatedApiActor } from "../../../_shared/authenticated-act
 import { createAiEmailDraftService } from "../../../../../features/chat/ai-email-draft-service";
 
 export const dynamic = "force-dynamic";
+// 草稿生成允许 45 秒的模型超时，函数本身要活得比它久。
+export const maxDuration = 60;
 
 function readString(value: unknown): string | null {
   return typeof value === "string" ? value.trim() || null : null;

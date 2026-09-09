@@ -68,6 +68,8 @@ export function metLabel(contact: Pick<OrbitContactView, "met" | "source">, t: T
 // 服务层没有真实值时曾用这些英文句子顶位；它们是「没有」而不是内容，界面上按空处理。
 const PLACEHOLDER_COPY = [
   /^relationship context$/i,
+  /^unknown location$/i,
+  /^relationship contact$/i,
   /^business card confirmed by\b/i,
   /^review the live contact detail before taking action\.?$/i,
   /^live relationship context is available for this contact\.?$/i,
@@ -127,7 +129,7 @@ function ContactCard({ contact, t }: { contact: OrbitContactView; t: Translate }
       {contact.phone ? <Frow icon="phone" k={t({ en: "Phone", zh: "电话" })}><span className="mono">{contact.phone}</span></Frow> : null}
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
       {sourcedValue(contact.industry) ? <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>{sourcedValue(contact.industry)}</Frow> : null}
-      {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
+      {sourcedValue(contact.location) ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{sourcedValue(contact.location)}</Frow> : null}
       <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{metLabel(contact, t)}</Frow>
       {sourcedValue(contact.lastInteraction) ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>{sourcedValue(contact.lastInteraction)}</Frow> : null}
     </div>
