@@ -4,7 +4,7 @@
 
 | 项目 | 完成所需证据 | 当前状态 |
 | --- | --- | --- |
-| 账号恢复 | 申请、邮件接收、过期/重放拒绝、改密后旧密码及旧会话失效、新密码登录 | 本机真实账户恢复链路通过；云端申请与首次队列重试有证据，SMTP 535/EAUTH，实际收件未完成 |
+| 账号恢复 | 申请、邮件接收、过期/重放拒绝、改密后旧密码及旧会话失效、新密码登录 | 已完成：Preview 换用 Gmail 应用专用密码后真实收件通过，本机与云端链路均有证据（见「2026-09-09：密码找回真实收件打通」） |
 | 建议到行动 | 真实来源推荐、草稿保存/复制及回读；日历授权、确认写入、回执及失败恢复 | 对话到 Today 复核入口、回执及撤销已有受控验证；真实模型与日历授权写入闭环未完成 |
 | 首次价值 | 空账户注册、真实名片导入/纠错、推荐、草稿、再次登录继续 | 空账户注册登录与空状态入口已有本机浏览器证据；真实导入到再次登录继续的完整链路未完成 |
 | 状态一致 | 首页/详情报名状态一致；Today 决策总数与可操作项目一致 | 报名窗口、已报名/取消状态及 Today 边界已修复并有相关检查；云端全流程复核未完成 |
@@ -369,3 +369,19 @@ V1 页面此前只有取消处理 HTTP 错误，确认/跳过/重试/完成可�
 ### 2026-09-08：独立后台调度已落地
 
 维护扫描、`CRON_SECRET` 内部入口、每日 Cron、队列心跳链与本机调度脚本已实现并部署到 Preview，云端已观察到心跳启动与首个周期执行；细节与证据见 `background-scheduler.md`。空账号线上全旅程与本机真实浏览器旅程的结果记录在 `business-card-direct-upload.md` 的同日章节。
+
+### 2026-09-09：密码找回真实收件打通
+
+Preview 的 `SMTP_HOST/PORT/SECURE/USER/PASS` 已换成 Gmail **应用专用密码**（不是账号登录密码），写入 `liqys-projects-33c8ddec/orbit` 项目的 Preview 环境变量并标记 sensitive，写入后任何人都读不出值。真实收件与重置链路验收通过，`cherlytae@gmail.com` 为验收账号。
+
+发信失败诊断：`repos/orbits/features/auth/password-reset-smtp.ts` 在 catch 里打一条 `password_reset_smtp_send_failed` 日志，只含 `smtpCode`/`smtpResponseCode`（如 `EAUTH`/`535`），不含邮箱、重置链接或凭证（提交 `a9b08091`，含一条断言不泄漏的测试）。查法：
+
+```
+vercel logs -d orbit-preview-li-qy.vercel.app --no-follow -j -n 300
+```
+
+过滤 `password_reset_smtp_send_failed`：**有**这条说明发信仍失败，拿 `smtpCode`/`smtpResponseCode` 去定位；**没有**这条且 `/api/queues/password-reset` 返回 200，说明认证与投递都成功（该日志只在失败时打）。本次在部署 `orbit-6pexzp320` 上对隔离 QA 账号发起一次申请，队列消费 200 且无失败事件，与交接结论一致。
+
+以后发不出邮件的排查顺序：1) 应用密码过期或被 Google 收回，去 `myaccount.google.com/apppasswords` 重新生成并更新 `SMTP_PASS`；2) 若是 Workspace 账号且进不去应用密码入口，是管理员在 `admin.google.com` 关了权限，需管理员放开；3) 改完按上面的日志过滤复验。
+
+注意：`/tmp/orbit-check-deployed-smtp.cjs` 读的是 **party-app 项目**的生产环境变量做握手测试，不是 Orbit Preview 的值。party-app 那组凭证仍是 535/EAUTH，用它判断 Orbit Preview 的 SMTP 状态会得到错误结论——本轮就因此误判过一次。要验 Orbit Preview，请用上面的日志法。
