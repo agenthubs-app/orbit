@@ -42,6 +42,14 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
   const previousApiKey = process.env.GEMINI_API_KEY;
   const previousNodeEnv = Object.getOwnPropertyDescriptor(process.env, "NODE_ENV");
   const previousFetch = globalThis.fetch;
+  const databaseEnvKeys = [
+    "ORBIT_EVENT_DATABASE_URL",
+    "ORBIT_LIVE_DATABASE_URL",
+    "ORBIT_DATABASE_URL",
+  ] as const;
+  const previousDatabaseEnv = new Map(
+    databaseEnvKeys.map((key) => [key, process.env[key]]),
+  );
   const plannerOutput = JSON.stringify({
     assistantMessage: "我会先找适合的活动，并准备一个可复核的推荐视图。",
     intent: "event_recommendations",
@@ -58,6 +66,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
   const providerResponses = [plannerOutput, synthesisOutput];
 
   try {
+    for (const key of databaseEnvKeys) delete process.env[key];
     process.env.GEMINI_API_KEY = "test-gemini-key";
     Object.defineProperty(process.env, "NODE_ENV", {
       configurable: true,
@@ -349,6 +358,11 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     assert.equal(body.data?.plannerOnly.toolTrace.domainToolCallsWouldExecute, true);
     assert.equal(providerResponses.length, 0);
   } finally {
+    for (const [key, value] of previousDatabaseEnv) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
     if (previousApiKey === undefined) {
       delete process.env.GEMINI_API_KEY;
     } else {

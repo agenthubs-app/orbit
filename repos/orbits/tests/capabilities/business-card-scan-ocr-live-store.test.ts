@@ -17,6 +17,11 @@ const NOW = "2026-07-02T16:10:00.000Z";
 const LIVE_DRAFT_ID = "business-card-review:live:contact_012";
 const TEST_IMAGE_BASE64 = "aW1hZ2U=";
 
+function restoreEnvironmentVariable(key: string, value: string | undefined) {
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+}
+
 async function createSeedStore() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
@@ -402,11 +407,17 @@ test("business card scan OCR factory exposes live mode without breaking default 
     assert.equal(live.success, false);
     assert.equal(live.error.code, "BUSINESS_CARD_SCAN_OCR_LIVE_STORE_UNCONFIGURED");
   } finally {
-    process.env.ORBIT_MODULE_MODE = previousModuleMode;
-    process.env.ORBIT_FEATURE_MODE = previousFeatureMode;
-    process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
-    process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
-    process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+    restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
+    restoreEnvironmentVariable("ORBIT_FEATURE_MODE", previousFeatureMode);
+    restoreEnvironmentVariable(
+      "ORBIT_EVENT_DATABASE_URL",
+      previousEventDatabaseUrl,
+    );
+    restoreEnvironmentVariable(
+      "ORBIT_LIVE_DATABASE_URL",
+      previousLiveDatabaseUrl,
+    );
+    restoreEnvironmentVariable("ORBIT_DATABASE_URL", previousDatabaseUrl);
   }
 });
 
@@ -442,11 +453,17 @@ test("business card scan API resolves ORBIT_MODULE_MODE=live", async () => {
     );
     assert.equal(body.error.context.service, "business-card-scan-ocr-live");
   } finally {
-    process.env.ORBIT_MODULE_MODE = previousModuleMode;
-    process.env.ORBIT_FEATURE_MODE = previousFeatureMode;
-    process.env.ORBIT_EVENT_DATABASE_URL = previousEventDatabaseUrl;
-    process.env.ORBIT_LIVE_DATABASE_URL = previousLiveDatabaseUrl;
-    process.env.ORBIT_DATABASE_URL = previousDatabaseUrl;
+    restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
+    restoreEnvironmentVariable("ORBIT_FEATURE_MODE", previousFeatureMode);
+    restoreEnvironmentVariable(
+      "ORBIT_EVENT_DATABASE_URL",
+      previousEventDatabaseUrl,
+    );
+    restoreEnvironmentVariable(
+      "ORBIT_LIVE_DATABASE_URL",
+      previousLiveDatabaseUrl,
+    );
+    restoreEnvironmentVariable("ORBIT_DATABASE_URL", previousDatabaseUrl);
   }
 });
 
@@ -482,9 +499,9 @@ test("business card scan API accepts JSON image uploads and reaches the cloud OC
       "BUSINESS_CARD_OCR_UNCONFIGURED",
     );
   } finally {
-    process.env.ORBIT_MODULE_MODE = previousModuleMode;
-    process.env.GEMINI_API_KEY = previousGeminiApiKey;
-    process.env.GOOGLE_API_KEY = previousGoogleApiKey;
+    restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
+    restoreEnvironmentVariable("GEMINI_API_KEY", previousGeminiApiKey);
+    restoreEnvironmentVariable("GOOGLE_API_KEY", previousGoogleApiKey);
   }
 });
 
@@ -520,9 +537,9 @@ test("business card scan API accepts multipart image uploads and reaches the clo
       "BUSINESS_CARD_OCR_UNCONFIGURED",
     );
   } finally {
-    process.env.ORBIT_MODULE_MODE = previousModuleMode;
-    process.env.GEMINI_API_KEY = previousGeminiApiKey;
-    process.env.GOOGLE_API_KEY = previousGoogleApiKey;
+    restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
+    restoreEnvironmentVariable("GEMINI_API_KEY", previousGeminiApiKey);
+    restoreEnvironmentVariable("GOOGLE_API_KEY", previousGoogleApiKey);
   }
 });
 

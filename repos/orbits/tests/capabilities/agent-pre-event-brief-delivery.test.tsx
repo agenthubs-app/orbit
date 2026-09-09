@@ -341,6 +341,14 @@ test("scheduler route collects server-owned candidates for its authenticated act
       assert.equal(resolvedActorId, actorId);
       return fixedCollector([routeCandidate]);
     },
+    deliveryForActor(resolvedActorId) {
+      assert.equal(resolvedActorId, actorId);
+      return createStorageNotificationDeliveryService({
+        actorId: resolvedActorId,
+        store: createMemoryLiveRecordStore(),
+        workspaceId: "test:scheduler-delivery",
+      });
+    },
     preferences: async () => ({
       preEventBriefPushEnabled: true,
       quietHours: { start: "22:00", end: "08:00" },

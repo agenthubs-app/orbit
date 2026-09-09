@@ -20,9 +20,11 @@ import type {
   ExternalCalendarEventSummary,
   ExternalRelationshipSignal,
 } from "../../features/integrations/contract";
+import { createStorageNotificationDeliveryService } from "../../features/notifications/delivery-service";
 import type { RelationshipNaturalSearchResultItem } from "../../features/search/contract";
 import { createPreEventBriefCandidateCollector } from "../../features/orbit-ai/workflows/pre-event-brief-candidate-source";
 import { createPreEventBriefWorkflow } from "../../features/orbit-ai/workflows/pre-event-brief-v1";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const NOW = "2026-07-26T00:00:00.000Z";
 const STARTS_AT = "2026-07-26T12:00:00.000Z";
@@ -455,6 +457,14 @@ test("scheduler API binds collector and runtime to the same authenticated actor"
       bound.push(`collector:${actorId}`);
       return { collect: async () => [] };
     },
+    deliveryForActor(actorId) {
+      bound.push(`delivery:${actorId}`);
+      return createStorageNotificationDeliveryService({
+        actorId,
+        store: createMemoryLiveRecordStore(),
+        workspaceId: "test:scheduler-delivery",
+      });
+    },
     preferences: async () => ({
       preEventBriefPushEnabled: true,
       quietHours: { start: "22:00", end: "08:00" },
@@ -474,8 +484,10 @@ test("scheduler API binds collector and runtime to the same authenticated actor"
   }
   assert.deepEqual(bound, [
     "collector:user:alice",
+    "delivery:user:alice",
     "runtime:user:alice",
     "collector:user:bob",
+    "delivery:user:bob",
     "runtime:user:bob",
   ]);
   resetOrbitAgentRuntimeServicesForTests();

@@ -337,7 +337,7 @@ test("party URL query mode cannot activate mock fixtures", async () => {
 });
 
 test("party keeps a sourced event pending until event operations are configured", async () => {
-  await withMockParty(async () => {
+  await withUnconfiguredLiveParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
       "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
@@ -349,7 +349,6 @@ test("party keeps a sourced event pending until event operations are configured"
       },
       eventId: "event_001",
       language: "zh",
-      mode: "mock",
     });
 
     assert.equal(routeModel.state, "route-state");

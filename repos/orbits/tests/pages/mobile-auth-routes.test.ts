@@ -19,12 +19,18 @@ const previousEnv = {
   AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
   AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
   AUTH_SECRET: process.env.AUTH_SECRET,
+  ORBIT_DATABASE_URL: process.env.ORBIT_DATABASE_URL,
+  ORBIT_EVENT_DATABASE_URL: process.env.ORBIT_EVENT_DATABASE_URL,
+  ORBIT_LIVE_DATABASE_URL: process.env.ORBIT_LIVE_DATABASE_URL,
   ORBIT_MODULE_MODE: process.env.ORBIT_MODULE_MODE,
 };
 
 process.env.AUTH_GOOGLE_ID = "test-google-client";
 process.env.AUTH_GOOGLE_SECRET = "test-google-secret";
 process.env.AUTH_SECRET = secret;
+delete process.env.ORBIT_DATABASE_URL;
+delete process.env.ORBIT_EVENT_DATABASE_URL;
+delete process.env.ORBIT_LIVE_DATABASE_URL;
 process.env.ORBIT_MODULE_MODE = "mock";
 
 after(() => {
