@@ -108,7 +108,7 @@ assert.equal(JSON.stringify(plan).includes("PRIVATE GOAL"), false);
 - [x] Run the existing preflight on the projected clone. Merge deterministic migration-specific issues with that report; `applyEligible` means no issues, not that human review exists. Changes contain only permitted metadata patches and before/after hashes. Blocked plans retain proposed changes for review but cannot be executed.
 - [x] `applyLifecycleMigrationChanges` checks unique exact targets, before hashes and after hashes, clones rows, permits only owner/version/stage/dueAt patches, and never mutates caller-owned arrays or payloads. It is not an approval boundary; the transaction task re-plans and verifies external review before calling it.
 - [x] Cover canonical precedence, newer/older detail state, contact fallback, ambiguous/bad dates, null/foreign owners, unknown repair target, duplicate connections/tasks/physical keys, all four stages, missing goal/date, unknown purpose, archive/open conflicts, unrelated workspace/account preservation, JSON order, sensitive text and frozen inputs.
-- [ ] Run preflight + planner + Web typecheck; obtain independent review; run staged GitNexus detection; commit only Task 1 files plus this plan and its module handoff.
+- [x] Run preflight + planner + Web typecheck; obtain independent review; run staged GitNexus detection; commit only Task 1 files plus this plan and its module handoff. Completed as `2a63738b4`: 106 tests passed, none skipped; full Web typecheck passed. Independent review findings have regression coverage.
 
 ## Task 2: External Review Binding
 
@@ -135,7 +135,7 @@ function assertLifecycleMigrationReview(input: {
 }): void;
 ```
 
-- [ ] Write failing tests using a literal external-review fixture. Match actor/workspace/operator and all three hashes; reject missing approval, extra fields, malformed hashes, empty identities, future/invalid review timestamps, noneligible plans, and any identity/hash mismatch.
+- [x] Write failing tests using a literal external-review fixture. Match actor/workspace/operator and all three hashes; reject missing approval, extra fields, malformed hashes, empty identities, future/invalid review timestamps, noneligible plans, and any identity/hash mismatch.
 
 ```ts
 assert.throws(() => assertLifecycleMigrationReview({
@@ -144,8 +144,8 @@ assert.throws(() => assertLifecycleMigrationReview({
 }));
 ```
 
-- [ ] Implement strict parsing and immutable copies. Reuse lifecycle instant validation. Do not create a helper or CLI that automatically supplies `approved: true`, `reviewedBy` or `reviewedAt` for the operator.
-- [ ] Report generic typed errors without attaching raw review input. Document that an artifact binds the reviewed version but does not prove a human read it; the authorized operator is responsible for obtaining real approval.
+- [x] Implement strict parsing and immutable copies. Reuse lifecycle instant validation. Do not create a helper or CLI that automatically supplies `approved: true`, `reviewedBy` or `reviewedAt` for the operator.
+- [x] Report generic typed errors without attaching raw review input. Document that an artifact binds the reviewed version but does not prove a human read it; the authorized operator is responsible for obtaining real approval.
 - [ ] Run Task 1 + Task 2 tests and typecheck, review independently, detect staged scope and commit Task 2.
 
 ## Task 3: Transactional Migration Repository

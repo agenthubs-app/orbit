@@ -58,4 +58,8 @@ node --import tsx scripts/check-relationship-lifecycle.ts --input records.json -
 
 计划用 SHA-256 绑定 workspace 内四类来源记录的完整内容（包括已删除记录）、修复清单和计划结果；记录顺序和 JSON 属性顺序不改变哈希。输出只含修复元数据、记录标识和问题代码，不包含姓名、目标、任务标题或笔记。`applyLifecycleMigrationChanges` 是克隆快照的纯函数，严格验证前后哈希及允许字段，不是数据库执行或审批入口。
 
-当前验证范围为确定性计划、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏。独立审核绑定、真实隔离 PostgreSQL 事务执行和 canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
+计划器已覆盖确定性、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏，并通过独立审查。真实隔离 PostgreSQL 事务执行和 canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
+
+`parseLifecycleMigrationReview` 和 `assertLifecycleMigrationReview` 严格校验外部提供的审核回执：明确的 `approved: true`、actor/workspace、负责审核的 operator 身份，以及来源、manifest、计划三个哈希必须一致。审核时间规范化为 UTC，不能晚于执行时钟；被修改或仍有问题的计划不能执行。不额外猜测有效期，来源新鲜度必须由后续事务内重读和重新计划证明。
+
+回执格式只能绑定审核过的版本，不能证明某个人真的读过它。操作者必须取得真实审核并如实提供 `reviewedBy/reviewedAt`，工具不会生成批准、签名或替代人工确认；`reviewedBy` 必须等于本次明确提供的 operator。解析返回独立副本，错误不回显原始回执或私人内容。已测试缺少批准、未知字段、错身份、错哈希、未来/无效时间、计划篡改和非 JSON 输入。
