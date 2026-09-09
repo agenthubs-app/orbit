@@ -37,10 +37,54 @@ import type {
   SourceTypeMatchesContract,
 } from "../shared/domain/source-types";
 import type { AppErrorCodeMatchesContract } from "../shared/errors/app-error";
+import type {
+  BusinessCardBatchDTO,
+  BusinessCardBatchItemDTO,
+  BusinessCardBatchSourceFile,
+} from "../features/acquisition/business-card-batch-contract";
+import type {
+  IngestBatchDTO,
+  IngestBatchSummary,
+  IngestItemDTO,
+  IngestManifestEntry,
+} from "../features/acquisition/business-card-ingest-v2/contract";
+import type {
+  BusinessCardCloudOcrUsage,
+  BusinessCardContactPoint,
+  BusinessCardLabeledValue,
+  BusinessCardReviewIssue,
+  BusinessCardStructuredExtraction,
+} from "../features/acquisition/business-card-cloud-ocr";
+import type {
+  BusinessCardBatchContract,
+  BusinessCardBatchItemContract,
+  BusinessCardBatchSourceFileContract,
+  BusinessCardCloudOcrUsageContract,
+  BusinessCardContactPointContract,
+  BusinessCardLabeledValueContract,
+  BusinessCardReviewIssueContract,
+  BusinessCardStructuredExtractionContract,
+  IngestBatchContract,
+  IngestBatchSummaryContract,
+  IngestItemContract,
+  IngestManifestEntryContract,
+} from "../shared/contract/business-card-batch";
 
 // A mismatched ContractMatches alias evaluates to never; assigning true makes
 // the full-project typecheck reject drift instead of leaving that alias unused.
 export const crossClientContractCompatibility = {
+  businessCardBatch: true,
+  businessCardBatchItem: true,
+  businessCardBatchSourceFile: true,
+  businessCardCloudOcrUsage: true,
+  businessCardContactPoint: true,
+  businessCardLabeledValue: true,
+  businessCardReviewIssue: true,
+  businessCardStructuredExtraction: true,
+  ingestBatch: true,
+  ingestBatchSummary: true,
+  ingestItem: true,
+  ingestManifestEntry: true,
   connectionStage: true,
   contactSource: true,
   contactStatus: true,
@@ -62,6 +106,18 @@ export const crossClientContractCompatibility = {
   sourceReference: true,
   sourceType: true,
 } satisfies {
+  businessCardBatch: ContractMatches<BusinessCardBatchDTO, BusinessCardBatchContract>;
+  businessCardBatchItem: ContractMatches<BusinessCardBatchItemDTO, BusinessCardBatchItemContract>;
+  businessCardBatchSourceFile: ContractMatches<BusinessCardBatchSourceFile, BusinessCardBatchSourceFileContract>;
+  businessCardCloudOcrUsage: ContractMatches<BusinessCardCloudOcrUsage, BusinessCardCloudOcrUsageContract>;
+  businessCardContactPoint: ContractMatches<BusinessCardContactPoint, BusinessCardContactPointContract>;
+  businessCardLabeledValue: ContractMatches<BusinessCardLabeledValue, BusinessCardLabeledValueContract>;
+  businessCardReviewIssue: ContractMatches<BusinessCardReviewIssue, BusinessCardReviewIssueContract>;
+  businessCardStructuredExtraction: ContractMatches<BusinessCardStructuredExtraction, BusinessCardStructuredExtractionContract>;
+  ingestBatch: ContractMatches<IngestBatchDTO, IngestBatchContract>;
+  ingestBatchSummary: ContractMatches<IngestBatchSummary, IngestBatchSummaryContract>;
+  ingestItem: ContractMatches<IngestItemDTO, IngestItemContract>;
+  ingestManifestEntry: ContractMatches<IngestManifestEntry, IngestManifestEntryContract>;
   connectionStage: ConnectionStageMatchesContract;
   contactSource: ContactSourceFilterMatchesContract;
   contactStatus: ContactStatusFilterMatchesContract;

@@ -384,3 +384,31 @@ database prerequisite is absent; no new skip exemption was retained.
   covering commands/output are appended to the same Task 1 report. No App sync,
   business-rule edits, test weakening, staging or commits. Independent review
   and App/HTTP-runtime acceptance remain with the controller.
+
+### 2026-09-10 Native Batch Import Task 1: HTTP Response Contracts
+
+- Added import-free legacy/current batch, item, manifest, summary, extraction,
+  review-issue and usage DTOs with 12 consumed source compatibility assertions.
+  The public barrel appends explicit type exports only. Source DTOs and all
+  backend handlers, state machines, worker policies and actor resolution remain
+  unchanged; App contract/schema sync belongs to Task 2.
+- Shared Zod schemas preserve complete extraction text and contact channels.
+  Only legacy processing detail may omit extraction. Current create/upload/
+  finalize retain their distinct required flags; legacy confirmation and
+  retry/skip/finish remain acknowledgments, while current item actions carry an
+  item. Created confirmation validates the returned confirmed contact identity.
+- RED: 32 named missing-schema assertions, then 29/32 with three intended
+  identity/projection failures. Required barrel RED: 2/3, missing only the new
+  batch module. GREEN: four required suites 43/43, zero skips/cancels; both Web
+  typechecks and strict scoped contract/schema compilation pass.
+- Tests use unchanged handlers with local injected dependencies and the owned
+  scratch DB in isolated disposable schemas; no OCR/mail/model provider calls.
+  Existing route fixtures retain their hardcoded workspace:test; the new
+  fixture uses test:remote-sync-20260907. This is handler/schema evidence, not
+  native runtime, actual cross-client HTTP, simulator or provider verification.
+- Qualified upstream impact is LOW: barrel/object zero direct dependents;
+  compatibility file one test importer; zero indexed affected flows. Full
+  evidence, graph-resource metadata limitation, self-review and boundaries are
+  in the scoped task-1-report.md. Independent review, change detection and
+  commits remain controller-owned. Known Web runtime-audit and App route-parity
+  baselines are not cleared by this task.
