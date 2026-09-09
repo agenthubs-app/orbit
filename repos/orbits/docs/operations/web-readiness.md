@@ -385,3 +385,25 @@ vercel logs -d orbit-preview-li-qy.vercel.app --no-follow -j -n 300
 以后发不出邮件的排查顺序：1) 应用密码过期或被 Google 收回，去 `myaccount.google.com/apppasswords` 重新生成并更新 `SMTP_PASS`；2) 若是 Workspace 账号且进不去应用密码入口，是管理员在 `admin.google.com` 关了权限，需管理员放开；3) 改完按上面的日志过滤复验。
 
 注意：`/tmp/orbit-check-deployed-smtp.cjs` 读的是 **party-app 项目**的生产环境变量做握手测试，不是 Orbit Preview 的值。party-app 那组凭证仍是 535/EAUTH，用它判断 Orbit Preview 的 SMTP 状态会得到错误结论——本轮就因此误判过一次。要验 Orbit Preview，请用上面的日志法。
+
+### 2026-09-09：Preview 失败/并发/恢复验收
+
+在部署 `orbit-6pexzp320` 上用新建空账号（`resilience-*@example.invalid`）实测，全部为真实数据库与真实 DeepSeek OCR：
+
+| 场景 | 结果 |
+| --- | --- |
+| 同一名片项并发确认 ×3 | 三个请求都返回 200 且是**同一个** contactId，联系人表只有 1 条，批次 confirmedItems=1 |
+| 已确认项再 skip / retry | 均 409 CONFLICT |
+| 并发完成批次 ×3 | 均 200，批次进入 completed（幂等） |
+| 完成后再取消 | 409，已收录联系人保留 |
+| 跨账号读他人联系人 / 批次 | 均 404，数据隔离正确 |
+| 上传预约请求中途 abort | 无残留批次（前后都是 1 条），导入任务状态干净 |
+| 姓名清空 / 纯空格 | 「确认并下一张」禁用并显示「需要填写姓名，才能把这张名片保存为联系人。」——该修复线上生效 |
+| 375×812 复核页 | 布局正常，备注框高度已被压到约 83 px（3 行），无横向溢出 |
+
+发现并修复的问题：
+
+1. **窄屏操作栏吸底实际无效**。`.bcb-actions` 是 `.bcb-review-form` 的最后一个子元素，包含块正好在它自身底部结束，因此 `position: sticky; bottom: 0` 没有任何可移动空间——sticky 只能阻止元素被滚走，无法把它从自然位置上提。实测 812 高视口里滚到顶部时操作栏在 y=937（屏外），滚到底才出现在 541–606。另外页面真正的滚动祖先是一个 `overflow:auto` 的容器，sticky 按它解析。已改为真正钉住的方案并补测试。
+2. **线上 API 漏出内部脚手架措辞**。跨账号 404 返回 `That mock contact detail is not available in this sprint boundary.`，在真实数据的 live 请求里既不准确也不该出现 mock/sprint 字样。排查后 8 条同类文案中有 7 条确实线上可达，已全部改写为中性表述，`code` 与响应结构不变；未发现任何 UI 依赖这些文案文本。
+
+未能在 Preview 上验证的一项：上传中断后的「上传失败，请重试」界面。名片上传不走 `window.fetch`（Blob 客户端持有自己的 fetch 引用或用 XHR），页内补丁拦不到，因此无法在浏览器里模拟网络中断。该行为此前已在本机用 Playwright 网络层拦截验证通过（错误提示 + 重试上传按钮 + 重试成功），此处不重复计为线上证据。

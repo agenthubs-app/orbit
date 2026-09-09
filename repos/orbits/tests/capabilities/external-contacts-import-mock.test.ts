@@ -427,7 +427,7 @@ test("external contacts import API routes return stable envelopes with empty and
     error: {
       code: "VALIDATION_ERROR",
       message:
-        "That mock external contacts import source is not supported by this sprint boundary.",
+        "That external contacts import source is not supported.",
       context: {
         boundary: "developer-admin",
         externalContactsImportErrorCode:

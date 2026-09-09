@@ -418,7 +418,7 @@ test("connection evidence API routes return stable envelopes with empty pending 
     success: false,
     error: {
       code: "NOT_FOUND",
-      message: "That mock connection is not available in this sprint boundary.",
+      message: "That connection is not available.",
       context: {
         boundary: "developer-admin",
         connectionEvidenceErrorCode: "CONNECTION_NOT_FOUND",
@@ -462,7 +462,7 @@ test("connection evidence API routes return stable envelopes with empty pending 
     error: {
       code: "VALIDATION_ERROR",
       message:
-        "That mock evidence source link is not supported by this sprint boundary.",
+        "That evidence source link is not supported.",
       context: {
         boundary: "developer-admin",
         connectionEvidenceErrorCode:

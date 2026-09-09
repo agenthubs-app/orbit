@@ -89,8 +89,7 @@ export const REFERRAL_RECOMMENDATION_ERROR_DEFINITIONS = {
   REFERRAL_SOURCE_NOT_SUPPORTED: {
     code: "REFERRAL_SOURCE_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
-    message:
-      "That mock referral source is not supported by this sprint boundary.",
+    message: "That referral source is not supported.",
     recovery:
       "Use founder referral, investor intro, or community referral fixtures only.",
   },

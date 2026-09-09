@@ -9,6 +9,7 @@ import type {
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { Icon } from "../../../../orbit-reference-primitives";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import { ORBIT_Z } from "../../../../orbit-z";
 
 type Translate = (copy: { en: string; zh: string; ja?: string }) => string;
 
@@ -368,7 +369,7 @@ export function BusinessCardBatchViewPure({
               ) : null}
             </>
           ) : null}
-          <div className="bcb-actions">
+          <div className="bcb-actions bcb-actions-review">
             {currentItem.status === "extracted" && fields ? (
               duplicateItemId === currentItem.id ? (
                 <>
@@ -642,10 +643,29 @@ const BATCH_STYLE = `
 .bcb-field textarea { line-height: 1.5; }
 .bcb-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
 .bcb-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
-/* Narrow screens: keep the action row reachable above the software keyboard
-   and shorten the notes box so the fields stay in view (3 rows = 4.5em + padding). */
+/* Narrow screens: pin the per-card action row to the viewport, and shorten the
+   notes box so the fields stay in view (3 rows = 4.5em + padding).
+
+   Why fixed and not sticky: .bcb-actions-review is the LAST child of
+   .bcb-review-form, so its sticky containing block ends at its own bottom edge —
+   "position: sticky; bottom: 0" has zero travel there and can only stop an element
+   from scrolling away, never lift it up. Measured on a 375x812 viewport the row sat
+   at top=937 (off-screen) until the page was scrolled to the very bottom.
+
+   iOS Safari caveat: a fixed bar is anchored to the LAYOUT viewport, so while the
+   software keyboard is open the bar can end up behind the keyboard. Correcting for
+   that needs VisualViewport JS, which is deliberately left out here because it is
+   not testable in this environment. */
 @media (max-width: 760px) {
   .bcb-field textarea.bcb-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
-  .bcb-actions { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; flex-wrap: wrap; margin: 4px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); position: sticky; z-index: 2; }
+  /* Reserve the pinned bar's height at the END of the scrollable content, so the
+     last field, the cancel-remaining-import block and the privacy note can all be
+     scrolled clear of the bar. It has to sit on the shell, not inside the review
+     form: padding inside the form only moves the tail down together with the extra
+     scroll range, leaving the last elements just as trapped (measured).
+     118px = two 44px button rows (the row wraps at 375px with English labels)
+     + 10px row gap + 20px vertical padding; +12px breathing room. */
+  .bcb-shell:has(.bcb-actions-review) { --bcb-pinned-bar-h: 118px; padding-bottom: calc(var(--bcb-pinned-bar-h) + 12px); }
+  .bcb-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; flex-wrap: wrap; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
 }
 `;

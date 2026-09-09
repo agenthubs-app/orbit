@@ -8,6 +8,7 @@ import type {
 } from "../../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import { ORBIT_Z } from "../../../../orbit-z";
 import {
   EMPTY_EXTRACTION_NOTICE_COPY,
   NAME_REQUIRED_HINT_COPY,
@@ -833,7 +834,7 @@ export function ReviewPane({
               {t(NAME_REQUIRED_HINT_COPY)}
             </p>
           ) : null}
-          <div className="bci-actions">
+          <div className="bci-actions bci-actions-review">
             <button className="btn btn-ghost" disabled={busy} onClick={onSkip} type="button">
               {duplicate
                 ? t({ en: "Skip this card", zh: "跳过此卡" })
@@ -923,10 +924,31 @@ const VIEW_STYLE = `
 .bci-field input, .bci-field textarea { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--ink); font: inherit; font-size: 14px; padding: 9px 11px; resize: vertical; }
 .bci-field textarea { line-height: 1.5; }
 .bci-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
-/* Narrow screens: keep the action row reachable above the software keyboard
-   and shorten the notes box so the fields stay in view (3 rows = 4.5em + padding). */
+/* Narrow screens: pin the per-card action row to the viewport, and shorten the
+   notes box so the fields stay in view (3 rows = 4.5em + padding). Mirrors the V1
+   batch view rule; only the review row is pinned — the batch-level .bci-actions
+   (cancel batch / re-attach photos) stays in flow.
+
+   Why fixed and not sticky: .bci-actions-review is the LAST child of
+   .bci-review-form, so its sticky containing block ends at its own bottom edge —
+   "position: sticky; bottom: 0" has zero travel there and can only stop an element
+   from scrolling away, never lift it up. Measured on a 375x812 viewport the
+   equivalent V1 row sat at top=937 (off-screen) until the page was scrolled to the
+   very bottom.
+
+   iOS Safari caveat: a fixed bar is anchored to the LAYOUT viewport, so while the
+   software keyboard is open the bar can end up behind the keyboard. Correcting for
+   that needs VisualViewport JS, which is deliberately left out here because it is
+   not testable in this environment. */
 @media (max-width: 760px) {
   .bci-field textarea.bci-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
-  .bci-actions { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; margin: 4px -20px 0; padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); position: sticky; z-index: 2; }
+  /* Reserve the pinned bar's height at the END of the scrollable content, so the
+     last field and anything below the review pane can be scrolled clear of the bar.
+     It has to sit on the shell, not inside the review form: padding inside the form
+     only moves the tail down together with the extra scroll range, leaving the last
+     elements just as trapped (measured). 118px = two 44px button rows (the row wraps
+     at 375px with English labels) + 10px row gap + 20px padding; +12px breathing room. */
+  .bci-shell:has(.bci-actions-review) { --bci-pinned-bar-h: 118px; padding-bottom: calc(var(--bci-pinned-bar-h) + 12px); }
+  .bci-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
 }
 `;

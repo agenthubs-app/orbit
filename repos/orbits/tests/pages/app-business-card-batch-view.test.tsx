@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
@@ -284,4 +285,41 @@ test("a recognized card with a name shows neither the empty notice nor the name 
   assert.ok(!html.includes('data-batch-hint="name-required"'));
   assert.ok(html.includes('type="button">确认并下一张</button>'));
   assert.ok(!html.includes('disabled="" type="button">确认并下一张'));
+});
+
+// The review action row is the last child of .bcb-review-form, so `position: sticky;
+// bottom: 0` has zero travel there — measured at 375x812 the row sat at top=937, only
+// reachable after scrolling the whole page. It has to be a genuinely pinned bar, with
+// the same height reserved in the flow so nothing below it becomes unreachable.
+test("narrow screens pin the review action row and reserve its height in the flow", () => {
+  const source = readFileSync(
+    "app/(app)/app/contacts/new/batch/[id]/business-card-batch-view.tsx",
+    "utf8",
+  );
+  const narrow = [...source.matchAll(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/g)]
+    .map((match) => match[1]!)
+    .find((block) => block.includes(".bcb-actions-review"));
+  assert.ok(narrow, "the narrow-screen block must style .bcb-actions-review");
+
+  // Only the review row is pinned, and it is marked as such in the markup.
+  assert.ok(source.includes('className="bcb-actions bcb-actions-review"'));
+  assert.match(narrow, /\.bcb-actions-review \{[^}]*position: fixed/);
+  assert.match(narrow, /\.bcb-actions-review \{[^}]*bottom: 0/);
+  assert.match(narrow, /\.bcb-actions-review \{[^}]*left: 0/);
+  assert.match(narrow, /\.bcb-actions-review \{[^}]*right: 0/);
+  assert.ok(!/\.bcb-actions[^{]*\{[^}]*position: sticky/.test(narrow));
+  // Above page content, below dropdowns/overlays/modals/toasts.
+  assert.match(narrow, /\.bcb-actions-review \{[^}]*z-index: \$\{ORBIT_Z\.sticky\}/);
+  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/\.\.\/\.\.\/orbit-z"/);
+  // A fixed bar leaves the flow, so the reserve has to sit at the END of the
+  // scrollable content (the shell) — measured: padding inside .bcb-review-form moves
+  // the tail down with the extra scroll range and leaves it just as trapped.
+  assert.match(narrow, /\.bcb-shell:has\(\.bcb-actions-review\) \{[^}]*padding-bottom: calc\(var\(--bcb-pinned-bar-h\) \+ 12px\)/);
+  assert.ok(!/\.bcb-review-form \{[^}]*padding-bottom/.test(narrow));
+  assert.match(narrow, /--bcb-pinned-bar-h: 118px/);
+  assert.match(narrow, /env\(safe-area-inset-bottom/);
+  // The 3-row notes cap from the same narrow-screen pass stays.
+  assert.match(narrow, /textarea\.bcb-notes \{ height: calc\(4\.5em \+ 20px\)/);
+  // Desktop layout untouched: the base rule keeps the row in normal flow.
+  assert.ok(source.includes(".bcb-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }"));
 });

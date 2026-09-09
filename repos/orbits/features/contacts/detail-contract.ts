@@ -77,7 +77,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
   CONTACT_DETAIL_NOT_FOUND: {
     code: "CONTACT_DETAIL_NOT_FOUND",
     appCode: "NOT_FOUND",
-    message: "That mock contact detail is not available in this sprint boundary.",
+    message: "That contact detail is not available.",
     recovery:
       "Use demo-contact-1 or select an explicit empty-state scenario for the contact detail panel.",
   },
@@ -91,14 +91,14 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
   CONTACT_DETAIL_TAG_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
-    message: "That mock contact tag is not supported by this sprint boundary.",
+    message: "That contact tag is not supported.",
     recovery:
       "Use one of the local contact detail tag options declared in the detail contract.",
   },
   CONTACT_DETAIL_STATUS_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
-    message: "That mock contact status is not supported by this sprint boundary.",
+    message: "That contact status is not supported.",
     recovery:
       "Use active, needs_follow_up, nurture, or archived for the mock contact detail status.",
   },

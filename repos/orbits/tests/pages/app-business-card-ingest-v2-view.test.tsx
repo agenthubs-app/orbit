@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create } from "react-test-renderer";
@@ -184,4 +185,41 @@ test("a failed card outside manual mode shows no hint and no editor", () => {
   assert.ok(!html.includes('data-batch-hint="name-required"'));
   assert.ok(!html.includes('class="bci-notes"'));
   assert.ok(html.includes("重试识别"));
+});
+
+// Same defect and same fix as the V1 batch view: the review action row is the last
+// child of .bci-review-form, so `position: sticky; bottom: 0` has zero travel and can
+// never lift the row into a 812px-tall viewport. It must be a pinned bar, and only the
+// review row — the batch-level .bci-actions stays in flow.
+test("narrow screens pin the review action row and reserve its height in the flow", () => {
+  const source = readFileSync(
+    "app/(app)/app/contacts/new/batch2/[id]/business-card-ingest-v2-view.tsx",
+    "utf8",
+  );
+  const narrow = [...source.matchAll(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/g)]
+    .map((match) => match[1]!)
+    .find((block) => block.includes(".bci-actions-review"));
+  assert.ok(narrow, "the narrow-screen block must style .bci-actions-review");
+
+  assert.ok(source.includes('className="bci-actions bci-actions-review"'));
+  assert.match(narrow, /\.bci-actions-review \{[^}]*position: fixed/);
+  assert.match(narrow, /\.bci-actions-review \{[^}]*bottom: 0/);
+  assert.match(narrow, /\.bci-actions-review \{[^}]*left: 0/);
+  assert.match(narrow, /\.bci-actions-review \{[^}]*right: 0/);
+  assert.ok(!/\.bci-actions[^{]*\{[^}]*position: sticky/.test(narrow));
+  // Above page content, below dropdowns/overlays/modals/toasts.
+  assert.match(narrow, /\.bci-actions-review \{[^}]*z-index: \$\{ORBIT_Z\.sticky\}/);
+  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/\.\.\/\.\.\/orbit-z"/);
+  // The reserve sits at the END of the scrollable content (the shell), not inside the
+  // review form — padding inside the form moves the tail down with the extra scroll
+  // range and leaves the last elements just as trapped (measured at 375x812).
+  assert.match(narrow, /\.bci-shell:has\(\.bci-actions-review\) \{[^}]*padding-bottom: calc\(var\(--bci-pinned-bar-h\) \+ 12px\)/);
+  assert.ok(!/\.bci-review-form \{[^}]*padding-bottom/.test(narrow));
+  assert.match(narrow, /--bci-pinned-bar-h: 118px/);
+  assert.match(narrow, /env\(safe-area-inset-bottom/);
+  // The 3-row notes cap from the same narrow-screen pass stays.
+  assert.match(narrow, /textarea\.bci-notes \{ height: calc\(4\.5em \+ 20px\)/);
+  // The batch-level action row (cancel batch / re-attach) is never pinned.
+  assert.ok(source.includes(".bci-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 4px; }"));
+  assert.ok(!narrow.includes(".bci-actions {"));
 });
