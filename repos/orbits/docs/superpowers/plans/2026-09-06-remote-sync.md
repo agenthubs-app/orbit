@@ -314,3 +314,28 @@ database prerequisite is absent; no new skip exemption was retained.
   No subagents, staging, commits, reindexing, App/API edits or other-plan edits.
   The retained scoped re-review and independent full Web DB verification remain
   with the controller; this note does not clear those gates or runtime coverage.
+
+### 2026-09-10 Native Password Recovery Task 1: HTTP Compatibility
+
+- Added stable transport error codes and the import-free, data-only
+  `PasswordResetResponse` DTO. Success data uses `satisfies`; existing statuses,
+  Chinese copy, request order, origin guard, security headers, generic email
+  acceptance, password/token policy and server session revocation are unchanged.
+- Added 38 HTTP cases covering request/reset failures, validation precedence,
+  exact envelopes, no secret/error echo, 4096-character acceptance, same/no
+  Origin, optional delivery wake, and request-only wake behavior.
+- RED: 45 tests, 18 pass, 27 missing-code failures, zero skips. DTO typecheck
+  RED: one missing-module diagnostic. GREEN: 45/45, zero failures/skips,
+  including the complete lifecycle and queue suites on the owned local
+  `orbit_merge_verify_20260907_c45a` DB with isolated schemas and injected mail.
+  Both Web typechecks and diff whitespace checks pass under pinned Node 22.23.2.
+- Qualified upstream impact: handler LOW, four direct dependents (two POST
+  routes and both test files), zero indexed processes; test file LOW, zero
+  dependents/processes. Self-review found no scoped regression. Commands and
+  captured local log links are in the scoped Task 1 report.
+- App contract sync via `npm run sync:contract`, independent review, change
+  detection and integration remain controller/Task 2 work. No App/root source,
+  provider or parser changes; no real email, cross-client HTTP runtime,
+  simulator, universal-link association or remote-write evidence is claimed.
+  The supplied seven Web runtime-audit failures and five planned missing App
+  routes remain outside this task; the complete Web suite was not rerun here.

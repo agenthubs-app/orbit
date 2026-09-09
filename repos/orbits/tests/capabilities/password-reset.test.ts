@@ -15,6 +15,7 @@ import { createResendPasswordResetMailer, passwordResetConfig } from "../../feat
 import { handlePasswordResetRequest } from "../../features/auth/password-reset-http";
 import { isPasswordSessionCurrent } from "../../features/auth/session-revocation";
 import { createSmtpPasswordResetMailer, passwordResetSmtpConfig } from "../../features/auth/password-reset-smtp";
+import type { PasswordResetResponse } from "../../shared/contract/password-reset";
 
 const secret = "password-recovery-test-secret-with-32-bytes";
 
@@ -70,6 +71,97 @@ test("reset HTTP rejects unconfigured, malformed and cross-origin requests witho
   assert.equal(blocked.status, 403);
   assert.equal(blocked.headers.get("cache-control"), "no-store");
 });
+
+type HttpResetRuntime = NonNullable<ReturnType<NonNullable<Parameters<typeof handlePasswordResetRequest>[2]>>>;
+
+function httpResetRuntime(service: HttpResetRuntime["service"]): HttpResetRuntime {
+  return {
+    origin: "https://orbit.example.com", secret, apiKey: undefined, from: undefined, smtp: null,
+    store: createPasswordResetStore({ query: async () => { throw new Error("HTTP fixture must not access storage"); } }, "test:remote-sync-20260907"),
+    mailer: { send: async () => { throw new Error("HTTP fixture must not send mail"); } },
+    service,
+  };
+}
+
+for (const operation of ["request", "reset"] as const) {
+  const input = { email: "member@example.com", token: "synthetic-bearer-token", password: "synthetic-password" };
+  const unavailable = "密码恢复暂不可用，请稍后重试或联系管理员。";
+  const invalidBody = "请检查输入后重试。";
+  const invalidInput = "请检查邮箱；新密码至少 8 位，UTF-8 长度不超过 72 字节。";
+  const cases: {
+    name: string; body?: string; headers?: Record<string, string>; missingRuntime?: boolean;
+    failure?: "INVALID_INPUT" | "INVALID_TOKEN"; throws?: "resolve" | "service" | "wake";
+    status: number; code: string; message: string; events: string[];
+  }[] = [
+    { name: "unsupported content type precedes length and parsing", headers: { "content-type": "text/plain", "content-length": "4097" }, body: "{", status: 415, code: "UNSUPPORTED_MEDIA_TYPE", message: "请使用正确的表单重试。", events: [] },
+    { name: "declared oversize precedes parsing", headers: { "content-length": "4097" }, body: "{", status: 413, code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。", events: [] },
+    { name: "actual oversize precedes parsing", headers: { "content-length": "2" }, body: "x".repeat(4097), status: 413, code: "PAYLOAD_TOO_LARGE", message: "请求内容过长。", events: [] },
+    ...["null", "[]", "42", "true", '"text"', "{"].map((body) => ({ name: `invalid JSON body ${body}`, body, status: 400, code: "VALIDATION_ERROR", message: invalidBody, events: [] })),
+    { name: "missing runtime precedes origin guard", missingRuntime: true, headers: { origin: "https://attacker.example" }, status: 503, code: "SERVICE_UNAVAILABLE", message: unavailable, events: ["resolve"] },
+    { name: "disallowed origin precedes service", headers: { origin: "https://attacker.example" }, status: 403, code: "FORBIDDEN", message: "请在 Orbit 页面重新提交。", events: ["resolve"] },
+    { name: "thrown runtime resolution", throws: "resolve", status: 503, code: "SERVICE_UNAVAILABLE", message: "暂时无法处理，请稍后重试。", events: ["resolve"] },
+    { name: "thrown service error", throws: "service", status: 503, code: "SERVICE_UNAVAILABLE", message: "暂时无法处理，请稍后重试。", events: ["resolve", operation] },
+    { name: "invalid input service result", failure: "INVALID_INPUT", status: 400, code: "INVALID_INPUT", message: invalidInput, events: ["resolve", operation] },
+    ...(operation === "reset" ? [{ name: "invalid token service result", failure: "INVALID_TOKEN" as const, status: 400, code: "INVALID_TOKEN", message: "链接已失效或已使用，请重新申请。", events: ["resolve", operation] }] : [
+      { name: "thrown delivery wake", throws: "wake" as const, status: 503, code: "SERVICE_UNAVAILABLE", message: "暂时无法处理，请稍后重试。", events: ["resolve", operation, "wake"] },
+    ]),
+  ];
+
+  for (const scenario of cases) {
+    test(`reset HTTP ${operation}: ${scenario.name}`, async () => {
+      const events: string[] = [];
+      const privateError = new Error(`${input.email} ${input.token} ${input.password}`);
+      privateError.stack = "private-error-stack";
+      const runService = async () => {
+        if (scenario.throws === "service") throw privateError;
+        return scenario.failure ? { success: false as const, code: scenario.failure } : { success: true as const };
+      };
+      const runtime = httpResetRuntime({
+        request: async (email) => { events.push("request"); assert.equal(email, input.email); return runService(); },
+        reset: async (token, password) => { events.push("reset"); assert.equal(token, input.token); assert.equal(password, input.password); return runService(); },
+      });
+      const request = new Request(`https://orbit.example.com/api/auth/password-reset/${operation === "request" ? "request" : "confirm"}`, {
+        method: "POST", headers: { "content-type": "application/json", origin: runtime.origin, ...scenario.headers },
+        body: scenario.body ?? JSON.stringify(input),
+      });
+      const result = await handlePasswordResetRequest(request, operation, () => {
+        events.push("resolve");
+        if (scenario.throws === "resolve") throw privateError;
+        return scenario.missingRuntime ? null : runtime;
+      }, async () => { events.push("wake"); if (scenario.throws === "wake") throw privateError; });
+      assert.equal(result.status, scenario.status);
+      assert.equal(result.headers.get("cache-control"), "no-store");
+      assert.equal(result.headers.get("referrer-policy"), "no-referrer");
+      assert.deepEqual(events, scenario.events);
+      const text = await result.text();
+      for (const value of [...Object.values(input), privateError.message, privateError.stack]) assert.equal(text.includes(value), false, "response must not echo private input or errors");
+      assert.deepEqual(JSON.parse(text), { success: false, error: { code: scenario.code, message: scenario.message } });
+    });
+  }
+
+  for (const origin of ["https://orbit.example.com", undefined]) {
+    for (const withWake of [true, false]) {
+      test(`reset HTTP ${operation}: success with ${origin ? "same" : "no"} origin and ${withWake ? "a" : "no"} wake callback`, async () => {
+        const events: string[] = [];
+        const runtime = httpResetRuntime({
+          request: async (email) => { events.push("request"); assert.equal(email, input.email); return { success: true }; },
+          reset: async (token, password) => { events.push("reset"); assert.equal(token, input.token); assert.equal(password, input.password); return { success: true }; },
+        });
+        const request = new Request(`https://orbit.example.com/api/auth/password-reset/${operation === "request" ? "request" : "confirm"}`, {
+          method: "POST", headers: { "content-type": "application/json", "content-length": "4096", ...(origin ? { origin } : {}) },
+          body: JSON.stringify(input).padEnd(4096, " "),
+        });
+        const result = await handlePasswordResetRequest(request, operation, () => { events.push("resolve"); return runtime; }, withWake ? async () => { events.push("wake"); } : undefined);
+        assert.equal(result.status, operation === "request" ? 202 : 200);
+        assert.equal(result.headers.get("cache-control"), "no-store");
+        assert.equal(result.headers.get("referrer-policy"), "no-referrer");
+        assert.deepEqual(events, operation === "request" && withWake ? ["resolve", "request", "wake"] : ["resolve", operation]);
+        const expectedData: PasswordResetResponse = { message: operation === "request" ? "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接；未收到时请稍后重试。" : "密码已更新，请使用新密码登录。" };
+        assert.deepEqual(await result.json(), { success: true, data: expectedData });
+      });
+    }
+  }
+}
 
 loadLocalEnv();
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
