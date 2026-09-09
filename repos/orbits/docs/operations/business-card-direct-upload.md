@@ -171,3 +171,15 @@ Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KE
 5. 注册页是带遮罩的模态卡（移动端底部抽屉，衬线 19–20 px 标题），Today 是全宽页面（无衬线 28 px 标题、完整导航），两页视觉不一致；390 px 下均无横向溢出。
 
 截图与 `report.json` 在会话 scratchpad `browser-journey/`；日志 `/tmp/orbit-local-browser-journey.log`。Vercel 登录保护下的 Preview 浏览器旅程仍未完成：内置浏览器停在 vercel.com 登录页，Chrome 扩展未连接。
+
+### 2026-09-09：Preview 真实浏览器旅程（内置浏览器，已过 Vercel 登录保护）
+
+固定 Preview（`orbit-cbnyba82i`）现已能在内置浏览器直接打开 Orbit 登录页。用全新账号 `chrome-journey-*@example.invalid` 走 UI：
+
+- 注册 `POST /api/auth/register` 201 → **不自动登录**，跳回登录页并提示"账号已创建。请登录后先完成通用档案"，需再输一次密码；登录后进入 Today，且没有任何"通用档案"引导出现，提示与实际不符。
+- Today 桌面/移动（375×812）渲染正常，无控制台错误；导航仍把 Today 标为"日程"。
+- **导入中心在未配置 OCR 时整体禁用名片上传**：`resolveBusinessCardCaptureAvailability` 只要 `DEEPSEEK/GEMINI/GOOGLE_API_KEY` 都缺就返回 `ocr_provider_unconfigured`，UI 显示"名片识别尚未连接 / 在此状态下不会上传图片，也不会创建联系人"，来源卡片 `disabled`。因此 `5f46e260` 的"OCR 未配置 → 失败可复核 → 手工录入"路径在浏览器里不可达，只有直接调 API 才能走到；两者是产品层面的矛盾，需要决定是配置 provider 还是放开"无 OCR 仅手工录入"模式。管理员提示只列了 `GEMINI_API_KEY or GOOGLE_API_KEY`，没有 `DEEPSEEK_API_KEY`，与解析逻辑不一致。
+- 741 px 宽度下来源卡片标题逐字竖排（"名/片/扫/描"），栅格列过窄；375 px 与 1280 px 正常。
+- 联系人 API 只有 GET，无法绕过上传另建联系人，所以联系人详情与草稿步骤在 Preview 浏览器里本轮无法验证。
+- 登出后忘记密码：`POST /api/auth/password-reset/request` 202，页面显示中性的"申请已受理"文案（不泄露账号是否存在）；SMTP 仍 `535`，邮件不会真正送达。
+- Chrome 扩展未连接（`list_connected_browsers` 为空），本轮全部在桌面应用内置浏览器完成；视口偶发 0×0，重新导航即可恢复。
