@@ -412,3 +412,23 @@ database prerequisite is absent; no new skip exemption was retained.
   in the scoped task-1-report.md. Independent review, change detection and
   commits remain controller-owned. Known Web runtime-audit and App route-parity
   baselines are not cleared by this task.
+
+#### 2026-09-10 Task 1 Integration Fix Round 1: I1
+
+- Sanctioned App sync exposed TS2375 under exactOptionalPropertyTypes: the
+  review-input schema could emit allowDuplicate: undefined despite the pure
+  contract declaring allowDuplicate?: boolean. The original strict-only check
+  did not cover this compiler setting.
+- Added a validated output projection that omits absent/undefined consent and
+  preserves explicit false/true plus all seven string fields. No default,
+  coercion, cast, DTO change, backend-policy change or compiler-setting change.
+- RED: strict+exactOptionalPropertyTypes compile reproduced the sole TS2375;
+  schema tests were 34/35 with the explicit-undefined output failure. GREEN:
+  schema tests 35/35 with zero skips/cancels and strict exact-optional compile
+  pass. Three regression tests also check field/input preservation and invalid
+  consent primitive rejection. Both Web typechecks are recorded in the report.
+- Schema and test-file upstream impact LOW, zero mapped direct callers/flows;
+  the actual generated App compile blocker is outside that mapping. App files
+  remain untouched. Full commands/output and self-review are appended to the
+  scoped task-1-report.md; controller owns review, commit and sanctioned resync,
+  after which the actual App typecheck remains the consumer acceptance gate.

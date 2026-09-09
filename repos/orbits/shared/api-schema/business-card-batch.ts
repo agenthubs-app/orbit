@@ -148,6 +148,9 @@ export const businessCardBatchReviewInputSchema: z.ZodType<Contract.BusinessCard
   relationshipContext: z.string(),
   notes: z.string(),
   allowDuplicate: z.boolean().optional(),
+}).transform((value): Contract.BusinessCardBatchReviewInputContract => {
+  const { allowDuplicate, ...fields } = value;
+  return allowDuplicate === undefined ? fields : { ...fields, allowDuplicate };
 });
 
 const duplicateReviewSchema = z.strictObject({ state: z.literal("duplicate_review"), duplicateContactId: identity });

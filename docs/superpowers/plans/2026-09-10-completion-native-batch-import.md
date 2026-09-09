@@ -99,6 +99,18 @@ and whole-feature review remain pending. No backend source or provider changed.
 
 ### Task 2: Add Bounded Native Binary Transport and File Preparation
 
+Task1 integration repair: Task2 sync exposed TS2375 under App's
+exactOptionalPropertyTypes. A three-line source schema projection now omits
+undefined allowDuplicate while retaining explicit false/true and all strings;
+DTO/compiler settings are unchanged. BehavioralRED34/35 became35/35zeroSkip;
+strict+exactOptionalPropertyTypes source compile and both Web typechecks pass.
+Scoped independent re-review approved I1 at source with no new findings.
+Controller reproduced35/35zeroSkip0.76s and exact-optional compile exit0. Logs:
+/tmp/orbit-completion-batch-task1-fix1-independent-node22-20260910.log and
+/tmp/orbit-completion-batch-task1-fix1-exactoptional-node22-20260910.log.
+Actual App typecheck after sanctioned resync is still required; the prior full
+Web2942 result predates this bounded repair and is not labeled post-fix evidence.
+
 **Files:** Modify `repos/orbit-app/src/api/client.ts`, `repos/orbit-app/tests/api-client.test.ts`, and `repos/orbit-app/package.json`/lockfile only if the installed SDK's FileSystem is not a direct dependency. Create `repos/orbit-app/src/api/batch-images.ts` and `repos/orbit-app/tests/batch-images.test.ts`. Generated contracts/schemas come from sync.
 
 Ruling: Permit the Task2 package/lockfile edit to add pinned magic-bytes.js1.13.1
@@ -120,6 +132,16 @@ android/unifiedfile/JavaFile.kt:56; [library API](https://github.com/LarsKoelpin
 and [signature table](https://raw.githubusercontent.com/LarsKoelpin/magic-bytes/master/src/model/pattern-tree.ts).
 Sanitizednpmview confirmed1.13.1, no dependencies, unpacked62477bytes. No package
 has been installed at this preparation checkpoint.
+
+Ruling: Promote the already-installed base64-js1.5.1 to an exact direct App
+dependency for selected-image encoding, using its public fromByteArray API. The
+candidate relied on ambient btoa, whose availability is not established for
+native execution; installed React Native's own binaryToBase64 utility uses this
+library. Cost if wrong: direct dependency/version-maintenance responsibility and
+potential platform encoding differences, requiring exact-byte and iOS-entry-bundle
+verification. No private RN import, handwritten encoder, Buffer/global polyfill
+or unrelated dependency upgrade is authorized. This uses existing runtime code
+rather than depending on an undeclared browser global.
 
 **Interfaces:** Extend OrbitApiRequestOptions with mutually exclusive JSON body versus rawBody, and optional `responseType: "bytes"`; default remains JSON. Binary success data is `{ bytes: Uint8Array, contentType: string }` with existing status/meta envelope. Preserve existing method signatures/generic calls. File preparation returns `{ uri, fileName, mimeType, rawSize, clientDigest }` and uses the actual uploaded bytes.
 

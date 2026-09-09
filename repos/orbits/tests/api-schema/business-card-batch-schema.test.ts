@@ -104,6 +104,40 @@ for (const [name, value] of Object.entries(validFixtures)) {
   });
 }
 
+test("review input omits absent and explicit undefined consent without changing string fields", async () => {
+  const validator = await schema("businessCardBatchReviewInputSchema");
+  const { allowDuplicate: _allowDuplicate, ...fields } = reviewInput;
+  const expected = { ...fields, displayName: "  Aki Example  ", notes: "First line\nSecond line  " };
+  for (const input of [{ ...expected }, { ...expected, allowDuplicate: undefined }]) {
+    const before = structuredClone(input);
+    const parsed = validator.parse(input);
+    assert.deepEqual(parsed, expected);
+    assert.ok(typeof parsed === "object" && parsed !== null);
+    assert.equal(Object.hasOwn(parsed, "allowDuplicate"), false);
+    assert.deepEqual(input, before);
+  }
+});
+
+test("review input preserves explicit false and true consent without changing any fields", async () => {
+  const validator = await schema("businessCardBatchReviewInputSchema");
+  for (const allowDuplicate of [false, true]) {
+    const input = { ...reviewInput, allowDuplicate };
+    const before = structuredClone(input);
+    assert.deepEqual(validator.parse(input), before);
+    assert.deepEqual(input, before);
+  }
+});
+
+test("review input rejects invalid consent primitives without coercion or mutation", async () => {
+  const validator = await schema("businessCardBatchReviewInputSchema");
+  for (const allowDuplicate of [null, 0, 1, "", "false", "true"]) {
+    const input = { ...reviewInput, allowDuplicate };
+    const before = structuredClone(input);
+    assert.equal(validator.safeParse(input).success, false);
+    assert.deepEqual(input, before);
+  }
+});
+
 test("legacy processing projection alone permits omitted extraction", async () => {
   const validator = await schema("businessCardBatchDetailSchema");
   const { extraction: _extraction, ...projected } = legacyItem;
