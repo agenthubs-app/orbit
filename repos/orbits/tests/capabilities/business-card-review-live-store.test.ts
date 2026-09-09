@@ -605,6 +605,61 @@ test("cloud business card drafts can be reviewed, confirmed, and read back witho
   );
 });
 
+test("cleared review fields survive persistence, cold readback, and confirmation", async () => {
+  const store = await createSeedStore();
+  const provider = createStorageBusinessCardReviewProvider({ store, workspaceId: WORKSPACE_ID });
+  const service = createLiveBusinessCardReviewService({ now: () => NOW, provider });
+  const contactsBefore = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" });
+  const review = await service.updateReviewDraft({
+    actorId: ACTOR_ID,
+    draftId: LIVE_DRAFT_ID,
+    reviewedFields: { displayName: "Reviewed Person", organization: "", role: " ", email: "", phone: " " },
+  });
+  assert.equal(review.success, true);
+  const fields = { displayName: "Reviewed Person", organization: "", role: "", email: "", phone: "" };
+  for (const [name, value] of Object.entries(fields)) {
+    assert.equal(review.data.reviewDraft?.[name as keyof typeof fields], value);
+  }
+  const persisted = await provider.readBusinessCardReviewDraft(ACTOR_ID, LIVE_DRAFT_ID);
+  assert.deepEqual(persisted?.reviewedFields, fields);
+
+  const coldService = createLiveBusinessCardReviewService({
+    now: () => NOW,
+    provider: createStorageBusinessCardReviewProvider({ store, workspaceId: WORKSPACE_ID }),
+  });
+  const readback = await coldService.getReviewDraft({ actorId: ACTOR_ID, draftId: LIVE_DRAFT_ID });
+  assert.equal(readback.success, true);
+  for (const [name, value] of Object.entries(fields)) {
+    const fieldName = name as keyof typeof fields;
+    assert.equal(readback.data.reviewDraft?.[fieldName], value);
+    assert.equal(readback.data.reviewDraft?.extractedFields[fieldName].reviewedValue, value);
+  }
+  const confirmation = await coldService.confirmReviewedDraft({ actorId: ACTOR_ID, draftId: LIVE_DRAFT_ID });
+  assert.equal(confirmation.success, true);
+  for (const [name, value] of Object.entries(fields)) {
+    assert.equal(confirmation.data.contactCandidate[name as keyof typeof fields], value);
+  }
+  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" }), contactsBefore);
+});
+
+test("cloud review readback keeps cleared organization and role empty instead of generating placeholders", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStorageBusinessCardReviewProvider({ store, workspaceId: WORKSPACE_ID });
+  const service = createLiveBusinessCardReviewService({ now: () => NOW, provider });
+  const draftId = "business-card-review:cloud:clear-fields";
+  const review = await service.updateReviewDraft({
+    actorId: ACTOR_ID, draftId,
+    reviewedFields: { displayName: "Cloud Person", organization: "", role: "", email: "", phone: "" },
+  });
+  assert.equal(review.success, true);
+  const coldService = createLiveBusinessCardReviewService({ now: () => NOW, provider });
+  const readback = await coldService.getReviewDraft({ actorId: ACTOR_ID, draftId });
+  assert.equal(readback.success, true);
+  assert.equal(readback.data.reviewDraft?.organization, "");
+  assert.equal(readback.data.reviewDraft?.role, "");
+  assert.equal(store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" }).length, 0);
+});
+
 test("confirming an unreviewed business card draft still fails closed as pending", async () => {
   const store = await createSeedStore();
   const service = createLiveBusinessCardReviewService({

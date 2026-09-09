@@ -184,8 +184,10 @@ export const mockUpdatedContactDetailNote: ContactDetailNote = {
   body: "Confirmed partner review context before changing status.",
   authorLabel: "Orbit operator",
   createdAt: "2026-06-25T18:45:00.000Z",
-  source: mockContactDetailSource,
-  evidenceIds: ["evidence:contact-detail-tag-status-update"],
+  privacy: "private",
+  sourceLabel: "联系人备注",
+  source: { type: "manual", id: "note:demo-contact-1-api-patch", label: "联系人备注", evidenceId: "" },
+  evidenceIds: [],
   noteWriteExecuted: false,
   productionAuditLogWriteExecuted: false,
 };

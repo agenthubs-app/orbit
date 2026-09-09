@@ -157,11 +157,10 @@ function normalizedValues(
 function unsupportedTagFailure(
   input: ContactDetailUpdateInput,
 ): ContactDetailTagStatusFailure | null {
-  // 自定义标签允许自由输入，但数量和长度必须保持在契约限制内。
+  // 新标签受数量和长度限制；移除旧标签不应被新标签限制阻止。
   const requestedTags = [
     ...normalizedValues(input.tags),
     ...normalizedValues(input.addTags),
-    ...normalizedValues(input.removeTags),
   ];
   const hasUnsupportedTag =
     new Set(requestedTags.map((tag) => tag.toLocaleLowerCase())).size > 20 ||

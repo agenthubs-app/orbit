@@ -12,7 +12,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SectionHeader } from "../../components/SectionHeader";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   registerInviteToView,
@@ -43,6 +44,7 @@ export function RegisterInviteScreen() {
 }
 
 function RegisterInviteCodeRequired() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -116,6 +118,7 @@ function RegisterInviteResourceScreen({
   inviteCode: string;
   profileState: ReturnType<typeof useApiResource<unknown>> | null;
 }) {
+  const { colors } = useOrbitTheme();
   const eventState = useApiResource<unknown>(
     publicEventDetailPath(inviteCode),
     () => false
@@ -190,6 +193,7 @@ function RegisterInviteContent({
   inviteCode: string;
   profilePayload: unknown;
 }) {
+  const { colors, styles } = useStyles();
   const view = registerInviteToView({
     authenticated,
     eventPayload,
@@ -231,7 +235,7 @@ function readinessIconName(status: RegisterInviteReadinessStatus) {
   return "alert-circle-outline";
 }
 
-function readinessColor(status: RegisterInviteReadinessStatus) {
+function readinessColor(status: RegisterInviteReadinessStatus, colors: OrbitColors) {
   if (status === "complete") {
     return colors.live;
   }
@@ -252,11 +256,12 @@ function RegistrationReadinessCard({
 }: {
   readiness: RegisterInviteReadinessView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={readiness.summary} title={readiness.title}>
       <View accessibilityLabel="报名准备" style={styles.readinessTimeline}>
         {readiness.items.map((item, index) => {
-          const iconColor = readinessColor(item.status);
+          const iconColor = readinessColor(item.status, colors);
 
           return (
             <View key={item.id} style={styles.readinessStep}>
@@ -293,6 +298,7 @@ function RegistrationReadinessCard({
 }
 
 function InviteCard({ view }: { view: RegisterInviteView }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.event.title}>
       <View style={styles.inviteHeader}>
@@ -317,6 +323,7 @@ function InviteCard({ view }: { view: RegisterInviteView }) {
 }
 
 function ProfilePreview({ profile }: { profile: RegisterInviteProfileView }) {
+  const { styles } = useStyles();
   return (
     <>
       <DataCard detail={[profile.company, profile.role].filter(Boolean).join(" · ")} title={profile.name}>
@@ -330,6 +337,7 @@ function ProfilePreview({ profile }: { profile: RegisterInviteProfileView }) {
 }
 
 function TagSection({ items, title }: { items: string[]; title: string }) {
+  const { styles } = useStyles();
   if (items.length === 0) {
     return null;
   }
@@ -349,6 +357,7 @@ function TagSection({ items, title }: { items: string[]; title: string }) {
 }
 
 function ActionList({ actions }: { actions: RegisterInviteAction[] }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -371,7 +380,7 @@ function ActionList({ actions }: { actions: RegisterInviteAction[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -439,7 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg
   },
   passLabel: {
-    color: colors.text4,
+    color: colors.onAccent,
     fontSize: typography.caption,
     fontWeight: "700",
     marginTop: spacing.xs
@@ -531,4 +540,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingTop: spacing.sm
   }
-});
+}));

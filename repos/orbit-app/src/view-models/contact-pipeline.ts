@@ -155,7 +155,7 @@ const STAGES: Array<{
   {
     detail: "需要先发起或重新确认下一步。",
     id: "to_contact",
-    label: "待跟进"
+    label: "待联系"
   },
   {
     detail: "已经有明确交流或合作线索。",
@@ -575,10 +575,10 @@ function stageActions(
   if (stage === "in_progress") {
     return [
       action(
-        "转为待跟进",
+        "转为待联系",
         "needs_follow_up",
         "更新中",
-        (name) => `已把 ${name} 转为待跟进。`
+        (name) => `已把 ${name} 转为待联系。`
       ),
       action(
         "转长期维护",
@@ -604,10 +604,10 @@ function stageActions(
   if (stage === "archived") {
     return [
       action(
-        "恢复待跟进",
+        "恢复待联系",
         "needs_follow_up",
         "恢复中",
-        (name) => `已把 ${name} 恢复到待跟进。`
+        (name) => `已把 ${name} 恢复到待联系。`
       )
     ];
   }
@@ -753,7 +753,7 @@ export function contactsPipelineToView({
     },
     metrics: [
       { label: "联系人", value: String(contacts.length) },
-      { label: "待跟进", value: String(toContactCount) },
+      { label: "待联系", value: String(toContactCount) },
       { label: "推进中", value: String(inProgressCount) },
       { label: "可引荐", value: String(introCandidates.length) }
     ],

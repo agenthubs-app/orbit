@@ -21,15 +21,83 @@ Mock 服务返回确定性的联系人、标签、状态、搜索结果和空/�
 Contacts live mode 读取共享 live storage 的 generated relationship graph：
 
 - 列表、搜索和筛选从 `contacts`、`connections` 和 `evidence` 映射成联系人列表契约。
-- 联系人详情从同一组 live records 映射成 detail/tag/status 契约；更新标签、状态、note 和 last interaction 目前仍是 preview，不写回联系人记录或生产 audit log。
+- 联系人详情从同一组 live records 映射成 detail/tag/status 契约；支持写入的 live provider 在成功前持久化并回读标签、状态、note、last interaction 和主要行业。主要行业写入联系人主记录，其余详情状态按 actor 隔离；mock 预览不能作为持久化证据。
 - Contacts live provider 保留全图读取 API，同时为列表和详情提供 focused reads：列表按 search input 缩小 contact set 后只读取 listed contacts 与其 connections 引用的 evidence；详情按 `contactId` 只读取该 contact、对应 connection 和相关 evidence。
 - 联系人详情页不是新的数据层。它组合 Contacts、Connections 和 Analysis 三个 feature service；live 模式下先按 `contactId` 读取一次 shared focused graph，再把同一 graph 复用给 contact detail、connection evidence 和 relationship value scoring，避免重复读取全量 `contacts` / `connections` / `evidence`。
 - `/app/contacts/[id]` 现在通过 `loadAppContactDetailRoute` 初始化页面。页面 adapter 只负责把 route success model 映射到既有详情 UI 的 `OrbitContactsViewModel` 形状；空态、pending 和 failure 通过 shared `StateView` 展示。
-- `/app/contacts/pipeline`、`/app/contacts/graph` 和 `/app/contacts/intros` 现在也通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。
+- `/app/contacts/pipeline` 和 `/app/contacts/intros` 通过 `loadAppContactsRouteViewModel` 读取 live-capable contacts payload。它们的 `contacts-subroute-route-adapter.tsx` 只是旧 UI 兼容层：把 contacts payload 映射成既有 `OrbitContactsViewModel`，不新增 storage 查询、不读取 fixture、不绕过 contacts service。旧 `/app/contacts/graph` 自 2026-09-08 起兼容跳转到人脉分析的结构页签，见下文。
 - 复核后的名片草稿通过独立的 `BusinessCardContactWriteService` 写入 `contacts`。`POST /api/contacts/business-card/confirm` 要求显式 `confirmed=true`、纠正后的字段、图片摘要和 evidence ids；服务用 draft id 派生稳定 contact id，实现同草稿幂等。
 - 写入前按规范化邮箱，再按姓名/公司组合检查现有联系人。命中重复项时返回 `duplicate_review` 并执行零写入；成功创建使用现有关系阶段 `captured` 和 `business_card_ocr` source。原始名片图片不属于 Contacts 数据。
 
 如果 live storage 未配置，feature service 和 page-level route 都必须返回受控失败，不能回退到 mock 数据。
+
+## Web 归档状态修复（2026-09-07）
+
+- 列表、子路由与详情的页面适配器将联系人 `status: archived` 映射为独立的 `archived / 已归档` 展示状态，不再解释为 `partnered / 已合作`。列表按原始状态枚举判断，不解析翻译后的 `statusLabel`。
+- 归档联系人保留在列表、看板和图谱数据中；可按归档状态筛选或搜索，计数与详情标签采用同一含义。已有 `partnered` 展示值保持兼容，不迁移任何存储数据。
+- 本次只修正 Web 展示语义，没有修改共享 API、契约或 App。App 的完整关系四阶段、阶段编辑、行业与导航同步仍是后续任务，不能据此标记整个人脉模块对齐完成。
+- 验证覆盖真实适配器、列表搜索与分组、列表／看板／详情的 React 渲染；新增 8 项回归从失败转为通过。连同周边测试共 40 项通过，Web 全量类型检查通过；未执行真实账号跨端回读或生产部署。
+- 基线维护：移除只约束 `actorId` 属性简写的旧源码断言（actor 传递已有 focused provider 行为测试），更新二维码来源的运行时中文预期，以匹配现行本地化规则。
+
+## Web 主行业展示修复（2026-09-07）
+
+- 列表 route view model 保留现有契约的 `primaryIndustryId` 与 `primaryIndustryLabel`。列表、子路由及详情优先用稳定行业 ID 从共享字典取得名称；没有 ID 时只接受明确提供的主行业名称，不再从地区、自定义标签或旧简介推断。
+- 缺少主行业的联系人保留在分布中，归入“未分类”，但不计入行业数；行业数不受图表前六项展示上限影响。城市保留为独立 `location` 并继续可搜索，自定义标签继续作为标签／话题。主行业编辑入口与服务端四维分析接入不在本次范围。
+- 共用展示层按中／英／日语言转换同一行业 ID，并保持卡片和资料区名称一致；没有行业 ID 的旧资料文案不被该展示层覆盖。共享 API、字典及 App 文件均未修改，没有迁移存量联系人。
+- 新增 8 项回归覆盖内存 provider → 真实 live 查询服务 → route → 两套页面适配器、详情、三语名称、城市搜索、行业计数、表盘未分类及旧资料保留；与周边回归共 51 项通过。真实账号跨端回读和生产部署仍未执行。
+
+## Web 关系进展入口用词（2026-09-08）
+
+- 对齐 App 的“关系进展”名称：现行 pipeline 页的桌面／窄屏标题、共享侧栏、联系人列表／操作记录窄屏导航和联系人详情下一步链接统一用词；英文对应 `Relationship progress`。
+- 保留 `/app/contacts/pipeline` 及旧导航路径映射、人数标记、既有布局和只读说明，不更改 API 或阶段值。历史未装配的 pipeline／导入侧栏组件不作为本次业务同步基准。
+- App 对应术语版本 `b45641788` 同时保留“待跟进”旧数据别名。Web 的四阶段、阶段写入、关联待办仍待接入，本次不代表这些业务已对齐。
+- 10 项中／英真实页面渲染回归先失败后通过，覆盖链接名称与目的地、两种宽度的标题和侧栏人数；周边共 52 项通过，Web 类型检查通过。未执行真实账号写入或跨端回读。
+
+## Web 主要行业编辑（2026-09-08）
+
+联系人详情的桌面与窄屏联系方式卡片提供同一个行业编辑弹窗，沿用原有样式与焦点管理。选项来自共享的固定三语字典；没有分类时仍可编辑。保存仅 PATCH `/api/contacts/:id` 的 `primaryIndustryId`，清空明确发送 `null`，不随请求覆盖标签、备注或关系阶段。
+
+弹窗打开期间，新的服务端页面数据不能改写未保存选择；浏览器整页重载不保留本地草稿。保存期间锁住重复点击；失败保留选择并显示重试提示。只有响应中的联系人 ID 和行业值均匹配才显示成功，详情直接展示服务端确认的值；关闭后重新打开沿用已保存值，之后收到新的服务端页面数据则以新数据为准。离开弹窗后晚到结果不再修改页面。
+
+验证包括真实页面双入口渲染、编辑交互、PATCH handler → live service → 内存存储的保存／清空及新实例回读，确认标签与状态不变。浏览器脚本 `tests/pages/app-contact-industry-editor.browser.mjs` 在隔离 mock 预览中检查 1440px／390px 的失败、重试、清空、重开和键盘焦点；全部浏览器 API 被拦截，不访问业务数据库。本项不修改共享契约或 App，不执行行业迁移，也不宣称真实账号的跨端同步已验收。
+
+## 旧标签移除兼容（2026-09-08）
+
+live 与 mock 的标签校验不再把 `removeTags` 算作新增标签：已存在的超长标签、一次移除超过 20 个旧标签均可处理。`tags` 替换及 `addTags` 新增仍执行原有数量与长度限制。内存 live provider 回归确认移除后其他标签保留、冷读一致，非法新增零写入。本项不迁移或主动删除用户标签；只有用户提交的移除请求才会改变数据。
+
+## Web 自定义标签维护（2026-09-08）
+
+详情页保留标签原始值与显示名的对应关系，空标签也有编辑入口。已知系统标签使用既有名称，自定义文字（包括冒号、下划线和恰好与翻译词典重名的文本）原样显示。主要行业与标签的本地确认结果独立，不因编辑另一项而回退。
+
+弹窗以 chip 添加／移除标签，新输入 trim 后按大小写去重、限制 32 个 Unicode 字符；达到 20 个标签时不能继续添加，但旧的超限标签仍能读取和移除。只向现有 PATCH 发送 `addTags`／`removeTags` 差异，不提交行业、状态或备注，也不整体替换标签。服务端现行限制是单次新增／替换请求限制；本次未将它改成所有客户端统一的联系人总数约束。
+
+保存失败保留草稿并可重试，处理中锁住重复写入，晚到响应不能更新已离开的页面。响应必须包含相同联系人和已实现的标签变更；删除后只改变大小写仍视为未确认，明确的大小写替换必须返回所选拼写。服务端返回的其他标签保留在结果中，随后新页面数据仍具有优先权。浏览器整页重载不恢复本地草稿。
+
+测试覆盖页面映射与双入口、边界校验、真实 PATCH → live service → 内存存储：模拟先写入成功再丢失响应，重试后新标签不重复，另一端预先新增的标签、主要行业、状态与记录均保留。浏览器脚本 `app-contact-tag-editor.browser.mjs` 在 1440px／390px 隔离预览中验证失败重试、原始增删值、系统标签名称、独立行业修改、清空／重开及焦点；没有访问真实账号、业务数据库或执行跨端线上验收。
+
+## Web 最近互动维护（2026-09-08）
+
+联系人详情在桌面与窄屏都提供“编辑最近互动”，包括渠道、时间和摘要。页面模型单独携带原始可编辑字段；弹窗沿用现有视觉和焦点管理，不修改 App、API 契约或存储结构。
+
+只向现有 `PATCH /api/contacts/:id` 发送 `lastInteraction`。时间按设备时区输入并转换为 UTC；未改时间不重写原始时间戳，因此保留秒与毫秒精度。留空保留原值，与现有接口一致，不支持清空既有互动。请求显式保留所选渠道，防止省略渠道时被服务端改为手动记录。保存不会发送消息或创建日程。
+
+保存中锁定重复操作；网络失败、错误联系人响应、非法响应时间或本次写入字段不匹配时保留草稿并提供重试。只有确认响应后才更新当前详情与重新打开时的初值。未发送的时间／摘要采用服务端回读值，保留另一端在弹窗打开后做的合法修改，不与旧表单基线作隐含版本锁定。服务端 props 刷新不覆盖已打开弹窗的草稿；离开联系人后的迟到响应不更新其他联系人。草稿不跨完整页面重载保存。
+
+测试覆盖页面入口、字段增量、非法日期、失败重试和真实 PATCH → live service → 内存存储回读；丢失成功响应后重试仍保留标签、行业、状态与记录。浏览器脚本 `app-contact-interaction-editor.browser.mjs` 用隔离 mock 预览验证 1440px／390px 的时区转换、失败重试、保存回显和焦点恢复。未执行真实账号跨端验收。
+
+## Web 人脉分析（2026-09-08）
+
+`/app/contacts/dashboard` 合并为“人脉分析”，提供概览／结构／机会三个页签，`?tab=structure` 与 `?tab=opportunities` 可直达相应页签。旧 graph 地址跳转到结构页签并保留有效语言参数；认证和账号 actor 解析在目标页执行。共享侧栏、联系人列表与操作记录的窄屏导航统一入口。未被产品路由装配的旧展示组件没有批量删除或改名。
+
+页面适配层位于 `app/(app)/app/contacts/analysis/`，复用 `createConfiguredMobileContactsDashboardService`，与 App 使用同一聚合服务及运行时 Schema，不新增 Web 专属统计算法。总人脉、高价值、待联系、沉睡数来自服务端汇总；结构直接显示行业／地区／角色／关系四维的桶 ID、人数和百分比，不以已加载列表或最大桶重新计算比例。图形与键盘可操作的分组按钮同步选择，行业名称按共享三语字典显示，用户自定义文字保持原样。
+
+`/app/contacts/analysis/:dimension/:bucketId` 在认证后复用现有 `getStructureDetail`，live 工厂仍按账号加载。页面验证维度、桶和返回数据，显示真实匹配联系人、关系质量、共同标签与服务端解读。路由参数由框架解码一次，跳转链接编码稳定 ID。现有 mock 分组服务仍明确返回找不到桶，页面展示可恢复错误；它不伪造分组联系人。
+
+关系目标弹窗只向现有 `PUT /api/profile` 写 `relationshipGoal`，留空明确清除目标。保存中防重复，失败保留草稿，不随外部 props 改写草稿；只有同一资料 ID 和目标值的确认响应才更新页面。保存后保留确认值，不立即用旧聚合快照覆盖；明确提示现有建议仍属上次分析，需在机会页重算。机会使用原有重算接口，确认完成后重新读取聚合数据；重算成功但读取失败会分别说明。建议呈现已有依据、步骤和站内行动链接；没有 action brief 的旧数据使用经过校验的来源名称，缺少可读依据则明确提示，不编造依据、不自动创建任务、发送消息或安排日程。mock 资料服务同时修正了仅更新目标时误要求重传姓名的校验，仍不提供跨读取持久化。
+
+必需汇总无效／失败时显示整体错误或等待态；可选模块缺失与 pending 分别提示，不转换成零分或“没有机会”。刷新失败保留当前数据并提示重试。页面只保留本次挂载期间的状态，浏览器整页重载不恢复未保存草稿；没有新增跨端实时推送或版本冲突锁。
+
+验证覆盖聚合映射、部分失败、四维选择与真实 live 分组服务的内存数据、目标编辑和真实 profile service 写入后丢失响应／重试／冷读。`tests/pages/app-contacts-analysis.browser.mjs` 在隔离 mock 预览检查 1440px／390px 的产品路由、三页签、四维选择、目标失败重试、机会重算、刷新失败保留、旧地址及详情恢复入口、未登录跳转和无 hydration 错误。截图存于临时目录，不加入仓库。共享契约、API、App 与真实业务数据未修改；真实同账号 Web／App 双向写入回读仍未验收。
 
 ## 热拔插边界
 

@@ -1,5 +1,6 @@
 import type { ContractMatches } from "../contract-check";
 import type {
+  ConnectionStageCode,
   RelationshipStageCode,
   RelationshipValueTypeCode,
   SourceReferenceContract,
@@ -26,6 +27,15 @@ export const SOURCE_TYPES = [
 ] as const;
 
 export type SourceType = (typeof SOURCE_TYPES)[number];
+
+export const CONNECTION_STAGE_VALUES = [
+  "needs_follow_up",
+  "active",
+  "nurture",
+  "archived",
+] as const;
+
+export type ConnectionStage = (typeof CONNECTION_STAGE_VALUES)[number];
 
 export const RELATIONSHIP_STAGE_VALUES = [
   "captured",
@@ -205,6 +215,10 @@ export function isSourceType(value: unknown): value is SourceType {
   return includesValue(SOURCE_TYPES, value);
 }
 
+export function isConnectionStage(value: unknown): value is ConnectionStage {
+  return includesValue(CONNECTION_STAGE_VALUES, value);
+}
+
 export function isRelationshipStage(
   value: unknown,
 ): value is RelationshipStage {
@@ -294,6 +308,10 @@ export type SourceTypeMatchesContract = ContractMatches<
 export type RelationshipStageMatchesContract = ContractMatches<
   RelationshipStage,
   RelationshipStageCode
+>;
+export type ConnectionStageMatchesContract = ContractMatches<
+  ConnectionStage,
+  ConnectionStageCode
 >;
 export type RelationshipValueTypeMatchesContract = ContractMatches<
   RelationshipValueType,

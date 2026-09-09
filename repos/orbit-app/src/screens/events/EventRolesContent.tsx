@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type { EventRoleMemberView, EventRolesView } from "../../view-models/event-roles";
 
 export type EventRolesContentState =
@@ -27,6 +28,7 @@ export function EventRolesContent({
   roles: EventRolesView;
   state: EventRolesContentState;
 }) {
+  const { colors, styles } = useStyles();
   if (state.kind === "loading") {
     return <DataCard title="正在读取当前角色"><Text style={styles.stateText}>正在确认负责人和有效委派。</Text></DataCard>;
   }
@@ -76,7 +78,7 @@ export function EventRolesContent({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actorId: { color: colors.ink, flex: 1, fontSize: typography.small, fontWeight: "800" },
   content: { gap: spacing.md },
   eventTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800", lineHeight: 23 },
@@ -100,4 +102,4 @@ const styles = StyleSheet.create({
   roleIcon: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
   roleLabel: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   stateText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 }
-});
+}));

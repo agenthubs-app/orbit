@@ -1445,6 +1445,7 @@ function noteSummaries(contact: Record<string, unknown>): string[] {
   return uniqueStrings(
     listFromPayload(contact, "notes")
       .filter(isRecord)
+      .filter((note) => note.privacy !== "private")
       .map((note) => localizedNoteText(stringField(note, "body")))
       .filter((note) => note && !containsImplementationLabel(note))
   ).slice(0, 2);

@@ -6,7 +6,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   scheduleEventPreviewToView,
@@ -23,6 +24,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function ScheduleEventPreviewScreen() {
+  const { colors } = useOrbitTheme();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const state = useApiResource<unknown>(
@@ -55,6 +57,7 @@ export function ScheduleEventPreviewScreen() {
 }
 
 function PreviewContent({ data }: { data: unknown }) {
+  const { colors, styles } = useStyles();
   const view = scheduleEventPreviewToView(data);
 
   return (
@@ -76,6 +79,7 @@ function PreviewContent({ data }: { data: unknown }) {
 }
 
 function PreviewFailure({ data }: { data: unknown }) {
+  const { styles } = useStyles();
   const view = scheduleEventPreviewToView(data);
 
   return (
@@ -89,6 +93,7 @@ function PreviewFailure({ data }: { data: unknown }) {
 }
 
 function EventPreview({ event }: { event: ScheduleEventPreviewEventView }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.previewStack}>
       <View style={styles.eventHeader}>
@@ -111,6 +116,7 @@ function EventPreview({ event }: { event: ScheduleEventPreviewEventView }) {
 }
 
 function ActionList({ actions }: { actions: ScheduleEventPreviewAction[] }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -133,7 +139,7 @@ function ActionList({ actions }: { actions: ScheduleEventPreviewAction[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -212,4 +218,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   }
-});
+}));

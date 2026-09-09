@@ -3,7 +3,8 @@ import { RefreshControl, StyleSheet, Text } from "react-native";
 
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { colors, spacing, typography } from "../../design/tokens";
+import { spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { eventCenterToView } from "../../view-models/event-center";
 import {
@@ -12,6 +13,7 @@ import {
 } from "./EventCenterContent";
 
 export function EventCenterScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.eventCenter,
@@ -71,11 +73,11 @@ export function EventCenterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   intro: {
     color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20,
     marginTop: -spacing.sm
   }
-});
+}));

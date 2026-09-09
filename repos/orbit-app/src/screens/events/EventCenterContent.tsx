@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type { EventCenterItemView } from "../../view-models/event-center";
 
 export type EventCenterContentState =
@@ -31,6 +32,7 @@ function EventCenterRow({
   onOpenRoles: () => void;
   onOpen: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.eventRow}>
       <View style={styles.eventHeader}>
@@ -192,6 +194,7 @@ export function EventCenterContent({
   onOpenEvent: (id: string) => void;
   state: EventCenterContentState;
 }) {
+  const { styles } = useStyles();
   if (state.kind === "loading") {
     return (
       <DataCard title="正在读取你可运营的活动">
@@ -231,7 +234,7 @@ export function EventCenterContent({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRow: {
     alignItems: "center",
     borderTopColor: colors.border,
@@ -413,4 +416,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   }
-});
+}));

@@ -4,7 +4,7 @@ import { RefreshControl } from "react-native";
 
 import { eventAnalyticsAggregatePath, eventAnalyticsAttendeePath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { colors } from "../../design/tokens";
+import { useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { eventAnalyticsToView, type EventAnalyticsKind } from "../../view-models/event-analytics";
 import { EventAnalyticsContent, type EventAnalyticsContentState } from "./EventAnalyticsContent";
@@ -14,6 +14,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function EventAnalyticsScreen() {
+  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
   const aggregateState = useApiResource<unknown>(eventAnalyticsAggregatePath(eventId), () => false);

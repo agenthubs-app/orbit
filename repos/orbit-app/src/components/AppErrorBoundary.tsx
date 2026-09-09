@@ -1,7 +1,8 @@
 import { Component, type ErrorInfo, type PropsWithChildren } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, radius, spacing, typography } from "../design/tokens";
+import { radius, spacing, typography } from "../design/tokens";
+import { createThemedStyles } from "../design/theme";
 
 // 渲染期抛出的异常在 React Native 里会把整棵树卸载，用户看到白屏且只能杀进程。
 // 这里提供两层网：
@@ -36,6 +37,7 @@ export function AppErrorScreen({
   error: Error;
   onRetry: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
@@ -104,7 +106,7 @@ export class AppErrorBoundary extends Component<
   }
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   body: {
     color: colors.text2,
     fontSize: typography.body,
@@ -159,4 +161,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 30
   }
-});
+}));

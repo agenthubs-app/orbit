@@ -829,6 +829,13 @@ export function createLiveBusinessCardScanOcrService({
         });
       }
 
+      if (typeof input.imageText === "string") {
+        return failure(
+          "BUSINESS_CARD_IMAGE_REQUIRED",
+          uploadedProvenance({ now: now(), provider: cloudOcrProvider, providerRequested: false }),
+        );
+      }
+
       const scenario = normalizeScanScenario(input.scenario);
       const readResult = await readGraph({
         actorId,

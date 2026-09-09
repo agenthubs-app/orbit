@@ -168,3 +168,18 @@ database prerequisite is absent; no new skip exemption was retained.
   root guidance and `bridge/` updates were read but not overwritten, copied into
   this merge, or marked complete on behalf of their owners. This section supplies
   handoff evidence; it does not update the Bridge coordinator's ledger.
+
+## 2026-09-10 Continuation: Task Status Without Recommendation Evidence
+
+- A validated `created`, `suggested`, or `failed` task interaction now supplies
+  deterministic task-status copy when a reply has no recommendation items or
+  evidence. Malformed, unavailable, and absent interactions still use the
+  recommendation evidence guard; raw assistant prose is not treated as grounding.
+- Verification was local and fixture-backed: the five-case RED run produced
+  2 passes and 3 expected failures, then passed 5/5 after the repair. The complete
+  task interaction file passed 20/20; the task, general conversation, contact
+  recommendation, event recommendation, and core product UX files passed 49/49.
+  `npm run typecheck:app` and `npm run typecheck` also passed.
+- No external service, credential, database write, browser layout check, native
+  client check, deployment, or production migration was performed. The native
+  and deployment limitations recorded above remain open.

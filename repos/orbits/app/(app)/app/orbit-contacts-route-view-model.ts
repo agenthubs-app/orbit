@@ -1,4 +1,4 @@
-export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered";
+export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived";
 export type OrbitIntroStatus = "draft" | "sent";
 
 export interface OrbitContactView {
@@ -9,6 +9,7 @@ export interface OrbitContactView {
   g: string;
   id: string;
   industry: string;
+  primaryIndustryId?: string;
   initial: string;
   lineId: string;
   location?: string;
@@ -27,8 +28,10 @@ export interface OrbitContactView {
   // —— 名片夹复刻新增（静态演示数据）——
   strength: OrbitContactStrength;
   valueTags: string[];
+  editableTags?: { value: string; label: string }[];
   nextAction: { text: string; reason: string; evidenceId?: string } | null;
   lastInteraction: string;
+  editableInteraction?: { channel: string; occurredAt: string; summary: string };
   dormant: boolean;
 }
 

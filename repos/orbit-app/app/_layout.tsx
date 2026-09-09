@@ -9,6 +9,7 @@ import {
 import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoundary";
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
+import { useOrbitTheme } from "../src/design/theme";
 
 // expo-router 会把这个导出当作根段的错误边界：出错时只重置这一段，
 // 导航器保持挂载，retry() 之后跳转仍然可用。
@@ -23,6 +24,7 @@ export function ErrorBoundary({
 }
 
 export default function RootLayout() {
+  const { scheme } = useOrbitTheme();
   return (
     <SafeAreaProvider>
       {/* 类组件边界兜住 router 之外的渲染异常，比如两个 Provider 自身出错。
@@ -33,7 +35,7 @@ export default function RootLayout() {
             <OrbitNotificationsCoordinator />
             <OrbitNotificationLifecycle />
             <OrbitRouteAccessBoundary />
-            <StatusBar style="dark" />
+            <StatusBar style={scheme === "dark" ? "light" : "dark"} />
           </OrbitAuthSessionProvider>
         </OrbitApiBaseUrlProvider>
       </AppErrorBoundary>

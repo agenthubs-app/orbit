@@ -12,7 +12,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -25,7 +26,7 @@ import {
   type PermissionStatesView
 } from "../../view-models/permissions";
 
-function toneColor(tone: PermissionCardTone): string {
+function toneColor(tone: PermissionCardTone, colors: OrbitColors): string {
   switch (tone) {
     case "blocked":
       return colors.amber;
@@ -40,7 +41,7 @@ function toneColor(tone: PermissionCardTone): string {
   }
 }
 
-function toneBackground(tone: PermissionCardTone): string {
+function toneBackground(tone: PermissionCardTone, colors: OrbitColors): string {
   switch (tone) {
     case "blocked":
       return colors.amberSoft;
@@ -56,6 +57,7 @@ function toneBackground(tone: PermissionCardTone): string {
 }
 
 export function AccountPermissionsScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
@@ -179,6 +181,7 @@ function PermissionWorkspace({
   requestView: CalendarPermissionRequestView | null;
   view: PermissionStatesView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <>
       <DataCard detail={view.summary} title={view.title}>
@@ -230,6 +233,7 @@ function CalendarRequestCard({
 }: {
   view: CalendarPermissionRequestView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.statusLabel} title={view.title}>
       <Text style={styles.bodyText}>{view.detail}</Text>
@@ -244,7 +248,8 @@ function PermissionCard({
 }: {
   permission: PermissionCardView;
 }) {
-  const color = toneColor(permission.tone);
+  const { colors, styles } = useStyles();
+  const color = toneColor(permission.tone, colors);
 
   return (
     <DataCard detail={permission.requiredFor} title={permission.title}>
@@ -252,7 +257,7 @@ function PermissionCard({
         <View
           style={[
             styles.statusPill,
-            { backgroundColor: toneBackground(permission.tone) }
+            { backgroundColor: toneBackground(permission.tone, colors) }
           ]}
         >
           <Ionicons color={color} name="shield-checkmark-outline" size={15} />
@@ -273,7 +278,7 @@ function PermissionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionText: {
     color: colors.accent,
     fontSize: typography.small,
@@ -287,10 +292,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     backgroundColor: colors.roseSoft,
-    borderColor: "#FECACA",
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
-    color: "#B42318",
+    color: colors.rose,
     fontSize: typography.small,
     lineHeight: 19,
     padding: spacing.md
@@ -362,4 +367,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 16
   }
-});
+}));

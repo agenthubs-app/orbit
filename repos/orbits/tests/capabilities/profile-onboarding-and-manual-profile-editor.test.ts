@@ -167,6 +167,26 @@ test("profile API routes reject unauthenticated reads and writes", async () => {
   assert.equal(putResponse.status, 401);
 });
 
+test("profile PUT accepts a goal-only update and explicit clearing without replacing omitted fields", async () => {
+  for (const goal of ["  认识东京制造业伙伴  ", ""]) {
+    const response = await profileRoute.PUT(new Request("https://orbit.local/api/profile", {
+      method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ relationshipGoal: goal }),
+    }));
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.success, true);
+    assert.equal(result.data.profile.relationshipGoal, goal.trim());
+    assert.equal(result.data.profile.displayName, "Ari Lane");
+    assert.equal(result.data.profile.id, mockProfileFixture.profile.id);
+    assert.equal(result.data.profile.organization, mockProfileFixture.profile.organization);
+    assert.deepEqual(result.data.profile.targetRelationshipTypes, mockProfileFixture.profile.targetRelationshipTypes);
+  }
+  const invalid = await profileRoute.PUT(new Request("https://orbit.local/api/profile", {
+    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ displayName: "  ", relationshipGoal: "新目标" }),
+  }));
+  assert.equal(invalid.status, 400);
+});
+
 test("profile API routes document empty and controlled failure paths", async () => {
   const emptyResponse = await profileRoute.GET(
     new Request("https://orbit.local/api/profile?scenario=empty"),

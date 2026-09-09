@@ -20,7 +20,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { MetricPill } from "../../components/MetricPill";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   partyModeToView,
@@ -98,6 +99,7 @@ function PartyEventRequired({
 }: {
   copy: { eyebrow: string; title: string };
 }) {
+  const { styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -125,6 +127,7 @@ function PartyEventScreen({
   eventId: string;
   variant: PartyModeVariant;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false);
   const attendeeState = useApiResource<unknown>(
@@ -237,6 +240,7 @@ function PartyEventScreen({
 }
 
 function PartyOverview({ party }: { party: PartyModeView }) {
+  const { styles } = useStyles();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
 
@@ -300,6 +304,7 @@ function PartyOverview({ party }: { party: PartyModeView }) {
 }
 
 function PartyCheckIn({ party }: { party: PartyModeView }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -335,6 +340,7 @@ function PartyCheckIn({ party }: { party: PartyModeView }) {
 }
 
 function PartyGraph({ party }: { party: PartyModeView }) {
+  const { styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -379,6 +385,7 @@ function PartyGraph({ party }: { party: PartyModeView }) {
 }
 
 function PartyConnectionMap({ party }: { party: PartyModeView }) {
+  const { colors, styles } = useStyles();
   const { baseUrl } = useOrbitApiBaseUrl();
   const people = party.priorityPeople.slice(0, 5);
 
@@ -435,6 +442,7 @@ function PartyConnectionMap({ party }: { party: PartyModeView }) {
 }
 
 function CheckInBoundaryCard({ party }: { party: PartyModeView }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={party.checkIn.statusLabel} title="现场签到">
       <View style={styles.ticketCompact}>
@@ -452,6 +460,7 @@ function PriorityPersonCard({
   baseUrl: string;
   person: PartyPriorityPersonView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={person.organizationRole} title={person.name}>
       <View style={styles.priorityPersonHeader}>
@@ -486,6 +495,7 @@ function PriorityPersonCard({
 }
 
 function GraphGroupCard({ group }: { group: PartyGraphGroupView }) {
+  const { styles } = useStyles();
   const { baseUrl } = useOrbitApiBaseUrl();
 
   return (
@@ -524,6 +534,7 @@ function PartyPersonAvatar({
   style: object;
   textStyle: object;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={style}>
       {imageUrl ? (
@@ -540,6 +551,7 @@ function PartyPersonAvatar({
 }
 
 function AgendaList({ agenda }: { agenda: PartyAgendaItemView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.stack}>
       {agenda.map((item) => (
@@ -566,6 +578,7 @@ function ActionButton({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -590,7 +603,7 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     borderRadius: radius.control,
@@ -935,4 +948,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   }
-});
+}));

@@ -114,6 +114,7 @@ function PipelineCard({
 }
 
 const cdotByStatus: Record<OrbitContactPipelineStatus, string> = {
+  archived: "nc-cdot-archived",
   to_contact: "nc-cdot-amber",
   in_progress: "nc-cdot-sky",
   partnered: "nc-cdot-live",
@@ -122,7 +123,7 @@ const cdotByStatus: Record<OrbitContactPipelineStatus, string> = {
 const LOCAL_STYLES = `
 [data-orbit-real-page="contacts-pipeline"] .nc-readonly { display:flex; align-items:center; gap:7px; max-width:520px; padding:9px 12px; border-radius:var(--r-md); background:var(--surface-2); border:1px solid var(--hairline); color:var(--text-3); font-size:12.5px; line-height:1.4; }
 [data-orbit-real-page="contacts-pipeline"] .nc-readonly svg { color:var(--accent); flex-shrink:0; }
-[data-orbit-real-page="contacts-pipeline"] .nc-kanban { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:start; }
+[data-orbit-real-page="contacts-pipeline"] .nc-kanban { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; align-items:start; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcol { background:var(--surface-2); border:1px solid var(--hairline); border-radius:var(--r-md); padding:12px; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcol-head { display:flex; align-items:center; gap:8px; padding:2px 4px 12px; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcol-head .nc-cdot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
@@ -131,6 +132,7 @@ const LOCAL_STYLES = `
 [data-orbit-real-page="contacts-pipeline"] .nc-cdot-amber { background:var(--amber); }
 [data-orbit-real-page="contacts-pipeline"] .nc-cdot-sky { background:var(--sky); }
 [data-orbit-real-page="contacts-pipeline"] .nc-cdot-live { background:var(--live); }
+[data-orbit-real-page="contacts-pipeline"] .nc-cdot-archived { background:var(--text-3); }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcards { display:flex; flex-direction:column; gap:10px; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcard { display:block; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:13px; box-shadow:var(--sh-xs); cursor:pointer; text-decoration:none; color:inherit; transition:box-shadow .18s, transform .18s, border-color .18s; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kcard:hover { border-color:var(--border-2); box-shadow:var(--sh-md); transform:translateY(-2px); }
@@ -209,7 +211,7 @@ export function OrbitRealCardsPipelineView({
             >
               <div>
                 <h1 className="h-display" style={{ margin: 0 }}>
-                  {t({ en: "Pipeline", zh: "跟进管线" })}
+                  {t({ en: "Relationship progress", zh: "关系进展" })}
                 </h1>
                 <div
                   style={{
@@ -276,7 +278,7 @@ export function OrbitRealCardsPipelineView({
           <div className="nc-mobile-head">
             <div>
               <h1 className="h-title" style={{ margin: 0 }}>
-                {t({ en: "Pipeline", zh: "跟进管线" })}
+                {t({ en: "Relationship progress", zh: "关系进展" })}
               </h1>
               <div
                 style={{

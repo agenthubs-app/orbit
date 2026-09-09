@@ -7,7 +7,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   relationshipChatListToView,
@@ -16,6 +17,7 @@ import {
 } from "../../view-models/relationship-chat";
 
 export function RelationshipChatScreen() {
+  const { colors } = useOrbitTheme();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.chatConversations,
     (data) => relationshipChatListToView(data).conversations.length === 0
@@ -52,6 +54,7 @@ export function RelationshipChatScreen() {
 }
 
 function ChatListContent({ data }: { data: unknown }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const view = relationshipChatListToView(data);
 
@@ -85,6 +88,7 @@ function ChatListContent({ data }: { data: unknown }) {
 }
 
 function RelationshipAgentEntry({ onPress }: { onPress: () => void }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -106,6 +110,7 @@ function RelationshipAgentEntry({ onPress }: { onPress: () => void }) {
 }
 
 function MetricGrid({ metrics }: { metrics: RelationshipChatMetricView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.metricGrid}>
       {metrics.map((metric) => (
@@ -125,6 +130,7 @@ function ConversationRow({
   conversation: RelationshipChatConversationView;
   onPress: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -152,7 +158,7 @@ function ConversationRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agentEntry: {
     alignItems: "center",
     backgroundColor: colors.ink,
@@ -296,4 +302,4 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     lineHeight: 17
   }
-});
+}));

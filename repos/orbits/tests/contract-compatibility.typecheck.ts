@@ -13,6 +13,7 @@ import type { OrbitLanguage } from "../shared/contract/language";
 import type { INDUSTRY_IDS } from "../shared/domain/industries";
 import type { ORBIT_LANGUAGES } from "../shared/domain/language";
 import type {
+  ConnectionStageMatchesContract,
   RelationshipStageMatchesContract,
   RelationshipValueTypeMatchesContract,
   SourceReferenceMatchesContract,
@@ -23,6 +24,7 @@ import type { AppErrorCodeMatchesContract } from "../shared/errors/app-error";
 // A mismatched ContractMatches alias evaluates to never; assigning true makes
 // the full-project typecheck reject drift instead of leaving that alias unused.
 export const crossClientContractCompatibility = {
+  connectionStage: true,
   contactSource: true,
   contactStatus: true,
   contactTag: true,
@@ -36,6 +38,7 @@ export const crossClientContractCompatibility = {
   sourceReference: true,
   sourceType: true,
 } satisfies {
+  connectionStage: ConnectionStageMatchesContract;
   contactSource: ContactSourceFilterMatchesContract;
   contactStatus: ContactStatusFilterMatchesContract;
   contactTag: ContactTagFilterMatchesContract;

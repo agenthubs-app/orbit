@@ -9,14 +9,16 @@ import type { ComponentType, PropsWithChildren } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
-import { colors, spacing, typography } from "../design/tokens";
+import { spacing, typography } from "../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../design/theme";
 import {
   isPrivateMobileRoute,
   mobileLoginHref
 } from "../view-models/mobile-route-access";
 
 export function OrbitRouteAccessBoundary() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  const { colors } = useOrbitTheme();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />;
 }
 
 export function OrbitPrivateRouteBoundary({
@@ -60,6 +62,7 @@ export function withOrbitPrivateRoute<Props extends object>(
 }
 
 function OrbitAuthLoading() {
+  const { colors, styles } = useStyles();
   return (
     <View
       accessibilityLabel="正在确认登录状态"
@@ -72,7 +75,7 @@ function OrbitAuthLoading() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   loading: {
     alignItems: "center",
     backgroundColor: colors.canvas,
@@ -84,4 +87,4 @@ const styles = StyleSheet.create({
     color: colors.text2,
     fontSize: typography.body
   }
-});
+}));

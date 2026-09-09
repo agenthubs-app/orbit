@@ -36,7 +36,12 @@ Rendering tests live beside the others and use `tests/helpers/render.tsx`. There
 is no Jest here: `tests/helpers/register-render-hooks.mjs` points `react-native`
 at `react-native-web` inside the test process only, so components render to HTML
 under `node --test`. The native build is unaffected. Static rendering covers
-structure and copy; interaction is not simulated yet.
+structure and copy. Task-detail interaction regressions also bundle the actual
+screen with RN Web and run it in isolated headless Chromium, replacing only
+device/navigation and I/O boundaries. Install that test browser once after
+`npm ci` with `npx playwright install chromium` (CI Linux environments may need
+`npx playwright install --with-deps chromium`). These tests block external
+requests and do not access real accounts or replace native-device acceptance.
 
 ## Project Documentation
 

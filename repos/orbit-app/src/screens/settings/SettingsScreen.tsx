@@ -7,7 +7,8 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { colors, spacing, typography } from "../../design/tokens";
+import { spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { revokeNotificationDevice } from "../../notifications/native-notifications";
 import { revokePushDeviceRegistrations } from "../../notifications/push-registration-queue";
 import {
@@ -39,6 +40,7 @@ const settingsDestinations = [
 ] as const;
 
 export function SettingsScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
@@ -156,7 +158,7 @@ export function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   destination: {
     alignItems: "center",
     flexDirection: "row",
@@ -192,4 +194,4 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "700"
   }
-});
+}));

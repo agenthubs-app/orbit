@@ -164,7 +164,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
       if (id === "react-native") return {
-        Platform: { OS: "ios" }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View",
+        Platform: { OS: "ios" }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light",
         AppState: { addEventListener(_event: string, listener: (state: string) => void) {
           foregroundListeners.add(listener);
           return { remove() { foregroundListeners.delete(listener); } };

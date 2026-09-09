@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -40,6 +41,7 @@ interface ConnectionEvidenceAddDraft {
 }
 
 export function ContactsGraphScreen() {
+  const { colors } = useOrbitTheme();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.connections,
     (data) => connectionGraphToView(data).priorityConnections.length === 0
@@ -76,6 +78,7 @@ export function ContactsGraphScreen() {
 }
 
 function GraphContent({ data }: { data: unknown }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
   const view = connectionGraphToView(data);
@@ -227,6 +230,7 @@ function GraphContent({ data }: { data: unknown }) {
 }
 
 function MetricGrid({ metrics }: { metrics: ConnectionGraphMetricView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.metricGrid}>
       {metrics.map((metric) => (
@@ -240,6 +244,7 @@ function MetricGrid({ metrics }: { metrics: ConnectionGraphMetricView[] }) {
 }
 
 function StageCard({ stages }: { stages: ConnectionStageView[] }) {
+  const { styles } = useStyles();
   const total = stages.reduce((sum, stage) => sum + stage.count, 0);
 
   return (
@@ -286,6 +291,7 @@ function ConnectionRow({
   profiling: boolean;
   reviewing: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.connectionRow}>
       <View style={styles.rowTop}>
@@ -362,6 +368,7 @@ function ConnectionProfileCard({
 }: {
   view: ConnectionProfilePreviewView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={view.summary} title="关系画像">
       <View style={styles.evidenceHeader}>
@@ -394,6 +401,7 @@ function ConnectionProfileCard({
 }
 
 function ProfileValueRow({ item }: { item: ConnectionProfileMutualValueView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.profileValueRow}>
       <Text style={styles.metaText}>{item.label}</Text>
@@ -413,6 +421,7 @@ function ConnectionEvidenceCard({
   onAddEvidence: (draft: ConnectionEvidenceAddDraft) => Promise<boolean>;
   view: ConnectionEvidenceDetailView;
 }) {
+  const { colors, styles } = useStyles();
   const [draft, setDraft] = useState<ConnectionEvidenceAddDraft>({
     excerpt: "",
     title: ""
@@ -506,6 +515,7 @@ function EvidenceSourceChip({
 }: {
   source: ConnectionEvidenceSourceLinkView;
 }) {
+  const { styles } = useStyles();
   return (
     <Text style={styles.sourceTag}>
       {source.label}
@@ -519,6 +529,7 @@ function EvidenceTimelineRow({
 }: {
   item: ConnectionEvidenceTimelineView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.evidenceRow}>
       <View style={styles.evidenceIcon}>
@@ -533,7 +544,7 @@ function EvidenceTimelineRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   barFill: {
     backgroundColor: colors.live,
     borderRadius: radius.pill,
@@ -800,4 +811,4 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm
   }
-});
+}));

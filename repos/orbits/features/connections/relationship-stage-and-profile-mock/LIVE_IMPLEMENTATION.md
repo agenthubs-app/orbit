@@ -7,6 +7,15 @@ This sprint ships a mock-first boundary for relationship stage and profile field
 
 ## Live Service And Provider Files
 
+### 跨端同步补充核实（2026-09-08）
+
+- 本次源码基线为外层 Git `b45641788`；术语修改不改变这里的业务行为。App 的 `connectionStagePath` 确实调用本模块 `/api/connections/[id]/stage`，并非其他已持久化的更新接口。
+- `createRelationshipStageAndProfileService` 在 live 模式选择 `createLiveRelationshipStageAndProfileService`。`updateStage` 只读连接图并构造 `live-store-stage-preview`，返回 `success: true` 不表示已保存。
+- 本地内存探针：请求 `nurture`，响应阶段为 `nurture`，存储前后均为 `active`，全图记录未变，`databaseWriteExecuted: false`。现有 `relationship-stage-profile-live-store.test.ts` 1 项通过，验证预览语义及零写入标志；记录未变由前述独立探针验证，未连接真实数据库。
+- App `ContactPipelineScreen.updateStage` 目前仅看 envelope 的 `success` 就显示完成态提示（例如“已把某联系人转入长期维护”）并刷新，因而会把预览误报为已保存。此前双向盘点中的“App 已有阶段修改”只能说明有操作入口，不能作为持久化或跨端回读已完成的证据。该缺陷尚未修复。
+- 阶段 PATCH 尚未像连接详情 GET 一样显式解析并传递当前 actor；live profile 服务只按 connection ID 查找。任何真实写入改造都须先明确账号／工作区授权、存储更新与并发策略、返回的持久化语义及旧客户端兼容，再接 Web 四阶段和 App 成功提示。此记录不是对新写入方案或生产数据操作的批准。
+- 后续验收必须覆盖：非所属账号零写入；保存后以新 service 实例回读；预览、失败与真实保存提示区分；双方客户端刷新后阶段一致。现有只读 Web 界面和 App 四阶段映射不能替代这些验收。
+
 - `features/connections/live-profile-service.ts` is the current live read implementation. It implements `RelationshipStageAndProfileService`, reads generated `connections`, `contacts`, and `evidence` through `features/connections/storage/connection-live-record-provider.ts`, and returns stage/profile preview payloads with source-backed provenance.
 - Current live `PATCH` behavior is preview-only. It validates requested relationship stages, derives or applies relationship type/context/mutual value/next-action fields in the response, and explicitly reports `databaseWriteExecuted: false` and `productionAuditLogWriteExecuted: false`.
 - `features/connections/relationship-stage-and-profile-mock/providers/stage-automation-provider.ts` is reserved for future persisted stage automation.

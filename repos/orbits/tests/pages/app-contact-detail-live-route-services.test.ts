@@ -509,7 +509,7 @@ test("contact detail view model selects one display language from multilingual l
     assert.equal(zhContact.title, "门店经营者");
     assert.match(zhContact.offering, /商业机会/);
     assert.match(zhContact.seeking, /中文下一步/);
-    assert.match(zhViewModel.events[0]?.name ?? "", /QR 扫码/);
+    assert.equal(zhViewModel.events[0]?.name, "二维码交换记录：佐藤 健一");
     assert.doesNotMatch(
       `${zhContact.note} ${zhContact.encounters[0]?.context.publicProfile.bio} ${zhContact.offering} ${zhContact.seeking} ${zhContact.title} ${zhViewModel.events[0]?.name}`,
       /日本語|Store Owner|English|commercial opportunity|matches|through|QR scan for/,
@@ -590,7 +590,8 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
   assert.match(pageSource, /loadAppContactDetailRoute/);
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
   assert.match(pageSource, /const session = await auth\(\)/);
-  assert.match(pageSource, /actorId,/);
+  // Actor scoping is exercised against the focused graph provider above;
+  // object-property shorthand is not part of the route contract.
   assert.match(pageSource, /redirect\(/);
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /capture === "meeting-memo"/);
@@ -606,6 +607,9 @@ test("/app/contacts/[id] page uses the live route service instead of the legacy 
 });
 
 test("contact detail UI exposes only source-backed relationship data and real navigation", () => {
+  // Actor-key wiring is server-owned; local state reset is rendered in
+  // app-contact-notes.test.tsx rather than emulating authenticated RSC here.
+  assert.match(source("app/(app)/app/contacts/[id]/page.tsx"), /key=\{`\$\{actor\.id\}:\$\{contactId\}`\}/);
   const detailSource = source(
     "app/(app)/app/contacts/orbit-real-card-connection.tsx",
   );
@@ -618,7 +622,7 @@ test("contact detail UI exposes only source-backed relationship data and real na
   assert.match(detailSource, /No sourced next step is available/);
   assert.match(detailSource, /function formatTimelineDate/);
   assert.match(detailSource, /dateTime=\{item\.time\}/);
-  assert.match(adapterSource, /id: note\.evidenceIds\[0\] \?\? note\.noteId/);
+  assert.match(adapterSource, /id: note\.privacy === "private" \? note\.noteId : note\.evidenceIds\[0\] \?\? note\.noteId/);
   assert.match(detailSource, /href="\/app\/contacts\/pipeline"/);
   assert.doesNotMatch(detailSource, /stageDemo|timelineDemo|valueAToB|valueBToA/);
   assert.doesNotMatch(

@@ -309,6 +309,7 @@ function DashboardBody({
       contact.pipelineStatus === "to_contact" && contact.nextAction,
   );
   const industries = distribution(contacts, (contact) => [contact.industry]);
+  const industryCount = new Set(contacts.map((contact) => contact.industry.trim()).filter(Boolean)).size;
   const values = distribution(contacts, (contact) => contact.valueTags);
   const events = new Set(contacts.map((contact) => contact.lastEventId).filter(Boolean));
   const metrics = [
@@ -316,7 +317,7 @@ function DashboardBody({
     { icon: "star", label: t({ en: "Strong ties", zh: "强关系" }), value: contacts.filter((contact) => contact.strength === "strong").length },
     { icon: "arrow", label: t({ en: "Needs follow-up", zh: "待跟进" }), value: followups.length },
     { icon: "clock", label: t({ en: "Dormant", zh: "沉睡关系" }), value: contacts.filter((contact) => contact.dormant || contact.strength === "dormant").length },
-    { icon: "grid", label: t({ en: "Industries", zh: "行业数" }), value: industries.length },
+    { icon: "grid", label: t({ en: "Industries", zh: "行业数" }), value: industryCount },
     { icon: "calendar", label: t({ en: "Source groups", zh: "来源分组" }), value: events.size },
   ];
 

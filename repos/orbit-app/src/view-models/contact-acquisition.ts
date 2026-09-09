@@ -45,6 +45,7 @@ export interface ContactAcquisitionSummary {
   evidenceExcerpts: string[];
   nextAction: string;
   reviewFields?: ContactDraftReviewFieldView[];
+  reviewIssues?: Array<{ code: string; message: string }>;
   reviewLabel?: string;
   sourceLabel: string;
   stateLabel: string;
@@ -391,11 +392,10 @@ export function buildContactAcquisitionRequest(
     };
   }
 
-  const imageText = optionalField(form.imageText);
   const imageBase64 = optionalField(form.imageBase64);
 
-  if (!imageText && !imageBase64) {
-    return { error: "先选择名片图片或粘贴名片文字。", success: false };
+  if (!imageBase64) {
+    return { error: "请先拍摄或选择名片图片。只有文字信息时，请使用手动录入。", success: false };
   }
 
   return {
@@ -407,7 +407,6 @@ export function buildContactAcquisitionRequest(
           typeof form.imageSizeBytes === "number" && form.imageSizeBytes > 0
             ? form.imageSizeBytes
             : undefined,
-        imageText,
         mimeType: optionalField(form.imageMimeType)
       }),
       endpoint: ORBIT_API_ENDPOINTS.contactDraftBusinessCardScan
@@ -956,23 +955,24 @@ function reviewFieldsFromDraft(
     return [];
   }
 
-  return reviewFieldOrder
-    .map((fieldName) => {
-      const field = nestedRecord(extractedFields, fieldName);
-      const value =
-        stringField(field, "reviewedValue") ||
-        stringField(field, "value") ||
-        stringField(draft, fieldName);
+  return reviewFieldOrder.map((fieldName) => {
+    const field = nestedRecord(extractedFields, fieldName);
+    const reviewed = field.reviewState === "accepted" || field.reviewState === "edited";
+    const value =
+      reviewed && typeof field.reviewedValue === "string"
+        ? clean(field.reviewedValue)
+        : stringField(field, "reviewedValue") ||
+          stringField(field, "value") ||
+          stringField(draft, fieldName);
 
-      return {
-        confidenceLabel: confidenceLabel(stringField(field, "confidence")),
-        field: fieldName,
-        label: fieldLabel(fieldName),
-        stateLabel: reviewStateLabel(stringField(field, "reviewState")),
-        value
-      };
-    })
-    .filter((field) => field.value);
+    return {
+      confidenceLabel: confidenceLabel(stringField(field, "confidence")),
+      field: fieldName,
+      label: fieldLabel(fieldName),
+      stateLabel: reviewStateLabel(stringField(field, "reviewState")),
+      value
+    };
+  });
 }
 
 export function contactDraftReviewFormFromSummary(
@@ -1037,7 +1037,7 @@ export function buildBusinessCardContactWriteRequest(
     return { error: "这条名片候选缺少写入信息。", success: false };
   }
 
-  const displayName = clean(fields?.displayName) || clean(candidate.displayName);
+  const displayName = clean(fields?.displayName ?? candidate.displayName);
 
   if (!displayName) {
     return { error: "先确认名片上的姓名。", success: false };
@@ -1050,14 +1050,13 @@ export function buildBusinessCardContactWriteRequest(
         confirmed: true,
         displayName,
         draftId: candidate.draftId,
-        email: clean(fields?.email) || clean(candidate.email),
+        email: clean(fields?.email ?? candidate.email),
         evidenceIds: candidate.evidenceIds,
         imageDigest: candidate.imageDigest,
-        organization:
-          clean(fields?.organization) || clean(candidate.organization),
-        phone: clean(fields?.phone) || clean(candidate.phone),
+        organization: clean(fields?.organization ?? candidate.organization),
+        phone: clean(fields?.phone ?? candidate.phone),
         relationshipContext: clean(candidate.relationshipContext),
-        role: clean(fields?.role) || clean(candidate.role)
+        role: clean(fields?.role ?? candidate.role)
       },
       endpoint: businessCardContactConfirmPath()
     },
@@ -1104,6 +1103,27 @@ export function businessCardContactWriteToView(
   };
 }
 
+function businessCardReviewIssues(value: unknown): NonNullable<ContactAcquisitionSummary["reviewIssues"]> {
+  const messages: Record<string, string> = {
+    IDENTITY_MISSING: "没有识别到姓名，请对照名片补填。",
+    INVALID_EMAIL: "邮箱可能有误，请对照名片核对。",
+    INVALID_PHONE: "电话可能有误，请对照名片核对。",
+    MULTIPLE_OFFICES: "名片有多个办公地点，请确认要保留的信息。",
+    SHARED_CONTACT_VALUE: "多个办公地点使用了相同联系方式，请确认归属。",
+    NATIVE_ROMANIZED_NAME_CONFLICT: "请核对原文姓名与罗马字姓名是否属于同一人。",
+  };
+  return (Array.isArray(value) ? value : [value]).map((value, index) => {
+    const issue = isRecord(value) ? value : {};
+    const code = stringField(issue, "code") || `unrecognized:${index}`;
+    const message = stringField(issue, "message");
+    const knownMessage = Object.hasOwn(messages, code) ? messages[code] : undefined;
+    return {
+      code,
+      message: knownMessage ?? (segmentLooksChinese(message) ? message : "识别结果有待核对的内容，请对照名片原图确认。"),
+    };
+  });
+}
+
 export function acquisitionResultToSummary(
   data: unknown
 ): ContactAcquisitionSummary {
@@ -1130,6 +1150,7 @@ export function acquisitionResultToSummary(
     booleanField(contactCandidate, "readyForContactWrite");
   const draftId = stringField(draft, "id");
   const reviewFields = reviewFieldsFromDraft(draft);
+  const reviewIssues = nestedRecord(payload, "ocr").reviewIssues;
   const contactWrite = businessCardWriteCandidate(
     draft,
     nestedRecord(payload, "capture")
@@ -1162,6 +1183,7 @@ export function acquisitionResultToSummary(
     detail,
     draftId,
     evidenceExcerpts: evidenceExcerpts(draft),
+    ...(reviewIssues !== undefined ? { reviewIssues: businessCardReviewIssues(reviewIssues) } : {}),
     nextAction: summaryNextAction(
       stringField(draft, "suggestedNextAction") ||
         stringField(payload, "nextAction"),

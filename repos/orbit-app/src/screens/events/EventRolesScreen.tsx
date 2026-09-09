@@ -5,7 +5,8 @@ import { Alert, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } f
 
 import { eventAccessAssignmentPath, eventAccessRolesPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -26,6 +27,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function EventRolesScreen() {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
   const state = useApiResource<unknown>(
@@ -253,7 +255,7 @@ export function EventRolesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: 44 },
   backButtonText: { color: colors.text2, fontSize: typography.small, fontWeight: "700" },
   disabled: { opacity: 0.55 },
@@ -275,4 +277,4 @@ const styles = StyleSheet.create({
   roleOptions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   saveButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, justifyContent: "center", minHeight: 48 },
   saveButtonText: { color: colors.onAccent, fontSize: typography.small, fontWeight: "800" }
-});
+}));

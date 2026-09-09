@@ -4,7 +4,8 @@ import { RefreshControl, StyleSheet, Text } from "react-native";
 
 import { eventOperationsCheckInsPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { colors, spacing, typography } from "../../design/tokens";
+import { spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -22,6 +23,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function EventCheckInScreen() {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
   const path = eventOperationsCheckInsPath(eventId);
@@ -100,11 +102,11 @@ export function EventCheckInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   intro: {
     color: colors.text2,
     fontSize: typography.small,
     lineHeight: 20,
     marginTop: -spacing.sm
   }
-});
+}));

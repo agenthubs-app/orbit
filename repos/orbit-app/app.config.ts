@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   scheme: "orbit",
   version: "0.1.0",
   orientation: "portrait",
-  userInterfaceStyle: "light",
+  userInterfaceStyle: "automatic",
   experiments: {
     typedRoutes: true,
     tsconfigPaths: true

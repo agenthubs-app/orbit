@@ -168,7 +168,7 @@ export function createMockProfileService(): ProfileService {
     },
 
     updateProfile(input): ProfileResult {
-      if (!input.displayName?.trim()) {
+      if (!(input.displayName?.trim() ?? mockManualProfile.displayName)) {
         return failure("PROFILE_VALIDATION_FAILED");
       }
 

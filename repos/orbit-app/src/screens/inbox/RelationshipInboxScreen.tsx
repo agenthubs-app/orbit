@@ -21,7 +21,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -120,6 +121,7 @@ function uniqueConversations(
 }
 
 export function RelationshipInboxScreen() {
+  const { colors } = useOrbitTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
     contactId?: string | string[];
@@ -294,6 +296,7 @@ export function RelationshipInboxScreen() {
 }
 
 export function RelationshipInboxThreadScreen() {
+  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
   const client = useOrbitApiClient();
@@ -360,6 +363,7 @@ function NotificationDeliveryCard({
   clientPatch: ClientPatch;
   view: DeliveryView;
 }) {
+  const { styles } = useStyles();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [actionStatus, setActionStatus] = useState("");
@@ -461,6 +465,7 @@ function InboxContent({
   signalsLoading: boolean;
   setComposing: (value: boolean) => void;
 }) {
+  const { styles } = useStyles();
   const view = relationshipInboxToView(data);
   const alertsView = relationshipAlertsToView(notificationsData);
   const signalsView = relationshipSignalsToView(signalsData);
@@ -623,6 +628,7 @@ function RelationshipSignalsCard({
   onConfirmed: () => void;
   view: RelationshipSignalsView;
 }) {
+  const { colors, styles } = useStyles();
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmation, setConfirmation] =
@@ -729,6 +735,7 @@ function RelationshipSignalsCard({
 }
 
 function MetricPill({ label, value }: { label: string; value: string }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.metricPill}>
       <Text style={styles.metricValue}>{value}</Text>
@@ -748,6 +755,7 @@ function InboxSegmentedControl({
   onChange: (section: InboxSection) => void;
   threadCount: number;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.segmentedControl}>
       <SegmentButton
@@ -781,6 +789,7 @@ function SegmentButton({
   label: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -816,6 +825,7 @@ function AlertDismissButton({
   label?: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityLabel={label}
@@ -839,6 +849,7 @@ function AlertsCard({
   onDismissAlert: (id: string) => void;
   view: RelationshipAlertsView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={view.summary} title="提醒">
       {view.alerts.length > 0 ? (
@@ -895,6 +906,7 @@ function ConversationList({
   conversations: RelationshipConversationView[];
   onSelect: (conversationId: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleConversations = normalizedQuery
@@ -981,6 +993,7 @@ function ThreadDetail({
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={detail.summary} title={detail.subject}>
       {detail.sourceLabels.length > 0 ? (
@@ -1031,6 +1044,7 @@ function PrivacyControlsPanel({
   clientPost: ClientPost;
   detail: RelationshipThreadDetailView;
 }) {
+  const { styles } = useStyles();
   const [privacy, setPrivacy] = useState<RelationshipPrivacyControlsView | null>(
     null
   );
@@ -1165,6 +1179,7 @@ function ReplyComposer({
   clientPost: ClientPost;
   detail: RelationshipThreadDetailView;
 }) {
+  const { colors, styles } = useStyles();
   const [body, setBody] = useState(detail.draftReply);
   const [rewriteDraftView, setRewriteDraftView] =
     useState<RelationshipRewriteDraftView | null>(null);
@@ -1298,6 +1313,7 @@ function NewThreadComposer({
   onCreated: (thread: RelationshipCreatedThreadView) => void;
   seed: { contactId: string; organization: string; participantName: string };
 }) {
+  const { colors, styles } = useStyles();
   const initialDraft = defaultRelationshipDraft(seed);
   const [participantName, setParticipantName] = useState(seed.participantName);
   const [organization, setOrganization] = useState(seed.organization);
@@ -1416,6 +1432,7 @@ function LabeledInput({
   placeholder: string;
   value: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -1443,6 +1460,7 @@ function ActionButton({
   onPress: () => void;
   variant?: "primary" | "secondary";
 }) {
+  const { colors, styles } = useStyles();
   const secondary = variant === "secondary";
 
   return (
@@ -1474,7 +1492,7 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -1510,11 +1528,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.control,
     borderWidth: 1,
     flexDirection: "row",
     gap: 4,
-    minHeight: 30,
+    minHeight: 44,
     paddingHorizontal: 9
   },
   alertDismissText: {
@@ -1579,9 +1597,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top"
   },
   inboxMetrics: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
+    flexDirection: "row"
   },
   listStack: {
     gap: spacing.sm
@@ -1634,14 +1650,10 @@ const styles = StyleSheet.create({
   },
   metricPill: {
     alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flex: 1,
     gap: 2,
-    minWidth: 86,
-    paddingHorizontal: spacing.md,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
     paddingVertical: spacing.sm
   },
   metricValue: {
@@ -1696,11 +1708,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.control,
+    borderRadius: radius.input,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: spacing.md
   },
   searchInput: {
@@ -1720,7 +1732,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: spacing.md
   },
   segmentButtonActive: {
@@ -1837,4 +1849,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4
   }
-});
+}));

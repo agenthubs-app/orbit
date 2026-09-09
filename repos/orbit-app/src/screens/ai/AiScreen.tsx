@@ -27,7 +27,8 @@ import {
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import {
   useApiResource,
   type ApiResourceState
@@ -89,12 +90,12 @@ const capabilityEntries: {
   }
 ];
 
-const toneStyles: Record<CapabilityTone, { icon: string; surface: string }> = {
+const toneStyles = (colors: OrbitColors): Record<CapabilityTone, { icon: string; surface: string }> => ({
   accent: { icon: colors.accent, surface: colors.accentSofter },
   amber: { icon: colors.amber, surface: colors.amberSoft },
   live: { icon: colors.live, surface: colors.liveSoft },
   sky: { icon: colors.sky, surface: colors.skySoft }
-};
+});
 
 type AiDrawerHistoryItem = {
   id: string;
@@ -179,6 +180,7 @@ function useStableKeyboardBottomInset(): number {
 }
 
 export function AiScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const params = useLocalSearchParams<{ drawer?: string | string[] }>();
@@ -459,6 +461,7 @@ function ChatTopBar({
   onOpenDrawer: () => void;
   onOpenHistory: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.topBar}>
       <Pressable
@@ -518,6 +521,7 @@ function ChatTranscript({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <ScrollView
       contentContainerStyle={styles.transcriptContent}
@@ -583,6 +587,7 @@ function ChatComposer({
   onOpenMenu: () => void;
   onSend: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const canSend = draftMessage.trim().length > 0;
 
   return (
@@ -638,6 +643,7 @@ function ComposerMenuSheet({
   onScanCard: () => void;
   visible: boolean;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Modal
       animationType="fade"
@@ -705,6 +711,7 @@ function OrbitAiDrawer({
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
   visible: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const [historyQuery, setHistoryQuery] = useState("");
   const normalizedQuery = historyQuery.trim().toLocaleLowerCase();
   const filteredHistoryItems = normalizedQuery
@@ -855,7 +862,8 @@ function CapabilityRow({
   last: boolean;
   onPress: () => void;
 }) {
-  const tone = toneStyles[entry.tone];
+  const { colors, styles } = useStyles();
+  const tone = toneStyles(colors)[entry.tone];
 
   return (
     <Pressable
@@ -914,6 +922,7 @@ function OrbitAiHistoryPanel({
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
   visible: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const [historyQuery, setHistoryQuery] = useState("");
   const normalizedHistoryQuery = historyQuery.trim().toLocaleLowerCase();
   const filteredHistoryItems = normalizedHistoryQuery
@@ -998,6 +1007,7 @@ function DrawerHistoryList({
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
 }) {
+  const { styles } = useStyles();
   if (historyItems.length > 0) {
     return (
       <ScrollView
@@ -1045,6 +1055,7 @@ function DrawerHistoryRow({
   onDelete: () => void;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const canDelete = item.source === "session";
 
   return (
@@ -1099,7 +1110,7 @@ function DrawerHistoryRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   capabilityBadge: {
     alignItems: "center",
     backgroundColor: colors.rose,
@@ -1165,7 +1176,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     backgroundColor: colors.surface2,
     borderColor: colors.border2,
-    borderRadius: 26,
+    borderRadius: radius.input,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
@@ -1335,10 +1346,10 @@ const styles = StyleSheet.create({
   drawerIconButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.pill,
-    height: 36,
+    borderRadius: radius.control,
+    height: 44,
     justifyContent: "center",
-    width: 36
+    width: 44
   },
   drawerNewChat: {
     alignItems: "center",
@@ -1356,10 +1367,10 @@ const styles = StyleSheet.create({
   },
   drawerPanel: {
     backgroundColor: colors.surface,
-    borderBottomRightRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    boxShadow: "8px 0 22px rgba(18,18,28,0.16)",
-    elevation: 10,
+    borderBottomRightRadius: radius.card,
+    borderTopRightRadius: radius.card,
+    boxShadow: "4px 0 16px rgba(18,18,28,0.10)",
+    elevation: 4,
     gap: spacing.lg,
     height: "100%",
     maxWidth: 360,
@@ -1387,10 +1398,13 @@ const styles = StyleSheet.create({
   drawerSearchBox: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.pill,
+    borderColor: colors.border,
+    borderRadius: radius.input,
+    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 40,
+    marginTop: spacing.sm,
+    minHeight: 44,
     paddingHorizontal: spacing.md
   },
   drawerSearchInput: {
@@ -1587,10 +1601,10 @@ const styles = StyleSheet.create({
   topBarButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderRadius: radius.pill,
-    height: 40,
+    borderRadius: radius.control,
+    height: 44,
     justifyContent: "center",
-    width: 40
+    width: 44
   },
   topBarTitle: {
     color: colors.ink,
@@ -1604,4 +1618,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg
   }
-});
+}));

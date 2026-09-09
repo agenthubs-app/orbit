@@ -8,7 +8,8 @@ import {
   View
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { colors, radius, spacing } from "../design/tokens";
+import { radius, spacing } from "../design/tokens";
+import { createThemedStyles } from "../design/theme";
 import { AnalysisPieChart } from "./AnalysisPieChart";
 import {
   analysisPieOrbitPresentation,
@@ -26,6 +27,7 @@ export function AnalysisPieOrbitChart({
   onSelect: (id: string) => void;
   selectedId: string;
 }) {
+  const { styles } = useStyles();
   const [frameWidth, setFrameWidth] = useState(INITIAL_FRAME_WIDTH);
   const { fontScale } = useWindowDimensions();
   const presentation = analysisPieOrbitPresentation({
@@ -145,7 +147,7 @@ export function AnalysisPieOrbitChart({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   chart: {
     position: "absolute"
   },
@@ -194,4 +196,4 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 18
   }
-});
+}));

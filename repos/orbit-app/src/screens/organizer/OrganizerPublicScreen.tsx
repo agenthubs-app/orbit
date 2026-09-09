@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   organizerPublicToView,
@@ -39,6 +40,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function OrganizerPublicScreen() {
+  const { colors } = useOrbitTheme();
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const router = useRouter();
   const organizerSlug = firstParam(slug);
@@ -99,6 +101,7 @@ function OrganizerContent({
   onOpen: (href: string) => void;
   view: OrganizerPublicView;
 }) {
+  const { styles } = useStyles();
   return (
     <>
       <OrganizerHero baseUrl={baseUrl} onOpen={onOpen} view={view} />
@@ -135,6 +138,7 @@ function OrganizerHero({
   onOpen: (href: string) => void;
   view: OrganizerPublicView;
 }) {
+  const { colors, styles } = useStyles();
   const heroImage = view.primaryEvent?.coverPath ?? "/orbit-covers/meeting.jpg";
 
   return (
@@ -205,6 +209,7 @@ function OrganizerHero({
 }
 
 function StatCell({ label, value }: { label: string; value: string }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.statCell}>
       <Text style={styles.statValue}>{value}</Text>
@@ -222,6 +227,7 @@ function OrganizerEventCard({
   event: OrganizerPublicEventView;
   onOpen: (href: string) => void;
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -261,7 +267,7 @@ function OrganizerEventCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -321,7 +327,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   eventImageCta: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.caption,
     fontWeight: "800",
     lineHeight: 17
@@ -355,7 +361,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(10,10,16,0.40)"
   },
   eventImageTitle: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: 22,
     fontWeight: "800",
     lineHeight: 28
@@ -374,7 +380,7 @@ const styles = StyleSheet.create({
     lineHeight: 19
   },
   heroName: {
-    color: colors.onAccent,
+    color: colors.onImage,
     fontSize: typography.display,
     fontWeight: "800",
     lineHeight: 30
@@ -464,11 +470,11 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: radius.pill,
-    color: colors.ink,
+    color: colors.imageBadgeText,
     fontSize: typography.caption,
     fontWeight: "800",
     overflow: "hidden",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   }
-});
+}));

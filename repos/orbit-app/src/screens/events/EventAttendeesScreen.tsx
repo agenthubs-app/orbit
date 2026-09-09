@@ -25,7 +25,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -64,6 +65,7 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function EventAttendeesScreen() {
+  const { colors, styles } = useStyles();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
@@ -460,6 +462,7 @@ function EventAttendeeRosterImportResultCard({
 }: {
   view: EventAttendeeRosterImportView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <View style={styles.pillRow}>
@@ -482,6 +485,7 @@ function EventAttendeeDraftImportResultCard({
   onOpenDraftQueue: () => void;
   view: EventAttendeeDraftImportView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <View style={styles.stack}>
@@ -550,6 +554,7 @@ function AttendeeCard({
   pending: boolean;
   savedEncounter: EventEncounterNoteView | null;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={attendee.organizationRole} title={attendee.name}>
       <View style={styles.attendeeIdentityRow}>
@@ -663,6 +668,7 @@ function AttendeeAvatar({
   imageUrl: string | undefined;
   initial: string;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.attendeeAvatar}>
       {imageUrl ? (
@@ -678,7 +684,7 @@ function AttendeeAvatar({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -878,4 +884,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5
   }
-});
+}));

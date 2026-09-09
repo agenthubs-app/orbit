@@ -88,7 +88,8 @@ test("secondary contact views are grouped behind one reversible disclosure", () 
 
   assert.match(sidebar, /item\.key === "list"/);
   assert.match(sidebar, /item\.key === "pipeline"/);
-  assert.match(sidebar, /item\.key === active/);
+  assert.match(sidebar, /const currentActive = active === "graph" \? "dashboard" : active/);
+  assert.match(sidebar, /item\.key === currentActive/);
   assert.match(sidebar, /更多分析与记录/);
   assert.match(sidebar, /setExpanded\(\(value\) => !value\)/);
 });

@@ -21,7 +21,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -53,6 +54,7 @@ function answersFromView(view: EventRegistrationView | null): Record<string, str
 }
 
 export function EventRegistrationScreen() {
+  const { colors } = useOrbitTheme();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
@@ -355,6 +357,7 @@ function RegistrationForm({
   registration: EventRegistrationView;
   submitError: string | null;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <>
       <DataCard detail={registration.statusDetail} title={eventTitle}>
@@ -461,6 +464,7 @@ function AdaptiveRegistrationCard({
   question: EventRegistrationAdaptiveQuestionView | null;
   statusText: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={statusText} title="活动画像">
       <Text style={styles.bodyText}>
@@ -527,6 +531,7 @@ function PersonaPreview({
 }: {
   persona: EventRegistrationPersonaView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.personaPreview}>
       <Text style={styles.personaTitle}>{persona.tagline}</Text>
@@ -573,6 +578,7 @@ function RegistrationQuestion({
   onChange: (value: string) => void;
   question: EventRegistrationQuestionView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.questionBlock}>
       <Text style={styles.questionText}>{question.prompt}</Text>
@@ -615,7 +621,7 @@ function RegistrationQuestion({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   adaptiveActionsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -800,4 +806,4 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     justifyContent: "space-between"
   }
-});
+}));

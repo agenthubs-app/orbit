@@ -145,7 +145,7 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
   ]);
   assert.deepEqual(view.metrics, [
     { label: "联系人", value: "3" },
-    { label: "待跟进", value: "1" },
+    { label: "待联系", value: "1" },
     { label: "推进中", value: "2" },
     { label: "可引荐", value: "1" }
   ]);
@@ -156,7 +156,7 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
       label: stage.label
     })),
     [
-      { count: 1, id: "to_contact", label: "待跟进" },
+      { count: 1, id: "to_contact", label: "待联系" },
       { count: 2, id: "in_progress", label: "推进中" },
       { count: 0, id: "nurture", label: "长期维护" },
       { count: 0, id: "archived", label: "已归档" }
@@ -295,7 +295,7 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
       label: stage.label
     })),
     [
-      { count: 1, id: "to_contact", label: "待跟进" },
+      { count: 1, id: "to_contact", label: "待联系" },
       { count: 2, id: "in_progress", label: "推进中" },
       { count: 1, id: "nurture", label: "长期维护" },
       { count: 1, id: "archived", label: "已归档" }
@@ -314,7 +314,7 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
       nextRelationshipStage: action.nextRelationshipStage
     })),
     [
-      { label: "转为待跟进", nextRelationshipStage: "needs_follow_up" },
+      { label: "转为待联系", nextRelationshipStage: "needs_follow_up" },
       { label: "转长期维护", nextRelationshipStage: "nurture" }
     ]
   );
@@ -331,12 +331,26 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
   assert.deepEqual(view.stages[3]?.contacts[0]?.stageActions, [
     {
       connectionId: "connection_004",
-      label: "恢复待跟进",
+      label: "恢复待联系",
       nextRelationshipStage: "needs_follow_up",
       pendingLabel: "恢复中",
-      successMessage: "已把 Hana Sato 恢复到待跟进。"
+      successMessage: "已把 Hana Sato 恢复到待联系。"
     }
   ]);
+});
+
+test("legacy follow-up stages remain actionable under the contact label", () => {
+  for (const token of ["needs_follow_up", "to_contact", "待跟进", "待联系"]) {
+    const view = contactsPipelineToView({
+      contactsPayload: { contacts: [{ id: "legacy", displayName: "Hana", pipelineStatus: token }] },
+      connectionsPayload: { connections: [{ id: "connection:legacy", contactId: "legacy" }] },
+      tasksPayload: { tasks: [] }
+    });
+    assert.equal(view.stages[0]?.label, "待联系");
+    assert.equal(view.stages[0]?.contacts[0]?.id, "legacy", token);
+    assert.equal(view.stages[0]?.contacts[0]?.stageAction?.nextRelationshipStage, "active");
+    assert.equal(view.metrics[1]?.value, "1");
+  }
 });
 
 test("contactsPipelineToView keeps empty pipeline and intros explicit", () => {
@@ -349,7 +363,7 @@ test("contactsPipelineToView keeps empty pipeline and intros explicit", () => {
   assert.equal(view.summary, "还没有可展示的关系进展。");
   assert.deepEqual(view.metrics, [
     { label: "联系人", value: "0" },
-    { label: "待跟进", value: "0" },
+    { label: "待联系", value: "0" },
     { label: "推进中", value: "0" },
     { label: "可引荐", value: "0" }
   ]);

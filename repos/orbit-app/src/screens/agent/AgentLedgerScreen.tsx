@@ -13,7 +13,7 @@ import {
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors } from "../../design/tokens";
+import { useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -50,6 +50,7 @@ export function AgentLedgerScreen({
 }: {
   mode: AgentLedgerSurfaceMode;
 }) {
+  const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
   const ledgerState = useApiResource<AgentLedgerListPayloadContract>(
     ORBIT_API_ENDPOINTS.agentLedger,

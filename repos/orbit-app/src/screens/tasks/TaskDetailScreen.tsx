@@ -1,25 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
-import { taskActivitiesToView, taskDetailToView } from "../../view-models/today-tasks";
+import { taskActivitiesToView, taskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function mutationKey(action: string) {
-  return `ios:${action}:${Date.now()}`;
+function mutationKey() {
+  return `ios:task:${Crypto.randomUUID()}`;
 }
 
 function dateLabel(value?: string): string {
@@ -37,6 +39,7 @@ function dateLabel(value?: string): string {
 }
 
 export function TaskDetailScreen() {
+  const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const taskId = first(params.id);
   const router = useRouter();
@@ -55,16 +58,73 @@ export function TaskDetailScreen() {
   const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date()), []);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [baseline, setBaseline] = useState<TaskDetailView | null>(null);
+  const [latest, setLatest] = useState<TaskDetailView | null>(null);
+  const latestRef = useRef(latest);
+  latestRef.current = latest;
   const [moreOpen, setMoreOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>() }), [client, taskId]);
+  const scopeRef = useRef(mutationScope);
+  scopeRef.current = mutationScope;
+
+  useEffect(() => {
+    mutationScope.active = true;
+    setSaving(false);
+    setMutationError(null);
+    setReminderMessage(null);
+    setMoreOpen(false);
+    return () => { mutationScope.active = false; mutationScope.keys.clear(); };
+  }, [mutationScope]);
+
+  async function mutate(
+    method: "patch" | "post" | "delete",
+    path: string,
+    body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
+    onSuccess: (data: unknown) => void,
+  ) {
+    const scope = mutationScope;
+    const isCurrent = () => scope.active && scopeRef.current === scope;
+    if (!isCurrent() || scope.busy) return;
+    scope.busy = true;
+    setSaving(true);
+    setMutationError(null);
+    try {
+      const payload = typeof body === "function" ? await body() : body;
+      if (!isCurrent()) return;
+      const fingerprint = JSON.stringify([method, path, payload]);
+      const key = scope.keys.get(fingerprint) ?? mutationKey();
+      scope.keys.set(fingerprint, key);
+      const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key } });
+      if (!isCurrent()) return;
+      if (result.success) {
+        scope.keys.delete(fingerprint);
+        onSuccess(result.data);
+      } else setMutationError(result.error.message);
+    } catch {
+      if (isCurrent()) setMutationError("操作未完成，请重试。");
+    } finally {
+      scope.busy = false;
+      if (isCurrent()) setSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!detail) return;
-    setTitle(detail.title);
-    setNotes(detail.notes);
+    setLatest(detail);
+    if (!baseline || baseline.id !== detail.id || (
+      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes
+    )) {
+      setBaseline(detail);
+      setTitle(detail.title);
+      setNotes(detail.notes);
+    }
+    // Only a newly received revision may replace the editor. A successful
+    // write can arrive before the GET resource refreshes its older snapshot.
   }, [detail?.id, detail?.updatedAt]);
+  const staleDraft = !!baseline && !!latest && baseline.id === latest.id && baseline.updatedAt !== latest.updatedAt;
 
   function refresh() {
     detailState.refresh();
@@ -73,99 +133,83 @@ export function TaskDetailScreen() {
   }
 
   async function save() {
-    if (!detail || !title.trim() || saving) return;
+    if (!detail || !baseline || baseline.id !== taskId || staleDraft || saving || !title.trim()) return;
     const normalizedTitle = title.trim();
     const normalizedNotes = notes.trim();
-    if (normalizedTitle === detail.title && normalizedNotes === detail.notes.trim()) return;
-    setSaving(true);
-    setMutationError(null);
-    const result = await client.patch<unknown>(taskPath(taskId), {
-      body: {
-        action: "update",
-        expectedUpdatedAt: detail.updatedAt,
-        idempotencyKey: mutationKey(`update:${taskId}`),
-        patch: {
-          category: detail.category,
-          ...(normalizedNotes ? { notes: normalizedNotes } : {}),
-          title: normalizedTitle,
-        },
+    if (baseline.notes && !normalizedNotes) {
+      setMutationError("暂不支持清空已有备注，请保留或修改内容。");
+      return;
+    }
+    if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
+    const revisionAtStart = latest?.updatedAt;
+    await mutate("patch", taskPath(taskId), {
+      action: "update",
+      expectedUpdatedAt: baseline.updatedAt,
+      patch: {
+        ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+        title: normalizedTitle,
       },
+    }, (data) => {
+      if (latestRef.current?.id !== baseline.id) return;
+      const updated = taskDetailToView(data);
+      if (updated) {
+        if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
+        setBaseline(updated);
+        setTitle(updated.title);
+        setNotes(updated.notes);
+      }
+      refresh();
     });
-    if (result.success) refresh();
-    else setMutationError(result.error.message);
-    setSaving(false);
   }
 
   async function changeStatus() {
     if (!detail) return;
-    setSaving(true);
-    setMutationError(null);
     const action = detail.status === "completed" ? "reopen" : "complete";
-    const result = await client.patch<unknown>(taskPath(taskId), {
-      body: { action, idempotencyKey: mutationKey(`${action}:${taskId}`) },
-    });
-    if (result.success) {
+    await mutate("patch", taskPath(taskId), { action }, () => {
       notifyReminderPlansChanged();
       refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function deleteTask() {
-    setSaving(true);
-    setMutationError(null);
-    const result = await client.delete<unknown>(taskPath(taskId), {
-      body: { idempotencyKey: mutationKey(`delete:${taskId}`) },
-    });
-    if (result.success) {
+    await mutate("delete", taskPath(taskId), {}, () => {
       notifyReminderPlansChanged();
       setMoreOpen(false);
       router.replace("/tasks" as Href);
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function addReminder(fireAt: string) {
     if (!detail) return;
-    setSaving(true);
-    setMutationError(null);
-    setReminderMessage(null);
-    const permission = await requestNotificationPermission().catch(() => "denied" as const);
-    const systemEnabled = permission === "granted" || permission === "provisional";
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.reminders, {
-      body: {
+    let systemEnabled = false;
+    await mutate("post", ORBIT_API_ENDPOINTS.reminders, async () => {
+      setReminderMessage(null);
+      const permission = await requestNotificationPermission().catch(() => "denied" as const);
+      systemEnabled = permission === "granted" || permission === "provisional";
+      return {
         body: detail.title,
         channels: systemEnabled ? ["in_app", "ios_push"] : ["in_app"],
         createdBy: "user",
         deepLink: `/tasks/${encodeURIComponent(taskId)}`,
         fireAt,
-        idempotencyKey: mutationKey(`reminder:${taskId}:${fireAt}`),
         targetId: taskId,
         targetType: "task",
         timeZone: "Asia/Tokyo",
         title: "待办提醒",
-      },
-    });
-    if (result.success) {
+      };
+    }, () => {
       setReminderMessage(systemEnabled ? "提醒已设置" : "已添加站内提醒；可在系统设置开启通知");
       notifyReminderPlansChanged();
       remindersState.refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   async function cancelReminder(reminderId: string) {
-    setSaving(true);
-    setMutationError(null);
-    const result = await client.patch<unknown>(reminderPath(reminderId), {
-      body: { action: "cancel", idempotencyKey: mutationKey(`cancel-reminder:${reminderId}`) },
-    });
-    if (result.success) {
+    await mutate("patch", reminderPath(reminderId), { action: "cancel" }, () => {
       setReminderMessage("提醒已取消");
       notifyReminderPlansChanged();
       remindersState.refresh();
-    } else setMutationError(result.error.message);
-    setSaving(false);
+    });
   }
 
   return (
@@ -185,9 +229,19 @@ export function TaskDetailScreen() {
           </View>
 
           <View style={styles.editorGroup}>
-            <TextInput accessibilityLabel="待办标题" multiline onBlur={save} onChangeText={setTitle} style={styles.titleInput} value={title} />
-            <TextInput accessibilityLabel="备注" multiline onBlur={save} onChangeText={setNotes} placeholder="写一点备注" placeholderTextColor={colors.text4} style={styles.notesInput} value={notes} />
+            <TextInput accessibilityLabel="待办标题" editable={!saving} multiline onBlur={save} onChangeText={setTitle} style={styles.titleInput} value={title} />
+            <TextInput accessibilityLabel="备注" editable={!saving} multiline onBlur={save} onChangeText={setNotes} placeholder="写一点备注" placeholderTextColor={colors.text4} style={styles.notesInput} value={notes} />
           </View>
+
+          {staleDraft ? <View>
+            <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
+            <Pressable accessibilityRole="button" disabled={saving} onPress={() => {
+              if (!latest) return;
+              setBaseline(latest); setTitle(latest.title); setNotes(latest.notes); setMutationError(null);
+            }} style={styles.sheetRow}>
+              <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
+            </Pressable>
+          </View> : null}
 
           <View style={styles.metadataGroup}>
             <View style={styles.metadataRow}>
@@ -208,7 +262,7 @@ export function TaskDetailScreen() {
             </View>
           </View>
 
-          {mutationError ? <Text style={styles.errorText}>{mutationError}</Text> : null}
+          {mutationError && !moreOpen ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
           {reminderMessage ? <Text style={styles.successText}>{reminderMessage}</Text> : null}
 
           {detail.status !== "cancelled" ? (
@@ -229,6 +283,7 @@ export function TaskDetailScreen() {
                   </Pressable>
                 </View>
                 <ScrollView contentContainerStyle={styles.sheetBody}>
+                  {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
                   <Text style={styles.sheetSection}>提醒选项</Text>
                   {reminders.map((item) => (
                     <Pressable key={item.id} onPress={() => void cancelReminder(item.id)} style={styles.sheetRow}>
@@ -268,7 +323,7 @@ export function TaskDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   completeButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50 },
   completeButtonText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "800" },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
@@ -303,4 +358,4 @@ const styles = StyleSheet.create({
   successText: { color: colors.accent, fontSize: typography.small },
   titleInput: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 30, minHeight: 76, padding: spacing.md },
   topBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 40 },
-});
+}));

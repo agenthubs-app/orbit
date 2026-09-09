@@ -39,10 +39,9 @@ function mobileCrmTabItems(t: Translate): { href: string; key: CrmMode | "allAct
   // 移动端到不了（采集入口不在此列——标题行的扫描按钮已直达 /app/contacts/new）。
   return [
     { key: "list", href: "/home/cards", label: t({ en: "All", zh: "全部" }) },
-    { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Pipeline", zh: "管线" }) },
-    { key: "graph", href: "/home/cards/graph", label: t({ en: "Graph", zh: "图谱" }) },
+    { key: "pipeline", href: "/home/cards/pipeline", label: t({ en: "Relationship progress", zh: "关系进展" }) },
     { key: "intros", href: "/home/cards/intros", label: t({ en: "Intros", zh: "引荐" }) },
-    { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Dashboard", zh: "表盘" }) },
+    { key: "dashboard", href: "/home/cards/dashboard", label: t({ en: "Network analysis", zh: "人脉分析" }) },
     { key: "allActions", href: "/app/contacts/all-actions", label: t({ en: "All arrangements", zh: "全部安排" }) },
   ];
 }
@@ -64,11 +63,13 @@ const stageSoft = ["var(--amber-soft)", "var(--sky-soft)", "var(--live-soft)"];
 const graphWidth = 720;
 const graphHeight = 560;
 const graphStatusColor: Record<OrbitContactPipelineStatus, string> = {
+  archived: "var(--text-3)",
   in_progress: "var(--sky)",
   partnered: "var(--live)",
   to_contact: "var(--amber)",
 };
 const graphStatusSoft: Record<OrbitContactPipelineStatus, string> = {
+  archived: "var(--surface-3)",
   in_progress: "var(--sky-soft)",
   partnered: "var(--live-soft)",
   to_contact: "var(--amber-soft)",
@@ -219,7 +220,11 @@ function stageMeta(viewModel: OrbitContactsViewModel, status: OrbitContactPipeli
   const index = Math.max(0, viewModel.pipelineStatuses.findIndex((item) => item.value === status));
   const label = viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? status;
 
-  return { color: stageColors[index % 3], label, soft: stageSoft[index % 3] };
+  return {
+    color: status === "archived" ? graphStatusColor.archived : stageColors[index % 3],
+    label,
+    soft: status === "archived" ? graphStatusSoft.archived : stageSoft[index % 3],
+  };
 }
 
 function StageDot({
@@ -382,6 +387,7 @@ export function filterConnections(
       item.company,
       item.title,
       item.industry,
+      item.location,
       item.offering,
       item.seeking,
       item.nextAction?.text,
@@ -391,7 +397,9 @@ export function filterConnections(
         ? "待联系 待跟进"
         : item.pipelineStatus === "in_progress"
           ? "在推进"
-          : "已合作",
+          : item.pipelineStatus === "archived"
+            ? "已归档"
+            : "已合作",
       item.strength,
       item.strength === "strong"
         ? "强关系 高价值"

@@ -19,7 +19,8 @@ import {
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -48,6 +49,7 @@ function usable<T>(state: ReturnType<typeof useApiResource<T>>) {
 }
 
 export function TodayScreen() {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
   const path = useMemo(() => todayPath("Asia/Tokyo"), []);
@@ -176,6 +178,7 @@ function TodayWorkspace({
   updatingId: string | null;
   view: TodayView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.workspace}>
       <View style={styles.dateBlock}>
@@ -300,6 +303,7 @@ function SectionHeader({
   onPress?: () => void;
   title: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -326,6 +330,7 @@ function TaskRow({
   onOpen: () => void;
   task: TodayTaskRowView;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
@@ -361,7 +366,7 @@ function TaskRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addSuggestionButton: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -371,7 +376,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   addSuggestionText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
-  checkButton: { alignItems: "center", height: 44, justifyContent: "center", width: 40 },
+  checkButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   checkCircle: { borderColor: colors.borderStrong, borderRadius: 10, borderWidth: 1.5, height: 20, width: 20 },
   checkHigh: { borderColor: colors.rose },
   completedRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md },
@@ -407,4 +412,4 @@ const styles = StyleSheet.create({
   taskBody: { flex: 1, gap: 3, justifyContent: "center", minHeight: 52, minWidth: 0 },
   taskRow: { alignItems: "center", flexDirection: "row", minHeight: 54, paddingLeft: spacing.xs },
   workspace: { gap: spacing.sm },
-});
+}));

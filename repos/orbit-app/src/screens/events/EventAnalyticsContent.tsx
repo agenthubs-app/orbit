@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles } from "../../design/theme";
 import type { EventAnalyticsKind, EventAnalyticsMetricView, EventAnalyticsView } from "../../view-models/event-analytics";
 
 export type EventAnalyticsContentState =
@@ -11,6 +12,7 @@ export type EventAnalyticsContentState =
   | { kind: "failure"; message: string };
 
 function MetricGrid({ metrics }: { metrics: EventAnalyticsMetricView[] }) {
+  const { styles } = useStyles();
   return <View style={styles.metrics}>{metrics.map((metric) => <View key={metric.label} style={styles.metric}><Text style={styles.metricValue}>{metric.value}</Text><Text style={styles.metricLabel}>{metric.label}</Text></View>)}</View>;
 }
 
@@ -22,6 +24,7 @@ export function EventAnalyticsContent({ activeKind, attendeeAvailable, onChangeK
   state: EventAnalyticsContentState;
   view: EventAnalyticsView | null;
 }) {
+  const { styles } = useStyles();
   if (state.kind === "loading") return <DataCard title="正在读取活动证据"><Text style={styles.detail}>正在确认你可查看的报告范围。</Text></DataCard>;
   if (state.kind === "failure" || !view) return <ErrorState message={state.kind === "failure" ? state.message : "当前没有可查看的活动报告。"} />;
   const canSwitch = organizerAvailable && attendeeAvailable;
@@ -46,7 +49,7 @@ export function EventAnalyticsContent({ activeKind, attendeeAvailable, onChangeK
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   aiHeading: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
   aiStatus: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   artifact: { color: colors.ink, fontSize: typography.small, lineHeight: 21 },
@@ -77,4 +80,4 @@ const styles = StyleSheet.create({
   statusLabel: { color: colors.ink, fontSize: typography.caption, fontWeight: "800" },
   statusRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 44, paddingVertical: spacing.sm },
   statusRows: { gap: spacing.xs }
-});
+}));

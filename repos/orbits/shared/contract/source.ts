@@ -15,6 +15,12 @@ export type SourceTypeCode =
   | "agent_action"
   | "system";
 
+export type ConnectionStageCode =
+  | "needs_follow_up"
+  | "active"
+  | "nurture"
+  | "archived";
+
 export type RelationshipStageCode =
   | "captured"
   | "reviewing"

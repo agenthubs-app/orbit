@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -34,6 +35,7 @@ interface PreparedInvitationRecord {
 }
 
 export function ContactIntrosScreen() {
+  const { colors } = useOrbitTheme();
   const contactsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.contacts,
     (data) =>
@@ -113,6 +115,7 @@ function IntrosContent({
   connectionsPayload: unknown;
   contactsPayload: unknown;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
   const view = contactsPipelineToView({ connectionsPayload, contactsPayload });
@@ -320,6 +323,7 @@ function upsertPreparedInvitation(
 }
 
 function MetricGrid({ metrics }: { metrics: ContactPipelineMetricView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.metricGrid}>
       {metrics.map((metric) => (
@@ -337,6 +341,7 @@ function PreparedInvitationRecordsCard({
 }: {
   records: PreparedInvitationRecord[];
 }) {
+  const { styles } = useStyles();
   const draftCount = records.filter((record) => record.invitation.canConfirm)
     .length;
   const readyCount = records.length - draftCount;
@@ -385,6 +390,7 @@ function IntroCandidateRow({
   onOpen: () => void;
   onPrepare: () => void;
 }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.row}>
       <View style={styles.rowTop}>
@@ -441,6 +447,7 @@ function InvitationDraftCard({
   status: "idle" | "preparing" | "confirming";
   subject: string;
 }) {
+  const { colors, styles } = useStyles();
   const preparing = status === "preparing";
   const confirming = status === "confirming";
 
@@ -527,6 +534,7 @@ function LabeledInput({
   placeholder: string;
   value: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -554,6 +562,7 @@ function ActionButton({
   onPress: () => void;
   variant?: "ghost" | "primary";
 }) {
+  const { styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -578,7 +587,7 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -793,4 +802,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   }
-});
+}));

@@ -36,10 +36,9 @@ export type CrmSidebarCounts = Partial<Record<CrmSidebarActive, number>>;
 
 const WALLET_ITEMS: Item[] = [
   { key: "list", icon: "wallet", href: "/app/contacts", label: { en: "All contacts", zh: "全部人脉" } },
-  { key: "pipeline", icon: "network", href: "/app/contacts/pipeline", label: { en: "Pipeline", zh: "跟进管线" } },
-  { key: "graph", icon: "share", href: "/app/contacts/graph", label: { en: "Network graph", zh: "人脉图谱" } },
+  { key: "pipeline", icon: "network", href: "/app/contacts/pipeline", label: { en: "Relationship progress", zh: "关系进展" } },
   { key: "intros", icon: "users", href: "/app/contacts/intros", label: { en: "Introductions", zh: "引荐记录" } },
-  { key: "dashboard", icon: "grid", href: "/app/contacts/dashboard", label: { en: "Dashboard", zh: "人脉表盘" } },
+  { key: "dashboard", icon: "grid", href: "/app/contacts/dashboard", label: { en: "Network analysis", zh: "人脉分析" } },
   { key: "allActions", icon: "list", href: "/app/contacts/all-actions", label: { en: "All arrangements", zh: "全部安排" } },
 ];
 
@@ -106,7 +105,8 @@ export function CrmSidebar({
   counts?: CrmSidebarCounts;
 }) {
   const { t } = useOrbitLanguage();
-  // 核心关系动作保持常驻；图谱、引荐、表盘和操作记录属于分析/复核入口，
+  const currentActive = active === "graph" ? "dashboard" : active;
+  // 核心关系动作保持常驻；引荐、人脉分析和安排记录属于分析/复核入口，
   // 默认收进“更多”。当前页即使是高级视图也会保持可见，避免导航高亮消失。
   const [expanded, setExpanded] = useState(false);
   const walletItems = !expanded
@@ -114,13 +114,13 @@ export function CrmSidebar({
         (item) =>
           item.key === "list" ||
           item.key === "pipeline" ||
-          item.key === active,
+          item.key === currentActive,
       )
     : WALLET_ITEMS;
   return (
     <aside style={{ background: "var(--bg-sunken)", borderRight: "1px solid var(--border)", overflowY: "auto", padding: "22px 14px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <NavGroup active={active} counts={counts} items={walletItems} label={{ en: "Wallet", zh: "名片夹" }} t={t} />
+        <NavGroup active={currentActive} counts={counts} items={walletItems} label={{ en: "Wallet", zh: "名片夹" }} t={t} />
         <button
           aria-expanded={expanded}
           data-crm-sidebar-more

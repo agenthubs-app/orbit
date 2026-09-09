@@ -42,6 +42,8 @@
     "@types/node": "^26.1.0",
     "@types/react": "latest",
     "babel-plugin-module-resolver": "latest",
+    "esbuild": "0.28.1",
+    "playwright": "1.60.0",
     "tsx": "latest",
     "typescript": "latest"
   }

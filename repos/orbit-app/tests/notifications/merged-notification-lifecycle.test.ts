@@ -80,7 +80,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     const nativeRequire = (id: string): any => {
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
-      if (id === "react-native") return { Platform: { OS: "ios" }, AppState: { addEventListener() { return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View" };
+      if (id === "react-native") return { Platform: { OS: "ios" }, AppState: { addEventListener() { return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light" };
       if (id === "expo-notifications") return notifications;
       if (id === "expo-router") return { router, useRouter: () => router };
       if (id === "expo-constants") return { expoConfig: { extra: { easProjectId: "test-project" } } };
@@ -97,7 +97,8 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/endpoints")) return { ORBIT_API_ENDPOINTS: { pushTokens: "/api/devices/push-tokens" } };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
-      if (id.endsWith("/design/tokens")) return { colors: {}, spacing: {}, typography: {} };
+      if (id.endsWith("/design/theme")) return load("src/design/theme.ts");
+      if (id.endsWith("/design/tokens") || id === "./tokens") return load("src/design/tokens.ts");
       return require(id);
     };
     runInNewContext("(function(require,module,exports){" + code + "\n})", { console })(nativeRequire, module, module.exports);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
-import { createOrbitApiClient } from "../api/client";
+import { createOrbitApiClient, type FetchLike } from "../api/client";
 import { readSnapshot, writeSnapshot } from "../data/snapshot-store";
 import type { RouteState } from "../view-models/route-state";
 import { resultToRouteState } from "../view-models/route-state";
@@ -25,23 +25,33 @@ function unexpectedErrorState<TData>(_error: unknown): RouteState<TData> {
 
 export function useApiResource<TData>(
   path: string,
-  isEmpty: (data: TData) => boolean
+  isEmpty: (data: TData) => boolean,
+  { scopeKey }: { scopeKey?: string | null } = {}
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
   const actorId = auth.user?.id ?? null;
+  // Opt-in account isolation: do not coalesce this account's GET with an old
+  // browser session's request when both sessions have an empty cookieHeader.
+  const fetchImpl = useMemo<FetchLike>(
+    () => scopeKey === undefined ? fetch : (input, init) => fetch(input, init),
+    [scopeKey]
+  );
   const client = useMemo(
     () =>
       createOrbitApiClient({
         authCookieHeader: auth.cookieHeader,
-        baseUrl
+        baseUrl,
+        fetchImpl
       }),
-    [auth.cookieHeader, baseUrl]
+    [auth.cookieHeader, baseUrl, fetchImpl]
   );
   const isEmptyRef = useRef(isEmpty);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [state, setState] = useState<RouteState<TData>>({ kind: "loading" });
+  const [snapshot, setSnapshot] = useState<{ scopeKey: string | null | undefined; state: RouteState<TData> }>({ scopeKey, state: { kind: "loading" } });
+  const state: RouteState<TData> = scopeKey === undefined || snapshot.scopeKey === scopeKey ? snapshot.state : { kind: "loading" };
+  const previousScope = useRef(scopeKey);
   const refresh = useCallback(() => {
     setRefreshIndex((value) => value + 1);
   }, []);
@@ -52,7 +62,10 @@ export function useApiResource<TData>(
 
   useEffect(() => {
     let active = true;
-    const isRefresh = refreshIndex > 0;
+    const scopeChanged = previousScope.current !== scopeKey;
+    previousScope.current = scopeKey;
+    const isRefresh = refreshIndex > 0 && !scopeChanged;
+    const setState = (state: RouteState<TData>) => setSnapshot({ scopeKey, state });
 
     if (!auth.ready) {
       setState({ kind: "loading" });
@@ -132,7 +145,7 @@ export function useApiResource<TData>(
     return () => {
       active = false;
     };
-  }, [actorId, auth.ready, baseUrl, client, path, refreshIndex]);
+  }, [actorId, auth.ready, baseUrl, client, path, refreshIndex, scopeKey]);
 
   return {
     ...state,

@@ -1,3 +1,5 @@
+import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
+import { CONTACT_DETAIL_TAG_OPTIONS } from "../../../../../features/contacts/detail-contract";
 import type {
   ContactDetailSourceReference,
   ContactDetailStatusOption,
@@ -39,7 +41,7 @@ function pipelineStatusFor(
   }
 
   if (status === "archived") {
-    return "partnered";
+    return "archived";
   }
 
   return "in_progress";
@@ -178,8 +180,7 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
   ],
 };
 
-// 联系人标签是 `前缀:值` token（如 topic:storage-pilots）。展示端只显示可读的值，
-// 已知值给出中/英文案，未知值回退到把连字符换成空格。
+// 已知系统标签显示可读名称；用户自定义文字保留原样，不拆前缀或改写标点。
 const tagValueLabels: Record<string, Record<string, string>> = {
   en: {
     "warm-follow-up": "warm follow-up",
@@ -205,7 +206,8 @@ const tagValueLabels: Record<string, Record<string, string>> = {
   },
 };
 
-function tagLabel(tag: string, language: OrbitLanguage): string {
+export function tagLabel(tag: string, language: OrbitLanguage): string {
+  if (!(CONTACT_DETAIL_TAG_OPTIONS as readonly string[]).includes(tag)) return tag;
   const value = tag.includes(":") ? tag.slice(tag.indexOf(":") + 1) : tag;
 
   return tagValueLabels[language === "ja" ? "en" : language]?.[value] ?? value.replace(/[-_]+/g, " ");
@@ -249,7 +251,7 @@ function displaySegment(value: string, language: OrbitLanguage): string {
   );
 }
 
-function displayText(value: string, language: OrbitLanguage): string {
+export function displayText(value: string, language: OrbitLanguage): string {
   const langKey = language === "ja" ? "en" : language;
   const localizedValue = displaySegment(value, language);
   const withoutRawTokens = localizedValue.replace(/\b[a-z][a-z0-9]+(?:_[a-z0-9]+)+\b/g, (token) =>
@@ -329,9 +331,9 @@ function noteViews(
   language: OrbitLanguage,
 ): OrbitContactNoteView[] {
   const sourceNotes = model.contact.notes.map((note) => ({
-    body: displayText(note.body, language),
+    body: note.privacy === "private" ? note.body : displayText(note.body, language),
     createdAt: note.createdAt,
-    id: note.evidenceIds[0] ?? note.noteId,
+    id: note.privacy === "private" ? note.noteId : note.evidenceIds[0] ?? note.noteId,
     privacy: note.privacy,
     sourceLabel: note.sourceLabel,
   }));
@@ -351,6 +353,7 @@ function encounterFor(
   model: AppContactDetailSuccessModel,
   eventId: string,
   language: OrbitLanguage,
+  industry: string,
 ): OrbitContactEncounterView {
   const profile = model.contact.publicProfile;
   const bio = displayText(profile.bio, language);
@@ -365,7 +368,7 @@ function encounterFor(
       publicProfile: {
         bio,
         conversationPrompts: displayTexts(profile.conversationPrompts, language),
-        industry: displayText(profile.industry, language),
+        industry,
         intro: sameDisplayCopy(bio, intro) ? "" : intro,
         offering: displayTexts(profile.offering, language),
         seeking: displayTexts(profile.seeking, language),
@@ -398,14 +401,18 @@ export function contactDetailRouteToOrbitContactsViewModel(
   const eventId = eventIdFor(model);
   const eventName = displayText(eventNameFor(model, eventId), language);
   const notes = noteViews(model, language);
+  const industry = isIndustryIdCode(model.contact.primaryIndustryId)
+    ? industryLabel(model.contact.primaryIndustryId, language)
+    : model.contact.primaryIndustryLabel?.trim() ?? "";
   const contact: OrbitContactView = {
     company: model.contact.organization,
     displayName: model.contact.displayName,
     email: model.contact.primaryEmail ?? "",
-    encounters: [encounterFor(model, eventId, language)],
+    encounters: [encounterFor(model, eventId, language, industry)],
     g: "g-violet",
     id: model.contact.id,
-    industry: displayText(model.contact.publicProfile.industry, language),
+    industry,
+    primaryIndustryId: model.contact.primaryIndustryId,
     initial:
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),
@@ -439,6 +446,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
           )
         : "unscored",
     valueTags: model.contact.tags.map((tag) => tagLabel(tag, language)),
+    editableTags: model.contact.tags.map((tag) => ({ value: tag, label: tagLabel(tag, language) })),
     nextAction: model.contact.nextAction
       ? {
           text: displayText(model.contact.nextAction, language),
@@ -450,6 +458,11 @@ export function contactDetailRouteToOrbitContactsViewModel(
           evidenceId: model.contact.lastInteraction.evidenceIds[0],
         }
       : null,
+    editableInteraction: {
+      channel: model.contact.lastInteraction.channel,
+      occurredAt: model.contact.lastInteraction.occurredAt,
+      summary: model.contact.lastInteraction.summary,
+    },
     lastInteraction: displayText(
       model.contact.lastInteraction.summary,
       language,
@@ -472,6 +485,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },
+      { value: "archived", label: "已归档" },
     ],
   };
 }

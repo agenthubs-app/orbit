@@ -335,7 +335,7 @@ function buildField(input: {
   const reviewedValue =
     input.mode === "pending"
       ? ""
-      : input.reviewedFields?.[input.fieldName]?.trim() || input.value;
+      : input.reviewedFields?.[input.fieldName]?.trim() ?? input.value;
 
   return {
     field: input.fieldName,
@@ -394,7 +394,8 @@ function reviewedValueFor(
   fields: BusinessCardReviewFieldMap,
   fieldName: keyof BusinessCardReviewedFields,
 ): string {
-  return fields[fieldName].reviewedValue || fields[fieldName].value;
+  const field = fields[fieldName];
+  return field.reviewState === "needs_review" ? field.value : field.reviewedValue;
 }
 
 function hasAnyReviewedField(

@@ -1,3 +1,4 @@
+import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import type {
   AppContactListItemViewModel,
   AppContactsRouteViewModel,
@@ -51,13 +52,11 @@ function sourceFor(
 function pipelineStatusFor(
   contact: AppContactListItemViewModel,
 ): OrbitContactPipelineStatus {
-  const status = contact.statusLabel.toLowerCase();
-
-  if (status.includes("archived")) {
-    return "partnered";
+  if (contact.status === "archived") {
+    return "archived";
   }
 
-  if (status.includes("follow")) {
+  if (contact.status === "needs_follow_up") {
     return "to_contact";
   }
 
@@ -107,6 +106,9 @@ function contactToOrbitView(
   index: number,
 ): OrbitContactView {
   const eventId = eventIdFor(contact);
+  const industry = isIndustryIdCode(contact.primaryIndustryId)
+    ? industryLabel(contact.primaryIndustryId, "zh")
+    : contact.primaryIndustryLabel?.trim() ?? "";
   const relationshipContext =
     contact.relationshipContextCopy || contact.profileSnippet || contact.nextAction;
 
@@ -121,7 +123,7 @@ function contactToOrbitView(
           publicProfile: {
             bio: contact.profileSnippet,
             conversationPrompts: [contact.nextAction].filter(Boolean),
-            industry: contact.location || contact.tags[0] || "",
+            industry,
             intro: relationshipContext,
             offering: contact.relationshipValueLabels.length
               ? Array.from(contact.relationshipValueLabels)
@@ -140,7 +142,9 @@ function contactToOrbitView(
     ],
     g: "g-violet",
     id: contact.id,
-    industry: contact.location || contact.tags[0] || "",
+    industry,
+    primaryIndustryId: contact.primaryIndustryId,
+    location: contact.location,
     initial: initialFor(contact.displayName),
     lastEventId: eventId,
     lineId: "",
@@ -187,6 +191,7 @@ export function contactsRouteToOrbitContactsViewModel(
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },
+      { value: "archived", label: "已归档" },
     ],
   };
 }

@@ -139,6 +139,26 @@ test("business card review contract exposes human field review before contact co
   );
 });
 
+test("mock review keeps explicitly cleared fields while retaining omitted fields", async () => {
+  const { createMockBusinessCardReviewService } = await import("../../features/acquisition/mock-business-card-review-service");
+  const result = createMockBusinessCardReviewService().updateReviewDraft({
+    draftId: "demo-business-card-draft",
+    reviewedFields: { displayName: "Hana Sato", organization: "", role: " ", email: "", phone: "" },
+  });
+  assert.equal(result.success, true);
+  assert.equal(result.data.reviewDraft?.displayName, "Hana Sato");
+  for (const field of ["organization", "role", "email", "phone"] as const) {
+    assert.equal(result.data.reviewDraft?.[field], "");
+    assert.equal(result.data.reviewDraft?.extractedFields[field].reviewedValue, "");
+  }
+  const partial = createMockBusinessCardReviewService().updateReviewDraft({
+    draftId: "demo-business-card-draft", reviewedFields: { email: "revised@example.test" },
+  });
+  assert.equal(partial.success, true);
+  assert.equal(partial.data.reviewDraft?.displayName, "Hana Sato");
+  assert.equal(partial.data.reviewDraft?.organization, "Aki Robotics");
+});
+
 test("mock business card review service is deterministic and has no external provider calls", async () => {
   const serviceModule = await importProjectModule<
     typeof import("../../features/acquisition/mock-business-card-review-service")

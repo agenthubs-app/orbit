@@ -19,6 +19,12 @@ import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { agentHrefForContext } from "../orbit-agent-context-href";
+import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/industries";
+import { ContactIndustryEditor } from "./contact-industry-editor";
+import { ContactTagEditor } from "./contact-tag-editor";
+import { ContactInteractionEditor } from "./contact-interaction-editor";
+import { ContactNotesEditor } from "./contact-notes-editor";
+import { displayText, tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
 type Copy = { en: string; zh: string };
 type Translate = (copy: Copy) => string;
@@ -46,7 +52,12 @@ function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; 
 
 function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
   const label = viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? status;
-  return <span className={`nc-status nc-ps-${status}`}><span className="nc-dot" />{label}</span>;
+  const archived = status === "archived";
+  return (
+    <span className={`nc-status nc-ps-${status}`} style={archived ? { background: "var(--surface-3)", color: "var(--text-3)" } : undefined}>
+      <span className="nc-dot" style={archived ? { background: "currentColor" } : undefined} />{label}
+    </span>
+  );
 }
 
 function StatusPicker({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
@@ -78,17 +89,23 @@ function Frow({ icon, k, children }: { icon: string; k: string; children: ReactN
   );
 }
 
-function ContactCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+function ContactCard({ contact, t, onEditIndustry, onEditInteraction }: { contact: OrbitContactView; t: Translate; onEditIndustry: () => void; onEditInteraction: () => void }) {
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="user">{t({ en: "Contact", zh: "联系方式" })}</CardTitle>
       {contact.email ? <Frow icon="mail" k={t({ en: "Email", zh: "邮箱" })}><span className="mono">{contact.email}</span></Frow> : null}
       {contact.phone ? <Frow icon="phone" k={t({ en: "Phone", zh: "电话" })}><span className="mono">{contact.phone}</span></Frow> : null}
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
-      {contact.industry ? <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>{contact.industry}</Frow> : null}
+      <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>
+        <span>{contact.industry || t({ en: "Unclassified", zh: "未分类" })}</span>{" "}
+        <button className="btn btn-quiet btn-sm" type="button" aria-label={t({ en: "Edit primary industry", zh: "编辑主要行业" })} onClick={onEditIndustry}>{t({ en: "Edit", zh: "编辑" })}</button>
+      </Frow>
       {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
       {contact.met ? <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
-      {contact.lastInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>{contact.lastInteraction}</Frow> : null}
+      {contact.lastInteraction || contact.editableInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>
+        <span>{contact.lastInteraction || t({ en: "No interaction recorded", zh: "暂无互动记录" })}</span>{" "}
+        {contact.editableInteraction ? <button type="button" className="btn btn-quiet btn-sm" aria-label={t({ en: "Edit last interaction", zh: "编辑最近互动" })} onClick={onEditInteraction}>{t({ en: "Edit", zh: "编辑" })}</button> : null}
+      </Frow> : null}
     </div>
   );
 }
@@ -153,11 +170,12 @@ function AboutCard({ contact, t }: { contact: OrbitContactView; t: Translate }) 
   );
 }
 
-function TagsCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
-  if (!contact.valueTags.length) return null;
+function TagsCard({ contact, t, onEdit }: { contact: OrbitContactView; t: Translate; onEdit: () => void }) {
+  if (!contact.valueTags.length && !contact.editableTags) return null;
   return (
     <div className="card nc-card-pad">
       <CardTitle icon="star">{t({ en: "Tags", zh: "标签" })}</CardTitle>
+      {contact.editableTags ? <button type="button" className="btn btn-quiet btn-sm" style={{ marginBottom: 12 }} aria-label={t({ en: "Edit custom tags", zh: "编辑自定义标签" })} onClick={onEdit}>{t({ en: "Edit tags", zh: "编辑标签" })}</button> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {contact.valueTags.map((tag) => <span className="nc-tag nc-tag-value" key={tag}>{tag}</span>)}
       </div>
@@ -235,7 +253,7 @@ function formatTimelineDate(value: string, t: Translate): string {
 
 function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const items: TimelineItem[] = (contact.notes ?? [])
-    .filter((note) => note.body?.trim())
+    .filter((note) => note.privacy !== "private" && note.body?.trim())
     .map((note) => ({
       time: note.createdAt,
       body: note.body,
@@ -255,10 +273,8 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
             {item.privacy || item.sourceLabel ? (
               <span className="nc-tl-src">
                 <Icon name="lock" size={13} />
-                {item.privacy === "private"
-                  ? t({ en: "Private to you", zh: "仅自己可见" })
-                  : t({ en: "Relationship shared", zh: "关系双方可见" })}
-                {item.sourceLabel ? ` · ${item.sourceLabel}` : ""}
+                {item.privacy === "relationship_shared" ? t({ en: "Relationship shared", zh: "关系双方可见" }) : ""}
+                {item.sourceLabel ? `${item.privacy ? " · " : ""}${item.sourceLabel}` : ""}
               </span>
             ) : null}
             {item.evidenceId ? (
@@ -274,6 +290,28 @@ function TimelineCard({ contact, t }: { contact: OrbitContactView; t: Translate 
         <p className="nc-empty-copy">{t({ en: "No sourced interaction evidence is available for this contact.", zh: "该联系人暂无可核验的互动证据。" })}</p>
       )}
     </div>
+  );
+}
+
+function ContactNotesCard({ contact, language, onAdd }: { contact: OrbitContactView; language: "zh" | "en" | "ja"; onAdd: () => void }) {
+  const copy = {
+    zh: { title: "联系人备注", privacy: "仅自己可见", add: "添加备注", label: "添加联系人备注", empty: "还没有备注，可以记下想留给自己看的信息。" },
+    en: { title: "Contact notes", privacy: "Only visible to you", add: "Add note", label: "Add contact note", empty: "No notes yet. Write something you want to remember." },
+    ja: { title: "連絡先メモ", privacy: "自分だけに表示", add: "メモを追加", label: "連絡先メモを追加", empty: "メモはまだありません。覚えておきたいことを記入できます。" },
+  }[language];
+  const notes = contact.notes.filter((note) => note.privacy === "private").sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return (
+    <section className="card nc-card-pad" aria-label={copy.title}>
+      <CardTitle icon="lock">{copy.title}</CardTitle>
+      <p className="nc-empty-copy">{copy.privacy}</p>
+      {notes.length ? notes.map((note) => (
+        <div key={note.id} style={{ marginBottom: 16 }}>
+          <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", color: "var(--text)", lineHeight: 1.6, margin: "0 0 5px" }}>{note.body}</p>
+          <time dateTime={note.createdAt} style={{ color: "var(--text-3)", fontSize: 12 }}>{Number.isFinite(Date.parse(note.createdAt)) ? new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(note.createdAt)) : note.createdAt}</time>
+        </div>
+      )) : <p className="nc-empty-copy">{copy.empty}</p>}
+      <button type="button" className="btn btn-quiet btn-sm" aria-label={copy.label} onClick={onAdd}>{copy.add}</button>
+    </section>
   );
 }
 
@@ -304,7 +342,7 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <a className={`btn btn-quiet btn-sm${compact ? " btn-block" : ""}`} href="/app/contacts/pipeline">
-          {t({ en: "View pipeline", zh: "查看跟进管线" })}
+          {t({ en: "View relationship progress", zh: "查看关系进展" })}
         </a>
       </div>
     </div>
@@ -313,7 +351,31 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
 
 export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: string; viewModel: OrbitContactsViewModel }) {
   const { language, t } = useOrbitLanguage();
-  const contact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const sourceContact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const [industryEditContactId, setIndustryEditContactId] = useState<string | null>(null);
+  const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null } | null>(null);
+  const [tagEditContactId, setTagEditContactId] = useState<string | null>(null);
+  const [tagUpdate, setTagUpdate] = useState<{ source: OrbitContactView; tags: { value: string; label: string }[] } | null>(null);
+  const [interactionEditContactId, setInteractionEditContactId] = useState<string | null>(null);
+  const [interactionUpdate, setInteractionUpdate] = useState<{ source: OrbitContactView; value: NonNullable<OrbitContactView["editableInteraction"]> } | null>(null);
+  const [noteEditContactId, setNoteEditContactId] = useState<string | null>(null);
+  // The route keys this component by authenticated actor + contact. Within that
+  // scope, confirmed notes must survive new source objects from a refresh.
+  const [noteUpdate, setNoteUpdate] = useState<{ contactId: string; notes: OrbitContactView["notes"] } | null>(null);
+  const industryContact = industryUpdate?.source === sourceContact ? {
+    ...sourceContact,
+    primaryIndustryId: industryUpdate.value ?? undefined,
+    industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
+  } : sourceContact;
+  const tagContact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
+  const interactionContact = interactionUpdate?.source === sourceContact ? { ...tagContact, editableInteraction: interactionUpdate.value, lastInteraction: displayText(interactionUpdate.value.summary, language) } : tagContact;
+  const contact = noteUpdate?.contactId === sourceContact.id ? {
+    ...interactionContact,
+    notes: [
+      ...interactionContact.notes.filter((note) => note.privacy !== "private"),
+      ...new Map([...interactionContact.notes.filter((note) => note.privacy === "private"), ...noteUpdate.notes].map((note) => [note.id, note])).values(),
+    ],
+  } : interactionContact;
   const askAgentHref = agentHrefForContext({
     details: crmRole(contact, t),
     id: contactId,
@@ -374,11 +436,12 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
             <div className="nc-cols">
               <div className="nc-stack">
                 <AboutCard contact={contact} t={t} />
-                <ContactCard contact={contact} t={t} />
-                <TagsCard contact={contact} t={t} />
+                <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
+                <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
                 <TwoWayCard contact={contact} t={t} />
               </div>
               <div className="nc-stack">
+                <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
                 <TimelineCard contact={contact} t={t} />
                 <NextStepCard contact={contact} t={t} />
               </div>
@@ -421,14 +484,43 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <AboutCard contact={contact} t={t} />
-            <ContactCard contact={contact} t={t} />
-            <TagsCard contact={contact} t={t} />
+            <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
+            <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
             <TwoWayCard contact={contact} t={t} />
+            <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
             <TimelineCard contact={contact} t={t} />
             <NextStepCard compact contact={contact} t={t} />
           </div>
         </div>
       </div>
+
+      {noteEditContactId === contact.id ? (
+        <ContactNotesEditor key={contact.id} contactId={contact.id} language={language} onClose={() => setNoteEditContactId(null)} onSaved={(notes) => {
+          setNoteUpdate({ contactId: sourceContact.id, notes });
+          setNoteEditContactId(null);
+        }} />
+      ) : null}
+
+      {interactionEditContactId === contact.id && contact.editableInteraction ? (
+        <ContactInteractionEditor key={contact.id} contactId={contact.id} initialInteraction={contact.editableInteraction} language={language} onClose={() => setInteractionEditContactId(null)} onSaved={(value) => {
+          setInteractionUpdate({ source: sourceContact, value });
+          setInteractionEditContactId(null);
+        }} />
+      ) : null}
+
+      {tagEditContactId === contact.id && contact.editableTags ? (
+        <ContactTagEditor key={contact.id} contactId={contact.id} initialTags={contact.editableTags} language={language} onClose={() => setTagEditContactId(null)} onSaved={(values) => {
+          setTagUpdate({ source: sourceContact, tags: values.map((value) => ({ value, label: tagLabel(value, language) })) });
+          setTagEditContactId(null);
+        }} />
+      ) : null}
+
+      {industryEditContactId === contact.id ? (
+        <ContactIndustryEditor key={contact.id} contactId={contact.id} initialIndustryId={contact.primaryIndustryId} language={language} onClose={() => setIndustryEditContactId(null)} onSaved={(value) => {
+          setIndustryUpdate({ source: sourceContact, value });
+          setIndustryEditContactId(null);
+        }} />
+      ) : null}
 
       {toast ? (
         <div

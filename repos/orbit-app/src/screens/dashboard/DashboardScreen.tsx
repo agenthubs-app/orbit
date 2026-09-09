@@ -20,7 +20,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -43,6 +44,7 @@ import {
 } from "../../view-models/dashboard";
 
 export function DashboardScreen() {
+  const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] =
@@ -234,6 +236,7 @@ function DashboardContent({
   recomputing: boolean;
   summary: unknown;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
   const view = dashboardToView({
     aggregate,
@@ -331,6 +334,7 @@ function DashboardContent({
 }
 
 function MetricGrid({ metrics }: { metrics: DashboardMetricView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.metricGrid}>
       {metrics.map((metric) => (
@@ -358,6 +362,7 @@ function DashboardAuditCard({
   auditing: boolean;
   onRunAudit: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const collections = audit.collections.slice(0, 4);
   const findings = audit.findings.slice(0, 2);
 
@@ -424,6 +429,7 @@ function AuditCollectionRow({
 }: {
   collection: DashboardAuditCollectionView;
 }) {
+  const { styles } = useStyles();
   const statusStyle =
     collection.statusLabel === "来源完整" ? styles.okBadge : styles.severityBadge;
 
@@ -443,6 +449,7 @@ function AuditCollectionRow({
 }
 
 function AuditFindingRow({ finding }: { finding: DashboardAuditFindingView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.listRow}>
       <View style={styles.rowTop}>
@@ -466,6 +473,7 @@ function PriorityCard({
   onOpenContact: () => void;
   priority: DashboardPriorityView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={`${priority.organization} · ${priority.dueLabel}`} title="优先推进">
       <View style={styles.priorityHeader}>
@@ -502,6 +510,7 @@ function PriorityCard({
 }
 
 function GapsCard({ gaps }: { gaps: DashboardGapView[] }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={`${gaps.length} 个需要补齐的方向`} title="覆盖缺口">
       <View style={styles.listStack}>
@@ -527,6 +536,7 @@ function DistributionCard({
 }: {
   industries: DashboardIndustryView[];
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="看哪些圈层已经够厚，哪些还薄" title="行业分布">
       <View style={styles.listStack}>
@@ -565,6 +575,7 @@ function RelationshipShapeCard({
   strengths: DashboardStrengthView[];
   valueTypes: DashboardValueTypeView[];
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="价值类型和关系强弱" title="关系结构">
       {valueTypes.length > 0 ? (
@@ -601,6 +612,7 @@ function RelationshipShapeCard({
 }
 
 function ActivityCard({ activities }: { activities: DashboardActivityView[] }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail="最近进入系统的关系变化" title="最近动态">
       <View style={styles.listStack}>
@@ -622,7 +634,7 @@ function ActivityCard({ activities }: { activities: DashboardActivityView[] }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   barFill: {
     backgroundColor: colors.sky,
     borderRadius: radius.pill,
@@ -854,4 +866,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   }
-});
+}));

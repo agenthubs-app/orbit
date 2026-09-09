@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { colors } from "../design/tokens";
+import { createThemedStyles } from "../design/theme";
 
 export interface AnalysisPieChartItem {
   color: string;
@@ -59,6 +59,7 @@ export function AnalysisPieChart({
   size?: number;
   startAngle?: number;
 }) {
+  const { colors, styles } = useStyles();
   const total = items.reduce(
     (sum, item) => sum + Math.max(0, item.percentage),
     0
@@ -147,7 +148,7 @@ export function AnalysisPieChart({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   centerCaption: {
     color: colors.text3,
     fontSize: 10,
@@ -179,4 +180,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   }
-});
+}));

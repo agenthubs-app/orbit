@@ -11,7 +11,8 @@ import { contactStructureDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   contactStructureDetailToView,
@@ -24,6 +25,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function ContactStructureDetailScreen() {
+  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{
     bucketId?: string | string[];
     dimension?: string | string[];
@@ -72,6 +74,7 @@ function ContactStructureDetailContent({
   data: unknown;
   onOpenContact: (contactId: string) => void;
 }) {
+  const { colors, styles } = useStyles();
   const view = contactStructureDetailToView(data);
 
   return (
@@ -98,7 +101,7 @@ function ContactStructureDetailContent({
                   style={[
                     styles.qualityFill,
                     {
-                      backgroundColor: qualityColor(item.color),
+                      backgroundColor: qualityColor(item.color, colors),
                       width: `${Math.max(3, item.percentage)}%` as `${number}%`
                     }
                   ]}
@@ -157,6 +160,7 @@ function ContactRow({
   contact: ContactStructureDetailContactView;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   const avatar = contactAvatarFor({ id: contact.id, name: contact.name });
 
   return (
@@ -169,7 +173,7 @@ function ContactRow({
         pressed ? styles.pressed : null
       ]}
     >
-      <View style={[styles.avatar, avatarToneStyle(avatar.tone)]}>
+      <View style={[styles.avatar, avatarToneStyle(avatar.tone, colors)]}>
         <Text style={styles.avatarText}>{avatar.initial}</Text>
       </View>
       <View style={styles.contactCopy}>
@@ -184,13 +188,13 @@ function ContactRow({
   );
 }
 
-function qualityColor(tone: "amber" | "live" | "sky"): string {
+function qualityColor(tone: "amber" | "live" | "sky", colors: OrbitColors): string {
   if (tone === "live") return colors.live;
   if (tone === "sky") return colors.sky;
   return colors.amber;
 }
 
-function avatarToneStyle(tone: ContactAvatarTone) {
+function avatarToneStyle(tone: ContactAvatarTone, colors: OrbitColors) {
   if (tone === "emerald") return { backgroundColor: colors.liveSoft };
   if (tone === "sky") return { backgroundColor: colors.skySoft };
   if (tone === "amber") return { backgroundColor: colors.amberSoft };
@@ -198,7 +202,7 @@ function avatarToneStyle(tone: ContactAvatarTone) {
   return { backgroundColor: colors.accentSoft };
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   avatar: {
     alignItems: "center",
     borderRadius: 20,
@@ -288,4 +292,4 @@ const styles = StyleSheet.create({
   tagLabel: { color: colors.text2, fontSize: typography.caption, fontWeight: "700" },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   title: { color: colors.ink, fontSize: typography.title, fontWeight: "800", lineHeight: 25 }
-});
+}));

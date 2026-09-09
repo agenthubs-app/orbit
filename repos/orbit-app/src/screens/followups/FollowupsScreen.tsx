@@ -13,7 +13,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { MetricPill } from "../../components/MetricPill";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -43,6 +44,7 @@ function usable<TData>(
 }
 
 export function FollowupsScreen() {
+  const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
   const [generatedView, setGeneratedView] =
     useState<GeneratedFollowupTasksView | null>(null);
@@ -275,6 +277,7 @@ function FollowupsWorkspace({
   reviewingDraftId: string | null;
   view: FollowupsView;
 }) {
+  const { colors, styles } = useStyles();
   const router = useRouter();
 
   return (
@@ -405,6 +408,7 @@ function MessageDraftsCard({
   reviewingDraftId: string | null;
   view: MessageDraftsView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <Text style={styles.bodyText}>{view.nextAction}</Text>
@@ -454,6 +458,7 @@ function ChatFollowupDraftsCard({
 }: {
   view: ChatFollowupDraftsView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <Text style={styles.bodyText}>{view.nextAction}</Text>
@@ -476,6 +481,7 @@ function ChatFollowupDraftsCard({
 }
 
 function GeneratedFollowupsCard({ view }: { view: GeneratedFollowupTasksView }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <Text style={styles.bodyText}>{view.nextAction}</Text>
@@ -496,6 +502,7 @@ function GeneratedRemindersCard({
 }: {
   view: GeneratedFollowupRemindersView;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard detail={view.summary} title={view.title}>
       <Text style={styles.bodyText}>{view.nextAction}</Text>
@@ -524,6 +531,7 @@ function PriorityTaskCard({
   onCreateMessageDraft: (task: FollowupTaskView) => void;
   task: FollowupTaskView;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail={task.organization} title={task.title}>
       <View style={styles.pillRow}>
@@ -570,6 +578,7 @@ function PriorityTaskCard({
 }
 
 function TaskRow({ task }: { task: FollowupTaskView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.rowBlock}>
       <View style={styles.rowHeader}>
@@ -585,6 +594,7 @@ function TaskRow({ task }: { task: FollowupTaskView }) {
 }
 
 function ReminderRow({ reminder }: { reminder: FollowupReminderView }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.rowBlock}>
       <View style={styles.rowHeader}>
@@ -600,7 +610,7 @@ function ReminderRow({ reminder }: { reminder: FollowupReminderView }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -755,4 +765,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5
   }
-});
+}));

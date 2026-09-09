@@ -19,7 +19,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
@@ -44,6 +45,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function RelationshipChatDetailScreen() {
+  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
   const state = useApiResource<unknown>(
@@ -127,6 +129,7 @@ function ThreadContent({
   extractionError: string;
   extractionLoading: boolean;
 }) {
+  const { colors, styles } = useStyles();
   const client = useOrbitApiClient();
   const router = useRouter();
   const [sentThread, setSentThread] =
@@ -283,6 +286,7 @@ function ChatDraftComposerCard({
   result: RelationshipChatMessageSendView | null;
   sendBoundary: string;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <DataCard detail="本地草稿" title="回复草稿">
       <Text style={styles.mutedText}>{sendBoundary}</Text>
@@ -326,6 +330,7 @@ function ChatSummaryCard({
   pending: boolean;
   summary: RelationshipChatSummaryView | null;
 }) {
+  const { styles } = useStyles();
   return (
     <DataCard
       detail={summary?.sourceLabel ?? "从这段对话整理"}
@@ -364,6 +369,7 @@ function ChatExtractionCard({
   error: string;
   loading: boolean;
 }) {
+  const { styles } = useStyles();
   const view = data ? relationshipChatExtractionToView(data) : null;
 
   return (
@@ -393,6 +399,7 @@ function ExtractionGroup({
   items: RelationshipChatExtractionItemView[];
   title: string;
 }) {
+  const { styles } = useStyles();
   if (items.length === 0) {
     return null;
   }
@@ -421,6 +428,7 @@ function ChatActionButton({
   label: string;
   onPress: () => void;
 }) {
+  const { colors, styles } = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -439,6 +447,7 @@ function ChatActionButton({
 }
 
 function MessageBubble({ message }: { message: RelationshipChatMessageView }) {
+  const { styles } = useStyles();
   return (
     <View
       style={[
@@ -456,7 +465,7 @@ function MessageBubble({ message }: { message: RelationshipChatMessageView }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
     fontSize: typography.small,
@@ -616,4 +625,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5
   }
-});
+}));

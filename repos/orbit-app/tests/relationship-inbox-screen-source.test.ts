@@ -39,6 +39,14 @@ test("notification deep links fetch an authenticated delivery and expose signal 
   assert.doesNotMatch(screenSource, /mark.*delivery.*complete/u);
 });
 
+test("notification delivery card binds themed styles locally", () => {
+  const start = screenSource.indexOf("function NotificationDeliveryCard(");
+  const end = screenSource.indexOf("function InboxContent(", start);
+
+  assert.ok(start >= 0 && end > start);
+  assert.match(screenSource.slice(start, end), /const \{ styles \} = useStyles\(\)/u);
+});
+
 test("relationship inbox can rewrite reply drafts through the web assist boundary", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite/u);
   assert.match(screenSource, /buildRelationshipRewriteRequest/u);

@@ -13,7 +13,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { colors, radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography } from "../../design/tokens";
+import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   platformToView,
@@ -31,6 +32,7 @@ function assetUrl(baseUrl: string, path: string): string {
 }
 
 export function PlatformScreen() {
+  const { colors } = useOrbitTheme();
   const eventsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
     (data) => platformToView({ events: data }).reviewQueue.length === 0
@@ -77,6 +79,7 @@ function PlatformContent({
 }: {
   events: unknown;
 }) {
+  const { styles } = useStyles();
   const view = platformToView({ events });
 
   return (
@@ -104,6 +107,7 @@ function PlatformContent({
 }
 
 function StatGrid({ stats }: { stats: PlatformStatView[] }) {
+  const { styles } = useStyles();
   return (
     <View style={styles.statGrid}>
       {stats.map((stat) => (
@@ -129,6 +133,7 @@ function ReviewQueueCard({
 }: {
   items: PlatformReviewItemView[];
 }) {
+  const { colors, styles } = useStyles();
   const { baseUrl } = useOrbitApiBaseUrl();
 
   return (
@@ -185,7 +190,7 @@ function ReviewQueueCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text2,
     fontSize: typography.small,
@@ -329,4 +334,4 @@ const styles = StyleSheet.create({
     height: 8,
     width: 8
   }
-});
+}));
