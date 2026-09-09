@@ -51,3 +51,11 @@ node --import tsx scripts/check-relationship-lifecycle.ts --input records.json -
 ```
 
 结果以单个 JSON 报告输出到 stdout：退出码 `0` 为快照预检通过，`2` 为需要复核/修复，`1` 为参数、文件或输入格式错误。参数必须各出现一次，不支持 `--apply`；错误消息不会回显输入正文。此命令不执行修复、不产生审核批准、不启用路由切换，正式迁移仍须审核 manifest、校验快照新鲜度并验证事务回滚。
+
+### 迁移工具：确定性计划（2026-09-09）
+
+`planRelationshipLifecycleMigration` 只对调用方明确提供的 LiveRecord 快照和严格 manifest 计算候选修复，不读取数据库。允许的修复仅为空 owner 的逐条证据确认、缺失版本初始化为 1、按已批准优先级确定 Connection 阶段、以及有效任务日期的 UTC 规范化。非法版本、非空 owner 冲突、重复关系、缺少目标/日期和采集阶段复核仍阻断执行；不会创建业务内容、取消任务或使用 ContactActorLink 授权。
+
+计划用 SHA-256 绑定 workspace 内四类来源记录的完整内容（包括已删除记录）、修复清单和计划结果；记录顺序和 JSON 属性顺序不改变哈希。输出只含修复元数据、记录标识和问题代码，不包含姓名、目标、任务标题或笔记。`applyLifecycleMigrationChanges` 是克隆快照的纯函数，严格验证前后哈希及允许字段，不是数据库执行或审批入口。
+
+当前验证范围为确定性计划、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏。独立审核绑定、真实隔离 PostgreSQL 事务执行和 canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
