@@ -274,7 +274,7 @@ export function TaskDetailScreen() {
 
           <Modal animationType="slide" onRequestClose={() => setMoreOpen(false)} transparent visible={moreOpen}>
             <View style={styles.modalRoot}>
-              <Pressable style={styles.modalScrim} onPress={() => setMoreOpen(false)} />
+              <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="task-settings-scrim" style={styles.modalScrim} onPress={() => setMoreOpen(false)} />
               <View style={styles.sheet}>
                 <View style={styles.sheetHeader}>
                   <Text style={styles.sheetTitle}>待办设置</Text>

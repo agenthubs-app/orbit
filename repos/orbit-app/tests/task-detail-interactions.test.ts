@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
-import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
-const require = createRequire(import.meta.url);
 let browser: Browser;
 let server: Server;
 let url: string;
@@ -70,7 +68,19 @@ test.before(async () => {
     plugins: [{
       name: "task-screen-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+        plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native-props", namespace: "task-test" }));
+        plugin.onLoad({ filter: /^native-props$/, namespace: "task-test" }, () => ({
+          contents: `import React from "react"; import { Pressable as NativePressable } from "react-native-web"; export * from "react-native-web";
+            export const Pressable = React.forwardRef((props, ref) => {
+              if (props.testID === "task-settings-scrim") window.fixture.scrimAccessibility = {
+                accessible: props.accessible,
+                accessibilityElementsHidden: props.accessibilityElementsHidden,
+                importantForAccessibility: props.importantForAccessibility
+              };
+              return <NativePressable {...props} ref={ref} />;
+            });`,
+          loader: "jsx", resolveDir: process.cwd(),
+        }));
         plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons)$|\/(useApiResource|useOrbitApiClient|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
@@ -102,6 +112,38 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   await page.waitForFunction(() => document.querySelector<HTMLTextAreaElement>('[aria-label="待办标题"]')?.value === "Original title");
   return page;
 }
+
+test("task settings retain an accessible close and decorative pointer dismissal without writes", async (t) => {
+  const page = await openScreen(t);
+  const open = page.getByRole("button", { name: "更多待办操作", exact: true });
+  const close = page.getByRole("button", { name: "关闭待办设置", exact: true });
+  await open.click();
+  await close.waitFor();
+  // RN Web drops these native-only props. Observe the real screen's boundary
+  // contract without inventing browser accessibility or native traversal evidence.
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scrimAccessibility), {
+    accessible: false,
+    accessibilityElementsHidden: true,
+    importantForAccessibility: "no-hide-descendants",
+  });
+  const dialog = page.getByRole("dialog");
+  assert.match(await dialog.ariaSnapshot(), /button "关闭待办设置"/u);
+  assert.match(await dialog.ariaSnapshot(), /button "删除待办"/u);
+  await close.focus();
+  assert.equal(await close.evaluate(element => element === document.activeElement), true);
+  await page.keyboard.press("Enter");
+  await close.waitFor({ state: "hidden" });
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0);
+
+  await open.click();
+  await close.waitFor();
+  // The existing harness stubs theme styles: dispatch tests the pointer handler,
+  // not the scrim's native hit area or stacking geometry.
+  await page.getByTestId("task-settings-scrim").dispatchEvent("click");
+  await close.waitFor({ state: "hidden" });
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.permissionCalls), 0);
+});
 
 test("task refresh preserves a dirty draft and prevents stale writes", async (t) => {
   const page = await openScreen(t);

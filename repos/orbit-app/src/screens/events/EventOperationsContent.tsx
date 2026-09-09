@@ -85,7 +85,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
       <View style={styles.cardSection}>
         <View style={styles.sectionHeading}>
           <View style={styles.flexCopy}><Text style={styles.sectionTitle}>AI 匹配与发布</Text><Text style={styles.sectionDetail}>完整生成后仍需主办方确认，结果不会自动公开。</Text></View>
-          <Pressable accessibilityRole="button" disabled={view.hasActiveGeneration || busy !== null} onPress={onStartGeneration} style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null, view.hasActiveGeneration || busy !== null ? styles.disabled : null]}>
+          <Pressable accessibilityLabel="开始生成匹配" accessibilityRole="button" disabled={view.hasActiveGeneration || busy !== null} onPress={onStartGeneration} style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null, view.hasActiveGeneration || busy !== null ? styles.disabled : null]}>
             <Ionicons color={colors.onAccent} name="sparkles-outline" size={19} />
           </Pressable>
         </View>
