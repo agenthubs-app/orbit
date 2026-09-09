@@ -196,7 +196,9 @@ export const ORBIT_ASK_STYLES = `
 }
 
 @media (max-width: 640px) {
-  .oga-root .oga-ball { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* 这条比基础规则靠后且同权重，会覆盖它，所以钉住底栏的让位量必须在这里
+     一起算——只改基础规则的话窄屏下完全不生效（实测悬浮球仍压住确认按钮）。 */
+  .oga-root .oga-ball { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom) + var(--orbit-pinned-bar-h, 0px)); }
   .oga-root .oga-dock { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
 

@@ -407,3 +407,5 @@ vercel logs -d orbit-preview-li-qy.vercel.app --no-follow -j -n 300
 2. **线上 API 漏出内部脚手架措辞**。跨账号 404 返回 `That mock contact detail is not available in this sprint boundary.`，在真实数据的 live 请求里既不准确也不该出现 mock/sprint 字样。排查后 8 条同类文案中有 7 条确实线上可达，已全部改写为中性表述，`code` 与响应结构不变；未发现任何 UI 依赖这些文案文本。
 
 未能在 Preview 上验证的一项：上传中断后的「上传失败，请重试」界面。名片上传不走 `window.fetch`（Blob 客户端持有自己的 fetch 引用或用 XHR），页内补丁拦不到，因此无法在浏览器里模拟网络中断。该行为此前已在本机用 Playwright 网络层拦截验证通过（错误提示 + 重试上传按钮 + 重试成功），此处不重复计为线上证据。
+
+**同轮追加（部署 `orbit-cbomtxnxd` 复验）**：固定操作栏在 375×812 下测得 `position: fixed`、z-index 100、矩形 745→812 紧贴视口底部，滚动位置 0 时两个按钮完全可见（修复前是 y=937 屏外）；滚到底部时「取消剩余导入」与隐私说明都在栏上方未被遮挡。但复验同时发现**新引入的遮挡**：全局 iOrbit 悬浮球（`.oga-ball`，fixed，z-index 110）与确认按钮重叠 48×42 px，`elementFromPoint` 在按钮右缘命中的是悬浮球的 `<circle>` 而不是按钮。已改为由页面在 `body` 上声明 `--orbit-pinned-bar-h`、悬浮球据此上移的契约（其余页面回落 0，位置不变）。同时把预留高度从拍脑袋的 118px 改为跟随底栏自身盒模型的 `calc(54px + max(12px, env(safe-area-inset-bottom, 0px)))`——实测底栏在 320px 与 375px 下均为 67px 单行，原值多预留约一倍，页尾留下明显空档。
