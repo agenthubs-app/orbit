@@ -665,7 +665,10 @@ const BATCH_STYLE = `
      scroll range, leaving the last elements just as trapped (measured).
      118px = two 44px button rows (the row wraps at 375px with English labels)
      + 10px row gap + 20px vertical padding; +12px breathing room. */
-  .bcb-shell:has(.bcb-actions-review) { --bcb-pinned-bar-h: 118px; padding-bottom: calc(var(--bcb-pinned-bar-h) + 12px); }
+  /* 底栏高度按它自己的盒模型算：10px 上内边距 + 44px 按钮 + 底部内边距（安全区）。
+     声明在 body 上，全局的 iOrbit 悬浮球才能读到并让开，见 orbit-global-ask-styles.ts。 */
+  body:has(.bcb-actions-review) { --orbit-pinned-bar-h: calc(54px + max(12px, env(safe-area-inset-bottom, 0px))); }
+  .bcb-shell:has(.bcb-actions-review) { padding-bottom: calc(var(--orbit-pinned-bar-h) + 12px); }
   .bcb-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; flex-wrap: wrap; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
 }
 `;

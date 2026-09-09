@@ -213,9 +213,9 @@ test("narrow screens pin the review action row and reserve its height in the flo
   // The reserve sits at the END of the scrollable content (the shell), not inside the
   // review form — padding inside the form moves the tail down with the extra scroll
   // range and leaves the last elements just as trapped (measured at 375x812).
-  assert.match(narrow, /\.bci-shell:has\(\.bci-actions-review\) \{[^}]*padding-bottom: calc\(var\(--bci-pinned-bar-h\) \+ 12px\)/);
+  assert.match(narrow, /\.bci-shell:has\(\.bci-actions-review\) \{[^}]*padding-bottom: calc\(var\(--orbit-pinned-bar-h\) \+ 12px\)/);
   assert.ok(!/\.bci-review-form \{[^}]*padding-bottom/.test(narrow));
-  assert.match(narrow, /--bci-pinned-bar-h: 118px/);
+  assert.match(narrow, /body:has\(\.bci-actions-review\) \{ --orbit-pinned-bar-h: calc\(54px \+ max\(12px, env\(safe-area-inset-bottom, 0px\)\)\); \}/);
   assert.match(narrow, /env\(safe-area-inset-bottom/);
   // The 3-row notes cap from the same narrow-screen pass stays.
   assert.match(narrow, /textarea\.bci-notes \{ height: calc\(4\.5em \+ 20px\)/);

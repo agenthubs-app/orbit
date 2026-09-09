@@ -948,7 +948,9 @@ const VIEW_STYLE = `
      only moves the tail down together with the extra scroll range, leaving the last
      elements just as trapped (measured). 118px = two 44px button rows (the row wraps
      at 375px with English labels) + 10px row gap + 20px padding; +12px breathing room. */
-  .bci-shell:has(.bci-actions-review) { --bci-pinned-bar-h: 118px; padding-bottom: calc(var(--bci-pinned-bar-h) + 12px); }
+  /* 与 V1 同一套契约：底栏高度声明在 body 上，全局 iOrbit 悬浮球据此上移。 */
+  body:has(.bci-actions-review) { --orbit-pinned-bar-h: calc(54px + max(12px, env(safe-area-inset-bottom, 0px))); }
+  .bci-shell:has(.bci-actions-review) { padding-bottom: calc(var(--orbit-pinned-bar-h) + 12px); }
   .bci-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
 }
 `;

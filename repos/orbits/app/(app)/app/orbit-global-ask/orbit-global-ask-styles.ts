@@ -43,7 +43,9 @@ export const ORBIT_ASK_STYLES = `
 .oga-root .oga-ball {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  /* 页面若钉了底部操作栏，会在 body 上声明 --orbit-pinned-bar-h，悬浮球据此让开；
+     否则回落到 0，桌面与其余页面位置不变。名片复核页曾因此压住「确认并下一张」。 */
+  bottom: calc(24px + var(--orbit-pinned-bar-h, 0px));
   z-index: ${ASK_Z};
   width: 54px;
   height: 54px;

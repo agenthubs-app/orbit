@@ -314,9 +314,12 @@ test("narrow screens pin the review action row and reserve its height in the flo
   // A fixed bar leaves the flow, so the reserve has to sit at the END of the
   // scrollable content (the shell) — measured: padding inside .bcb-review-form moves
   // the tail down with the extra scroll range and leaves it just as trapped.
-  assert.match(narrow, /\.bcb-shell:has\(\.bcb-actions-review\) \{[^}]*padding-bottom: calc\(var\(--bcb-pinned-bar-h\) \+ 12px\)/);
+  assert.match(narrow, /\.bcb-shell:has\(\.bcb-actions-review\) \{[^}]*padding-bottom: calc\(var\(--orbit-pinned-bar-h\) \+ 12px\)/);
   assert.ok(!/\.bcb-review-form \{[^}]*padding-bottom/.test(narrow));
-  assert.match(narrow, /--bcb-pinned-bar-h: 118px/);
+  // Measured on Preview at 320px and 375px: the bar renders 67px tall in a single
+  // row, so the reserve tracks its own box (10px + 44px button + safe-area bottom)
+  // instead of the doubled guess it started with.
+  assert.match(narrow, /body:has\(\.bcb-actions-review\) \{ --orbit-pinned-bar-h: calc\(54px \+ max\(12px, env\(safe-area-inset-bottom, 0px\)\)\); \}/);
   assert.match(narrow, /env\(safe-area-inset-bottom/);
   // The 3-row notes cap from the same narrow-screen pass stays.
   assert.match(narrow, /textarea\.bcb-notes \{ height: calc\(4\.5em \+ 20px\)/);
