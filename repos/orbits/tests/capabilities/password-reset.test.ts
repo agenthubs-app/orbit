@@ -34,6 +34,28 @@ test("SMTP recovery reuses party-app config, verifies acceptance and suppresses 
   assert.ok(passwordResetConfig({ NODE_ENV: "test", AUTH_SECRET: secret, ORBIT_PUBLIC_ORIGIN: "https://orbit.example.com", SMTP_HOST: "smtp.example.com", SMTP_USER: "user", SMTP_PASS: "secret", ACCESS_EMAIL_FROM: "sender@example.com" })?.smtp);
 });
 
+test("SMTP recovery logs only the protocol-level failure code, never the credential-bearing error message", async () => {
+  const config = passwordResetSmtpConfig({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "465", SMTP_SECURE: "true", SMTP_USER: "sender", SMTP_PASS: "private-password", ACCESS_EMAIL_FROM: "Orbit <sender@example.com>" });
+  assert.ok(config);
+  const authFailure = Object.assign(new Error("Invalid login: 535-5.7.8 Username and Password not accepted for sender@example.com secret-token"), { code: "EAUTH", responseCode: 535 });
+  const mailer = createSmtpPasswordResetMailer(config, { sendMail: async () => { throw authFailure; } } as never);
+  const originalConsoleError = console.error;
+  const logged: string[] = [];
+  console.error = (line: string) => { logged.push(line); };
+  try {
+    await assert.rejects(mailer.send("member@example.com", "https://orbit.example.com/app/account/reset-password#token=secret", "key"), { message: "Password reset delivery failed" });
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(logged.length, 1);
+  const entry = JSON.parse(logged[0]);
+  assert.deepEqual(entry, { event: "password_reset_smtp_send_failed", smtpCode: "EAUTH", smtpResponseCode: 535 });
+  assert.doesNotMatch(logged[0], /member@example\.com/);
+  assert.doesNotMatch(logged[0], /sender@example\.com/);
+  assert.doesNotMatch(logged[0], /secret-token/);
+  assert.doesNotMatch(logged[0], /private-password/);
+});
+
 test("reset mail configuration pins an HTTPS origin and authenticated encryption detects tampering", () => {
   const env = { NODE_ENV: "test" as const, AUTH_SECRET: secret, ORBIT_AUTH_RESEND_API_KEY: "test", ORBIT_AUTH_MAIL_FROM: "noreply@example.com", ORBIT_PUBLIC_ORIGIN: "https://orbit.example.com" };
   assert.equal(passwordResetConfig(env)?.origin, "https://orbit.example.com");
