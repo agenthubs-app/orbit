@@ -35,6 +35,8 @@
 | 2 | `tests/services/relationship-lifecycle-migration-review.test.ts` | 未批准、过期、错身份、篡改/未知字段均拒绝 |
 | 3 | `features/connections/lifecycle/migration-repository.ts` | 明确注入 SQL runtime，事务内 dry-run/apply、审计和回执 |
 | 3 | `features/connections/lifecycle/migration-schema.ts` | 迁移回执独立 DDL，不改现有命令回执语义 |
+| 3、4 | `features/connections/lifecycle/record-snapshot.ts` | 固定 LiveRecord SQL 列映射，保留 PostgreSQL 微秒和 UTC 时区 |
+| 3、4 | `tests/support/lifecycle-migration-fixture.ts` | 复用隔离数据库/schema、完整记录和测试专用审核样例；不被生产代码引用 |
 | 3 | `tests/services/relationship-lifecycle-migration-postgres.test.ts` | 隔离 PostgreSQL 真实提交、回滚、并发、回放和来源漂移 |
 | 4 | `features/connections/lifecycle/read-projection.ts` | actor-owned 批量读取与纯阶段/下一任务投影，不接当前路由 |
 | 4 | `tests/services/relationship-lifecycle-read-projection.test.ts` | 单一事实、真实任务、时区、缺失/冲突不泄漏 |
@@ -146,11 +148,11 @@ assert.throws(() => assertLifecycleMigrationReview({
 
 - [x] Implement strict parsing and immutable copies. Reuse lifecycle instant validation. Do not create a helper or CLI that automatically supplies `approved: true`, `reviewedBy` or `reviewedAt` for the operator.
 - [x] Report generic typed errors without attaching raw review input. Document that an artifact binds the reviewed version but does not prove a human read it; the authorized operator is responsible for obtaining real approval.
-- [ ] Run Task 1 + Task 2 tests and typecheck, review independently, detect staged scope and commit Task 2.
+- [x] Run Task 1 + Task 2 tests and typecheck, review independently, detect staged scope and commit Task 2. Completed as `ff70988f6`: 26 tests passed, none skipped; full Web typecheck and independent review passed.
 
 ## Task 3: Transactional Migration Repository
 
-**Files:** Create `migration-repository.ts`, `migration-schema.ts` and `relationship-lifecycle-migration-postgres.test.ts`; update the module document.
+**Files:** Create `migration-repository.ts`, `migration-schema.ts` and `relationship-lifecycle-migration-postgres.test.ts`; update the module document. Shared SQL column projection and isolated test fixture use the two supporting files listed above so Task 4 can reuse exact timestamp handling and database isolation.
 
 **Interfaces:**
 
@@ -172,14 +174,14 @@ function createPostgresLifecycleMigrationRepository(input: {
 };
 ```
 
-- [ ] Use an explicitly configured isolated test URL, unique schema per test, statement/connection timeouts, and the real transactional runtime. Do not source `.env` or default to an application's database URL.
-- [ ] Write failing PostgreSQL tests for dry-run not writing, exact reviewed patches committing, all other payload/envelope fields unchanged, stale source rejection, blocked plan rejection, conflicting review identities, same-run replay and same-run different-command rejection.
-- [ ] Add the migration receipt table with primary key `(workspace_id, actor_id, run_id)` and a request hash. Store only validated metadata receipts. Migration audits use a separate collection and contain changed physical identities/field names and review hashes, not full before/after data.
-- [ ] `dryRun` reads a complete maintenance snapshot of the four source collections in one transaction and plans without mutations. This maintenance-only reader may inspect workspace records for ownership conflicts; it is never exported through a user API.
-- [ ] `apply` clones/validates its arguments before any await. In one serializable transaction, look up the receipt, validate any replay against exact request identity, lock/read source records, regenerate the plan, assert external review, apply only its generated changes, rerun preflight, write audit and receipt, then commit. Replays do not claim present-day readiness.
-- [ ] Require exactly one row per changed physical target; use pinned workspace/collection/record and the observed owner. Revalidate before/after content hashes. Never replace a full payload with a handcrafted DTO; merge the exact minimal patch and preserve creation/update dates because this is metadata repair, not a new user action.
-- [ ] Retry only serialization/deadlock/this receipt's uniqueness races, with three total attempts. All other errors return immediately. Each retry re-reads the receipt and full source; no cached plan survives a transaction restart.
-- [ ] Inject an audit or receipt write failure after record updates and assert complete rollback. Race identical and distinct run IDs; test a foreign-owner reference and an unrelated record with the same logical ID. Include a callback/await mutation attempt and malformed stored receipts to prove snapshots cannot be swapped or replayed across actors.
+- [x] Use an explicitly configured isolated test URL, unique schema per test, statement/connection timeouts, and the real transactional runtime. Do not source `.env` or default to an application's database URL.
+- [x] Write failing PostgreSQL tests for dry-run not writing, exact reviewed patches committing, all other payload/envelope fields unchanged, stale source rejection, blocked plan rejection, conflicting review identities, same-run replay and same-run different-command rejection.
+- [x] Add the migration receipt table with primary key `(workspace_id, actor_id, run_id)` and a request hash. Store only validated metadata receipts. Migration audits use a separate collection and contain changed physical identities/field names and review hashes, not full before/after data.
+- [x] `dryRun` reads a complete maintenance snapshot of the four source collections in one transaction and plans without mutations. This maintenance-only reader may inspect workspace records for ownership conflicts; it is never exported through a user API.
+- [x] `apply` clones/validates its arguments before any await. In one serializable transaction, look up the receipt, validate any replay against exact request identity, lock/read source records, regenerate the plan, assert external review, apply only its generated changes, rerun preflight, write audit and receipt, then commit. Replays do not claim present-day readiness.
+- [x] Require exactly one row per changed physical target; use pinned workspace/collection/record and the observed owner. Revalidate before/after content hashes. Never replace a full payload with a handcrafted DTO; merge the exact minimal patch and preserve creation/update dates because this is metadata repair, not a new user action.
+- [x] Retry only serialization/deadlock/this receipt's uniqueness races, with three total attempts. All other errors return immediately. Each retry re-reads the receipt and full source; no cached plan survives a transaction restart.
+- [x] Inject an audit or receipt write failure after record updates and assert complete rollback. Race identical and distinct run IDs; test a foreign-owner reference and an unrelated record with the same logical ID. Include a callback/await mutation attempt and malformed stored receipts to prove snapshots cannot be swapped or replayed across actors.
 
 ```ts
 const first = await repository.apply(input);

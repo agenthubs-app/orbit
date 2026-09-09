@@ -58,8 +58,18 @@ node --import tsx scripts/check-relationship-lifecycle.ts --input records.json -
 
 计划用 SHA-256 绑定 workspace 内四类来源记录的完整内容（包括已删除记录）、修复清单和计划结果；记录顺序和 JSON 属性顺序不改变哈希。输出只含修复元数据、记录标识和问题代码，不包含姓名、目标、任务标题或笔记。`applyLifecycleMigrationChanges` 是克隆快照的纯函数，严格验证前后哈希及允许字段，不是数据库执行或审批入口。
 
-计划器已覆盖确定性、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏，并通过独立审查。真实隔离 PostgreSQL 事务执行和 canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
+计划器已覆盖确定性、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏，并通过独立审查。canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
 
 `parseLifecycleMigrationReview` 和 `assertLifecycleMigrationReview` 严格校验外部提供的审核回执：明确的 `approved: true`、actor/workspace、负责审核的 operator 身份，以及来源、manifest、计划三个哈希必须一致。审核时间规范化为 UTC，不能晚于执行时钟；被修改或仍有问题的计划不能执行。不额外猜测有效期，来源新鲜度必须由后续事务内重读和重新计划证明。
 
 回执格式只能绑定审核过的版本，不能证明某个人真的读过它。操作者必须取得真实审核并如实提供 `reviewedBy/reviewedAt`，工具不会生成批准、签名或替代人工确认；`reviewedBy` 必须等于本次明确提供的 operator。解析返回独立副本，错误不回显原始回执或私人内容。已测试缺少批准、未知字段、错身份、错哈希、未来/无效时间、计划篡改和非 JSON 输入。
+
+### 迁移工具：显式 PostgreSQL 执行
+
+`createPostgresLifecycleMigrationRepository({ client, workspaceId })` 只接受明确注入的事务 runtime，提供 `dryRun(manifest)` 与 `apply({ manifest, review, actorId, operatorId, runId, now })`；不会读取环境配置、运行 schema 或注册路由。`runLifecycleMigrationSchema` 必须由维护操作者单独调用，它只建立本迁移的独立回执表，不更改现有业务命令回执。
+
+维护快照在一个事务中读取该 workspace 的四类完整记录，包括已删除和其他 owner 的记录，以查出归属冲突。这个入口不面向用户 API。SQL 将记录时间直接格式化为 UTC 并保留 PostgreSQL 微秒，避免经过 JavaScript Date 后丢失哈希精度。
+
+执行在同一 SERIALIZABLE 事务里读取回执、锁定来源、重新计算计划并校验外部审核，再按 workspace/collection/record/原 owner 精确更新最小 payload 补丁。每个目标必须只更新一行且匹配预期前后哈希；记录原有创建/更新时间、画像和来源不被重写。变更、无私人正文的字段级审计、校验哈希保护的回执一起提交，最后重新读取来源，验证包括 trigger 影响在内的实际结果及阶段约束。任何失败全部回滚。
+
+相同 run ID 必须重放原命令（包括原来的显式 `now`）；不同身份、审核或命令冲突。重放校验存储回执结构和身份，并返回首次结果，不代表当前数据仍可切换。只有序列化冲突、死锁和本回执主键竞争可重试，最多 3 次完整事务。隔离本地 PostgreSQL 测试覆盖实际提交、两类写入失败回滚、并发与重放、微秒来源漂移、SQL 等待期间输入变更、损坏回执和 trigger 篡改。没有访问正式数据库、执行真实迁移或启用 Web/App 新路径。
