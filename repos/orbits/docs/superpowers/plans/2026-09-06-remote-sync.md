@@ -339,3 +339,48 @@ database prerequisite is absent; no new skip exemption was retained.
   simulator, universal-link association or remote-write evidence is claimed.
   The supplied seven Web runtime-audit failures and five planned missing App
   routes remain outside this task; the complete Web suite was not rerun here.
+
+### 2026-09-10 Native Event Experience Task 1: Response Contracts
+
+- Added seven import-free response DTOs, shared Zod snapshot/preview schemas,
+  and consumed source-to-DTO compatibility assertions. The preview wrapper is
+  `{ version: EventExperienceVersion }`, verified against the unchanged handler
+  with injected access dependencies and a storage factory that throws if used.
+- Schema validation checks required fields, timestamps, fixed question identity,
+  null cover assets, revisions, persisted versions, event consistency and head
+  pointers. Preview requires event/actor `preview` and version zero. DTOs preserve
+  the full source profile-field union; validation only permits the five existing
+  experience mappings. No source business rules or authorization were copied.
+- RED: missing schema module, then 11 behavior tests with 5 pass and 6 expected
+  assertion failures. GREEN: schema 11/11; existing route/service tests 7/7.
+  Required combined run: 20/21, zero skips. Contract barrel coverage still fails
+  for `event-experience` and pre-existing `password-reset`; the required
+  `shared/contract/index.ts` edit is outside the authorized five-file write set.
+  This acceptance boundary remains open for the controller, not waived.
+- Both Web typechecks pass after resolving Zod nullable/readonly optional-field
+  inference under non-strict TypeScript using explicit validated DTO projection,
+  without casts or project configuration changes. Strict/non-strict scoped
+  compilation also passed during diagnosis. Source handlers and existing tests
+  remain unchanged; no App sync, database or external-provider work occurred.
+- Qualified GitNexus upstream impact: compatibility object LOW, zero direct
+  dependents; compatibility file LOW, one direct test importer; zero indexed
+  processes in either result. FTS/search completeness and unindexed runtime
+  effects are UNKNOWN, not proof of no behavior. No reindex was performed.
+- Exact commands, failure diagnostics and self-review are in the scoped
+  `task-1-report.md`. Independent review, barrel repair authorization, App/HTTP
+  runtime acceptance and integration remain with the controller. The supplied
+  seven required Web runtime-audit failures and known App route parity failure
+  are not cleared by this task.
+
+#### Task 1 Required Barrel Repair
+
+- Controller's plan-omission ruling extended the write set only to the public
+  contract barrel for explicit type exports of all seven experience DTOs and
+  the existing `PasswordResetResponse`. Applied that bounded repair using the
+  retained RED; controller's pre-edit qualified upstream impact was LOW with
+  zero mapped direct callers/flows, subject to the same graph limitations.
+- Required four-suite rerun is now 21/21, zero failures/skips; both Web
+  typechecks pass. This closes the barrel failure recorded above. Exact
+  covering commands/output are appended to the same Task 1 report. No App sync,
+  business-rule edits, test weakening, staging or commits. Independent review
+  and App/HTTP-runtime acceptance remain with the controller.

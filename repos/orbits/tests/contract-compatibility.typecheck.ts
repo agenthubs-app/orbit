@@ -5,6 +5,23 @@ import type {
   ContactValueFilterMatchesContract,
 } from "../features/contacts/contract";
 import type { ApiEnvelope } from "../shared/api/envelope";
+import type {
+  EventExperienceConfiguration,
+  EventExperienceHead,
+  EventExperienceQuestion,
+  EventExperienceQuestionSetInput,
+  EventExperienceSnapshot,
+  EventExperienceVersion,
+} from "../features/events/experience/contract";
+import type {
+  EventExperienceConfigurationContract,
+  EventExperienceHeadContract,
+  EventExperiencePreviewResponseContract,
+  EventExperienceQuestionContract,
+  EventExperienceQuestionSetContract,
+  EventExperienceSnapshotContract,
+  EventExperienceVersionContract,
+} from "../shared/contract/event-experience";
 import type { ContractMatches } from "../shared/contract-check";
 import type { ContactsListPayloadContract } from "../shared/contract/contacts";
 import type { ApiEnvelopeContract } from "../shared/contract/envelope";
@@ -31,6 +48,13 @@ export const crossClientContractCompatibility = {
   contactValue: true,
   envelope: true,
   errorCode: true,
+  eventExperienceConfiguration: true,
+  eventExperienceHead: true,
+  eventExperiencePreviewResponse: true,
+  eventExperienceQuestion: true,
+  eventExperienceQuestionSet: true,
+  eventExperienceSnapshot: true,
+  eventExperienceVersion: true,
   industry: true,
   language: true,
   relationshipStage: true,
@@ -48,6 +72,13 @@ export const crossClientContractCompatibility = {
     ApiEnvelopeContract<ContactsListPayloadContract>
   >;
   errorCode: AppErrorCodeMatchesContract;
+  eventExperienceConfiguration: ContractMatches<EventExperienceConfiguration, EventExperienceConfigurationContract>;
+  eventExperienceHead: ContractMatches<EventExperienceHead, EventExperienceHeadContract>;
+  eventExperiencePreviewResponse: ContractMatches<{ version: EventExperienceVersion }, EventExperiencePreviewResponseContract>;
+  eventExperienceQuestion: ContractMatches<EventExperienceQuestion, EventExperienceQuestionContract>;
+  eventExperienceQuestionSet: ContractMatches<EventExperienceQuestionSetInput, EventExperienceQuestionSetContract>;
+  eventExperienceSnapshot: ContractMatches<EventExperienceSnapshot, EventExperienceSnapshotContract>;
+  eventExperienceVersion: ContractMatches<EventExperienceVersion, EventExperienceVersionContract>;
   industry: ContractMatches<(typeof INDUSTRY_IDS)[number], IndustryIdCode>;
   language: ContractMatches<(typeof ORBIT_LANGUAGES)[number], OrbitLanguage>;
   relationshipStage: RelationshipStageMatchesContract;

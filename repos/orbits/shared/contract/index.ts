@@ -33,6 +33,18 @@ export type {
 } from "./events";
 
 export type {
+  EventExperienceConfigurationContract,
+  EventExperienceHeadContract,
+  EventExperiencePreviewResponseContract,
+  EventExperienceQuestionContract,
+  EventExperienceQuestionSetContract,
+  EventExperienceSnapshotContract,
+  EventExperienceVersionContract
+} from "./event-experience";
+
+export type { PasswordResetResponse } from "./password-reset";
+
+export type {
   FollowupAuditContract,
   FollowupPriorityCode,
   FollowupSourceReferenceContract,
