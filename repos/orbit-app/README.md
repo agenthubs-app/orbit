@@ -103,7 +103,8 @@ requests and do not access real accounts or replace native-device acceptance.
   running external writes from mobile.
 - Account: reads `/api/account/me`, shows the current account, workspace,
   identity, and relationship goal. It also supports native
-  `/account/login`, `/account/signup`, and `/account/forgot-password` entry
+  `/account/login`, `/account/signup`, `/account/forgot-password`, and
+  `/account/reset-password` entry
   screens. Email/password login now follows the web NextAuth credentials flow,
   signup calls `/api/auth/register`, and sign-out clears the saved device
   session.
@@ -320,8 +321,26 @@ Profile links to a mobile account and workspace screen. The screen reads
 `/api/account/me`, maps demo account payloads to 小雨's Chinese Orbit founder
 identity, and opens native account entry screens for login, signup, and
 password reset. Email/password login and signup now use the same web auth
-routes. Password reset delivery and OAuth callback handling are still web-side
-flows.
+routes. Native password recovery requests a reset link with
+`POST /api/auth/password-reset/request` and shows the server's generic acceptance,
+not a delivery confirmation. The native reset screen accepts an explicitly pasted
+same-server HTTPS `/app/account/reset-password` email link and submits the new
+password to `POST /api/auth/password-reset/confirm`. Query-carried tokens,
+credentials, foreign origins, and other paths are rejected. HTTP paste is allowed
+only for matching loopback origins during isolated local QA.
+
+Reset tokens and passwords remain in memory and request bodies. Capturing a link
+clears the pasted input and route fragment; confirmed success clears the token
+and both password fields. Changing the server or account clears the form and
+invalidates pending responses. Resetting an opaque token does not forcibly sign
+out a potentially different current account; server revocation and later
+authenticated validation remain authoritative.
+
+HTTPS email universal-link association is not configured, so automatic email-to-App
+opening is not supported. The existing Web email URL remains unchanged; same-server
+link paste is the native fallback. Browser component tests use local API fixtures,
+not actual HTTP/DB or simulator acceptance. Real email delivery, domain association,
+native-device behavior, and cross-client session readback remain unverified here.
 
 The account screen also links to a native permissions center at
 `/account/permissions`. It reads `/api/permissions`, shows the current staged

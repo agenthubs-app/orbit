@@ -65,9 +65,9 @@ test("account auth screen is brand-first without explainer or status cards", () 
   assert.doesNotMatch(screenSource, /displayName:\s*"小雨"/u);
 });
 
-test("forgot password fails closed without collecting reset fields", () => {
-  assert.match(screenSource, /view\.restrictionMessage/u);
-  assert.match(screenSource, /密码重置服务暂不可用/u);
-  assert.doesNotMatch(screenSource, /setForgotStep|setForgotStep\(2\)/u);
-  assert.doesNotMatch(screenSource, /验证码邮件还没开通/u);
+// Route wiring only; real submits are covered in password-reset-interactions.
+test("password reset has a public native route", () => {
+  const route = join(repoRoot, "app/account/reset-password.tsx");
+  assert.ok(existsSync(route), "native reset route exists");
+  assert.match(readFileSync(route, "utf8"), /<PasswordResetScreen\s*\/>/u);
 });

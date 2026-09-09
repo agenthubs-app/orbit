@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -9,6 +9,9 @@ import {
   View
 } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import type { PasswordResetResponse } from "../../api/contract/password-reset";
+import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { radius, spacing, typography } from "../../design/tokens";
@@ -48,6 +51,18 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const auth = useOrbitAuthSession();
+  const client = useOrbitApiClient();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.user?.id ?? null;
+  const ready = auth.ready && server.ready;
+  const [scope, setScope] = useState({ client, actorId, ready, mode });
+  const scopeRef = useRef(scope);
+  const mounted = useRef(true);
+  const recoveryPending = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const [values, setValues] = useState<Record<AccountAuthFieldView["name"], string>>({
     email: firstParam(params.email),
     password: ""
@@ -58,6 +73,20 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   );
   const next = normalizedNext(firstParam(params.next, view.defaultNext));
   const created = firstParam(params.created) === "1";
+
+  if (scope.client !== client || scope.actorId !== actorId || scope.ready !== ready || scope.mode !== mode) {
+    const nextScope = { client, actorId, ready, mode };
+    scopeRef.current = nextScope;
+    setScope(nextScope);
+    if (mode === "forgot" || scope.mode === "forgot") {
+      recoveryPending.current = false;
+      setSubmitting(false);
+      setValues({ email: "", password: "" });
+      setNotice(null);
+      setError(null);
+    }
+    return null;
+  }
 
   function updateValue(field: AccountAuthFieldView, value: string) {
     setValues((current) => ({
@@ -71,16 +100,35 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   }
 
   async function submit() {
+    if (mode === "forgot") {
+      if (!ready || recoveryPending.current) return;
+      recoveryPending.current = true;
+      const requestScope = scope;
+      const isCurrent = () => mounted.current && scopeRef.current === requestScope;
+      setSubmitting(true);
+      setNotice(null);
+      setError(null);
+      try {
+        const result = await client.post<PasswordResetResponse>("/api/auth/password-reset/request", {
+          body: { email: values.email.trim() }
+        });
+        if (!isCurrent()) return;
+        if (!result.success) setError(result.error.message);
+        else if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
+          setError("尚未确认受理，请稍后重试。");
+        } else setNotice(result.data.message);
+      } catch {
+        if (isCurrent()) setError("暂时无法连接服务，请稍后重试。");
+      } finally {
+        if (isCurrent()) { recoveryPending.current = false; setSubmitting(false); }
+      }
+      return;
+    }
     setSubmitting(true);
     setNotice(null);
     setError(null);
 
     try {
-      if (mode === "forgot") {
-        setError(view.restrictionMessage ?? "密码重置服务暂不可用。");
-        return;
-      }
-
       if (mode === "signup") {
         const result = await auth.register({
           email: values.email,
@@ -194,10 +242,11 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             <Text style={styles.noticeText}>账号已创建。请用刚才的邮箱继续登录。</Text>
           ) : null}
           {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
           <Pressable
+            accessibilityLabel={view.primaryLabel}
             accessibilityRole="button"
-            disabled={submitting || !auth.ready}
+            disabled={submitting || !auth.ready || (mode === "forgot" && !ready)}
             onPress={submit}
             style={({ pressed }) => [
               styles.primaryButton,
@@ -311,6 +360,7 @@ function AuthField({
       </View>
       <View style={styles.inputShell}>
         <TextInput
+          accessibilityLabel={field.label}
           autoCapitalize="none"
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
@@ -436,6 +486,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   helperLink: {
     borderRadius: radius.control,
+    justifyContent: "center",
+    minHeight: 44,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },

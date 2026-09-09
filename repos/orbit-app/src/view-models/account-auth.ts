@@ -44,6 +44,7 @@ const defaultNext = "/dashboard";
 const boundary = "使用网页端同一组邮箱和密码。";
 const authEntryPaths = new Set([
   "/account/forgot-password",
+  "/account/reset-password",
   "/account/login",
   "/account/signup"
 ]);
@@ -62,10 +63,8 @@ const modeCopy: Record<
 > = {
   forgot: {
     busyLabel: "处理中...",
-    description: "当前部署尚未配置密码重置服务。",
-    primaryLabel: "密码重置暂不可用",
-    restrictionMessage:
-      "系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。",
+    description: "输入账号邮箱。",
+    primaryLabel: "发送重置链接",
     switchHref: "/account/login",
     switchLabel: "返回登录",
     title: "重置密码"
@@ -113,7 +112,7 @@ const signupPasswordField: AccountAuthFieldView = {
 
 function fieldsForMode(mode: AccountAuthMode): AccountAuthFieldView[] {
   if (mode === "forgot") {
-    return [];
+    return [emailField];
   }
 
   return mode === "signup"
@@ -122,6 +121,9 @@ function fieldsForMode(mode: AccountAuthMode): AccountAuthFieldView[] {
 }
 
 function helperLinksForMode(mode: AccountAuthMode): AccountAuthHelperLinkView[] {
+  if (mode === "forgot") {
+    return [{ href: "/account/reset-password", label: "使用重置链接" }];
+  }
   if (mode === "login") {
     return [{ href: "/account/forgot-password", label: "忘记密码" }];
   }

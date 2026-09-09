@@ -4,6 +4,10 @@ import { describe, it } from "node:test";
 import { resolveInitialRouteHref } from "../src/view-models/initial-route";
 
 describe("resolveInitialRouteHref", () => {
+  it("supports the public reset entry and preserves its fragment", () => {
+    assert.equal(resolveInitialRouteHref("account/reset-password"), "/account/reset-password");
+    assert.ok(resolveInitialRouteHref("/app/account/reset-password#token=redacted") === "/account/reset-password#token=redacted");
+  });
   it("defaults to the AI tab", () => {
     assert.equal(resolveInitialRouteHref(undefined), "/ai");
   });

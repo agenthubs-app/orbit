@@ -23,7 +23,7 @@ test("accountAuthToView maps each auth mode to Chinese mobile copy", () => {
     }
   > = {
     forgot: {
-      primaryLabel: "密码重置暂不可用",
+      primaryLabel: "发送重置链接",
       switchHref: "/account/login",
       switchLabel: "返回登录",
       title: "重置密码"
@@ -72,7 +72,7 @@ test("accountAuthToView returns the fields required by each mode", () => {
   );
   assert.deepEqual(
     accountAuthToView("forgot").fields.map((field) => field.name),
-    []
+    ["email"]
   );
 });
 
@@ -83,10 +83,10 @@ test("accountAuthToView exposes account recovery helper links", () => {
       label: "忘记密码"
     }
   ]);
-  assert.deepEqual(accountAuthToView("forgot").helperLinks, []);
+  assert.deepEqual(accountAuthToView("forgot").helperLinks, [{ href: "/account/reset-password", label: "使用重置链接" }]);
   assert.equal(
     accountAuthToView("forgot").restrictionMessage,
-    "系统没有发送邮件或验证码。请返回登录，或联系为你提供账号的活动主办方。"
+    undefined
   );
   assert.deepEqual(accountAuthToView("signup").helperLinks, []);
 });
@@ -153,5 +153,6 @@ test("normalizedNext accepts supported app routes and rejects redirect or route-
   assert.equal(normalizedNext("/unknown-route"), "/dashboard");
   assert.equal(normalizedNext("/account/login?next=%2Faccount%2Flogin"), "/dashboard");
   assert.equal(normalizedNext("/account/signup"), "/dashboard");
+  assert.equal(normalizedNext("/account/reset-password#token=redacted"), "/dashboard");
   assert.equal(normalizedNext(undefined), "/dashboard");
 });

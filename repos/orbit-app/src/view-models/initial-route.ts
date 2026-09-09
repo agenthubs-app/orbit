@@ -1,6 +1,7 @@
 type InitialRoutePath =
   | "/account"
   | "/account/forgot-password"
+  | "/account/reset-password"
   | "/account/login"
   | "/account/permissions"
   | "/account/signup"
@@ -47,6 +48,7 @@ export type InitialRouteHref =
 const routeByKey: Record<string, InitialRoutePath> = {
   account: "/account",
   "account/forgot-password": "/account/forgot-password",
+  "account/reset-password": "/account/reset-password",
   "account/login": "/account/login",
   "account/mobile-google": "/account/login",
   "account/permissions": "/account/permissions",

@@ -68,7 +68,7 @@ const data = {
 
 **Interfaces:** `useOrbitApiClient()` returns an account/base-URL-scoped client. Use `client.post<PasswordResetResponse>(path, { body })`. Request path is `/api/auth/password-reset/request` with `{ email }`; reset path is `/api/auth/password-reset/confirm` with `{ token, password }`. `useLocalSearchParams` can expose fragment under `"#"`; use the installed router implementation and existing mobile-route-access tests to confirm fragment behavior rather than guessing.
 
-- [ ] Sync the Task 1 DTO with `npm run sync:contract`. Add red view-model tests: forgot has exactly the email field, no OAuth or unavailable restriction; reset is an auth-entry excluded from normalized post-login `next`; initial-route supports `/account/reset-password` and its fragment. Retain existing login/signup and open-redirect checks.
+- [x] Sync the Task 1 DTO with `npm run sync:contract`. Add red view-model tests: forgot has exactly the email field, no OAuth or unavailable restriction; reset is an auth-entry excluded from normalized post-login `next`; initial-route supports `/account/reset-password` and its fragment. Retain existing login/signup and open-redirect checks.
 
 ```ts
 assert.deepEqual(accountAuthToView("forgot").fields.map((field) => field.name), ["email"]);
@@ -76,7 +76,7 @@ assert.equal(accountAuthToView("forgot").restrictionMessage, undefined);
 assert.equal(normalizedNext("/account/reset-password#token=secret"), "/dashboard");
 ```
 
-- [ ] Add pure reset view-model helpers for parsing a token from the fragment or an explicitly pasted link, and validating password/confirmation. Tokens must match `/^[A-Za-z0-9_-]{43}$/u`. Pasted links must have no credentials or query, exactly the configured server origin, HTTPS, and `/app/account/reset-password` path. Reject foreign origins and query-carried tokens. For isolated runtime QA only, allow HTTP when both configured server and pasted link are loopback origins; never allow arbitrary HTTP hostnames. Use `URL` and `URLSearchParams` rather than ad hoc URL splitting.
+- [x] Add pure reset view-model helpers for parsing a token from the fragment or an explicitly pasted link, and validating password/confirmation. Tokens must match `/^[A-Za-z0-9_-]{43}$/u`. Pasted links must have no credentials or query, exactly the configured server origin, HTTPS, and `/app/account/reset-password` path. Reject foreign origins and query-carried tokens. For isolated runtime QA only, allow HTTP when both configured server and pasted link are loopback origins; never allow arbitrary HTTP hostnames. Use `URL` and `URLSearchParams` rather than ad hoc URL splitting.
 
 ```ts
 export function passwordResetTokenFromFragment(fragment: string | undefined): string | null;
@@ -84,9 +84,9 @@ export function passwordResetTokenFromLink(link: string, baseUrl: string): strin
 export function passwordResetValidation(password: string, confirmation: string): string | null;
 ```
 
-- [ ] Test missing/duplicate/malformed tokens; wrong origin/path/protocol; credentials/query rejection; valid same-server token; password below eight characters, more than 72 UTF-8 bytes, multibyte boundaries, mismatch, and valid password. Use the platform's UTF-8 encoding API supported in this repo, not Web-only Buffer in native production.
-- [ ] Add actual runtime interaction tests before screen edits. Reuse the repository's VM/native-boundary harness pattern while executing real components and hooks; static HTML/source alone cannot prove submits. Cases: email request accepted without account enumeration; service unavailable and retry; reset success payload; invalid/expired token recovery; mismatch makes no request; duplicate press sends one request; deferred response after client/account change or unmount cannot mutate the current form; token/password clear on success. All API responses are local fixtures.
-- [ ] Analyze impact for every changed existing function/helper. Enable forgot copy and `[emailField]` in the existing view-model, preserving login/signup behavior. In the existing forgot submit branch call the request endpoint and show the generic returned acceptance or visible failure; stay on the form rather than claiming delivery. Render a link to the reset screen so a user can paste the received link.
+- [x] Test missing/duplicate/malformed tokens; wrong origin/path/protocol; credentials/query rejection; valid same-server token; password below eight characters, more than 72 UTF-8 bytes, multibyte boundaries, mismatch, and valid password. Use the platform's UTF-8 encoding API supported in this repo, not Web-only Buffer in native production.
+- [x] Add actual runtime interaction tests before screen edits. Reuse the repository's VM/native-boundary harness pattern while executing real components and hooks; static HTML/source alone cannot prove submits. Cases: email request accepted without account enumeration; service unavailable and retry; reset success payload; invalid/expired token recovery; mismatch makes no request; duplicate press sends one request; deferred response after client/account change or unmount cannot mutate the current form; token/password clear on success. All API responses are local fixtures.
+- [x] Analyze impact for every changed existing function/helper. Enable forgot copy and `[emailField]` in the existing view-model, preserving login/signup behavior. In the existing forgot submit branch call the request endpoint and show the generic returned acceptance or visible failure; stay on the form rather than claiming delivery. Render a link to the reset screen so a user can paste the received link.
 
 ```ts
 const result = await client.post<PasswordResetResponse>("/api/auth/password-reset/request", {
@@ -97,8 +97,8 @@ if (result.success) setNotice(result.data.message);
 else setError(result.error.message);
 ```
 
-- [ ] Implement PasswordResetScreen with existing AppScreen, themed controls, and Ionicons. With a valid fragment token show password and confirmation; without one show a reset-link input and forgot/back-login navigation. Keep accepted token only in memory, clear pasted link after capture, and never include token in rendered text or success navigation. Invalid token shows a new-request action; network/server failure keeps a retryable form. Add secureTextEntry and appropriate input accessibility labels; keep controls stable across submitting/error states.
-- [ ] Add the public route file rendering PasswordResetScreen; add the initial-route key/type and reset auth-entry exclusion only. Do not broaden unrelated route whitelists or alter AuthSessionProvider. Do not add a Web button that embeds the bearer token into a custom scheme.
+- [x] Implement PasswordResetScreen with existing AppScreen, themed controls, and Ionicons. With a valid fragment token show password and confirmation; without one show a reset-link input and forgot/back-login navigation. Keep accepted token only in memory, clear pasted link after capture, and never include token in rendered text or success navigation. Invalid token shows a new-request action; network/server failure keeps a retryable form. Add secureTextEntry and appropriate input accessibility labels; keep controls stable across submitting/error states.
+- [x] Add the public route file rendering PasswordResetScreen; add the initial-route key/type and reset auth-entry exclusion only. Do not broaden unrelated route whitelists or alter AuthSessionProvider. Do not add a Web button that embeds the bearer token into a custom scheme.
 
 ```tsx
 import { PasswordResetScreen } from "../../src/screens/profile/PasswordResetScreen";
@@ -107,10 +107,28 @@ export default function ResetPasswordRoute() {
 }
 ```
 
-- [ ] Run focused changed/new tests, contract-sync tests, API client tests, mobile-route-access tests, and App typecheck. Then run the full App suite. Route parity should now have only the other four planned missing routes; that failure remains explicit. Update README to state that native supports email request and same-server reset-link paste; universal links and real email remain unverified.
+- [x] Run focused changed/new tests, contract-sync tests, API client tests, mobile-route-access tests, and App typecheck. Then run the full App suite. Route parity should now have only the other four planned missing routes; that failure remains explicit. Update README to state that native supports email request and same-server reset-link paste; universal links and real email remain unverified.
 - [ ] Independent task and whole-feature review. Controller runs change detection and commits reviewed work. Actual local HTTP/DB and simulator QA are still required in the completion runtime phase; do not label them passed based on mocked interactions.
 
 ## Verification Boundaries
+
+### Task 2 Checkpoint
+
+The 13-file native request/reset candidate passed independent spec and quality
+review with no findings. Controller independently reproduced67/67 focused tests,
+zero skips/cancellations, on sanitizedNode22.23.2 in7.18seconds. App typecheck
+passes; fullApp is860tests859passoneknownfour-routeparityfailurezeroSkip. Only
+the three batch routes and experience route remain absent; reset is now present.
+Log: /tmp/orbit-completion-password-task2-independent-node22-20260910.log.
+
+Contract sync introduced only the new pure response DTO. Recovery tokens are
+bound to ready server/account scope; stale responses and synchronous duplicates
+are covered through real components with fixture transport. Parent observed
+GitNexus detection13files19mappedSymbols0flowsLOW. New files are not yet indexed,
+so the graph result does not replace the independent patch review. Whole-feature
+review remains pending, including Task1's deferred routine-log noise. Backend
+lifecycle checks retain the separately verified Task1 result; HTTP/DB, simulator,
+real mail and cross-client readback are not proved by this App checkpoint.
 
 ### Task 1 Checkpoint
 
