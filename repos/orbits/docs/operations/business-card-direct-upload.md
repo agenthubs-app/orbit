@@ -197,3 +197,7 @@ Preview 环境变量名称检查确认没有 `DEEPSEEK_API_KEY`、`GEMINI_API_KE
 - Today 仍显示"当前没有待你处理的事"：Today 只读取 agent 账本 `awaiting_confirmation` 条目和待确认约见，用户自建的暂存草稿线程与新联系人不在其来源里（设计层面而非缺陷，见 `docs/superpowers/specs/2026-07-25-today-schedule-merge-design.md`）。
 
 同日修复（见提交记录）：注册后自动登录、导入中心 741 px 竖排标题、管理员提示补 `DEEPSEEK_API_KEY`、复核页全空识别提示与空姓名禁用确认、移动端操作栏吸底、Today 眉标改为与导航一致的"日程"、AI provider 按已配置密钥自动选择、AI 起草未配置的诚实提示、联系人详情英文残留。
+
+**同日复验（部署 `orbit-mju0tsmpp`，提交 `d8562bc1`）**：第二个空账号注册 201 后直接以 credentials 建立会话并落到 Today，不再经过登录页；741 px 导入中心变为单列、标题横排；联系人详情"认识来源"显示"名片扫描确认"、行业行隐藏、下一步建议本地化；健康检查 `/api/agent/operations/health` 报告 `provider: deepseek, selection: auto`。AI 起草仍失败但原因变为 `MODEL_REQUEST_FAILED: deepseek request timed out after 20000ms`——agent 文本路径默认开启 DeepSeek thinking 且只给 20 秒，与名片 OCR 的"禁用 thinking + 60 秒"不一致；提交 `f4f219f6` 让草稿服务默认 `deepseekThinking:false`、45 秒超时，路由 `maxDuration 60`。另发现：用其他账号打开不属于自己的联系人时，空态页整段是英文（"CONTACT DETAIL / No contact detail is available / Return to contacts list"），隔离正确但未本地化；"所在地 Unknown location" 占位已在同一提交按空处理。
+
+**同日再验（部署 `orbit-81s91qvlq`，提交 `f4f219f6`）**：同一联系人上 `POST /api/chat/assist/email-draft` 200，DeepSeek（`deepseek-v4-flash`，thinking 禁用）6.7 秒返回中文主题与正文，`evidenceIds` 指向名片批次证据；收件箱面板点击"AI 起草邮件"后主题、正文自动填入，无错误提示。至此 Preview 真实浏览器核心旅程 `注册（自动登录）→ 上传名片 → 准备进度 → 真实 OCR → 复核确认 → 联系人详情 → AI 草稿 → 暂存线程` 全部走通；QA 联系人已归档。

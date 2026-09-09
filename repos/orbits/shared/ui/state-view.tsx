@@ -11,6 +11,8 @@ export interface StateViewRecoveryAction {
   ariaLabel?: string;
 }
 
+export type StateViewLanguage = "en" | "zh" | "ja";
+
 export interface StateViewProps {
   eyebrow: string;
   title: string;
@@ -21,6 +23,21 @@ export interface StateViewProps {
   evidence?: string[];
   nextStep?: string;
   recoveryActions?: StateViewRecoveryAction[];
+  /**
+   * 当前 UI 语言。传入后 StateView 自带的标题、默认文案和隐私说明只渲染
+   * 该语言（ja 缺省时回退英文，与 useOrbitLanguage().t 一致）。不传则保持
+   * 历史的“中文 / English”双语拼接，尚未接入语言机制的路由不受影响。
+   */
+  language?: StateViewLanguage;
+}
+
+function createStateViewCopy(language?: StateViewLanguage) {
+  return (chinese: string, english: string, japanese?: string): string => {
+    if (!language) return bilingualText(chinese, english);
+    if (language === "zh") return chinese;
+    if (language === "ja") return japanese ?? english;
+    return english;
+  };
 }
 
 // StateView 是产品路由（app/(app)/app/**）的 route-state 边界，那些路由不会
@@ -170,25 +187,43 @@ export function StateView({
   eyebrow,
   title,
   description,
-  purpose = bilingualText(
-    "用来源上下文判断下一段关系工作该怎么走。",
-    "Use source context to decide what relationship work comes next.",
-  ),
-  emptyState = bilingualText(
-    "还没有可用的关系来源。",
-    "No relationship source is ready yet.",
-  ),
-  guardrail = bilingualText(
-    "Orbit 会等来源复核后再建议动作。",
-    "Orbit waits for source review before suggesting an action.",
-  ),
+  purpose,
+  emptyState,
+  guardrail,
   evidence = [],
-  nextStep = bilingualText(
-    "来源复核后会显示细节，下一步动作要能回到可见证据。",
-    "Source details appear after review so the next safe action can stay tied to visible evidence.",
-  ),
+  nextStep,
   recoveryActions = [],
+  language,
 }: StateViewProps) {
+  const copy = createStateViewCopy(language);
+  const purposeCopy =
+    purpose ??
+    copy(
+      "用来源上下文判断下一段关系工作该怎么走。",
+      "Use source context to decide what relationship work comes next.",
+      "出典の文脈をもとに、次の関係づくりの進め方を判断します。",
+    );
+  const emptyStateCopy =
+    emptyState ??
+    copy(
+      "还没有可用的关系来源。",
+      "No relationship source is ready yet.",
+      "利用できる関係の出典はまだありません。",
+    );
+  const guardrailCopy =
+    guardrail ??
+    copy(
+      "Orbit 会等来源复核后再建议动作。",
+      "Orbit waits for source review before suggesting an action.",
+      "Orbit は出典の確認を待ってからアクションを提案します。",
+    );
+  const nextStepCopy =
+    nextStep ??
+    copy(
+      "来源复核后会显示细节，下一步动作要能回到可见证据。",
+      "Source details appear after review so the next safe action can stay tied to visible evidence.",
+      "出典の詳細は確認後に表示され、次の安全なアクションは常に可視の根拠に結びつきます。",
+    );
   const visibleRecoveryActions = normalizeRecoveryActions(recoveryActions);
 
   return (
@@ -199,22 +234,22 @@ export function StateView({
         <div aria-label="Relationship state guidance" className="action-guard">
           <dl className="guard-list">
             <div aria-label="Screen purpose">
-              <dt>{bilingualText("为什么重要", "Why this matters")}</dt>
-              <dd>{purpose}</dd>
+              <dt>{copy("为什么重要", "Why this matters", "なぜ重要か")}</dt>
+              <dd>{purposeCopy}</dd>
             </div>
             <div aria-label="Available relationship context">
-              <dt>{bilingualText("现在可用的上下文", "What you can use now")}</dt>
-              <dd>{emptyState}</dd>
+              <dt>{copy("现在可用的上下文", "What you can use now", "今使える文脈")}</dt>
+              <dd>{emptyStateCopy}</dd>
             </div>
             <div aria-label="Safe next step">
-              <dt>{bilingualText("安全下一步", "Safe next step")}</dt>
-              <dd>{guardrail}</dd>
+              <dt>{copy("安全下一步", "Safe next step", "安全な次の一歩")}</dt>
+              <dd>{guardrailCopy}</dd>
             </div>
           </dl>
         </div>
         {evidence.length > 0 && (
           <details aria-label="State source details">
-            <summary>{bilingualText("来源详情", "Source details")}</summary>
+            <summary>{copy("来源详情", "Source details", "出典の詳細")}</summary>
             <div aria-label="State source evidence" className="chip-row">
               {evidence.map((item) => (
                 <Chip key={item} tone="evidence">
@@ -225,9 +260,10 @@ export function StateView({
           </details>
         )}
         <p className="privacy-note">
-          {bilingualText(
+          {copy(
             "这里还没有连接任何外部账号。之后的每条记录都要先显示来源，Orbit 才会建议动作。",
             "No outside accounts are connected here yet. Each future record must show its source before Orbit suggests an action.",
+            "ここにはまだ外部アカウントは接続されていません。今後の各記録は、Orbit がアクションを提案する前に出典を表示する必要があります。",
           )}
         </p>
         {visibleRecoveryActions.length > 0 ? (
@@ -259,10 +295,10 @@ export function StateView({
               );
             })}
           </div>
-        ) : nextStep ? (
+        ) : nextStepCopy ? (
           <p aria-label="Next step:" className="type-body">
-            <strong>{bilingualText("接下来做什么", "What to do next")}:</strong>{" "}
-            {nextStep}
+            <strong>{copy("接下来做什么", "What to do next", "次にすること")}:</strong>{" "}
+            {nextStepCopy}
           </p>
         ) : null}
       </WorkbenchSurface>
