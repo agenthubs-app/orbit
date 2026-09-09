@@ -72,6 +72,8 @@ assert.equal(homeSurface.runtimeEvidence.some((value) => value.includes("rendere
 - [ ] Separate current static-denominator assertions from the historical browser-evidence case. The fixed source-location/normalized-implementation counts 1244/915 no longer describe the current tree (pre-repair observation 1674/1324). Verify those summary counts against deduplicated current interaction identities and retain exact route/source ownership assertions; do not replace them with a lower minimum or conflate them with observed runtime leaf counts. Keep the historical 3001 observed leaf occurrences, 279 observed states and unresolved runtime denominator unchanged unless new executed evidence legitimately extends them. Put static consistency checks in an independently executed test so the intentional runtime-coverage failure cannot hide them.
 - [ ] Do not regenerate committed aggregate report artifacts yet: native route additions and actual runtime checks will change the denominator. Record a temporary generated inventory outside tracked report outputs for the next runtime phase. Run both Web typechecks and diff checking, obtain independent review, then controller change detection and scoped commit.
 
+- [ ] Diagnosed historical/current refinement: retire exact stale case eligibility for current catalogue/detail/organizer and Party/main/checkin/graph routes. Their source loaders/contracts or route-reachable controls changed, so the historical 20 lifecycle and 3 organizer-navigation cardinalities are not restoration targets. Keep original case records, historical 20 browser-base memberships, 20 lifecycle records, 3 navigation records, 2 unknown-organizer records and 3001/279 observations intact. Gate both surface and interaction evidence and prevent generic smoke fallback on the three public routes. Use independent historical-retention, current-eligibility and six required fresh-current-case tests; leave fresh runtime requirements failing, not skipped. Test historical records through the retained source maps rather than a mutable generated aggregate. No new runtime credit or production change is authorized by this refinement.
+
 ### Task 3: Repair Two Native Accessible-Name Findings
 
 **Files:** Modify only `repos/orbit-app/src/screens/events/EventOperationsContent.tsx`, `repos/orbit-app/src/screens/tasks/TaskDetailScreen.tsx`, `repos/orbit-app/tests/event-operations-screen-render.test.tsx`, and `repos/orbit-app/tests/task-detail-interactions.test.ts`. Controller records the checkpoint in root plans. No Web or generated report edits.
@@ -104,6 +106,23 @@ both Web typechecks pass. The controller independently reproduced 60/60 on Node
 affected execution flows and LOW risk. Generated aggregate reports and runtime
 evidence were not updated. Tasks 2-4 and the native feature/runtime plans remain
 unfinished; this checkpoint is not full-suite or product completion.
+
+## Task 2 Checkpoint
+
+Full-inventory static repair and its scoped historical/current follow-up passed
+independent spec and quality review. Exact Settings sign-out evidence survives
+source movement; hidden file input and native guard classification is explicit;
+actual accessible-name and static-denominator checks now execute meaningfully.
+The old Home claim and current eligibility for six changed public/Party routes
+no longer count as runtime proof. Their historical records remain unchanged.
+The final complete audit run has 162 tests: 154 pass, eight required failures,
+zero skips/cancellations. The controller reproduced this on Node22.23.2; both
+Web typechecks pass. The failures are six fresh route cases, all-route runtime
+coverage and the assertion containing two native name defects. Current observed
+partial evidence is 87/118 routes, with 31 missing and zero fully verified;
+188 interaction credits and all27 navigation replay occurrences remain. These
+are observations, not reduced thresholds. Task 3 owns the native fixes; actual
+runtime cases remain unfinished. No aggregate artifacts were regenerated.
 
 ## Historical Baseline
 

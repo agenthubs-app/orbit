@@ -680,20 +680,6 @@ const LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES = new Map([
     },
   ],
   [
-    "web:/app/home",
-    {
-      entryBehavior: "authenticated-browser-actor-scoped-home-entry-verified",
-      runtimeEvidence: [
-        "the home route rendered the authenticated actor's one private event",
-        "the summary labelled the record as one event rather than inventing a registration",
-        "the event card opened its encoded actor-owned dynamic detail",
-      ],
-      verificationCase: "web-home-private-event-boundaries-2026-07-29",
-      verificationConclusion:
-        "runtime-partially-verified-web-actor-scoped-home-event",
-    },
-  ],
-  [
     "web:/app/home/events",
     {
       entryBehavior:
@@ -1940,18 +1926,19 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       },
     ]),
   ),
-  ...[
+  [
+    'web:/app/settings|repos/orbits/app/(app)/app/orbit-public-shell.tsx#owner:OrbitNavAccountControl#onclick:() => { setMenuOpen(false); void signOut({ callbackUrl: preserveHref("/app") }); }#Sign out / 退出登录',
     {
       actualResult:
         "The exact authenticated Settings account menu exposed one Sign out / 退出登录 control. Activation preserved lang=ja in the callback, terminated the session, and browser Back did not restore it.",
       idempotency:
         "Session navigation only; business records stayed byte-identical and the disposable actor cleanup ended at activeAfter=0.",
-      lines: [178],
-      sourceFile: "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
-      surfaceId: "web:/app/settings",
       testData:
         "Disposable authenticated actor at /app/settings?lang=ja and a measured 1440x900 viewport",
+      verificationCase: "navigation-nonpass-runtime-replay-2026-07-30",
     },
+  ],
+  ...[
     {
       actualResult:
         "Each exact encounter-note form and submit control was activated in mock mode and matched its rendered action/method plus 201/400/409/503/200 status and envelope contract.",
@@ -7479,10 +7466,45 @@ function normalizedEvidenceText(value) {
 
 const normalizedEvidenceMapCache = new WeakMap();
 
-function lookupEvidenceByStableKeys(evidenceMap, keys) {
+// Historical records stay intact; only these exact current route/case pairs retire.
+const RETIRED_CURRENT_WEB_RUNTIME_CASES = new Map([
+  ["web:/app/events", new Set([
+    "web-public-event-catalogue-query-isolation-2026-07-29",
+    "web-public-event-catalogue-controls-2026-07-29",
+    "web-production-route-transport-smoke-2026-07-28",
+  ])],
+  ["web:/app/events/[id]", new Set([
+    "web-public-event-detail-lifecycle-2026-07-29",
+    "web-public-organizer-navigation-2026-07-29",
+    "web-production-route-transport-smoke-2026-07-28",
+  ])],
+  ["web:/app/o/[slug]", new Set([
+    "web-public-organizer-query-control-boundary-2026-07-29",
+    "web-public-organizer-navigation-2026-07-29",
+    "web-public-organizer-unknown-slug-boundary-2026-07-29",
+    "web-production-route-transport-smoke-2026-07-28",
+  ])],
+  ["web:/app/party", new Set([
+    "web-party-source-context-boundaries-2026-07-29",
+    "web-public-event-detail-lifecycle-2026-07-29",
+  ])],
+  ["web:/app/party/checkin", new Set([
+    "web-party-source-context-boundaries-2026-07-29",
+  ])],
+  ["web:/app/party/graph", new Set([
+    "web-party-source-context-boundaries-2026-07-29",
+  ])],
+]);
+
+function isCurrentWebRuntimeCase(surfaceId, verificationCase) {
+  return typeof verificationCase === "string" && verificationCase.length > 0 &&
+    !RETIRED_CURRENT_WEB_RUNTIME_CASES.get(surfaceId)?.has(verificationCase);
+}
+
+function lookupEvidenceByStableKeys(evidenceMap, keys, acceptCandidate = () => true) {
   for (const key of keys) {
     const exact = evidenceMap.get(key);
-    if (exact) {
+    if (exact && acceptCandidate(key, exact)) {
       return exact;
     }
   }
@@ -7499,11 +7521,40 @@ function lookupEvidenceByStableKeys(evidenceMap, keys) {
   }
   for (const key of keys) {
     const normalized = normalizedMap.get(normalizedEvidenceText(key));
-    if (normalized) {
+    if (normalized && acceptCandidate(key, normalized)) {
       return normalized;
     }
   }
   return undefined;
+}
+
+export function lookupWebInteractionRuntimeEvidence(
+  keys,
+  evidenceMap = LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE,
+) {
+  return lookupEvidenceByStableKeys(
+    evidenceMap,
+    keys,
+    (key, record) => isCurrentWebRuntimeCase(key.split("|", 1)[0], record.verificationCase),
+  );
+}
+
+export function lookupWebSurfaceRuntimeEvidence(
+  surfaceId,
+  evidenceMap = LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES,
+) {
+  const record = evidenceMap.get(surfaceId);
+  return record && isCurrentWebRuntimeCase(surfaceId, record.verificationCase)
+    ? record
+    : undefined;
+}
+
+export function getHistoricalWebRuntimeEvidence() {
+  return structuredClone({
+    browserSmokeRoutes: [...BROWSER_SMOKE_WEB_ROUTES],
+    surfaces: [...LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES],
+    interactions: [...LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE],
+  });
 }
 
 function relativeToWorkspace(filePath) {
@@ -8501,7 +8552,7 @@ function imperativeHandlers(attributes, selectorEvidence) {
   ];
 }
 
-function collectInteractions(
+export function collectInteractions(
   filePath,
   client,
   selectorEvidence,
@@ -8802,21 +8853,31 @@ function collectInteractions(
           attributes.has("__spread");
         const isCallbackBoundary =
           /^[A-Z]/u.test(parts.tagName) && kind === "callback-control";
-        const accessibleNameEvidence =
-          attributes.get("aria-hidden") === "true"
-            ? "intentionally-hidden-pointer-target"
-            : kind === "form-submit-boundary" || isCallbackBoundary
-              ? "not-applicable-structural-boundary"
-              : attributes.get("accessibilitylabel") ||
-                  attributes.get("aria-label") ||
-                  attributes.get("aria-labelledby") ||
-                  label
-                ? label.startsWith("{")
-                  ? "dynamic-static-expression"
-                  : "present-static"
-                : attributes.has("__spread")
-                  ? "delegated-props"
-                  : "missing-static";
+        const staticAttribute = (name) =>
+          staticJsxAttributeValue(parts.attributes, name);
+        const intentionallyHidden =
+          client === "web"
+            ? [true, "true"].includes(staticAttribute("aria-hidden")) ||
+              (normalizedTag === "input" &&
+                staticAttribute("type") === "file" &&
+                staticAttribute("hidden") === true)
+            : staticAttribute("accessible") === false &&
+              staticAttribute("accessibilityElementsHidden") === true &&
+              staticAttribute("importantForAccessibility") === "no-hide-descendants";
+        const accessibleNameEvidence = intentionallyHidden
+          ? "intentionally-hidden-pointer-target"
+          : kind === "form-submit-boundary" || isCallbackBoundary
+            ? "not-applicable-structural-boundary"
+            : attributes.get("accessibilitylabel") ||
+                attributes.get("aria-label") ||
+                attributes.get("aria-labelledby") ||
+                label
+              ? label.startsWith("{")
+                ? "dynamic-static-expression"
+                : "present-static"
+              : attributes.has("__spread")
+                ? "delegated-props"
+                : "missing-static";
 
         interactions.push({
           sourceFile: relativeToWorkspace(filePath),
@@ -8874,6 +8935,31 @@ function collectInteractions(
     visit(root);
   }
   return interactions;
+}
+
+function staticJsxAttributeValue(attributes, name) {
+  let value;
+  for (const attribute of attributes.properties) {
+    // A later spread may override a previously proven accessibility flag.
+    if (ts.isJsxSpreadAttribute(attribute)) {
+      value = undefined;
+    } else if (ts.isJsxAttribute(attribute) && attribute.name.getText() === name) {
+      const initializer = attribute.initializer;
+      const expression =
+        initializer && ts.isJsxExpression(initializer)
+          ? initializer.expression
+          : initializer;
+      value =
+        !initializer || expression?.kind === ts.SyntaxKind.TrueKeyword
+          ? true
+          : expression?.kind === ts.SyntaxKind.FalseKeyword
+            ? false
+            : expression && ts.isStringLiteral(expression)
+              ? expression.text
+              : undefined;
+    }
+  }
+  return value;
 }
 
 function collectVisibleContent(filePath, statementStarts = null) {
@@ -9485,11 +9571,12 @@ function readPublicWebPathExceptions() {
     : [];
 }
 
-function accessForSurface(
+export function accessForSurface(
   client,
   route,
   privateWebPrefixes,
   publicWebPathExceptions,
+  entryFile = null,
 ) {
   if (client === "web") {
     if (publicWebPathExceptions.includes(route)) {
@@ -9527,15 +9614,54 @@ function accessForSurface(
     };
   }
 
+  const guarded = entryFile && hasNativePrivateRouteWrapper(entryFile);
   return {
-    roles: [
-      "anonymous",
-      "authenticated-user",
-      "role-requires-runtime-verification",
-    ],
-    policy:
-      "mobile screen/provider enforcement must be verified per route; no central route guard found",
+    roles: guarded
+      ? ["authenticated-user"]
+      : ["role-requires-runtime-verification"],
+    policy: guarded
+      ? "statically-wired-to-native-auth-boundary; runtime authorization requires verification"
+      : "unknown-native-route-access; runtime authorization requires verification",
   };
+}
+
+function hasNativePrivateRouteWrapper(entryFile) {
+  const { source } = sourceFileFor(entryFile);
+  const boundaryFile = path.join(
+    MOBILE_ROOT,
+    "src/components/OrbitRouteAccessBoundary.tsx",
+  );
+  const wrappers = new Set();
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.importClause?.isTypeOnly ||
+      resolveLocalImport(entryFile, statement.moduleSpecifier.text, MOBILE_ROOT) !== boundaryFile
+    ) {
+      continue;
+    }
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings && ts.isNamedImports(bindings)) {
+      for (const binding of bindings.elements) {
+        if (
+          !binding.isTypeOnly &&
+          (binding.propertyName ?? binding.name).text === "withOrbitPrivateRoute"
+        ) {
+          wrappers.add(binding.name.text);
+        }
+      }
+    }
+  }
+  return source.statements.some(
+    (statement) =>
+      ts.isExportAssignment(statement) &&
+      !statement.isExportEquals &&
+      ts.isCallExpression(statement.expression) &&
+      ts.isIdentifier(statement.expression.expression) &&
+      statement.expression.arguments.length === 1 &&
+      wrappers.has(statement.expression.expression.text),
+  );
 }
 
 function parentSurfaceId(client, route, routeSet) {
@@ -9745,7 +9871,8 @@ export function buildFullProductFunctionalAuditInventory() {
 
     const surfaceId = `${entry.client}:${entry.route}`;
     const hasBrowserSmokeEvidence =
-      entry.client === "web" && BROWSER_SMOKE_WEB_ROUTES.has(entry.route);
+      entry.client === "web" && BROWSER_SMOKE_WEB_ROUTES.has(entry.route) &&
+      isCurrentWebRuntimeCase(surfaceId, "web-production-route-transport-smoke-2026-07-28");
     const hasLiveProfileRuntimeEvidence =
       surfaceId === LIVE_PROFILE_RUNTIME_SURFACE;
     const hasLiveEventRegistrationRuntimeEvidence =
@@ -9765,7 +9892,7 @@ export function buildFullProductFunctionalAuditInventory() {
     const liveMobileAdditionalRuntimeEvidence =
       LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES.get(surfaceId);
     const liveWebAdditionalRuntimeEvidence =
-      LIVE_WEB_ADDITIONAL_RUNTIME_SURFACES.get(surfaceId);
+      lookupWebSurfaceRuntimeEvidence(surfaceId);
     const interactions = [...interactionMap.values()]
       .sort((left, right) =>
         `${left.sourceFile}:${String(left.line).padStart(8, "0")}`.localeCompare(
@@ -9833,8 +9960,7 @@ export function buildFullProductFunctionalAuditInventory() {
                             `${surfaceId}|${stableInteractionEvidenceKey}`,
                           )
                         : liveWebAdditionalRuntimeEvidence
-                          ? lookupEvidenceByStableKeys(
-                              LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE,
+                          ? lookupWebInteractionRuntimeEvidence(
                               [
                                 `${surfaceId}|${stableInteractionEvidenceKey}`,
                                 `${surfaceId}|${ownerStableInteractionEvidenceKey}`,
@@ -9927,6 +10053,7 @@ export function buildFullProductFunctionalAuditInventory() {
         entry.route,
         privateWebPrefixes,
         publicWebPathExceptions,
+        entry.pageFile,
       ),
       prerequisites:
         "runtime data, session, role, and configuration require verification",

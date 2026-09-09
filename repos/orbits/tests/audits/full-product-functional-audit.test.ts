@@ -5,6 +5,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +14,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildFullProductFunctionalAuditInventory,
+  accessForSurface,
+  collectInteractions,
+  getHistoricalWebRuntimeEvidence,
+  lookupWebInteractionRuntimeEvidence,
+  lookupWebSurfaceRuntimeEvidence,
   writeFullProductFunctionalAudit,
 } from "../../scripts/generate-full-product-functional-audit.mjs";
 
@@ -64,6 +70,143 @@ function expectedMobileRouteCount(): number {
 }
 
 const inventory = buildFullProductFunctionalAuditInventory();
+const historicalWebEvidence = getHistoricalWebRuntimeEvidence();
+const runtimeVerifiedInteractions = inventory.surfaces.flatMap((surface) =>
+  surface.interactions.filter(
+    (interaction) => interaction.conclusion === "runtime-verified-exercised-case",
+  ),
+);
+const retiredWebCases = [
+  ["web:/app/events", [
+    "web-public-event-catalogue-query-isolation-2026-07-29",
+    "web-public-event-catalogue-controls-2026-07-29",
+  ]],
+  ["web:/app/events/[id]", [
+    "web-public-event-detail-lifecycle-2026-07-29",
+    "web-public-organizer-navigation-2026-07-29",
+  ]],
+  ["web:/app/o/[slug]", [
+    "web-public-organizer-query-control-boundary-2026-07-29",
+    "web-public-organizer-navigation-2026-07-29",
+    "web-public-organizer-unknown-slug-boundary-2026-07-29",
+  ]],
+  ["web:/app/party", [
+    "web-party-source-context-boundaries-2026-07-29",
+    "web-public-event-detail-lifecycle-2026-07-29",
+  ]],
+  ["web:/app/party/checkin", ["web-party-source-context-boundaries-2026-07-29"]],
+  ["web:/app/party/graph", ["web-party-source-context-boundaries-2026-07-29"]],
+] as const;
+const retiredGenericSmokeCase = "web-production-route-transport-smoke-2026-07-28";
+
+for (const [surfaceId, retiredCases] of retiredWebCases) {
+  test(`current eligibility rejects retired evidence and smoke fallback: ${surfaceId}`, () => {
+    assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId), undefined);
+    const surface = inventory.surfaces.find((candidate) => candidate.surfaceId === surfaceId);
+    assert.ok(surface);
+    assert.equal(surface.verificationConclusion, "inventory-complete-runtime-verification-pending");
+    assert.equal(surface.entryBehavior, "not-runtime-verified");
+    assert.equal(surface.layout, "source-inventoried; rendered structure requires viewport verification");
+    assert.equal(surface.responsive.desktop, "not-runtime-verified");
+    assert.equal(surface.responsive.mobile, "not-runtime-verified");
+    assert.deepEqual(surface.runtimeEvidence, []);
+    assert.deepEqual(surface.interactions.filter((interaction) =>
+      interaction.testEvidence.some((id) => [...retiredCases, retiredGenericSmokeCase].includes(id)),
+    ), []);
+  });
+
+  test(`current eligibility fixtures cannot revive historical interactions: ${surfaceId}`, () => {
+    // Fixture cases exercise lookup policy only; they are never added to inventory evidence.
+    const fresh = {
+      verificationCase: "fixture-only-fresh-case",
+      entryBehavior: "fixture-only",
+      runtimeEvidence: [],
+      verificationConclusion: "fixture-only-not-runtime-evidence",
+    };
+    assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, fresh]])), fresh);
+    for (const verificationCase of retiredCases) {
+      const retired = { ...fresh, verificationCase };
+      assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, retired]])), undefined);
+      const oldKey = `${surfaceId}|source#onclick:() => oldAction()#Old`;
+      const laterKey = `${surfaceId}|source#onclick:() => freshAction()#Fresh`;
+      const fixture = new Map([[oldKey, retired], [laterKey, fresh]]);
+      assert.equal(lookupWebInteractionRuntimeEvidence([oldKey], fixture), undefined);
+      assert.equal(lookupWebInteractionRuntimeEvidence([oldKey, laterKey], fixture), fresh);
+      assert.equal(lookupWebInteractionRuntimeEvidence([
+        oldKey.replace("() =>", "()  =>"), laterKey.replace("() =>", "()  =>"),
+      ], fixture), fresh);
+      const relatedRoute = `${surfaceId}/fixture-child`;
+      assert.equal(lookupWebSurfaceRuntimeEvidence(relatedRoute, new Map([[relatedRoute, retired]])), retired);
+      const relatedKey = `${relatedRoute}|source#onclick:oldAction#Old`;
+      assert.equal(lookupWebInteractionRuntimeEvidence([relatedKey], new Map([[relatedKey, retired]])), retired);
+    }
+    for (const [key, record] of historicalWebEvidence.interactions) {
+      if (key.startsWith(`${surfaceId}|`) && retiredCases.some((id) => id === record.verificationCase)) {
+        assert.equal(lookupWebInteractionRuntimeEvidence([key]), undefined, key);
+      }
+    }
+  });
+
+  test(`required fresh documented runtime case: ${surfaceId}`, () => {
+    const record = lookupWebSurfaceRuntimeEvidence(surfaceId);
+    assert.ok(record, `${surfaceId} needs executed current-route evidence, not a historical case or fixture`);
+    assert.ok(record.verificationCase);
+    assert.equal([...retiredCases, retiredGenericSmokeCase].includes(record.verificationCase), false);
+    assert.doesNotMatch(record.verificationCase, /fixture|placeholder|pending|tests\/|\.(?:ts|tsx)$/iu);
+    const documented = inventory.verificationCases.find((entry) => entry.id === record.verificationCase);
+    assert.ok(documented, `${surfaceId}: case identity must resolve to documented evidence`);
+    assert.ok(documented.evidence.trim());
+    assert.doesNotMatch(documented.evidence, /^(?:pending|not-runtime-verified|placeholder|fixture-only)/iu);
+    assert.doesNotMatch(documented.evidence.trim(), /^(?:(?:node|npm|pnpm|yarn)\s[^\n]*|(?:repos\/orbits\/)?tests\/[^\n]*)$/u);
+    assert.ok(documented.actual.trim());
+    assert.match(documented.conclusion, /pass|verified/iu);
+    assert.doesNotMatch(documented.conclusion, /pass-static|fixture-only|placeholder/iu);
+    assert.ok(record.runtimeEvidence.length > 0);
+    const surface = inventory.surfaces.find((candidate) => candidate.surfaceId === surfaceId);
+    assert.ok(surface);
+    assert.ok(record.runtimeEvidence.every((evidence) => surface.runtimeEvidence.includes(evidence)));
+    assert.match(surface.verificationConclusion, /^runtime-partially-verified/u);
+  });
+}
+
+test("current eligibility blocks smoke only for the three ruled exact routes", () => {
+  const record = {
+    verificationCase: retiredGenericSmokeCase,
+    entryBehavior: "fixture-only",
+    runtimeEvidence: [],
+    verificationConclusion: "fixture-only-not-runtime-evidence",
+  };
+  for (const surfaceId of ["web:/app/events", "web:/app/events/[id]", "web:/app/o/[slug]"]) {
+    assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, record]])), undefined);
+    const key = `${surfaceId}|source#onclick:open#Open`;
+    assert.equal(lookupWebInteractionRuntimeEvidence([key], new Map([[key, record]])), undefined);
+  }
+  for (const surfaceId of ["web:/app/events/[id]/register", "web:/app/events-other", "web:/app/party", "mobile:/events"]) {
+    assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, record]])), record);
+  }
+  const unrelated = historicalWebEvidence.surfaces.find(([id]) => id === "web:/app/today");
+  assert.ok(unrelated);
+  assert.deepEqual(lookupWebSurfaceRuntimeEvidence(unrelated[0]), unrelated[1]);
+});
+
+test("historical runtime adapter returns detached records", () => {
+  const copy = getHistoricalWebRuntimeEvidence();
+  copy.browserSmokeRoutes.length = 0;
+  copy.surfaces[0][1].verificationCase = "fixture-only-mutated";
+  copy.interactions[0][1].verificationCase = "fixture-only-mutated";
+  assert.deepEqual(getHistoricalWebRuntimeEvidence(), historicalWebEvidence);
+});
+
+function withSourceFixture(source: string, check: (filePath: string) => void) {
+  const root = mkdtempSync(path.join(os.tmpdir(), "orbit-functional-fixture-"));
+  const filePath = path.join(root, "screen.tsx");
+  try {
+    writeFileSync(filePath, source);
+    check(filePath);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+}
 
 test("inventory derives the full Web and Expo route denominator from both route trees", () => {
   assert.equal(inventory.summary.webRoutes, expectedWebPageCount());
@@ -133,11 +276,25 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
 
   assert.deepEqual(dataCardPressableSurfaces, [
     "mobile:/account",
-    "mobile:/contacts/pipeline",
     "mobile:/followups",
     "mobile:/profile",
     "mobile:/settings",
   ]);
+  const pipeline = inventory.surfaces.find(
+    (surface) => surface.surfaceId === "mobile:/contacts/pipeline",
+  );
+  assert.ok(pipeline);
+  const rows = pipeline.interactions.filter(
+    (interaction) =>
+      interaction.sourceFile ===
+        "repos/orbit-app/src/screens/contacts/ContactPipelineScreen.tsx" &&
+      interaction.tag === "Pressable",
+  );
+  assert.equal(rows.length, 7);
+  assert.ok(rows.some((row) => row.handlers.some(
+    (handler) => handler.expression === "() => onSelect(stage.id)",
+  )));
+  assert.ok(rows.some((row) => row.visibleName === "`${task.contactName}，${task.title}，${task.dueLabel}`"));
 });
 
 test("literal route props exclude unreachable component branches", () => {
@@ -213,7 +370,7 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
       (interaction) =>
         interaction.sourceFile ===
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
-        interaction.line === 178,
+        interaction.visibleName === "Sign out / 退出登录",
     );
   const siblingSignOuts = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
@@ -221,19 +378,64 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
         surface.surfaceId !== "web:/app/settings" &&
         interaction.sourceFile ===
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
-        interaction.line === 178,
+        interaction.visibleName === "Sign out / 退出登录",
     ),
   );
 
   assert.equal(credited.length, 27);
   assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
-  assert.equal(siblingSignOuts.length, 20);
+  assert.equal(siblingSignOuts.length, 32);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
     ),
     true,
   );
+});
+
+test("Settings sign-out historical evidence is handler-bound across line shifts", () => {
+  const sourceFile = "repos/orbits/app/(app)/app/orbit-public-shell.tsx";
+  const stableKey = `web:/app/settings|${sourceFile}#owner:OrbitNavAccountControl#onclick:() => { setMenuOpen(false); void signOut({ callbackUrl: preserveHref("/app") }); }#Sign out / 退出登录`;
+  const expected = {
+    actualResult:
+      "The exact authenticated Settings account menu exposed one Sign out / 退出登录 control. Activation preserved lang=ja in the callback, terminated the session, and browser Back did not restore it.",
+    idempotency:
+      "Session navigation only; business records stayed byte-identical and the disposable actor cleanup ended at activeAfter=0.",
+    testData:
+      "Disposable authenticated actor at /app/settings?lang=ja and a measured 1440x900 viewport",
+    verificationCase: "navigation-nonpass-runtime-replay-2026-07-30",
+  };
+  for (const line of [178, 205, 999]) {
+    assert.deepEqual(lookupWebInteractionRuntimeEvidence([
+      stableKey.replace("setMenuOpen(false); ", "setMenuOpen(false);\n    "),
+      `web:/app/settings|${sourceFile}:${line}`,
+    ]), expected);
+  }
+  for (const wrongKey of [
+    stableKey.replace('preserveHref("/app")', 'preserveHref("/app/today")'),
+    stableKey.replace("setMenuOpen(false); ", ""),
+    stableKey.replace("owner:OrbitNavAccountControl", "owner:OtherControl"),
+    stableKey.replace("web:/app/settings|", "web:/app/today|"),
+    stableKey.replace("Sign out / 退出登录", "Sign out"),
+    stableKey.replace("orbit-public-shell.tsx", "other-shell.tsx"),
+  ]) {
+    assert.equal(lookupWebInteractionRuntimeEvidence([wrongKey]), undefined);
+  }
+  for (const line of [178, 205]) {
+    assert.equal(lookupWebInteractionRuntimeEvidence([
+      stableKey.replace('preserveHref("/app")', 'preserveHref("/app/today")'),
+      `web:/app/settings|${sourceFile}:${line}`,
+    ]), undefined, "a changed handler must not fall back to line evidence");
+  }
+  const settings = inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/settings");
+  const signOut = settings?.interactions.find((interaction) =>
+    interaction.sourceFile === sourceFile && interaction.visibleName === "Sign out / 退出登录",
+  );
+  assert.ok(signOut);
+  assert.equal(signOut.actualResult, expected.actualResult);
+  assert.equal(signOut.idempotency, expected.idempotency);
+  assert.equal(signOut.testData, expected.testData);
+  assert.deepEqual(signOut.testEvidence, [expected.verificationCase]);
 });
 
 test("route query parameters come from route-local URL consumers, not transitive get/set calls", () => {
@@ -268,7 +470,7 @@ test("route query parameters come from route-local URL consumers, not transitive
   assert.deepEqual(routeParameters("web:/app/contacts/dashboard"), [
     "orbitVisualSeed",
   ]);
-  assert.deepEqual(routeParameters("web:/app/home"), ["orbitVisualSeed"]);
+  assert.deepEqual(routeParameters("web:/app/home"), []);
   assert.deepEqual(routeParameters("web:/app/home/events"), [
     "orbitVisualSeed",
   ]);
@@ -352,7 +554,7 @@ test("visible controls have static accessible-name evidence", () => {
   const missingAccessibleNames = inventory.surfaces.flatMap((surface) =>
     surface.interactions.filter(
       (interaction) =>
-        interaction.conclusion === "candidate-missing-accessible-name",
+        interaction.accessibleNameEvidence === "missing-static",
     ),
   );
 
@@ -366,12 +568,212 @@ test("visible controls have static accessible-name evidence", () => {
   );
 });
 
-test("browser base-state evidence is scoped to the 20 currently direct Web surfaces", () => {
+test("accessible-name summary counts missing evidence independently of behavior conclusions", () => {
+  const missing = inventory.surfaces.flatMap((surface) => surface.interactions)
+    .filter((interaction) => interaction.accessibleNameEvidence === "missing-static");
+  assert.equal(inventory.summary.accessibleNameCandidates, missing.length);
+  withSourceFixture('export default function Screen() { return <button onClick={act}><Icon /></button>; }', (filePath) => {
+    const [control] = collectInteractions(filePath, "web", new Map());
+    assert.equal(control.accessibleNameEvidence, "missing-static");
+    assert.equal(control.conclusion, "inventoried-static-only");
+    assert.deepEqual(control.handlers, [{ event: "onclick", expression: "act" }]);
+  });
+});
+
+for (const [props, hidden] of [
+  ["hidden", true],
+  ["hidden={true}", true],
+  ["hidden={false}", false],
+  ["hidden={isHidden}", false],
+  ["disabled", false],
+  ["hidden={true} {...props}", false],
+] as const) {
+  test(`Web file input accessibility requires proven static hiding: ${props}`, () => {
+    withSourceFixture(`export default function Screen() { return <><input type="file" ${props} onChange={choose} /><button onClick={openPicker}>Choose file</button></>; }`, (filePath) => {
+      const controls = collectInteractions(filePath, "web", new Map());
+      assert.equal(controls.length, 2);
+      assert.equal(controls[0].accessibleNameEvidence,
+        hidden ? "intentionally-hidden-pointer-target" : props.includes("...props") ? "delegated-props" : "missing-static");
+      assert.deepEqual(controls[0].handlers, [{ event: "onchange", expression: "choose" }]);
+      assert.equal(controls[0].sourceFile.endsWith("screen.tsx"), true);
+      assert.equal(controls[1].visibleName, "Choose file");
+      assert.equal(controls[1].accessibleNameEvidence, "present-static");
+    });
+  });
+}
+
+for (const [props, hidden] of [
+  ['accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"', true],
+  ['accessible={false} accessibilityElementsHidden={true} importantForAccessibility={"no-hide-descendants"}', true],
+  ['accessible={false} accessibilityElementsHidden={false} importantForAccessibility="no-hide-descendants"', false],
+  ['accessible={unknown} accessibilityElementsHidden importantForAccessibility="no-hide-descendants"', false],
+  ['accessible={false} accessibilityElementsHidden={unknown} importantForAccessibility="no-hide-descendants"', false],
+  ['accessible="false" accessibilityElementsHidden importantForAccessibility="no-hide-descendants"', false],
+  ['accessible={false} accessibilityElementsHidden importantForAccessibility={mode}', false],
+  ['accessible={false} accessibilityElementsHidden', false],
+  ['accessibilityElementsHidden importantForAccessibility="no-hide-descendants"', false],
+  ['disabled', false],
+  ['disabled={true}', false],
+  ['aria-hidden={true}', false],
+  ['accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" {...props}', false],
+] as const) {
+  test(`native decorative target requires explicit cross-platform accessibility hiding: ${props}`, () => {
+    withSourceFixture(`export default function Screen() { return <><Pressable ${props} onPress={close} /><Pressable accessibilityLabel="Close menu" onPress={close} /></>; }`, (filePath) => {
+      const controls = collectInteractions(filePath, "mobile", new Map());
+      assert.equal(controls.length, 2);
+      assert.equal(controls[0].accessibleNameEvidence,
+        hidden ? "intentionally-hidden-pointer-target" : props.includes("...props") ? "delegated-props" : "missing-static");
+      assert.deepEqual(controls[0].handlers, [{ event: "onpress", expression: "close" }]);
+      assert.equal(controls[1].accessibleNameEvidence, "present-static");
+    });
+  });
+}
+
+test("hidden batch file inputs retain handler records and accessible picker triggers", () => {
+  for (const [surfaceId, inputCount] of [
+    ["web:/app/contacts/new/batch2", 1],
+    ["web:/app/contacts/new/batch2/[id]", 2],
+  ] as const) {
+    const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
+    assert.ok(surface);
+    const inputs = surface.interactions.filter((interaction) => interaction.tag === "input" && interaction.visibleName === null);
+    assert.equal(inputs.length, inputCount);
+    for (const input of inputs) {
+      assert.equal(input.accessibleNameEvidence, "intentionally-hidden-pointer-target");
+      assert.equal(input.handlers.some((handler) => handler.event === "onchange"), true);
+    }
+    const pickers = surface.interactions.filter((interaction) =>
+      interaction.tag === "button" && interaction.handlers.some((handler) => handler.expression.includes(".click()")),
+    );
+    assert.ok(pickers.length > 0);
+    assert.equal(pickers.every((picker) => picker.visibleName && picker.accessibleNameEvidence === "present-static"), true);
+  }
+});
+
+test("native private route wrappers are static wiring, not runtime authorization evidence", () => {
+  for (const surfaceId of ["mobile:/events/[id]/analytics", "mobile:/tasks", "mobile:/tasks/[id]"]) {
+    const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
+    assert.ok(surface);
+    assert.deepEqual(surface.access.roles, ["authenticated-user"]);
+    assert.match(surface.access.policy, /statically-wired-to-native-auth-boundary/u);
+    assert.match(surface.access.policy, /runtime authorization requires verification/u);
+    assert.deepEqual(surface.runtimeEvidence, []);
+    assert.equal(surface.verificationConclusion, "inventory-complete-runtime-verification-pending");
+  }
+});
+
+for (const [entry, protectedRoute] of [
+  ['import { withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary"; export default withOrbitPrivateRoute(Screen);', true],
+  ['import { withOrbitPrivateRoute as guard } from "@/components/OrbitRouteAccessBoundary"; export default guard(Screen);', true],
+  ['import { withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary"; export default Screen;', false],
+  ['import { withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary-decoy"; export default withOrbitPrivateRoute(Screen);', false],
+  ['function withOrbitPrivateRoute(value) { return value; } export default withOrbitPrivateRoute(Screen);', false],
+  ['import { withOrbitPrivateRoute as unused } from "@/components/OrbitRouteAccessBoundary"; function withOrbitPrivateRoute(value) { return value; } export default withOrbitPrivateRoute(Screen);', false],
+  ['import { withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary"; export default (() => { const withOrbitPrivateRoute = (value) => value; return withOrbitPrivateRoute(Screen); })();', false],
+  ['import type { withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary"; export default withOrbitPrivateRoute(Screen);', false],
+  ['import { OtherBoundary as withOrbitPrivateRoute } from "@/components/OrbitRouteAccessBoundary"; export default withOrbitPrivateRoute(Screen);', false],
+] as const) {
+  test(`native guard detection resolves the invoked import: ${entry}`, () => {
+    withSourceFixture(entry, (filePath) => {
+      const access = accessForSurface("mobile", "/tasks", [], [], filePath);
+      if (protectedRoute) {
+        assert.deepEqual(access.roles, ["authenticated-user"]);
+        assert.match(access.policy, /statically-wired-to-native-auth-boundary/u);
+      } else {
+        assert.deepEqual(access.roles, ["role-requires-runtime-verification"]);
+        assert.match(access.policy, /unknown/u);
+      }
+      assert.match(access.policy, /runtime authorization requires verification/u);
+      assert.doesNotMatch(access.policy, /no central route guard found/u);
+    });
+  });
+}
+
+test("current home redirect does not inherit the obsolete actor-owned home runtime case", () => {
+  const homeSurface = inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/home");
+  assert.ok(homeSurface);
+  assert.equal(homeSurface.runtimeEvidence.some((value) => value.includes("rendered the authenticated actor's one private event")), false);
+  assert.deepEqual(homeSurface.runtimeEvidence, []);
+  assert.equal(homeSurface.entryBehavior, "not-runtime-verified");
+  assert.equal(homeSurface.verificationConclusion, "inventory-complete-runtime-verification-pending");
+  assert.equal(inventory.verificationCases.some((record) => record.id === "web-home-private-event-boundaries-2026-07-29"), true);
+});
+
+test("current static interaction denominators are deduplicated separately from historical runtime leaves", () => {
+  const interactions = inventory.surfaces.flatMap((surface) => surface.interactions);
+  const locations = new Set<string>();
+  const implementations = new Map<string, Set<string>>();
+  for (const interaction of interactions) {
+    locations.add(`${interaction.sourceFile}:${interaction.line}`);
+    const identities = implementations.get(interaction.sourceFile) ?? new Set<string>();
+    identities.add(JSON.stringify([
+      interaction.controlType, interaction.tag, interaction.handlers, interaction.href ?? "",
+    ]));
+    implementations.set(interaction.sourceFile, identities);
+  }
+  assert.equal(inventory.summary.interactionRouteInstances, interactions.length);
+  assert.equal(inventory.summary.uniqueInteractionSourceLocations, locations.size);
+  assert.equal(inventory.summary.normalizedStaticBehaviorImplementations,
+    [...implementations.values()].reduce((sum, identities) => sum + identities.size, 0));
+});
+
+test("every route surface requires runtime coverage", () => {
+  const missing = inventory.surfaces
+    .filter((surface) => !surface.verificationConclusion.startsWith("runtime-"))
+    .map((surface) => surface.surfaceId);
+  assert.equal(inventory.summary.surfacesWithRuntimeEvidence, inventory.summary.routeSurfaces,
+    `Missing runtime surfaces (${missing.length}): ${missing.join(", ")}`);
+});
+
+test("historical browser smoke retains all 20 original route memberships", () => {
+  assert.equal(historicalWebEvidence.browserSmokeRoutes.length, 20);
+  assert.deepEqual(historicalWebEvidence.browserSmokeRoutes, [
+    "/", "/app", "/app/account/forgot-password", "/app/account/login",
+    "/app/account/mobile-google", "/app/account/signup", "/app/admin/access",
+    "/app/events", "/app/events/[id]", "/app/login-admin", "/app/o/[slug]",
+    "/app/register", "/dev/agent-test-report", "/dev/capabilities",
+    "/dev/capabilities/[slug]", "/dev/foundation/domain",
+    "/dev/foundation/mock-registry", "/dev/foundation/style",
+    "/dev/knowledge", "/dev/orbit-ai/trace",
+  ]);
+});
+
+for (const [verificationCase, recordCount] of [
+  ["web-public-event-detail-lifecycle-2026-07-29", 20],
+  ["web-public-organizer-navigation-2026-07-29", 3],
+  ["web-public-organizer-unknown-slug-boundary-2026-07-29", 2],
+] as const) {
+  test(`historical interaction records remain intact: ${verificationCase}`, () => {
+    assert.equal(historicalWebEvidence.interactions.filter(([, record]) =>
+      record.verificationCase === verificationCase,
+    ).length, recordCount);
+    assert.ok(inventory.verificationCases.find((record) => record.id === verificationCase));
+  });
+}
+
+test("current browser base-state credits exclude retired exact routes", () => {
   const browserEvidenceSurfaces = inventory.surfaces.filter((surface) =>
     surface.runtimeEvidence.includes("in-app browser base-state at 1440x900"),
   );
 
-  assert.equal(browserEvidenceSurfaces.length, 20);
+  assert.deepEqual(browserEvidenceSurfaces.map((surface) => surface.route).sort(),
+    historicalWebEvidence.browserSmokeRoutes.filter((route) =>
+      !["/app/events", "/app/events/[id]", "/app/o/[slug]"].includes(route),
+    ).sort());
+  assert.equal(
+    browserEvidenceSurfaces.every(
+      (surface) =>
+        surface.client === "web" &&
+        surface.entryBehavior !== "not-runtime-verified" &&
+        surface.responsive.desktop.includes("1440x900") &&
+        surface.responsive.mobile.includes("390x844") &&
+        surface.verificationConclusion.startsWith("runtime-partially-verified"),
+    ),
+    true,
+  );
+});
+
+test("admin browser evidence respects public entry boundaries", () => {
   for (const route of ["/app/admin", "/app/admin/events", "/app/platform"]) {
     const surface = inventory.surfaces.find(
       (candidate) => candidate.surfaceId === `web:${route}`,
@@ -396,41 +798,16 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     );
     assert.equal(surface.access.policy, "public-admin-auth-entry", route);
   }
-  assert.equal(
-    inventory.summary.surfacesWithRuntimeEvidence,
-    inventory.summary.routeSurfaces,
-  );
-  const runtimeVerifiedInteractions = inventory.surfaces.flatMap((surface) =>
-    surface.interactions.filter(
-      (interaction) =>
-        interaction.conclusion === "runtime-verified-exercised-case",
-    ),
-  );
-  const publicEventDetailInteractions = runtimeVerifiedInteractions.filter(
-    (interaction) =>
-      interaction.testEvidence.includes(
-        "web-public-event-detail-lifecycle-2026-07-29",
-      ),
-  );
-  const publicOrganizerNavigationInteractions =
-    runtimeVerifiedInteractions.filter((interaction) =>
-      interaction.testEvidence.includes(
-        "web-public-organizer-navigation-2026-07-29",
-      ),
-    );
-  const publicOrganizerUnknownSlugInteractions =
-    runtimeVerifiedInteractions.filter((interaction) =>
-      interaction.testEvidence.includes(
-        "web-public-organizer-unknown-slug-boundary-2026-07-29",
-      ),
-    );
+});
 
+test("runtime interaction summary counts only current credited occurrences", () => {
   assert.equal(
     inventory.summary.interactionsRuntimeVerified,
     runtimeVerifiedInteractions.length,
   );
-  assert.equal(inventory.summary.uniqueInteractionSourceLocations, 1244);
-  assert.equal(inventory.summary.normalizedStaticBehaviorImplementations, 915);
+});
+
+test("historical rendered leaf observations retain their unresolved denominator", () => {
   assert.equal(inventory.summary.renderedLeafControls, null);
   assert.match(
     inventory.summary.renderedLeafControlStatus,
@@ -451,6 +828,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     inventory.renderedLeafObservations.status,
     "state-local-observation-not-final-denominator",
   );
+});
+
+test("inventory records authoritative source state independently of runtime evidence", () => {
   assert.match(
     inventory.sourceState,
     /^(clean-head|head-plus-uncommitted-authoritative-inputs)$/u,
@@ -459,6 +839,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     Number.isInteger(inventory.uncommittedAuthoritativeInputChanges),
     true,
   );
+});
+
+test("mobile auth retains exact handler-bound runtime evidence through line shifts", () => {
   assert.equal(
     runtimeVerifiedInteractions.some(
       (interaction) =>
@@ -475,6 +858,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     true,
     "mobile auth runtime evidence must survive unrelated source-line shifts",
   );
+});
+
+test("memory settings retain their eleven exercised interactions", () => {
   const memorySettingsInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
       interaction.surfaceId === "web:/app/settings" &&
@@ -496,6 +882,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     )?.actualResult ?? "",
     /^Approved conversation learning changed/u,
   );
+});
+
+test("Today dialog retains its exact exercised close handler", () => {
   assert.equal(
     runtimeVerifiedInteractions.some(
       (interaction) =>
@@ -511,6 +900,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     true,
     "Today dialog runtime evidence must survive unrelated source-line shifts",
   );
+});
+
+test("Agent retry evidence applies only to the current exercised handler", () => {
   const currentAgentRetryInteraction = runtimeVerifiedInteractions.find(
     (interaction) =>
       interaction.surfaceId === "web:/app/agent" &&
@@ -548,6 +940,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     false,
     "a matching label or source line must not promote any other retry handler",
   );
+});
+
+test("only the reachable exercised Home Events occurrence retains historical evidence", () => {
   const homeEventRuntimeInteractions = runtimeVerifiedInteractions.filter(
     (interaction) =>
       interaction.sourceFile ===
@@ -560,19 +955,18 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
         ].includes(evidence),
       ),
   );
-  assert.equal(homeEventRuntimeInteractions.length, 3);
-  assert.equal(
-    homeEventRuntimeInteractions.some((interaction) =>
-      interaction.testEvidence.includes(
-        "home-party-event-identity-repair-2026-07-30",
-      ),
-    ),
-    true,
-    "Home event evidence must be keyed by owner plus behavior, not source line",
-  );
-  assert.equal(publicEventDetailInteractions.length, 20);
-  assert.equal(publicOrganizerNavigationInteractions.length, 3);
-  assert.equal(publicOrganizerUnknownSlugInteractions.length, 2);
+  assert.deepEqual(homeEventRuntimeInteractions.map((interaction) => ({
+    surfaceId: interaction.surfaceId,
+    handlers: interaction.handlers,
+    testEvidence: interaction.testEvidence,
+  })), [{
+    surfaceId: "web:/app/home/events",
+    handlers: [{ event: "onclick", expression: "(clickEvent) => { clickEvent.preventDefault(); orbitNavigate(`/events/${event.code}`); }" }],
+    testEvidence: ["web-home-private-event-boundaries-2026-07-29"],
+  }], "only the still-reachable, originally exercised Home Events occurrence retains evidence");
+});
+
+test("specialized profile and contact runtime cases remain credited", () => {
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/profile",
@@ -597,6 +991,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     )?.verificationConclusion,
     "runtime-partially-verified-live-contact-list",
   );
+});
+
+test("native auth and acquisition runtime cases remain credited", () => {
   for (const surfaceId of [
     "mobile:/account",
     "mobile:/account/login",
@@ -620,10 +1017,13 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     )?.verificationConclusion,
     "runtime-partially-verified-expo-contact-acquisition-live-boundaries",
   );
+});
+
+test("Web home and scheduling runtime cases remain scoped to their exercised routes", () => {
   assert.equal(
     inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/home")
       ?.verificationConclusion,
-    "runtime-partially-verified-web-actor-scoped-home-event",
+    "inventory-complete-runtime-verification-pending",
   );
   assert.equal(
     inventory.surfaces.find(
@@ -660,27 +1060,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     )?.verificationConclusion,
     "runtime-partially-verified-web-schedule-dynamic-event-identity",
   );
-  for (const [surfaceId, verificationConclusion] of [
-    [
-      "web:/app/party",
-      "runtime-partially-verified-web-party-source-context-boundary",
-    ],
-    [
-      "web:/app/party/checkin",
-      "runtime-partially-verified-web-party-checkin-source-context-boundary",
-    ],
-    [
-      "web:/app/party/graph",
-      "runtime-partially-verified-web-party-graph-source-context-boundary",
-    ],
-  ] as const) {
-    assert.equal(
-      inventory.surfaces.find((surface) => surface.surfaceId === surfaceId)
-        ?.verificationConclusion,
-      verificationConclusion,
-    );
-  }
-  for (const [surfaceId, verificationConclusion] of [
+});
+
+for (const [surfaceId, verificationConclusion] of [
     ["mobile:/ai", "runtime-partially-verified-expo-ai-history-persistence"],
     [
       "mobile:/ai/[id]",
@@ -755,32 +1137,28 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
       "runtime-partially-verified-expo-mobile-google-fallback",
     ],
   ] as const) {
+  test(`native runtime conclusion retains its exercised case: ${surfaceId}`, () => {
     assert.equal(
       inventory.surfaces.find((surface) => surface.surfaceId === surfaceId)
         ?.verificationConclusion,
       verificationConclusion,
     );
-  }
+  });
+}
+
+test("contact detail retains its exercised runtime conclusion", () => {
   assert.equal(
     inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/contacts/[id]",
     )?.verificationConclusion,
     "runtime-partially-verified-live-contact-detail",
   );
-  assert.equal(
-    browserEvidenceSurfaces.every(
-      (surface) =>
-        surface.client === "web" &&
-        surface.entryBehavior !== "not-runtime-verified" &&
-        surface.responsive.desktop.includes("1440x900") &&
-        surface.responsive.mobile.includes("390x844") &&
-        surface.verificationConclusion.startsWith("runtime-partially-verified"),
-    ),
-    true,
-  );
-  const publicEventCatalogue = inventory.surfaces.find(
-    (surface) => surface.surfaceId === "web:/app/events",
-  );
+});
+
+test("historical catalogue record retains its original entry and observed result", () => {
+  const publicEventCatalogue = historicalWebEvidence.surfaces.find(
+    ([surfaceId]) => surfaceId === "web:/app/events",
+  )?.[1];
   assert.equal(
     publicEventCatalogue?.entryBehavior,
     "authenticated-browser-public-event-catalogue-search-filter-map-verified",
@@ -791,12 +1169,10 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     ),
     true,
   );
-  assert.equal(
-    publicEventCatalogue?.runtimeEvidence.includes(
-      "in-app browser base-state at 1440x900",
-    ),
-    true,
-  );
+  assert.ok(historicalWebEvidence.browserSmokeRoutes.includes("/app/events"));
+});
+
+test("Agent runtime case retains its recorded observations", () => {
   const agentRuntimeEvidence = inventory.surfaces.find(
     (surface) => surface.surfaceId === "web:/app/agent",
   )?.runtimeEvidence;
@@ -855,6 +1231,9 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     ),
     true,
   );
+});
+
+test("chat and all-actions retain their recorded observations", () => {
   assert.equal(
     inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/chat")
       ?.runtimeEvidence.length,
@@ -866,18 +1245,24 @@ test("browser base-state evidence is scoped to the 20 currently direct Web surfa
     )?.runtimeEvidence.length,
     3,
   );
-  for (const [surfaceId, evidenceCount] of [
+});
+
+for (const [surfaceId, evidenceCount] of [
     ["web:/app/contacts/dashboard", 3],
     ["web:/app/contacts/graph", 4],
     ["web:/app/contacts/intros", 6],
     ["web:/app/contacts/pipeline", 3],
   ] as const) {
+  test(`relationship runtime observations remain retained: ${surfaceId}`, () => {
     assert.equal(
       inventory.surfaces.find((surface) => surface.surfaceId === surfaceId)
         ?.runtimeEvidence.length,
       evidenceCount,
     );
-  }
+  });
+}
+
+test("profile retains actor isolation and eighteen exercised interactions", () => {
   assert.equal(
     inventory.surfaces
       .find((surface) => surface.surfaceId === "web:/app/profile")
