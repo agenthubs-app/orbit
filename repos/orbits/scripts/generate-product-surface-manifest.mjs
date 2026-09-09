@@ -663,6 +663,7 @@ function collectImperativeBindings(filePaths) {
       if (!callback) return;
       if (ts.isIdentifier(callback)) {
         callback = declarationFor(callback);
+        if (!callback || bindingIsReassigned(callback, source, declarationFor)) return;
         if (callback && ts.isVariableDeclaration(callback)) {
           callback = callback.parent.flags & ts.NodeFlags.Const ? callback.initializer : null;
         }
@@ -811,7 +812,7 @@ function bindingIsReassigned(binding, source, declarationFor) {
     }
     ts.forEachChild(candidate, inspectWrites);
   }
-  // Any write invalidates this proof; do not guess when React invokes the component.
+  // Any write invalidates this proof; do not guess when the binding is used.
   inspectWrites(source);
   return reassigned;
 }

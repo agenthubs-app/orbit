@@ -281,6 +281,54 @@ for (const callback of [
   });
 }
 
+for (const write of [
+  "onClick = () => {};",
+  "[onClick] = [() => {}];",
+  "({ onClick } = { onClick: () => {} });",
+  "({ listener: onClick } = { listener: () => {} });",
+  "for (onClick of [() => {}]) {}",
+  "function replace() { onClick = () => {}; } replace();",
+]) {
+  test(`final-fix fixtures reject reassigned delegated listener: ${write}`, () => {
+    const actions = scanFixture(`function bind(host) {
+      function onClick(event) {
+        const target = event.target.closest(".chip");
+        if (target && host.contains(target)) act(target);
+      }
+      ${write}
+      host.addEventListener("click", onClick);
+    }
+    const view = <button className="chip">Chip</button>;`);
+    assert.equal(actions.length, 1);
+    assert.deepEqual(
+      actions.map(({ behaviorEvidence, imperativeBehaviorEvidence }) => ({ behaviorEvidence, imperativeBehaviorEvidence })),
+      [{ behaviorEvidence: "missing-static", imperativeBehaviorEvidence: [] }],
+    );
+  });
+}
+
+for (const declaration of [
+  "function onClick(event) { BODY }",
+  "const onClick = event => { BODY };",
+]) {
+  test(`final-fix fixtures preserve delegated listener with unrelated shadowed writes: ${declaration}`, () => {
+    const actions = scanFixture(`function bind(host) {
+      ${declaration.replace("BODY", `const target = event.target.closest('.chip'); if (target && host.contains(target)) act(target);`)}
+      { let onClick; onClick = () => {}; }
+      function replace(onClick) { [onClick] = [() => {}]; }
+      onClick.description = "listener";
+      host.addEventListener("click", onClick);
+    }
+    const view = <button className="chip">Chip</button>;`);
+    assert.equal(actions.length, 1);
+    assert.equal(actions[0].behaviorEvidence, "present-imperative-static");
+    assert.deepEqual(actions[0].imperativeBehaviorEvidence.map(({ selector, event, line }) => ({ selector, event, line })), [
+      { selector: ".chip", event: "click", line: 6 },
+    ]);
+    assert.ok(actions[0].imperativeBehaviorEvidence[0].sourceFile.endsWith("/fixture.tsx"));
+  });
+}
+
 test("AST fixtures reject unregistered, cross-host, dynamic, nested and decoy dispatch paths", () => {
   const actions = scanFixture(`
     function bind(host, otherHost, selector) {

@@ -91,7 +91,7 @@ assert.equal(homeSurface.runtimeEvidence.some((value) => value.includes("rendere
 
 **Files:** Controller updates this plan and the completion verification records. No new implementation scope.
 
-- [ ] Review both task diffs and final static checkpoint. Preserve all unresolved runtime assertions and case-level limitations in the report.
+- [x] Review both task diffs and final static checkpoint. Preserve all unresolved runtime assertions and case-level limitations in the report.
 - [x] Run the complete Web suite on the named local scratch DB with sanitized env, lifecycle DB enabled and ORBIT_RUN_POSTGRES_SMOKE=1. Record remaining runtime/audit failures explicitly; do not claim the suite is green.
 - [ ] Continue native feature plans and actual runtime verification. After native additions, derive the denominator again from both trees rather than carrying forward 118 or a historical 115. Only after executed route-specific evidence exists should runtime records and generated audit artifacts be updated and the full audit required to pass.
 
@@ -150,6 +150,40 @@ route cases and all-route runtime coverage. No non-audit failure appeared.
 Log: /tmp/orbit-completion-static-full-web-node22-20260910.log. Whole-static-plan
 review and subsequent native feature/runtime execution remain outstanding; this
 is not an all-green full-suite or product-completion claim.
+
+## Final Static Checkpoint
+
+The whole-plan review identified one remaining obsolete delegated-listener proof:
+a named function reassigned before registration retained its original body.
+The single final fix wave reuses lexical write detection before accepting the
+callback. Six regressions failed first, then all12 focused cases passed; the
+complete surface suite passes53/53. The one scoped re-review marks the finding
+ADDRESSED and the patch APPROVED, with no new Critical/Important or deferred issue.
+
+Controller independent Node22.23.2 full Web verification with the owned local
+database completed2861tests:2854pass,7fail,zero skipped/cancelled in82.1seconds.
+All seven failures are the six required fresh public/Party cases and global
+runtime coverage; no non-audit failure occurred. Log:
+/tmp/orbit-completion-static-finalfix-full-web-node22-20260910.log.
+Both Web typechecks pass. Precommit detection covers4files8mappedsymbols,
+zero affected processes, LOW risk. No generated audit aggregate or business
+runtime evidence changed. The three rulings below are retained verbatim.
+
+This clears the static phase for native implementation, not full-product
+acceptance. The open continuation item in Task4 transfers to the approved native
+password recovery, event experience, batch import and runtime verification plans.
+App's five missing feature routes and seven Web runtime gates remain required.
+
+## Static-Phase Rulings
+
+These three decisions remain visible for the eventual completion handoff. They do
+not authorize new runtime credit or remove required acceptance checks.
+
+1. Ruling: A callback prop proven to forward to an intrinsic form is component ownership/container evidence, not a second clickable control requiring its own accessible name. Retain traceable callback provenance on the owning form or an explicit non-leaf record; keep explicit roles, actual custom controls, and unresolved callbacks classified conservatively. This refines the plan's generic handler-bearing-custom rule to match rendered ownership and the approved accurate-audit goal. Cost if wrong: a genuine custom control could be undercounted, so require positive ownership and unknown/non-forwarded/explicit-role negative fixtures and retain the zero-P1 gate. No production ProposalForm edit, invented label, blanket Form exclusion or runtime credit is authorized.
+
+2. Ruling: Correct the full-audit accessible-name assertion to inspect actual missing-static evidence rather than a conclusion the generator never emits, and add a bounded App-only accessibility task before final static verification. The five actual candidates are generation icon EventOperationsContent:88, task modal scrim TaskDetailScreen:277, and three explicitly hidden Web file inputs at batch2 start:170/detail:417,425. Hidden input records keep callback evidence but no accessible-name requirement; visible native controls are not waived. Cost if wrong: hiding a real focus target or overstating cross-platform hidden semantics could remove access, so retain the separate named close, require both native hiding props/accessible=false and real component tests, and leave runtime accessibility limitations explicit. No business action, API, layout, or production provider scope changes.
+
+3. Ruling: Preserve historical public-event/organizer/Party case records and original cardinalities, but retire current eligibility for the six confirmed changed routes (/app/events, /app/events/[id], /app/o/[slug], /app/party, /app/party/checkin, /app/party/graph) and their exact stale case pairs. Apply retirement to both surface and interaction lookup, and block the old generic browser-smoke fallback on catalogue/detail/organizer. Split historical retention, current eligibility and required fresh runtime cases into independently executed tests; never restore20/3 by blanket rebinding or replace them with smaller current passing totals. Why: source diagnosis shows replaced contracts/loaders and removed controls; both Party children directly consume the same changed loadAppPartyRouteViewModel, which controller checked. Cost if wrong: retiring still-valid proof increases local runtime work for six routes, but retaining stale proof would falsely mark changed behavior verified. Keep all routes, historical3001/279 observations and case contents; no new runtime credit, production edit, generated aggregate or new artifact snapshot. Use retained raw historical map records for historical identity/cardinality checks rather than coupling tests to an aggregate file that the later runtime phase will regenerate.
 
 ## Historical Baseline
 

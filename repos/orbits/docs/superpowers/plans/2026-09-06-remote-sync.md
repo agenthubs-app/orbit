@@ -288,3 +288,29 @@ database prerequisite is absent; no new skip exemption was retained.
 - 临时清单在 `/tmp/orbit-task2-round1-inventory.json`，缺失路由逐条见
   Task 2 报告。未执行新的浏览器或原生运行案例，未改 App、API、根计划或
   受控聚合快照，未暂存或提交。本轮独立复核、变更检测和提交由协调者负责。
+
+### 2026-09-10 Final Static-Audit Fix: Reassigned Delegated Listener
+
+- Reject a named delegated callback when the existing lexical write check finds
+  reassignment of its resolved binding, before inspecting its original body.
+  Direct listener discovery and business behavior are unchanged. The shared
+  write-check comment now describes binding use rather than only React invocation.
+- Added six RED regressions for direct assignment, array/object destructuring,
+  for-of assignment and a nested writer, plus two positive shadowing/property-write
+  controls. Existing function-declaration, const, inline and actual prompt checks
+  remain intact. RED: 6/12 pass, six expected failures; focused GREEN: 12/12.
+- Complete surface suite: 53/53. Complete audit: 163/170, seven required failures,
+  zero skips. The failures remain the fresh cases for events, event detail,
+  organizer and the three Party routes, plus all-route runtime coverage (87/118;
+  31 missing). Both Web typechecks and code diff whitespace checks pass.
+- Read-only before/after surface counts are unchanged: 52 routes, 2132 actions,
+  2070 present-static, 42 delegated-props, 20 present-imperative-static, zero risks
+  and zero P0/P1 candidates. All 20 prompt occurrences retain their static proof;
+  no runtime case or generated aggregate was added.
+- Qualified upstream impact on orbit-remote-sync is LOW for both touched helpers:
+  one direct caller and four upstream symbols each, zero indexed affected
+  processes. This is bounded graph evidence, not a complete runtime safety claim.
+  Full commands, failure names and logs are in the scoped final-fix-report.md.
+  No subagents, staging, commits, reindexing, App/API edits or other-plan edits.
+  The retained scoped re-review and independent full Web DB verification remain
+  with the controller; this note does not clear those gates or runtime coverage.
