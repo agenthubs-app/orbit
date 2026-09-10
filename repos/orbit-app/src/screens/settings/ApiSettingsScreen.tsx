@@ -12,7 +12,8 @@ import { createOrbitApiClient } from "../../api/client";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { radius, spacing, typography } from "../../design/tokens";
+import { spacing, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { healthPayloadToSummary } from "../../view-models/health";
 
@@ -80,9 +81,11 @@ export function ApiSettingsScreen() {
       <DataCard
         detail="iOS 模拟器使用 localhost；真机请填写 Mac 的局域网地址或远程服务器地址。"
         title="服务器地址"
+        variant="inset"
       >
         <View style={styles.form}>
           <TextInput
+            accessibilityLabel="服务器地址"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -142,7 +145,6 @@ export function ApiSettingsScreen() {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actions: {
-    flexDirection: "row",
     gap: spacing.sm
   },
   disabled: {
@@ -152,52 +154,25 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.body,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).input
   },
   message: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   pressed: {
     opacity: 0.72
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md
+    ...createControlStyles(colors).primaryButton
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "600"
+    ...createControlStyles(colors).primaryButtonText
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-    borderColor: "rgba(99,89,233,0.22)",
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md
+    ...createControlStyles(colors).secondaryButton
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "600"
+    ...createControlStyles(colors).secondaryButtonText
   }
 }));

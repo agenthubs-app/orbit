@@ -4,10 +4,6 @@ import { join } from "node:path";
 import test from "node:test";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
-const appScreenSource = readFileSync(
-  join(repoRoot, "src", "components", "AppScreen.tsx"),
-  "utf8"
-);
 const contactAcquisitionSource = readFileSync(
   join(
     repoRoot,
@@ -19,12 +15,8 @@ const contactAcquisitionSource = readFileSync(
   "utf8"
 );
 
-test("shared mobile back navigation keeps a 44 by 44 touch target", () => {
-  assert.match(
-    appScreenSource,
-    /backButton:[\s\S]*height: 44[\s\S]*width: 44/u
-  );
-});
+// AppScreen's back target is measured and clicked in app-wide-primitives.test.ts.
+// The old literal-height source assertion rejected shared tokens and minHeight.
 
 test("contact acquisition controls keep the 44 point touch baseline", () => {
   for (const styleName of [

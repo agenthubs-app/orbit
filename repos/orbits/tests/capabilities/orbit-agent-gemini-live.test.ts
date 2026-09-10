@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createOrbitAgentEventRecommendationArtifactService } from "../../features/orbit-ai/event-recommendation-artifact-service";
+import type { OrbitAgentArtifactTaskService } from "../../features/orbit-ai/service";
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -1880,9 +1882,11 @@ test("live Gemini Orbit Agent maps allowed planner output into an artifact", asy
 
 test("live Orbit Agent localizes live event artifact copy from the request locale", async () => {
   const requests: unknown[] = [];
+  const eventQueries: string[] = [];
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config: {
       apiKey: string;
+      artifactTaskService: OrbitAgentArtifactTaskService;
       fetchImplementation: typeof fetch;
       maxLoopSteps?: number;
       model: string;
@@ -1918,6 +1922,27 @@ test("live Orbit Agent localizes live event artifact copy from the request local
 
   const service = liveModule.createLiveOrbitAgentConversationService({
     apiKey: "test-gemini-key",
+    artifactTaskService: createOrbitAgentEventRecommendationArtifactService({
+      recommendationTool: {
+        recommend({ query }) {
+          eventQueries.push(query);
+          return {
+            candidates: [{
+              databaseQueryExecuted: false, description: "Investor networking dinner",
+              endsAt: "2030-06-15T12:00:00.000Z", eventLabel: "Investor dinner / 投资人晚餐",
+              eventId: "event:locale-fixture", evidenceIds: ["evidence:locale-fixture"],
+              localizedDescriptions: { en: "Investor networking dinner", ja: null, zh: "投资人与创业者交流晚餐" },
+              matchReasons: ["investor"], matchedTokens: ["investor"], nextAction: "Review event",
+              recommendedPreparation: "Prepare an introduction", relationshipContext: "Meet investors",
+              score: 85, sourceLabel: "Canonical Event Core", startsAt: "2030-06-15T10:00:00.000Z",
+              status: "confirmed", title: "Investor dinner", upcoming: true, venue: "Tokyo",
+            }],
+            databaseQueryExecuted: false, evidenceIds: ["evidence:locale-fixture"],
+            sourceLabel: "Canonical Event Core", state: "success", summary: "One event",
+          };
+        },
+      },
+    }),
     fetchImplementation: (async (_url, init) => {
       requests.push(init);
 
@@ -1957,6 +1982,7 @@ test("live Orbit Agent localizes live event artifact copy from the request local
   const artifactText = JSON.stringify(artifact);
 
   assert.equal(result.success, true);
+  assert.deepEqual(eventQueries, ["帮我推荐下周适合认识投资人的活动。"]);
   assert.equal(requests.length, 1);
   assert.equal(artifact?.result.presentation.title, "推荐活动");
   assert.match(artifact?.result.generatedView?.summary ?? "", /可复核/);

@@ -193,7 +193,7 @@ assert.equal(await receiptCount(), 1);
 assert.deepEqual(await readUntouchedRecords(), originalUntouchedRecords);
 ```
 
-- [ ] Run all migration tests, existing lifecycle PostgreSQL/transition/service tests and Web typecheck. Review, detect staged scope, commit Task 3. Stop only the test database started for this task and preserve other running services.
+- [x] Run all migration tests, existing lifecycle PostgreSQL/transition/service tests and Web typecheck. Review, detect staged scope, commit Task 3. Stop only the test database started for this task and preserve other running services. Completed as `a7f42c78a`: 146 lifecycle tests passed with no database skips, full Web typecheck and independent review passed; the dedicated test instance was stopped, then explicitly restarted for Task 4.
 
 ## Task 4: Canonical Batch Projection Without Cutover
 
@@ -219,12 +219,47 @@ function readCanonicalContactLifecycles(input: {
 }): Promise<readonly CanonicalContactLifecycleView[]>;
 ```
 
-- [ ] Write pure failing tests: stale Contact stage and detail-state text never override Connection; nextFollowup comes from the earliest real open/scheduled dated task with a stable ID tie-break; advice text creates no task. Time status is overdue for a past instant, today for a nonpast instant in the same supplied local calendar day, otherwise future. Invalid timeZone/clock/date fails visibly.
-- [ ] Require the preflight invariants and additionally validate any generic dated task that can become nextFollowup. Undated generic tasks remain untouched and do not satisfy relationship obligations. No arrays or private strings from another actor reach the result, including malformed cross-actor references.
-- [ ] Implement the pure view by indexing records once. Do not import UI code or change shared response contracts before the actual cutover gate; this is a service-owned candidate projection.
-- [ ] Write PostgreSQL tests for batched actor-first connections, matching owned contacts/tasks, and metadata-only checks for orphan contacts or foreign references. All user-data reads contain explicit workspace and actor predicates. A fixed number of queries handles 1 and 50 contacts; no per-card SQL is allowed.
-- [ ] Run the reader within a single transaction for a consistent view. Missing/duplicate references or invalid lifecycle state throws a controlled consistency error, never a partial result or legacy fallback. The reader does not run schema migrations, trust a past receipt as activation, or connect itself to a route.
+- [x] Write pure failing tests: stale Contact stage and detail-state text never override Connection; nextFollowup comes from the earliest real open/scheduled dated task with a stable ID tie-break; advice text creates no task. Time status is overdue for a past instant, today for a nonpast instant in the same supplied local calendar day, otherwise future. Invalid timeZone/clock/date fails visibly.
+- [x] Require the preflight invariants and additionally validate any generic dated task that can become nextFollowup. Undated generic tasks remain untouched and do not satisfy relationship obligations. No arrays or private strings from another actor reach the result, including malformed cross-actor references.
+- [x] Implement the pure view by indexing records once. Do not import UI code or change shared response contracts before the actual cutover gate; this is a service-owned candidate projection.
+- [x] Write PostgreSQL tests for batched actor-first connections, matching owned contacts/tasks, and metadata-only checks for orphan contacts or foreign references. All user-data reads contain explicit workspace and actor predicates. A fixed number of queries handles 1 and 50 contacts; no per-card SQL is allowed.
+- [x] Run the reader within a single transaction for a consistent view. Missing/duplicate references or invalid lifecycle state throws a controlled consistency error, never a partial result or legacy fallback. The reader does not run schema migrations, trust a past receipt as activation, or connect itself to a route.
 - [ ] Run all four tasks' tests, existing lifecycle regression and typecheck; independent final review, scoped detection and Task 4 commit.
+
+### Task 4 verification checkpoint / commit paused
+
+The reader has 22 passing tests (8 pure, 13 real PostgreSQL, 1 pre-SQL guard), none skipped. All lifecycle tests total 168 passing with no skips; full Web typecheck passes. Independent final review approved the tool layer and independently reproduced the 22 reader tests. These results do not cover API or client cutover.
+
+The broader Web test run finished with 2,524 passes, 18 failures and 19 skips (2,561 total). Task 4 is not committed and the full-suite completion gate remains unresolved. Failure groups are:
+
+| Group | Failing tests | Observed evidence, not a blanket baseline waiver |
+| --- | --- | --- |
+| Product-surface and functional-audit assertions | 7 | Mobile DataCard route counts, navigation/query/static-evidence expectations and generated risk counts differ from current UI sources. The current App worktree also contains other ongoing changes. |
+| AI email, live Agent locale and event seed | 3 | Live-contact draft returns failure; event recommendation reports unavailable events; seed completeness is only `complete` instead of three categories. |
+| Contact/event page tests | 4 | Dashboard still expects the old loader name; image render lacks App Router context; ended-event assertion expects the old expression; persisted registration is blocked by missing enrollment-window configuration. |
+| Navigation and style ratchets | 4 | Mobile settings link assertion and font/z-index ceilings fail, including prior contact-page and analysis UI changes. |
+
+The migration-tool commits add standalone modules and tests; no current application/factory imports their new entry points. That rules out a direct route-wiring change, but does not prove all 18 failures are harmless or unrelated to earlier work in the overall goal. Do not rewrite expected counts or raise style ceilings merely to obtain green tests.
+
+**Test-environment incident:** the broader run cleared inherited environment variables but some existing tests call `loadLocalEnv()`, which reads `.env.local`/`.env` again. PostgreSQL tests therefore used the existing configured event database, not just the lifecycle fixture. Several observed tests explicitly created and dropped their own temporary schemas; the failed catalogue registration throws before the registration mutation. No pre-run business-data snapshot exists for this run, so neither observation proves that every business record remained unchanged. Further broad runs are stopped; a read-only residual/audit check of that configured database was requested, and no cleanup or business-data mutation is authorized. The lifecycle-specific tests use only `ORBIT_LIFECYCLE_TEST_DATABASE_URL` and do not load local environment files.
+
+Before another broad run, inspect direct and transitive local-env loaders and enforce a dedicated test database plus blocked real credentials. Clearing only the parent environment is insufficient. Keep this incident and the 19 skipped checks visible; do not report the entire repository or the bidirectional product audit as verified.
+
+### Offline follow-up while database audit permission is pending
+
+Source and existing-report inspection identified 27 test files with direct `loadLocalEnv()` calls and two page-test files using the registration catalogue fixture, which also loads local configuration. One executed event-access test explicitly reads the configured main schema and compares evidence before/after a missing-event lookup. The 19 skipped tests are now individually identified, including the main profile-repair inventory/ledger checks. These observations narrow the investigation but do not replace a database audit or prove absence of business changes.
+
+Five previously failing cases have been repaired without production edits or a database connection:
+
+- `app-contacts-dashboard-account-scope.test.ts` now invokes the real page and route loader with isolated authentication/storage boundaries, checking canonical account identity, anonymous redirect and missing-account rejection instead of an obsolete loader-name assertion.
+- `ai-email-draft-service.test.ts` supplies the required `finish_reason: "stop"` in its simulated DeepSeek response; production finish-reason validation remains unchanged.
+- `app-demo-visual-assets.test.tsx` provides the router/search contexts needed by the actual event-list component. Image checks now verify the current hero/rail loading policy; SVG fixture markup does not expose raster `sizes/srcset` attributes.
+- `orbit-agent-gemini-live.test.ts` injects complete fixed event evidence into the real artifact service for its locale test, eliminating an accidental dependency on the configured canonical event database while retaining real Agent routing and localization.
+- `app-event-detail-live-route-services.test.ts` replaces the obsolete registration-expression assertion with the real event-detail and matchmaking components. Five runtime cases verify that an authenticated viewer denied operations access gets a registration link only for an upcoming event with an open registration window, never for ended/closed/frozen/unavailable states. The HTTP boundary is a local failure fixture; no product gating was changed.
+
+The eight focused files (these five plus analysis view-model, event-detail-page and matchmaking regression) pass 96 tests, none skipped. The child inherits only `PATH`, `TMPDIR`, `LANG` and `TZ`; an in-memory preload rejects `.env` reads through `readFileSync`, socket connections and unmocked fetches before test imports. Test-specific HTTP doubles stay in memory. Full Web typecheck passes. Independent read-only review approved all five test repairs with no findings, confirming real page/route/artifact/matchmaking behavior remains exercised. No new full-suite run was performed; the recorded 18-failure result remains historical, and the other 13 failing cases remain unresolved or unverified. These test repairs and Task 4 remain uncommitted because the broader verification gate is unresolved; no existing database cleanup, real migration, API cutover or push was performed. The owned PostgreSQL fixture remains stopped (`pg_ctl ... status`: no server running).
+
+Further offline diagnosis found a requirements conflict in `event-operations-seed.test.ts`: commit `dc796622e` intentionally filled the previously sparse participant answers, so the current 64-person cohort is entirely complete, while `docs/event-operations-e2e.md` still explicitly requires complete/partial/minimal profiles and the test expects 56/5/3. Neither changing the expected counts nor deleting the later fixture content is justified without resolving that acceptance conflict. No seed or completeness rule was changed. The remaining style/navigation/audit failures likewise have not been waived or hidden by raising ceilings or dropping checks.
 
 ## Completion Audit / Remaining Operational Gate
 

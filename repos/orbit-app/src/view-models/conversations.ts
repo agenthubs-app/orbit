@@ -570,9 +570,15 @@ export function orbitAiHomeChatWindow(
   latestChat: ConversationChatView | null = null
 ): OrbitAiHomeChatWindow {
   const chat = latestChat ?? conversationPayloadToChatView(data);
+  // This ID belongs to the server's bootstrap welcome, not a user conversation.
+  // Keep the general conversation decoder unchanged for history/detail screens.
+  const homeMessages = chat.messages.filter((message) =>
+    !(message.id === "orbit-agent-live-ready" && message.role === "assistant"));
+  const bootstrapFallback = !latestChat && isRecord(data) &&
+    stringField(data, "assistantMessage") === "Orbit Agent is ready for a natural-language request.";
   const messages = chat.messages.length > 0
-    ? chat.messages
-    : chat.assistantMessage
+    ? homeMessages
+    : chat.assistantMessage && !bootstrapFallback
       ? [
           {
             content: chat.assistantMessage,

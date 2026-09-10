@@ -28,7 +28,8 @@ import {
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -434,7 +435,7 @@ export function AiConversationScreen() {
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.readingSafeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={styles.readingRoot}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
       {!thread ? <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}
@@ -1621,9 +1622,10 @@ function MarkdownSegment({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   readingSafeArea: { backgroundColor: colors.surface, flex: 1 },
-  readingRoot: { flex: 1 },
+  readingRoot: { flex: 1, maxWidth: layout.contentMax, width: "100%", alignSelf: "center" },
+  readingFallback: { paddingHorizontal: layout.pageInset, paddingTop: spacing.md, gap: spacing.lg },
   readingHistory: { flex: 1 },
-  readingContent: { gap: spacing.lg, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24 },
+  readingContent: { gap: spacing.lg, paddingTop: 22, paddingBottom: 24, paddingHorizontal: layout.pageInset },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
@@ -1686,7 +1688,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   aiRunPanel: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
@@ -1695,7 +1697,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1712,7 +1714,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   aiRunResult: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1734,14 +1736,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   composerPanel: {
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: 18,
     borderWidth: 1,
     gap: 4,
-    marginHorizontal: 16,
     marginBottom: 6,
     paddingHorizontal: 12,
     paddingTop: 10,
-    paddingBottom: 6
+    paddingBottom: 6,
+    borderRadius: radius.input,
+    marginHorizontal: layout.pageInset
   },
   contactAvatar: {
     alignItems: "center",
@@ -1783,7 +1785,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1827,7 +1829,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1925,7 +1927,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1968,7 +1970,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -1985,12 +1987,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   taskInteractionActions: {
     flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: "flex-end"
+    justifyContent: "flex-end",
+    flexWrap: "wrap"
   },
   taskInteractionCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
@@ -2016,17 +2019,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 34
   },
   taskInteractionPrimary: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 40,
-    paddingHorizontal: spacing.md
+    ...createControlStyles(colors).primaryButton
   },
   taskInteractionPrimaryText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    ...createControlStyles(colors).primaryButtonText,
+    color: colors.onAccent
   },
   taskInteractionReason: {
     color: colors.text3,
@@ -2034,15 +2031,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 18
   },
   taskInteractionSecondary: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 40,
-    paddingHorizontal: spacing.sm
+    ...createControlStyles(colors).secondaryButton
   },
   taskInteractionSecondaryText: {
-    color: colors.text2,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.text2
   },
   taskInteractionTitle: {
     color: colors.text,
@@ -2053,7 +2046,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   intentBlock: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -2071,19 +2064,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.lg
   },
   inlinePanelAction: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 34,
-    paddingHorizontal: spacing.md
+    gap: spacing.xs
   },
   inlinePanelActionText: {
+    ...textStyles.small,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    flexShrink: 1
   },
   inlinePanelDetail: {
     color: colors.text3,
@@ -2165,10 +2153,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: typography.caption
   },
   panelTitle: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
+    ...textStyles.section,
+    color: colors.ink
   },
   pressed: {
     opacity: 0.78,
@@ -2198,7 +2184,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -2259,9 +2245,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   threadEyebrow: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: "600"
+    ...textStyles.section,
+    color: colors.accent
   },
   threadHeader: {
     alignItems: "center",

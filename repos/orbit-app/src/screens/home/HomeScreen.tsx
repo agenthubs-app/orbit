@@ -17,7 +17,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -144,7 +145,7 @@ export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
 
   return (
     <AppScreen
-      eyebrow={mode === "events" ? "我的活动" : "个人首页"}
+      {...(mode === "events" ? {} : { eyebrow: "个人首页" })}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -240,7 +241,7 @@ function HomeHubContent({
           </View>
           <View style={styles.heroTextBlock}>
             <Text style={styles.heroEyebrow}>Ask Orbit AI</Text>
-            <Text numberOfLines={2} style={styles.heroTitle}>
+            <Text style={styles.heroTitle}>
               {view.assistant.title}
             </Text>
           </View>
@@ -358,7 +359,7 @@ function HomeProfilePanel({
           {panel.facts.map((fact) => (
             <View key={fact.label} style={styles.profileFact}>
               <Text style={styles.profileFactLabel}>{fact.label}</Text>
-              <Text numberOfLines={2} style={styles.profileFactValue}>
+              <Text style={styles.profileFactValue}>
                 {fact.value}
               </Text>
             </View>
@@ -553,7 +554,6 @@ function HomeEventDiscoveryControls({
                 ]}
               >
                 <Text
-                  numberOfLines={1}
                   style={[
                     styles.homeEventTopicButtonText,
                     selected ? styles.filterButtonTextActive : null
@@ -623,15 +623,15 @@ function EventImageCard({
         <View style={styles.homeEventImageOverlay} />
         <View style={styles.homeEventImageContent}>
           <View style={styles.homeEventImageTopRow}>
-            <Text numberOfLines={1} style={styles.homeEventImageStatusPill}>
+            <Text style={styles.homeEventImageStatusPill}>
               {filterLabels[event.state]}
             </Text>
             <View style={styles.homeEventImageDateChip}>
-              <Text numberOfLines={1} style={styles.homeEventImageDateValue}>
+              <Text style={styles.homeEventImageDateValue}>
                 {dateChip.date}
               </Text>
               {dateChip.detail ? (
-                <Text numberOfLines={1} style={styles.homeEventImageDateDetail}>
+                <Text style={styles.homeEventImageDateDetail}>
                   {dateChip.detail}
                 </Text>
               ) : null}
@@ -640,32 +640,32 @@ function EventImageCard({
           <View style={styles.homeEventImageBottom}>
             <View style={styles.homeEventImageCopy}>
               {event.subtitle ? (
-                <Text numberOfLines={1} style={styles.homeEventImageSubtitle}>
+                <Text style={styles.homeEventImageSubtitle}>
                   {event.subtitle}
                 </Text>
               ) : null}
-              <Text numberOfLines={2} style={styles.homeEventImageTitle}>
+              <Text style={styles.homeEventImageTitle}>
                 {event.title}
               </Text>
             </View>
             <View style={styles.homeEventImageMetaRow}>
               <View style={styles.homeEventImageMetaLine}>
                 <Ionicons color={colors.onImage} name="time-outline" size={14} />
-                <Text numberOfLines={1} style={styles.homeEventImageDetail}>
+                <Text style={styles.homeEventImageDetail}>
                   {event.startsAt}
                 </Text>
               </View>
               {event.location ? (
                 <View style={styles.homeEventImageMetaLine}>
                   <Ionicons color={colors.onImage} name="location-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.homeEventImageDetail}>
+                  <Text style={styles.homeEventImageDetail}>
                     {event.location}
                   </Text>
                 </View>
               ) : null}
             </View>
             <View style={styles.homeEventImageFooter}>
-              <Text numberOfLines={1} style={styles.homeEventImageDetail}>
+              <Text style={styles.homeEventImageDetail}>
                 {event.participantCountLabel}
               </Text>
               <Text style={styles.homeEventImageCta}>{event.actionLabel}</Text>
@@ -702,15 +702,14 @@ function PipelineCell({ item }: { item: HomePipelineItemView }) {
 
   return (
     <View style={styles.pipelineCell}>
-      <Text numberOfLines={1} style={[styles.pipelineValue, textStyle]}>
+      <Text style={[styles.pipelineValue, textStyle]}>
         {item.value}
       </Text>
-      <Text numberOfLines={1} style={styles.pipelineLabel}>
+      <Text style={styles.pipelineLabel}>
         {item.label}
       </Text>
       <Text
         ellipsizeMode="tail"
-        numberOfLines={2}
         style={styles.pipelineDetail}
       >
         {item.detail}
@@ -754,11 +753,11 @@ function EntryTile({
       >
         <Ionicons color={colors.accent} name={iconName} size={18} />
       </View>
-      <Text numberOfLines={1} style={styles.itemTitle}>
+      <Text style={styles.itemTitle}>
         {entry.title}
       </Text>
       {variant === "compact" ? null : (
-        <Text numberOfLines={3} style={styles.metaText}>
+        <Text style={styles.metaText}>
           {entry.detail}
         </Text>
       )}
@@ -799,8 +798,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   entryIcon: {
     alignItems: "center",
@@ -829,16 +827,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   entryTile: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexBasis: "31%",
     flexGrow: 1,
     gap: spacing.sm,
     minHeight: 112,
     minWidth: 104,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   entryIconCompact: {
     height: 34,
@@ -874,25 +869,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 22
   },
   filterButton: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).chip
   },
   filterButtonActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    ...createControlStyles(colors).selectedChip
   },
   filterButtonText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).chipText
   },
   filterButtonTextActive: {
-    color: colors.onAccent
+    ...createControlStyles(colors).selectedChipText
   },
   filterRow: {
     flexDirection: "row",
@@ -937,42 +923,35 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   heroTitle: {
     color: colors.ink,
-    fontSize: 29,
-    fontWeight: "800",
-    lineHeight: 34
+    ...textStyles.pageTitle
   },
   homeHero: {
-    backgroundColor: colors.surface,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.lg,
-    borderWidth: 2,
     gap: spacing.xl,
     minHeight: 430,
-    padding: spacing.xl
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   homeEventImageCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   homeEventImageCopy: {
     gap: spacing.xs
   },
   homeEventImageFrame: {
     backgroundColor: colors.surface3,
-    height: 300,
     overflow: "hidden",
-    width: "100%"
+    width: "100%",
+    minHeight: 300,
+    borderRadius: radius.card
   },
   homeEventImage: {
     borderRadius: radius.lg
   },
   homeEventImageContent: {
-    ...StyleSheet.absoluteFill,
     justifyContent: "space-between",
-    padding: spacing.lg
+    padding: spacing.lg,
+    gap: spacing.xl
   },
   homeEventImageOverlay: {
     ...StyleSheet.absoluteFill,
@@ -1038,12 +1017,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   homeEventFilterBlock: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   homeEventFilterLabel: {
     color: colors.text3,
@@ -1053,17 +1029,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   homeEventClearButton: {
     alignItems: "center",
-    height: 32,
     justifyContent: "center",
-    width: 32
+    height: 44,
+    width: 44
   },
   homeEventDiscoveryPanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.lg
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   homeEventSearchInput: {
     color: colors.text,
@@ -1084,20 +1057,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.md
   },
   homeEventTopicButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 30,
-    paddingHorizontal: spacing.md
+    ...createControlStyles(colors).chip
   },
   homeEventTopicButtonText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).chipText
   },
   homeEventTopicRow: {
     flexDirection: "row",
@@ -1136,15 +1099,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   homeEventImageTitle: {
     color: colors.onImage,
-    fontSize: 24,
-    fontWeight: "900",
-    lineHeight: 30
+    ...textStyles.title
   },
   itemTitle: {
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...textStyles.listTitle
   },
   metaText: {
     color: colors.text3,
@@ -1267,12 +1226,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 16
   },
   promptChip: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 7
+    ...createControlStyles(colors).chip
   },
   promptChips: {
     flexDirection: "row",
@@ -1280,10 +1234,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   promptChipText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).chipText
   },
   sectionBlock: {
     gap: spacing.sm
@@ -1304,9 +1255,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sectionTitle: {
     color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "800",
-    lineHeight: 22
+    ...textStyles.section
   },
   sectionTitleBlock: {
     flex: 1,
@@ -1314,23 +1263,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   },
   statCell: {
     alignItems: "center",
@@ -1353,9 +1292,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statValue: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "700",
-    lineHeight: 24
+    ...textStyles.title
   },
   statePill: {
     backgroundColor: colors.accentSofter,
@@ -1368,18 +1305,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   textIconButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 36,
-    paddingHorizontal: spacing.md
+    ...createControlStyles(colors).secondaryButton
   },
   textIconButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   }
 }));

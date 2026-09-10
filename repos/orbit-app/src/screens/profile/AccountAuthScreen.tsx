@@ -11,7 +11,8 @@ import {
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   accountAuthToView,
@@ -160,7 +161,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       title={view.title}
     >
       <OrbitAuthLogo />
-      <DataCard title={view.primaryLabel}>
+      <DataCard title={view.primaryLabel} variant="inset">
         {view.restrictionMessage ? (
           <View style={styles.form}>
             <Text style={styles.errorText}>{view.restrictionMessage}</Text>
@@ -311,6 +312,7 @@ function AuthField({
       </View>
       <View style={styles.inputShell}>
         <TextInput
+          accessibilityLabel={field.label}
           autoCapitalize="none"
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
@@ -410,7 +412,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   errorText: {
     backgroundColor: colors.roseSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     color: colors.rose,
     fontSize: typography.small,
@@ -418,15 +420,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   fieldHelper: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
+    flexShrink: 1
   },
   fieldLabel: {
+    ...textStyles.small,
     color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    fontWeight: "600"
   },
   fieldWrap: {
     gap: spacing.sm
@@ -435,13 +436,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   helperLink: {
+    alignItems: "center",
     borderRadius: radius.control,
+    justifyContent: "center",
+    minHeight: layout.control,
+    maxWidth: "100%",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   helperLinkRow: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "center"
   },
   helperLinkText: {
@@ -451,9 +457,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 18
   },
   input: {
+    ...textStyles.body,
     color: colors.ink,
     flex: 1,
-    fontSize: typography.body,
+    minWidth: 0,
     minHeight: 48,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
@@ -470,12 +477,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   labelRow: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
     justifyContent: "space-between"
   },
   noticeText: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     color: colors.live,
     fontSize: typography.small,
@@ -483,23 +492,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   oauthButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).secondaryButton,
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 46,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm
   },
   oauthButtonText: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   },
   oauthStack: {
     gap: spacing.sm
@@ -515,37 +514,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 48,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...createControlStyles(colors).primaryButtonText
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    ...createControlStyles(colors).secondaryButton
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   }
 }));

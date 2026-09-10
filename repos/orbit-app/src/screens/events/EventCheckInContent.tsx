@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   filterEventCheckInParticipants,
@@ -124,7 +125,7 @@ export function EventCheckInContent({
               <View key={participant.participantId} style={styles.participant}>
                 <View style={[styles.statusDot, participant.checkedIn ? styles.statusDotDone : null]} />
                 <View style={styles.participantCopy}>
-                  <Text numberOfLines={1} style={styles.participantName}>{participant.displayName}</Text>
+                  <Text style={styles.participantName}>{participant.displayName}</Text>
                   <Text style={styles.participantMeta}>
                     #{participant.shortId} · {participant.checkedInLabel ?? participant.statusLabel}
                   </Text>
@@ -156,34 +157,90 @@ export function EventCheckInContent({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  checkInButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
+  checkInButton: {
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
+  },
   checkInButtonDone: { backgroundColor: colors.liveSoft },
-  checkInButtonText: { color: colors.onAccent, fontSize: typography.caption, fontWeight: "800" },
+  checkInButtonText: {
+    ...createControlStyles(colors).primaryButtonText
+  },
   checkInButtonTextDone: { color: colors.live },
   clearButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   content: { gap: spacing.md },
   disabled: { opacity: 0.55 },
   noResults: { color: colors.text3, fontSize: typography.small, paddingVertical: spacing.xl, textAlign: "center" },
   notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
-  participant: { alignItems: "center", backgroundColor: colors.surface, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 72, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  participantCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
+  participant: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 72,
+    paddingHorizontal: spacing.md,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    flexWrap: "wrap"
+  },
+  participantCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 140
+  },
   participantMeta: { color: colors.text3, fontSize: typography.caption },
-  participantName: { color: colors.ink, fontSize: typography.body, fontWeight: "800" },
+  participantName: {
+    color: colors.ink,
+    ...textStyles.listTitle
+  },
   pressed: { opacity: 0.68 },
   progressTrack: { backgroundColor: colors.surface3, borderRadius: radius.pill, height: 6, overflow: "hidden" },
   progressValue: { backgroundColor: colors.live, borderRadius: radius.pill, height: 6 },
-  roster: { borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, overflow: "hidden" },
+  roster: {
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
   searchBox: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, flexDirection: "row", minHeight: 48, paddingLeft: spacing.md },
   searchInput: { color: colors.ink, flex: 1, fontSize: typography.body, minHeight: 46, paddingHorizontal: spacing.sm },
-  segment: { alignItems: "center", borderRadius: radius.xs, flex: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.xs },
-  segmentActive: { backgroundColor: colors.surface },
-  segmentText: { color: colors.text3, fontSize: 11, fontWeight: "700" },
-  segmentTextActive: { color: colors.ink },
-  segments: { backgroundColor: colors.surface3, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
-  stateText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+  segment: {
+    ...createControlStyles(colors).chip,
+    flex: 1,
+    minWidth: 80
+  },
+  segmentActive: {
+    ...createControlStyles(colors).selectedChip
+  },
+  segmentText: {
+    ...createControlStyles(colors).chipText
+  },
+  segmentTextActive: {
+    ...createControlStyles(colors).selectedChipText
+  },
+  segments: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.control,
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.xs,
+    flexWrap: "wrap"
+  },
+  stateText: {
+    color: colors.text2,
+    ...textStyles.body
+  },
   statusDot: { backgroundColor: colors.amber, borderRadius: radius.pill, height: 9, width: 9 },
   statusDotDone: { backgroundColor: colors.live },
-  summary: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
+  summary: {
+    gap: spacing.md,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
   summaryEyebrow: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
-  summaryValue: { color: colors.ink, fontSize: typography.title, fontWeight: "800", marginTop: spacing.xs }
+  summaryValue: {
+    color: colors.ink,
+    marginTop: spacing.xs,
+    ...textStyles.title
+  }
 }));

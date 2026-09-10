@@ -24,7 +24,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
@@ -693,7 +694,7 @@ function GoalBar({ goal, onEdit }: { goal: string; onEdit: () => void }) {
     >
       <View style={styles.goalBarCopy}>
         <Text style={styles.goalBarLabel}>当前目标</Text>
-        <Text numberOfLines={2} style={styles.goalBarValue}>
+        <Text style={styles.goalBarValue}>
           {goal}
         </Text>
       </View>
@@ -724,7 +725,7 @@ function AnalysisDiagnosisCard({
         <Text style={styles.analysisDiagnosisLabel}>
           {diagnosis.statusLabel}
         </Text>
-        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.analysisDiagnosisValue}>
+        <Text style={styles.analysisDiagnosisValue}>
           {diagnosis.scoreLabel}
         </Text>
       </View>
@@ -978,14 +979,14 @@ function AnalysisDimensionSummary({
                   size={15}
                 />
               </View>
-              <Text numberOfLines={1} style={styles.analysisDimensionLabel}>
+              <Text style={styles.analysisDimensionLabel}>
                 {dimension.label}
               </Text>
             </View>
-            <Text numberOfLines={1} style={styles.analysisDimensionValue}>
+            <Text style={styles.analysisDimensionValue}>
               {dimension.value}
             </Text>
-            <Text numberOfLines={1} style={styles.analysisDimensionDetail}>
+            <Text style={styles.analysisDimensionDetail}>
               {dimension.detail}
             </Text>
           </View>
@@ -1443,12 +1444,12 @@ function RecommendedActionsCard({
             />
             <View style={styles.actionCopy}>
               <View style={styles.actionTitleRow}>
-                <Text numberOfLines={2} style={styles.actionTitle}>
+                <Text style={styles.actionTitle}>
                   {action.title}
                 </Text>
                 <Text style={styles.actionStatus}>{action.statusLabel}</Text>
               </View>
-              <Text numberOfLines={2} style={styles.actionDetail}>
+              <Text style={styles.actionDetail}>
                 {action.detail}
               </Text>
             </View>
@@ -1630,7 +1631,7 @@ function HealthItem({
       >
         <Ionicons color={visual.color} name="people-outline" size={17} />
       </View>
-      <Text numberOfLines={1} style={styles.healthValue}>
+      <Text style={styles.healthValue}>
         {health.label} {health.value}
       </Text>
       <Text style={[styles.healthStatus, { color: visual.color }]}>
@@ -1672,7 +1673,7 @@ function ContactDashboardGoalCard({
 }) {
   const { colors, styles } = useStyles();
   return (
-    <DataCard detail="会影响推荐和机会排序" title="关系目标">
+    <DataCard detail="会影响推荐和机会排序" title="关系目标" variant="inset">
       <TextInput
         accessibilityLabel="关系目标"
         multiline
@@ -1942,13 +1943,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   actionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
-  actionList: {
-    marginHorizontal: -spacing.md
-  },
+  actionList: { gap: 0 },
   actionAvatar: {
     alignItems: "center",
     borderColor: colors.surface,
@@ -1964,9 +1962,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   actionAvatarText: {
-    fontSize: typography.section,
-    fontWeight: "800",
-    lineHeight: 22
+    ...textStyles.section,
+    fontWeight: "600"
   },
   actionLeading: {
     height: 52,
@@ -1982,10 +1979,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 30
   },
   actionRankText: {
+    ...textStyles.small,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontWeight: "600"
   },
   actionRankBadge: {
     alignItems: "center",
@@ -2006,21 +2002,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "900",
     lineHeight: 13
   },
-  actionRowPressed: {
-    backgroundColor: colors.surface2
-  },
+  actionRowPressed: { backgroundColor: colors.surface2 },
   actionStatus: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
+    fontWeight: "600"
   },
   actionTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    flex: 1
   },
   actionTitleRow: {
     alignItems: "flex-start",
@@ -2028,36 +2019,28 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   analysisCount: {
+    ...textStyles.small,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19
+    fontWeight: "600"
   },
   analysisDiagnosisCard: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 86,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm,
+    minHeight: 72,
+    paddingVertical: spacing.sm
   },
   analysisDiagnosisIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.pill,
-    height: 42,
-    justifyContent: "center",
-    width: 42
+    height: 28,
+    width: 28,
+    flexShrink: 0,
+    justifyContent: "center"
   },
   analysisDiagnosisLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
+    fontWeight: "600",
     textAlign: "right"
   },
   analysisDiagnosisRefresh: {
@@ -2068,28 +2051,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   analysisDiagnosisScore: {
     alignItems: "flex-end",
-    gap: 2,
+    gap: spacing.xxs,
     minWidth: 48
   },
   analysisDiagnosisText: {
+    ...textStyles.small,
     color: colors.text,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20,
     minWidth: 0
   },
   analysisDiagnosisValue: {
+    ...textStyles.title,
     color: colors.accent,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 25,
-    maxWidth: 58,
     textAlign: "right"
   },
   analysisDimensionDetail: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: 10,
-    lineHeight: 14,
     textAlign: "center"
   },
   analysisDimensionDivider: {
@@ -2105,6 +2083,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   analysisDimensionHeading: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.xs,
     justifyContent: "center",
     minWidth: 0
@@ -2124,17 +2103,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.sm
   },
   analysisDimensionLabel: {
+    ...textStyles.caption,
     color: colors.text3,
     flexShrink: 1,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   analysisDimensionValue: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18,
+    fontWeight: "600",
     textAlign: "center"
   },
   analysisEmptyBlock: {
@@ -2147,44 +2124,32 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.md
   },
   analysisEmptyText: {
+    ...textStyles.small,
     color: colors.text3,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 19
+    flex: 1
   },
   analysisInlineAction: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 40,
-    paddingLeft: spacing.sm
+    minHeight: layout.control,
+    paddingLeft: spacing.sm,
+    maxWidth: "100%"
   },
   analysisInlineActionText: {
+    ...textStyles.small,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    flexShrink: 1
   },
   analysisPrimaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 48,
-    paddingHorizontal: spacing.lg
+    gap: spacing.sm
   },
-  analysisPrimaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 21
-  },
+  analysisPrimaryButtonText: { ...createControlStyles(colors).primaryButtonText },
   analysisSectionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   analysisSectionHeader: {
     alignItems: "flex-start",
@@ -2193,57 +2158,33 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   analysisSectionTitle: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "800",
-    lineHeight: 23
+    ...textStyles.section,
+    color: colors.ink
   },
   analysisSectionTitleBlock: {
     flex: 1,
     gap: spacing.xs
   },
   analysisSegment: {
-    alignItems: "center",
-    borderRadius: radius.control,
+    ...createControlStyles(colors).chip,
+    backgroundColor: "transparent",
     flex: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md
+    minWidth: 0
   },
   analysisSegmentedControl: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 50,
-    padding: 4
+    padding: spacing.xs
   },
-  analysisSegmentSelected: {
-    backgroundColor: colors.accent
-  },
-  analysisSegmentText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  analysisSegmentTextSelected: {
-    color: colors.onAccent
-  },
-  analysisSurface: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.lg,
-    padding: spacing.lg
-  },
+  analysisSegmentSelected: { ...createControlStyles(colors).selectedChip },
+  analysisSegmentText: { ...createControlStyles(colors).chipText },
+  analysisSegmentTextSelected: { ...createControlStyles(colors).selectedChipText },
+  analysisSurface: { gap: spacing.lg },
   structureBreakdownHint: {
-    color: colors.text4,
-    fontSize: 10,
-    lineHeight: 14,
+    ...textStyles.caption,
+    color: colors.text3,
     maxWidth: 126,
     textAlign: "right"
   },
@@ -2256,56 +2197,32 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.xs
   },
   structureDetailButtonText: {
+    ...textStyles.small,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontWeight: "600"
   },
   structureDimensionButton: {
-    alignItems: "center",
-    borderColor: "transparent",
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).chip,
     flex: 1,
+    minWidth: 76,
     flexDirection: "row",
-    gap: 3,
-    justifyContent: "center",
-    minHeight: 44,
-    minWidth: 0,
+    gap: spacing.xxs,
     paddingHorizontal: spacing.xs
   },
-  structureDimensionButtonSelected: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accent
-  },
+  structureDimensionButtonSelected: { ...createControlStyles(colors).selectedChip },
   structureDimensionControl: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 2,
-    padding: 4
+    flexWrap: "wrap",
+    gap: spacing.xs
   },
-  structureDimensionText: {
-    color: colors.text3,
-    flexShrink: 1,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
-  },
-  structureDimensionTextSelected: {
-    color: colors.accent
-  },
+  structureDimensionText: { ...createControlStyles(colors).chipText },
+  structureDimensionTextSelected: { color: colors.accent },
   activityDetail: {
-    fontSize: 10,
-    fontWeight: "700",
-    lineHeight: 14,
+    ...textStyles.caption,
+    fontWeight: "600",
     textAlign: "center"
   },
-  activityGrid: {
-    flexDirection: "row"
-  },
+  activityGrid: { flexDirection: "row" },
   activityIcon: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -2325,9 +2242,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth
   },
   activityLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16,
     textAlign: "center"
   },
   activityTitleRow: {
@@ -2336,10 +2252,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   activityValue: {
+    ...textStyles.body,
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 21
+    fontWeight: "600"
   },
   coverageBody: {
     alignItems: "center",
@@ -2348,7 +2263,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   coverageCenter: {
     alignItems: "center",
-    backgroundColor: colors.ink,
+    backgroundColor: colors.accent,
     borderColor: colors.surface,
     borderRadius: radius.pill,
     borderWidth: 3,
@@ -2357,9 +2272,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 66
   },
   coverageDiagnosis: {
-    color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text2
   },
   coverageDot: {
     borderColor: colors.surface,
@@ -2412,16 +2326,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 134
   },
   coverageScore: {
-    color: colors.onAccent,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 24
+    ...textStyles.title,
+    color: colors.onAccent
   },
   coverageScoreLabel: {
-    color: colors.onAccent,
-    fontSize: 10,
-    fontWeight: "700",
-    lineHeight: 13
+    ...textStyles.caption,
+    color: colors.onAccent
   },
   coverageSignalIcon: {
     alignItems: "center",
@@ -2431,11 +2341,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 30
   },
   coverageSignalLabel: {
+    ...textStyles.small,
     color: colors.text,
     flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19
+    fontWeight: "600"
   },
   coverageSignalRow: {
     alignItems: "center",
@@ -2443,30 +2352,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 43
+    minHeight: layout.control,
+    paddingVertical: spacing.xs
   },
   coverageSignals: {
     flex: 1,
     minWidth: 0
   },
   coverageSignalValue: {
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 21,
+    ...textStyles.body,
+    fontWeight: "600",
     minWidth: 22,
     textAlign: "right"
   },
   goalBar: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 68,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    padding: spacing.md
   },
   goalBarCopy: {
     flex: 1,
@@ -2474,16 +2380,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   goalBarLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   goalBarValue: {
+    ...textStyles.body,
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    fontWeight: "600"
   },
   goalEditButton: {
     alignItems: "center",
@@ -2514,15 +2418,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth
   },
   healthStatus: {
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...textStyles.caption,
+    fontWeight: "600",
+    textAlign: "center"
   },
   healthValue: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontWeight: "600",
+    textAlign: "center"
   },
   recommendedActionRow: {
     alignItems: "center",
@@ -2531,12 +2435,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 78,
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md
   },
-  recommendedActionRowLast: {
-    borderBottomWidth: 0
-  },
+  recommendedActionRowLast: { borderBottomWidth: 0 },
   structureInsight: {
     alignItems: "center",
     backgroundColor: colors.surface2,
@@ -2561,15 +2462,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 34
   },
   structureInsightLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   structureInsightText: {
-    color: colors.text,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text
   },
   refreshAnalysisButton: {
     alignItems: "center",
@@ -2586,9 +2485,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: radius.pill,
     height: "100%"
   },
-  barRow: {
-    gap: spacing.sm
-  },
+  barRow: { gap: spacing.sm },
   barTrack: {
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
@@ -2596,9 +2493,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden"
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   callout: {
     alignItems: "center",
@@ -2611,10 +2507,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   calloutText: {
+    ...textStyles.small,
     color: colors.text,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
+    flex: 1
   },
   chip: {
     backgroundColor: colors.surface2,
@@ -2625,8 +2520,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   chipText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
     fontWeight: "600"
   },
   chipWrap: {
@@ -2671,36 +2566,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     left: 62,
     top: 74
   },
-  disabled: {
-    opacity: 0.58
-  },
+  disabled: { opacity: 0.58 },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.rose
   },
   flexText: {
     flex: 1,
     gap: spacing.xs
   },
   goalInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.body,
+    ...createControlStyles(colors).input,
     minHeight: 92,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
     textAlignVertical: "top"
   },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 21
+    flex: 1
   },
   listRow: {
     borderColor: colors.border,
@@ -2708,9 +2591,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs,
     paddingTop: spacing.md
   },
-  listStack: {
-    gap: spacing.md
-  },
+  listStack: { gap: spacing.md },
   mapCenter: {
     alignItems: "center",
     backgroundColor: colors.ink,
@@ -2722,9 +2603,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 96
   },
   mapLabel: {
+    ...textStyles.caption,
     color: colors.text4,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   mapSection: {
     alignItems: "center",
@@ -2738,14 +2619,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     maxWidth: 76
   },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   metricLabel: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   metricValue: {
     color: colors.ink,
@@ -2774,18 +2654,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: spacing.md
   },
   overviewActionText: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   overviewGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md
   },
-  pressed: {
-    opacity: 0.72
-  },
+  pressed: { opacity: 0.72 },
   ring: {
     borderColor: colors.borderStrong,
     borderRadius: 999,
@@ -2825,19 +2703,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionBriefActions: {
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
     gap: spacing.sm,
     paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.pageInset,
     paddingTop: spacing.md
   },
   actionBriefClose: {
     alignItems: "center",
-    backgroundColor: colors.surface3,
-    borderRadius: radius.pill,
-    height: 36,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
+    minHeight: layout.control,
     justifyContent: "center",
-    width: 36
+    width: layout.control
   },
   actionBriefContent: {
     gap: spacing.xl,
@@ -2872,39 +2749,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   actionBriefJudgment: {
+    ...textStyles.body,
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 23
+    fontWeight: "600"
   },
-  actionBriefList: {
-    gap: spacing.md
-  },
+  actionBriefList: { gap: spacing.md },
   actionBriefListText: {
+    ...textStyles.small,
     color: colors.text2,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20,
     minWidth: 0
   },
   actionBriefPrimaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    flex: 1,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 48,
-    minWidth: 0,
-    paddingHorizontal: spacing.md
+    gap: spacing.xs
   },
-  actionBriefPrimaryText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
+  actionBriefPrimaryText: { ...createControlStyles(colors).primaryButtonText },
   actionBriefRoot: {
     flex: 1,
     justifyContent: "flex-end"
@@ -2913,39 +2774,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(22,22,26,0.28)"
   },
-  actionBriefSecondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
-    minHeight: 48,
-    minWidth: 0,
-    paddingHorizontal: spacing.md
-  },
-  actionBriefSecondaryText: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  actionBriefSection: {
-    gap: spacing.sm
-  },
+  actionBriefSecondaryButton: { ...createControlStyles(colors).secondaryButton },
+  actionBriefSecondaryText: { ...createControlStyles(colors).secondaryButtonText },
+  actionBriefSection: { gap: spacing.sm },
   actionBriefSectionLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   actionBriefSheet: {
+    alignSelf: "center",
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
+    borderTopLeftRadius: radius.card,
+    borderTopRightRadius: radius.card,
     maxHeight: "88%",
-    overflow: "hidden"
+    maxWidth: layout.contentMax,
+    overflow: "hidden",
+    width: "100%"
   },
   actionBriefStepIndex: {
     alignItems: "center",
@@ -2968,54 +2813,30 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minHeight: 24
   },
   actionBriefTitle: {
-    color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 26
+    ...textStyles.title,
+    color: colors.ink
   },
   actionBriefType: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   saveGoalButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  saveGoalButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
+  saveGoalButtonText: { ...createControlStyles(colors).primaryButtonText },
   recomputeButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  recomputeButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
+  recomputeButtonText: { ...createControlStyles(colors).primaryButtonText },
   recomputeStatus: {
+    ...textStyles.small,
     color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   },
   scoreBadge: {
     alignItems: "center",
@@ -3035,31 +2856,28 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   scorePillText: {
+    ...textStyles.small,
     color: colors.amber,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
-  scoreRow: {
-    gap: spacing.md
-  },
+  scoreRow: { gap: spacing.md },
   scoreText: {
+    ...textStyles.small,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   severityBadge: {
+    ...textStyles.caption,
     backgroundColor: colors.roseSoft,
     borderRadius: radius.pill,
     color: colors.rose,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   successText: {
+    ...textStyles.small,
     color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   }
 }));

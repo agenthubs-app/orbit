@@ -7,7 +7,7 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -161,11 +161,10 @@ function ConversationRow({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agentEntry: {
     alignItems: "center",
-    backgroundColor: colors.ink,
-    borderRadius: radius.lg,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.lg
+    backgroundColor: colors.surface,
+    paddingHorizontal: 0
   },
   agentEntryBody: {
     flex: 1,
@@ -181,30 +180,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 42
   },
   agentEntryTitle: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 22
+    ...textStyles.listTitle,
+    color: colors.text
   },
   agentPrompt: {
-    color: colors.accentSoft,
     fontSize: typography.small,
-    lineHeight: 20
+    lineHeight: 20,
+    color: colors.text2
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   callout: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card
   },
   calloutText: {
     color: colors.text,
@@ -213,19 +209,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 21
+    flex: 1
   },
   listStack: {
     gap: spacing.md
   },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   metricCell: {
     borderColor: colors.border,

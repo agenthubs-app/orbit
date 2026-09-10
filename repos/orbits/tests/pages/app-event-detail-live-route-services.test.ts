@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import {
   classifyComposedEventContextFailures,
@@ -14,6 +16,7 @@ import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/eve
 import {
   canUseEventDetailHistoryBack,
   eventTime,
+  OrbitRealEventDetail,
 } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
 
 const liveDatabaseEnvKeys = [
@@ -405,16 +408,66 @@ test("event matchmaking returns guests to the exact app event after login", () =
   );
 });
 
-test("ended event matchmaking does not offer a dead registration route", () => {
-  const detailSource = source(
-    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
-  );
-  const matchmakingSource = source(
-    "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
-  );
+test("event matchmaking only offers registration while the event and its registration window are open", async (t) => {
+  const routeModel = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") return;
+  const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
-  assert.match(detailSource, /registrationOpen=\{event\.status !== "ended"\}/);
-  assert.match(matchmakingSource, /authenticated && registrationOpen/);
-  assert.match(matchmakingSource, /resultsState === "ready"/);
-  assert.doesNotMatch(matchmakingSource, /!registrationOpen[^]*\/register/);
+  for (const scenario of [
+    { status: "upcoming", availability: "open", registrationLinks: 1 },
+    { status: "ended", availability: "open", registrationLinks: 0 },
+    { status: "upcoming", availability: "registration_closed", registrationLinks: 0 },
+    { status: "upcoming", availability: "profile_edit_closed", registrationLinks: 0 },
+    { status: "upcoming", availability: "unavailable", registrationLinks: 0 },
+  ] as const) {
+    await t.test(`${scenario.status}: ${scenario.availability}`, async (t) => {
+      const requests: string[] = [];
+      const eventId = "event:registration-window";
+      const eventPath = "/api/events/event%3Aregistration-window";
+      const allowedReads = new Set([
+        `${eventPath}/registration?questions=false`,
+        `${eventPath}/operations`,
+        "/api/encounters?eventId=event%3Aregistration-window",
+        "/api/appointments",
+        `${eventPath}/post-event/artifact`,
+        `${eventPath}/post-event/followups`,
+      ]);
+      t.mock.method(globalThis, "fetch", async (url: string | URL | Request, init?: RequestInit) => {
+        const path = String(url);
+        requests.push(`${init?.method ?? "GET"} ${path}`);
+        // A stale confirmed-attendee badge must not expose a dead registration
+        // link after the operations API denies access. Failed refreshes retain
+        // that initial badge, so the real matchmaking component stays mounted.
+        return Response.json({
+          success: false,
+          error: { code: "FORBIDDEN", message: "Fixture access denied" },
+        }, { status: 403 });
+      });
+      let renderer: ReactTestRenderer | undefined;
+      t.after(async () => {
+        if (renderer) await act(async () => renderer?.unmount());
+      });
+
+      await act(async () => {
+        renderer = create(createElement(OrbitRealEventDetail, {
+          event: {
+            ...event,
+            id: eventId,
+            status: scenario.status,
+            stats: { ...event.stats, authed: true, youRsvped: true },
+            youRsvped: true,
+          },
+          registrationAvailability: scenario.availability,
+        }));
+      });
+
+      assert.ok(renderer);
+      assert.ok(requests.includes(`GET ${eventPath}/operations`));
+      assert.deepEqual(requests.filter((request) => !allowedReads.has(request.replace(/^GET /, ""))), []);
+      assert.equal(renderer.root.findAll((node) => (
+        node.type === "a" && node.props.href === "/app/events/event%3Aregistration-window/register"
+      )).length, scenario.registrationLinks);
+    });
+  }
 });

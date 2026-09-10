@@ -1,10 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { Text, View, StyleSheet } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
-import { spacing, typography } from "../../design/tokens";
+import { layout, spacing, textStyles } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 
 const settingsDestinations = [
@@ -44,21 +43,20 @@ export function SettingsScreen() {
             auth.signedIn
         )
         .map((destination) => (
-          <DataCard
-            detail={destination.detail}
+          <Pressable
+            accessibilityLabel={`打开${destination.title}`}
+            accessibilityRole="button"
             key={destination.href}
             onPress={() => router.push(destination.href as Href)}
-            title={destination.title}
+            style={({ pressed }) => [styles.destination, pressed ? styles.pressed : null]}
           >
-            <View style={styles.destination}>
-              <Ionicons
-                color={colors.accent}
-                name={destination.icon}
-                size={20}
-              />
-              <Text style={styles.destinationText}>打开{destination.title}</Text>
+            <Ionicons color={colors.accent} name={destination.icon} size={20} />
+            <View style={styles.destinationCopy}>
+              <Text style={styles.destinationText}>{destination.title}</Text>
+              <Text style={styles.destinationDetail}>{destination.detail}</Text>
             </View>
-          </DataCard>
+            <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+          </Pressable>
         ))}
     </AppScreen>
   );
@@ -67,12 +65,27 @@ export function SettingsScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   destination: {
     alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.md,
+    minHeight: layout.control,
+    paddingVertical: spacing.lg
+  },
+  destinationCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
   },
   destinationText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "600"
+    ...textStyles.listTitle,
+    color: colors.text
+  },
+  destinationDetail: {
+    ...textStyles.small,
+    color: colors.text3
+  },
+  pressed: {
+    opacity: 0.82
   }
 }));

@@ -16,7 +16,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, shadows, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -634,12 +635,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.md
   },
   actionRowFirst: { borderTopWidth: 0 },
-  actionTextBlock: { flex: 1, gap: 2, minWidth: 0 },
+  actionTextBlock: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0
+  },
   actionTitle: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "600",
-    lineHeight: 19
+    fontWeight: "600"
   },
   avatar: {
     alignItems: "center",
@@ -649,19 +653,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden",
     width: 42
   },
-  avatarImage: { height: "100%", width: "100%" },
-  avatarText: { fontSize: typography.body, fontWeight: "700" },
+  avatarImage: {
+    height: "100%",
+    width: "100%"
+  },
+  avatarText: {
+    ...textStyles.body,
+    fontWeight: "600"
+  },
   contactDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   contactName: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    flex: 1
   },
   countBadge: {
     alignItems: "center",
@@ -672,75 +679,131 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 28,
     paddingHorizontal: spacing.sm
   },
-  countBadgeText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  countBadgeText: {
+    ...textStyles.small,
+    color: colors.accent,
+    fontWeight: "600"
+  },
   disabled: { opacity: 0.45 },
-  dueBadge: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 3 },
+  dueBadge: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3
+  },
   dueBadgeOverdue: { backgroundColor: colors.roseSoft },
   dueBadgeToday: { backgroundColor: colors.accentSoft },
   dueBadgeUpcoming: { backgroundColor: colors.surface3 },
-  dueBadgeText: { fontSize: 11, fontWeight: "700", lineHeight: 15 },
+  dueBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    lineHeight: 15
+  },
   dueTextOverdue: { color: colors.rose },
   dueTextToday: { color: colors.accent },
   dueTextUpcoming: { color: colors.text2 },
   emptyText: {
+    ...textStyles.small,
     color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 20,
     paddingVertical: spacing.xl,
     textAlign: "center"
   },
-  errorText: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  feedbackText: { color: colors.live, fontSize: typography.small, fontWeight: "700", lineHeight: 20 },
-  modeButton: {
-    alignItems: "center",
-    borderRadius: radius.control,
-    flex: 1,
-    height: 36,
-    justifyContent: "center"
+  errorText: {
+    ...textStyles.small,
+    color: colors.rose
   },
-  modeButtonActive: { backgroundColor: colors.surface, ...shadows.subtle },
-  modeButtonText: { color: colors.text3, fontSize: typography.small, fontWeight: "600" },
-  modeButtonTextActive: { color: colors.ink, fontWeight: "700" },
+  feedbackText: {
+    ...textStyles.small,
+    color: colors.live,
+    fontWeight: "600"
+  },
+  modeButton: {
+    ...createControlStyles(colors).chip,
+    backgroundColor: "transparent",
+    flex: 1
+  },
+  modeButtonActive: { ...createControlStyles(colors).selectedChip },
+  modeButtonText: { ...createControlStyles(colors).chipText },
+  modeButtonTextActive: { ...createControlStyles(colors).selectedChipText },
   modeControl: {
-    backgroundColor: colors.surface3,
-    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
     flexDirection: "row",
     gap: spacing.xs,
     padding: spacing.xs
   },
-  moreButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
-  nameLine: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  moreButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 44
+  },
+  nameLine: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
   pressed: { opacity: 0.68 },
-  sectionDetail: { color: colors.text3, fontSize: typography.caption, lineHeight: 17, marginTop: 3 },
+  sectionDetail: {
+    ...textStyles.caption,
+    color: colors.text3,
+    marginTop: 3
+  },
   sectionHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
     justifyContent: "space-between",
     paddingBottom: spacing.md
   },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "700", lineHeight: 22 },
+  sectionTitle: {
+    ...textStyles.section,
+    color: colors.ink
+  },
   snapshotCell: {
     alignItems: "center",
     flex: 1,
+    minWidth: 64,
     justifyContent: "center",
     minHeight: 72,
-    paddingHorizontal: spacing.xs
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm
   },
-  snapshotCellBorder: { borderLeftColor: colors.border, borderLeftWidth: 1 },
+  snapshotCellBorder: {
+    borderLeftColor: colors.border,
+    borderLeftWidth: 1
+  },
   snapshotGrid: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
     flexDirection: "row",
-    overflow: "hidden"
+    flexWrap: "wrap",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
-  snapshotHeader: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },
-  snapshotLabel: { color: colors.text3, fontSize: 11, fontWeight: "600", lineHeight: 15 },
+  snapshotHeader: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  snapshotLabel: {
+    ...textStyles.caption,
+    color: colors.text3,
+    textAlign: "center"
+  },
   snapshotSection: { gap: spacing.sm },
-  snapshotValue: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 25 },
-  stageContactCopy: { flex: 1, gap: 3, minWidth: 0 },
-  stageContactMain: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.md, minWidth: 0 },
+  snapshotValue: {
+    ...textStyles.title,
+    color: colors.ink
+  },
+  stageContactCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0
+  },
+  stageContactMain: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minWidth: 0
+  },
   stageContactRow: {
     alignItems: "center",
     borderTopColor: colors.border,
@@ -755,34 +818,35 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomColor: "transparent",
     borderBottomWidth: 2,
     flex: 1,
-    gap: 1,
+    minWidth: 76,
+    gap: spacing.xxs,
     justifyContent: "center",
     minHeight: 54,
-    paddingHorizontal: 2,
+    paddingHorizontal: spacing.xxs,
     paddingVertical: spacing.sm
   },
-  stageTabCount: { color: colors.text4, fontSize: 11, fontWeight: "600" },
+  stageTabCount: {
+    ...textStyles.caption,
+    color: colors.text3
+  },
   stageTabCountSelected: { color: colors.accent },
-  stageTabLabel: { color: colors.text3, fontSize: 11, fontWeight: "600" },
-  stageTabLabelSelected: { color: colors.accent, fontWeight: "700" },
+  stageTabLabel: {
+    ...textStyles.caption,
+    color: colors.text3,
+    textAlign: "center"
+  },
+  stageTabLabelSelected: {
+    color: colors.accent,
+    fontWeight: "700"
+  },
   stageTabSelected: { borderBottomColor: colors.accent },
   stageTabs: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
-    overflow: "hidden"
+    flexWrap: "wrap",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
-  surface: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    ...shadows.card
-  },
+  surface: { gap: spacing.xs },
   viewAllButton: {
     alignItems: "center",
     borderTopColor: colors.border,
@@ -791,5 +855,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "center",
     minHeight: 48
   },
-  viewAllText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" }
+  viewAllText: {
+    ...textStyles.small,
+    color: colors.accent,
+    fontWeight: "600"
+  }
 }));

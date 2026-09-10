@@ -18,7 +18,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, textStyles, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -188,6 +189,7 @@ function AdminNav({
         return (
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             key={item.id}
             onPress={() => onNavigate(item.href)}
             style={({ pressed }) => [
@@ -212,13 +214,13 @@ function StatGrid({ stats }: { stats: AdminStatView[] }) {
     <View style={styles.statGrid}>
       {stats.map((stat) => (
         <View key={stat.id} style={styles.statCell}>
-          <Text adjustsFontSizeToFit numberOfLines={1} style={styles.statValue}>
+          <Text style={styles.statValue}>
             {stat.value}
           </Text>
-          <Text numberOfLines={1} style={styles.statLabel}>
+          <Text style={styles.statLabel}>
             {stat.label}
           </Text>
-          <Text numberOfLines={1} style={styles.statNote}>
+          <Text style={styles.statNote}>
             {stat.note}
           </Text>
         </View>
@@ -277,7 +279,7 @@ function EventsCard({
             )}
             <View style={styles.eventCopy}>
               <View style={styles.eventTitleRow}>
-                <Text numberOfLines={2} style={styles.itemTitle}>
+                <Text style={styles.itemTitle}>
                   {event.title}
                 </Text>
                 <View style={styles.statusBadge}>
@@ -287,18 +289,18 @@ function EventsCard({
               <View style={styles.eventMetaStack}>
                 <View style={styles.eventMetaLine}>
                   <Ionicons color={colors.text3} name="time-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.metaText}>
+                  <Text style={styles.metaText}>
                     {event.startsAt}
                   </Text>
                 </View>
                 <View style={styles.eventMetaLine}>
                   <Ionicons color={colors.text3} name="location-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.metaText}>
+                  <Text style={styles.metaText}>
                     {event.location}
                   </Text>
                 </View>
               </View>
-              <Text numberOfLines={2} style={styles.detailText}>
+              <Text style={styles.detailText}>
                 {event.detail}
               </Text>
             </View>
@@ -356,10 +358,10 @@ function MemberList({ members }: { members: AdminMemberView[] }) {
             <Text style={styles.memberIconText}>{member.initial}</Text>
           </View>
           <View style={styles.memberCopy}>
-            <Text numberOfLines={1} style={styles.itemTitle}>
+            <Text style={styles.itemTitle}>
               {member.name}
             </Text>
-            <Text numberOfLines={1} style={styles.metaText}>
+            <Text style={styles.metaText}>
               {member.email}
             </Text>
           </View>
@@ -376,21 +378,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   accessNote: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   bodyText: {
+    ...textStyles.body,
     color: colors.text2,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   detailText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 19
   },
   eventCopy: {
     flex: 1,
@@ -398,13 +398,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   eventFallbackText: {
-    color: colors.onAccent,
+    color: colors.accent,
     fontSize: typography.section,
     fontWeight: "700"
   },
   eventIcon: {
     alignItems: "center",
-    backgroundColor: colors.ink,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
     height: 48,
     justifyContent: "center",
@@ -422,14 +422,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRow: {
     alignItems: "flex-start",
-    backgroundColor: colors.bgSunken,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 94,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   eventThumbFrame: {
     backgroundColor: colors.surface3,
@@ -447,16 +445,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventTitleRow: {
     alignItems: "flex-start",
-    flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "space-between"
   },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
     flexShrink: 1,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
   },
   list: {
     gap: spacing.sm
@@ -481,43 +476,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   memberRow: {
     alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   metaText: {
+    ...textStyles.small,
     color: colors.text3,
-    fontSize: typography.small
+    flexShrink: 1
   },
   navPill: {
-    alignItems: "center",
-    backgroundColor: colors.bgSunken,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    ...createControlStyles(colors).chip,
     flexGrow: 1,
-    minHeight: 38,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   navPillActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink
+    ...createControlStyles(colors).selectedChip
   },
   navRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm
   },
   navText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    ...createControlStyles(colors).chipText
   },
   navTextActive: {
-    color: colors.onAccent
+    ...createControlStyles(colors).selectedChipText
   },
   pressed: {
     opacity: 0.82,
@@ -537,14 +525,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   statCell: {
-    backgroundColor: colors.bgSunken,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.xs,
-    minHeight: 98,
-    padding: spacing.md,
-    width: "48%"
+    flexBasis: 128,
+    flexGrow: 1,
+    paddingVertical: spacing.md
   },
   statGrid: {
     flexDirection: "row",
@@ -553,19 +537,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   statLabel: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   statNote: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption
   },
   statValue: {
+    ...textStyles.pageTitle,
     color: colors.ink,
-    fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 32
   },
   statusBadge: {
     backgroundColor: colors.accentSoft,

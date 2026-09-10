@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { spacing, typography } from "../design/tokens";
+import { spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
 
 interface SectionHeaderProps {
@@ -11,7 +11,7 @@ export function SectionHeader({ detail, title }: SectionHeaderProps) {
   const { styles } = useStyles();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       {detail ? <Text style={styles.detail}>{detail}</Text> : null}
     </View>
   );
@@ -20,18 +20,14 @@ export function SectionHeader({ detail, title }: SectionHeaderProps) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   container: {
     gap: spacing.xs,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.xs
+    marginTop: spacing.sm
   },
   detail: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   title: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
+    ...textStyles.section,
+    color: colors.ink
   }
 }));

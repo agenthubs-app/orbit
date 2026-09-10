@@ -13,7 +13,7 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -113,13 +113,13 @@ function StatGrid({ stats }: { stats: PlatformStatView[] }) {
       {stats.map((stat) => (
         <View key={stat.id} style={styles.statCell}>
           <View style={[styles.toneDot, styles[`tone_${stat.tone}`]]} />
-          <Text adjustsFontSizeToFit numberOfLines={1} style={styles.statValue}>
+          <Text style={styles.statValue}>
             {stat.value}
           </Text>
-          <Text numberOfLines={1} style={styles.statLabel}>
+          <Text style={styles.statLabel}>
             {stat.label}
           </Text>
-          <Text numberOfLines={1} style={styles.statNote}>
+          <Text style={styles.statNote}>
             {stat.note}
           </Text>
         </View>
@@ -158,7 +158,7 @@ function ReviewQueueCard({
             )}
             <View style={styles.eventCopy}>
               <View style={styles.eventTitleRow}>
-                <Text numberOfLines={2} style={styles.itemTitle}>
+                <Text style={styles.itemTitle}>
                   {item.title}
                 </Text>
                 <View style={styles.stateBadge}>
@@ -168,18 +168,18 @@ function ReviewQueueCard({
               <View style={styles.eventMetaStack}>
                 <View style={styles.eventMetaLine}>
                   <Ionicons color={colors.text3} name="time-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.metaText}>
+                  <Text style={styles.metaText}>
                     {item.submitted}
                   </Text>
                 </View>
                 <View style={styles.eventMetaLine}>
                   <Ionicons color={colors.text3} name="location-outline" size={14} />
-                  <Text numberOfLines={1} style={styles.metaText}>
+                  <Text style={styles.metaText}>
                     {item.location}
                   </Text>
                 </View>
               </View>
-              <Text numberOfLines={2} style={styles.detailText}>
+              <Text style={styles.detailText}>
                 {item.detail}
               </Text>
             </View>
@@ -192,14 +192,12 @@ function ReviewQueueCard({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
+    ...textStyles.body,
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   detailText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 19
   },
   eventCopy: {
     flex: 1,
@@ -231,14 +229,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRow: {
     alignItems: "flex-start",
-    backgroundColor: colors.bgSunken,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 92,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   eventThumbFrame: {
     backgroundColor: colors.surface3,
@@ -256,33 +252,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventTitleRow: {
     alignItems: "flex-start",
-    flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "space-between"
   },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
     flexShrink: 1,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
   },
   list: {
     gap: spacing.sm
   },
   metaText: {
+    ...textStyles.small,
     color: colors.text3,
-    fontSize: typography.small
+    flexShrink: 1
   },
   statCell: {
-    backgroundColor: colors.bgSunken,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.xs,
-    minHeight: 106,
-    padding: spacing.md,
-    width: "48%"
+    flexBasis: 128,
+    flexGrow: 1,
+    paddingVertical: spacing.md
   },
   statGrid: {
     flexDirection: "row",
@@ -291,19 +281,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   statLabel: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
     fontWeight: "600"
   },
   statNote: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption
   },
   statValue: {
+    ...textStyles.pageTitle,
     color: colors.ink,
-    fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 32
   },
   stateBadge: {
     backgroundColor: colors.accentSoft,

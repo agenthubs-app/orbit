@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type { EventOperationsGenerationView, EventOperationsView } from "../../view-models/event-operations";
 
@@ -85,7 +86,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
       <View style={styles.cardSection}>
         <View style={styles.sectionHeading}>
           <View style={styles.flexCopy}><Text style={styles.sectionTitle}>AI 匹配与发布</Text><Text style={styles.sectionDetail}>完整生成后仍需主办方确认，结果不会自动公开。</Text></View>
-          <Pressable accessibilityRole="button" disabled={view.hasActiveGeneration || busy !== null} onPress={onStartGeneration} style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null, view.hasActiveGeneration || busy !== null ? styles.disabled : null]}>
+          <Pressable accessibilityLabel="生成匹配" accessibilityRole="button" disabled={view.hasActiveGeneration || busy !== null} onPress={onStartGeneration} style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null, view.hasActiveGeneration || busy !== null ? styles.disabled : null]}>
             <Ionicons color={colors.onAccent} name="sparkles-outline" size={19} />
           </Pressable>
         </View>
@@ -94,7 +95,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
 
       <View style={styles.cardSection}>
         <View style={styles.sectionHeading}><View style={styles.flexCopy}><Text style={styles.sectionTitle}>两轮分桌</Text><Text style={styles.sectionDetail}>{view.publishedLabel ?? "尚无已发布结果"}</Text></View></View>
-        {view.rounds.length === 0 ? <Text style={styles.emptyText}>完成生成并确认发布后，分桌结果会显示在这里。</Text> : view.rounds.map((round) => <View key={round.key} style={styles.round}><Text style={styles.roundTitle}>{round.title}</Text>{round.tables.length === 0 ? <Text style={styles.emptyText}>本轮暂无分桌。</Text> : round.tables.map((table) => <View key={table.title} style={styles.tableRow}><Ionicons color={colors.live} name="people-circle-outline" size={20} /><View style={styles.flexCopy}><Text style={styles.rowTitle}>{table.title}</Text><Text numberOfLines={2} style={styles.rowDetail}>{table.detail}</Text></View></View>)}</View>)}
+        {view.rounds.length === 0 ? <Text style={styles.emptyText}>完成生成并确认发布后，分桌结果会显示在这里。</Text> : view.rounds.map((round) => <View key={round.key} style={styles.round}><Text style={styles.roundTitle}>{round.title}</Text>{round.tables.length === 0 ? <Text style={styles.emptyText}>本轮暂无分桌。</Text> : round.tables.map((table) => <View key={table.title} style={styles.tableRow}><Ionicons color={colors.live} name="people-circle-outline" size={20} /><View style={styles.flexCopy}><Text style={styles.rowTitle}>{table.title}</Text><Text style={styles.rowDetail}>{table.detail}</Text></View></View>)}</View>)}
       </View>
 
       <View style={styles.cardSection}>
@@ -107,7 +108,11 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  cardSection: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
+  cardSection: {
+    gap: spacing.md,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
   content: { gap: spacing.lg },
   disabled: { opacity: 0.45 },
   emptyText: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
@@ -119,30 +124,78 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   gateStateActive: { backgroundColor: colors.liveSoft, color: colors.live },
   generationRow: { borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.sm, paddingTop: spacing.md },
   iconButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, height: 44, justifyContent: "center", width: 44 },
-  metric: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.xs, minHeight: 72, padding: spacing.md, width: "48%" },
-  metricLabel: { color: colors.text3, fontSize: typography.caption },
+  metric: {
+    gap: spacing.xs,
+    minHeight: 72,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    flexBasis: "45%",
+    flexGrow: 1,
+    minWidth: 110
+  },
+  metricLabel: {
+    color: colors.text3,
+    ...textStyles.small
+  },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  metricValue: { color: colors.ink, fontSize: 24, fontWeight: "800" },
+  metricValue: {
+    color: colors.ink,
+    ...textStyles.title
+  },
   notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
   pressed: { opacity: 0.68 },
-  primaryButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, justifyContent: "center", minHeight: 44 },
-  primaryButtonText: { color: colors.onAccent, fontSize: typography.small, fontWeight: "800" },
+  primaryButton: {
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
+  },
+  primaryButtonText: {
+    ...createControlStyles(colors).primaryButtonText
+  },
   progressTrack: { backgroundColor: colors.surface3, borderRadius: radius.pill, height: 6, overflow: "hidden" },
   progressValue: { backgroundColor: colors.accent, borderRadius: radius.pill, height: 6 },
   round: { gap: spacing.sm },
   roundTitle: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
-  rowDetail: { color: colors.text3, fontSize: typography.caption, lineHeight: 17 },
+  rowDetail: {
+    color: colors.text3,
+    ...textStyles.small
+  },
   rowHeading: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
-  rowTitle: { color: colors.ink, fontSize: typography.small, fontWeight: "800", lineHeight: 18 },
-  secondaryButton: { alignItems: "center", borderColor: colors.accent, borderRadius: radius.control, borderWidth: 1, justifyContent: "center", minHeight: 44 },
-  secondaryButtonText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
+  rowTitle: {
+    color: colors.ink,
+    ...textStyles.listTitle
+  },
+  secondaryButton: {
+    ...createControlStyles(colors).secondaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
+  },
+  secondaryButtonText: {
+    ...createControlStyles(colors).secondaryButtonText
+  },
   section: { gap: spacing.md },
   sectionDetail: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
   sectionHeading: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800", lineHeight: 22 },
-  shortcut: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, flex: 1, gap: spacing.xs, justifyContent: "center", minHeight: 64 },
-  shortcutLabel: { color: colors.ink, fontSize: typography.caption, fontWeight: "800" },
-  shortcuts: { flexDirection: "row", gap: spacing.sm },
+  sectionTitle: {
+    color: colors.ink,
+    ...textStyles.section
+  },
+  shortcut: {
+    ...createControlStyles(colors).secondaryButton,
+    flex: 1,
+    minWidth: 100,
+    gap: spacing.sm
+  },
+  shortcutLabel: {
+    ...createControlStyles(colors).secondaryButtonText
+  },
+  shortcuts: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    flexWrap: "wrap"
+  },
   status: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.text2, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   statusDanger: { backgroundColor: colors.roseSoft, color: colors.rose },
   statusLive: { backgroundColor: colors.liveSoft, color: colors.live },

@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type { EventRoleMemberView, EventRolesView } from "../../view-models/event-roles";
 
@@ -43,7 +44,7 @@ export function EventRolesContent({
     <View style={styles.content}>
       <View style={styles.headingRow}>
         <View style={styles.headingCopy}>
-          <Text numberOfLines={2} style={styles.eventTitle}>{roles.title}</Text>
+          <Text style={styles.eventTitle}>{roles.title}</Text>
           <Text style={styles.memberCount}>{roles.members.length} 位有效成员</Text>
         </View>
         <Pressable accessibilityRole="button" onPress={onOpenGrant} style={({ pressed }) => [styles.grantButton, pressed ? styles.pressed : null]}>
@@ -60,10 +61,10 @@ export function EventRolesContent({
             </View>
             <View style={styles.memberCopy}>
               <View style={styles.memberTopline}>
-                <Text numberOfLines={1} style={styles.actorId}>{member.subjectActorId}</Text>
+                <Text style={styles.actorId}>{member.subjectActorId}</Text>
                 <Text style={[styles.roleLabel, member.role === "owner" ? styles.ownerLabel : null]}>{member.roleLabel}</Text>
               </View>
-              <Text numberOfLines={2} style={styles.reason}>{member.reason ?? (member.role === "owner" ? "来自 Event Core" : "未记录原因")}</Text>
+              <Text style={styles.reason}>{member.reason ?? (member.role === "owner" ? "来自 Event Core" : "未记录原因")}</Text>
               <Text style={styles.revision}>版本 {member.revision}{member.assignedLabel ? ` · ${member.assignedLabel}` : ""}</Text>
             </View>
             {member.role !== "owner" ? (
@@ -79,27 +80,74 @@ export function EventRolesContent({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  actorId: { color: colors.ink, flex: 1, fontSize: typography.small, fontWeight: "800" },
+  actorId: {
+    color: colors.ink,
+    flex: 1,
+    ...textStyles.listTitle
+  },
   content: { gap: spacing.md },
-  eventTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800", lineHeight: 23 },
-  grantButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md },
-  grantButtonText: { color: colors.onAccent, fontSize: typography.caption, fontWeight: "800" },
+  eventTitle: {
+    color: colors.ink,
+    ...textStyles.title
+  },
+  grantButton: {
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  grantButtonText: {
+    ...createControlStyles(colors).primaryButtonText
+  },
   headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
-  headingRow: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  headingRow: {
+    alignItems: "stretch",
+    gap: spacing.md
+  },
   manageButton: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 54 },
   manageButtonText: { color: colors.accent, fontSize: typography.caption, fontWeight: "800" },
-  member: { alignItems: "center", backgroundColor: colors.surface, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 86, padding: spacing.md },
-  memberCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
+  member: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 86,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    flexWrap: "wrap"
+  },
+  memberCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 150
+  },
   memberCount: { color: colors.text3, fontSize: typography.caption },
-  members: { borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, overflow: "hidden" },
-  memberTopline: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  members: {
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
+  memberTopline: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    flexWrap: "wrap"
+  },
   notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
   ownerIcon: { backgroundColor: colors.liveSoft },
   ownerLabel: { backgroundColor: colors.liveSoft, color: colors.live },
   pressed: { opacity: 0.68 },
-  reason: { color: colors.text2, fontSize: typography.caption, lineHeight: 17 },
-  revision: { color: colors.text4, fontSize: 10 },
+  reason: {
+    color: colors.text2,
+    ...textStyles.small
+  },
+  revision: {
+    color: colors.text4,
+    ...textStyles.caption
+  },
   roleIcon: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
   roleLabel: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  stateText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 }
+  stateText: {
+    color: colors.text2,
+    ...textStyles.body
+  }
 }));

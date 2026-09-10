@@ -25,7 +25,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import {
   type ApiResourceState,
@@ -161,10 +162,10 @@ function EventActionButton({
       <View style={styles.actionIcon}>
         <Ionicons color={colors.accent} name={icon} size={18} />
       </View>
-      <Text numberOfLines={1} style={styles.actionTitle}>
+      <Text style={styles.actionTitle}>
         {title}
       </Text>
-      <Text numberOfLines={2} style={styles.actionDetail}>
+      <Text style={styles.actionDetail}>
         {detail}
       </Text>
     </Pressable>
@@ -203,10 +204,10 @@ function EventDetailCard({
             <Text style={styles.eventStatusBadge}>{heroStatus}</Text>
           </View>
           <View style={styles.eventHeroText}>
-            <Text numberOfLines={3} style={styles.eventHeroTitle}>
+            <Text style={styles.eventHeroTitle}>
               {hero.title}
             </Text>
-            <Text numberOfLines={2} style={styles.eventHeroDetail}>
+            <Text style={styles.eventHeroDetail}>
               {hero.detailLine}
             </Text>
           </View>
@@ -373,11 +374,11 @@ function EventAttendeePreviewPill({
         <Text style={styles.attendeePreviewAvatarText}>{attendee.initial}</Text>
       </View>
       <View style={styles.attendeePreviewBody}>
-        <Text numberOfLines={1} style={styles.attendeePreviewName}>
+        <Text style={styles.attendeePreviewName}>
           {attendee.name}
         </Text>
         {attendee.role ? (
-          <Text numberOfLines={1} style={styles.attendeePreviewRole}>
+          <Text style={styles.attendeePreviewRole}>
             {attendee.role}
           </Text>
         ) : null}
@@ -988,15 +989,10 @@ function EventPostEventReviewModule({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flex: 1,
-    gap: 6,
-    minHeight: 112,
-    padding: spacing.md
+    minWidth: 120,
+    gap: spacing.sm
   },
   actionButtonPressed: {
     opacity: 0.86,
@@ -1004,9 +1000,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionDetail: {
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    textAlign: "center"
+    textAlign: "center",
+    ...textStyles.small
   },
   actionGrid: {
     flexDirection: "row",
@@ -1022,10 +1017,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   actionTitle: {
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18,
-    textAlign: "center"
+    textAlign: "center",
+    ...textStyles.listTitle
   },
   aboutSectionBody: {
     flex: 1,
@@ -1042,13 +1035,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   aboutSectionRow: {
     alignItems: "flex-start",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   agendaBody: {
     flex: 1,
@@ -1147,8 +1137,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   checklistBody: {
     flex: 1,
@@ -1168,13 +1157,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   checklistRow: {
     alignItems: "flex-start",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   checklistStatus: {
     backgroundColor: colors.liveSoft,
@@ -1190,32 +1176,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   checklistTitle: {
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...textStyles.listTitle
   },
   eventHero: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventHeroBody: {
-    padding: spacing.lg
+    paddingVertical: spacing.md
   },
   eventHeroDetail: {
     color: "rgba(255,255,255,0.86)",
-    fontSize: typography.small,
-    fontWeight: "600",
-    lineHeight: 19
+    ...textStyles.small
   },
   eventHeroFrame: {
-    aspectRatio: 1.22,
     backgroundColor: colors.surface3,
     justifyContent: "space-between",
-    overflow: "hidden",
-    padding: spacing.lg
+    padding: spacing.lg,
+    minHeight: 240,
+    borderRadius: radius.card,
+    gap: spacing.xl
   },
   eventHeroImage: {
     borderTopLeftRadius: radius.lg,
@@ -1230,9 +1210,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventHeroTitle: {
     color: colors.onImage,
-    fontSize: 26,
-    fontWeight: "800",
-    lineHeight: 31
+    ...textStyles.title
   },
   eventHeroTopRow: {
     alignItems: "flex-start",
@@ -1268,16 +1246,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs
   },
   goalInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
-    minHeight: 84,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).input,
+    minHeight: 84
   },
   goalInputLabel: {
     color: colors.text3,
@@ -1297,7 +1267,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   goalSuggestionCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -1342,37 +1312,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onAccent
   },
   inlineButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   inlineButtonDisabled: {
     opacity: 0.62
   },
   inlineButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 14
+    ...createControlStyles(colors).secondaryButtonText
   },
   infoGrid: {
     gap: spacing.sm
   },
   infoTile: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   infoTileBody: {
     flex: 1,
@@ -1386,9 +1345,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   infoTileTitle: {
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...textStyles.listTitle
   },
   nextHint: {
     color: colors.text3,
@@ -1398,7 +1355,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   openingLineBox: {
     alignItems: "flex-start",
     backgroundColor: colors.accentSofter,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1412,7 +1369,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    flexWrap: "wrap"
   },
   openingLineStatus: {
     color: colors.text3,
@@ -1447,9 +1405,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   organizerName: {
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle
   },
   organizerRow: {
     alignItems: "center",
@@ -1459,7 +1415,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   postEventDraftBox: {
     alignItems: "flex-start",
     backgroundColor: colors.accentSofter,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1471,11 +1427,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   postEventRow: {
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   postEventTag: {
     backgroundColor: colors.surface2,
@@ -1504,7 +1458,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   readinessGoal: {
     alignItems: "flex-start",
     backgroundColor: colors.tint,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
@@ -1515,33 +1469,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   primaryCta: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 46,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
-  },
-  primaryCtaText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 18
-  },
-  registrationActionRow: {
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
     gap: spacing.sm
   },
+  primaryCtaText: {
+    ...createControlStyles(colors).primaryButtonText
+  },
+  registrationActionRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    flexWrap: "wrap"
+  },
   registrationCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.lg
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   registrationEyebrow: {
     color: colors.text3,
@@ -1550,9 +1493,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   registrationFee: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 25
+    ...textStyles.title
   },
   registrationHeader: {
     alignItems: "flex-start",
@@ -1573,7 +1514,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recommendationHeader: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.sm
   },
   recommendationAvatar: {
     alignItems: "center",
@@ -1616,11 +1559,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   recommendationRow: {
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   recommendationPersonBody: {
     flex: 1,

@@ -23,7 +23,8 @@ import {
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -2320,31 +2321,20 @@ function ContactMergeApplyResultCard({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   cardImageActions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs
+    gap: spacing.sm
   },
-  cardImagePanel: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    overflow: "hidden",
-    padding: spacing.md
-  },
+  cardImagePanel: { gap: spacing.md },
   cardImagePlaceholder: {
     alignItems: "center",
     aspectRatio: 1.58,
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     gap: spacing.sm,
     justifyContent: "center"
   },
@@ -2355,12 +2345,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   confirmedText: {
+    ...textStyles.caption,
     alignSelf: "flex-start",
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
@@ -2380,25 +2370,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   contactWriteStatus: {
+    ...textStyles.caption,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   contactWriteTitle: {
+    ...textStyles.small,
     color: colors.ink,
     flex: 1,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
+    fontWeight: "600"
   },
-  disabled: {
-    opacity: 0.55
-  },
+  disabled: { opacity: 0.55 },
   dismissButtonText: {
+    ...textStyles.body,
     color: colors.text3,
-    fontSize: typography.body,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   draftQueueHeader: {
     alignItems: "flex-start",
@@ -2407,26 +2393,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   draftQueueItem: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
-    padding: spacing.md
+    paddingVertical: spacing.lg
   },
   draftQueueMeta: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 18
+    ...textStyles.caption,
+    color: colors.text3
   },
-  draftQueueStack: {
-    gap: spacing.sm
-  },
+  draftQueueStack: { gap: spacing.sm },
   draftQueueTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   draftQueueTitleGroup: {
     flex: 1,
@@ -2434,29 +2413,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.rose
   },
-  evidenceStack: {
-    gap: spacing.sm
-  },
+  evidenceStack: { gap: spacing.sm },
   evidenceText: {
+    ...textStyles.small,
     backgroundColor: colors.accentSofter,
     borderRadius: radius.control,
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
     overflow: "hidden",
     padding: spacing.md
   },
   externalCandidateItem: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
-    padding: spacing.md
+    paddingVertical: spacing.lg
   },
   externalMetaRow: {
     alignItems: "center",
@@ -2470,46 +2443,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   helperText: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 18
+    ...textStyles.caption,
+    color: colors.text3
   },
   imageMetaText: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 18
+    fontWeight: "600"
   },
-  input: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.body,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  inputGroup: {
-    gap: spacing.xs
-  },
+  input: { ...createControlStyles(colors).input },
+  inputGroup: { gap: spacing.xs },
   inputLabel: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   modeButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).chip,
     flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
     paddingHorizontal: spacing.sm
   },
   modeButtonActive: {
@@ -2517,35 +2471,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderColor: colors.accent
   },
   modeButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).chipText,
+    color: colors.accent
   },
-  modeButtonTextActive: {
-    color: colors.onAccent
-  },
+  modeButtonTextActive: { color: colors.onAccent },
   modeRow: {
     flexDirection: "row",
     gap: spacing.sm
   },
-  mergeFieldStack: {
-    gap: spacing.xs
-  },
+  mergeFieldStack: { gap: spacing.xs },
   mergeReviewBadge: {
+    ...textStyles.caption,
     backgroundColor: colors.amberSoft,
     borderRadius: radius.pill,
     color: colors.amber,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   mergeReviewDecision: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 18
+    fontWeight: "600"
   },
   mergeReviewHeader: {
     alignItems: "flex-start",
@@ -2555,50 +2503,35 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   mergeReviewItem: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    borderRadius: radius.card,
     gap: spacing.sm,
     padding: spacing.md
   },
   mergeReviewTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   placeholderText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   },
   pressed: {
     opacity: 0.82,
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "700"
-  },
+  primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
   queueStateText: {
+    ...textStyles.caption,
     backgroundColor: colors.accentSofter,
     borderRadius: radius.pill,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
@@ -2650,53 +2583,39 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden",
     position: "relative"
   },
-  reviewFieldBlock: {
-    gap: spacing.xs
-  },
+  reviewFieldBlock: { gap: spacing.xs },
   reviewFieldHeader: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.sm,
     justifyContent: "space-between"
   },
-  reviewHeader: {
-    gap: spacing.xs
-  },
+  reviewHeader: { gap: spacing.xs },
   reviewMetaText: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 18
+    fontWeight: "600"
   },
   reviewPanel: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    borderRadius: radius.card,
     gap: spacing.md,
     padding: spacing.md
   },
   reviewTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   secondaryButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).secondaryButton,
     alignSelf: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.accent
   },
   scannerCloseButton: {
     alignItems: "center",
@@ -2713,50 +2632,40 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     position: "absolute"
   },
   scannerCloseText: {
+    ...textStyles.small,
     color: colors.onImage,
-    fontSize: typography.small,
-    fontWeight: "800"
+    fontWeight: "600"
   },
   sourceChip: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    gap: 3,
-    minHeight: 50,
+    ...createControlStyles(colors).chip,
+    alignItems: "flex-start",
+    gap: spacing.xxs,
     minWidth: 112,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   sourceChipActive: {
     backgroundColor: colors.accent,
     borderColor: colors.accent
   },
   sourceChipMeta: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
+    fontWeight: "600"
   },
-  sourceChipMetaActive: {
-    color: colors.onAccent
-  },
+  sourceChipMetaActive: { color: colors.onAccent },
   sourceChipTitle: {
+    ...textStyles.small,
     color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 19
+    fontWeight: "600"
   },
-  sourceChipTitleActive: {
-    color: colors.onAccent
-  },
+  sourceChipTitleActive: { color: colors.onAccent },
   sourceText: {
+    ...textStyles.caption,
     alignSelf: "flex-start",
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5

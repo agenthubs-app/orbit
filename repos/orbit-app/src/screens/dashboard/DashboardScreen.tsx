@@ -20,7 +20,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -640,9 +641,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: radius.pill,
     height: "100%"
   },
-  barRow: {
-    gap: spacing.sm
-  },
+  barRow: { gap: spacing.sm },
   barTrack: {
     backgroundColor: colors.skySoft,
     borderRadius: radius.pill,
@@ -650,33 +649,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden"
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   auditResult: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: radius.card,
     gap: spacing.xs,
     padding: spacing.md
   },
   callout: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   calloutText: {
+    ...textStyles.small,
     color: colors.text,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
+    flex: 1
   },
   chip: {
     backgroundColor: colors.surface2,
@@ -687,8 +680,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   chipText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
     fontWeight: "600"
   },
   chipWrap: {
@@ -705,23 +698,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: spacing.md
   },
-  disabled: {
-    opacity: 0.58
-  },
+  disabled: { opacity: 0.58 },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.rose
   },
-  inlineSection: {
-    gap: spacing.sm
-  },
+  inlineSection: { gap: spacing.sm },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 21
+    flex: 1
   },
   listRow: {
     borderColor: colors.border,
@@ -729,13 +715,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs,
     paddingTop: spacing.md
   },
-  listStack: {
-    gap: spacing.md
-  },
+  listStack: { gap: spacing.md },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   metricCell: {
     borderColor: colors.border,
@@ -752,22 +735,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   metricLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
     fontWeight: "600"
   },
   metricValue: {
-    color: colors.ink,
-    fontSize: 26,
-    fontWeight: "700",
-    lineHeight: 30
+    ...textStyles.title,
+    color: colors.ink
   },
   okBadge: {
+    ...textStyles.caption,
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
@@ -780,9 +761,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1,
     gap: spacing.xs
   },
-  pressed: {
-    opacity: 0.72
-  },
+  pressed: { opacity: 0.72 },
   rowTop: {
     alignItems: "center",
     flexDirection: "row",
@@ -790,26 +769,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   recomputeButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  recomputeButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
+  recomputeButtonText: { ...createControlStyles(colors).primaryButtonText },
   recomputeStatus: {
+    ...textStyles.small,
     color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   },
   scoreBadge: {
     backgroundColor: colors.amberSoft,
@@ -818,9 +786,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   scoreBadgeText: {
+    ...textStyles.small,
     color: colors.amber,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   scoreCopy: {
     flex: 1,
@@ -828,18 +796,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   scoreDial: {
     alignItems: "baseline",
-    backgroundColor: colors.ink,
-    borderRadius: radius.lg,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     flexDirection: "row",
     minWidth: 94,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg
   },
   scoreNumber: {
-    color: colors.bg,
-    fontSize: 34,
-    fontWeight: "700",
-    lineHeight: 38
+    ...textStyles.pageTitle,
+    color: colors.accent
   },
   scoreRow: {
     alignItems: "center",
@@ -847,22 +813,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.lg
   },
   scoreSuffix: {
-    color: colors.bg,
-    fontSize: typography.title,
-    fontWeight: "700"
+    ...textStyles.small,
+    color: colors.text3
   },
   sectionLabel: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    textTransform: "uppercase"
+    fontWeight: "600"
   },
   severityBadge: {
+    ...textStyles.caption,
     backgroundColor: colors.roseSoft,
     borderRadius: radius.pill,
     color: colors.rose,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   }

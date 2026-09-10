@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type {
   EventAdmissionApplicationView,
@@ -77,7 +78,7 @@ function ApplicationDetail({
           <Text style={styles.avatarText}>{application.displayName.slice(0, 1)}</Text>
         </View>
         <View style={styles.detailHeading}>
-          <Text numberOfLines={2} style={styles.detailName}>{application.displayName}</Text>
+          <Text style={styles.detailName}>{application.displayName}</Text>
           <Text style={styles.detailMeta}>提交于 {application.submittedLabel}</Text>
         </View>
         <View style={styles.statusBadge}>
@@ -243,7 +244,7 @@ export function EventAdmissionReviewContent({
                 <Text style={styles.applicantAvatarText}>{item.displayName.slice(0, 1)}</Text>
               </View>
               <View style={styles.applicantCopy}>
-                <Text numberOfLines={1} style={styles.applicantName}>{item.displayName}</Text>
+                <Text style={styles.applicantName}>{item.displayName}</Text>
                 <Text style={styles.applicantMeta}>{item.statusLabel} · {item.submittedLabel}</Text>
               </View>
               <Text style={styles.openLabel}>查看申请</Text>
@@ -267,27 +268,57 @@ export function EventAdmissionReviewContent({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  applicant: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 72, padding: spacing.md },
+  applicant: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 72,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
   applicantAvatar: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.pill, height: 42, justifyContent: "center", width: 42 },
   applicantAvatarText: { color: colors.accent, fontSize: typography.section, fontWeight: "800" },
   applicantCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   applicantMeta: { color: colors.text3, fontSize: typography.caption, lineHeight: 17 },
-  applicantName: { color: colors.ink, fontSize: typography.body, fontWeight: "800", lineHeight: 20 },
-  approveButton: { backgroundColor: colors.accent },
-  approveButtonText: { color: colors.onAccent, fontSize: typography.small, fontWeight: "800" },
+  applicantName: {
+    color: colors.ink,
+    ...textStyles.listTitle
+  },
+  approveButton: {
+    ...createControlStyles(colors).primaryButton
+  },
+  approveButtonText: {
+    ...createControlStyles(colors).primaryButtonText
+  },
   avatar: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.control, height: 52, justifyContent: "center", width: 52 },
   avatarText: { color: colors.accent, fontSize: typography.title, fontWeight: "800" },
   backToList: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: 44 },
   backToListText: { color: colors.text2, fontSize: typography.small, fontWeight: "700" },
-  decisionButton: { alignItems: "center", borderRadius: radius.control, flex: 1, flexDirection: "row", gap: spacing.xs, justifyContent: "center", minHeight: 48, paddingHorizontal: spacing.md },
-  decisionRow: { flexDirection: "row", gap: spacing.md },
+  decisionButton: {
+    ...createControlStyles(colors).secondaryButton,
+    flex: 1,
+    minWidth: 120,
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  decisionRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    flexWrap: "wrap"
+  },
   detail: { gap: spacing.xl },
   detailHeader: { alignItems: "center", flexDirection: "row", gap: spacing.md },
   detailHeading: { flex: 1, gap: spacing.xs, minWidth: 0 },
   detailMeta: { color: colors.text3, fontSize: typography.caption },
-  detailName: { color: colors.ink, fontSize: typography.title, fontWeight: "800", lineHeight: 25 },
+  detailName: {
+    color: colors.ink,
+    ...textStyles.title
+  },
   disabled: { opacity: 0.5 },
-  interviewAnswer: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+  interviewAnswer: {
+    color: colors.text2,
+    ...textStyles.body
+  },
   interviewPrompt: { color: colors.ink, fontSize: typography.small, fontWeight: "700", lineHeight: 19 },
   interviewRow: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: spacing.sm, paddingVertical: spacing.md },
   loadMore: { alignItems: "center", justifyContent: "center", minHeight: 44 },
@@ -297,24 +328,53 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pressed: { opacity: 0.68 },
   profileLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700", lineHeight: 17, width: 78 },
   profileList: { borderTopColor: colors.border, borderTopWidth: 1 },
-  profileRow: { borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: spacing.md, paddingVertical: spacing.md },
+  profileRow: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    paddingVertical: spacing.md,
+    gap: spacing.sm
+  },
   profileValue: { color: colors.text, flex: 1, fontSize: typography.small, lineHeight: 20 },
   queue: { gap: spacing.md },
   queueCount: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   queueSummary: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: spacing.xs },
-  queueTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
+  queueTitle: {
+    color: colors.ink,
+    ...textStyles.section
+  },
   readonlyDecision: { alignItems: "center", backgroundColor: colors.liveSoft, borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, minHeight: 48, padding: spacing.md },
   readonlyDecisionText: { color: colors.live, flex: 1, fontSize: typography.small, fontWeight: "700" },
-  rejectButton: { borderColor: colors.rose, borderWidth: 1 },
-  rejectButtonText: { color: colors.rose, fontSize: typography.small, fontWeight: "800" },
+  rejectButton: {
+    ...createControlStyles(colors).secondaryButton,
+    backgroundColor: colors.roseSoft
+  },
+  rejectButtonText: {
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.rose
+  },
   section: { gap: spacing.md },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
-  segment: { alignItems: "center", borderRadius: radius.xs, flex: 1, justifyContent: "center", minHeight: 44 },
-  segmentActive: { backgroundColor: colors.surface },
-  segmentText: { color: colors.text3, fontSize: typography.small, fontWeight: "700" },
-  segmentTextActive: { color: colors.ink },
+  sectionTitle: {
+    color: colors.ink,
+    ...textStyles.section
+  },
+  segment: {
+    ...createControlStyles(colors).chip,
+    flex: 1
+  },
+  segmentActive: {
+    ...createControlStyles(colors).selectedChip
+  },
+  segmentText: {
+    ...createControlStyles(colors).chipText
+  },
+  segmentTextActive: {
+    ...createControlStyles(colors).selectedChipText
+  },
   segments: { backgroundColor: colors.surface3, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
-  stateText: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+  stateText: {
+    color: colors.text2,
+    ...textStyles.body
+  },
   statusBadge: { backgroundColor: colors.amberSoft, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   statusBadgeText: { color: colors.amber, fontSize: 11, fontWeight: "800" }
 }));

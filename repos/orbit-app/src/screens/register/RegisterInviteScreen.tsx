@@ -12,7 +12,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SectionHeader } from "../../components/SectionHeader";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { radius, spacing, typography, type OrbitColors, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -206,7 +207,7 @@ function RegisterInviteContent({
       <RegistrationReadinessCard readiness={view.readiness} />
       <InviteCard view={view} />
       <ProfilePreview profile={view.profile} />
-      <DataCard detail={view.guardrail} title="操作边界">
+      <DataCard variant="inset" detail={view.guardrail} title="操作边界">
         <View style={styles.guardrailRow}>
           <Ionicons color={colors.amber} name="lock-closed-outline" size={18} />
           <Text style={styles.bodyText}>
@@ -382,37 +383,30 @@ function ActionList({ actions }: { actions: RegisterInviteAction[] }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm
   },
   actionList: {
     gap: spacing.sm
   },
   actionText: {
-    color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText
   },
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   eventCopy: {
     flex: 1,
-    gap: spacing.sm
+    gap: spacing.sm,
+    minWidth: 150
   },
   guardrailRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
+    flexWrap: "wrap"
   },
   headlineText: {
     color: colors.text,
@@ -423,7 +417,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   inviteHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md
+    gap: spacing.md,
+    flexWrap: "wrap"
   },
   metaStack: {
     gap: spacing.xs
@@ -435,9 +430,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   passCode: {
     color: colors.bg,
-    fontSize: typography.title,
-    fontWeight: "700",
-    letterSpacing: 0.8
+    letterSpacing: 0.8,
+    ...textStyles.title
   },
   passCodeBox: {
     alignItems: "center",

@@ -23,7 +23,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   useApiResource,
@@ -163,20 +164,20 @@ function CompactEventRow({
         style={styles.eventRowImageFrame}
       />
       <View style={styles.eventRowContent}>
-        <Text numberOfLines={1} style={styles.eventRowDate}>
+        <Text style={styles.eventRowDate}>
           {event.startsAt}
         </Text>
-        <Text numberOfLines={2} style={styles.eventRowTitle}>
+        <Text style={styles.eventRowTitle}>
           {event.title}
         </Text>
         <View style={styles.eventRowMeta}>
           <Ionicons color={colors.text3} name="location-outline" size={14} />
-          <Text numberOfLines={1} style={styles.eventRowLocation}>
+          <Text style={styles.eventRowLocation}>
             {[event.location, subtitle].filter(Boolean).join(" · ") || "地点待定"}
           </Text>
         </View>
         <View style={styles.eventRowFooter}>
-          <Text numberOfLines={1} style={styles.eventRowStatus}>
+          <Text style={styles.eventRowStatus}>
             {status}
           </Text>
           <Ionicons color={colors.text4} name="chevron-forward" size={16} />
@@ -201,6 +202,7 @@ function EventFilterChip({
   return (
     <Pressable
       accessibilityState={{ selected }}
+      aria-selected={selected}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -210,7 +212,6 @@ function EventFilterChip({
       ]}
     >
       <Text
-        numberOfLines={1}
         style={[
           styles.discoveryChipText,
           selected ? styles.discoveryChipTextActive : null
@@ -859,14 +860,14 @@ function EventRecommendationCard({
                 {recommendation.scoreBandLabel}
               </Text>
             </View>
-            <Text numberOfLines={2} style={styles.recommendationCoverTitle}>
+            <Text style={styles.recommendationCoverTitle}>
               {event?.title ?? recommendation.title}
             </Text>
           </View>
         </ImageBackground>
       ) : (
         <View style={styles.recommendationTopRow}>
-          <Text numberOfLines={2} style={styles.recommendationTitle}>
+          <Text style={styles.recommendationTitle}>
             {event?.title ?? recommendation.title}
           </Text>
           <View style={styles.recommendationScoreBlock}>
@@ -880,12 +881,12 @@ function EventRecommendationCard({
         </View>
       )}
       <View style={styles.recommendationCardBody}>
-        <Text numberOfLines={1} style={styles.eventDetail}>
+        <Text style={styles.eventDetail}>
           {event
             ? [event.startsAt, event.location].filter(Boolean).join(" · ")
             : recommendation.detail}
         </Text>
-        <Text numberOfLines={2} style={styles.recommendationBody}>
+        <Text style={styles.recommendationBody}>
           {recommendation.reason}
         </Text>
         <View style={styles.recommendationActionRow}>
@@ -980,18 +981,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   discoveryChip: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    justifyContent: "center"
+    ...createControlStyles(colors).chip
   },
   discoveryChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    ...createControlStyles(colors).selectedChip
   },
   discoveryChipRow: {
     flexDirection: "row",
@@ -999,13 +992,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   discoveryChipText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17
+    ...createControlStyles(colors).chipText
   },
   discoveryChipTextActive: {
-    color: colors.onAccent
+    ...createControlStyles(colors).selectedChipText
   },
   discoveryFilterButton: {
     alignItems: "center",
@@ -1130,15 +1120,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventCenterEntry: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 44,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventCenterEntryCopy: {
     flex: 1,
@@ -1303,20 +1290,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 30
   },
   eventList: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    overflow: "hidden"
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventRow: {
-    backgroundColor: colors.surface,
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 108,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventRowContent: {
     flex: 1,
@@ -1326,9 +1310,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRowDate: {
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    ...textStyles.small
   },
   eventRowFooter: {
     alignItems: "center",
@@ -1338,16 +1320,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventRowImageFrame: {
     backgroundColor: colors.surface3,
-    borderRadius: radius.control,
-    height: 84,
-    width: 112
+    width: 88,
+    height: 76,
+    borderRadius: radius.card
   },
   eventRowLocation: {
     color: colors.text3,
     flex: 1,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    minWidth: 0
+    minWidth: 0,
+    ...textStyles.small
   },
   eventRowMeta: {
     alignItems: "center",
@@ -1358,15 +1339,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   eventRowStatus: {
     color: colors.text2,
     flex: 1,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...textStyles.small
   },
   eventRowTitle: {
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle
   },
   recommendationAction: {
     color: colors.text,
@@ -1393,12 +1370,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   recommendationCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    overflow: "hidden",
-    width: 280
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    width: 260,
+    maxWidth: "100%"
   },
   recommendationCardBody: {
     gap: spacing.sm,
@@ -1411,15 +1386,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 13
   },
   recommendationCoverContent: {
-    ...StyleSheet.absoluteFill,
     justifyContent: "space-between",
-    padding: spacing.md
+    padding: spacing.md,
+    gap: spacing.lg
   },
   recommendationCoverFrame: {
     backgroundColor: colors.surface3,
-    height: 132,
     overflow: "hidden",
-    width: "100%"
+    width: "100%",
+    minHeight: 132,
+    borderRadius: radius.card
   },
   recommendationCoverImage: {
     borderRadius: radius.control
@@ -1447,9 +1423,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   recommendationCoverTitle: {
     color: colors.onImage,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 22
+    ...textStyles.section
   },
   recommendationError: {
     color: colors.rose,
@@ -1504,9 +1478,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recommendationTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle
   },
   recommendationTopRow: {
     alignItems: "flex-start",
@@ -1515,19 +1487,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   primaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.caption,
-    fontWeight: "800"
+    ...createControlStyles(colors).primaryButtonText
   },
   safetyText: {
     color: colors.text3,
@@ -1537,19 +1503,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     textAlign: "right"
   },
   secondaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs
+    ...createControlStyles(colors).secondaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800"
+    ...createControlStyles(colors).secondaryButtonText
   },
   sectionAction: {
     alignItems: "center",
@@ -1580,9 +1540,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sectionTitle: {
     color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 22
+    ...textStyles.section
   },
   statusBadge: {
     alignSelf: "flex-start",

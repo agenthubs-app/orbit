@@ -21,7 +21,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -370,7 +371,7 @@ function RegistrationForm({
           <Text style={styles.secondaryButtonText}>返回活动</Text>
         </Pressable>
       </DataCard>
-      <DataCard detail="所有问题都可以跳过" title="参与资料">
+      <DataCard variant="inset" detail="所有问题都可以跳过" title="参与资料">
         {registration.questions.length === 0 ? (
           <EmptyState
             message="这场活动暂时没有需要补充的问题。"
@@ -459,7 +460,7 @@ function AdaptiveRegistrationCard({
 }) {
   const { colors, styles } = useStyles();
   return (
-    <DataCard detail={statusText} title="活动画像">
+    <DataCard variant="inset" detail={statusText} title="活动画像">
       <Text style={styles.bodyText}>
         用几轮问答，把你在这场活动里的介绍写清楚。
       </Text>
@@ -623,37 +624,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   answerInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.body,
-    lineHeight: 21,
+    paddingTop: spacing.md,
+    ...createControlStyles(colors).input,
     minHeight: 86,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md
+    textAlignVertical: "top"
   },
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   cancelButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.roseSoft,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    backgroundColor: colors.roseSoft
   },
   cancelButtonText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.rose
   },
   disabled: {
     opacity: 0.55
@@ -680,24 +668,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   optionPill: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6
+    ...createControlStyles(colors).chip,
+    maxWidth: "100%"
   },
   optionPillActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    ...createControlStyles(colors).selectedChip
   },
   optionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    ...createControlStyles(colors).chipText
   },
   optionTextActive: {
-    color: colors.onAccent
+    ...createControlStyles(colors).selectedChipText
   },
   optionsRow: {
     flexDirection: "row",
@@ -710,7 +691,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   personaPreview: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -741,20 +722,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "700"
+    ...createControlStyles(colors).primaryButtonText
   },
   questionBlock: {
     gap: spacing.sm
@@ -766,20 +740,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 22
   },
   secondaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText
   },
   statusPill: {
     backgroundColor: colors.liveSoft,

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
@@ -24,6 +26,7 @@ async function renderRootLanding(): Promise<string> {
 
 async function renderEventsPage(): Promise<string> {
   const routeModel = await loadAppEventsRouteViewModel();
+  const unexpectedNavigation = () => assert.fail("Static image rendering must not navigate.");
 
   assert.equal(routeModel.state, "success");
 
@@ -32,10 +35,20 @@ async function renderEventsPage(): Promise<string> {
   }
 
   return renderToStaticMarkup(
-    <OrbitRealExploreClient
-      registrationAvailabilityByEventId={{}}
-      viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
-    />,
+    <AppRouterContext.Provider value={{
+      back: unexpectedNavigation, forward: unexpectedNavigation,
+      refresh: unexpectedNavigation, push: unexpectedNavigation,
+      replace: unexpectedNavigation, prefetch: unexpectedNavigation,
+    }}>
+      <PathnameContext.Provider value="/app/events">
+        <SearchParamsContext.Provider value={new URLSearchParams()}>
+          <OrbitRealExploreClient
+            registrationAvailabilityByEventId={{}}
+            viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
+          />
+        </SearchParamsContext.Provider>
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>,
   );
 }
 
@@ -175,11 +188,14 @@ test("event list and event detail render manifest scene images", async () => {
   assert.match(listHtml, /background-image:url\(data:image\/webp;base64,/);
   assert.match(listHtml, /opacity:0;transition:opacity 220ms/);
 
-  const detailImages = detailHtml.match(/<img\b[^>]*>/g) ?? [];
-  assert.ok(detailImages.length >= 3, "event detail should render its responsive artwork surfaces");
-  assert.doesNotMatch(detailImages[0], /loading="lazy"/);
-  assert.doesNotMatch(detailImages[1], /loading="lazy"/);
-  assert.match(detailImages[2], /loading="lazy"/);
+  // The manifest uses SVG artwork, for which Next omits raster sizes/srcset.
+  // Verify loading policy in the actual journey slots, not the old image count.
+  const heroImage = detailHtml.match(/class="detail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  const railImage = detailHtml.match(/class="cover cover-grain rail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  assert.ok(heroImage, "event detail must render responsive hero artwork");
+  assert.ok(railImage, "event detail must render artwork in its rail slot");
+  assert.doesNotMatch(heroImage, /loading="lazy"/);
+  assert.match(railImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
 });

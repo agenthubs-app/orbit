@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -455,6 +456,7 @@ function InvitationDraftCard({
     <DataCard
       detail={invitation?.recipientLine ?? candidate.detail}
       title={invitation?.title ?? "邀请草稿"}
+      variant="inset"
     >
       <View style={styles.invitationHeader}>
         <View style={styles.invitationMark}>
@@ -589,71 +591,44 @@ function ActionButton({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).primaryButton,
+    maxWidth: "100%"
   },
-  actionButtonGhost: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border
-  },
-  actionButtonGhostText: {
+  actionButtonGhost: { ...createControlStyles(colors).secondaryButton },
+  actionButtonGhostText: { ...createControlStyles(colors).secondaryButtonText },
+  actionButtonText: { ...createControlStyles(colors).primaryButtonText },
+  bodyText: {
+    ...textStyles.body,
     color: colors.text
   },
-  actionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
   boundaryText: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   callout: {
     alignItems: "center",
     backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   calloutText: {
+    ...textStyles.small,
     color: colors.text,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
+    flex: 1
   },
-  disabled: {
-    opacity: 0.52
-  },
+  disabled: { opacity: 0.52 },
   errorText: {
+    ...textStyles.small,
     color: colors.rose,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19
+    fontWeight: "600"
   },
-  fieldGroup: {
-    gap: spacing.xs
-  },
+  fieldGroup: { gap: spacing.xs },
   fieldLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   invitationHeader: {
     alignItems: "center",
@@ -676,19 +651,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 21
+    flex: 1
   },
-  listStack: {
-    gap: spacing.md
-  },
+  listStack: { gap: spacing.md },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   metricCell: {
     borderColor: colors.border,
@@ -705,26 +675,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   metricLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
     fontWeight: "600"
   },
   metricValue: {
-    color: colors.ink,
-    fontSize: 26,
-    fontWeight: "700",
-    lineHeight: 30
+    ...textStyles.title,
+    color: colors.ink
   },
-  pressed: {
-    opacity: 0.72
-  },
+  pressed: { opacity: 0.72 },
   recordRow: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   row: {
     borderColor: colors.border,
@@ -755,26 +719,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   scoreText: {
+    ...textStyles.small,
     color: colors.amber,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   sourceTag: {
+    ...textStyles.caption,
     backgroundColor: colors.skySoft,
     borderRadius: radius.pill,
     color: colors.sky,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
   stageTag: {
+    ...textStyles.caption,
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
@@ -790,16 +754,5 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: spacing.md,
     textAlignVertical: "top"
   },
-  textInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.ink,
-    fontSize: typography.small,
-    lineHeight: 20,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  }
+  textInput: { ...createControlStyles(colors).input }
 }));

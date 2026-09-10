@@ -176,7 +176,7 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   assert.match(contactsListRouteSource, /<ContactsScreen mode="list" \/>/u);
   assert.match(screenSource, /<AppScreen title="人脉">/u);
   assert.doesNotMatch(screenSource, /<AppScreen eyebrow="人脉总览" title="人脉">/u);
-  assert.match(screenSource, /eyebrow="联系人"/u);
+  // List navigation and touch targets are exercised by contacts-redesign-interactions.
   assert.match(screenSource, /联系人库/u);
   assert.doesNotMatch(screenSource, /人脉工作台/u);
   assert.ok(overviewStart > -1);
@@ -191,19 +191,19 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   assert.match(listSource, /contacts\.map\(\(contact/u);
 });
 
-test("contacts overview opens with the contacts library before analysis tools", () => {
+test("contacts overview retains its library and analysis route wiring", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
-  const toolGridIndex = overviewSource.indexOf("<OverviewToolGrid");
   const listDrilldownIndex = overviewSource.indexOf("<ContactsLibraryEntry");
 
   assert.doesNotMatch(overviewSource, /<RelationshipWorkbenchHero/u);
-  assert.ok(toolGridIndex > -1, "contacts overview should include tool cards");
+  assert.match(overviewSource, /<OverviewToolGrid/u);
   assert.match(overviewSource, /<PriorityNetworkTools \/>/u);
   assert.match(screenSource, /<NetworkPriorityCard[\s\S]*title="人脉分析"/u);
   assert.ok(listDrilldownIndex > -1);
-  assert.ok(listDrilldownIndex < toolGridIndex);
+  // Visible row order and touch geometry are exercised against the real screen
+  // in app-wide-contacts.test.ts; JSX wrapper positions do not imply layout.
   assert.match(screenSource, /router\.push\(route as Href\)/u);
   assert.match(screenSource, /route="\/contacts\/dashboard"/u);
   assert.match(overviewSource, /router\.push\("\/contacts\/pipeline" as Href\)/u);
@@ -213,19 +213,10 @@ test("contacts overview opens with the contacts library before analysis tools", 
   assert.match(screenSource, /styles\.contactsLibraryEntry/u);
 });
 
-test("contacts overview places merged analysis below the primary library", () => {
+test("contacts overview retains merged analysis semantics and its single destination", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
-  const primaryToolsIndex = overviewSource.indexOf("<PriorityNetworkTools");
-  const secondaryToolsIndex = overviewSource.indexOf("<OverviewToolGrid");
-  const listDrilldownIndex = overviewSource.indexOf("<ContactsLibraryEntry");
-
-  assert.ok(primaryToolsIndex > listDrilldownIndex);
-  assert.ok(
-    secondaryToolsIndex > primaryToolsIndex,
-    "relationship tools should sit below relationship analysis"
-  );
   assert.match(screenSource, /function PriorityNetworkTools/u);
   assert.match(screenSource, /function NetworkPriorityCard/u);
   assert.match(
@@ -241,7 +232,7 @@ test("contacts overview places merged analysis below the primary library", () =>
   assert.doesNotMatch(overviewSource, /\/contacts\/graph/u);
 });
 
-test("contacts overview promotes the contacts library as the primary entry", () => {
+test("contacts overview retains the contacts library label and direct entry", () => {
   const overviewStart = screenSource.indexOf("function ContactsOverviewContent");
   const listStart = screenSource.indexOf("function ContactsListContent");
   const overviewSource = screenSource.slice(overviewStart, listStart);
@@ -256,7 +247,8 @@ test("contacts overview promotes the contacts library as the primary entry", () 
   assert.match(librarySource, /联系人库/u);
   assert.doesNotMatch(librarySource, /藏在更深一层/u);
   assert.match(librarySource, /people-outline/u);
-  assert.match(screenSource, /contactsLibraryEntry:[\s\S]*minHeight: 88/u);
+  // Compact full-width rows replace the old 88pt card requirement. Actual
+  // bounds, order, label reflow and navigation are covered by browser rendering.
   assert.doesNotMatch(librarySource, /contactsListDrilldown/u);
   assert.doesNotMatch(overviewSource, /title="联系人列表"/u);
 });

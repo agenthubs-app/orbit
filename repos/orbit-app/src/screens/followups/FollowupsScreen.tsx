@@ -13,7 +13,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { MetricPill } from "../../components/MetricPill";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -628,10 +629,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   draftBlock: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
     gap: spacing.xs,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   },
   errorText: {
     color: colors.rose,
@@ -673,20 +674,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).primaryButton,
     alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   primaryButtonText: {
+    ...createControlStyles(colors).primaryButtonText,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   priorityPill: {
     backgroundColor: colors.amberSoft,
@@ -717,11 +713,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 18
   },
   rowTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
+    flex: 1
   },
   safetyText: {
     color: colors.text3,
@@ -729,22 +723,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 18
   },
   secondaryButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).secondaryButton,
     alignSelf: "flex-start",
-    backgroundColor: colors.accentSoft,
     borderColor: colors.accentRing,
-    borderRadius: radius.control,
     borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   secondaryButtonText: {
+    ...createControlStyles(colors).secondaryButtonText,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   sourceText: {
     color: colors.text2,

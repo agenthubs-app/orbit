@@ -58,7 +58,7 @@ node --import tsx scripts/check-relationship-lifecycle.ts --input records.json -
 
 计划用 SHA-256 绑定 workspace 内四类来源记录的完整内容（包括已删除记录）、修复清单和计划结果；记录顺序和 JSON 属性顺序不改变哈希。输出只含修复元数据、记录标识和问题代码，不包含姓名、目标、任务标题或笔记。`applyLifecycleMigrationChanges` 是克隆快照的纯函数，严格验证前后哈希及允许字段，不是数据库执行或审批入口。
 
-计划器已覆盖确定性、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏，并通过独立审查。canonical 批量读取将在后续任务提供；本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
+计划器已覆盖确定性、阶段权威优先级、所有权、任务数据、输入不变性、非 JSON 对象拒绝和敏感内容不泄漏，并通过独立审查。本版本没有真实数据审核、正式迁移或 Web/App 切换，App 不需要同步契约。
 
 `parseLifecycleMigrationReview` 和 `assertLifecycleMigrationReview` 严格校验外部提供的审核回执：明确的 `approved: true`、actor/workspace、负责审核的 operator 身份，以及来源、manifest、计划三个哈希必须一致。审核时间规范化为 UTC，不能晚于执行时钟；被修改或仍有问题的计划不能执行。不额外猜测有效期，来源新鲜度必须由后续事务内重读和重新计划证明。
 
@@ -73,3 +73,15 @@ node --import tsx scripts/check-relationship-lifecycle.ts --input records.json -
 执行在同一 SERIALIZABLE 事务里读取回执、锁定来源、重新计算计划并校验外部审核，再按 workspace/collection/record/原 owner 精确更新最小 payload 补丁。每个目标必须只更新一行且匹配预期前后哈希；记录原有创建/更新时间、画像和来源不被重写。变更、无私人正文的字段级审计、校验哈希保护的回执一起提交，最后重新读取来源，验证包括 trigger 影响在内的实际结果及阶段约束。任何失败全部回滚。
 
 相同 run ID 必须重放原命令（包括原来的显式 `now`）；不同身份、审核或命令冲突。重放校验存储回执结构和身份，并返回首次结果，不代表当前数据仍可切换。只有序列化冲突、死锁和本回执主键竞争可重试，最多 3 次完整事务。隔离本地 PostgreSQL 测试覆盖实际提交、两类写入失败回滚、并发与重放、微秒来源漂移、SQL 等待期间输入变更、损坏回执和 trigger 篡改。没有访问正式数据库、执行真实迁移或启用 Web/App 新路径。
+
+### 尚未接入路由的 canonical 读取
+
+`projectCanonicalContactLifecycles` 只从当前 actor 的 Connection 投影 `relationshipStage/status` 和版本，从同一关系最早到期的真实未完成 Task 投影 `nextFollowup`。日期相同按任务 ID 稳定排序；普通带日期任务可以显示，但不能代替 follow-up/maintenance 义务。Contact 的 legacy stage、nextAction 和详情状态都不覆盖 Connection，也不会把建议文字变成已安排任务。
+
+调用者必须提供有效 `now` 和时区：早于当前时刻即为 overdue，未到期且处于同一当地日历日为 today，其余为 future。日期到期不改变关系阶段。缺少/非法版本、目标或日期、重复记录、所有权与引用冲突均返回受控一致性错误，不做默认修复或部分展示。
+
+`readCanonicalContactLifecycles` 在同一事务内执行固定 4 次批量查询：先取 actor-owned Connections，再取其引用且同 owner 的 Contacts 和 Tasks，最后仅用布尔元数据检查孤立记录、归属声明冲突和其他 actor 的引用。私人内容查询始终包含 workspace/actor 限定；跨 actor 引用只报告一致性错误，不读取对方 payload。1 个和 50 个联系人使用相同查询次数，没有逐卡片查询。真实隔离 PostgreSQL 测试验证了查询范围、并发期间的一致快照以及读取不受调用方异步更改参数影响。
+
+这些是维护工具和候选读取入口，不是已上线的端到端生命周期。读取器不运行 schema，不把历史迁移回执当作当前数据合格证明，也没有接入现有 factory/API 或同步客户端契约。实际切换仍需新鲜真实数据、逐项冲突处理、明确审核与受控迁移，然后另行完成 Web/App 接入和业务验证。
+
+2026-09-09 验证边界：生命周期专项 168 项通过、无跳过，Web 类型检查和独立工具层审查通过；但扩大的 Web 全量测试为 2524 通过、18 失败、19 跳过，读取器的最后一笔提交暂缓。全量测试中的旧 `loadLocalEnv()` 路径还重新加载了现有数据库配置，因此“仅使用隔离数据库”的结论只适用于本生命周期专项，不能扩大到那轮全量测试。后续数据库只读核查与全量测试隔离问题尚未解决，详情见本模块的 `2026-09-09-relationship-lifecycle-migration-tools` 实施计划。

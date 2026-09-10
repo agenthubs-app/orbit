@@ -60,13 +60,14 @@ test("profileBusinessCard has a safe initial for an empty name", () => {
   assert.equal(card.initial, "O");
 });
 
-test("profile screen uses the restrained dark Orbit card", () => {
+test("profile screen keeps the Orbit identity without decorative motion", () => {
   const source = readFileSync(
     new URL("../src/screens/profile/ProfileScreen.tsx", import.meta.url),
     "utf8"
   );
 
   assert.match(source, /function OrbitBusinessCard/u);
-  assert.match(source, /backgroundColor:\s*"#17211F"/u);
+  // Light/dark identity surfaces and complete names are rendered in
+  // app-wide-account.test.ts; the former hard-coded green is no longer a contract.
   assert.doesNotMatch(source, /LinearGradient|completionMeter|Animated/u);
 });

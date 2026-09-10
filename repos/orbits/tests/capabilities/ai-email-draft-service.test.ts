@@ -312,6 +312,7 @@ test("AI email draft reads an actor-scoped contact from live storage before call
           JSON.stringify({
             choices: [
               {
+                finish_reason: "stop",
                 message: {
                   content: JSON.stringify({
                     subject: "继续推进制造业 AI 试点",

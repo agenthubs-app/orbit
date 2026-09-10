@@ -17,7 +17,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -90,7 +91,6 @@ export function AgentActionsScreen() {
 
   return (
     <AppScreen
-      eyebrow="Orbit AI"
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -274,10 +274,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   actionText: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 22
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   bodyText: {
     color: colors.text,
@@ -301,10 +299,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   metaBox: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   },
   metaLabel: {
     color: colors.text3,
@@ -345,11 +342,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   },
   nextStepText: {
     color: colors.text,
@@ -372,22 +369,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
     flexGrow: 1,
     gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 40,
-    minWidth: 128,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    minWidth: 128
   },
   primaryButtonText: {
+    ...createControlStyles(colors).primaryButtonText,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   ruleItem: {
     alignItems: "flex-start",
@@ -404,22 +395,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     flexGrow: 1,
     gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 40,
-    minWidth: 128,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    minWidth: 128
   },
   secondaryButtonText: {
+    ...createControlStyles(colors).secondaryButtonText,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   tag: {
     backgroundColor: colors.surface2,

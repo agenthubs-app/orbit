@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **orbit** (343447 symbols, 473433 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **orbit** (379031 symbols, 540892 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -41,3 +41,9 @@ This project is indexed by GitNexus as **orbit** (343447 symbols, 473433 relatio
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Web / App Bridge
+
+- Web 与 App 的跨端协作入口是 [bridge/README.md](bridge/README.md)。涉及客户端可见行为、API、共享契约或状态同步时，先读 `bridge/status.md` 和 `bridge/handoffs.md`。
+- 交接时记录本端版本、另一端影响、未完成事项和验证范围；模板见 `bridge/templates/handoff.md`。仅路由或类型检查通过不能标记业务对齐完成。
+- 保持各子目录的编辑边界；无权写根目录的开发任务应提供交接内容，由 Bridge 协调者更新台账。进行中的另一端未提交改动不得覆盖。

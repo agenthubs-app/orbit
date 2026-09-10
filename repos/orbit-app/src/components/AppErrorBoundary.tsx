@@ -1,7 +1,8 @@
 import { Component, type ErrorInfo, type PropsWithChildren } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { radius, spacing, typography } from "../design/tokens";
+import { layout, radius, spacing, textStyles } from "../design/tokens";
+import { createControlStyles } from "../design/controls";
 import { createThemedStyles } from "../design/theme";
 
 // 渲染期抛出的异常在 React Native 里会把整棵树卸载，用户看到白屏且只能杀进程。
@@ -40,7 +41,7 @@ export function AppErrorScreen({
   const { styles } = useStyles();
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>这个页面出了点问题</Text>
         <Text style={styles.body}>
           页面没能显示出来。你的数据没有受影响，重试一下通常就好了。
@@ -60,7 +61,7 @@ export function AppErrorScreen({
         >
           <Text style={styles.primaryButtonText}>重试</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -107,58 +108,45 @@ export class AppErrorBoundary extends Component<
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  ...createControlStyles(colors),
   body: {
-    color: colors.text2,
-    fontSize: typography.body,
-    lineHeight: 22
+    ...textStyles.body,
+    color: colors.text2
   },
   content: {
-    flex: 1,
+    alignSelf: "center",
+    flexGrow: 1,
     gap: spacing.lg,
     justifyContent: "center",
-    paddingHorizontal: spacing.xl
+    maxWidth: layout.contentMax,
+    paddingHorizontal: layout.pageInset,
+    paddingVertical: layout.contentBottom,
+    width: "100%"
   },
   detailBox: {
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    borderRadius: radius.card,
     gap: spacing.xs,
     padding: spacing.md
   },
   detailLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   detailText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text2
   },
   pressed: {
     opacity: 0.72
   },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 48
-  },
-  primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "700"
-  },
   safeArea: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
     flex: 1
   },
   title: {
-    color: colors.ink,
-    fontSize: typography.display,
-    fontWeight: "700",
-    lineHeight: 30
+    ...textStyles.pageTitle,
+    color: colors.ink
   }
 }));

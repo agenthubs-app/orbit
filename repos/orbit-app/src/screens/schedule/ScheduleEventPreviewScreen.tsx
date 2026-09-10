@@ -6,7 +6,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -141,33 +142,29 @@ function ActionList({ actions }: { actions: ScheduleEventPreviewAction[] }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
+    ...createControlStyles(colors).secondaryButton,
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    flexDirection: "row"
   },
   actionList: {
     gap: spacing.sm
   },
   actionText: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   bodyText: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    flexShrink: 1
   },
   eventHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md
+    gap: spacing.md,
+    flexWrap: "wrap"
   },
   eventIcon: {
     alignItems: "center",
@@ -188,10 +185,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   itemTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 21
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   metaStack: {
     gap: spacing.xs

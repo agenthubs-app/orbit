@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type { EventAnalyticsKind, EventAnalyticsMetricView, EventAnalyticsView } from "../../view-models/event-analytics";
 
@@ -50,32 +51,82 @@ export function EventAnalyticsContent({ activeKind, attendeeAvailable, onChangeK
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  aiHeading: { alignItems: "center", flexDirection: "row", gap: spacing.md, justifyContent: "space-between" },
+  aiHeading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    flexWrap: "wrap"
+  },
   aiStatus: { backgroundColor: colors.accentSofter, borderRadius: radius.pill, color: colors.accent, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  artifact: { color: colors.ink, fontSize: typography.small, lineHeight: 21 },
-  cardSection: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
+  artifact: {
+    color: colors.ink,
+    ...textStyles.body
+  },
+  cardSection: {
+    gap: spacing.md,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
+  },
   content: { gap: spacing.lg },
   detail: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
   draft: { backgroundColor: colors.surface2, borderRadius: radius.control, gap: spacing.sm, padding: spacing.md },
   draftLabel: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
-  metric: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.xs, minHeight: 70, padding: spacing.md, width: "31%" },
-  metricLabel: { color: colors.text3, fontSize: 10, lineHeight: 14 },
+  metric: {
+    gap: spacing.xs,
+    minHeight: 70,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    flexBasis: "45%",
+    flexGrow: 1,
+    minWidth: 100
+  },
+  metricLabel: {
+    color: colors.text3,
+    ...textStyles.small
+  },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  metricValue: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  metricValue: {
+    color: colors.ink,
+    ...textStyles.title
+  },
   privacy: { backgroundColor: colors.liveSoft, borderRadius: radius.control, gap: spacing.xs, padding: spacing.md },
   privacyDetail: { color: colors.text2, fontSize: typography.caption, lineHeight: 18 },
   privacyTitle: { color: colors.live, fontSize: typography.small, fontWeight: "800" },
-  rate: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.xxs, minHeight: 86, padding: spacing.md, width: "31%" },
-  rateDetail: { color: colors.text4, fontSize: 10 },
-  rates: { flexDirection: "row", gap: spacing.sm },
+  rate: {
+    gap: spacing.xxs,
+    minHeight: 86,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md,
+    width: "100%"
+  },
+  rateDetail: {
+    color: colors.text4,
+    ...textStyles.small
+  },
+  rates: {
+    gap: spacing.sm
+  },
   rateValue: { color: colors.accent, fontSize: typography.section, fontWeight: "800" },
   section: { gap: spacing.md },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800", lineHeight: 22 },
-  segment: { alignItems: "center", borderRadius: radius.control, flex: 1, justifyContent: "center", minHeight: 40 },
-  segmentActive: { backgroundColor: colors.surface },
+  sectionTitle: {
+    color: colors.ink,
+    ...textStyles.section
+  },
+  segment: {
+    ...createControlStyles(colors).chip,
+    flex: 1
+  },
+  segmentActive: {
+    ...createControlStyles(colors).selectedChip
+  },
   segmented: { backgroundColor: colors.surface3, borderRadius: radius.control, flexDirection: "row", gap: spacing.xs, padding: spacing.xs },
-  segmentText: { color: colors.text3, fontSize: typography.small, fontWeight: "800" },
-  segmentTextActive: { color: colors.ink },
+  segmentText: {
+    ...createControlStyles(colors).chipText
+  },
+  segmentTextActive: {
+    ...createControlStyles(colors).selectedChipText
+  },
   statusDetail: { color: colors.text2, flex: 1, fontSize: typography.caption, lineHeight: 18, textAlign: "right" },
   statusLabel: { color: colors.ink, fontSize: typography.caption, fontWeight: "800" },
   statusRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 44, paddingVertical: spacing.sm },

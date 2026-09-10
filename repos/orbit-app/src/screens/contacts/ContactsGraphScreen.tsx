@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -495,13 +496,13 @@ function ConnectionEvidenceCard({
           disabled={addPending}
           onPress={submitEvidence}
           style={({ pressed }) => [
-            styles.secondaryButton,
+            styles.primaryButton,
             addPending ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.accent} name="add-circle-outline" size={15} />
-          <Text style={styles.secondaryButtonText}>
+          <Ionicons color={colors.onAccent} name="add-circle-outline" size={15} />
+          <Text style={styles.primaryButtonText}>
             {addPending ? "补充中" : "添加证据"}
           </Text>
         </Pressable>
@@ -557,25 +558,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden"
   },
   bodyText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   callout: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
   calloutText: {
+    ...textStyles.small,
     color: colors.text,
-    flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20
+    flex: 1
   },
   connectionActions: {
     flexDirection: "row",
@@ -592,22 +589,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1,
     gap: spacing.xs
   },
-  disabled: {
-    opacity: 0.54
-  },
+  disabled: { opacity: 0.54 },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.rose
   },
-  evidenceHeader: {
-    gap: spacing.sm
-  },
+  evidenceHeader: { gap: spacing.sm },
   evidenceForm: {
-    borderColor: colors.border,
-    borderTopWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     gap: spacing.sm,
-    paddingTop: spacing.md
+    padding: spacing.md
   },
   evidenceIcon: {
     alignItems: "center",
@@ -625,68 +617,34 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.md
   },
-  evidenceStack: {
-    gap: spacing.md
-  },
-  evidenceInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
+  evidenceStack: { gap: spacing.md },
+  evidenceInput: { ...createControlStyles(colors).input },
   evidenceTextArea: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
+    ...createControlStyles(colors).input,
     minHeight: 84,
-    padding: spacing.md
+    textAlignVertical: "top"
   },
   feedbackText: {
+    ...textStyles.small,
     color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   },
   ghostButton: {
-    alignItems: "center",
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
-  ghostButtonText: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
-  },
+  ghostButtonText: { ...createControlStyles(colors).secondaryButtonText },
   itemTitle: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 21
+    flex: 1
   },
-  listStack: {
-    gap: spacing.md
-  },
+  listStack: { gap: spacing.md },
   metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   metricCell: {
     borderColor: colors.border,
@@ -703,27 +661,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   metricLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
     fontWeight: "600"
   },
   metricValue: {
-    color: colors.ink,
-    fontSize: 26,
-    fontWeight: "700",
-    lineHeight: 30
+    ...textStyles.title,
+    color: colors.ink
   },
-  pressed: {
-    opacity: 0.72
+  pressed: { opacity: 0.72 },
+  primaryButton: {
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.xs,
+    maxWidth: "100%"
   },
-  profileGrid: {
-    gap: spacing.md
-  },
+  primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
+  profileGrid: { gap: spacing.md },
   profileNextAction: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     gap: spacing.xs,
     padding: spacing.md
   },
@@ -746,9 +703,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   scoreText: {
+    ...textStyles.small,
     color: colors.amber,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   safetyPill: {
     alignItems: "center",
@@ -761,46 +718,37 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   safetyText: {
+    ...textStyles.caption,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.accent
   },
   sourceTag: {
+    ...textStyles.caption,
     backgroundColor: colors.skySoft,
     borderRadius: radius.pill,
     color: colors.sky,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs
   },
-  stageRow: {
-    gap: spacing.sm
-  },
+  stageRow: { gap: spacing.sm },
   stageTag: {
+    ...textStyles.caption,
     backgroundColor: colors.liveSoft,
     borderRadius: radius.pill,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs

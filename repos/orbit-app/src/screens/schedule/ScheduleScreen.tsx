@@ -6,13 +6,15 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View
 } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, shadows, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -451,6 +453,8 @@ function ScheduleTimeGrid({
   now: Date;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
+  const hourGutter = Math.max(46, Math.ceil(36 * fontScale + spacing.sm));
   const itemMinutes = items
     .map((item) => minuteOfDay(item.timeLabel))
     .filter((value): value is number => value !== null);
@@ -477,12 +481,12 @@ function ScheduleTimeGrid({
           key={hour}
           style={[styles.hourRow, { top: (hour - startHour) * hourHeight }]}
         >
-          <Text style={styles.hourLabel}>{String(hour).padStart(2, "0")}:00</Text>
+          <Text style={[styles.hourLabel, { width: hourGutter }]}>{String(hour).padStart(2, "0")}:00</Text>
           <View style={styles.hourLine} />
         </View>
       ))}
       {isToday && currentTop >= 0 && currentTop <= gridHeight ? (
-        <View style={[styles.currentTimeRow, { top: currentTop }]}>
+        <View style={[styles.currentTimeRow, { left: hourGutter + 3, top: currentTop }]}>
           <View style={styles.currentTimeDot} />
           <View style={styles.currentTimeLine} />
         </View>
@@ -497,6 +501,7 @@ function ScheduleTimeGrid({
         return (
           <ScheduleTimeBlock
             height={height}
+            hourGutter={hourGutter}
             item={item}
             key={`${item.kind}-${item.id}`}
             top={top}
@@ -504,7 +509,7 @@ function ScheduleTimeGrid({
         );
       })}
       {items.length === 0 ? (
-        <View style={styles.emptyTimeline}>
+        <View style={[styles.emptyTimeline, { left: hourGutter + 18 }]}>
           <Ionicons color={colors.text4} name="calendar-clear-outline" size={20} />
           <Text style={styles.emptyTimelineText}>这一天暂无安排</Text>
         </View>
@@ -515,10 +520,12 @@ function ScheduleTimeGrid({
 
 function ScheduleTimeBlock({
   height,
+  hourGutter,
   item,
   top
 }: {
   height: number;
+  hourGutter: number;
   item: ScheduleTimelineItem;
   top: number;
 }) {
@@ -539,6 +546,7 @@ function ScheduleTimeBlock({
           backgroundColor: tone.backgroundColor,
           borderLeftColor: tone.borderColor,
           height,
+          left: hourGutter + spacing.sm,
           top
         },
         pressed ? styles.pressed : null
@@ -755,6 +763,8 @@ function ScheduleCompactAgenda({
 
 function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
   const router = useRouter();
   const tone = itemTone(item, colors);
 
@@ -763,29 +773,30 @@ function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
       accessibilityLabel={`${item.title}，${item.timeLabel || "全天"}`}
       accessibilityRole="button"
       onPress={() => router.push(item.href as Href)}
-      style={({ pressed }) => [styles.agendaRow, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [styles.agendaRow, largeText ? styles.agendaRowLarge : null, pressed ? styles.pressed : null]}
     >
-      <Text style={[styles.agendaTime, { color: tone.color }]}>
+      <Text style={[styles.agendaTime, largeText ? styles.agendaTimeLarge : null, { color: tone.color }]}>
         {item.timeLabel || "全天"}
       </Text>
       <View style={[styles.agendaIcon, { backgroundColor: tone.backgroundColor }]}>
         <Ionicons color={tone.color} name={tone.icon} size={16} />
       </View>
-      <View style={styles.agendaCopy}>
-        <Text numberOfLines={1} style={styles.agendaTitle}>
+      <View style={[styles.agendaCopy, largeText ? styles.agendaCopyLarge : null]}>
+        <Text numberOfLines={largeText ? undefined : 1} style={styles.agendaTitle}>
           {item.title}
         </Text>
-        <Text numberOfLines={1} style={styles.agendaMeta}>
+        <Text numberOfLines={largeText ? undefined : 1} style={styles.agendaMeta}>
           {item.subtitle}
         </Text>
       </View>
-      <Ionicons color={colors.text4} name="chevron-forward" size={16} />
+      {!largeText ? <Ionicons color={colors.text4} name="chevron-forward" size={16} /> : null}
     </Pressable>
   );
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agendaCopy: { flex: 1, minWidth: 0 },
+  agendaCopyLarge: { flexBasis: "100%" },
   agendaIcon: {
     alignItems: "center",
     borderRadius: radius.pill,
@@ -793,7 +804,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "center",
     width: 34
   },
-  agendaMeta: { color: colors.text3, fontSize: typography.caption, lineHeight: 17 },
+  agendaMeta: { ...textStyles.caption, color: colors.text3 },
   agendaRow: {
     alignItems: "center",
     borderBottomColor: colors.border,
@@ -804,19 +815,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.sm
   },
   agendaSection: {
-    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    padding: spacing.md,
-    ...shadows.subtle
+    backgroundColor: colors.surface,
+    paddingHorizontal: 0
   },
+  agendaRowLarge: { flexWrap: "wrap" },
   agendaTime: { fontSize: typography.small, fontWeight: "800", width: 43 },
+  agendaTimeLarge: { flexShrink: 0, width: "auto" },
   agendaTitle: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 19
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   allDayItems: { flex: 1 },
   allDayLabel: {
@@ -833,18 +841,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: spacing.sm
   },
   calendarPanel: {
-    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    padding: spacing.md,
-    ...shadows.subtle
+    backgroundColor: colors.surface,
+    paddingHorizontal: 0
   },
   commandRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    minHeight: 44
+    minHeight: 44,
+    flexWrap: "wrap",
+    gap: spacing.sm
   },
   compactAgendaEmpty: {
     color: colors.text3,
@@ -872,10 +879,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     borderRadius: radius.md,
     flex: 1,
-    height: 70,
     justifyContent: "center",
     minWidth: 0,
-    paddingVertical: spacing.xs
+    paddingVertical: spacing.xs,
+    minHeight: 70
   },
   dayButtonSelected: { backgroundColor: colors.accent },
   dayDot: { borderRadius: radius.pill, height: 4, width: 4 },
@@ -889,14 +896,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   dayStrip: { flexDirection: "row", gap: 3 },
   dayTextSelected: { color: colors.onAccent },
   dayView: {
-    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    overflow: "hidden",
-    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    ...shadows.subtle
+    backgroundColor: colors.surface,
+    paddingHorizontal: 0
   },
   dayWeekday: {
     color: colors.text3,
@@ -937,22 +940,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   iconButton: {
     alignItems: "center",
     borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
     height: 44,
     justifyContent: "center",
-    width: 44
+    width: 44,
+    borderRadius: radius.control
   },
   legendDot: { borderRadius: radius.pill, height: 6, width: 6 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
-  legendRow: { flexDirection: "row", gap: spacing.md },
+  legendRow: { flexDirection: "row", flexWrap: "wrap", flexShrink: 1, gap: spacing.sm },
   legendText: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   monthDay: {
     alignItems: "center",
     borderRadius: radius.control,
     flexBasis: "14.285%",
-    height: 44,
-    justifyContent: "center"
+    justifyContent: "center",
+    minHeight: layout.control,
+    paddingVertical: spacing.xs
   },
   monthDayDot: { borderRadius: radius.pill, height: 3, width: 3 },
   monthDayDots: { flexDirection: "row", gap: 2, height: 4 },
@@ -966,12 +969,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.sm
   },
-  monthGridTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
+  monthGridTitle: { ...textStyles.section, color: colors.ink },
   monthLabel: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "800",
-    lineHeight: 22
+    ...textStyles.section,
+    color: colors.ink
   },
   monthWeekday: {
     color: colors.text3,
@@ -987,7 +988,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexShrink: 1,
-    gap: spacing.sm
+    gap: spacing.sm,
+    flexWrap: "wrap"
   },
   sectionCount: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   sectionHeadingRow: {
@@ -996,7 +998,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.md
   },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
+  sectionTitle: { ...textStyles.section, color: colors.ink, flexShrink: 1 },
   timeBlock: {
     borderLeftWidth: 3,
     borderRadius: radius.control,
@@ -1024,33 +1026,25 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   timeGrid: { position: "relative" },
   todayButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).chip,
     borderColor: colors.border2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: "center",
-    paddingHorizontal: spacing.md
+    borderWidth: 1
   },
   todayButtonText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
   todayDateText: { color: colors.accent },
   viewSwitchButton: {
-    alignItems: "center",
-    borderRadius: radius.control,
-    flex: 1,
-    height: 40,
-    justifyContent: "center"
+    ...createControlStyles(colors).chip,
+    flex: 1
   },
   viewSwitchButtonSelected: { backgroundColor: colors.surface },
   viewSwitchText: { color: colors.text3, fontSize: typography.small, fontWeight: "700" },
   viewSwitchTextSelected: { color: colors.accent, fontWeight: "800" },
   viewSwitcher: {
-    backgroundColor: colors.surface3,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
-    padding: 3
+    padding: 3,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control
   },
   weekAgendaDate: { alignItems: "center", paddingTop: spacing.sm, width: 42 },
   weekAgendaDay: {
@@ -1071,7 +1065,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.sm
   },
-  weekHeadingCopy: { alignItems: "center", gap: spacing.xxs },
+  weekHeadingCopy: { alignItems: "center", gap: spacing.xxs, flex: 1, minWidth: 0 },
   weekLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   workspace: { gap: spacing.md }
 }));

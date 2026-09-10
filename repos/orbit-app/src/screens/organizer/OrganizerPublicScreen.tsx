@@ -15,7 +15,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -159,10 +160,10 @@ function OrganizerHero({
             <Text style={styles.avatarText}>{view.initial}</Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text numberOfLines={2} style={styles.heroName}>
+            <Text style={styles.heroName}>
               {view.name}
             </Text>
-            <Text numberOfLines={1} style={styles.heroHandle}>
+            <Text style={styles.heroHandle}>
               {view.handle}
             </Text>
           </View>
@@ -247,10 +248,10 @@ function OrganizerEventCard({
           <Text style={styles.statePill}>{stateLabels[event.state]}</Text>
         </View>
         <View style={styles.eventImageBottom}>
-          <Text numberOfLines={2} style={styles.eventImageTitle}>
+          <Text style={styles.eventImageTitle}>
             {event.title}
           </Text>
-          <Text numberOfLines={1} style={styles.eventImageMeta}>
+          <Text style={styles.eventImageMeta}>
             {event.detailLine}
           </Text>
           <View style={styles.eventImageFooter}>
@@ -269,22 +270,13 @@ function OrganizerEventCard({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    flexGrow: 1,
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm,
+    flexGrow: 1
   },
   actionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   actionRow: {
     flexDirection: "row",
@@ -307,15 +299,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   eventCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventGrid: {
     gap: spacing.lg
@@ -342,11 +330,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: spacing.md
   },
   eventImageFrame: {
-    aspectRatio: 1.12,
     backgroundColor: colors.surface3,
     justifyContent: "space-between",
     overflow: "hidden",
-    padding: spacing.lg
+    padding: spacing.lg,
+    minHeight: 250,
+    gap: spacing.xl,
+    borderRadius: radius.card
   },
   eventImageMeta: {
     color: "rgba(255,255,255,0.84)",
@@ -362,9 +352,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventImageTitle: {
     color: colors.onImage,
-    fontSize: 22,
-    fontWeight: "800",
-    lineHeight: 28
+    ...textStyles.title
   },
   eventImageTop: {
     alignItems: "flex-start"
@@ -381,20 +369,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   heroName: {
     color: colors.onImage,
-    fontSize: typography.display,
-    fontWeight: "800",
-    lineHeight: 30
+    ...textStyles.pageTitle
   },
   organizerHero: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   organizerHeroBody: {
     gap: spacing.md,
-    padding: spacing.lg
+    paddingVertical: spacing.md
   },
   organizerHeroBottom: {
     alignItems: "center",
@@ -402,11 +385,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   organizerHeroCover: {
-    aspectRatio: 1.55,
     backgroundColor: colors.surface3,
     justifyContent: "space-between",
     overflow: "hidden",
-    padding: spacing.lg
+    padding: spacing.lg,
+    minHeight: 190,
+    gap: spacing.xl,
+    borderRadius: radius.card
   },
   organizerHeroImage: {
     borderTopLeftRadius: radius.lg,
@@ -424,12 +409,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   secondaryButton: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderWidth: 1
+    ...createControlStyles(colors).secondaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent
+    ...createControlStyles(colors).secondaryButtonText
   },
   statCell: {
     alignItems: "center",
@@ -452,9 +438,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   statValue: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "700",
-    lineHeight: 24
+    ...textStyles.title
   },
   statePill: {
     backgroundColor: colors.accentSofter,

@@ -19,7 +19,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -473,13 +474,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   callout: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface2
   },
   calloutText: {
     color: colors.text,
@@ -496,20 +497,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.54
   },
   draftInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
-    minHeight: 104,
-    padding: spacing.md
+    ...createControlStyles(colors).input,
+    minHeight: 104
   },
   draftResult: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -525,33 +519,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   linkButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).primaryButton,
     alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    maxWidth: "100%",
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 38,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm
+    gap: spacing.sm
   },
   linkButtonText: {
+    ...createControlStyles(colors).primaryButtonText,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   messageBody: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body,
+    color: colors.text
   },
   messageBubble: {
     borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     gap: spacing.sm,
     maxWidth: "92%",
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   },
   messageBubbleMine: {
     alignSelf: "flex-end",
@@ -596,7 +584,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   signalRow: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md

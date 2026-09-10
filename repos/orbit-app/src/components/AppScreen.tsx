@@ -10,11 +10,12 @@ import {
   type RefreshControlProps
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { radius, spacing, typography } from "../design/tokens";
+import { layout, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
 
 interface AppScreenProps extends PropsWithChildren {
   eyebrow?: string;
+  headerVariant?: "large" | "compact";
   refreshControl?: ReactElement<RefreshControlProps>;
   showBack?: boolean;
   title: string;
@@ -23,6 +24,7 @@ interface AppScreenProps extends PropsWithChildren {
 export function AppScreen({
   children,
   eyebrow,
+  headerVariant = "large",
   refreshControl,
   showBack,
   title
@@ -65,8 +67,10 @@ export function AppScreen({
               />
             </Pressable>
           ) : null}
-          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-          <Text adjustsFontSizeToFit numberOfLines={2} style={styles.title}>
+          {eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? (
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+          ) : null}
+          <Text accessibilityRole="header" style={[styles.title, headerVariant === "compact" ? styles.compactTitle : null]}>
             {title}
           </Text>
         </View>
@@ -80,50 +84,44 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: {
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    height: 44,
+    minHeight: layout.toolbar,
     justifyContent: "center",
     marginBottom: spacing.xs,
-    width: 44
+    minWidth: layout.toolbar
   },
   backButtonPressed: {
     opacity: 0.72
   },
   body: {
-    gap: 14
+    gap: spacing.lg
   },
   content: {
     alignSelf: "center",
     gap: spacing.lg,
-    maxWidth: 540,
-    paddingBottom: 96,
-    paddingHorizontal: spacing.lg,
+    maxWidth: layout.contentMax,
+    paddingBottom: layout.contentBottom,
+    paddingHorizontal: layout.pageInset,
     paddingTop: spacing.md,
     width: "100%"
   },
   eyebrow: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase"
+    fontWeight: "600"
   },
   header: {
     gap: spacing.xs,
-    paddingHorizontal: spacing.xs,
     paddingTop: spacing.xs
   },
   safeArea: {
-    backgroundColor: colors.bgSoft,
+    backgroundColor: colors.surface,
     flex: 1
   },
   title: {
-    color: colors.ink,
-    fontSize: typography.display,
-    fontWeight: "700",
-    lineHeight: 29
+    ...textStyles.pageTitle,
+    color: colors.ink
+  },
+  compactTitle: {
+    ...textStyles.title
   }
 }));

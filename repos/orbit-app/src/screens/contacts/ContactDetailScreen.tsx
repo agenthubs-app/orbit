@@ -22,10 +22,11 @@ import {
   relationshipValueAnalysisPath,
   relationshipValueRecomputePath
 } from "../../api/endpoints";
-import { AppScreen } from "../../components/AppScreen";
+import { ContactPage } from "./ContactPage";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import {
   useApiResource,
@@ -233,7 +234,8 @@ export function ContactDetailScreen() {
   }
 
   return (
-    <AppScreen
+    <ContactPage
+      detail
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -273,7 +275,7 @@ export function ContactDetailScreen() {
           statusPending={statusPending}
         />
       ) : null}
-    </AppScreen>
+    </ContactPage>
   );
 }
 
@@ -434,9 +436,6 @@ function NextStepCard({
   return (
     <View style={styles.nextStepCard}>
       <View style={styles.nextStepHeader}>
-        <View style={styles.nextStepIcon}>
-          <Ionicons color={colors.accent} name="arrow-forward" size={17} />
-        </View>
         <View style={styles.nextStepCopy}>
           <Text style={styles.nextStepEyebrow}>下一步</Text>
           <Text numberOfLines={3} style={styles.nextStepText}>
@@ -452,7 +451,7 @@ function NextStepCard({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.onAccent} name="mail-outline" size={17} />
+        <Ionicons color={colors.onAccent} name="mail-outline" size={23} />
         <Text style={styles.primaryActionButtonText}>起草消息</Text>
       </Pressable>
     </View>
@@ -477,7 +476,6 @@ function ContactOverview({ contact }: { contact: ContactDetailSummary }) {
           <ExchangeValueRow label="对方能提供" values={exchange.offering} />
         </View>
       </DetailSection>
-      <SectionDivider />
       <LatestActivityPreview contact={contact} />
     </View>
   );
@@ -519,7 +517,7 @@ function LatestActivityPreview({
     <DetailSection detail={meta} title="最近动态">
       <View style={styles.activityRow}>
         <View style={styles.activityIcon}>
-          <Ionicons color={colors.text3} name="time-outline" size={16} />
+          <Ionicons color={colors.text3} name="time-outline" size={24} />
         </View>
         <Text numberOfLines={2} style={latest ? styles.activityText : styles.emptyText}>
           {latest ?? "还没有记录互动。"}
@@ -1085,90 +1083,74 @@ function RelationshipRecomputeButton({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    fontSize: 14,
+    lineHeight: 23
   },
   archiveButton: {
-    alignItems: "center",
+    ...createControlStyles(colors).secondaryButton,
     alignSelf: "flex-start",
     borderColor: colors.rose,
-    borderRadius: radius.control,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   archiveButtonText: {
-    color: colors.rose,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.rose
   },
-  contactHero: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg
-  },
+  contactHero: { marginBottom: 28 },
   contactHeroDetail: {
     color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    fontSize: 14,
+    lineHeight: 22
   },
   contactHeroHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md
+    gap: 20
   },
   contactHeroName: {
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 25
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 32
   },
   contactHeroRelationship: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text
   },
   contactHeroTitleBlock: {
     flex: 1,
     gap: spacing.xs,
     minWidth: 0
   },
-  disabled: {
-    opacity: 0.54
-  },
+  disabled: { opacity: 0.54 },
   errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.rose
   },
   feedbackText: {
+    ...textStyles.small,
     color: colors.live,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    fontWeight: "600"
   },
   heroAvatar: {
     alignItems: "center",
     borderRadius: radius.pill,
-    height: 64,
+    height: 76,
     justifyContent: "center",
     overflow: "hidden",
-    width: 64
+    width: 76
   },
   heroAvatarImage: {
     height: "100%",
     width: "100%"
   },
   heroAvatarText: {
-    fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 32
+    fontSize: 34,
+    fontWeight: "700",
+    lineHeight: 42
   },
   heroMetaRow: {
     flexDirection: "row",
@@ -1176,19 +1158,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   inputLabel: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   industryOption: {
-    alignItems: "center",
-    borderColor: "transparent",
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).chip,
+    backgroundColor: "transparent",
     flexDirection: "row",
     justifyContent: "space-between",
-    minHeight: 42,
     paddingHorizontal: spacing.md
   },
   industryOptionSelected: {
@@ -1196,20 +1174,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderColor: colors.accentSoft
   },
   industryOptionText: {
+    ...textStyles.small,
     color: colors.text2,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19
+    fontWeight: "600"
   },
-  industryOptionTextSelected: {
-    color: colors.accent
-  },
-  industryOptions: {
-    gap: spacing.xs
-  },
-  industryPicker: {
-    gap: spacing.sm
-  },
+  industryOptionTextSelected: { color: colors.accent },
+  industryOptions: { gap: spacing.xs },
+  industryPicker: { gap: spacing.sm },
   industryPickerButton: {
     alignItems: "center",
     backgroundColor: colors.surface2,
@@ -1227,16 +1198,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xxs
   },
   industryPickerLabel: {
+    ...textStyles.caption,
     color: colors.text4,
-    fontSize: 10,
-    fontWeight: "700",
-    lineHeight: 13
+    fontWeight: "600"
   },
   industryPickerValue: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 19
+    fontWeight: "600"
   },
   metadataColumn: {
     flex: 1,
@@ -1244,90 +1213,47 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   metadataInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    minHeight: 42,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).input,
+    minWidth: 0
   },
   metadataRow: {
     flexDirection: "row",
     gap: spacing.sm
   },
-  metadataStack: {
-    gap: spacing.sm
-  },
+  metadataStack: { gap: spacing.sm },
   noteButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 38,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  noteButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
-  },
+  noteButtonText: { ...createControlStyles(colors).primaryButtonText },
   noteInput: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
+    ...createControlStyles(colors).input,
     minHeight: 92,
-    padding: spacing.md
+    textAlignVertical: "top"
   },
-  pressed: {
-    opacity: 0.72
-  },
+  pressed: { opacity: 0.72 },
   primaryHeroButton: {
-    alignItems: "center",
-    alignSelf: "stretch",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 46,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
-  primaryHeroButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  promptStack: {
-    gap: 8
-  },
+  primaryHeroButtonText: { ...createControlStyles(colors).primaryButtonText },
+  promptStack: { gap: 8 },
   promptText: {
+    ...textStyles.caption,
     backgroundColor: colors.liveSoft,
     borderRadius: 10,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 8
   },
   factorPoint: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   relationshipFactorRow: {
     alignItems: "center",
@@ -1348,49 +1274,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   relationshipPriority: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    fontWeight: "600"
   },
   relationshipRecomputeButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderColor: colors.accent,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   relationshipRecomputeButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.accent
   },
   relationshipSafety: {
+    ...textStyles.caption,
     color: colors.text3,
     flexShrink: 1,
-    fontSize: typography.caption,
-    lineHeight: 17,
     textAlign: "right"
   },
   relationshipScore: {
+    ...textStyles.title,
     color: colors.ink,
-    fontSize: typography.title,
-    fontWeight: "800",
-    lineHeight: 25
+    fontWeight: "600"
   },
-  relationshipScoreBlock: {
-    gap: 2
-  },
+  relationshipScoreBlock: { gap: 2 },
   relationshipSectionTitle: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   tagsRow: {
     flexDirection: "row",
@@ -1398,65 +1311,56 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 6
   },
   statusButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderColor: colors.accent,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    maxWidth: "100%"
   },
   statusButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.accent
   },
   scorePill: {
+    ...textStyles.caption,
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
     borderRadius: radius.pill,
     borderWidth: 1,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   statusPill: {
+    ...textStyles.caption,
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
     borderRadius: radius.pill,
     borderWidth: 1,
     color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   tagText: {
+    ...textStyles.caption,
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   activityIcon: {
     alignItems: "center",
-    backgroundColor: colors.surface3,
-    borderRadius: radius.pill,
-    height: 32,
+    height: 28,
     justifyContent: "center",
-    width: 32
+    width: 28
   },
   activityRow: {
     alignItems: "center",
@@ -1464,20 +1368,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   activityText: {
+    ...textStyles.small,
     color: colors.text,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20,
     minWidth: 0
   },
-  detailSection: {
-    gap: spacing.md
-  },
+  detailSection: { gap: 14 },
   disclosureContent: {
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.lg,
-    padding: spacing.lg
+    paddingVertical: 20
   },
   disclosureCopy: {
     flex: 1,
@@ -1485,58 +1386,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   disclosureDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   disclosureHeader: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 68,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    paddingVertical: 14
   },
   disclosureSurface: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth
   },
   disclosureTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   emptyText: {
+    ...textStyles.small,
     color: colors.text3,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20,
     minWidth: 0
   },
   exchangeLabel: {
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 18,
-    width: 76
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 22,
+    width: 88
   },
   exchangeRow: {
     alignItems: "flex-start",
     flexDirection: "row",
     gap: spacing.md
   },
-  exchangeRows: {
-    gap: spacing.md
-  },
+  exchangeRows: { gap: spacing.md },
   exchangeValue: {
     color: colors.text,
     flex: 1,
-    fontSize: typography.small,
-    lineHeight: 20,
+    fontSize: 14,
+    lineHeight: 22,
     minWidth: 0
   },
   managementActionRow: {
@@ -1545,91 +1436,58 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   nextStepCard: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentRing,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg
+    gap: 14,
+    marginBottom: 28
   },
   nextStepCopy: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 6,
     minWidth: 0
   },
   nextStepEyebrow: {
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20
   },
   nextStepHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
     gap: spacing.md
   },
-  nextStepIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    height: 36,
-    justifyContent: "center",
-    width: 36
-  },
   nextStepText: {
     color: colors.ink,
-    fontSize: typography.body,
+    fontSize: 18,
     fontWeight: "600",
-    lineHeight: 22
+    lineHeight: 27,
+    maxWidth: 242
   },
   overviewSurface: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.lg,
-    padding: spacing.lg
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 24,
+    paddingVertical: 24
   },
   primaryActionButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 42,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm
-  },
-  primaryActionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  relationshipValueContent: {
-    gap: spacing.md
-  },
-  sectionBody: {
     gap: spacing.sm
   },
+  primaryActionButtonText: { ...createControlStyles(colors).primaryButtonText },
+  relationshipValueContent: { gap: spacing.md },
+  sectionBody: { gap: spacing.sm },
   sectionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   sectionDivider: {
     backgroundColor: colors.border,
     height: StyleSheet.hairlineWidth,
     width: "100%"
   },
-  sectionHeader: {
-    gap: spacing.xs
-  },
+  sectionHeader: { gap: spacing.xs },
   sectionTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...textStyles.section,
+    color: colors.ink
   }
 }));

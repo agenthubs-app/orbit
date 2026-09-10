@@ -8,7 +8,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -159,19 +160,19 @@ function TaskModeSwitcher({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  checkButton: { alignItems: "center", height: 48, justifyContent: "center", width: 42 },
+  checkButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
   completedTitle: { color: colors.text3, textDecorationLine: "line-through" },
   errorText: { color: colors.rose, fontSize: typography.small },
-  list: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, overflow: "hidden" },
+  list: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
   pressed: { opacity: 0.65 },
   row: { alignItems: "center", flexDirection: "row", minHeight: 60, paddingRight: spacing.md },
   rowBody: { flex: 1, gap: spacing.xs, justifyContent: "center", minHeight: 58, minWidth: 0 },
-  rowDetail: { color: colors.text3, fontSize: typography.caption },
+  rowDetail: { ...textStyles.caption, color: colors.text3 },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
-  rowTitle: { color: colors.text, fontSize: typography.body, fontWeight: "600" },
-  tab: { alignItems: "center", borderRadius: radius.control, flex: 1, justifyContent: "center", minHeight: 38 },
+  rowTitle: { ...textStyles.listTitle, color: colors.text },
+  tab: { ...createControlStyles(colors).chip, flex: 1 },
   tabSelected: { backgroundColor: colors.surface },
-  tabs: { backgroundColor: colors.surface3, borderRadius: radius.md, flexDirection: "row", padding: 3 },
+  tabs: { flexDirection: "row", padding: 3, backgroundColor: colors.surface2, borderRadius: radius.control },
   tabText: { color: colors.text3, fontSize: typography.small, fontWeight: "600" },
   tabTextSelected: { color: colors.ink },
 }));

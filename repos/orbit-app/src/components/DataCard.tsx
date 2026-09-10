@@ -1,24 +1,25 @@
 import type { PropsWithChildren } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { radius, shadows, spacing, typography } from "../design/tokens";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { layout, radius, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
 
 interface DataCardProps extends PropsWithChildren {
   detail?: string;
   onPress?: () => void;
   title: string;
+  variant?: "section" | "inset";
 }
 
-export function DataCard({ children, detail, onPress, title }: DataCardProps) {
+export function DataCard({ children, detail, onPress, title, variant = "section" }: DataCardProps) {
   const { styles } = useStyles();
   const content = (
-    <View style={styles.card}>
+    <View style={[styles.card, variant === "inset" ? styles.inset : styles.section]}>
       <View style={styles.header}>
-        <Text numberOfLines={2} style={styles.title}>
+        <Text style={styles.title}>
           {title}
         </Text>
         {detail ? (
-          <Text numberOfLines={3} style={styles.detail}>
+          <Text style={styles.detail}>
             {detail}
           </Text>
         ) : null}
@@ -47,33 +48,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.lg,
-    ...(Platform.OS === "web" ? shadows.webCard : shadows.card)
+    minHeight: layout.control
+  },
+  section: {
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.lg
+  },
+  inset: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
+    padding: spacing.lg
   },
   detail: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   header: {
     gap: spacing.xs
   },
   pressable: {
-    borderRadius: radius.card
+    minHeight: layout.control
   },
   pressed: {
     opacity: 0.82,
     transform: [{ translateY: 0.5 }]
   },
   title: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   }
 }));
