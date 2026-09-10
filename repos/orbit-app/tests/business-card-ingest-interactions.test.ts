@@ -49,6 +49,217 @@ async function review(t: Parameters<typeof open>[0], status = "extracted", batch
 async function respond(p: Page, index: number, action: string, status = 200, patch: Record<string, unknown> = {}) {
   await p.evaluate(({ index, action, status, patch }) => { const s = (window as any).fixture; const item = s.detail({ status: "ready_for_review", statuses: [action === "retry" || action === "replace" ? "queued" : action === "skip" ? "skipped" : "confirmed"], itemVersion: 2 }).items[0]; Object.assign(item, patch); s.respond(index, action === "confirm" || action === "manual-entry" ? { state: "created", contactId: "contact", item } : { item }, status); }, { index, action, status, patch }); await settle(p);
 }
+async function unavailableReply(p: Page, index: number, status = 404) {
+  await p.evaluate(({ index, status }) => {
+    (window as any).fixture.replies[index](new Response(JSON.stringify({ success: false, error: { code: status === 404 ? "NOT_FOUND" : "GONE", message: "resource unavailable" } }), { status, headers: { "content-type": "application/json" } }));
+  }, { index, status }); await settle(p);
+}
+
+test("FinalFix I1 current confirmation body preserves labeled channel meanings", async t => {
+  const p = await open(t, { screen: "detail" });
+  await p.evaluate(() => {
+    const s = (window as any).fixture; const d = s.detail({ status: "ready_for_review", statuses: ["extracted"] });
+    d.items[0].extraction.contactPoints = [
+      { type: "phone", label: "Office", value: "0312345678" },
+      { type: "fax", label: "Office", value: "0312345678" },
+      { type: "fax", label: "Office", value: "0312345678" },
+      { type: "wechat", label: "Tokyo", value: "same-account" },
+      { type: "whatsapp", label: "Tokyo", value: "same-account" },
+    ]; s.respond(0, d);
+  }); await settle(p);
+  await press(p, "确认收录");
+  const body = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path.endsWith("/confirm")).body);
+  assert.equal(body.phone, "0312345678");
+  for (const line of ["phone (Office): 0312345678", "fax (Office): 0312345678", "wechat (Tokyo): same-account", "whatsapp (Tokyo): same-account"]) {
+    assert.equal(body.notes.split("\n").filter((note: string) => note === line).length, 1, line);
+  }
+});
+
+test("FinalFix I2 owned whole-batch GET404 clears pending files", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0);
+  await press(p, "重新选择名片"); await pick(p);
+  await p.evaluate(() => { (window as any).inspectPending = (window as any).capturePending(); });
+  assert.equal(await p.evaluate(() => (window as any).inspectPending()), 1);
+  await press(p, "刷新批次"); await unavailableReply(p, 1);
+  assert.equal(await p.evaluate(() => (window as any).inspectPending()), 0, "whole-batch NOT_FOUND is definitive");
+  await direct(p, "上传待传名片"); assert.equal(await count(p), 2);
+});
+
+test("FinalFix I2 owned whole-batch GET404 revokes review and late image authority", async t => {
+  const p = await open(t, { screen: "detail" });
+  await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await p.getByLabel("备注", { exact: true }).fill("Must clear");
+  await press(p, "刷新批次"); await unavailableReply(p, 2);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  await p.evaluate(() => (window as any).fixture.image(1)); await settle(p);
+  await direct(p, "复核名片 2"); await direct(p, "确认收录");
+  assert.equal(await count(p), 3); assert.equal(await p.getByRole("img").count(), 0);
+  assert.ok(await p.getByRole("alert").count());
+});
+
+for (const action of ["confirm", "skip", "retry", "replace"]) for (const status of [404, 410]) test(`FinalFix I3 selected-item change observes ${action} ${status} before obsolete snapshot rejection`, async t => {
+  const failed = action === "retry" || action === "replace";
+  const patch = { status: "ready_for_review", statuses: [failed ? "terminal_failed" : "extracted", "extracted"], itemVersion: 3, generation: 2 };
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", patch);
+  await p.getByLabel("姓名", { exact: true }).fill("Owned A");
+  await p.getByLabel("备注", { exact: true }).fill("Dirty A");
+  await press(p, "复核名片 2"); await p.getByLabel("备注", { exact: true }).fill("Dirty B");
+  await press(p, "复核名片 1");
+  const mutation = await count(p);
+  await press(p, action === "replace" ? "替换名片 1" : action === "retry" ? "重试识别" : action === "skip" ? "跳过名片" : "确认收录");
+  if (action !== "confirm") await confirm(p);
+  if (action === "replace") await pick(p);
+  assert.equal(await count(p), mutation + 1, "the item request must actually be dispatched");
+  await press(p, "复核名片 2");
+  const recovery = await count(p);
+  await unavailableReply(p, mutation, status);
+  await reply(p, recovery, "fail");
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0, "owned unavailable response must hide B, despite A's obsolete selection");
+  const before = await count(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (r.path.endsWith("/image")) s.image(i); }); }); await settle(p);
+  await direct(p, "复核名片 1"); await direct(p, "复核名片 2"); await direct(p, "确认收录");
+  const alerts = await p.evaluate(() => (window as any).fixture.alerts.length);
+  await direct(p, "重新载入字段");
+  assert.equal(await p.evaluate(() => (window as any).fixture.alerts.length), alerts, "retained reload callback cannot offer quarantine release");
+  assert.equal(await count(p), before, "retained selection/confirm callbacks cannot restore authority");
+  assert.equal(await p.getByRole("img").count(), 0); assert.ok(await p.getByRole("alert").count());
+  await press(p, "刷新批次"); await reply(p, before, "ok", patch);
+  if (status === 404) assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Dirty A");
+  else {
+    assert.notEqual(await p.getByLabel("备注", { exact: true }).inputValue(), "Dirty A");
+    if (failed) assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "");
+  }
+  await press(p, "复核名片 2");
+  if (status === 404) assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Dirty B");
+  else assert.notEqual(await p.getByLabel("备注", { exact: true }).inputValue(), "Dirty B");
+});
+
+test("FinalFix I2 quarantine rejects malformed owner version and manifest recovery before restoring exact dirty items", async t => {
+  const patch = { status: "ready_for_review", statuses: ["extracted"], version: 3, itemVersion: 3, generation: 2 };
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", patch);
+  await p.getByLabel("备注", { exact: true }).fill("Quarantined edit");
+  await press(p, "确认收录"); await unavailableReply(p, 2); await reply(p, 3, "fail");
+  for (const invalid of ["malformed", "owner", "batchVersion", "itemVersion", "generation", "fingerprint", "digest", "size", "mime", "name", "item"]) {
+    const index = await count(p); await press(p, "刷新批次");
+    await p.evaluate(({ index, invalid, patch }) => {
+      const s = (window as any).fixture; const d = s.detail(patch);
+      if (invalid === "owner") d.batch.actorId = "old-owner";
+      if (invalid === "batchVersion") d.batch.version = 2;
+      if (invalid === "itemVersion") d.items[0].version = 2;
+      if (invalid === "generation") d.batch.reviewGeneration = 1;
+      if (invalid === "fingerprint") d.batch.manifestFingerprint = "b".repeat(64);
+      if (invalid === "digest") d.items[0].clientDigest = "sha256:" + "b".repeat(64);
+      if (invalid === "size") d.items[0].rawSize++;
+      if (invalid === "mime") d.items[0].rawMimeType = "image/jpeg";
+      if (invalid === "name") d.items[0].sourceFileName = "other.png";
+      if (invalid === "item") d.items[0].id = "other-item";
+      s.respond(index, invalid === "malformed" ? {} : d);
+    }, { index, invalid, patch }); await settle(p);
+    assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0, invalid);
+    await direct(p, "复核名片 1"); await direct(p, "确认收录");
+    assert.equal(await count(p), index + 1, invalid + " cannot reactivate images or mutations");
+    assert.ok(await p.getByRole("alert").count());
+  }
+  const index = await count(p); await press(p, "刷新批次"); await reply(p, index, "ok", patch);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Quarantined edit");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), false);
+});
+
+test("FinalFix I2 upload404 quarantine is immediate and exact recovery reconciles late upload without redispatch", async t => {
+  const patch = { statuses: ["awaiting_upload", "awaiting_upload", "awaiting_upload"] };
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", patch);
+  await press(p, "重新选择名片"); await pick(p); await press(p, "上传待传名片");
+  assert.equal(await count(p), 3);
+  await unavailableReply(p, 1);
+  assert.equal(await count(p), 3, "404 stops new dispatch while the second request is pending");
+  assert.doesNotMatch(await p.locator("body").innerText(), /已匹配文件/, "quarantined metadata cannot be presented as usable");
+  await p.evaluate(() => { const s = (window as any).fixture; const d = s.detail({ statuses: ["awaiting_upload", "uploaded", "awaiting_upload"] }); d.items[1].version = 2; s.respond(2, { item: d.items[1], alreadyUploaded: false }); }); await settle(p);
+  await reply(p, 3, "fail");
+  await direct(p, "上传待传名片"); assert.equal(await count(p), 4);
+  assert.equal(await p.getByRole("button", { name: "上传待传名片", exact: true }).isDisabled(), true);
+  assert.ok(await p.getByRole("alert").count());
+  for (const invalid of ["malformed", "digest", "regressed"]) {
+    const index = await count(p); await press(p, "刷新批次");
+    await p.evaluate(({ index, invalid }) => {
+      const s = (window as any).fixture; const d = s.detail({ statuses: ["awaiting_upload", "uploaded", "awaiting_upload"] }); d.items[1].version = 2;
+      if (invalid === "digest") d.items[0].clientDigest = "sha256:" + "b".repeat(64);
+      if (invalid === "regressed") { d.items[1].version = 1; d.items[1].status = "awaiting_upload"; }
+      s.respond(index, invalid === "malformed" ? {} : d);
+    }, { index, invalid }); await settle(p);
+    await direct(p, "上传待传名片"); assert.equal(await count(p), index + 1);
+    assert.doesNotMatch(await p.locator("body").innerText(), /已匹配文件/);
+  }
+  const index = await count(p); await press(p, "刷新批次");
+  await p.evaluate(index => { const s = (window as any).fixture; const d = s.detail({ statuses: ["awaiting_upload", "uploaded", "awaiting_upload"] }); d.items[1].version = 2; s.respond(index, d); }, index); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "上传待传名片", exact: true }).isDisabled(), false);
+  assert.equal(await count(p), index + 1, "accepted recovery never uploads automatically");
+  await press(p, "上传待传名片");
+  const paths = await p.evaluate(index => (window as any).fixture.requests.slice(index + 1).map((r: any) => r.path), index);
+  assert.equal(paths.length, 2); assert.ok(paths[0].endsWith("/item%3A0/content")); assert.ok(paths[1].endsWith("/item%3A2/content"));
+});
+
+for (const change of ["actor", "baseUrl", "batchId"]) for (const status of [404, 410]) test(`FinalFix I3 old ${change} ${status} cannot quarantine or clear new review`, async t => {
+  const p = await review(t); await press(p, "确认收录");
+  await update(p, { [change]: change === "baseUrl" ? "https://new.example" : "new-scope" });
+  await reply(p, 3, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  await p.getByLabel("备注", { exact: true }).fill("New scope edit");
+  await unavailableReply(p, 2, status);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "New scope edit");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), false);
+  assert.equal(await count(p), 5);
+});
+
+test("FinalFix I2 image404 is image-only unavailability with editable authorized review", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  await p.getByLabel("备注", { exact: true }).fill("Keep image-only edit"); await unavailableReply(p, 1);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Keep image-only edit");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), false);
+  await press(p, "重新读取图片"); await p.evaluate(() => (window as any).fixture.image(2)); await settle(p);
+  assert.equal(await p.locator('img[alt="名片图片"]').count(), 1);
+  assert.equal(await count(p), 3, "image missing must not dispatch a batch recovery read");
+});
+
+test("FinalFix I2 network read failure preserves edits and selected-image retry without quarantine", async t => {
+  const p = await review(t); await p.getByLabel("备注", { exact: true }).fill("Offline edit");
+  await press(p, "刷新批次");
+  await p.evaluate(() => (window as any).fixture.replies[2](Promise.reject(new Error("fixture offline")))); await settle(p);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Offline edit");
+  await p.getByLabel("姓名", { exact: true }).fill("Still editable offline");
+  await p.evaluate(() => (window as any).fixture.imageErrors.at(-1)()); await settle(p);
+  await press(p, "重新读取图片"); await p.evaluate(() => (window as any).fixture.image(3)); await settle(p);
+  assert.equal(await p.locator('img[alt="名片图片"]').count(), 1);
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), true, "failed read still revokes mutations");
+});
+
+for (const terminal of ["cancelled", "completed", "expired", "local-expiry"]) test("FinalFix I2 quarantined pending files clear on " + terminal, async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0);
+  await press(p, "重新选择名片"); await pick(p);
+  await p.evaluate(() => { (window as any).inspectPending = (window as any).capturePending(); });
+  await press(p, "排除名片 1"); await confirm(p); await unavailableReply(p, 1); await reply(p, 2, "fail");
+  assert.equal(await p.evaluate(() => (window as any).inspectPending()), 1, "ambiguous exclusion retains scope-owned metadata");
+  assert.doesNotMatch(await p.locator("body").innerText(), /已匹配文件/);
+  if (terminal === "local-expiry") {
+    await update(p, { now: 4102444800001 }); await p.evaluate(() => (window as any).fixture.tick()); await settle(p);
+  } else { await press(p, "刷新批次"); await reply(p, 3, "ok", { status: terminal }); }
+  assert.equal(await p.evaluate(() => (window as any).inspectPending()), 0);
+  const before = await count(p); await direct(p, "上传待传名片"); assert.equal(await count(p), before);
+});
+
+for (const change of ["actor", "baseUrl", "batchId"]) for (const status of [404, 410]) test(`FinalFix I3 old replacement ${change} ${status} cannot unlock newer mutation`, async t => {
+  const p = await review(t, "terminal_failed");
+  await press(p, "替换名片 1"); await confirm(p); await pick(p);
+  assert.equal(await count(p), 3);
+  await update(p, { [change]: change === "baseUrl" ? "https://new.example" : "new-scope" });
+  await reply(p, 3, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  await p.getByLabel("备注", { exact: true }).fill("New replacement scope"); await press(p, "确认收录");
+  await unavailableReply(p, 2, status);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "New replacement scope");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), true);
+  await direct(p, "确认收录"); assert.equal(await count(p), 6, "old picker response cannot release a newer network lock or refetch");
+  await p.evaluate(() => (window as any).fixture.respond(5, { state: "duplicate_review", duplicateContactId: "new-contact" })); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "仍然收录", exact: true }).isDisabled(), false);
+});
+
 test("Task5 extracted review preserves extra values, edits across refresh, and server-only completion", async t => {
   const p = await review(t);
   assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "林 美咲");

@@ -85,6 +85,27 @@ async function count(p: Page) { return p.evaluate(() => (window as any).fixture.
 async function tick(p: Page) { await p.evaluate(() => (window as any).fixture.tick()); await settle(p); }
 async function confirm(p: Page, index: number, cancel = false) { await p.evaluate(({ index, cancel }) => (window as any).fixture.confirm(index, cancel), { index, cancel }); await settle(p); }
 
+test("FinalFix I1 legacy confirmation body preserves labeled channel meanings", async t => {
+  const p = await open(t);
+  await p.evaluate(() => {
+    const s = (window as any).fixture; const d = s.snapshot(0);
+    d.items[0].extraction.contactPoints = [
+      { type: "phone", label: "Office", value: "0312345678" },
+      { type: "fax", label: "Office", value: "0312345678" },
+      { type: "fax", label: "Office", value: "0312345678" },
+      { type: "wechat", label: "Tokyo", value: "same-account" },
+      { type: "whatsapp", label: "Tokyo", value: "same-account" },
+    ];
+    s.replies[0](new Response(JSON.stringify({ success: true, data: d }), { headers: { "content-type": "application/json" } }));
+  }); await settle(p);
+  await press(p, "确认收录");
+  const body = await p.evaluate(() => (window as any).fixture.requests[1].body);
+  assert.equal(body.phone, "0312345678");
+  for (const line of ["phone (Office): 0312345678", "fax (Office): 0312345678", "wechat (Tokyo): same-account", "whatsapp (Tokyo): same-account"]) {
+    assert.equal(body.notes.split("\n").filter((note: string) => note === line).length, 1, line);
+  }
+});
+
 test("loading and unavailable/missing/forbidden/malformed reads expose no mutation authority", async t => {
   const p = await open(t); assert.equal(await count(p), 1);
   await p.getByText("正在读取批次...", { exact: true }).waitFor();

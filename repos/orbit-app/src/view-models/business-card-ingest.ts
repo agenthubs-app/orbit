@@ -109,6 +109,7 @@ export interface UploadPassOptions {
   files: ReadonlyMap<string, PreparedBatchImage>;
   signal: AbortSignal;
   isCurrent: (item: IngestItemContract) => boolean;
+  onUnavailable?: (status: 404 | 410) => void;
   native?: BatchImageNative;
 }
 export interface UploadPassResult { uploaded: IngestItemContract[]; failed: { itemId: string; message: string }[]; recovery: boolean; gone: boolean; }
@@ -134,7 +135,8 @@ export async function uploadPendingPass(options: UploadPassOptions): Promise<Upl
         if (!next || next.id !== item.id || next.batchId !== detail.batch.id || next.seq !== item.seq || next.version <= item.version || next.status !== "uploaded" || !fileMatchesItem(file!, next)) {
           result.failed.push({ itemId: item.id, message: response.success ? "上传结果无法确认，请刷新后重试。" : response.error.message });
           result.gone ||= response.status === 410;
-          result.recovery ||= response.status === 409 || response.status === 410;
+          result.recovery ||= response.status === 404 || response.status === 409 || response.status === 410;
+          if (response.status === 404 || response.status === 410) options.onUnavailable?.(response.status);
         } else result.uploaded.push(next);
       } catch (error) {
         if (valid(item)) result.failed.push({ itemId: item.id, message: error instanceof Error ? error.message : "上传失败，请重试。" });

@@ -23,17 +23,22 @@ export function businessCardReviewFields(extraction: BusinessCardStructuredExtra
   const phoneIndex = extraction.contactPoints.findIndex(point => (point.type === "phone" || point.type === "mobile") && point.value.trim());
   fields.phone = extraction.contactPoints[phoneIndex]?.value ?? "";
   const notes: string[] = [];
-  const add = (label: string, value: string | null) => { if (value?.trim()) notes.push(`${label}: ${value}`); };
+  const seen = new Set<string>();
+  const add = (label: string, value: string | null, key = JSON.stringify(["note", label, value])) => {
+    if (value?.trim() && !seen.has(key)) { seen.add(key); notes.push(`${label}: ${value}`); }
+  };
   for (const name of new Set([extraction.fullName, extraction.nativeFullName, extraction.romanizedFullName])) {
     if (name?.trim() !== fields.displayName) add("姓名", name);
   }
   extraction.departments.forEach(value => add("部门", value));
   extraction.emails.forEach(value => { if (value.value !== fields.email || value.label) add(value.label || "邮箱", value.value); });
-  extraction.contactPoints.forEach((point, index) => { if (index !== phoneIndex || point.label) add(point.label || point.type, point.value); });
+  extraction.contactPoints.forEach((point, index) => {
+    if (index !== phoneIndex || point.label) add(point.label ? `${point.type} (${point.label})` : point.type, point.value, JSON.stringify(["contact", point.type, point.label, point.value]));
+  });
   add("网站", extraction.website);
   extraction.addresses.forEach(value => add(value.label || "地址", value.value));
   extraction.certifications.forEach(value => add("资格", value));
-  fields.notes = [...new Set(notes)].join("\n");
+  fields.notes = notes.join("\n");
   return fields;
 }
 

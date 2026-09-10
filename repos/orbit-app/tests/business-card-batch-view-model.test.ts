@@ -12,6 +12,20 @@ export const extraction: BusinessCardStructuredExtractionContract = {
   website: "https://orbit.invalid", addresses: [{ label: "Tokyo", value: "Tokyo address" }, { label: "Osaka", value: "Osaka address" }], certifications: ["PhD", "PMP"], detectedLanguages: ["ja", "en"]
 };
 const stamp = "2026-09-10T00:00:00Z";
+test("FinalFix I1 labeled channels deduplicate by meaning, retaining phone fax and messaging labels", () => {
+  const fields = businessCardReviewFields({ ...extraction, contactPoints: [
+    { type: "phone", label: "Office", value: "0312345678" },
+    { type: "fax", label: "Office", value: "0312345678" },
+    { type: "fax", label: "Office", value: "0312345678" },
+    { type: "wechat", label: "Tokyo", value: "same-account" },
+    { type: "whatsapp", label: "Tokyo", value: "same-account" },
+  ] });
+  assert.equal(fields.phone, "0312345678");
+  for (const line of ["phone (Office): 0312345678", "fax (Office): 0312345678", "wechat (Tokyo): same-account", "whatsapp (Tokyo): same-account"]) {
+    assert.equal(fields.notes.split("\n").filter(note => note === line).length, 1, line);
+  }
+});
+
 export function detail(status: BusinessCardBatchDetailContract["batch"]["status"] = "ready_for_review", statuses: BusinessCardBatchDetailContract["items"][number]["status"][] = ["extracted"]): BusinessCardBatchDetailContract {
   return { batch: { id: "batch:/ 空", actorId: "one", status, totalItems: statuses.length, processedItems: statuses.length, failedItems: statuses.filter(s => s === "failed").length, confirmedItems: statuses.filter(s => s === "confirmed").length, skippedItems: statuses.filter(s => s === "skipped").length, sourceFiles: [], createdAt: stamp, updatedAt: stamp, expiresAt: "2099-09-10T00:00:00Z" }, items: statuses.map((status, i) => ({ id: `item:${i}`, batchId: "batch:/ 空", actorId: "one", seq: i + 1, sourceFileName: `card-${i}.png`, sourcePage: null, status, imagePath: "private/object", imageDigest: `sha256:${"a".repeat(64)}`, uploadMimeType: "image/png", extraction, reviewIssues: [{ code: "INVALID_EMAIL", field: "email", message: "核对邮箱" }], usage: null, errorCode: status === "failed" ? "OCR_PROVIDER_FAILED" : null, attempts: 1, leaseOwner: null, leasedAt: null, confirmedContactId: status === "confirmed" ? "contact:/ 空" : null, createdAt: stamp, updatedAt: stamp })) };
 }

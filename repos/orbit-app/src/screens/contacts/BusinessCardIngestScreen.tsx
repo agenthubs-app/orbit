@@ -92,10 +92,10 @@ function IngestContent({ session }: { session: IngestSession }) {
       const detail = acceptedIngestDetail(response, scope.batchId, previous?.batch.actorId ?? null);
       const regressed = detail && previous && (detail.batch.version < previous.batch.version || detail.batch.reviewGeneration < previous.batch.reviewGeneration || detail.batch.idempotencyKey !== previous.batch.idempotencyKey || detail.batch.manifestFingerprint !== previous.batch.manifestFingerprint || detail.items.length !== previous.items.length || previous.items.some(i => {
         const next = detail.items.find(n => n.id === i.id);
-        return !next || next.version < i.version || next.seq !== i.seq || (["excluded", "confirmed", "skipped"].includes(i.status) && next.status !== i.status);
+        return !next || next.version < i.version || next.seq !== i.seq || next.clientDigest !== i.clientDigest || next.rawSize !== i.rawSize || next.rawMimeType !== i.rawMimeType || next.sourceFileName !== i.sourceFileName || (["excluded", "confirmed", "skipped"].includes(i.status) && next.status !== i.status);
       }) || (["completed", "cancelled", "expired"].includes(previous.batch.status) && detail.batch.status !== previous.batch.status));
       if (!detail || regressed) {
-        if (response.status === 410) { clearPendingFiles(fileScope); clearReview(); }
+        observeUnavailable(response.status, true);
         update({ error: "批次读取结果无法确认，请刷新重试。" }); return;
       }
       pendingFiles(fileScope, detail);
@@ -148,6 +148,7 @@ function IngestContent({ session }: { session: IngestSession }) {
       const result = await uploadPendingPass({
         client: scope.client, detail, files, signal: ticket.signal,
         isCurrent: item => ticket.valid() && current.current.detail === detail && current.current.detail.items.some(i => i.id === item.id && i.version === item.version && i.status === "awaiting_upload"),
+        onUnavailable: status => { if (ticket.valid()) observeUnavailable(status); },
       });
       if (!ticket.valid()) return;
       if (result.gone) clearPendingFiles(fileScope);
@@ -187,7 +188,9 @@ function IngestContent({ session }: { session: IngestSession }) {
     try {
       const path = action === "exclude" ? ingestItemPath(scope.batchId, itemId!) + "/exclude" : ingestBatchPath(scope.batchId) + "/" + action;
       const response = await scope.client.post<unknown>(path, { body: {}, signal: ticket.signal });
-      if (!ticket.valid() || current.current.detail !== detail || ingestExpired(detail)) return;
+      if (!ticket.valid()) return;
+      if (observeUnavailable(response.status)) return;
+      if (current.current.detail !== detail || ingestExpired(detail)) return;
       let accepted = false;
       if (isHttpSuccess(response)) {
         if (action === "exclude") {
@@ -204,8 +207,7 @@ function IngestContent({ session }: { session: IngestSession }) {
         }
       }
       if (!accepted) {
-        if (response.status === 410) { clearPendingFiles(fileScope); clearReview(); }
-        update({ error: response.status === 409 || response.status === 410 ? "批次状态已变化，正在重新读取。" : "操作结果无法确认，请刷新后重试。" });
+        update({ error: response.status === 409 ? "批次状态已变化，正在重新读取。" : "操作结果无法确认，请刷新后重试。" });
       } else {
         pendingFiles(fileScope, current.current.detail!);
         update({ notice: action === "exclude" ? "已排除名片。" : action === "cancel" ? "批次已取消。" : "已提交识别。" });
@@ -216,10 +218,18 @@ function IngestContent({ session }: { session: IngestSession }) {
       ticket.release();
     }
   }
-  function clearReview() {
+  function observeUnavailable(status: number, wholeBatch = false) {
+    if (status !== 404 && status !== 410) return false;
+    const definitive = wholeBatch || status === 410;
+    if (definitive) clearPendingFiles(fileScope);
+    clearReview(!definitive);
+    update({ error: "批次状态无法确认，请刷新重试。" });
+    return true;
+  }
+  function clearReview(preserveDrafts = false) {
     imageAttempt.current = null; setImage({ status: "none" });
-    // Keep owner/version history, but only an accepted detail may restore review authority.
-    update({ drafts: new Map(), selectedId: null, duplicate: null, reviewInvalidated: true, authorized: false });
+    // Ambiguous item 404 retains data, never authority; only accepted detail releases it.
+    update({ ...(preserveDrafts ? {} : { drafts: new Map() }), selectedId: null, duplicate: null, reviewInvalidated: true, authorized: false });
   }
   function reviewSnapshot(item: IngestItemContract) {
     const detail = current.current.detail!;
@@ -255,7 +265,9 @@ function IngestContent({ session }: { session: IngestSession }) {
     let refresh = true;
     try {
       const response = await scope.client.post<unknown>(ingestItemPath(scope.batchId, snapshot.item.id) + "/" + action, { body: action === "confirm" || action === "manual-entry" ? { ...snapshot.draft!.fields, allowDuplicate: override } : {}, signal: ticket.signal });
-      if (!ticket.valid() || !snapshot.valid()) return;
+      if (!ticket.valid()) return;
+      if (observeUnavailable(response.status)) return;
+      if (!snapshot.valid()) return;
       const accepted = acceptedIngestReview(response, snapshot.detail, snapshot.item, action);
       if (accepted?.state === "duplicate_review") {
         refresh = false;
@@ -265,7 +277,6 @@ function IngestContent({ session }: { session: IngestSession }) {
         if (action !== "retry") drafts.delete(snapshot.item.id);
         update({ drafts, duplicate: null, detail: { ...snapshot.detail, items: snapshot.detail.items.map(i => i.id === accepted.item.id ? accepted.item : i) }, notice: action === "retry" ? "已提交重新识别。" : action === "skip" ? "已跳过名片。" : "已收录。" });
       } else {
-        if (response.status === 410) { clearPendingFiles(fileScope); clearReview(); }
         update({ error: response.status === 409 ? "版本已变化，编辑已保留，请核对刷新后的名片。" : "操作结果无法确认，请刷新后重试。" });
       }
     } catch { if (ticket.valid()) update({ error: "操作结果无法确认，请刷新后重试。" }); }
@@ -290,13 +301,14 @@ function IngestContent({ session }: { session: IngestSession }) {
       if (!ticket.valid() || !snapshot.valid()) return;
       dispatched = true;
       const response = await scope.client.post<unknown>(itemReplacePath(scope.batchId, snapshot.item.id), { rawBody: bytes, headers: { "Content-Type": file.mimeType, "If-Match": String(snapshot.item.version) }, signal: ticket.signal });
-      if (!ticket.valid() || !snapshot.valid()) return;
+      if (!ticket.valid()) return;
+      if (observeUnavailable(response.status)) return;
+      if (!snapshot.valid()) return;
       const accepted = acceptedIngestReview(response, snapshot.detail, snapshot.item, "replace", file);
       if (accepted?.state === "accepted") {
         imageAttempt.current = null; setImage({ status: "none" });
         update({ duplicate: null, detail: { ...snapshot.detail, items: snapshot.detail.items.map(i => i.id === accepted.item.id ? accepted.item : i) }, notice: "已替换名片。" });
       } else {
-        if (response.status === 410) { clearPendingFiles(fileScope); clearReview(); }
         update({ error: response.status === 409 ? "版本已变化，编辑已保留，请核对刷新后的名片。" : "替换结果无法确认，请刷新后重试。" });
       }
     } catch (error) { if (await ticket.waitForForeground() && snapshot.valid()) update({ error: error instanceof Error ? error.message : "无法替换名片。" }); }
@@ -307,7 +319,7 @@ function IngestContent({ session }: { session: IngestSession }) {
     }
   }
   function reloadFields(item: IngestItemContract) {
-    if (!isCurrent() || lock.current) return;
+    if (!isCurrent() || lock.current || current.current.reviewInvalidated) return;
     const snapshot = reviewSnapshot(item);
     Alert.alert("重新载入字段？", "将丢弃当前名片的本地编辑。", [{ text: "返回", style: "cancel" }, { text: "确认", onPress: () => { if (snapshot.valid()) void load({ id: item.id, draft: snapshot.draft, selectionEpoch: selectionEpoch.current }); } }]);
   }
@@ -336,7 +348,7 @@ function IngestContent({ session }: { session: IngestSession }) {
     return () => { alive = false; imageAttempt.current = null; controller.abort(); ticket.signal.removeEventListener("abort", abort); ticket.release(); };
   }, [scope, active, imageKey, imageRetry, state.reviewInvalidated]);
   const renderedImageAttempt = imageAttempt.current;
-  const local = detail ? pendingFiles(fileScope, detail) : new Map();
+  const local = detail && !state.reviewInvalidated ? pendingFiles(fileScope, detail) : new Map();
   const labels: Record<IngestItemContract["status"], string> = { awaiting_upload: "等待上传", uploaded: "已上传", excluded: "已排除", queued: "等待识别", processing: "正在识别", extracted: "待复核", terminal_failed: "识别失败", confirmed: "已收录", skipped: "已跳过" };
   return <AppScreen title="名片批次">
     <View style={styles.row}><Text style={styles.heading}>{detail ? batchStatusLabel(ingestExpired(detail) ? "expired" : detail.batch.status) : "批次"}</Text><IngestButton label="刷新批次" icon="refresh-outline" disabled={!active || state.busy || state.loading} onPress={() => { update({ error: null }); void load(); }} /></View>

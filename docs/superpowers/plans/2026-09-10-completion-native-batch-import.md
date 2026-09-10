@@ -301,7 +301,7 @@ Task5 and the complete runtime phase remain required, not implied by route parit
 - [x] In duplicate review, show the existing contact link and a separate explicit create-anyway confirmation. Only that specific unchanged item/form may send allowDuplicate true. Validate created/contactId/item consistency; a transport 200 with malformed data is not success.
 - [x] Preserve local edits on version conflicts and offer explicit reload; refresh the version before any retry or replacement. On completion/cancel/expiry clear pending files and selected image data. A poll must not revive an old form after completion or account change.
 - [x] Run all batch/ingest/image/client/navigation tests and App typecheck. Run the full App suite; route parity should pass after password recovery and experience plans are also implemented. Record actual failures if prerequisites remain. Independent task review, change detection, and controller commit.
-- [ ] Complete independent whole-feature review, including all four recorded rulings and cross-task interfaces. Resolve required findings through the bounded final-review workflow before runtime acceptance starts.
+- [x] Complete independent whole-feature review, including all five recorded rulings and cross-task interfaces. Resolve required findings through the bounded final-review workflow before runtime acceptance starts.
 
 ### Task 5 Checkpoint
 
@@ -333,6 +333,60 @@ Log /tmp/orbit-completion-batch-pre-final-full-web-node22-20260910.log.
 No required evidence check was weakened. Native file/decoder/keyboard behavior,
 actual local HTTP/DB flows and populated cross-client readback remain pending.
 This task checkpoint is not whole-feature approval or runtime acceptance.
+
+### Final Review Correction
+
+Whole-feature review at199791ca7 found three Important issues: printed labels
+can erase contact-channel meaning, the current server projects BATCH_GONE as404
+while native cleanup assumes410, and item selection changes can discard an owned
+batch-level Gone response before cleanup. All require the one bounded final fix
+wave and scoped re-review; runtime acceptance remains gated.
+
+Ruling: Align native unavailable-resource recovery with the unchanged current
+API's NOT_FOUND/404 projection while retaining defensive409/410 handling. An
+owned whole-batch GET404/410 clears pending/review state. An ambiguous item/upload
+404 stops new dispatch and quarantines scope-owned pending metadata/drafts,
+revoking mutations/review/image authority until an accepted identity-consistent,
+nonregressed detail reconciles them. Failed or malformed recovery cannot restore
+stale authority; definitive410, accepted terminal/local expiry and identity/scope
+changes still clear. Image404 remains image-only unavailability. Do not parse
+localized error messages or change backend status/ownership/state-machine policy.
+Reason: the actual handler maps BATCH_GONE and missing resources to generic404,
+and item404 alone cannot prove whole-batch disappearance. Cost if wrong: valid
+data can require an extra explicit refresh and bounded in-memory quarantine until
+authoritative recovery/expiry, rather than immediate reuse; genuine unavailable
+batches must never regain authority from their stale detail. This resolves the
+plan/API mismatch without dropping existing410 regressions or weakening checks.
+
+### Final Feature Checkpoint
+
+The one final fix wave changes seven App files. Shared review notes retain typed
+channel/printed-label/value identity and both confirmation bodies preserve it.
+Owned404 recovery follows the ruling above; uploader reports unavailability
+immediately and stops new dispatch while observing already-dispatched responses.
+Screen handles batch-scope unavailability before stricter item/draft/selection
+acceptance. Accepted recovery pins each original manifest field and canonical
+owner/version history. Image404 remains local, ordinary failures retain edits,
+and old-scope callbacks cannot quarantine or unlock new state.
+
+Whole-feature reviewer completed the one scoped final re-review: I1/I2/I3 all
+ADDRESSED, zero new Critical/Important/Minor or remaining original findings.
+All five task reviews and the whole-feature review are closed for implementation.
+No second final implementation wave or broad review was needed.
+
+GenuinepreprodRED26tests7pass19fail becamefocused26GREEN, expanded37GREEN;
+sixcover284/284zeroFail/skip/cancel95.090550833s, actualAppTCexit0diagnosticfree.
+New-test locator/duplicate-action expectation corrections are disclosed in the
+fix report and not counted as product RED. Parentpostfreeze fullApp1228/1228
+zeroFail/skip/cancel99.150807584s, actualAppTCexit0diagnosticfree. Threeaffected
+Webaudits170tests163pass7knownruntimefail0skip/cancel64.632984666s, exactsixfresh
+public/Party plusglobal87/123missing36, no newstatic/name/transportfailure.
+Logs /tmp/orbit-completion-batch-final-fix-{full-app,typecheck,audits}-node22-20260910.log.
+
+Both Web typechecks and the fullWeb2945/2938pass7knownfail checkpoint above are
+unchanged-source evidence, not a new fullWebrun after this App-only fix. All
+owned verification processes exited. Native/actualHTTP/DB/cross-client runtime
+acceptance remains the next phase; no audit evidence was credited by this review.
 
 ## Runtime Acceptance Still Required
 

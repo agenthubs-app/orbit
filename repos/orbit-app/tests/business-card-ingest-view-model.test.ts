@@ -12,6 +12,30 @@ const digest = "sha256:" + createHash("sha256").update(png).digest("hex");
 const file: PreparedBatchImage = { uri: "file:///card.png", fileName: "card.png", mimeType: "image/png", rawSize: png.length, clientDigest: digest };
 const native: BatchImageNative = { openFile: async () => ({ exists: true, size: png.length, bytes: async () => png }), sha256: async bytes => Uint8Array.from(createHash("sha256").update(bytes).digest()).buffer };
 const stamp = "2026-09-10T00:00:00Z";
+for (const later of [200, 409, 410, 503]) test("FinalFix I2 upload404 stops once, stays quarantined with late " + later, async () => {
+  const d = detail(4);
+  const replies: ((response: Response) => void)[] = [];
+  const unavailable: number[] = [];
+  const failure = (status: number) => new Response(JSON.stringify({ success: false, error: { code: status === 404 ? "NOT_FOUND" : "FAILED", message: "unavailable" } }), { status, headers: { "content-type": "application/json" } });
+  const client = createOrbitApiClient({ fetchImpl: async () => {
+    if (replies.length >= 2) { replies.push(() => {}); return failure(503); }
+    return new Promise<Response>(resolve => replies.push(resolve));
+  } });
+  const options = { client, detail: d, files: new Map(d.items.map(i => [i.id, file])), signal: new AbortController().signal, isCurrent: () => true, native, onUnavailable: (status: number) => unavailable.push(status) };
+  const pending = ingest.uploadPendingPass(options);
+  while (replies.length < 2) await new Promise(resolve => setImmediate(resolve));
+  replies[0]!(failure(404));
+  await new Promise(resolve => setImmediate(resolve));
+  const immediate = [...unavailable];
+  replies[1]!(later === 200 ? new Response(JSON.stringify({ success: true, data: { item: { ...d.items[1], status: "uploaded", version: 2 }, alreadyUploaded: false } }), { headers: { "content-type": "application/json" } }) : failure(later));
+  const result = await pending;
+  assert.deepEqual(immediate, [404], "revoke authority before the other in-flight upload settles");
+  assert.equal(replies.length, 2, "no third or fourth dispatch after NOT_FOUND");
+  assert.equal(result.recovery, true);
+  assert.equal(result.gone, later === 410, "404 must not assert definitive Gone");
+  assert.equal(result.uploaded.length, later === 200 ? 1 : 0, "already-dispatched exact acknowledgment remains scope-owned");
+});
+
 for (const statuses of [[409, 410], [410, 409], [410, 503]]) test("Fix1 concurrent uploads preserve Gone for response order " + statuses.join(","), async () => {
   const d = detail(3);
   const replies: ((response: Response) => void)[] = [];
