@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAiEmailDraftService } from "../../features/chat/ai-email-draft-service";
+import { AI_EMAIL_DRAFT_MODEL_DEFAULTS, createAiEmailDraftService } from "../../features/chat/ai-email-draft-service";
 import { createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
 import { createLiveContactsListSearchAndFilterService } from "../../features/contacts/live-service";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
@@ -374,4 +374,87 @@ test("AI email draft reads an actor-scoped contact from live storage before call
     if (incomplete.success === false) assert.equal(incomplete.error.code, "MODEL_REQUEST_FAILED");
     assert.equal("data" in incomplete, false, "an incomplete response must not expose a usable draft");
   }
+});
+
+test("AI email draft disables DeepSeek thinking and widens the timeout by default (latency-bound generation)", async () => {
+  let providerBody = "";
+  const service = createAiEmailDraftService({
+    contactsService: {
+      listContacts() {
+        return {
+          success: true,
+          data: {
+            contacts: [{ id: "contact:lin-mei", displayName: "林玫" }],
+            provenance: { evidenceIds: ["evidence:lin-mei:1"] },
+          },
+        };
+      },
+    } as never,
+    contactDetailService: {
+      async getContactDetail() {
+        return {
+          success: true,
+          data: {
+            contact: {
+              id: "contact:lin-mei",
+              displayName: "林玫",
+              role: "投资合伙人",
+              organization: "港湾创投",
+              relationshipContext: "双方已有多次有效交流。",
+              evidence: [
+                {
+                  evidenceId: "evidence:lin-mei:1",
+                  capturedAt: "2026-07-25T09:00:00.000Z",
+                  excerpt: "电话复盘了三家人工智能项目，林玫重点询问客户续费数据。",
+                  source: { label: "Calendar signal" },
+                },
+              ],
+              lastInteraction: {
+                occurredAt: "2026-07-25T09:00:00.000Z",
+                summary: "电话复盘了三家人工智能项目，林玫重点询问客户续费数据。",
+                evidenceIds: ["evidence:lin-mei:1"],
+              },
+              publicProfile: { evidenceIds: ["evidence:lin-mei:1"] },
+              nextAction: "发送适合其基金阶段的三家公司清单。",
+            },
+          },
+        };
+      },
+    } as never,
+    modelConfig: {
+      apiKey: "test-deepseek-key",
+      provider: "deepseek",
+      fetchImplementation: (async (_url, init) => {
+        providerBody = String(init?.body ?? "");
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: "stop",
+                message: {
+                  content: JSON.stringify({
+                    subject: "人工智能项目清单跟进",
+                    body: "林玫，您好：\n\n延续我们对三家人工智能项目的电话复盘，我整理了适合贵基金阶段的项目清单，供您复核。",
+                  }),
+                },
+              },
+            ],
+          }),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        );
+      }) as typeof fetch,
+    },
+  });
+
+  const result = await service.createDraft({
+    actorId: "actor:test-account",
+    contactId: "contact:lin-mei",
+    language: "zh",
+    recipientName: "林玫",
+  });
+
+  assert.equal(result.success, true, JSON.stringify(result));
+  assert.equal(AI_EMAIL_DRAFT_MODEL_DEFAULTS.deepseekThinking, false);
+  assert.equal(AI_EMAIL_DRAFT_MODEL_DEFAULTS.requestTimeoutMs, 45_000);
+  assert.match(providerBody, /"thinking":\{"type":"disabled"\}/);
 });

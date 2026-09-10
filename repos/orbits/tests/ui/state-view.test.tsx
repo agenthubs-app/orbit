@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { StateView } from "../../shared/ui/state-view";
+import { StateView, type StateViewLanguage } from "../../shared/ui/state-view";
 import { Chip, WorkbenchSurface } from "../../shared/ui/primitives";
 
 const projectRoot = path.resolve(
@@ -51,6 +51,51 @@ test("state view renders every recovery action as a real named link", () => {
   assert.match(html, /Add a relationship source to start from reviewed context\./);
   assert.match(html, /Check workspace again after source review finishes\./);
   assert.doesNotMatch(html, /What to do next:/);
+});
+
+test("state view renders a single language when `language` is provided", () => {
+  const render = (language: StateViewLanguage | undefined) =>
+    renderToStaticMarkup(
+      React.createElement(StateView, {
+        description: "Relationship work is waiting for source context.",
+        eyebrow: "Checking sources",
+        evidence: ["source:event:demo"],
+        language,
+        title: "Relationship review is waiting",
+      }),
+    );
+
+  const zh = render("zh");
+  assert.match(zh, /<dt>为什么重要<\/dt>/);
+  assert.match(zh, /<dt>现在可用的上下文<\/dt>/);
+  assert.match(zh, /<dt>安全下一步<\/dt>/);
+  assert.match(zh, /<summary>来源详情<\/summary>/);
+  assert.match(zh, /接下来做什么:<\/strong>/);
+  assert.match(zh, /这里还没有连接任何外部账号。/);
+  assert.doesNotMatch(zh, / \/ /);
+  // Visible English chrome is gone; the English aria-label hooks below stay.
+  assert.doesNotMatch(zh, />Why this matters<|>Source details<|>What you can use now<|>Safe next step<|No outside accounts/);
+  assert.match(zh, /aria-label="State source details"/);
+  assert.match(zh, /aria-label="Safe next step"/);
+  assert.match(zh, /aria-label="Screen purpose"/);
+
+  const en = render("en");
+  assert.match(en, /<dt>Why this matters<\/dt>/);
+  assert.match(en, /<summary>Source details<\/summary>/);
+  assert.match(en, /No outside accounts are connected here yet\./);
+  assert.doesNotMatch(en, / \/ /);
+  assert.doesNotMatch(en, /为什么重要|来源详情/);
+
+  // ja copy is present for the StateView chrome; nothing bilingual leaks.
+  const ja = render("ja");
+  assert.match(ja, /<dt>なぜ重要か<\/dt>/);
+  assert.match(ja, /<summary>出典の詳細<\/summary>/);
+  assert.doesNotMatch(ja, / \/ /);
+
+  // Callers that do not pass `language` keep the historical bilingual output.
+  const legacy = render(undefined);
+  assert.match(legacy, /<summary>来源详情 \/ Source details<\/summary>/);
+  assert.match(legacy, /<dt>为什么重要 \/ Why this matters<\/dt>/);
 });
 
 test("state view filters unnamed recovery controls instead of rendering empty links", () => {

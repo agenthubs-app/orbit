@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createBusinessCardBatchCollectionHandlers } from "../../app/api/contact-drafts/business-card/batches/handler";
-import { createBusinessCardBatchItemConfirmHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/confirm/handler";
+import { createBusinessCardBatchItemConfirmHandler, createBusinessCardBatchItemManualEntryHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/confirm/handler";
 import type { BusinessCardContactWriteService } from "../../features/contacts/contact-write-contract";
 import { createBusinessCardBatchDetailHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/handler";
 import { createBusinessCardBatchItemImageHandler } from "../../app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/image/handler";
@@ -201,6 +201,55 @@ test("item confirm writes the contact and advances the item; duplicates leave th
     afterDuplicate?.items.find((entry) => entry.id === claimed[1]!.id)?.status,
     "extracted",
   );
+});
+
+test("failed OCR items require the explicit manual-entry endpoint before contact creation", async () => {
+  const { service } = await setup();
+  const handlers = createBusinessCardBatchCollectionHandlers(resolveActor, service);
+  const created = await handlers.POST(uploadRequest([
+    { bytes: TINY_JPEG, name: "unreadable.jpg", type: "image/jpeg" },
+  ]));
+  const { batch } = ((await created.json()) as { data: { batch: { id: string } } }).data;
+  const now = new Date().toISOString();
+  let [claimed] = await service.claimPendingItems({ limit: 1, now, workerId: "w" });
+  await service.failItem({
+    batchId: batch.id,
+    errorCode: "OCR_PROVIDER_FAILED",
+    itemId: claimed!.id,
+    now,
+    workerId: "w",
+  });
+  [claimed] = await service.claimPendingItems({ limit: 1, now, workerId: "w" });
+  await service.failItem({
+    batchId: batch.id,
+    errorCode: "OCR_PROVIDER_FAILED",
+    itemId: claimed!.id,
+    now,
+    workerId: "w",
+  });
+
+  let writes = 0;
+  const writeService: BusinessCardContactWriteService = {
+    async confirmBusinessCardContact(input) {
+      writes++;
+      return { success: true, data: { confirmedAt: now, contactId: "contact:manual",
+        contactWriteExecuted: true, duplicateContactId: null, evidenceIds: input.evidenceIds, state: "created" } };
+    },
+  };
+  const body = JSON.stringify({ displayName: "手工联系人", organization: "手工公司" });
+  const context = { params: Promise.resolve({ id: batch.id, itemId: claimed!.id }) };
+  const ordinary = createBusinessCardBatchItemConfirmHandler(resolveActor, service, writeService);
+  assert.equal((await ordinary(new Request("http://localhost", { body, method: "POST" }), context)).status, 409);
+  assert.equal(writes, 0);
+
+  const manual = createBusinessCardBatchItemManualEntryHandler(resolveActor, service, writeService);
+  const response = await manual(new Request("http://localhost", { body, method: "POST" }), context);
+  assert.equal(response.status, 200);
+  assert.equal(writes, 1);
+  const detail = await service.getBatch(ACTOR.id, batch.id);
+  assert.equal(detail?.items[0]?.status, "confirmed");
+  assert.equal(detail?.batch.confirmedItems, 1);
+  assert.equal(detail?.batch.failedItems, 0);
 });
 
 test("batch detail hides extraction while processing and the image route serves then 404s", async () => {

@@ -62,7 +62,7 @@ export const businessCardCloudOcrUsageSchema: z.ZodType<Contract.BusinessCardClo
 export const businessCardBatchSchema: z.ZodType<Contract.BusinessCardBatchContract> = z.object({
   id: identity,
   actorId: identity,
-  status: z.enum(["processing", "ready_for_review", "completed"]),
+  status: z.enum(["processing", "ready_for_review", "completed", "cancelled"]),
   totalItems: count,
   processedItems: count,
   failedItems: count,
@@ -72,7 +72,12 @@ export const businessCardBatchSchema: z.ZodType<Contract.BusinessCardBatchContra
   createdAt: timestamp,
   updatedAt: timestamp,
   expiresAt: timestamp,
-}).transform((value) => ({ ...value, sourceFiles: value.sourceFiles }));
+  imagesDeletedAt: timestamp.optional(),
+}).transform(({ imagesDeletedAt, ...value }) => ({
+  ...value,
+  sourceFiles: value.sourceFiles,
+  ...(imagesDeletedAt === undefined ? {} : { imagesDeletedAt }),
+}));
 
 const legacyItemObject = z.object({
   id: identity,

@@ -6,6 +6,7 @@
  */
 import {
   getOrbitServerLanguage,
+  makeOrbitServerT,
 } from "../../orbit-language-server";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
@@ -15,6 +16,7 @@ import { StateView } from "../../../../../shared/ui/state-view";
 import { contactDetailPageViewModel } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-page-view-model";
 import {
   loadAppContactDetailRoute,
+  localizeAppContactDetailBoundaryModel,
   type AppContactDetailBoundaryModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { OrbitRealCardConnection } from "../orbit-real-card-connection";
@@ -48,18 +50,30 @@ async function getContactDetailPageLanguage(): Promise<OrbitLanguage> {
 }
 
 function ContactDetailRouteStateView({
-  routeModel,
+  language,
+  routeModel: rawRouteModel,
 }: {
+  language: OrbitLanguage;
   routeModel: AppContactDetailBoundaryModel;
 }) {
+  // 边界文案按当前 UI 语言单语渲染（StateView 也接收 language），
+  // 不再出现“中文 / English”拼接。
+  const t = makeOrbitServerT(language);
+  const routeModel = localizeAppContactDetailBoundaryModel(rawRouteModel, language);
+
   return (
     <OrbitRouteBoundaryFrame navActive="cards" page="contact-detail">
       <StateView
         description={routeModel.description}
         emptyState={routeModel.description}
         evidence={Array.from(routeModel.evidence)}
-        eyebrow="Contact detail"
-        guardrail="No contact detail, evidence, relationship value, AI, message, notification, or external provider work is executed from this route state."
+        eyebrow={t({ en: "Contact detail", ja: "連絡先の詳細", zh: "联系人详情" })}
+        guardrail={t({
+          en: "No contact detail, evidence, relationship value, AI, message, notification, or external provider work is executed from this route state.",
+          ja: "このルート状態では、連絡先の詳細、根拠、関係価値、AI、メッセージ、通知、外部プロバイダーの処理は一切実行されません。",
+          zh: "此路由状态不会执行任何联系人详情、证据、关系价值、AI、消息、通知或外部提供方操作。",
+        })}
+        language={language}
         nextStep={routeModel.nextStep}
         recoveryActions={routeModel.recoveryActions.map((action, index) => ({
           href: action.href,
@@ -128,7 +142,7 @@ export default async function AppContactDetailPage({
           viewModel={contactDetailPageViewModel(routeModel, language)}
         />
       ) : (
-        <ContactDetailRouteStateView routeModel={routeModel} />
+        <ContactDetailRouteStateView language={language} routeModel={routeModel} />
       )}
       {routeModel.routeState === "success" && memoQueryPresent ? (
         <AppointmentMemoCapture

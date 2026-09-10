@@ -45,6 +45,49 @@ function crmRole(contact: Pick<OrbitContactView, "company" | "title">, t: Transl
   return [contact.company, contact.title].filter(Boolean).join(" · ") || t({ en: "No company or title yet", zh: "暂无公司职位" });
 }
 
+// 来源标签按 source 稳定码本地化，而不是照搬存储的英文句子。名片扫描的存量
+// 数据里还留着 `Business card confirmed by <账号邮箱>` 这种把确认者当来源写的
+// 字符串（确认时由 write service 生成），账号邮箱绝不能当作正文出现在页面上。
+const sourceMetLabels: Record<OrbitContactView["source"], Copy> = {
+  scan: { en: "Business card scan", zh: "名片扫描确认" },
+  exchange: { en: "Business card exchange", zh: "名片交换" },
+  qr: { en: "QR scan", zh: "现场扫码" },
+  event: { en: "Event import", zh: "活动导入" },
+  contact: { en: "Imported contact", zh: "通讯录导入" },
+  referral: { en: "Referral", zh: "朋友推荐" },
+  manual: { en: "Manual entry", zh: "手动添加" },
+};
+
+const EMAIL_LIKE = /[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+/;
+const ACTOR_SENTENCE = /\bconfirmed by\b/i;
+
+export function metLabel(contact: Pick<OrbitContactView, "met" | "source">, t: Translate): string {
+  const raw = (contact.met ?? "").trim();
+
+  if (contact.source === "scan" || !raw || ACTOR_SENTENCE.test(raw) || EMAIL_LIKE.test(raw)) {
+    return t(sourceMetLabels[contact.source]);
+  }
+
+  return raw;
+}
+
+// 服务层没有真实值时曾用这些英文句子顶位；它们是「没有」而不是内容，界面上按空处理。
+const PLACEHOLDER_COPY = [
+  /^relationship context$/i,
+  /^unknown location$/i,
+  /^relationship contact$/i,
+  /^business card confirmed by\b/i,
+  /^review the live contact detail before taking action\.?$/i,
+  /^live relationship context is available for this contact\.?$/i,
+  /^live contact profile is available from shared relationship records\.?$/i,
+  /^generated from live contact and relationship context\.?$/i,
+];
+
+export function sourcedValue(value: string | null | undefined): string {
+  const trimmed = (value ?? "").trim();
+  return PLACEHOLDER_COPY.some((pattern) => pattern.test(trimmed)) ? "" : trimmed;
+}
+
 function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; t: Translate }) {
   const meta = strengthMeta[strength];
   return <span className={`nc-strength ${meta.cls}`}><span className="nc-dot" />{t(meta.label)}</span>;
@@ -97,13 +140,13 @@ function ContactCard({ contact, t, onEditIndustry, onEditInteraction }: { contac
       {contact.phone ? <Frow icon="phone" k={t({ en: "Phone", zh: "电话" })}><span className="mono">{contact.phone}</span></Frow> : null}
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
       <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>
-        <span>{contact.industry || t({ en: "Unclassified", zh: "未分类" })}</span>{" "}
+        <span>{sourcedValue(contact.industry) || t({ en: "Unclassified", zh: "未分类" })}</span>{" "}
         <button className="btn btn-quiet btn-sm" type="button" aria-label={t({ en: "Edit primary industry", zh: "编辑主要行业" })} onClick={onEditIndustry}>{t({ en: "Edit", zh: "编辑" })}</button>
       </Frow>
-      {contact.location ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{contact.location}</Frow> : null}
-      {contact.met ? <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{contact.met}</Frow> : null}
-      {contact.lastInteraction || contact.editableInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>
-        <span>{contact.lastInteraction || t({ en: "No interaction recorded", zh: "暂无互动记录" })}</span>{" "}
+      {sourcedValue(contact.location) ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{sourcedValue(contact.location)}</Frow> : null}
+      <Frow icon="checkCircle" k={t({ en: "Met via", zh: "认识来源" })}>{metLabel(contact, t)}</Frow>
+      {sourcedValue(contact.lastInteraction) || contact.editableInteraction ? <Frow icon="clock" k={t({ en: "Last touch", zh: "最近互动" })}>
+        <span>{sourcedValue(contact.lastInteraction) || t({ en: "No interaction recorded", zh: "暂无互动记录" })}</span>{" "}
         {contact.editableInteraction ? <button type="button" className="btn btn-quiet btn-sm" aria-label={t({ en: "Edit last interaction", zh: "编辑最近互动" })} onClick={onEditInteraction}>{t({ en: "Edit", zh: "编辑" })}</button> : null}
       </Frow> : null}
     </div>
@@ -118,7 +161,7 @@ function AboutCard({ contact, t }: { contact: OrbitContactView; t: Translate }) 
   const intro = profile?.intro?.trim() ?? "";
   const topics = (profile?.topics ?? []).filter(Boolean);
   const prompts = (profile?.conversationPrompts ?? []).filter(Boolean);
-  const relationship = contact.note?.trim() ?? "";
+  const relationship = sourcedValue(contact.note);
 
   if (!bio && !intro && !topics.length && !prompts.length && !relationship) {
     return null;
@@ -316,9 +359,11 @@ function ContactNotesCard({ contact, language, onAdd }: { contact: OrbitContactV
 }
 
 function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: Translate; compact?: boolean }) {
-  const real = contact.nextAction;
-  const text = real?.text?.trim();
-  const reason = real?.reason?.trim();
+  // 服务层的英文占位句（"Review the live contact detail before taking action."）
+  // 不是建议；按「没有建议」渲染本地化的空态文案。
+  const text = sourcedValue(contact.nextAction?.text);
+  const real = text ? contact.nextAction : null;
+  const reason = sourcedValue(real?.reason);
 
   return (
     <div className="card nc-card-pad">
@@ -422,9 +467,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 <div className="nc-hero-meta">
                   <StatusPicker status={contact.pipelineStatus} viewModel={viewModel} t={t} />
                   <StrengthTag strength={contact.strength} t={t} />
-                  {contact.met ? (
-                    <span style={{ color: "var(--text-3)", fontSize: 13 }}>· {t({ en: "Met at", zh: "认识于" })} {contact.met}</span>
-                  ) : null}
+                  <span style={{ color: "var(--text-3)", fontSize: 13 }}>· {t({ en: "Met via", zh: "认识于" })} {metLabel(contact, t)}</span>
                 </div>
               </div>
               <div className="nc-hero-cta">

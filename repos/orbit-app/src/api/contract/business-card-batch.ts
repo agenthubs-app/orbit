@@ -41,7 +41,7 @@ export interface BusinessCardCloudOcrUsageContract {
   latencyMs: number;
 }
 
-export type BusinessCardBatchStatus = "processing" | "ready_for_review" | "completed";
+export type BusinessCardBatchStatus = "processing" | "ready_for_review" | "completed" | "cancelled";
 export type BusinessCardBatchItemStatus = "pending" | "processing" | "extracted" | "failed" | "confirmed" | "skipped";
 export type BusinessCardBatchItemErrorCode = "OCR_PROVIDER_FAILED" | "OCR_PROVIDER_TIMEOUT" | "OCR_INVALID_OUTPUT";
 
@@ -64,6 +64,7 @@ export interface BusinessCardBatchContract {
   createdAt: string;
   updatedAt: string;
   expiresAt: string;
+  imagesDeletedAt?: string;
 }
 
 export interface BusinessCardBatchItemContract {

@@ -71,7 +71,7 @@ export const CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS = {
   CONNECTION_NOT_FOUND: {
     code: "CONNECTION_NOT_FOUND",
     appCode: "NOT_FOUND",
-    message: "That mock connection is not available in this sprint boundary.",
+    message: "That connection is not available.",
     recovery:
       "Use demo-connection-1 or select an explicit empty-state scenario before reviewing connection evidence.",
   },
@@ -85,8 +85,7 @@ export const CONNECTION_EVIDENCE_SERVICE_ERROR_DEFINITIONS = {
   CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED: {
     code: "CONNECTION_EVIDENCE_SOURCE_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
-    message:
-      "That mock evidence source link is not supported by this sprint boundary.",
+    message: "That evidence source link is not supported.",
     recovery:
       "Use one of the local connection evidence source types declared in the connections contract.",
   },

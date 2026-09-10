@@ -141,6 +141,80 @@ create index bc_ingest_cleanup_pending
   where status = 'pending';
 `,
   },
+  {
+    name: "business-card-image-write-intents",
+    version: 2,
+    sql: `
+create table bc_ingest_image_writes (
+  workspace_id text not null,
+  object_key text not null,
+  state text not null default 'pending' check (state in ('pending', 'attached', 'deleting', 'deleted')),
+  created_at timestamptz not null default now(),
+  next_attempt_at timestamptz not null default now() + interval '24 hours',
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, object_key)
+);
+create index bc_ingest_image_writes_due on bc_ingest_image_writes (workspace_id, next_attempt_at)
+  where state in ('pending', 'deleting');
+
+create function bc_ingest_attach_image_write() returns trigger language plpgsql as $body$
+declare write_state text;
+begin
+  if new.derivative_object_key is null then return new; end if;
+  select state into write_state from bc_ingest_image_writes
+    where workspace_id = new.workspace_id and object_key = new.derivative_object_key for update;
+  if write_state in ('deleting', 'deleted') then
+    raise exception 'Image write has expired; upload a new image' using errcode = '23514';
+  end if;
+  update bc_ingest_image_writes set state = 'attached', updated_at = now()
+    where workspace_id = new.workspace_id and object_key = new.derivative_object_key and state = 'pending';
+  return new;
+end;
+$body$;
+create trigger bc_ingest_attach_image_write_trigger
+  before insert or update of derivative_object_key on bc_ingest_items
+  for each row execute function bc_ingest_attach_image_write();
+`,
+  },
+  {
+    name: "business-card-image-write-pipelines",
+    version: 3,
+    sql: `alter table bc_ingest_image_writes add column pipeline text not null default 'v2'
+      check (pipeline in ('v1', 'v2'));`,
+  },
+  {
+    name: "business-card-raw-upload-sources",
+    version: 4,
+    sql: `create table bc_ingest_raw_uploads (
+      workspace_id text not null,
+      id uuid not null,
+      actor_id text not null,
+      request_key text not null,
+      pipeline text not null check (pipeline in ('v1','v2')),
+      file_name text not null,
+      mime_type text not null,
+      byte_size bigint not null check (byte_size > 0 and byte_size <= 52428800),
+      digest text not null,
+      object_key text not null,
+      state text not null default 'reserved' check (state in ('reserved','processing','consumed','deleting','deleted')),
+      lease_key uuid,
+      lease_expires_at timestamptz,
+      target_ref text,
+      upload_expires_at timestamptz not null default now() + interval '15 minutes',
+      expires_at timestamptz not null default now() + interval '24 hours',
+      next_attempt_at timestamptz not null default now() + interval '24 hours 1 minute',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (workspace_id, id),
+      unique (workspace_id, actor_id, request_key),
+      unique (object_key),
+      check ((state = 'processing') = (lease_key is not null)),
+      check ((state = 'processing') = (lease_expires_at is not null)),
+      check (state <> 'consumed' or target_ref is not null)
+    );
+    create index bc_ingest_raw_uploads_cleanup on bc_ingest_raw_uploads (workspace_id, pipeline, next_attempt_at)
+      where state <> 'deleted';`,
+  },
 ];
 
 function checksum(sql: string): string {

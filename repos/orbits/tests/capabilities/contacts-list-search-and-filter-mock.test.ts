@@ -373,7 +373,7 @@ test("contacts list search and filter API routes return stable envelopes with em
     error: {
       code: "VALIDATION_ERROR",
       message:
-        "That mock contacts list search or filter value is not supported by this sprint boundary.",
+        "That contacts list search or filter value is not supported.",
       context: {
         boundary: "developer-admin",
         contactsListSearchFilterErrorCode: "CONTACTS_FILTER_NOT_SUPPORTED",

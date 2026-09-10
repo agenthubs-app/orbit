@@ -1,4 +1,10 @@
+import { persistNewBusinessCardBatch } from "./storage/business-card-new-batch";
 import { randomUUID } from "node:crypto";
+import { AppError } from "../../shared/errors/app-error";
+import { createLiveBusinessCardContactWriteService } from "../contacts/live-contact-write-service";
+import { createStorageBusinessCardContactWriteProvider } from "../contacts/storage/contact-write-live-record-provider";
+import type { BusinessCardContactWriteResult, BusinessCardContactWriteService, ConfirmBusinessCardContactInput } from "../contacts/contact-write-contract";
+import { withQueuedCardBatches } from "./business-card-queue-dispatch";
 
 import type {
   BusinessCardCloudOcrUsage,
@@ -6,7 +12,6 @@ import type {
   BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
 import {
-  BUSINESS_CARD_BATCH_EXPIRY_DAYS,
   BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
   BUSINESS_CARD_BATCH_ITEM_MAX_ATTEMPTS,
   BUSINESS_CARD_BATCH_MAX_ITEMS,
@@ -16,7 +21,8 @@ import {
   type BusinessCardBatchSourceFile,
   type NewBusinessCardBatchItemInput,
 } from "./business-card-batch-contract";
-import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
+import { configuredBusinessCardBatchPool, createTransactionalBusinessCardBatchService } from "./storage/business-card-batch-transactions";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
@@ -91,6 +97,15 @@ export interface BusinessCardBatchService {
     batchId: string;
     now: string;
   }): Promise<void>;
+  confirmContact(input: {
+    actorId: string; actorLabel: string; batchId: string; itemId: string; now: string;
+    allowFailed?: boolean;
+    fields: Omit<ConfirmBusinessCardContactInput, "actorId" | "actorLabel" | "draftId" | "confirmed" | "evidenceIds" | "imageDigest">;
+    writeService?: BusinessCardContactWriteService;
+  }): Promise<BusinessCardContactWriteResult>;
+  sweepConfirmedImages(now: string): Promise<number>;
+  cancelBatch(input: { actorId: string; batchId: string; now: string }): Promise<void>;
+  sweepCancelled(now: string): Promise<number>;
   sweepExpired(now: string): Promise<number>;
 }
 
@@ -300,59 +315,15 @@ export function createBusinessCardBatchService({
       }
 
       const batchId = idFactory();
-      const expiresAt = new Date(
-        Date.parse(input.now) + BUSINESS_CARD_BATCH_EXPIRY_DAYS * 86_400_000,
-      ).toISOString();
-
-      for (const newItem of input.items) {
-        const itemId = idFactory();
-        const imagePath = await imageStore.save(
-          batchId,
-          itemId,
-          Buffer.from(newItem.imageJpegBase64, "base64"),
-        );
-
-        await saveItem({
-          actorId: input.actorId,
-          attempts: 0,
-          batchId,
-          confirmedContactId: null,
-          createdAt: input.now,
-          errorCode: null,
-          extraction: null,
-          id: itemId,
-          imageDigest: newItem.imageDigest,
-          imagePath,
-          leaseOwner: null,
-          leasedAt: null,
-          reviewIssues: [],
-          seq: newItem.seq,
-          sourceFileName: newItem.sourceFileName,
-          sourcePage: newItem.sourcePage,
-          status: "pending",
-          updatedAt: input.now,
-          uploadMimeType: newItem.uploadMimeType,
-          usage: null,
-        });
+      async function* preparedItems() {
+        for (const newItem of input.items) {
+          const id = idFactory();
+          const imagePath = await imageStore.save(batchId, id, Buffer.from(newItem.imageJpegBase64, "base64"));
+          yield { ...newItem, id, imagePath };
+        }
       }
-
-      const batch: BusinessCardBatchDTO = {
-        actorId: input.actorId,
-        confirmedItems: 0,
-        createdAt: input.now,
-        expiresAt,
-        failedItems: 0,
-        id: batchId,
-        processedItems: 0,
-        skippedItems: 0,
-        sourceFiles: input.sourceFiles,
-        status: "processing",
-        totalItems: input.items.length,
-        updatedAt: input.now,
-      };
-      await saveBatch(batch);
-
-      return batch;
+      return persistNewBusinessCardBatch({ store, workspaceId, batchId, actorId: input.actorId,
+        now: input.now, totalItems: input.items.length, sourceFiles: input.sourceFiles, items: preparedItems() });
     },
 
     async listBatches(actorId) {
@@ -379,6 +350,13 @@ export function createBusinessCardBatchService({
     },
 
     async claimPendingItems(input) {
+      const batches = await store.listRecords({
+        collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId,
+      });
+      const activeBatches = new Set(batches.map(batchFromRecord).filter(
+        (batch): batch is BusinessCardBatchDTO => batch !== null &&
+          batch.status === "processing" && batch.expiresAt > input.now,
+      ).map((batch) => batch.id));
       const leaseExpiredBefore = new Date(
         Date.parse(input.now) - BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
       ).toISOString();
@@ -389,6 +367,7 @@ export function createBusinessCardBatchService({
       const claimable = records
         .map(itemFromRecord)
         .filter((item): item is BusinessCardBatchItemDTO => item !== null)
+        .filter((item) => activeBatches.has(item.batchId))
         .filter(
           (item) =>
             item.status === "pending" ||
@@ -516,6 +495,80 @@ export function createBusinessCardBatchService({
       await recomputeCounts(input.batchId, input.now);
     },
 
+    async confirmContact(input) {
+      const batch = await readBatch(input.batchId);
+      const item = await readItem(input.itemId);
+      if (!batch || batch.actorId !== input.actorId || !item || item.actorId !== input.actorId || item.batchId !== batch.id) {
+        throw new AppError("NOT_FOUND", "Business-card batch item was not found.");
+      }
+      const confirmable = item.status === "extracted" || item.status === "confirmed" ||
+        (input.allowFailed === true && item.status === "failed");
+      if (batch.status === "cancelled" || batch.status === "completed" || !confirmable) {
+        throw new AppError("CONFLICT", "This card is no longer available for confirmation.");
+      }
+      // The configured service binds this provider to the same transaction
+      // connection as the item and batch. Cancellation takes the same lock.
+      const contacts = input.writeService ?? createLiveBusinessCardContactWriteService({
+        now: () => input.now,
+        provider: createStorageBusinessCardContactWriteProvider({ store, workspaceId }),
+      });
+      const result = await contacts.confirmBusinessCardContact({ ...input.fields,
+        actorId: input.actorId, actorLabel: input.actorLabel, confirmed: true, draftId: item.id,
+        evidenceIds: [`evidence:business-card-batch:${item.id}`], imageDigest: item.imageDigest,
+      });
+      if (!result.success || result.data.state === "duplicate_review") return result;
+      if (item.status === "confirmed") return result;
+      // Keep the cleanup reference until after this transaction commits. A
+      // failed commit must preserve both the reviewable image and the card.
+      await saveItem({ ...item, status: "confirmed", confirmedContactId: result.data.contactId, updatedAt: input.now });
+      await recomputeCounts(batch.id, input.now);
+      return result;
+    },
+
+    async sweepConfirmedImages(now) {
+      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items, workspaceId });
+      const confirmed = records.map(itemFromRecord).filter((item): item is BusinessCardBatchItemDTO =>
+        item !== null && item.status === "confirmed" && item.imagePath !== null).slice(0, 20);
+      for (const item of confirmed) {
+        await imageStore.removeItemImage(item.imagePath!);
+        await saveItem({ ...item, imagePath: null, updatedAt: now });
+      }
+      return confirmed.length;
+    },
+
+    async cancelBatch(input) {
+      const batch = await readBatch(input.batchId);
+      if (!batch || batch.actorId !== input.actorId) throw new Error("Business-card batch was not found.");
+      if (batch.status === "cancelled") return;
+      if (batch.status === "completed") throw new Error("Completed batches cannot be cancelled.");
+      const items = await listItems(batch.id);
+      for (const item of items) {
+        if (item.status === "confirmed") continue;
+        await saveItem({ ...item, status: "skipped", leaseOwner: null, leasedAt: null,
+          extraction: null, reviewIssues: [], errorCode: null, usage: null, updatedAt: input.now });
+      }
+      const confirmedItems = items.filter((item) => item.status === "confirmed").length;
+      await saveBatch({ ...batch, status: "cancelled", confirmedItems,
+        skippedItems: items.length - confirmedItems, failedItems: 0, processedItems: items.length,
+        updatedAt: input.now });
+    },
+
+    async sweepCancelled(now) {
+      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId });
+      const cancelled = records.map(batchFromRecord).filter((batch): batch is BusinessCardBatchDTO =>
+        batch !== null && batch.status === "cancelled" && !batch.imagesDeletedAt).slice(0, 20);
+      for (const batch of cancelled) {
+        // Cancellation already committed: a delete failure or a rollback here
+        // cannot restore processing. Repeating a physical delete is safe.
+        await imageStore.removeBatchImages(batch.id);
+        for (const item of await listItems(batch.id)) {
+          if (item.imagePath) await saveItem({ ...item, imagePath: null, updatedAt: now });
+        }
+        await saveBatch({ ...batch, imagesDeletedAt: now, updatedAt: now });
+      }
+      return cancelled.length;
+    },
+
     async finishBatch(input) {
       const batch = await readBatch(input.batchId);
 
@@ -523,6 +576,7 @@ export function createBusinessCardBatchService({
         throw new Error(`Business-card batch ${input.batchId} was not found.`);
       }
 
+      if (batch.status === "cancelled") throw new Error("Cancelled batches cannot be finished.");
       const items = await listItems(input.batchId);
       const unsettled = items.some(
         (item) =>
@@ -552,7 +606,7 @@ export function createBusinessCardBatchService({
       const expired = records
         .map(batchFromRecord)
         .filter((batch): batch is BusinessCardBatchDTO => batch !== null)
-        .filter((batch) => batch.status !== "completed" && batch.expiresAt < now);
+        .filter((batch) => batch.status !== "completed" && batch.status !== "cancelled" && batch.expiresAt < now);
 
       for (const batch of expired) {
         await expireBatch(batch, now);
@@ -570,15 +624,22 @@ export function createConfiguredBusinessCardBatchService({
   env?: Record<string, string | undefined>;
   imageStore?: BusinessCardBatchImageStore;
 } = {}): BusinessCardBatchService | null {
-  const configuredStore = createConfiguredPostgresLiveRecordStore({ env });
+  const config = resolveLiveDatabaseConnectionConfig(env);
 
-  if (!configuredStore) {
+  if (!config) {
     return null;
   }
 
-  return createBusinessCardBatchService({
-    imageStore: imageStore ?? createBusinessCardBatchImageStore(),
-    store: configuredStore.store,
-    workspaceId: configuredStore.workspaceId,
+  const images = imageStore ?? createBusinessCardBatchImageStore({ env });
+  const service = createTransactionalBusinessCardBatchService({
+    pool: configuredBusinessCardBatchPool(config.connectionString),
+    workspaceId: config.workspaceId,
+    prepare: images.prepareWrites,
+    createService: (store) => createBusinessCardBatchService({
+      imageStore: images,
+      store,
+      workspaceId: config.workspaceId,
+    }),
   });
+  return (env ?? process.env).VERCEL === "1" ? withQueuedCardBatches(service) : service;
 }

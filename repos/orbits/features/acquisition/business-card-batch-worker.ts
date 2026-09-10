@@ -39,7 +39,7 @@ export function createBusinessCardBatchWorker({
 }: {
   service: BusinessCardBatchService;
   imageStore: BusinessCardBatchImageStore;
-  provider: BusinessCardCloudOcrProvider;
+  provider: BusinessCardCloudOcrProvider | null;
   notify: (input: { actorId: string; batchId: string; now: string }) => Promise<void>;
   concurrency?: number;
 }) {
@@ -48,7 +48,7 @@ export function createBusinessCardBatchWorker({
       workerId: string;
       now: string;
     }): Promise<BusinessCardBatchWorkerRunResult> {
-      const swept = await service.sweepExpired(input.now);
+      const swept = await service.sweepConfirmedImages(input.now) + await service.sweepCancelled(input.now) + await service.sweepExpired(input.now);
       const claimed = await service.claimPendingItems({
         limit: concurrency,
         now: input.now,
@@ -63,6 +63,9 @@ export function createBusinessCardBatchWorker({
           let outcome: { batchBecameReady: boolean };
 
           try {
+            if (!provider) {
+              throw new Error("Business-card OCR provider is not configured.");
+            }
             const imageBytes = item.imagePath
               ? await imageStore.read(item.imagePath)
               : null;
@@ -88,6 +91,9 @@ export function createBusinessCardBatchWorker({
             });
             completed += 1;
           } catch (error) {
+            // Cancellation clears the lease while OCR may still be in flight.
+            // Its late result is discarded without retrying or notifying.
+            if ((await service.getBatch(item.actorId, item.batchId))?.batch.status === "cancelled") return;
             outcome = await service.failItem({
               batchId: item.batchId,
               errorCode: errorCodeFor(error),
@@ -109,6 +115,7 @@ export function createBusinessCardBatchWorker({
         }),
       );
 
+      await imageStore.reapUnattachedWrites?.();
       return { claimed: claimed.length, completed, failed, notifyFailures, swept };
     },
   };

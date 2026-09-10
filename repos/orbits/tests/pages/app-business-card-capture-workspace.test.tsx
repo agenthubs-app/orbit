@@ -77,7 +77,7 @@ test("business card capture workspace fails closed before upload when OCR is unc
 
   assert.match(html, /名片识别尚未连接/);
   assert.match(html, /不会上传图片，也不会创建联系人/);
-  assert.match(html, /GEMINI_API_KEY or GOOGLE_API_KEY/);
+  assert.match(html, /DEEPSEEK_API_KEY, GEMINI_API_KEY or GOOGLE_API_KEY/);
   assert.match(html, /data-business-card-capture="unavailable"/);
   assert.doesNotMatch(html, /上传名片图片/);
   assert.doesNotMatch(html, /type="file"/);

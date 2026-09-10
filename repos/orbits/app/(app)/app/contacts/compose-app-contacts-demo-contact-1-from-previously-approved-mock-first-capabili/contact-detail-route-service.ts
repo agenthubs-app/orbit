@@ -50,6 +50,7 @@ import {
   resolveModuleMode,
   type ModuleMode,
 } from "../../../../../shared/services/module-mode";
+import type { OrbitLanguage } from "../../orbit-language-core";
 
 export const APP_CONTACT_DETAIL_CONTACT_ID = "demo-contact-1";
 export const APP_CONTACT_DETAIL_CONNECTION_ID = "demo-connection-1";
@@ -150,70 +151,205 @@ const relationshipValueServiceFactory =
     },
   });
 
-const routeBoundaryCopy = {
-  // 三种非成功状态统一在这里维护文案和恢复动作，避免页面组件硬编码错误处理。
+type BoundaryRouteState = Exclude<AppContactDetailRouteState, "success">;
+type BoundaryCopy = Omit<AppContactDetailBoundaryModel, "routeState">;
+
+interface LocalizedCopy {
+  en: string;
+  ja: string;
+  zh: string;
+}
+
+interface LocalizedBoundaryCopy {
+  description: LocalizedCopy;
+  evidence: readonly string[];
+  nextStep: LocalizedCopy;
+  recoveryActions: readonly {
+    href: string;
+    label: LocalizedCopy;
+    recoveryCopy: LocalizedCopy;
+  }[];
+  title: LocalizedCopy;
+}
+
+const returnToContactsListAction = {
+  href: "/app/contacts",
+  label: {
+    en: "Return to contacts list",
+    ja: "人脈リストに戻る",
+    zh: "返回人脉列表",
+  },
+  recoveryCopy: {
+    en: "Leave this relationship and keep working from the sourced list.",
+    ja: "この関係を離れ、出典付きのリストから作業を続けます。",
+    zh: "离开这位联系人，回到有来源的列表继续。",
+  },
+} as const;
+
+// 三种非成功状态统一在这里维护文案和恢复动作，避免页面组件硬编码错误处理。
+// 每条文案同时携带 en/zh/ja，route model 默认按英文生成（保持既有服务契约），
+// 页面再按当前 UI 语言调用 localizeAppContactDetailBoundaryModel 选出单一语言。
+const routeBoundaryLocalizedCopy = {
   empty: {
-    description:
-      "Choose a contact with source evidence before reviewing tags, status, connection context, or relationship value.",
+    description: {
+      en: "Choose a contact with source evidence before reviewing tags, status, connection context, or relationship value.",
+      ja: "タグ、ステータス、関係の背景、関係価値を確認する前に、出典の根拠がある連絡先を選んでください。",
+      zh: "请先选择一位已有来源证据的联系人，再查看标签、状态、关系背景或关系价值。",
+    },
     evidence: ["contact-detail-empty", "connection-evidence-empty"],
-    nextStep: "Return to the sourced contacts list and select a relationship with evidence.",
+    nextStep: {
+      en: "Return to the sourced contacts list and select a relationship with evidence.",
+      ja: "出典付きの人脈リストに戻り、根拠のある関係を選んでください。",
+      zh: "返回有来源的人脉列表，选择一位已有证据的联系人。",
+    },
     recoveryActions: [
       {
         href: "/app/contacts",
-        label: "Return to contacts list",
-        recoveryCopy:
-          "Go back to the sourced list and pick a relationship that already has evidence.",
+        label: returnToContactsListAction.label,
+        recoveryCopy: {
+          en: "Go back to the sourced list and pick a relationship that already has evidence.",
+          ja: "出典付きのリストに戻り、すでに根拠がある関係を選んでください。",
+          zh: "回到有来源的列表，选择一位已有证据的联系人。",
+        },
       },
     ],
-    title: "No contact detail is available",
+    title: {
+      en: "No contact detail is available",
+      ja: "表示できる連絡先の詳細がありません",
+      zh: "暂无可用的联系人详情",
+    },
   },
   failure: {
-    description:
-      "The local relationship detail boundary returned a controlled failure.",
+    description: {
+      en: "The local relationship detail boundary returned a controlled failure.",
+      ja: "ローカルの関係詳細境界が制御されたエラーを返しました。",
+      zh: "本地关系详情边界返回了受控失败。",
+    },
     evidence: ["contact-detail-failure", "connection-evidence-failure"],
-    nextStep:
-      "Retry the detail view after confirming the local capability boundary is available.",
+    nextStep: {
+      en: "Retry the detail view after confirming the local capability boundary is available.",
+      ja: "ローカルの能力境界が利用可能であることを確認してから、詳細を再試行してください。",
+      zh: "确认本地能力边界可用后，重试详情页。",
+    },
     recoveryActions: [
       {
         href: "/app/contacts/demo-contact-1",
-        label: "Retry contact detail",
-        recoveryCopy:
-          "Load the detail again once the local capability boundary is available.",
+        label: {
+          en: "Retry contact detail",
+          ja: "連絡先の詳細を再試行",
+          zh: "重试联系人详情",
+        },
+        recoveryCopy: {
+          en: "Load the detail again once the local capability boundary is available.",
+          ja: "ローカルの能力境界が利用可能になったら、詳細を再度読み込みます。",
+          zh: "本地能力边界可用后，重新加载详情。",
+        },
       },
-      {
-        href: "/app/contacts",
-        label: "Return to contacts list",
-        recoveryCopy:
-          "Leave this relationship and keep working from the sourced list.",
-      },
+      returnToContactsListAction,
     ],
-    title: "Contact detail could not load",
+    title: {
+      en: "Contact detail could not load",
+      ja: "連絡先の詳細を読み込めませんでした",
+      zh: "联系人详情加载失败",
+    },
   },
   pending: {
-    description:
-      "Orbit is waiting for local source evidence before exposing this relationship profile.",
+    description: {
+      en: "Orbit is waiting for local source evidence before exposing this relationship profile.",
+      ja: "Orbit はローカルの出典根拠を待ってから、この関係プロフィールを表示します。",
+      zh: "Orbit 正在等待本地来源证据，之后才会展示这份关系档案。",
+    },
     evidence: ["contact-detail-pending", "connection-evidence-pending"],
-    nextStep: "Check the current detail once source evidence has settled.",
+    nextStep: {
+      en: "Check the current detail once source evidence has settled.",
+      ja: "出典の根拠が確定したら、現在の詳細を確認してください。",
+      zh: "来源证据稳定后，再查看当前详情。",
+    },
     recoveryActions: [
       {
         href: "/app/contacts/demo-contact-1",
-        label: "Check current detail",
-        recoveryCopy:
-          "Re-read the detail after the pending source evidence settles.",
+        label: {
+          en: "Check current detail",
+          ja: "現在の詳細を確認",
+          zh: "查看当前详情",
+        },
+        recoveryCopy: {
+          en: "Re-read the detail after the pending source evidence settles.",
+          ja: "保留中の出典根拠が確定したら、詳細を再読み込みします。",
+          zh: "待处理的来源证据稳定后，重新读取详情。",
+        },
       },
-      {
-        href: "/app/contacts",
-        label: "Return to contacts list",
-        recoveryCopy:
-          "Leave this relationship and keep working from the sourced list.",
-      },
+      returnToContactsListAction,
     ],
-    title: "Contact detail is loading",
+    title: {
+      en: "Contact detail is loading",
+      ja: "連絡先の詳細を読み込み中",
+      zh: "联系人详情加载中",
+    },
   },
-} as const satisfies Record<
-  Exclude<AppContactDetailRouteState, "success">,
-  Omit<AppContactDetailBoundaryModel, "routeState">
->;
+} as const satisfies Record<BoundaryRouteState, LocalizedBoundaryCopy>;
+
+function boundaryCopyForLanguage(
+  routeState: BoundaryRouteState,
+  language: OrbitLanguage,
+): BoundaryCopy {
+  const copy: LocalizedBoundaryCopy = routeBoundaryLocalizedCopy[routeState];
+
+  return {
+    description: copy.description[language],
+    evidence: copy.evidence,
+    nextStep: copy.nextStep[language],
+    recoveryActions: copy.recoveryActions.map((action) => ({
+      href: action.href,
+      label: action.label[language],
+      recoveryCopy: action.recoveryCopy[language],
+    })),
+    title: copy.title[language],
+  };
+}
+
+// 服务层输出保持英文（既有测试与调用方契约），页面层按 UI 语言再本地化。
+const routeBoundaryCopy: Record<BoundaryRouteState, BoundaryCopy> = {
+  empty: boundaryCopyForLanguage("empty", "en"),
+  failure: boundaryCopyForLanguage("failure", "en"),
+  pending: boundaryCopyForLanguage("pending", "en"),
+};
+
+/**
+ * 把 route boundary model 的展示文案换成指定 UI 语言。
+ *
+ * evidence id 与 recovery action 的 href（含已按 contact id 重写的 retry
+ * 链接）原样保留，只替换 title / description / nextStep / label /
+ * recoveryCopy，避免页面再出现“中文 / English”拼接。
+ */
+export function localizeAppContactDetailBoundaryModel(
+  model: AppContactDetailBoundaryModel,
+  language: OrbitLanguage,
+): AppContactDetailBoundaryModel {
+  if (language === "en") {
+    return model;
+  }
+
+  const copy = boundaryCopyForLanguage(model.routeState, language);
+
+  return {
+    ...model,
+    description: copy.description,
+    nextStep: copy.nextStep,
+    recoveryActions: model.recoveryActions.map((action, index) => {
+      const localizedAction = copy.recoveryActions[index];
+
+      return localizedAction
+        ? {
+            ...action,
+            label: localizedAction.label,
+            recoveryCopy: localizedAction.recoveryCopy,
+          }
+        : action;
+    }),
+    title: copy.title,
+  };
+}
 
 function normalizeScenario(
   scenario?: string | null,

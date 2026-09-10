@@ -451,7 +451,7 @@ test("contact detail tag and status API route returns stable envelopes with empt
     error: {
       code: "VALIDATION_ERROR",
       message:
-        "That mock contact status is not supported by this sprint boundary.",
+        "That contact status is not supported.",
       context: {
         boundary: "developer-admin",
         contactDetailTagStatusErrorCode: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",

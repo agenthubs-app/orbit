@@ -7,6 +7,9 @@ import type { IngestBatchDTO } from "../../../../features/acquisition/business-c
 import { Icon } from "../orbit-reference-primitives";
 import { useOrbitLanguage } from "../orbit-language-context";
 
+import { uploadV1CardFiles } from "./business-card-import-client";
+import { BusinessCardImportJobs, cardImportError } from "./business-card-import-progress";
+
 type Translate = (copy: { en: string; zh: string }) => string;
 
 /** V2 摄取协议 feature flag（方案 §九）：新批次走 batch2 引导流程，旧批次不迁移。 */
@@ -51,6 +54,7 @@ const BATCH_STATUS_COPY: Record<
   BusinessCardBatchDTO["status"],
   { en: string; zh: string }
 > = {
+  cancelled: { en: "Cancelled", zh: "已取消" },
   completed: { en: "Completed", zh: "已完成" },
   processing: { en: "Processing", zh: "识别中" },
   ready_for_review: { en: "Ready to review", zh: "待确认" },
@@ -96,7 +100,11 @@ export function BusinessCardBatchEntry() {
   const [batches, setBatches] = useState<readonly BusinessCardBatchDTO[]>([]);
   const [ingestV2Batches, setIngestV2Batches] = useState<readonly IngestBatchDTO[]>([]);
   const [uploading, setUploading] = useState(false);
+  const busy = useRef(false);
+  const selectedFiles = useRef<readonly File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,19 +148,31 @@ export function BusinessCardBatchEntry() {
     };
   }, []);
 
-  async function submitBatch(files: FileList | null) {
-    if (!files || files.length === 0 || uploading) {
+  async function submitBatch(files: FileList | readonly File[] | null) {
+    if (!files || files.length === 0 || busy.current) {
       return;
     }
 
+    busy.current = true;
+    selectedFiles.current = Array.from(files);
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (pdfInputRef.current) pdfInputRef.current.value = "";
     setUploading(true);
+    setUploadProgress({ done: 0, total: selectedFiles.current.length });
     setError(null);
+    setNeedsLogin(false);
     const formData = new FormData();
-    for (const file of Array.from(files)) {
+    for (const file of selectedFiles.current) {
       formData.append("files", file);
     }
 
     try {
+      const direct = await uploadV1CardFiles(selectedFiles.current, (done, total) => setUploadProgress({ done, total }));
+      if (direct.kind === "created") {
+        window.location.href = `/app/contacts/new/import/${direct.jobId}`;
+        return;
+      }
+      if (direct.kind === "error") { setNeedsLogin(direct.code === "UNAUTHORIZED"); setError(cardImportError(direct.code, t)); return; }
       const response = await fetch("/api/contact-drafts/business-card/batches", {
         body: formData,
         method: "POST",
@@ -174,6 +194,7 @@ export function BusinessCardBatchEntry() {
     } catch {
       setError(t({ en: "Upload failed. Try again.", zh: "上传失败，请重试。" }));
     } finally {
+      busy.current = false;
       setUploading(false);
     }
   }
@@ -233,15 +254,17 @@ export function BusinessCardBatchEntry() {
         type="file"
       />
       {uploading ? (
-        <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 10 }}>
-          {t({ en: "Uploading…", zh: "上传中…" })}
+        <div role="status" aria-live="polite" style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 10 }}>
+          {t({ en: `Uploading: ${uploadProgress.done}/${uploadProgress.total} files. Keep this page open until upload finishes.`, zh: `上传中：${uploadProgress.done}/${uploadProgress.total} 个文件。上传完成前请保持页面打开。` })}
         </div>
       ) : null}
       {error ? (
-        <div style={{ color: "var(--amber-text)", fontSize: 12.5, marginTop: 10 }}>
-          {error}
+        <div role="alert" style={{ color: "var(--amber-text)", fontSize: 12.5, marginTop: 10 }}>
+          <p>{error}</p>
+          {needsLogin ? <a className="btn btn-ghost" href="/app/account/login?next=%2Fapp%2Fcontacts%2Fnew">{t({ en: "Sign in", zh: "重新登录" })}</a> : <button type="button" className="btn btn-ghost" disabled={uploading} onClick={() => void submitBatch(selectedFiles.current)}>{t({ en: "Retry upload", zh: "重试上传" })}</button>}
         </div>
       ) : null}
+      <BusinessCardImportJobs batchIds={batches.map((batch) => batch.id)} />
       {batches.length > 0 || ingestV2Batches.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
           {ingestV2Batches.map((batch) => (

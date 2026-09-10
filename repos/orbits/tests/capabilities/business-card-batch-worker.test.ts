@@ -112,3 +112,23 @@ test("worker retries a timeout once and then marks the item failed", async () =>
   assert.equal(detail?.items[0]?.errorCode, "OCR_PROVIDER_TIMEOUT");
   assert.equal(detail?.batch.status, "ready_for_review");
 });
+
+test("an unconfigured provider becomes a reviewable failure instead of an endless pending item", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "orbit-batch-no-provider-"));
+  const imageStore = createBusinessCardBatchImageStore({ rootDir });
+  const service = createBusinessCardBatchService({
+    imageStore,
+    store: createMemoryLiveRecordStore(),
+    workspaceId: "workspace:no-provider",
+  });
+  const worker = createBusinessCardBatchWorker({ service, imageStore, provider: null, notify: async () => {} });
+  const batch = await service.createBatch({ actorId: ACTOR, items: items(1), now: NOW, sourceFiles: [] });
+
+  assert.equal((await worker.runOnce({ now: NOW, workerId: "w-1" })).claimed, 1);
+  assert.equal((await service.getBatch(ACTOR, batch.id))?.items[0]?.status, "pending");
+  assert.equal((await worker.runOnce({ now: NOW, workerId: "w-2" })).claimed, 1);
+  const detail = await service.getBatch(ACTOR, batch.id);
+  assert.equal(detail?.items[0]?.status, "failed");
+  assert.equal(detail?.items[0]?.errorCode, "OCR_PROVIDER_FAILED");
+  assert.equal(detail?.batch.status, "ready_for_review");
+});

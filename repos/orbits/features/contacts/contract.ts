@@ -131,7 +131,7 @@ export const CONTACTS_LIST_SEARCH_FILTER_ERROR_DEFINITIONS = {
     code: "CONTACTS_FILTER_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
     message:
-      "That mock contacts list search or filter value is not supported by this sprint boundary.",
+      "That contacts list search or filter value is not supported.",
     recovery:
       "Use the local tag, source, relationship value, and status filters declared in the contacts contract.",
   },

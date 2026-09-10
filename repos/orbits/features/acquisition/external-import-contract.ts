@@ -63,8 +63,7 @@ export const EXTERNAL_CONTACTS_IMPORT_ERROR_DEFINITIONS = {
   EXTERNAL_CONTACTS_IMPORT_SOURCE_NOT_SUPPORTED: {
     code: "EXTERNAL_CONTACTS_IMPORT_SOURCE_NOT_SUPPORTED",
     appCode: "VALIDATION_ERROR",
-    message:
-      "That mock external contacts import source is not supported by this sprint boundary.",
+    message: "That external contacts import source is not supported.",
     recovery:
       "Use phone, Google Contacts, CSV, or existing customer-list fixture sources only.",
   },

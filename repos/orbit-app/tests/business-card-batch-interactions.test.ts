@@ -180,6 +180,40 @@ test("only selected authenticated image loads, aborts on selection/removal and i
   await p.evaluate(() => (window as any).fixture.imageReply(1)); await settle(p); await p.getByRole("img", { name: "名片图片" }).first().waitFor();
   await press(p, "刷新批次"); await reply(p, 1, "success", { statuses: ["extracted", "extracted"], noImage: true }); assert.equal(await p.getByRole("img", { name: "名片图片" }).count(), 0);
 });
+test("cancelled legacy batches render a terminal state even if item data still looks reviewable", async t => {
+  const p = await open(t);
+  await reply(p, 0, "success", { status: "cancelled" });
+  assert.equal(await p.getByText("已取消", { exact: true }).count(), 1);
+  assert.equal(await p.getByLabel("备注", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "完成批次", exact: true }).count(), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.images.length), 0);
+  await tick(p);
+  assert.equal(await count(p), 1);
+});
+
+test("a cancelled refresh clears private review state and rejects stale reactivation", async t => {
+  const p = await open(t);
+  await reply(p, 0);
+  await fill(p, "备注", "Private draft before cancellation");
+  await p.evaluate(() => { (window as any).retainedConfirm = (window as any).fixture.presses["确认收录"]; });
+  await press(p, "刷新批次");
+  await reply(p, 1, "success", { status: "cancelled" });
+  assert.equal(await p.getByText("已取消", { exact: true }).count(), 1);
+  assert.equal(await p.getByLabel("备注", { exact: true }).count(), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.images[0].signal.aborted), true);
+  await p.evaluate(() => (window as any).fixture.imageReply(0));
+  await settle(p);
+  assert.equal(await p.getByRole("img", { name: "名片图片" }).count(), 0);
+  await p.evaluate(() => (window as any).retainedConfirm());
+  assert.equal(await count(p), 2);
+  await press(p, "刷新批次");
+  await reply(p, 2);
+  assert.equal(await p.getByText("已取消", { exact: true }).count(), 1);
+  assert.equal(await p.getByLabel("备注", { exact: true }).count(), 0);
+  await p.evaluate(() => (window as any).retainedConfirm());
+  assert.equal(await count(p), 3);
+});
+
 test("image unavailable is visible with no public fallback; expired batch cannot mutate", async t => {
   const p = await open(t); await reply(p, 0); await p.evaluate(() => (window as any).fixture.imageReply(0, true)); await settle(p); await p.getByText("图片不可用", { exact: true }).waitFor();
   assert.equal(await p.getByRole("img", { name: "名片图片" }).count(), 0); await press(p, "刷新批次"); await reply(p, 1, "success", { expired: true }); await direct(p, "确认收录"); assert.equal(await count(p), 2);

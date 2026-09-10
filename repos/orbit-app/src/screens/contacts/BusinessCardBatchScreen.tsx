@@ -70,6 +70,7 @@ export function BusinessCardBatchScreen() {
   function invalidate() { operation.current++; lock.current = false; transport.current?.abort(); imageTransport.current?.abort(); }
   function isCurrent() { return mounted.current && scopeRef.current === scope && scope.ready && activity.current.focused && activity.current.foreground; }
   function expired(detail = current.current.detail) { return Boolean(detail && Date.parse(detail.batch.expiresAt) <= Date.now()); }
+  function terminal(detail = current.current.detail) { return detail?.batch.status === "completed" || detail?.batch.status === "cancelled"; }
   const batchExpired = expired();
 
   useFocusEffect(useCallback(() => {
@@ -100,13 +101,13 @@ export function BusinessCardBatchScreen() {
     return () => clearInterval(timer);
   }, [scope, active, state.detail?.batch.status, state.detail?.batch.expiresAt, batchExpired]);
   useEffect(() => {
-    if (!state.detail || expired()) return;
+    if (!state.detail || terminal(state.detail) || expired()) return;
     const timer = setTimeout(() => { setNow(Date.now()); if (expired()) { invalidate(); update({ authorized: false, busy: null, loading: false, duplicate: null, error: "批次已过期，无法继续操作。" }); } }, Math.min(2147483647, Date.parse(state.detail.batch.expiresAt) - Date.now()));
     return () => clearTimeout(timer);
-  }, [state.detail?.batch.expiresAt]);
+  }, [state.detail?.batch.expiresAt, state.detail?.batch.status]);
 
   const selected = state.detail?.items.find(item => item.id === state.selectedId);
-  const imageKey = scopeRef.current === scope && ready && active && !expired() && state.detail?.batch.status !== "completed" && selected?.imagePath && !["confirmed", "skipped"].includes(selected.status)
+  const imageKey = scopeRef.current === scope && ready && active && !expired() && !terminal(state.detail) && selected?.imagePath && !["confirmed", "skipped"].includes(selected.status)
     ? JSON.stringify([scope.baseUrl, scope.actorId, scope.batchId, selected.id, selected.imagePath, selected.imageDigest, imageAttempt]) : "";
   useEffect(() => {
     setImage(null);
@@ -150,8 +151,13 @@ export function BusinessCardBatchScreen() {
       if (!valid()) return;
       const detail = acceptedLegacyBatch(result, batchId, current.current.detail?.batch.actorId ?? null);
       const previous = current.current;
-      const regressed = detail && previous.detail && (previous.detail.batch.status === "completed" && detail.batch.status !== "completed" || previous.detail.items.some(item => ["confirmed", "skipped"].includes(item.status) && detail.items.find(next => next.id === item.id)?.status !== item.status));
+      const regressed = detail && previous.detail && (terminal(previous.detail) && detail.batch.status !== previous.detail.batch.status || previous.detail.items.some(item => ["confirmed", "skipped"].includes(item.status) && detail.items.find(next => next.id === item.id)?.status !== item.status));
       if (!detail || regressed) { update({ error: failureMessage(result) }); return; }
+      if (terminal(detail)) {
+        imageTransport.current?.abort(); setImage(null);
+        update({ detail, selectedId: null, drafts: {}, duplicate: null, authorized: false, error: null });
+        return;
+      }
       const drafts: Record<string, BusinessCardReviewDraft> = Object.create(null);
       for (const item of detail.items) {
         if (["confirmed", "skipped"].includes(item.status)) continue;
@@ -169,7 +175,7 @@ export function BusinessCardBatchScreen() {
 
   function canAct(action: Action) {
     const s = current.current;
-    if (!isCurrent() || lock.current || !s.authorized || !s.detail || expired() || s.detail.batch.status === "completed") return false;
+    if (!isCurrent() || lock.current || !s.authorized || !s.detail || expired() || terminal(s.detail)) return false;
     if (action === "finish") return legacyBatchPresentation(s.detail, s.selectedId).canFinish;
     const item = s.detail.items.find(item => item.id === s.selectedId);
     if (!item) return false;
@@ -249,20 +255,20 @@ export function BusinessCardBatchScreen() {
     {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
     {state.notice ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{state.notice}</Text> : null}
     {detail ? <>
-      <Text style={styles.heading}>{detail.batch.status === "completed" ? "已完成" : detail.batch.status === "processing" ? "正在处理名片" : "待复核批次"}</Text>
+      <Text style={styles.heading}>{detail.batch.status === "cancelled" ? "已取消" : detail.batch.status === "completed" ? "已完成" : detail.batch.status === "processing" ? "正在处理名片" : "待复核批次"}</Text>
       <Text style={styles.caption}>共 {detail.items.length} 张 · 已处理 {detail.items.filter(item => !["pending", "processing"].includes(item.status)).length} 张 · 已收录 {detail.items.filter(item => item.status === "confirmed").length} 张 · 失败 {detail.items.filter(item => item.status === "failed").length} 张 · 已跳过 {detail.items.filter(item => item.status === "skipped").length} 张</Text>
       {detail.batch.status === "processing" && now - Date.parse(detail.batch.updatedAt) >= 60000 ? <Text style={styles.caption}>处理时间较长。请稍后刷新；识别失败的名片可单独重试。</Text> : null}
       <View style={styles.list}>
         {detail.items.map(item => <View key={item.id} style={styles.item}>
           <Text style={styles.caption}>{item.seq}. {item.sourceFileName}{item.sourcePage ? ` / 第 ${item.sourcePage} 页` : ""} · {statusLabels[item.status]}</Text>
           {item.status === "confirmed" && item.confirmedContactId ? <BatchButton label={`查看联系人 ${item.seq}`} icon="person-outline" onPress={() => { if (isCurrent()) router.push(`/contacts/${encodeURIComponent(item.confirmedContactId!)}` as Href); }} /> : null}
-          {!["confirmed", "skipped"].includes(item.status) && detail.batch.status !== "completed" ? <BatchButton label={`选择名片 ${item.seq}`} icon="document-outline" selected={item.id === state.selectedId} disabled={disabled || Boolean(state.busy)} onPress={() => {
+          {!["confirmed", "skipped"].includes(item.status) && !terminal(detail) ? <BatchButton label={`选择名片 ${item.seq}`} icon="document-outline" selected={item.id === state.selectedId} disabled={disabled || Boolean(state.busy)} onPress={() => {
             if (!isCurrent() || current.current.busy || current.current.detail !== detail || current.current.selectedId === item.id) return;
             update({ selectedId: item.id, duplicate: null }); imageTransport.current?.abort();
           }} /> : null}
         </View>)}
       </View>
-      {selected && detail.batch.status !== "completed" ? <>
+      {selected && !terminal(detail) ? <>
         <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={imageValue} reviewIssues={selected.reviewIssues} statusLabel={statusLabels[selected.status]} disabled={disabled} canConfirm={canAct("confirm")} canSkip={canAct("skip")} canRetry={canAct("retry")} duplicateContactId={state.duplicate?.contactId ?? null}
           onImageError={() => {
             setImage(latest => {
@@ -282,7 +288,7 @@ export function BusinessCardBatchScreen() {
           {imageValue.status === "unavailable" ? <BatchButton label="重载图片" icon="image-outline" disabled={disabled} onPress={() => { if (isCurrent()) setImageAttempt(value => value + 1); }} /> : null}
         </View>
       </> : null}
-      {detail.batch.status !== "completed" ? <BatchButton label="完成批次" icon="checkmark-done-outline" disabled={!canAct("finish")} onPress={() => confirmCommand("finish")} /> : null}
+      {!terminal(detail) ? <BatchButton label="完成批次" icon="checkmark-done-outline" disabled={!canAct("finish")} onPress={() => confirmCommand("finish")} /> : null}
     </> : null}
   </AppScreen>;
 }

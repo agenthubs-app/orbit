@@ -98,7 +98,15 @@ export async function getOrbitServerLanguage(): Promise<OrbitLanguage> {
   );
 }
 
-/** Build a `t({ en, zh })` translator bound to a resolved language. */
+/**
+ * Build a `t({ en, zh, ja? })` translator bound to a resolved language.
+ * Mirrors the client `useOrbitLanguage().t`: `ja` falls back to `en` when a
+ * caller has not supplied Japanese copy (previously `copy["ja"]` returned
+ * `undefined` for the ja UI language).
+ */
 export function makeOrbitServerT(language: OrbitLanguage) {
-  return (copy: { en: string; zh: string }) => copy[language];
+  return (copy: { en: string; zh: string; ja?: string }) => {
+    if (language === "ja") return copy.ja ?? copy.en;
+    return language === "zh" ? copy.zh : copy.en;
+  };
 }

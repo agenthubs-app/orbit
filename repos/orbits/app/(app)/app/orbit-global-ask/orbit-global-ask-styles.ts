@@ -43,7 +43,9 @@ export const ORBIT_ASK_STYLES = `
 .oga-root .oga-ball {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  /* 页面若钉了底部操作栏，会在 body 上声明 --orbit-pinned-bar-h，悬浮球据此让开；
+     否则回落到 0，桌面与其余页面位置不变。名片复核页曾因此压住「确认并下一张」。 */
+  bottom: calc(24px + var(--orbit-pinned-bar-h, 0px));
   z-index: ${ASK_Z};
   width: 54px;
   height: 54px;
@@ -194,7 +196,9 @@ export const ORBIT_ASK_STYLES = `
 }
 
 @media (max-width: 640px) {
-  .oga-root .oga-ball { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* 这条比基础规则靠后且同权重，会覆盖它，所以钉住底栏的让位量必须在这里
+     一起算——只改基础规则的话窄屏下完全不生效（实测悬浮球仍压住确认按钮）。 */
+  .oga-root .oga-ball { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom) + var(--orbit-pinned-bar-h, 0px)); }
   .oga-root .oga-dock { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
 

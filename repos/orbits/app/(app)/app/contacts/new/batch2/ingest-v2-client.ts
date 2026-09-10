@@ -1,5 +1,7 @@
 "use client";
 
+import { uploadIngestContent } from "./ingest-v2-content-transport";
+
 import type {
   IngestBatchDTO,
   IngestItemDTO,
@@ -70,22 +72,19 @@ export async function uploadItemContent(input: {
   itemId: string;
   file: File;
 }): Promise<{ ok: boolean; errorCode: string | null }> {
-  const response = await fetch(
-    `${INGEST_V2_API_BASE}/${input.batchId}/items/${input.itemId}/content`,
-    {
-      body: input.file,
-      headers: { "Content-Type": resolveUploadMimeType(input.file) },
-      method: "PUT",
-    },
-  );
-  if (response.ok) {
-    return { ok: true, errorCode: null };
-  }
-  const body = (await response.json().catch(() => null)) as {
-    error?: { message?: string };
-  } | null;
-  const message = body?.error?.message ?? `HTTP_${response.status}`;
-  return { ok: false, errorCode: message.split(":")[0] ?? "UPLOAD_FAILED" };
+  try {
+    return await uploadIngestContent({ ...input, operation: "upload",
+      digest: await sha256OfFile(input.file), mimeType: resolveUploadMimeType(input.file) });
+  } catch { return { ok: false, errorCode: "UPLOAD_UNAVAILABLE" }; }
+}
+
+export async function replaceItemContent(input: {
+  batchId: string; itemId: string; expectedVersion: number; file: File;
+}): Promise<{ ok: boolean; errorCode: string | null }> {
+  try {
+    return await uploadIngestContent({ ...input, operation: "replace",
+      digest: await sha256OfFile(input.file), mimeType: resolveUploadMimeType(input.file) });
+  } catch { return { ok: false, errorCode: "UPLOAD_UNAVAILABLE" }; }
 }
 
 export async function postAction(path: string, body?: unknown): Promise<Response> {

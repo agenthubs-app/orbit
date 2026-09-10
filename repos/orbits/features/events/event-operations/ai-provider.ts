@@ -2,6 +2,7 @@ import {
   DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL,
   DEFAULT_GEMINI_ORBIT_AGENT_MODEL,
   DEFAULT_OPENAI_ORBIT_AGENT_MODEL,
+  resolveOrbitAgentModelProviderSelection,
   runOrbitAgentModelText,
   type GeminiOrbitAgentProviderConfig,
   type OrbitAgentModelTextResult,
@@ -670,15 +671,11 @@ function requestFingerprint(
   outputLanguage: "en" | "zh-CN" = "zh-CN",
   enforceOutputLanguage = false,
 ): string {
-  const configuredProvider = String(
-    config?.provider ?? process.env.ORBIT_AGENT_PROVIDER ?? "gemini",
-  ).toLowerCase();
-  const provider =
-    configuredProvider === "deepseek"
-      ? "deepseek"
-      : configuredProvider === "openai" || configuredProvider === "gpt"
-        ? "openai"
-        : "gemini";
+  // 与 runOrbitAgentModelText 内部的 provider 选择保持一致（含未设置
+  // ORBIT_AGENT_PROVIDER 时按已配置 key 自动选择），否则缓存 fingerprint 会记错 provider。
+  const { provider } = resolveOrbitAgentModelProviderSelection({
+    configuredProvider: config?.provider,
+  });
   const model =
     config?.model ??
     (provider === "deepseek"

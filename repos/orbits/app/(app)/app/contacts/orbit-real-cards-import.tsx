@@ -169,9 +169,9 @@ function SourceCard({
       type="button"
     >
       <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={20} /></span>
-      <span style={{ minWidth: 0, textAlign: "left" }}>
-        <span style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          <span className="h-section" style={{ fontSize: 15 }}>{t(source.title)}</span>
+      <span className="nc-source-body">
+        <span className="nc-source-title-row">
+          <span className="h-section nc-source-title">{t(source.title)}</span>
           {source.badge && available ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
           {!available ? (
             <span className="nc-src nc-src-contact">
@@ -309,6 +309,9 @@ export function OrbitRealCardsImport({
 
 const LOCAL_STYLE = `
 [data-orbit-real-page] .nc-imp-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 24px; align-items: start; }
+/* With the 212px sidebar the two-column hub starves the source column on
+   tablet-width desktops; stack it before titles get squeezed. */
+@media (max-width: 1024px) { [data-orbit-real-page] .nc-imp-grid { grid-template-columns: 1fr; } }
 [data-orbit-real-page] .nc-imp-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 
 [data-orbit-real-page] .nc-source-card { display: grid; grid-template-columns: 42px 1fr auto; gap: 13px; padding: 13px 14px; align-items: center; width: 100%; text-align: left; cursor: pointer; font-family: var(--ff); color: inherit; }
@@ -316,6 +319,11 @@ const LOCAL_STYLE = `
 [data-orbit-real-page] .nc-source-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-softer); }
 [data-orbit-real-page] .nc-source-card:disabled { cursor:not-allowed; opacity:.62; }
 [data-orbit-real-page] .nc-src-tile { width: 42px; height: 42px; border-radius: var(--r-sm); display: grid; place-items: center; flex-shrink: 0; }
+[data-orbit-real-page] .nc-source-body { min-width: 0; text-align: left; }
+/* Badges wrap onto their own line instead of squeezing the title; the title
+   itself never breaks between characters, it truncates. */
+[data-orbit-real-page] .nc-source-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-width: 0; }
+[data-orbit-real-page] .nc-source-title { font-size: 15px; min-width: 0; max-width: 100%; white-space: nowrap; word-break: keep-all; overflow: hidden; text-overflow: ellipsis; }
 [data-orbit-real-page] .nc-tl-scan { background: var(--accent-soft); color: var(--accent); }
 [data-orbit-real-page] .nc-tl-qr { background: var(--sky-soft); color: var(--sky); }
 [data-orbit-real-page] .nc-tl-event { background: var(--amber-soft); color: var(--amber); }

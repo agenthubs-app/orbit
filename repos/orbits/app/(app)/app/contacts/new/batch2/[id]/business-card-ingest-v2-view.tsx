@@ -8,12 +8,19 @@ import type {
 } from "../../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import { ORBIT_Z } from "../../../../orbit-z";
+import {
+  EMPTY_EXTRACTION_NOTICE_COPY,
+  NAME_REQUIRED_HINT_COPY,
+  hasNoFixedFields,
+} from "../../batch/[id]/business-card-batch-view";
+import { contentUploadErrorCopy } from "../ingest-v2-upload-feedback";
 import {
   INGEST_V2_API_BASE,
   fetchBatchDetail,
   getPendingFiles,
   postAction,
-  resolveUploadMimeType,
+  replaceItemContent,
   sha256OfFile,
   uploadItemContent,
   type IngestBatchDetail,
@@ -70,6 +77,14 @@ function initialFields(item: IngestItemDTO): FixedFields {
     relationshipContext: `批量导入 · ${item.sourceFileName}`,
     role: extraction?.title ?? "",
   };
+}
+
+/**
+ * V2 adapter for the shared "nothing was read" rule: judge the V2 prefill
+ * (CJK-first name, phone/mobile-only phone) rather than the V1 one.
+ */
+export function ingestExtractionHasNoFields(item: IngestItemDTO): boolean {
+  return hasNoFixedFields(initialFields(item));
 }
 
 const EMPTY_FIELDS: FixedFields = {
@@ -226,6 +241,7 @@ function FieldEditor({
       <label className="bci-field">
         <span>{t({ en: "Notes (nothing gets lost)", zh: "备注（其余信息都在这里）" })}</span>
         <textarea
+          className="bci-notes"
           onChange={(event) => onChange({ ...fields, notes: event.target.value })}
           rows={6}
           value={fields.notes}
@@ -302,6 +318,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
           }
           return next;
         });
+        let failed = false;
         await Promise.all(
           wave.map(async (item) => {
             const file = pendingFilesRef.current.get(item.clientDigest);
@@ -309,6 +326,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
               return;
             }
             const result = await uploadItemContent({ batchId, itemId: item.id, file });
+            if (!result.ok) failed = true;
             setUploadStates((previous) => {
               const next = { ...previous };
               if (result.ok) {
@@ -323,6 +341,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
             }
           }),
         );
+        if (failed) break;
       }
     } finally {
       uploadingRef.current = false;
@@ -358,23 +377,8 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
 
   async function submitReplace(item: IngestItemDTO, file: File): Promise<void> {
     await withBusy(async () => {
-      const response = await fetch(
-        `${INGEST_V2_API_BASE}/${batchId}/items/${item.id}/replace`,
-        {
-          body: file,
-          headers: {
-            "Content-Type": resolveUploadMimeType(file),
-            "If-Match": String(item.version),
-          },
-          method: "POST",
-        },
-      );
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
-        setGlobalError(body?.error?.message ?? `HTTP ${response.status}`);
-      }
+      const result = await replaceItemContent({ batchId, itemId: item.id, expectedVersion: item.version, file });
+      if (!result.ok) setGlobalError(t(contentUploadErrorCopy(result.errorCode)));
     });
   }
 
@@ -418,7 +422,10 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
         hidden
         multiple
-        onChange={(event) => void attachFiles(event.target.files)}
+        onChange={(event) => {
+          void attachFiles(event.target.files);
+          event.target.value = "";
+        }}
         ref={reattachRef}
         type="file"
       />
@@ -446,8 +453,8 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
       {renderPhase()}
       <div className="bci-privacy">
         {t({
-          en: "Originals are never stored. Recognition copies are deleted right after you confirm or skip.",
-          zh: "原始照片不会被保存；识别用的图片副本在确认或跳过后立即删除。",
+          en: "Originals are stored temporarily for import and scheduled for cleanup. Recognition images are hidden after you confirm or skip.",
+          zh: "原件会临时保存用于导入，并安排自动清理；确认或跳过后不再展示识别图片。",
         })}
       </div>
     </section>
@@ -508,8 +515,9 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
     const readyToFinalize = awaiting.length === 0 && uploaded > 0;
     const missingFiles = awaiting.filter(
       (item) =>
-        !pendingFilesRef.current.has(item.clientDigest) && !uploadStates[item.id],
+        !pendingFilesRef.current.has(item.clientDigest),
     );
+    const canRetry = awaiting.some((item) => uploadStates[item.id]?.kind === "failed" && pendingFilesRef.current.has(item.clientDigest));
 
     return (
       <>
@@ -543,7 +551,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
                 ? uploadState?.kind === "uploading"
                   ? { en: "Uploading…", zh: "上传中…" }
                   : uploadState?.kind === "failed"
-                    ? { en: `Invalid: ${uploadState.code}`, zh: `图片无效：${uploadState.code}` }
+                    ? contentUploadErrorCopy(uploadState.code)
                     : { en: "Waiting for file", zh: "等待文件" }
                 : ITEM_STATUS_COPY[item.status];
             return (
@@ -589,6 +597,14 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
               type="button"
             >
               {t({ en: "Re-attach photos", zh: "重新选择照片" })}
+            </button>
+          ) : null}
+          {canRetry ? (
+            <button className="btn btn-ghost" type="button"
+              disabled={busy || Object.values(uploadStates).some((state) => state.kind === "uploading")}
+              onClick={() => void pumpUploads()}
+            >
+              {t({ en: "Retry upload", zh: "重试上传" })}
             </button>
           ) : null}
           <button
@@ -714,7 +730,7 @@ export function BusinessCardIngestV2View({ batchId }: { batchId: string }) {
   }
 }
 
-function ReviewPane({
+export function ReviewPane({
   batchId,
   busy,
   duplicate,
@@ -755,6 +771,12 @@ function ReviewPane({
   }, [item, editedItemId]);
 
   const failed = item.status === "terminal_failed";
+  const editing = item.status === "extracted" || (failed && manual);
+  const emptyExtraction =
+    item.status === "extracted" && ingestExtractionHasNoFields(item);
+  // Mirrors the server: confirm/manual-entry forward displayName untouched and
+  // the contact write service rejects a blank one.
+  const nameMissing = !fields.displayName.trim();
 
   return (
     <>
@@ -785,10 +807,15 @@ function ReviewPane({
                 : ""}
             </div>
           ) : null}
+          {emptyExtraction ? (
+            <div className="bci-warn" data-batch-notice="empty-extraction" role="status">
+              {t(EMPTY_EXTRACTION_NOTICE_COPY)}
+            </div>
+          ) : null}
           {item.status === "extracted" ? (
             <ReviewIssueList issues={item.reviewIssues} t={t} />
           ) : null}
-          {item.status === "extracted" || (failed && manual) ? (
+          {editing ? (
             <FieldEditor fields={fields} onChange={setFields} t={t} />
           ) : null}
           {item.status === "extracted" && item.extraction ? (
@@ -802,7 +829,12 @@ function ReviewPane({
               })}
             </div>
           ) : null}
-          <div className="bci-actions">
+          {editing && nameMissing ? (
+            <p className="bci-hint" data-batch-hint="name-required">
+              {t(NAME_REQUIRED_HINT_COPY)}
+            </p>
+          ) : null}
+          <div className="bci-actions bci-actions-review">
             <button className="btn btn-ghost" disabled={busy} onClick={onSkip} type="button">
               {duplicate
                 ? t({ en: "Skip this card", zh: "跳过此卡" })
@@ -811,7 +843,7 @@ function ReviewPane({
             {item.status === "extracted" ? (
               <button
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || nameMissing}
                 onClick={() => onConfirm(fields, duplicate, false)}
                 type="button"
               >
@@ -826,7 +858,7 @@ function ReviewPane({
                 </button>
                 <button
                   className="btn btn-primary"
-                  disabled={busy || !fields.displayName.trim()}
+                  disabled={busy || nameMissing}
                   onClick={() => onConfirm(fields, duplicate, true)}
                   type="button"
                 >
@@ -890,4 +922,35 @@ const VIEW_STYLE = `
 .bci-field { display: flex; flex-direction: column; gap: 4px; }
 .bci-field > span { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .bci-field input, .bci-field textarea { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--ink); font: inherit; font-size: 14px; padding: 9px 11px; resize: vertical; }
+.bci-field textarea { line-height: 1.5; }
+.bci-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
+/* Narrow screens: pin the per-card action row to the viewport, and shorten the
+   notes box so the fields stay in view (3 rows = 4.5em + padding). Mirrors the V1
+   batch view rule; only the review row is pinned — the batch-level .bci-actions
+   (cancel batch / re-attach photos) stays in flow.
+
+   Why fixed and not sticky: .bci-actions-review is the LAST child of
+   .bci-review-form, so its sticky containing block ends at its own bottom edge —
+   "position: sticky; bottom: 0" has zero travel there and can only stop an element
+   from scrolling away, never lift it up. Measured on a 375x812 viewport the
+   equivalent V1 row sat at top=937 (off-screen) until the page was scrolled to the
+   very bottom.
+
+   iOS Safari caveat: a fixed bar is anchored to the LAYOUT viewport, so while the
+   software keyboard is open the bar can end up behind the keyboard. Correcting for
+   that needs VisualViewport JS, which is deliberately left out here because it is
+   not testable in this environment. */
+@media (max-width: 760px) {
+  .bci-field textarea.bci-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
+  /* Reserve the pinned bar's height at the END of the scrollable content, so the
+     last field and anything below the review pane can be scrolled clear of the bar.
+     It has to sit on the shell, not inside the review form: padding inside the form
+     only moves the tail down together with the extra scroll range, leaving the last
+     elements just as trapped (measured). 118px = two 44px button rows (the row wraps
+     at 375px with English labels) + 10px row gap + 20px padding; +12px breathing room. */
+  /* 与 V1 同一套契约：底栏高度声明在 body 上，全局 iOrbit 悬浮球据此上移。 */
+  body:has(.bci-actions-review) { --orbit-pinned-bar-h: calc(54px + max(12px, env(safe-area-inset-bottom, 0px))); }
+  .bci-shell:has(.bci-actions-review) { padding-bottom: calc(var(--orbit-pinned-bar-h) + 12px); }
+  .bci-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
+}
 `;

@@ -391,7 +391,14 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
 
   assert.equal(credited.length, 27);
   assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
-  assert.equal(siblingSignOuts.length, 32);
+  assert.equal(siblingSignOuts.length, 33);
+  const importSignOut = inventory.surfaces
+    .find((surface) => surface.surfaceId === "web:/app/contacts/new/import/[id]")
+    ?.interactions.find((interaction) =>
+      interaction.sourceFile === "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
+      interaction.visibleName === "Sign out / 退出登录",
+    );
+  assert.equal(importSignOut?.conclusion, "inventoried-static-only");
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",

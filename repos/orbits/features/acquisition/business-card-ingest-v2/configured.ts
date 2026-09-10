@@ -1,6 +1,11 @@
 import { Pool } from "pg";
+import { withQueuedCardIngest } from "../business-card-queue-dispatch";
 
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
+import {
+  createPrivateBlobDerivativeStore,
+  usesPrivateBusinessCardBlob,
+} from "../storage/business-card-private-blob-store";
 import {
   createFilesystemDerivativeStore,
   resolveIngestDerivativeRootDir,
@@ -8,6 +13,7 @@ import {
 } from "./derivative-store";
 import { runBusinessCardIngestV2Migrations } from "./migrations";
 import { createNormalizationGate } from "./normalization";
+import { reapUnattachedCardImages, registerCardImageWrite } from "./image-write-journal";
 import {
   createBusinessCardIngestRepository,
   type BusinessCardIngestRepository,
@@ -42,9 +48,20 @@ export function getConfiguredIngestV2(): ConfiguredIngest | null {
     pool,
     workspaceId: config.workspaceId,
   });
-  const store = createFilesystemDerivativeStore({
-    rootDir: resolveIngestDerivativeRootDir(),
-  });
+  const store = usesPrivateBusinessCardBlob()
+    ? createPrivateBlobDerivativeStore({ workspaceId: config.workspaceId, lifecycle: {
+      async beforePut(objectKey) {
+        await ready;
+        await registerCardImageWrite({ pool, workspaceId: config.workspaceId, objectKey,
+          ...(process.env.VERCEL === "1" ? {} : { wake: async () => {} }),
+        });
+      },
+      async reap() {
+        await ready;
+        return reapUnattachedCardImages({ pool, workspaceId: config.workspaceId, remove: (key) => store.delete(key) });
+      },
+    } })
+    : createFilesystemDerivativeStore({ rootDir: resolveIngestDerivativeRootDir() });
   const ready = (async () => {
     const client = await pool.connect();
     try {
@@ -55,7 +72,7 @@ export function getConfiguredIngestV2(): ConfiguredIngest | null {
   })();
   globalCache.__orbitIngestV2 = {
     pool,
-    repository,
+    repository: process.env.VERCEL === "1" ? withQueuedCardIngest(repository) : repository,
     store,
     workspaceId: config.workspaceId,
     ready,

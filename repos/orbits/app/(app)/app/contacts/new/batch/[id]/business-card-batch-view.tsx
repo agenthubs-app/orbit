@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   BusinessCardBatchDTO,
@@ -9,8 +9,9 @@ import type {
 import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
 import { Icon } from "../../../../orbit-reference-primitives";
 import { useOrbitLanguage } from "../../../../orbit-language-context";
+import { ORBIT_Z } from "../../../../orbit-z";
 
-type Translate = (copy: { en: string; zh: string }) => string;
+type Translate = (copy: { en: string; zh: string; ja?: string }) => string;
 
 const WORKER_STALL_MS = 60_000;
 
@@ -62,14 +63,50 @@ export function initialFixedFields(
   };
 }
 
+/** Shape shared by the V1 and V2 review forms — enough to judge "nothing was read". */
+export type BusinessCardReviewFixedFields = Pick<
+  BusinessCardBatchFixedFields,
+  "displayName" | "organization" | "role" | "email" | "phone"
+>;
+
+/**
+ * True when none of the prefilled fixed fields carries a value. Both review
+ * pages (V1 batch, V2 ingest) feed their own prefill through this so the
+ * "fill it in by hand" notice is decided by one rule.
+ */
+export function hasNoFixedFields(fields: BusinessCardReviewFixedFields): boolean {
+  return [fields.displayName, fields.organization, fields.role, fields.email, fields.phone]
+    .every((value) => !value.trim());
+}
+
+/**
+ * True when OCR returned `extracted` but none of the fixed fields carried a
+ * value, so the reviewer must fill the card in from the image.
+ */
+export function extractionHasNoFields(item: BusinessCardBatchItemDTO): boolean {
+  return hasNoFixedFields(initialFixedFields(item));
+}
+
+export const EMPTY_EXTRACTION_NOTICE_COPY = {
+  en: "Recognition did not read any fields. Fill them in by hand from the card image.",
+  ja: "認識ではフィールドを読み取れませんでした。カード画像を見ながら手入力してください。",
+  zh: "识别没有读到任何字段，请对照卡图手工填写。",
+} as const;
+
+export const NAME_REQUIRED_HINT_COPY = {
+  en: "A name is required before this card can be saved as a contact.",
+  ja: "連絡先として保存するには氏名が必要です。",
+  zh: "需要填写姓名，才能把这张名片保存为联系人。",
+} as const;
+
 function PrivacyNote({ t }: { t: Translate }) {
   return (
     <div className="bcb-privacy">
       <Icon name="lock" size={15} color="var(--accent)" />
       <span>
         {t({
-          en: "Card images are kept only until you finish reviewing them, then deleted.",
-          zh: "卡图保留至你完成确认，确认或跳过后立即删除。",
+          en: "After confirmation, images are no longer accessible and are deleted in the background. Skipping also removes the image.",
+          zh: "确认后卡图不再可访问，并由后台删除；跳过也会移除卡图。",
         })}
       </span>
     </div>
@@ -86,10 +123,11 @@ export interface BusinessCardBatchViewPureProps {
   nowMs: number;
   busy: boolean;
   duplicateItemId: string | null;
-  onConfirm: (item: BusinessCardBatchItemDTO, fields: BusinessCardBatchFixedFields, allowDuplicate: boolean) => void;
+  onConfirm: (item: BusinessCardBatchItemDTO, fields: BusinessCardBatchFixedFields, allowDuplicate: boolean, manual?: boolean) => void;
   onSkip: (item: BusinessCardBatchItemDTO) => void;
   onRetry: (item: BusinessCardBatchItemDTO) => void;
   onFinish: () => void;
+  onCancel: () => void;
 }
 
 export function BusinessCardBatchViewPure({
@@ -102,6 +140,7 @@ export function BusinessCardBatchViewPure({
   onSkip,
   onRetry,
   onFinish,
+  onCancel,
 }: BusinessCardBatchViewPureProps) {
   const { t } = useOrbitLanguage();
   const currentItem = useMemo(
@@ -117,11 +156,13 @@ export function BusinessCardBatchViewPure({
   const [editedItemId, setEditedItemId] = useState<string | null>(
     currentItem?.id ?? null,
   );
+  const [manualItemId, setManualItemId] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentItem && currentItem.id !== editedItemId) {
       setFields(initialFixedFields(currentItem));
       setEditedItemId(currentItem.id);
+      setManualItemId(null);
     }
   }, [currentItem, editedItemId]);
 
@@ -130,6 +171,21 @@ export function BusinessCardBatchViewPure({
     batch.status === "processing" &&
     nowMs - Date.parse(batch.updatedAt) > WORKER_STALL_MS &&
     !items.some((item) => item.status === "processing");
+
+  if (batch.status === "cancelled") {
+    return <section className="bcb-shell" data-batch-state="cancelled">
+      <style>{BATCH_STYLE}</style>
+      <h2>{t({ en: "Batch cancelled", zh: "批次已取消" })}</h2>
+      <p className="bcb-lede">{t({ en: "Processing has stopped. Contacts already saved remain in your contacts.", zh: "已停止处理，已经收录的联系人会保留。" })}</p>
+      <p className="bcb-lede">{batch.imagesDeletedAt ? t({ en: "Card images have been deleted.", zh: "卡图已删除。" }) : t({ en: "Card images are being deleted in the background.", zh: "正在后台删除卡图。" })}</p>
+      <a className="btn btn-primary" href="/app/contacts">{t({ en: "Open contacts", zh: "查看名片夹" })}</a>
+    </section>;
+  }
+
+  const cancelControl = <div>
+    <button className="btn btn-ghost" disabled={busy} onClick={onCancel} type="button">{t({ en: "Cancel remaining import", zh: "取消剩余导入" })}</button>
+    <p className="bcb-lede">{t({ en: "Stops processing and deletes card images. Contacts already saved are kept.", zh: "停止处理并删除卡图，保留已收录的联系人。" })}</p>
+  </div>;
 
   if (batch.status === "completed") {
     return (
@@ -164,8 +220,8 @@ export function BusinessCardBatchViewPure({
         {workerStalled ? (
           <div className="bcb-warn">
             {t({
-              en: "The processing service looks offline. Start the batch worker: npx tsx scripts/run-business-card-batch-worker.ts",
-              zh: "处理服务未运行。请启动批量识别 worker：npx tsx scripts/run-business-card-batch-worker.ts",
+              en: "Processing is taking longer than expected. You can return later, or cancel this import and add contacts manually.",
+              zh: "处理时间比预期长。你可以稍后回来，也可以取消本次导入后手动添加联系人。",
             })}
           </div>
         ) : null}
@@ -193,6 +249,7 @@ export function BusinessCardBatchViewPure({
             </div>
           ))}
         </div>
+        {cancelControl}
         <PrivacyNote t={t} />
       </section>
     );
@@ -213,6 +270,7 @@ export function BusinessCardBatchViewPure({
         <button className="btn btn-primary" disabled={busy} onClick={onFinish} type="button">
           {t({ en: "Finish batch", zh: "完成批次" })}
         </button>
+        {cancelControl}
         <PrivacyNote t={t} />
       </section>
     );
@@ -221,6 +279,10 @@ export function BusinessCardBatchViewPure({
   const remaining = items.filter(
     (item) => item.status === "extracted" || item.status === "failed",
   ).length;
+  const emptyExtraction =
+    currentItem.status === "extracted" && extractionHasNoFields(currentItem);
+  // Mirrors the server: the write service rejects a blank displayName.
+  const nameMissing = fields !== null && !fields.displayName.trim();
 
   return (
     <section className="bcb-shell" data-batch-state="review">
@@ -250,7 +312,12 @@ export function BusinessCardBatchViewPure({
               {currentItem.errorCode ? ` · ${currentItem.errorCode}` : ""}
             </div>
           ) : null}
-          {fields && currentItem.status === "extracted" ? (
+          {emptyExtraction ? (
+            <div className="bcb-warn" data-batch-notice="empty-extraction" role="status">
+              {t(EMPTY_EXTRACTION_NOTICE_COPY)}
+            </div>
+          ) : null}
+          {fields && (currentItem.status === "extracted" || manualItemId === currentItem.id) ? (
             <>
               {(
                 [
@@ -282,6 +349,7 @@ export function BusinessCardBatchViewPure({
                       previous ? { ...previous, notes: event.target.value } : previous,
                     )
                   }
+                  className="bcb-notes"
                   rows={6}
                   value={fields.notes}
                 />
@@ -294,9 +362,14 @@ export function BusinessCardBatchViewPure({
                   })}
                 </div>
               ) : null}
+              {nameMissing ? (
+                <p className="bcb-hint" data-batch-hint="name-required">
+                  {t(NAME_REQUIRED_HINT_COPY)}
+                </p>
+              ) : null}
             </>
           ) : null}
-          <div className="bcb-actions">
+          <div className="bcb-actions bcb-actions-review">
             {currentItem.status === "extracted" && fields ? (
               duplicateItemId === currentItem.id ? (
                 <>
@@ -310,7 +383,7 @@ export function BusinessCardBatchViewPure({
                   </button>
                   <button
                     className="btn btn-primary"
-                    disabled={busy}
+                    disabled={busy || nameMissing}
                     onClick={() => onConfirm(currentItem, fields, true)}
                     type="button"
                   >
@@ -329,7 +402,7 @@ export function BusinessCardBatchViewPure({
                   </button>
                   <button
                     className="btn btn-primary"
-                    disabled={busy}
+                    disabled={busy || nameMissing}
                     onClick={() => onConfirm(currentItem, fields, false)}
                     type="button"
                   >
@@ -337,6 +410,25 @@ export function BusinessCardBatchViewPure({
                   </button>
                 </>
               )
+            ) : manualItemId === currentItem.id && fields ? (
+              <>
+                <button
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setManualItemId(null)}
+                  type="button"
+                >
+                  {t({ en: "Back", zh: "返回" })}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  disabled={busy || !fields.displayName.trim()}
+                  onClick={() => onConfirm(currentItem, fields, duplicateItemId === currentItem.id, true)}
+                  type="button"
+                >
+                  {t({ en: "Save manual entry", zh: "保存手工录入" })}
+                </button>
+              </>
             ) : (
               <>
                 <button
@@ -346,6 +438,14 @@ export function BusinessCardBatchViewPure({
                   type="button"
                 >
                   {t({ en: "Skip", zh: "跳过" })}
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => setManualItemId(currentItem.id)}
+                  type="button"
+                >
+                  {t({ en: "Type it in", zh: "手工录入" })}
                 </button>
                 <button
                   className="btn btn-primary"
@@ -360,43 +460,54 @@ export function BusinessCardBatchViewPure({
           </div>
         </div>
       </div>
+      {cancelControl}
       <PrivacyNote t={t} />
     </section>
   );
 }
 
+class BatchRequestFailure extends Error {
+  constructor(readonly status: number) { super("Batch request failed."); }
+}
+
+async function requestBatchJson(path: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(path, { ...init, signal: controller.signal });
+    if (!response.ok) throw new BatchRequestFailure(response.status);
+    return await response.json();
+  } finally { clearTimeout(timer); }
+}
+
 export function BusinessCardBatchView({ batchId }: { batchId: string }) {
+  const { t } = useOrbitLanguage();
+  const [actionError, setActionError] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<number | null>(null);
+  const requestSequence = useRef(0);
+  const actionInFlight = useRef(false);
   const [batch, setBatch] = useState<BusinessCardBatchDTO | null>(null);
   const [items, setItems] = useState<readonly BusinessCardBatchItemDTO[]>([]);
   const [busy, setBusy] = useState(false);
   const [duplicateItemId, setDuplicateItemId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (afterAction = false) => {
+    if (actionInFlight.current && !afterAction) return;
+    const sequence = ++requestSequence.current;
     try {
-      const response = await fetch(
-        `/api/contact-drafts/business-card/batches/${batchId}`,
-      );
-
-      if (!response.ok) {
-        return;
+      const body = await requestBatchJson(`/api/contact-drafts/business-card/batches/${batchId}`);
+      if (sequence !== requestSequence.current || (actionInFlight.current && !afterAction)) return;
+      if (body?.data?.batch?.id !== batchId || !Array.isArray(body?.data?.items)) throw new BatchRequestFailure(502);
+      setBatch(body.data.batch);
+      setItems(body.data.items);
+      setLoadError(null);
+    } catch (error) {
+      if (sequence === requestSequence.current && (!actionInFlight.current || afterAction)) {
+        setLoadError(error instanceof BatchRequestFailure ? error.status : 0);
       }
-
-      const body = (await response.json()) as {
-        data?: {
-          batch?: BusinessCardBatchDTO;
-          items?: readonly BusinessCardBatchItemDTO[];
-        };
-      };
-
-      if (body.data?.batch) {
-        setBatch(body.data.batch);
-        setItems(body.data.items ?? []);
-      }
-    } catch {
-      // 网络抖动时保留上一次状态，下一轮轮询恢复。
     } finally {
-      setNowMs(Date.now());
+      if (sequence === requestSequence.current) setNowMs(Date.now());
     }
   }, [batchId]);
 
@@ -404,11 +515,11 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
     void refresh();
     const timer = setInterval(() => void refresh(), 3_000);
 
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); requestSequence.current++; };
   }, [refresh]);
 
-  async function post(path: string, body?: unknown): Promise<Response> {
-    return fetch(path, {
+  async function post(path: string, body?: unknown) {
+    return requestBatchJson(path, {
       body: body === undefined ? undefined : JSON.stringify(body),
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       method: "POST",
@@ -416,34 +527,58 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
   }
 
   async function withBusy(action: () => Promise<void>): Promise<void> {
+    if (actionInFlight.current) return;
+    actionInFlight.current = true;
+    requestSequence.current++;
+    setActionError(null);
     setBusy(true);
-
     try {
       await action();
-      await refresh();
+    } catch (error) {
+      setActionError(error instanceof BatchRequestFailure ? error.status : 0);
     } finally {
+      await refresh(true);
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
 
-  if (!batch) {
-    return null;
+  const errorStatus = actionError === 401 || loadError === 401 ? 401 : actionError ?? loadError;
+  const feedback = errorStatus !== null ? <div role="alert">
+    <p>{errorStatus === 401 ? t({ en: "Your session has expired. Sign in again to continue.", zh: "登录已过期，请重新登录后继续。" })
+      : errorStatus === 403 ? t({ en: "You do not have permission to perform this action.", zh: "你没有执行此操作的权限。" })
+      : errorStatus === 404 ? t({ en: "This batch is no longer available.", zh: "此批次已不可用。" })
+      : actionError !== null ? t({ en: "The result could not be confirmed. Check the latest batch state below before retrying.", zh: "暂时无法确认操作结果。请检查下方最新批次状态，再决定是否重试。" })
+      : batch ? t({ en: "Batch progress could not be loaded. Your last displayed state has been kept; try refreshing.", zh: "暂时无法加载批次进度，已保留上次显示的状态，请刷新重试。" })
+      : t({ en: "Batch progress could not be loaded. Try refreshing.", zh: "暂时无法加载批次进度，请刷新重试。" })}</p>
+    {errorStatus === 401 ? <a className="btn btn-primary" href={`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/batch/${batchId}`)}`}>{t({ en: "Sign in", zh: "重新登录" })}</a>
+      : <button className="btn btn-ghost" disabled={busy} type="button" onClick={() => { setActionError(null); void refresh(); }}>{t({ en: "Refresh status", zh: "刷新状态" })}</button>}
+  </div> : null;
+
+  if (!batch || batch.id !== batchId) {
+    return <section className="bcb-shell"><style>{BATCH_STYLE}</style>
+      <h2>{t({ en: "Card import", zh: "名片导入" })}</h2>
+      {feedback ?? <p role="status">{t({ en: "Loading batch…", zh: "正在加载批次…" })}</p>}
+      <a href="/app/contacts">{t({ en: "Back to contacts", zh: "返回名片夹" })}</a>
+    </section>;
   }
 
   return (
+    <>
+    {feedback}
     <BusinessCardBatchViewPure
       batch={batch}
       busy={busy}
       duplicateItemId={duplicateItemId}
       items={items}
       nowMs={nowMs}
-      onConfirm={(item, fields, allowDuplicate) =>
+      onConfirm={(item, fields, allowDuplicate, manual = false) =>
         void withBusy(async () => {
-          const response = await post(
-            `/api/contact-drafts/business-card/batches/${batch.id}/items/${item.id}/confirm`,
+          const body = await post(
+            `/api/contact-drafts/business-card/batches/${batch.id}/items/${item.id}/${manual ? "manual-entry" : "confirm"}`,
             { ...fields, allowDuplicate },
           );
-          const body = (await response.json()) as { data?: { state?: string } };
+          if (!["duplicate_review", "created", "already_confirmed"].includes(body?.data?.state)) throw new BatchRequestFailure(502);
 
           if (body.data?.state === "duplicate_review") {
             setDuplicateItemId(item.id);
@@ -452,6 +587,9 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
           }
         })
       }
+      onCancel={() => void withBusy(async () => {
+        await post(`/api/contact-drafts/business-card/batches/${batch.id}/cancel`);
+      })}
       onFinish={() =>
         void withBusy(async () => {
           await post(`/api/contact-drafts/business-card/batches/${batch.id}/finish`);
@@ -473,6 +611,7 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
         })
       }
     />
+    </>
   );
 }
 
@@ -501,5 +640,35 @@ const BATCH_STYLE = `
 .bcb-field { display: flex; flex-direction: column; gap: 4px; }
 .bcb-field > span { color: var(--text-3); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .bcb-field input, .bcb-field textarea { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--ink); font: inherit; font-size: 14px; padding: 9px 11px; resize: vertical; }
+.bcb-field textarea { line-height: 1.5; }
+.bcb-hint { color: var(--amber-text); font-size: 12.5px; line-height: 1.5; margin: 0; }
 .bcb-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+/* Narrow screens: pin the per-card action row to the viewport, and shorten the
+   notes box so the fields stay in view (3 rows = 4.5em + padding).
+
+   Why fixed and not sticky: .bcb-actions-review is the LAST child of
+   .bcb-review-form, so its sticky containing block ends at its own bottom edge —
+   "position: sticky; bottom: 0" has zero travel there and can only stop an element
+   from scrolling away, never lift it up. Measured on a 375x812 viewport the row sat
+   at top=937 (off-screen) until the page was scrolled to the very bottom.
+
+   iOS Safari caveat: a fixed bar is anchored to the LAYOUT viewport, so while the
+   software keyboard is open the bar can end up behind the keyboard. Correcting for
+   that needs VisualViewport JS, which is deliberately left out here because it is
+   not testable in this environment. */
+@media (max-width: 760px) {
+  .bcb-field textarea.bcb-notes { height: calc(4.5em + 20px); min-height: calc(4.5em + 20px); }
+  /* Reserve the pinned bar's height at the END of the scrollable content, so the
+     last field, the cancel-remaining-import block and the privacy note can all be
+     scrolled clear of the bar. It has to sit on the shell, not inside the review
+     form: padding inside the form only moves the tail down together with the extra
+     scroll range, leaving the last elements just as trapped (measured).
+     118px = two 44px button rows (the row wraps at 375px with English labels)
+     + 10px row gap + 20px vertical padding; +12px breathing room. */
+  /* 底栏高度按它自己的盒模型算：10px 上内边距 + 44px 按钮 + 底部内边距（安全区）。
+     声明在 body 上，全局的 iOrbit 悬浮球才能读到并让开，见 orbit-global-ask-styles.ts。 */
+  body:has(.bcb-actions-review) { --orbit-pinned-bar-h: calc(54px + max(12px, env(safe-area-inset-bottom, 0px))); }
+  .bcb-shell:has(.bcb-actions-review) { padding-bottom: calc(var(--orbit-pinned-bar-h) + 12px); }
+  .bcb-actions-review { background: var(--bg); border-top: 1px solid var(--border); bottom: 0; flex-wrap: wrap; left: 0; margin: 0; padding: 10px 20px max(12px, env(safe-area-inset-bottom, 0px)); position: fixed; right: 0; z-index: ${ORBIT_Z.sticky}; }
+}
 `;

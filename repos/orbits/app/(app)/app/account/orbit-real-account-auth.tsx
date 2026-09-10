@@ -89,7 +89,15 @@ export function OrbitRealAccountAuth({
 
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
-  const message = query.created ? t({ en: "Account created. Please sign in and complete your general profile first.", zh: "账号已创建。请登录后先完成通用档案。" }) : "";
+  // 只在注册成功但自动登录未建立会话时出现。登录后没有强制的档案
+  // 引导步骤（/app/profile 可从账号菜单进入），所以这里不承诺那一步。
+  const message = query.created
+    ? t({
+        en: "Account created, but automatic sign-in did not complete. Sign in with the password you just set.",
+        ja: "アカウントは作成されましたが、自動サインインが完了しませんでした。設定したパスワードでサインインしてください。",
+        zh: "账号已创建，但自动登录未完成。请用刚设置的密码登录。",
+      })
+    : "";
   const primary = isForgot
     ? t({
         en: "Request reset link",
@@ -127,6 +135,19 @@ export function OrbitRealAccountAuth({
               : payload?.error?.message ??
                   t({ en: "Sign-up failed. Please try again.", zh: "注册失败,请稍后再试。" }),
           );
+          return;
+        }
+
+        // 注册成功后用登录页同一套 credentials 机制直接建立会话，免去用户
+        // 重输一遍刚设置的密码；自动登录失败才退回登录页，并如实说明原因。
+        const autoSignIn = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        }).catch(() => null);
+
+        if (autoSignIn && !autoSignIn.error) {
+          navigate(query.next);
           return;
         }
 

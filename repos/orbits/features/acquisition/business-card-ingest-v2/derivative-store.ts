@@ -9,6 +9,7 @@ export interface IngestDerivativeStore {
   put(bytes: Buffer): Promise<{ objectKey: string; size: number }>;
   get(objectKey: string): Promise<Buffer | null>;
   delete(objectKey: string): Promise<void>;
+  reapUnattachedWrites?(): Promise<number>;
 }
 
 const OBJECT_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$/;

@@ -14,12 +14,14 @@ import {
   createIngestV2ConfirmHandler,
   createIngestV2FinalizeHandler,
   createIngestV2UploadHandler,
+  createIngestV2ReplaceHandler,
   type IngestV2Runtime,
 } from "../../app/api/contact-drafts/business-card/batches/v2/handlers";
 import type { BusinessCardStructuredExtraction } from "../../features/acquisition/business-card-cloud-ocr";
 import { createFilesystemDerivativeStore } from "../../features/acquisition/business-card-ingest-v2/derivative-store";
 import { runBusinessCardIngestV2Migrations } from "../../features/acquisition/business-card-ingest-v2/migrations";
 import { createBusinessCardIngestRepository } from "../../features/acquisition/business-card-ingest-v2/repository";
+import { withQueuedCardIngest } from "../../features/acquisition/business-card-queue-dispatch";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
@@ -28,6 +30,46 @@ const skip = databaseUrl ? false : "ORBIT_EVENT_DATABASE_URL is not configured";
 const FIXTURE_HEIC = join(__dirname, "..", "fixtures", "business-card-tiny.heic");
 
 const fakeActor = async () => ({ id: "actor:test" });
+
+test("committed upload and replacement survive dispatch failure; rejected replacements clean only their new object", { skip }, async () => {
+  await withHarness(async ({ runtime, deps }) => {
+    const bytes = await readFile(FIXTURE_HEIC);
+    const created = await runtime.repository.createBatch({ actorId: "actor:test", idempotencyKey: "dispatch-failure", manifest: [{
+      fileName: "card.heic", mimeType: "image/heic", rawSize: bytes.length, seq: 1, clientDigest: sha256(bytes),
+    }] });
+    const batchId = created.batch.id;
+    const itemId = created.items[0]!.id;
+    const savedRepository = runtime.repository;
+    const savedStore = runtime.store;
+    const written: string[] = [];
+    runtime.store = { ...savedStore, async put(value) {
+      const stored = await savedStore.put(value); written.push(stored.objectKey); return stored;
+    } };
+    runtime.repository = withQueuedCardIngest(savedRepository, async () => { throw new Error("private dispatch detail"); });
+    const context = params({ id: batchId, itemId });
+    const request = (method: string, version?: number) => new Request("http://test/image", {
+      method, body: new Uint8Array(bytes), headers: { "content-type": "image/heic", ...(version ? { "if-match": String(version) } : {}) },
+    });
+    const dispatchError = { message: "Business-card changes were saved, but background dispatch is unavailable." };
+    await assert.rejects(createIngestV2UploadHandler(deps)(request("PUT"), context), dispatchError);
+    const uploaded = (await savedRepository.getBatch({ actorId: "actor:test", batchId }))!.items[0]!;
+    assert.equal(uploaded.derivativeObjectKey, written[0]);
+    assert.ok(await savedStore.get(written[0]!));
+    await assert.rejects(createIngestV2ReplaceHandler(deps)(request("POST", uploaded.version), context), dispatchError);
+    const replaced = (await savedRepository.getBatch({ actorId: "actor:test", batchId }))!.items[0]!;
+    assert.equal(replaced.derivativeObjectKey, written[1]);
+    assert.ok(await savedStore.get(written[1]!));
+    const rejected = await createIngestV2ReplaceHandler(deps)(request("POST", uploaded.version), context);
+    assert.equal(rejected.status, 409);
+    assert.equal(await savedStore.get(written[2]!), null);
+    assert.ok(await savedStore.get(written[1]!));
+    runtime.repository = { ...runtime.repository, async getBatch() { throw new Error("database unavailable"); } };
+    const unknown = await createIngestV2ReplaceHandler(deps)(request("POST", uploaded.version), context);
+    assert.equal(unknown.status, 409);
+    assert.ok(await savedStore.get(written[3]!), "uncertain state must not trigger deletion");
+    for (const key of written) await savedStore.delete(key);
+  });
+});
 
 async function withHarness(
   fn: (ctx: {

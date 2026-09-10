@@ -224,6 +224,66 @@ test("Chinese relationship inbox draft generation uses the actor-scoped AI API w
   }
 });
 
+test("relationship inbox draft request surfaces MODEL_API_KEY_MISSING from a 422 envelope", async () => {
+  const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "MODEL_API_KEY_MISSING",
+          message: "gemini API key is not configured.",
+        },
+      }),
+      { status: 422 },
+    )) as typeof fetch;
+
+  try {
+    const result = await mod.requestMessageDraft({
+      contactId: "contact:sato",
+      language: "zh",
+      organization: "北星食品",
+      recipientName: "佐藤 健一",
+    });
+
+    assert.equal(result.success, false);
+    if (result.success === false) {
+      assert.equal(result.error.code, "MODEL_API_KEY_MISSING");
+      assert.equal(mod.newThreadFormErrorForDraftFailure(result.error.code), "ai_unconfigured");
+    }
+    // 其他失败仍走通用重试提示。
+    assert.equal(mod.newThreadFormErrorForDraftFailure("MODEL_REQUEST_FAILED"), "generic");
+    assert.equal(mod.newThreadFormErrorForDraftFailure("DRAFT_REQUEST_FAILED"), "generic");
+    assert.equal(mod.newThreadFormErrorForDraftFailure(undefined), "generic");
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("relationship inbox compose form tells the user when AI drafting is not configured", async () => {
+  const source = await import("node:fs").then((fs) =>
+    fs.readFileSync(
+      new URL(
+        "../../app/(app)/app/inbox/relationship-inbox-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  assert.match(source, /AI 起草尚未在当前环境配置，请手动填写主题和正文。/);
+  assert.match(
+    source,
+    /AI drafting is not configured in this environment\. Write the subject and body manually\./,
+  );
+  assert.match(source, /この環境では AI 下書きが設定されていません。件名と本文を手動で入力してください。/);
+  // 通用重试文案仍然保留给真正的故障。
+  assert.match(source, /出了点问题，请重试。/);
+  assert.match(source, /error === "ai_unconfigured"/);
+  assert.match(source, /newThreadFormErrorForDraftFailure\(result\.error\.code\)/);
+});
+
 test("relationship inbox labels AI drafting and local staging honestly", async () => {
   const source = await import("node:fs").then((fs) =>
     fs.readFileSync(

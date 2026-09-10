@@ -116,3 +116,42 @@ test("forgot password submits a recovery request and announces acceptance separa
   assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);
   assert.doesNotMatch(accountAuthSource, /orbit-auth-new-password/);
 });
+
+test("signup signs the new account in with the same credentials mechanism as login instead of bouncing to the login form", () => {
+  const accountAuthSource = source(
+    "app/(app)/app/account/orbit-real-account-auth.tsx",
+  );
+  const signupBranch = accountAuthSource.slice(
+    accountAuthSource.indexOf("if (isSignup) {"),
+    accountAuthSource.indexOf("if (isForgot) {"),
+  );
+
+  assert.match(signupBranch, /\/api\/auth\/register/);
+  // 注册成功后复用 next-auth signIn("credentials")，而不是手写 csrf/callback。
+  assert.match(
+    signupBranch,
+    /signIn\("credentials",\s*\{\s*email,\s*password,\s*redirect:\s*false,?\s*\}\)/,
+  );
+  assert.doesNotMatch(signupBranch, /\/api\/auth\/csrf/);
+  assert.doesNotMatch(signupBranch, /\/api\/auth\/callback\/credentials/);
+  // 自动登录成功直接去 next；失败才退回登录页并预填邮箱。
+  assert.match(signupBranch, /navigate\(query\.next\)/);
+  assert.match(signupBranch, /\/account\/login\?next=.*&created=1&email=/);
+  assert.ok(
+    signupBranch.indexOf("navigate(query.next)") <
+      signupBranch.indexOf("&created=1&email="),
+    "auto sign-in must be attempted before falling back to the login redirect",
+  );
+});
+
+test("post-signup login notice explains the auto sign-in fallback and does not promise a profile onboarding step", () => {
+  const accountAuthSource = source(
+    "app/(app)/app/account/orbit-real-account-auth.tsx",
+  );
+
+  assert.doesNotMatch(accountAuthSource, /通用档案/);
+  assert.doesNotMatch(accountAuthSource, /complete your general profile/);
+  assert.match(accountAuthSource, /automatic sign-in did not complete/);
+  assert.match(accountAuthSource, /账号已创建，但自动登录未完成/);
+  assert.match(accountAuthSource, /自動サインインが完了しませんでした/);
+});

@@ -138,6 +138,14 @@ test("review input rejects invalid consent primitives without coercion or mutati
   }
 });
 
+test("legacy cancelled batches preserve the server cleanup timestamp", async () => {
+  const validator = await schema("businessCardBatchSchema");
+  for (const batch of [{ ...legacyBatch, status: "cancelled" }, { ...legacyBatch, status: "cancelled", imagesDeletedAt: now }]) {
+    assert.deepEqual(validator.parse(batch), batch);
+  }
+  assert.equal(validator.safeParse({ ...legacyBatch, imagesDeletedAt: "yesterday" }).success, false);
+});
+
 test("legacy processing projection alone permits omitted extraction", async () => {
   const validator = await schema("businessCardBatchDetailSchema");
   const { extraction: _extraction, ...projected } = legacyItem;
@@ -165,7 +173,7 @@ test("nullable extraction fields, labels, leases and usage retain null and full 
 
 test("all source enum members remain accepted without a second state machine", async () => {
   for (const [name, fixture, field, values] of [
-    ["businessCardBatchSchema", legacyBatch, "status", ["processing", "ready_for_review", "completed"]],
+    ["businessCardBatchSchema", legacyBatch, "status", ["processing", "ready_for_review", "completed", "cancelled"]],
     ["businessCardBatchItemSchema", legacyItem, "status", ["pending", "processing", "extracted", "failed", "confirmed", "skipped"]],
     ["businessCardBatchItemSchema", legacyItem, "errorCode", ["OCR_PROVIDER_FAILED", "OCR_PROVIDER_TIMEOUT", "OCR_INVALID_OUTPUT"]],
     ["ingestBatchSchema", batch, "status", ["collecting", "processing", "ready_for_review", "completed", "cancelled", "expired"]],
@@ -269,6 +277,20 @@ test("unchanged legacy handlers produce processing/detail and distinct action ac
   const service: BusinessCardBatchService = {
     async getBatch() { return { batch: currentBatch, items: [legacyItem] }; },
     async confirmItem() {}, async retryItem() {}, async skipItem() {}, async finishBatch() {},
+    async confirmContact(input) {
+      assert.equal(input.batchId, legacyBatch.id);
+      assert.equal(input.itemId, legacyItem.id);
+      assert.equal(input.actorId, legacyBatch.actorId);
+      assert.ok(input.writeService);
+      return input.writeService.confirmBusinessCardContact({
+        ...input.fields, actorId: input.actorId, actorLabel: input.actorLabel,
+        draftId: legacyItem.id, confirmed: true,
+        evidenceIds: [`evidence:business-card-batch:${legacyItem.id}`], imageDigest: legacyItem.imageDigest,
+      });
+    },
+    async sweepConfirmedImages() { throw new Error("unused fixture dependency"); },
+    async cancelBatch() { throw new Error("unused fixture dependency"); },
+    async sweepCancelled() { throw new Error("unused fixture dependency"); },
     async createBatch() { throw new Error("unused fixture dependency"); },
     async listBatches() { throw new Error("unused fixture dependency"); },
     async claimPendingItems() { throw new Error("unused fixture dependency"); },

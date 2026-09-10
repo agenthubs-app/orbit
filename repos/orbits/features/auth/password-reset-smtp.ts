@@ -1,6 +1,10 @@
 import nodemailer from "nodemailer";
 import type { PasswordResetMailer } from "./password-reset-service";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export function passwordResetSmtpConfig(env: Record<string, string | undefined> = process.env) {
   const host = env.SMTP_HOST?.trim();
   const user = env.SMTP_USER?.trim();
@@ -26,7 +30,13 @@ export function createSmtpPasswordResetMailer(config: NonNullable<ReturnType<typ
           text: `请打开以下链接设置新密码，链接在申请后 30 分钟内有效，且只能使用一次。\n\n${resetUrl}\n\n如果你没有申请重置，请忽略这封邮件。\nOpen the link to set a new password. It expires 30 minutes after your request and can only be used once. If you did not request this, ignore this email.`,
         });
         if (!result.accepted?.some((recipient) => String(recipient).toLowerCase() === email.toLowerCase())) throw new Error("Rejected");
-      } catch {
+      } catch (error) {
+        // Only the protocol-level code/status is safe to log: provider error
+        // bodies and Error#message may echo the recipient address or the
+        // reset URL back at us. Never log those.
+        const smtpCode = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+        const smtpResponseCode = isRecord(error) && typeof error.responseCode === "number" ? error.responseCode : undefined;
+        console.error(JSON.stringify({ event: "password_reset_smtp_send_failed", smtpCode, smtpResponseCode }));
         throw new Error("Password reset delivery failed");
       }
     },
