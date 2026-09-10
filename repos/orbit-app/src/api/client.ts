@@ -21,10 +21,21 @@ export interface OrbitApiClientOptions {
   fetchImpl?: FetchLike;
 }
 
-export interface OrbitApiRequestOptions {
-  body?: unknown;
+export type OrbitApiRequestOptions = {
   headers?: Readonly<Record<string, string>>;
+  responseType?: "bytes";
+  signal?: AbortSignal;
+} & (
+  | { body?: unknown; rawBody?: never }
+  | { body?: never; rawBody: Uint8Array<ArrayBuffer> }
+);
+
+export interface OrbitApiBytes {
+  bytes: Uint8Array<ArrayBuffer>;
+  contentType: string;
 }
+
+export const MAX_ORBIT_BINARY_BYTES = 10 * 1024 * 1024;
 
 export interface OrbitApiClient {
   readonly baseUrl: string;
@@ -206,12 +217,22 @@ function requestInit(
 ): RequestInit {
   const normalizedAuthCookieHeader = authCookieHeader.trim();
   const headers: Record<string, string> = {
-    Accept: "application/json",
+    Accept: options.responseType === "bytes" ? "image/*" : "application/json",
     ...(options.headers ?? {})
   };
 
   if (normalizedAuthCookieHeader) {
     headers.Cookie = normalizedAuthCookieHeader;
+  }
+
+  if (options.rawBody !== undefined) {
+    return {
+      body: options.rawBody,
+      credentials: normalizedAuthCookieHeader ? "omit" : "include",
+      headers,
+      method,
+      ...(options.signal ? { signal: options.signal } : {})
+    };
   }
 
   if (options.body === undefined) {
@@ -220,7 +241,8 @@ function requestInit(
       // 追加进去。显式会话存在时必须关闭 jar，避免同名 token 被合并后损坏。
       credentials: normalizedAuthCookieHeader ? "omit" : "include",
       headers,
-      method
+      method,
+      ...(options.signal ? { signal: options.signal } : {})
     };
   }
 
@@ -232,7 +254,8 @@ function requestInit(
       ...headers,
       "Content-Type": "application/json"
     },
-    method
+    method,
+    ...(options.signal ? { signal: options.signal } : {})
   };
 }
 
@@ -244,6 +267,15 @@ async function request<TData>(
   path: string,
   options: OrbitApiRequestOptions = {}
 ): Promise<ApiResult<TData>> {
+  if (options.rawBody !== undefined) {
+    const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
+    if (options.body !== undefined) {
+      return failureResult(0, meta, "ORBIT_APP_INVALID_BODY", INVALID_ENVELOPE_MESSAGE);
+    }
+    if (options.rawBody.byteLength > MAX_ORBIT_BINARY_BYTES) {
+      return failureResult(0, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+    }
+  }
   let response: Response;
 
   try {
@@ -268,6 +300,22 @@ async function request<TData>(
 
   const meta = metaFromResponse(response);
   const contentType = response.headers.get("Content-Type") ?? "";
+
+  if (options.responseType === "bytes" && response.ok &&
+      !contentType.toLowerCase().includes("application/json")) {
+    if (Number(response.headers.get("Content-Length")) > MAX_ORBIT_BINARY_BYTES) {
+      return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+    }
+    try {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.byteLength > MAX_ORBIT_BINARY_BYTES) {
+        return failureResult(response.status, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
+      }
+      return { success: true, data: { bytes, contentType } as TData, meta, status: response.status };
+    } catch {
+      return failureResult(response.status, meta, "ORBIT_APP_BINARY_READ_ERROR", NETWORK_ERROR_MESSAGE);
+    }
+  }
 
   if (!contentType.toLowerCase().includes("application/json")) {
     return failureResult(
@@ -310,11 +358,11 @@ async function request<TData>(
     };
   }
 
-  return {
-    ...payload.value,
-    meta,
-    status: response.status
-  };
+  if (options.responseType === "bytes") {
+    return failureResult(response.status, meta, "ORBIT_APP_NON_BINARY_RESPONSE", NON_JSON_RESPONSE_MESSAGE);
+  }
+
+  return { ...payload.value, meta, status: response.status };
 }
 
 function concurrentGetKey(
@@ -327,7 +375,7 @@ function concurrentGetKey(
     left.localeCompare(right)
   );
 
-  return JSON.stringify([baseUrl, authCookieHeader.trim(), path, headers]);
+  return JSON.stringify([baseUrl, authCookieHeader.trim(), path, headers, options.responseType ?? "json"]);
 }
 
 function coalescedGet<TData>(
@@ -337,7 +385,7 @@ function coalescedGet<TData>(
   path: string,
   options: OrbitApiRequestOptions = {}
 ): Promise<ApiResult<TData>> {
-  if (options.body !== undefined) {
+  if (options.body !== undefined || options.rawBody !== undefined || options.signal) {
     return request<TData>(
       baseUrl,
       authCookieHeader,

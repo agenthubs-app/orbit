@@ -108,8 +108,9 @@ Scoped independent re-review approved I1 at source with no new findings.
 Controller reproduced35/35zeroSkip0.76s and exact-optional compile exit0. Logs:
 /tmp/orbit-completion-batch-task1-fix1-independent-node22-20260910.log and
 /tmp/orbit-completion-batch-task1-fix1-exactoptional-node22-20260910.log.
-Actual App typecheck after sanctioned resync is still required; the prior full
-Web2942 result predates this bounded repair and is not labeled post-fix evidence.
+Actual App typecheck after sanctioned resync now exits0, independently confirmed
+in Task2, closing I1 at the consumer. The prior full Web2942 result predates this
+bounded repair and is not labeled post-fix evidence.
 
 **Files:** Modify `repos/orbit-app/src/api/client.ts`, `repos/orbit-app/tests/api-client.test.ts`, and `repos/orbit-app/package.json`/lockfile only if the installed SDK's FileSystem is not a direct dependency. Create `repos/orbit-app/src/api/batch-images.ts` and `repos/orbit-app/tests/batch-images.test.ts`. Generated contracts/schemas come from sync.
 
@@ -145,7 +146,7 @@ rather than depending on an undeclared browser global.
 
 **Interfaces:** Extend OrbitApiRequestOptions with mutually exclusive JSON body versus rawBody, and optional `responseType: "bytes"`; default remains JSON. Binary success data is `{ bytes: Uint8Array, contentType: string }` with existing status/meta envelope. Preserve existing method signatures/generic calls. File preparation returns `{ uri, fileName, mimeType, rawSize, clientDigest }` and uses the actual uploaded bytes.
 
-- [ ] Sync Task 1 contracts/schema. Add RED transport tests proving raw bytes reach fetch unstringified, JSON remains unchanged, declared image Content-Type survives, explicit Cookie keeps credentials omit, 401 still uses the existing expiry path, and JSON errors on binary requests remain normal localized failures. Coalesced GET keys must distinguish bytes from JSON and retain header/account isolation.
+- [x] Sync Task 1 contracts/schema. Add RED transport tests proving raw bytes reach fetch unstringified, JSON remains unchanged, declared image Content-Type survives, explicit Cookie keeps credentials omit, 401 still uses the existing expiry path, and JSON errors on binary requests remain normal localized failures. Coalesced GET keys must distinguish bytes from JSON and retain header/account isolation.
 
 ```ts
 const bytes = new Uint8Array([0, 255, 17, 128]);
@@ -154,12 +155,35 @@ assert.equal(capturedInit.body, bytes);
 assert.equal(capturedInit.credentials, "omit");
 ```
 
-- [ ] Add red file tests for exact SHA-256 digest/size, empty file, 10 MiB boundary, over-limit, unsupported format, cancellation, and sequential preparation of 100 files without retaining byte arrays. Use injected native file/Crypto boundaries while executing the real preparation code. Reject a changed/unreadable URI before upload rather than transmitting bytes that differ from the manifest.
-- [ ] Analyze affected client helpers. Implement the raw-body branch with existing auth/header construction; implement bytes response only for successful binary responses, retaining error-envelope handling for failures. Do not weaken isEnvelope or bypass 401 behavior. Update GET coalescing options to include response representation and to bypass body-bearing requests.
-- [ ] Read the installed Expo bundled-native-module version for FileSystem and add that compatible direct dependency through Expo's package tooling if needed. Use File.bytes() or the verified SDK equivalent; use Expo Crypto for digest. Derive MIME from actual chosen file bytes/metadata consistently, with local fixture coverage for JPEG, PNG, WebP and supported HEIC/HEIF. Do not add a handwritten image codec or file parser.
-- [ ] `batch-images.ts` must expose bounded preparation/read helpers and authenticated selected-image loading using the client bytes mode. Return visible failures on unsupported/missing image; never log image bytes, cookies, or file contents. Convert only the selected validated image to a native-display source in memory.
-- [ ] Export the prepared-file metadata type and the preparation, digest-checked byte-read, and authenticated image-load helpers from this one module; report their exact signatures for Tasks 3-5. Native file/crypto boundaries remain injectable for unit tests. No API route construction belongs in the file helper: callers supply the encoded protected-image path, and ingestion view-models own upload/replacement paths.
-- [ ] Run full API-client tests, batch image tests, contract/schema sync tests and App typecheck. Independent review then controller change detection/commit. Native binary I/O and image rendering still require simulator evidence in the runtime phase.
+- [x] Add red file tests for exact SHA-256 digest/size, empty file, 10 MiB boundary, over-limit, unsupported format, cancellation, and sequential preparation of 100 files without retaining byte arrays. Use injected native file/Crypto boundaries while executing the real preparation code. Reject a changed/unreadable URI before upload rather than transmitting bytes that differ from the manifest.
+- [x] Analyze affected client helpers. Implement the raw-body branch with existing auth/header construction; implement bytes response only for successful binary responses, retaining error-envelope handling for failures. Do not weaken isEnvelope or bypass 401 behavior. Update GET coalescing options to include response representation and to bypass body-bearing requests.
+- [x] Read the installed Expo bundled-native-module version for FileSystem and add that compatible direct dependency through Expo's package tooling if needed. Use File.bytes() or the verified SDK equivalent; use Expo Crypto for digest. Derive MIME from actual chosen file bytes/metadata consistently, with local fixture coverage for JPEG, PNG, WebP and supported HEIC/HEIF. Do not add a handwritten image codec or file parser.
+- [x] `batch-images.ts` must expose bounded preparation/read helpers and authenticated selected-image loading using the client bytes mode. Return visible failures on unsupported/missing image; never log image bytes, cookies, or file contents. Convert only the selected validated image to a native-display source in memory.
+- [x] Export the prepared-file metadata type and the preparation, digest-checked byte-read, and authenticated image-load helpers from this one module; report their exact signatures for Tasks 3-5. Native file/crypto boundaries remain injectable for unit tests. No API route construction belongs in the file helper: callers supply the encoded protected-image path, and ingestion view-models own upload/replacement paths.
+- [x] Run full API-client tests, batch image tests, contract/schema sync tests and App typecheck. Independent review then controller change detection/commit. Native binary I/O and image rendering still require simulator evidence in the runtime phase.
+
+Task2 verification checkpoint: nine App files add raw/bytes/signal transport,
+sequential original-file preparation, digest-checked reads and authenticated
+selected-image loading. Exact interfaces and ownership are preserved in the
+task report. Final focused54/54zeroSkip/cancel; independently fullApp982tests,
+981pass, one exact approved three-batch-route-parity failure, zero skip/cancel,
+46.68s. Parent AppTC exits0 with no diagnostics. Independent spec/quality review
+approved with no findings. Existing intentional session-expiry Error:boom output
+is retained, not hidden. Logs:
+/tmp/orbit-completion-batch-task2-independent-full-app-node22-20260910.log and
+/tmp/orbit-completion-batch-task2-independent-typecheck-node22-20260910.log.
+
+Encoder behavioralRED19/21 becameGREEN21/21 with btoa absent and exact475/49153
+byte roundtrips. Actual iOS helper-entry bundle includes production helper,
+detector, encoder, FileSystem and Crypto:2248235bytes/619sources. This is bundling,
+not simulator/nativeI/O/HTTP/server image acceptance. Direct dependencies are
+FileSystem~57.0.1(resolved57.0.6), magic-bytes.js1.13.1 and base64-js1.5.1; only
+authorized lock entries/root metadata changed, existing encoder node unchanged.
+The 10MiB pre/post checks bound acceptance/retention, not streaming allocation
+for a changing local file or an unknown/misdeclared response. Caller lifecycle,
+scope clearing and max-two upload scheduling remain Tasks3-5. Precommit App-only
+detection:9files180mappedSymbols0flowsLOW; factory CRITICAL blast radius remains
+the reason for fullApp verification, not waived by a narrow graph result.
 
 ### Task 3: Implement Shared Review Presentation and Legacy Batch Detail
 
