@@ -245,10 +245,10 @@ view-model. Their paths are the current base followed by encoded batch ID,
 `/items/`, encoded item ID, then `/content` or `/replace`. These are new local
 path helpers, not presumed exports from Task 2. Task 5 consumes the same helpers.
 
-- [ ] Add RED tests for max 100/10 MiB limits, stable creation key across an ambiguous retry, new key when the user changes the manifest, create-result validation, existing batch listing, digest resume after memory loss, wrong-file rejection, raw upload bytes, failed upload explicit retry, exactly one attempt per item per trigger, at most two in-flight uploads, and no auto-finalize. Exercise expired/cancelled and stale scope responses.
-- [ ] Implement image selection with the existing ImagePicker and verified file-byte helper. Selection cancellation is not a failure. Render the selected files and allow explicit removal before create. Keep creation input/key frozen for one submission attempt; a lost response retries the same manifest/key.
-- [ ] Expose recent current and legacy batches through their existing collection GET endpoints so the legacy detail route is reachable. Distinguish APIs internally, not with implementation-version jargon on screen. A failed list source is a visible partial failure, not an empty-list success.
-- [ ] Add the three-second active collecting/processing refresh and memory-only pending URI handoff keyed by server/account/batch. After restart, reselect and compute digest to match existing awaiting_upload items; report unmatched files. Upload only awaiting items whose current bytes match the manifest. Stop the upload pass after each item has had its one attempt; no for(;;) retry of a failed file.
+- [x] Add RED tests for max 100/10 MiB limits, stable creation key across an ambiguous retry, new key when the user changes the manifest, create-result validation, existing batch listing, digest resume after memory loss, wrong-file rejection, raw upload bytes, failed upload explicit retry, exactly one attempt per item per trigger, at most two in-flight uploads, and no auto-finalize. Exercise expired/cancelled and stale scope responses.
+- [x] Implement image selection with the existing ImagePicker and verified file-byte helper. Selection cancellation is not a failure. Render the selected files and allow explicit removal before create. Keep creation input/key frozen for one submission attempt; a lost response retries the same manifest/key.
+- [x] Expose recent current and legacy batches through their existing collection GET endpoints so the legacy detail route is reachable. Distinguish APIs internally, not with implementation-version jargon on screen. A failed list source is a visible partial failure, not an empty-list success.
+- [x] Add the three-second active collecting/processing refresh and memory-only pending URI handoff keyed by server/account/batch. After restart, reselect and compute digest to match existing awaiting_upload items; report unmatched files. Upload only awaiting items whose current bytes match the manifest. Stop the upload pass after each item has had its one attempt; no for(;;) retry of a failed file.
 
 ```ts
 await client.put(itemContentPath(batchId, item.id), {
@@ -262,9 +262,33 @@ await client.post(itemReplacePath(batchId, item.id), {
 });
 ```
 
-- [ ] Add explicit exclusion/cancel/finalize confirmations and validate returned item/batch identities/status before presenting success. Finalize only when no awaiting uploads remain and there is a nonexcluded uploaded image. 409/410 responses show recovery and authoritative reload; never silently drop failed files or bypass server state.
-- [ ] Wire ContactAcquisitionScreen to the new batch entry using an icon+text action and add private routes/auth-return mappings. The exact route parity is `/contacts/new/batch2` and `/contacts/new/batch2/[id]`; directory/index.tsx must normalize correctly in the existing parity test. Extend only these paths plus legacy path support from Task 3.
-- [ ] Run image/API client, new ingest, contact acquisition and navigation tests; App typecheck. Independent review and controller commit. Task 4 is the collection/upload portion, not finished review parity until Task 5.
+- [x] Add explicit exclusion/cancel/finalize confirmations and validate returned item/batch identities/status before presenting success. Finalize only when no awaiting uploads remain and there is a nonexcluded uploaded image. 409/410 responses show recovery and authoritative reload; never silently drop failed files or bypass server state.
+- [x] Wire ContactAcquisitionScreen to the new batch entry using an icon+text action and add private routes/auth-return mappings. The exact route parity is `/contacts/new/batch2` and `/contacts/new/batch2/[id]`; directory/index.tsx must normalize correctly in the existing parity test. Extend only these paths plus legacy path support from Task 3.
+- [x] Run image/API client, new ingest, contact acquisition and navigation tests; App typecheck. Independent review and controller commit. Task 4 is the collection/upload portion, not finished review parity until Task 5.
+
+Task4 verification checkpoint:15 App files implement current collection/detail,
+original-file selection, stable create identity, digest resume, bounded explicit
+upload, collecting actions and private navigation. Independent review found two
+Important defects; one TDD fix round separates picker presentation from network
+lifecycle cancellation and preserves owned upload410 cleanup across concurrent
+responses and failed recovery reads. Scoped re-review closed both findings with
+zero new Critical/Important/Minor findings. No new product policy or Ruling.
+
+Finalworker160/160zeroFail/skip/cancel41.728662334s; parentpostfixfullApp1146/1146
+zeroFail/skip/cancel51.910414292s andactualAppTCexit0diagnosticfree. Route parity
+passes without assertion changes. Logs:
+/tmp/orbit-completion-batch-task4-fix1-independent-full-app-node22-20260910.log
+and /tmp/orbit-completion-batch-task4-fix1-independent-typecheck-node22-20260910.log.
+Original30-testREDhad12behaviorfailures; expanded40-testREDfound2newlockfailures,
+allGREEN. InitialTS2375typecheckfailurewaslocallyrepaired; finalartifactpassed.
+
+Earlier pre-fix affectedWebaudits170tests163pass7knownruntimefailures,
+zeroSkip/cancel56.203857583s, global87/123with36missing. No new static/name/
+transport failure; this audit was not rerun for lifecycle-only fixes. Exact hook
+picker-ticket, pending-ownership and UploadPassResult.gone interfaces are retained
+in task report/Task5 brief. Controlled native-boundary/component tests do not
+prove simulator file I/O/decoding, actualHTTP/DB/OCR, or cross-client readback.
+Task5 and the complete runtime phase remain required, not implied by route parity.
 
 ### Task 5: Complete Current Ingestion Review and Failure Recovery
 

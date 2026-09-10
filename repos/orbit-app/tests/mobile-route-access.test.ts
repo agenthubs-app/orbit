@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveInitialRouteHref } from "../src/view-models/initial-route";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import test from "node:test";
@@ -12,6 +13,17 @@ import {
   nextHrefForAccountAuthSubmit,
   normalizedNext
 } from "../src/view-models/account-auth";
+
+test("current batch private entry and encoded detail preserve auth return context", () => {
+  const path = "/contacts/new/batch2/batch%3A%2F%20%E7%A9%BA";
+  for (const route of ["/contacts/new/batch2", path]) {
+    assert.equal(isPrivateMobileRoute(route), true);
+    assert.equal(resolveInitialRouteHref(route), route);
+  }
+  const next = mobileAuthReturnHref(path, { id: "batch:/ 空", tab: "upload" });
+  assert.equal(next, path + "?tab=upload"); assert.equal(normalizedNext(next), next);
+  for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/ai");
+});
 
 test("legacy batch private login return preserves context and omits the path id", () => {
   const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
@@ -222,6 +234,8 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/list.tsx",
     "contacts/new.tsx",
     "contacts/new/batch/[id].tsx",
+    "contacts/new/batch2/[id].tsx",
+    "contacts/new/batch2/index.tsx",
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",

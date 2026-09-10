@@ -853,6 +853,15 @@ export function ContactAcquisitionScreen() {
       }
       title="添加人脉"
     >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="批量导入名片"
+        onPress={() => router.push("/contacts/new/batch2")}
+        style={styles.modeButton}
+      >
+        <Ionicons color={colors.accent} name="images-outline" size={18} />
+        <Text style={styles.modeButtonText}>批量导入名片</Text>
+      </Pressable>
       <DataCard detail="确认前不会写入联系人" title="选择来源">
         <View accessibilityRole="tablist" style={styles.modeRow}>
           {modes.map((item) => {

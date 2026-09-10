@@ -1,4 +1,12 @@
 import assert from "node:assert/strict";
+import { batchRoutePath } from "../src/view-models/business-card-ingest";
+import { resolveInitialRouteHref } from "../src/view-models/initial-route";
+
+test("batch acquisition links current collection results and legacy detail IDs without losing encoded segments", () => {
+  assert.equal(batchRoutePath("current", "batch:/ 空"), "/contacts/new/batch2/batch%3A%2F%20%E7%A9%BA");
+  assert.equal(batchRoutePath("legacy", "batch:/ 空"), "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA");
+  assert.equal(resolveInitialRouteHref("/app/contacts/new/batch2?from=contacts"), "/contacts/new/batch2?from=contacts");
+});
 import test from "node:test";
 import { ORBIT_API_ENDPOINTS } from "../src/api/endpoints";
 import {

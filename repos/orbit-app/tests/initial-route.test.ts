@@ -8,7 +8,7 @@ describe("resolveInitialRouteHref", () => {
     const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
     assert.equal(resolveInitialRouteHref(`/app${path}?tab=review#card`), `${path}?tab=review#card`);
     for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/batch/${id}`), "/ai");
-    assert.equal(resolveInitialRouteHref("/contacts/new/batch2/id"), "/ai");
+    assert.equal(resolveInitialRouteHref("/contacts/new/batch2/id"), "/contacts/new/batch2/id");
   });
   it("opens only the experience operation route, including encoded event identifiers", () => {
     assert.equal(resolveInitialRouteHref("/app/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions"), "/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions");

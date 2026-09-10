@@ -61,6 +61,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   chat: "/chat",
   contacts: "/contacts",
   "contacts/list": "/contacts/list",
+  "contacts/new/batch2": "/contacts/new/batch2",
   dashboard: "/dashboard",
   events: "/events",
   followups: "/followups",
@@ -162,12 +163,12 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
-  const batchMatch = /^contacts\/new\/batch\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
+  const batchMatch = /^contacts\/new\/(batch2?)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
   if (batchMatch) {
     try {
-      const batchId = decodeURIComponent(batchMatch[1]!);
+      const batchId = decodeURIComponent(batchMatch[2]!);
       if (batchId === "." || batchId === ".." || !batchId.trim()) return null;
-      return `/contacts/new/batch/${encodeURIComponent(batchId)}`;
+      return `/contacts/new/${batchMatch[1]}/${encodeURIComponent(batchId)}`;
     } catch {
       return null;
     }
