@@ -52,6 +52,10 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   const segments = appRelativePath(pathname).split("/").filter(Boolean);
   const [root, detail, leaf] = segments;
 
+  if (root === "contacts" && detail === "new" && leaf === "batch" && segments.length === 4) {
+    return ID_PATH_PARAM_KEYS;
+  }
+
   if (
     segments.length === 2 &&
     (root === "ai" ||

@@ -13,6 +13,16 @@ import {
   normalizedNext
 } from "../src/view-models/account-auth";
 
+test("legacy batch private login return preserves context and omits the path id", () => {
+  const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
+  assert.equal(isPrivateMobileRoute(path), true);
+  const login = mobileLoginHref(path, { id: ["batch:/ 空", "duplicate"], tab: "review", "#": "card" });
+  const next = new URL(login, "https://orbit.invalid").searchParams.get("next")!;
+  assert.equal(next, `${path}?tab=review#card`);
+  assert.equal(normalizedNext(next), next);
+  assert.equal(nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }), next);
+});
+
 test("mobile actor workspaces share one private-route policy", () => {
   for (const pathname of [
     "/admin",
@@ -211,6 +221,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/intros.tsx",
     "contacts/list.tsx",
     "contacts/new.tsx",
+    "contacts/new/batch/[id].tsx",
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",

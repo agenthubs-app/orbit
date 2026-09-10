@@ -4,6 +4,12 @@ import { describe, it } from "node:test";
 import { resolveInitialRouteHref } from "../src/view-models/initial-route";
 
 describe("resolveInitialRouteHref", () => {
+  it("supports only the exact legacy batch detail with encoded identifiers", () => {
+    const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
+    assert.equal(resolveInitialRouteHref(`/app${path}?tab=review#card`), `${path}?tab=review#card`);
+    for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/batch/${id}`), "/ai");
+    assert.equal(resolveInitialRouteHref("/contacts/new/batch2/id"), "/ai");
+  });
   it("opens only the experience operation route, including encoded event identifiers", () => {
     assert.equal(resolveInitialRouteHref("/app/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions"), "/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions");
     assert.equal(resolveInitialRouteHref("/events/e/operations/experience/extra"), "/ai");

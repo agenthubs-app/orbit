@@ -191,10 +191,10 @@ the reason for fullApp verification, not waived by a narrow graph result.
 
 **Interfaces:** Legacy API base `/api/contact-drafts/business-card/batches`. GET `/{id}` returns detail; POST item confirm accepts the fixed review fields plus allowDuplicate and returns created/duplicate_review; item retry/skip return pending/skipped; batch finish returns completed. Item image is `/{id}/items/{itemId}/image`. Encode every path segment.
 
-- [ ] Add red pure tests for processing/review/completed/failed states, current item selection, preserved edited fields, exact API paths, and confirm-result validation. Initialize fixed review fields from typed extraction. Phone selects only phone/mobile, never WeChat/website/fax. Prefer printed native CJK name and preserve unused name variants in notes.
-- [ ] All recognized information not in a fixed field must remain visible and carried into editable notes: alternate emails/contact points with printed labels, departments, website, addresses, certifications, and unused names. detectedLanguages is metadata, not a contact note. Use one native presentation helper shared by both native batch workspaces; do not duplicate OCR/provider/repository policy or import Web code. Add a complete-extraction fixture that asserts every retained value.
-- [ ] Add runtime RED tests for loading/unavailable/forbidden/missing batch; processing poll and terminal stop; edited confirm exact body; duplicate review requiring a second explicit override action; cancellation of override sending nothing; skip/retry/finish acknowledgments; 409/refetch; delayed poll/mutation after scope switch; rapid duplicate clicks; malformed success; image unavailable and image removal. Test callbacks on actual components, not only source strings.
-- [ ] Run impact for edited existing navigation helpers. Implement the private route and screen with existing AppScreen/themed controls. Shared review form displays the actual selected card image, fixed fields, notes, and review warnings, with explicit confirm/skip/retry actions. Keep processing progress and statuses truthful; stalled processing gets visible recovery copy without exposing worker commands.
+- [x] Add red pure tests for processing/review/completed/failed states, current item selection, preserved edited fields, exact API paths, and confirm-result validation. Initialize fixed review fields from typed extraction. Phone selects only phone/mobile, never WeChat/website/fax. Prefer printed native CJK name and preserve unused name variants in notes.
+- [x] All recognized information not in a fixed field must remain visible and carried into editable notes: alternate emails/contact points with printed labels, departments, website, addresses, certifications, and unused names. detectedLanguages is metadata, not a contact note. Use one native presentation helper shared by both native batch workspaces; do not duplicate OCR/provider/repository policy or import Web code. Add a complete-extraction fixture that asserts every retained value.
+- [x] Add runtime RED tests for loading/unavailable/forbidden/missing batch; processing poll and terminal stop; edited confirm exact body; duplicate review requiring a second explicit override action; cancellation of override sending nothing; skip/retry/finish acknowledgments; 409/refetch; delayed poll/mutation after scope switch; rapid duplicate clicks; malformed success; image unavailable and image removal. Test callbacks on actual components, not only source strings.
+- [x] Run impact for edited existing navigation helpers. Implement the private route and screen with existing AppScreen/themed controls. Shared review form displays the actual selected card image, fixed fields, notes, and review warnings, with explicit confirm/skip/retry actions. Keep processing progress and statuses truthful; stalled processing gets visible recovery copy without exposing worker commands.
 
 ```tsx
 import { withOrbitPrivateRoute } from "../../../../src/components/OrbitRouteAccessBoundary";
@@ -202,9 +202,36 @@ import { BusinessCardBatchScreen } from "../../../../src/screens/contacts/Busine
 export default withOrbitPrivateRoute(BusinessCardBatchScreen);
 ```
 
-- [ ] Poll at the existing three-second cadence only while active processing, with one in-flight read and cleanup. Refresh after mutation but preserve the current edited form until its item is confirmed/skipped or the user explicitly reloads. Never copy the Web loader's silent-error/null-screen behavior.
-- [ ] Confirm only extracted items. Validate exact response state/contact ID; duplicate_review does not advance or mark confirmed. Editing fields or switching items clears duplicate override consent. Finish only after all items are resolved and after the server confirms completed. Link confirmed contacts through encoded IDs. Failed image/OCR is never labeled confirmed.
-- [ ] Run focused view-model/interactions, navigation/auth return tests, App typecheck, then independent review and controller commit.
+- [x] Poll at the existing three-second cadence only while active processing, with one in-flight read and cleanup. Refresh after mutation but preserve the current edited form until its item is confirmed/skipped or the user explicitly reloads. Never copy the Web loader's silent-error/null-screen behavior.
+- [x] Confirm only extracted items. Validate exact response state/contact ID; duplicate_review does not advance or mark confirmed. Editing fields or switching items clears duplicate override consent. Finish only after all items are resolved and after the server confirms completed. Link confirmed contacts through encoded IDs. Failed image/OCR is never labeled confirmed.
+- [x] Run focused view-model/interactions, navigation/auth return tests, App typecheck, then independent review and controller commit.
+
+Task3 verification checkpoint: legacy private detail route, controlled shared
+review form, extraction presentation and navigation/auth-return support are
+implemented in ten App files. Independent task review found three defects;
+one TDD fix round retained same-valued alternate contact meanings, added guarded
+native Image error/unavailable/reload handling, and preserved edits made while an
+explicit reload is pending. Scoped independent re-review closed I1/I2/I3 with no
+new Critical/Important/Minor findings. Shared form now requires onImageError;
+the parent owns scope/item/image-attempt guards and authenticated retry. Canonical
+account ownership is pinned from accepted server detail, not equated to the raw
+mobile session subject.
+
+Post-fix independent six-file verification:97/97pass, zero fail/skip/cancel,
+26.977159375s; actual full App typecheck exits0 with no diagnostics. Logs:
+/tmp/orbit-completion-batch-task3-fix1-independent-node22-20260910.log and
+/tmp/orbit-completion-batch-task3-fix1-independent-typecheck-node22-20260910.log.
+Before the bounded fixes, fullApp1038tests1037pass with only the two approved
+Task4 route gaps, zero skip/cancel49.399323708s; three Web audits170tests163pass
+with seven required runtime-evidence failures, zero skip/cancel71.562351709s.
+Those full runs remain pre-fix evidence, not claimed rerun after the fix.
+Current measured audit coverage at that checkpoint is87/121,34missing surfaces,
+including the new legacy native route; availability does not establish runtime
+coverage. Original scaffold/setup RED failures are not treated as callback-level
+RED; genuine per-finding behavioral RED/GREEN is retained in the task report.
+RNWeb geometry/image/callback cases do not prove native codecs/icon fonts,
+simulator navigation, real HTTP/database/OCR behavior or cross-client alignment.
+Task4/5 and the separate runtime phase remain required.
 
 ### Task 4: Implement Current Batch Collection, Resume and Upload
 

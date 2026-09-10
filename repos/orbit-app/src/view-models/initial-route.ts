@@ -162,6 +162,17 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
+  const batchMatch = /^contacts\/new\/batch\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
+  if (batchMatch) {
+    try {
+      const batchId = decodeURIComponent(batchMatch[1]!);
+      if (batchId === "." || batchId === ".." || !batchId.trim()) return null;
+      return `/contacts/new/batch/${encodeURIComponent(batchId)}`;
+    } catch {
+      return null;
+    }
+  }
+
   const experienceMatch = /^events\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)\/operations\/experience$/u.exec(routeKey);
   if (experienceMatch) {
     try {
