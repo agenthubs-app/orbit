@@ -8,7 +8,8 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, textStyles, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -171,18 +172,19 @@ function AccountContent({
       {view.authActions.length > 0 ? (
         <DataCard detail="先进入账号入口，再回到个人资料完善别人能看到的信息。" title="账号入口">
           <View style={styles.actionRow}>
-            {view.authActions.map((action) => (
+            {view.authActions.map((action, index) => (
               <Pressable
                 accessibilityRole="button"
                 key={action.href}
                 onPress={() => router.push(action.href as Href)}
                 style={({ pressed }) => [
                   styles.actionButton,
+                  index > 0 ? styles.secondaryActionButton : null,
                   pressed ? styles.pressed : null
                 ]}
               >
-                <Text style={styles.actionButtonText}>{action.label}</Text>
-                <Ionicons color={colors.onAccent} name="arrow-forward" size={16} />
+                <Text style={index === 0 ? styles.actionButtonText : styles.secondaryActionText}>{action.label}</Text>
+                <Ionicons color={index === 0 ? colors.onAccent : colors.text} name="arrow-forward" size={16} />
               </Pressable>
             ))}
           </View>
@@ -231,7 +233,7 @@ function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoCell}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text numberOfLines={2} style={styles.infoValue}>
+      <Text style={styles.infoValue}>
         {value}
       </Text>
     </View>
@@ -240,14 +242,13 @@ function InfoCell({ label, value }: { label: string; value: string }) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   feedbackText: {
     backgroundColor: colors.roseSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     color: colors.rose,
     fontSize: typography.small,
@@ -255,22 +256,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     padding: spacing.md
   },
   actionButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
     flexGrow: 1,
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    maxWidth: "100%",
+    gap: spacing.sm
   },
   actionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   actionRow: {
     flexDirection: "row",
@@ -278,14 +271,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   infoCell: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flex: 1,
     gap: spacing.xs,
-    minWidth: 128,
-    padding: spacing.md
+    minWidth: 128
   },
   infoGrid: {
     flexDirection: "row",
@@ -305,13 +293,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   nextStep: {
     alignItems: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    padding: spacing.md
+    gap: spacing.sm
   },
   nextStepText: {
     color: colors.text,
@@ -352,21 +335,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.text3
   },
   secondaryActionButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    ...createControlStyles(colors).secondaryButton
   },
   secondaryActionText: {
-    color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   },
   timezoneText: {
     color: colors.text3,

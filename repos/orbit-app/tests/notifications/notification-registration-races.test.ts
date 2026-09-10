@@ -210,7 +210,6 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id.endsWith("/snapshot-store")) return { clearSnapshots: async () => { calls.push("clear-snapshots"); } };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
-      if (id.endsWith("/design/tokens")) return { colors: {}, spacing: {}, typography: {} };
       if (id.startsWith(".")) {
         const target = resolve(dirname(absolute), id);
         return load([`${target}.ts`, `${target}.tsx`].find(existsSync) ?? target);

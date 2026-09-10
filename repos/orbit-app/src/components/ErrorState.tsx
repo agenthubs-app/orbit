@@ -1,5 +1,5 @@
 import { Text } from "react-native";
-import { typography } from "../design/tokens";
+import { textStyles } from "../design/tokens";
 import { useOrbitTheme } from "../design/theme";
 import { DataCard } from "./DataCard";
 
@@ -14,12 +14,11 @@ export function ErrorState({
 }: ErrorStateProps) {
   const { colors } = useOrbitTheme();
   return (
-    <DataCard title={title}>
+    <DataCard title={title} variant="inset">
       <Text
         style={{
-          color: colors.rose,
-          fontSize: typography.small,
-          lineHeight: 20
+          ...textStyles.small,
+          color: colors.rose
         }}
       >
         {message}

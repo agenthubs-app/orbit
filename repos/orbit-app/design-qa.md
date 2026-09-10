@@ -383,3 +383,171 @@ final result: incomplete — 两个增量修正通过；实时大字号裁切与
 - 实施清单：浅色共享配色已更新；布局与业务逻辑未改；深色核对完成；模拟器恢复浅色默认字号；未提交、推送或发布。
 
 final result: passed
+
+# 2026-09-07 — 首页两条问题引导（单项接入）
+
+## 范围与视觉依据
+
+- 用户已结束此前整体改进循环，选择 question-starters，批准动态选题策略和 v2 画面，并要求「接入」。本节仅验收首页引导，不重启旧循环，也不把旧问题标为解决。
+- Source visual truth：`docs/designs/2026-09-07-ai-home-guidance/question-starters-v2.png`，852 × 1847px。
+- 原生实现：`.tmp/home-guidance/native-restarted.png`（浅色），`.tmp/home-guidance/native-dark.png`（深色）；iPhone 17 Pro / iOS 26.4，402 × 874pt，1206 × 2622px，@3x，默认 large 字号，首页、空输入、键盘关闭。
+- 原图按宽度等比归一至 402 × 871.49pt；原生归一至 402 × 874pt。完整同输入并排证据：`.tmp/home-guidance/comparison.png`；引导局部并排：`.tmp/home-guidance/comparison-focus.png`。两张均已打开检查。诊断画布不参与应用渲染。
+- 生成参考省略了系统状态栏，原生仍保留 62pt 顶部安全区和底部安全区；不把 OS 区域差异当布局缺陷。局部比较分别从源图 y=375pt、原生 y=417pt 对齐引导区，保持同宽，检查标题、两行文字、分隔线及箭头。
+- 下一步数量已由真实服务返回 7，源图为 6；可见三个任务仍来自原生服务，不把图稿数值写回数据。原有卡片、导航、composer 的几何、主题与文案差异不属于本次重做范围。
+
+## 五项视觉检查
+
+- **字体与排版**：沿用系统中文字体，问题 16pt / 24pt 行高，提示标题 13pt / 20pt，层级清楚。局部对比中原生问题文字略大于生成稿，保持既有可读性；两个默认问题均完整单行，长的准备类模板允许自然换行，不做省略。
+- **间距与布局**：卡片下留 28pt，问题行最小 60pt，左右随原有 24pt 页边距。问题位于同一滚动区；键盘展开时可向上滚动到两条问题，底部输入与发送独立保留。原生检查测得行高均 60pt，触控区超过 44pt。
+- **颜色与 token**：使用既有 paper/text/text3/border。Ocean-blue 卡片不变；深色使用既有深色映射，文字、箭头和输入控制均可辨。原生细分隔线比生成稿淡，符合当前 token，不影响行区分，视为可选 P3 精修。
+- **图像与图标**：此区域没有新增栅格图，采用现有 Ionicons 的 arrow-up 旋转至左上，未用手绘符号或截图模拟交互。保留原有导航/卡片图标。
+- **文案与内容**：「试着问我」＋两个不同类型问题，与选定方向一致；不再显示默认长欢迎段和 09:00 时间戳。不复制具体待办，也不声称存在未核实的报名或跟进。
+
+## 交互及代码验证
+
+- 点击第一条，原生 TextArea.AXValue 为「今天先处理哪些事？」；点击第二条后为「最近有哪些活动适合我？」。仍显示首页两个问题及三个待办入口，发送按钮由禁用变为启用，没有自动发送或导航。证据：`.tmp/home-guidance/native-prefill.png`。
+- 深色默认页已检查；键盘展开并滚动后，再次点第一条可直接替换草稿，不需先收起键盘。证据：`.tmp/home-guidance/native-dark-keyboard.png`、`.tmp/home-guidance/native-keyboard-prefill.png`。发送按钮原生 frame 为 x=333、y=478、44 × 44pt，底边 522pt；截图中键盘上边约 540pt，输入控制可见且不被遮挡。iOS accessibility 树未报告标准 Keyboard 类型，因此键盘上界来自截图检查，不冒称自动识别键盘通过。
+- TDD：首页真实渲染用例先出现 9 个期望的缺失行为失败、1 个真实消息保留通过，再实现至 10 项通过；快照状态先 3 项失败后通过；默认 assistantMessage 兜底单独先失败后通过。
+- 选题覆盖：高优先级/到期开放事项、未来会面/活动、人脉跟进、通用兜底、无效/完成/取消记录。使用既有合同类型解码，不加网络调用或模型调用。
+- 稳定性：首次就绪固定；后台覆盖不换题；显式刷新完成才重选；账户/服务器变更等待新资源周期。独立审查发现「此前刷新过后，换账户只经历 refreshing 而非 loading」会卡在通用题，已用失败→通过回归测试修复，仅改首页快照函数。
+- 最终全量测试：769 passed、0 failed、0 skipped；`npm run typecheck` 退出码 0；`git diff --check` 通过。独立定向检查 46/46，通过且无剩余 Critical / Important / Minor。
+- GitNexus：AiScreen LOW / 0 个图中直接调用者；ChatTranscript LOW / 1 个直接调用者 AiScreen；orbitAiHomeChatWindow LOW，图未列调用者，但源码可见首页消费，按此覆盖。新快照函数尚未索引，返回 UNKNOWN，手工检查唯一生产调用者 AiScreen。没有将图中零引用误称为无影响。
+
+## 比较历史、限制与交付
+
+- 首次规范化全页与局部对比没有发现范围内 P0/P1/P2 视觉问题；没有为了增加轮数而修改已匹配的视觉。之后只修复账户刷新状态判断，未改变布局或样式。
+- 最后尝试重拍时 Simulator 已被用户切至设置和侧栏；该 `native-final.png` / `comparison-final.png` 是错误页面状态，明确排除，不作为首页验收证据。观察到界面活动后停止全部模拟器操作，不强行导航或清空用户输入。
+- 上述有效首页、深色与键盘证据已经齐全。账户实际切换链路由纯状态回归测试验证，未在用户账户上反复登录。没有做真实发送、VoiceOver 完整手势、所有大字号/设备测试；不声称这些项目通过。旧 Modal 字号问题不在本项授权范围。
+- 完成清单：两种问题动态选择；空态兜底；停留稳定；显式刷新；精确欢迎过滤；只填入不发送；浅深色/键盘检查；审查修正；保留本地工作。没有提交、推送、发布或改写业务记录。
+
+final result: passed
+
+# 2026-09-08 — 原生邮件式收件箱
+
+## 比较目标与证据
+
+- 用户批准改后设计，并授权收件箱直接修订、实施；名称固定为「收件箱」。范围只有原生收件箱列表、阅读/草稿体验与对应文案，不包含另外两张联系人设计的实施。
+- Source visual truth：`docs/designs/2026-09-08-redesigned-screens/04-inbox-mail-revision.png`，851 × 1847px，约 402 × 873pt 的纯 App 内容。
+- 实现：iOS Simulator `9BF990F2-45B8-42CE-8543-E583B941DA17`，原生 402 × 874pt，截图 1206 × 2622px，密度 @3x。默认浅色、消息页签、无搜索词、实际历史数据。
+- 证据目录：`.tmp/inbox-mail-qa/`。最终列表 `orbit-inbox-mail-final.png`；深色 `orbit-inbox-mail-dark.png`；提醒 `orbit-inbox-mail-reminders-final.png`；键盘编辑 `orbit-inbox-mail-compose-keyboard.png`；详情 `orbit-inbox-mail-thread-final.png`。
+- 规范化：参考等比缩至 402px 宽；实现去掉顶部系统安全区 62pt（186px），再 @3x→@1x。全视图比较共同可用的 402 × 812pt 内容区，未压扁状态栏或重绘系统控件。
+- 已打开同一张并排证据 `full-comparison-final.png`；另打开 `orbit-inbox-mail-comparison-final.png`（首三条区域，820 × 620px）和 `orbit-inbox-mail-comparison-detail.png`（搜索、页签、首条，820 × 250px），不是仅凭路径判断。
+- 状态差异：参考只画三位联系人；真实列表继续展示后续联系人，不截断成三条。真实姓名「山田千尋」不按生成图简化字改写；历史六月日期保持原值。差异属于真实内容保留，不是设计遗漏。
+
+## 五项视觉核对
+
+- **字体/文字层级**：原生 SF/PingFang，标题 30/38pt，姓名 17pt semibold，主题 15pt regular，预览 14/21pt、时间 12pt。已核对中文换行、截断和正文层级；没有新增字体包。
+- **间距/布局**：20pt 水平边距、开放分隔行、126pt 最小行高，去掉统计和双层卡片。搜索与页签顺序和首行位置已调整至参考附近。44pt 可编辑搜索区有意略高于生成图，不牺牲触控尺寸匹配约 37pt 的图中搜索框。
+- **颜色/令牌**：沿用现有白色 surface、Ocean 蓝主操作、灰阶正文和边线；深色仍用项目已有深色令牌。没有把本轮浅色目标擅自推广成新的深色配色。
+- **图像/图标**：参考没有照片、头像或插图，不需栅格资产。返回、写消息、搜索使用项目 Ionicons；没有截图当 UI、伪头像、手绘 SVG 或装饰图形替代。
+- **文案/内容**：标题统一收件箱；消息/提醒分开；草稿始终称预览且明确未保存/未发送。实际多语种消息保留原文，只过滤已确认的合成占位与操作指令。无正文记录注明数量且可展开，不删除数据。
+
+## 比较历史与修正
+
+1. **P1 内容错误**：初拍 `orbit-inbox-mail-first.png` 暴露已知 `Follow up about … with a concrete next step.` 合成提示。检查现有服务对应模板后，加入精确占位识别与保留真实多语种文本的回归；第二张截图不再冒充收到的邮件。
+2. **P2 布局节奏**：`orbit-inbox-mail-comparison.png` 显示首行比参考低约 16–20pt。标题下距 18→12pt、页签上距 14→8pt、页签高 48→44pt；最终全视图与局部并排证据重新核对，没有剩余可操作的 P0/P1/P2。
+3. **P2 提醒空占位**：`orbit-inbox-mail-reminders.png` 先出现大块空线索卡，推低真实提醒。现在仅在有线索、加载或错误时显示线索区域；提醒改为分隔行。最终提醒实拍与 AX 树确认 40 个忽略入口，不再只渲染前六条。
+4. **P1 无正文历史淹没阅读**：`orbit-inbox-mail-thread.png` 显示满屏重复空正文。现在默认收起这类记录、注明 13 条并提供展开按钮；`orbit-inbox-mail-thread-final.png` 中联系人、记录说明、回复与隐私入口在可用范围内。测试验证展开/收起十条无正文记录，不静默丢弃它们。
+5. **功能审查修正**：加载/离线/失败时写消息入口导致无返回路径，以及预览缺少收件人，均有失败→通过测试；独立审查者再次运行四个定向用例确认修复。列表无障碍名称也补全时间、预览和未读数。
+
+## 验证、限制与交付
+
+- 最新完整 `npm test`：817 passed、0 failed、0 skipped；`npm run typecheck` 退出 0；`git diff --check` 通过。
+- 十个浏览器交互用例执行真实 RN Web 屏幕/事件处理/View-model，只替换导航、原生模块和 HTTP 边界。覆盖搜索姓名/公司/主题/正文与无匹配、提醒全部显示和本次忽略、编码后的详情导航、独立编辑/取消、空主题正文、预览失败保留输入、收件人、继续编辑、等待期间锁定、加载/离线/失败可返回、本地回复预览、隐私展开和无正文历史展开。
+- 原生 AX：返回/写消息均 44pt 高；搜索输入本身 44pt；消息/提醒各 44pt；列表宽 362pt、最小高 126pt；提醒忽略按钮高 44pt。输入编辑页从空白主题、正文开始。
+- 原生键盘：正文聚焦后系统键盘正常出现，编辑区保持可见，内容可滚动；底部动作不是固定栏。默认位置动作下缘靠近键盘，取消点击已实测；未声称所有键盘/字号组合均已验证。完整 VoiceOver 手势、极端动态字号和所有设备尺寸未测试。
+- GitNexus：页面/列表/编辑组件为 LOW（0–2 个直接调用者）；`localizeSubject` 和 `localizeDraftReply` 为 HIGH，分别影响列表/详情与详情/新建预览，修改前已告知风险并覆盖回归。新建局部布局/文本助手尚无索引项，返回 UNKNOWN，已按其实际局部调用关系检查；没有将 UNKNOWN 宣称 LOW。未提交，因此未触发提交前 detect_changes 门禁。
+- API 边界：沿用已有收件箱、提醒、线索、润色、隐私接口；新消息接口仅返回非持久化预览。没有新增真实发送、草稿持久化、归档、星标、删除或标记已读能力。上述缺口不以假按钮填充；UI 明确未保存/未发送。本次没有改业务数据、提交、推送或发布。
+- 所有证据保存在本地 `.tmp/`，不提交；模拟器回到新版收件箱，现有本地服务保持运行。联系人两页仍为前一阶段静态设计，不冒称已实现。
+- P3：生成图的笔画/抗锯齿与系统字体、行内垂直间距存在小幅差异；保留原生字体和真实内容，未为低优先级像素微差继续迭代。
+
+final result: passed
+
+# 2026-09-08 — 联系人列表与详情原生实施
+
+本节更新前文的实施状态：联系人两页已完成，收件箱保留上一阶段实现。用户已批准 01/02 号视觉稿并要求继续实施，无新增设计选择、后端能力或发布。
+
+## 目标、规范化与证据
+
+- Source visual truth：`docs/designs/2026-09-08-redesigned-screens/01-contacts-list-after.png`（851×1848）及 `02-contact-detail-after.png`（851×1849）。
+- 原生 iPhone 17 Pro，402×874pt、1206×2622px @3x，默认 large 字号。参考等比缩至 402 宽；实现扣除顶部 62pt 系统安全区，比较共同 402×812pt 内容区域。并排文件为 1640×1748px @2x，右侧底部余量留白，未拉伸或绘制系统状态栏。
+- `.tmp/contacts-redesign-qa/`：最终 `list-final.png`、`detail-final.png`；全视图 `list-comparison-second.png`、`detail-comparison-final.png`；局部 `list-comparison-focus.png`（前三行）、`detail-comparison-focus.png`（主操作/摘要/合作内容）。均已实际打开比较。
+- 真实列表超过参考中的七人，继续展示后续记录，不为匹配静态图截断数据。详情在真实安全区内需稍向上滚动才能看到「更新联系人」；`detail-bottom.png` 验证两个入口均完整可达。原生控件没有固定在屏幕底部。
+
+## 五项视觉核对与迭代
+
+- 字体：原生 SF/PingFang；列表标题 28/36、姓名 17/24；详情姓名 24/32、下一步 18/27、正文 14/23。保留真实文本；生成字体与原生字形、抗锯齿微差为 P3。
+- 布局：22pt 页面边距，人物约 70pt 分隔行；无搜索外框、人物外框、身份卡或摘要卡。主操作宽 358、高 50pt；返回、搜索输入和两个搜索按钮均至少 44pt。
+- 颜色：沿用 surface、蓝色主操作与灰阶评分，深色继续用既有令牌，不修改全局主题。
+- 资产：沿用真实头像资源与项目原有首字头像回退，和参考一致；图标用 Ionicons，无新增照片、虚构人物、截图式 UI 或手绘资产。
+- 内容：搜索/筛选/起草与详情折叠顺序保留；暂无互动保持空态。没有为了视觉匹配改写联系人数据。
+- 第一轮 P2：列表顶部比参考多占约 20pt（`list-comparison-first.png`）；搜索区间距 16→8pt，并恢复筛选间的短分隔。第二轮全图与局部对照通过。
+- 第一轮 P2：详情下一步铺成一行（`detail-comparison-first.png`），主操作与内容节奏偏移。限制正文宽度 242pt、调整局部间距和主按钮圆角；最终并排图确认两行结构、主操作和内容层级。捕获到热更新中间帧时重新采集，不把刷新遮罩当作最终证据。
+
+## 验证和边界
+
+- 最新 `npm test`：824 passed、0 failed、0 skipped；TypeScript 退出 0；diff 检查通过。
+- 新增七个真实 RN Web 交互测试：可编辑搜索/清空、联系人导航、320pt 窄屏操作及图标/文字容纳、两个搜索接口请求、四个筛选展开和行动过滤、全宽起草路由且无发送、资料/编辑展开与草稿保留、失败保存保留输入、无历史的离线返回。
+- 独立审查无 Critical/Important；按其 Minor 建议给原生图标测试替身保留真实尺寸，并补按钮内文字边界检查。旧源码断言中的 eyebrow 要求已由实际导航测试替代。
+- 原生额外证据：`list-dark.png`、`detail-dark.png`、`list-large.png`（extra-extra-extra-large，筛选展开）、`filter-dark.png`（行动已选）、`expanded.png`、`editing.png`、`editing-keyboard-dark.png`。仅查看、筛选和聚焦；未执行真实保存、归档或发送。
+- 键盘不是固定动作栏，编辑区可滚动；未覆盖所有字号/键盘组合、完整 VoiceOver 手势和所有设备。旧编辑区小型次要按钮保留既有尺寸，不声称全面无障碍认证。
+- GitNexus：页面组件 LOW，列表/详情样式入口 HIGH（15/17 个直接调用者），修改前已报告并核对局部消费者；新 ContactPage 无索引项为 UNKNOWN。未提交，未触发提交前 detect_changes 门禁。原有脏工作保留。
+- 完成清单：按图实现、保留交互、失败→通过回归、全套测试/类型检查、全图及局部对照、原生状态验证、独立审查、本地交付。无剩余可操作 P0/P1/P2；字形和小幅间距差异为 P3。
+
+final result: passed
+
+---
+
+# 2026-09-09 — 全 App 视觉统一：改进循环与最终覆盖交接
+
+本节只追加本轮可追溯证据，不改写前面的历史结论。`planner → examiner → improver → examiner` 的一次循环必须同时有明确标准、可复现失败、最小修正和同一标准的复验；任务编号、路由数量或截图数量本身不算循环。前五个循环来自 controller 的 `loop-evidence-audit.md`；当时仍待审的 Task 3–5 领域修补，现已由各自最终报告和独立复审闭合。领域闭合不代表 whole-app convergence：原生运行中改变 Dynamic Type 后的陈旧 frame 仍为 **OPEN**，auth/profile 软件键盘仍为 **UNPROVEN**。
+
+## 可追溯循环摘要
+
+1. Today 44pt 触控：六个完成目标的原生宽度断言以 40pt 失败；宽度最小修为 44pt 后，同一六目标浅/深色 frame 断言与审查通过。证据：本文件前文 `2026-09-06 — 追加原生触控与动态字号复查`。
+2. 历史 inbox 44pt 触控：六个忽略目标以 30pt 高失败；最小高度增至 44pt 后同一断言通过。此记录只说明当时版本；inbox 后来按用户批准方案重做，不能把历史截图当当前验收。
+3. 共享基础：七个真实 consumer 分别暴露标题裁切、卡片边框、17pt 输入、Settings 宽度和 48pt recovery 主动作；共享 layout/text/control、`AppScreen`、`DataCard` 和 state presentation 修正后七项转绿，20 项覆盖及独立审查通过。证据：`tests/app-wide-primitives.test.ts`、`task-1-report.md`。
+4. 联系人分析 Dynamic Type：原生 62%/37% 被省略且 320pt doubled-text 复现；移除相关本地行数限制、保留图表数学后，同一真实 consumer 显示完整值/解释，原生复查与 Task 2 复审通过。证据：`tests/app-wide-contacts.test.ts`、`task-2-report.md`。
+5. 未路由 graph evidence form：独立审查发现透明/零圆角/无 12pt padding 且唯一提交动作不是 50pt primary；改为 inset 表面和共享 primary 后，真实 GET 与失败 POST 草稿保持在浅/深色通过，复审确认三项 findings 均关闭。证据：`tests/app-wide-contacts.test.ts`、`task-2-fix-1-review.diff`。
+6. Event center 窄屏动作：320pt 下主要“查看活动”只有 114.53125pt 而非 276pt 内容行；主动作改为整行、次动作独立后，doubled-text 下所有目的地保持可读可点。证据：`tests/app-wide-events.test.ts`、`task-3-report.md`。
+7. Home events/hub：独立审查发现 events 模式标题重复且 legacy hub 没有真实 render 回归；events eyebrow 以一行最小修正移除，并增加实际 `HomeScreen mode=hub` 的 320pt 浅/深/大字、输入/导航/无写入覆盖。最终 36/36、类型与 diff 通过，复审关闭。证据：`tests/app-wide-events.test.ts`、`task-3-report.md`。
+8. 日历大字：46pt 小时 gutter 让 `09:00` 在 2x 文本下换成两行，43pt agenda 时间栏也让时间/标题裁切；以 native `fontScale` 扩大水平 gutter/offset，并在 >1.3 时让 agenda 重排。相同测试确认时间单行、标题完整且 64pt 小时高度及 event top/height 不变；领域审查和冷启动大字原生复核闭合。运行中字号变化问题是另一项 OPEN 标准。证据：`tests/app-wide-workspaces.test.ts`、`task-4-report.md`。
+9. 账号反馈 inset：独立审查发现 Account/Auth/Permissions 五个反馈、notice、safety 面仍用 `radius.md=14`，与批准的 12pt inset 不符；五处改为 `radius.card=12`。五面 × 浅/深共十个真实 consumer RED 后转绿，最终覆盖 40/40、类型/diff 通过，fix-only 复审关闭。证据：`tests/app-wide-account.test.ts`、`task-5-report.md`。
+
+## emil-design-eng：Before | After | Why
+
+| Before | After | Why |
+| --- | --- | --- |
+| Today 完成目标 40×44pt | 44×44pt，视觉 marker 仍为 20pt | 扩大命中区，不放大装饰图形 |
+| 历史 inbox 忽略目标 63×30pt | 63×44pt | 达到原生触控基线；不把历史版当当前 inbox 证明 |
+| 标题/输入/recovery 控件各自固定尺寸 | 可增长的 native text roles、44/50pt 控件和 22pt 页面 inset | Dynamic Type 与窄屏优先，保留原生反馈和 handler |
+| 联系人分析 62%/37% 与解释被截断 | 完整数值与说明可重排 | 有意义数据不能为了整齐而省略 |
+| Graph 证据表单透明且提交层级不清 | 12pt inset + 50pt primary，失败保留草稿 | 明确可编辑边界和主要动作，同时保留业务安全反馈 |
+| Event center 主动作在 320pt 被挤到 114.53125pt | 主动作占 276pt 内容行，次动作另行 | 操作名称和命中区在大字下都应清楚 |
+| Events 页面重复身份；hub 大字无真实 consumer 守护 | 单一标题；hub 有浅/深 320pt doubled-text 与交互回归 | 清晰层级且让未路由 consumer 也有可复验保护 |
+| 日历 `09:00`/`14:00` 固定窄栏换行或裁切 | fontScale-aware 水平布局，垂直时间几何不变 | 自适应文字不能破坏日历的时间语义 |
+| 五个账号反馈面半径 14pt | 精确 12pt inset，浅/深真实状态覆盖 | 反馈/风险面需与批准系统一致，不能只检查静态源码 |
+
+## 当前整体结论
+
+58 个 `app/` 入口已有 controller-viewed 原生实际状态，canonical/alias/redirect 与受控真实 consumer 证据见 `docs/designs/2026-09-08-app-wide-style/README.md`。实际 NOT_FOUND、permission-denied、0 pending 和明确不可用状态均按原样记录，没有用 fixture 冒充 live 成功，也没有执行真实业务写入。原生 live Dynamic Type 与 auth/profile 软件键盘仍未满足，因此：
+
+final result: incomplete — 领域修补循环已闭合；whole-app 实时 Dynamic Type 与 auth/profile 键盘标准仍开放，最终完整回归和整体独立审查由 controller 收尾。
+
+## 2026-09-09 23:07 — 全量审查修补及最终验证
+
+本节更新上一段的“最终回归待执行”。循环 10：全量独立审查发现 28 个可达 inset/内嵌反馈面仍为 14pt；先补 20 个浅/深色真实 consumer 回归，全部因 14px ≠ 12px 失败，再仅替换 9 个生产文件的 28 处 radius token。116 项聚焦测试与 10 项相邻 inbox 交互测试通过；controller 独立比较冻结前后源码，确认没有其他生产行改动。此前循环 1–2 是历史记录，本轮全 App 改造对应循环 3–10，共 8 个可追溯修正循环；最终限定复审结果另附，实时字号问题不是其中已关闭的项目。
+
+| Before | After | Why |
+| --- | --- | --- |
+| 28 个可达反馈/表单/对话内嵌面的圆角仍为 14pt | 统一为 12pt，保留各自内容、交互和语义边界 | 补齐批准的 inset 规范 |
+| 成功后才出现的反馈面缺少尺寸回归 | 真实 handler 经受控响应产生反馈，浅/深色均核对可见 consumer 和精确请求 | 不只检查共享样式对象，不触达真实写入 |
+| 原生运行中字号变化后字形与 frame 不同步 | OPEN，未以重启通过替代 | 该原生验收问题不能被圆角修补或自动化通过掩盖 |
+
+最终冻结后 `npm test` **961/961**，0 failed/cancelled/skipped/todo，25.610 秒；`npm run typecheck && git diff --check` 退出 0。`/tmp/orbit-app-final-verified-20260909.log` 保留原有负向会话测试故意输出的 `boom`。最终源码冻结清单确认只有预期的 9 个生产文件和 3 个已有测试文件相对上一冻结版本变化；外部工作保留。
+
+原生最终抽查访问管理提示浅/深色，文字与图标完整，证据 `.tmp/app-wide-style/after/final-insets/native-observations.json`。这是 1 个改动面、2 种外观，不冒充全部 28 面重新原生截图；此前 58 入口记录继续作为当时路由/实际状态证据。全量独立审查未建立新的业务/导航回归，但确认 live Dynamic Type 为重要未解决项；auth/profile 软件键盘是未证明范围，非已确诊缺陷。低优先级问题及影响查询流程偏差见全 App README 的最终更新。
+
+final result: incomplete — 全量自动化验证通过；原生实时 Dynamic Type 尚未修复。未提交、推送、发布或执行真实业务写入。
+
+23:12 最终限定复审：28/28 圆角缺口已解决，修补差异未发现新 Critical/Important/Minor 问题；循环 10 的修补/复验闭合。原生实时字号仍 NOT ADDRESSED / OPEN，五项低优先级事项保留。完成的 UI 修补与未完成的整体验收分开记录，不执行第二次扩大修补或未经授权的原生框架更改。

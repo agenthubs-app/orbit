@@ -11,7 +11,7 @@ import { contactStructureDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -211,14 +211,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 40
   },
   avatarText: {
+    ...textStyles.body,
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800"
+    fontWeight: "600"
   },
-  contactCopy: { flex: 1, minWidth: 0 },
+  contactCopy: {
+    flex: 1,
+    minWidth: 0
+  },
   contactList: { gap: spacing.xs },
-  contactMeta: { color: colors.text3, fontSize: typography.caption, lineHeight: 16 },
-  contactName: { color: colors.ink, fontSize: typography.body, fontWeight: "800", lineHeight: 20 },
+  contactMeta: {
+    ...textStyles.small,
+    color: colors.text3
+  },
+  contactName: {
+    ...textStyles.listTitle,
+    color: colors.ink
+  },
   contactRow: {
     alignItems: "center",
     borderBottomColor: colors.border,
@@ -228,18 +237,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minHeight: 64,
     paddingVertical: spacing.sm
   },
-  eyebrow: { color: colors.accent, fontSize: typography.caption, fontWeight: "800", lineHeight: 16 },
+  eyebrow: {
+    ...textStyles.caption,
+    color: colors.accent,
+    fontWeight: "600"
+  },
   hero: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.lg
+    paddingVertical: spacing.sm
   },
-  heroCopy: { flex: 1, gap: spacing.xxs },
+  heroCopy: {
+    flex: 1,
+    gap: spacing.xxs
+  },
   heroIcon: {
     alignItems: "center",
     backgroundColor: colors.accentSofter,
@@ -251,32 +263,70 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   insight: {
     alignItems: "flex-start",
     backgroundColor: colors.amberSoft,
-    borderRadius: radius.control,
+    borderRadius: radius.card,
     flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.md
   },
-  insightText: { color: colors.text2, flex: 1, fontSize: typography.small, lineHeight: 20 },
-  pressed: { opacity: 0.72 },
-  qualityCount: { color: colors.text3, fontSize: typography.caption, minWidth: 38, textAlign: "right" },
-  qualityFill: { borderRadius: radius.pill, height: 6 },
-  qualityLabel: { color: colors.text2, fontSize: typography.small, minWidth: 58 },
-  qualityList: { gap: spacing.md },
-  qualityRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
-  qualityTrack: { backgroundColor: colors.surface3, borderRadius: radius.pill, flex: 1, height: 6, overflow: "hidden" },
-  relationship: { color: colors.text3, fontSize: 11, fontWeight: "700" },
-  section: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.lg,
-    padding: spacing.lg
+  insightText: {
+    ...textStyles.small,
+    color: colors.text2,
+    flex: 1
   },
-  sectionCount: { color: colors.text4, fontSize: typography.caption },
-  sectionHeading: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between" },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800", lineHeight: 22 },
-  share: { color: colors.text3, fontSize: typography.small, lineHeight: 18 },
+  pressed: { opacity: 0.72 },
+  qualityCount: {
+    ...textStyles.caption,
+    color: colors.text3,
+    minWidth: 38,
+    textAlign: "right"
+  },
+  qualityFill: {
+    borderRadius: radius.pill,
+    height: 6
+  },
+  qualityLabel: {
+    ...textStyles.small,
+    color: colors.text2,
+    minWidth: 58
+  },
+  qualityList: { gap: spacing.md },
+  qualityRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  qualityTrack: {
+    backgroundColor: colors.surface3,
+    borderRadius: radius.pill,
+    flex: 1,
+    height: 6,
+    overflow: "hidden"
+  },
+  relationship: {
+    ...textStyles.caption,
+    color: colors.text3,
+    flexShrink: 1,
+    maxWidth: 70,
+    textAlign: "right"
+  },
+  section: { gap: spacing.lg },
+  sectionCount: {
+    ...textStyles.caption,
+    color: colors.text4
+  },
+  sectionHeading: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+  sectionTitle: {
+    ...textStyles.section,
+    color: colors.ink
+  },
+  share: {
+    ...textStyles.small,
+    color: colors.text3
+  },
   tag: {
     alignItems: "center",
     backgroundColor: colors.surface2,
@@ -288,8 +338,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minHeight: 30,
     paddingHorizontal: spacing.md
   },
-  tagCount: { color: colors.text4, fontSize: 10 },
-  tagLabel: { color: colors.text2, fontSize: typography.caption, fontWeight: "700" },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  title: { color: colors.ink, fontSize: typography.title, fontWeight: "800", lineHeight: 25 }
+  tagCount: {
+    ...textStyles.caption,
+    color: colors.text4,
+  },
+  tagLabel: {
+    ...textStyles.caption,
+    color: colors.text2,
+    fontWeight: "600"
+  },
+  tags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  title: {
+    ...textStyles.title,
+    color: colors.ink
+  }
 }));

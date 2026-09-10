@@ -5,7 +5,8 @@ import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { spacing, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { adminLoginToView } from "../../view-models/admin";
 
@@ -54,27 +55,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   bodyText: {
+    ...textStyles.body,
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   pressed: {
     opacity: 0.82,
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 48,
-    paddingHorizontal: spacing.md
+    gap: spacing.sm
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.body,
-    fontWeight: "700"
+    ...createControlStyles(colors).primaryButtonText
   }
 }));

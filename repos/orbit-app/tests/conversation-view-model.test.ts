@@ -189,7 +189,7 @@ test("conversationPayloadToChatView exposes a confirmable task suggestion", () =
   });
 });
 
-test("orbitAiHomeChatWindow exposes a first-screen chat transcript", () => {
+test("orbitAiHomeChatWindow leaves the bootstrap welcome to home question starters", () => {
   const view = orbitAiHomeChatWindow({
     activeConversationId: "live-orbit-agent-conversation",
     assistantMessage: "Orbit Agent is ready for a natural-language request.",
@@ -204,16 +204,16 @@ test("orbitAiHomeChatWindow exposes a first-screen chat transcript", () => {
     proposedToolIntents: []
   });
 
-  assert.equal(view.messages.length, 1);
-  assert.equal(
-    view.messages[0]?.content,
-    "有什么需要我做的吗？找活动、准备会面、整理人脉，我可以先帮您梳理下一步。"
-  );
-  assert.doesNotMatch(
-    view.messages[0]?.content ?? "",
-    /直接问|已准备好|把问题发过来/u
-  );
-  assert.equal(view.isEmpty, false);
+  assert.deepEqual(view.messages, []);
+  assert.equal(view.isEmpty, true);
+});
+
+test("home suppresses the exact bootstrap fallback but retains a genuine assistant-only response", () => {
+  const welcome = orbitAiHomeChatWindow({ assistantMessage: "Orbit Agent is ready for a natural-language request." });
+  assert.equal(welcome.isEmpty, true);
+  const reply = orbitAiHomeChatWindow({ assistantMessage: "可以先整理会前提纲。" });
+  assert.equal(reply.messages[0]?.content, "可以先整理会前提纲。");
+  assert.equal(reply.isEmpty, false);
 });
 
 test("pendingConversationThreadView shows the user prompt before the model returns", () => {

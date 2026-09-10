@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import type {
   TodayHomeActionView,
@@ -110,14 +110,14 @@ export function OrbitNextActions({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  context: { color: colors.text3, fontSize: typography.caption, lineHeight: 17, marginTop: spacing.xxs },
+  context: { ...textStyles.caption, color: colors.text3, marginTop: spacing.xxs },
   copy: { flex: 1, minWidth: 0 },
   count: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   errorRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   errorText: { color: colors.rose, flex: 1, fontSize: typography.small, lineHeight: 19 },
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.md, paddingHorizontal: 0 },
   headerTitleRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
-  heading: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
+  heading: { ...textStyles.section, color: colors.ink },
   iconButton: { alignItems: "center", borderRadius: radius.pill, height: 44, justifyContent: "center", width: 44 },
   index: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.control, height: 32, justifyContent: "center", width: 32 },
   indexText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
@@ -126,11 +126,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pressed: { opacity: 0.72 },
   retryButton: { alignItems: "center", borderColor: colors.border2, borderRadius: radius.control, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: spacing.md },
   retryText: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
-  row: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  row: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 64, paddingVertical: spacing.sm, paddingHorizontal: 0 },
   scheduleIndex: { backgroundColor: colors.skySoft },
-  section: { backgroundColor: colors.accentSofter, borderColor: colors.border, borderRadius: radius.card, borderWidth: 1, overflow: "hidden" },
-  stateText: { color: colors.text3, fontSize: typography.small, lineHeight: 19, paddingBottom: spacing.lg, paddingHorizontal: spacing.lg },
-  suggestionLink: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: spacing.lg },
+  section: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
+  stateText: { color: colors.text3, fontSize: typography.small, lineHeight: 19, paddingBottom: spacing.lg, paddingHorizontal: 0 },
+  suggestionLink: { alignItems: "center", flexDirection: "row", gap: spacing.sm, minHeight: 44, paddingHorizontal: 0 },
   suggestionText: { color: colors.text2, flex: 1, fontSize: typography.caption, fontWeight: "600" },
-  title: { color: colors.ink, fontSize: typography.body, fontWeight: "700", lineHeight: 20 },
+  title: { ...textStyles.listTitle, color: colors.ink },
 }));

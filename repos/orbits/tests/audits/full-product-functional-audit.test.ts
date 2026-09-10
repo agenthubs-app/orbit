@@ -278,8 +278,15 @@ test("prop-gated DataCard pressables are counted only on routes that pass onPres
     "mobile:/account",
     "mobile:/followups",
     "mobile:/profile",
-    "mobile:/settings",
   ]);
+  const settings = inventory.surfaces.find((surface) => surface.surfaceId === "mobile:/settings");
+  assert.ok(settings);
+  assert.ok(settings.interactions.some((interaction) =>
+    interaction.sourceFile === "repos/orbit-app/src/screens/settings/SettingsScreen.tsx" &&
+    interaction.tag === "Pressable" && interaction.handlers.some((handler) =>
+      handler.expression.includes("router.push(destination.href"),
+    ),
+  ), "settings destinations remain counted as direct controls after the card-to-row migration");
   const pipeline = inventory.surfaces.find(
     (surface) => surface.surfaceId === "mobile:/contacts/pipeline",
   );

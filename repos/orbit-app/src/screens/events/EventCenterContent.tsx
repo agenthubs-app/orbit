@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type { EventCenterItemView } from "../../view-models/event-center";
 
@@ -37,10 +38,10 @@ function EventCenterRow({
     <View style={styles.eventRow}>
       <View style={styles.eventHeader}>
         <View style={styles.eventHeading}>
-          <Text numberOfLines={1} style={styles.lifecycle}>
+          <Text style={styles.lifecycle}>
             {event.lifecycleLabel}
           </Text>
-          <Text numberOfLines={2} style={styles.eventTitle}>
+          <Text style={styles.eventTitle}>
             {event.title}
           </Text>
         </View>
@@ -51,7 +52,6 @@ function EventCenterRow({
           ]}
         >
           <Text
-            numberOfLines={1}
             style={[
               styles.roleLabel,
               event.migrationPending ? styles.roleLabelWarning : null
@@ -65,13 +65,13 @@ function EventCenterRow({
       <View style={styles.metadata}>
         <View style={styles.metaLine}>
           <Ionicons color={colors.text3} name="location-outline" size={16} />
-          <Text numberOfLines={1} style={styles.metaText}>
+          <Text style={styles.metaText}>
             {event.venueLabel}
           </Text>
         </View>
         <View style={styles.metaLine}>
           <Ionicons color={colors.text3} name="time-outline" size={16} />
-          <Text numberOfLines={2} style={styles.metaText}>
+          <Text style={styles.metaText}>
             {event.scheduleLabel}
           </Text>
         </View>
@@ -241,13 +241,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    paddingTop: spacing.md
+    paddingTop: spacing.md,
+    flexWrap: "wrap"
   },
   eventHeader: {
     alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between"
+    gap: spacing.sm
   },
   eventHeading: {
     flex: 1,
@@ -258,18 +257,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md
   },
   eventRow: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
     gap: spacing.lg,
-    padding: spacing.lg
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   eventTitle: {
     color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "800",
-    lineHeight: 23
+    ...textStyles.title
   },
   lifecycle: {
     color: colors.text3,
@@ -342,35 +336,26 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   openButton: {
-    alignItems: "center",
     flex: 1,
+    minWidth: 180,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 44
+    gap: spacing.sm
   },
   openButtonText: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...createControlStyles(colors).secondaryButtonText
   },
   pressed: {
     opacity: 0.68
   },
   primaryAction: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md
+    gap: spacing.sm,
+    width: "100%"
   },
   primaryActionText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    ...createControlStyles(colors).primaryButtonText
   },
   restriction: {
     alignItems: "flex-start",
@@ -413,7 +398,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   stateText: {
     color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   }
 }));

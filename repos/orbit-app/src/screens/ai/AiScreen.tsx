@@ -25,9 +25,11 @@ import {
   todayPath
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   useApiResource,
@@ -45,18 +47,11 @@ import {
 } from "../../view-models/conversations";
 import {
   todayHomeSummary,
+  todayHomeQuestions,
   type TodayHomeActionView
 } from "../../view-models/today-tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
-
-const suggestedPrompts: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}[] = [
-  { icon: "people-outline", label: "今天该先联系谁" },
-  { icon: "calendar-outline", label: "帮我挑下一场活动" },
-  { icon: "checkmark-done-outline", label: "这周的准备清单" }
-];
+import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
@@ -183,6 +178,7 @@ export function AiScreen() {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
+  const { baseUrl } = useOrbitApiBaseUrl();
   const params = useLocalSearchParams<{ drawer?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const client = useOrbitApiClient();
@@ -245,6 +241,15 @@ export function AiScreen() {
       ? todayState.data
       : null;
   const todaySummary = todayHomeSummary(todayPayload);
+  const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
+  const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {
+    scope: JSON.stringify([baseUrl, auth.user?.id ?? null]),
+    payload: todayPayload,
+    ready: auth.ready && todayState.kind !== "loading",
+    refreshing: todayState.refreshing
+  });
+  if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
+  const suggestedPrompts = nextQuestionSnapshot.questions ?? todayHomeQuestions(null);
   const todayError =
     todayState.kind === "offline" || todayState.kind === "failure"
       ? todayState.error.message
@@ -382,6 +387,27 @@ export function AiScreen() {
               onRefresh={todayState.refresh}
               summary={todaySummary}
             />
+            {homeChat.isEmpty ? (
+              <View style={styles.suggestionList}>
+                <Text style={styles.suggestionHeading}>试着问我</Text>
+                {suggestedPrompts.map((prompt) => (
+                  <Pressable
+                    accessibilityLabel={`填入问题：${prompt.label}`}
+                    accessibilityHint="填入输入框后，你仍可修改或确认发送"
+                    accessibilityRole="button"
+                    key={prompt.kind}
+                    onPress={() => setDraftMessage(prompt.label)}
+                    style={({ pressed }) => [
+                      styles.suggestionRow,
+                      pressed ? styles.pressed : null
+                    ]}
+                  >
+                    <Text style={styles.suggestionText}>{prompt.label}</Text>
+                    <Ionicons color={colors.text3} name="arrow-up" size={20} style={{ transform: [{ rotate: "-45deg" }] }} />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
             {state.kind === "loading" ? <LoadingState /> : null}
             {state.kind === "offline" ? (
               <ErrorState message={state.error.message} title="服务器连不上" />
@@ -390,28 +416,6 @@ export function AiScreen() {
               <ErrorState message={state.error.message} />
             ) : null}
           </ChatTranscript>
-          {homeChat.isEmpty ? (
-            <View style={styles.suggestionList}>
-              {suggestedPrompts.map((prompt) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={prompt.label}
-                  onPress={() => setDraftMessage(prompt.label)}
-                  style={({ pressed }) => [
-                    styles.suggestionRow,
-                    pressed ? styles.pressed : null
-                  ]}
-                >
-                  <Ionicons
-                    color={colors.text2}
-                    name={prompt.icon}
-                    size={21}
-                  />
-                  <Text style={styles.suggestionText}>{prompt.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
           {sendError ? (
             <Text style={styles.composerError}>{sendError}</Text>
           ) : null}
@@ -525,6 +529,7 @@ function ChatTranscript({
   return (
     <ScrollView
       contentContainerStyle={styles.transcriptContent}
+      keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl
           onRefresh={onRefresh}
@@ -1160,17 +1165,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   capabilityTitle: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   chatBody: {
     flex: 1
   },
   chatRoot: {
-    backgroundColor: colors.bg,
-    flex: 1
+    flex: 1,
+    backgroundColor: colors.surface,
+    maxWidth: layout.contentMax,
+    width: "100%",
+    alignSelf: "center"
   },
   composerBar: {
     alignItems: "flex-end",
@@ -1181,10 +1187,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.sm,
-    marginHorizontal: spacing.lg,
     minHeight: 52,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm
+    paddingVertical: spacing.sm,
+    marginHorizontal: layout.pageInset
   },
   composerError: {
     color: colors.rose,
@@ -1198,9 +1204,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     maxHeight: 120,
-    minHeight: 34,
     paddingTop: 6,
-    paddingVertical: 6
+    paddingVertical: 6,
+    minHeight: layout.control
   },
   composerPlusButton: {
     alignItems: "center",
@@ -1234,10 +1240,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   drawerAccountName: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.section,
-    fontWeight: "700"
+    flex: 1
   },
   drawerAvatar: {
     alignItems: "center",
@@ -1277,7 +1282,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerHeader: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: spacing.sm
   },
   drawerHeaderActions: { flexDirection: "row", gap: spacing.xs },
   drawerInboxDot: {
@@ -1309,9 +1316,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: spacing.xs
   },
   drawerHistoryPreview: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text3
   },
   drawerHistoryRow: {
     alignItems: "center",
@@ -1332,10 +1338,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   drawerHistoryTitle: {
-    color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...textStyles.body,
+    color: colors.ink
   },
   drawerHistoryWhen: {
     color: colors.text3,
@@ -1352,15 +1356,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 44
   },
   drawerNewChat: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 46
+    gap: spacing.sm
   },
-  drawerNewChatText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "800" },
+  drawerNewChatText: { ...createControlStyles(colors).primaryButtonText, color: colors.onAccent },
   drawerModalRoot: {
     flex: 1,
     justifyContent: "flex-start"
@@ -1386,7 +1386,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerRecentList: { gap: spacing.xs },
   drawerRecentPreview: { color: colors.text3, fontSize: typography.caption },
   drawerRecentRow: { alignItems: "center", borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.sm },
-  drawerRecentTitle: { color: colors.text, fontSize: typography.small, fontWeight: "700" },
+  drawerRecentTitle: { ...textStyles.body, color: colors.text },
   drawerScrim: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(22,22,26,0.34)"
@@ -1410,9 +1410,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   drawerSearchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: typography.caption,
     minWidth: 0,
-    paddingVertical: 0
+    paddingVertical: 0,
+    minHeight: layout.control,
+    fontSize: typography.body,
+    lineHeight: 23
   },
   drawerSectionTitle: {
     color: colors.text3,
@@ -1423,10 +1425,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.xs
   },
   drawerTitle: {
-    color: colors.ink,
-    fontSize: typography.display,
-    fontWeight: "800",
-    lineHeight: 30
+    ...textStyles.title,
+    color: colors.ink
   },
   errorText: {
     color: colors.rose,
@@ -1464,8 +1464,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   historyPanel: {
     backgroundColor: colors.surface,
-    borderBottomLeftRadius: radius.sheet,
-    borderTopLeftRadius: radius.sheet,
     boxShadow: "-8px 0 22px rgba(18,18,28,0.16)",
     elevation: 10,
     gap: spacing.md,
@@ -1474,7 +1472,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
     paddingTop: 76,
-    width: "75%"
+    borderBottomLeftRadius: radius.card,
+    borderTopLeftRadius: radius.card,
+    width: "90%"
   },
   intentList: {
     flexDirection: "row",
@@ -1531,19 +1531,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.72
   },
   safeArea: {
-    backgroundColor: colors.bg,
-    flex: 1
+    flex: 1,
+    backgroundColor: colors.surface
   },
   sheetPanel: {
     backgroundColor: colors.surface,
-    borderRadius: radius.sheet,
     boxShadow: "0 8px 26px rgba(18,18,28,0.18)",
     elevation: 10,
     gap: spacing.xxs,
     marginBottom: 72,
-    marginLeft: spacing.lg,
     padding: spacing.sm,
-    width: 216
+    width: 216,
+    borderRadius: radius.card,
+    marginLeft: layout.pageInset
   },
   sheetRoot: {
     alignItems: "flex-start",
@@ -1556,7 +1556,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 48,
-    paddingHorizontal: spacing.sm
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm
   },
   sheetRowIcon: {
     alignItems: "center",
@@ -1567,55 +1568,66 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 34
   },
   sheetRowText: {
+    ...textStyles.body,
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "600"
+    flexShrink: 1
   },
   sheetScrim: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(22,22,26,0.12)"
   },
   suggestionList: {
-    gap: spacing.xxs,
+    marginTop: 28,
     paddingBottom: spacing.md,
-    paddingHorizontal: spacing.xl
+  },
+  suggestionHeading: {
+    color: colors.text3,
+    fontSize: typography.small,
+    lineHeight: 20,
+    paddingBottom: spacing.sm,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
   suggestionRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 46
+    minHeight: 60,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.md,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth
   },
   suggestionText: {
     color: colors.text,
+    flex: 1,
     fontSize: 16,
-    lineHeight: 22
+    lineHeight: 24
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    paddingVertical: spacing.sm,
+    paddingHorizontal: layout.pageInset
   },
   topBarButton: {
     alignItems: "center",
-    backgroundColor: colors.surface2,
     borderRadius: radius.control,
     height: 44,
     justifyContent: "center",
-    width: 44
+    width: 44,
+    backgroundColor: "transparent"
   },
   topBarTitle: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "700"
+    ...textStyles.section,
+    color: colors.ink
   },
   transcript: {
     flex: 1
   },
   transcriptContent: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg
+    paddingTop: spacing.lg,
+    paddingHorizontal: layout.pageInset
   }
 }));

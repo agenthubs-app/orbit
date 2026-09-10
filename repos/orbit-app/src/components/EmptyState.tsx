@@ -1,5 +1,5 @@
 import { Text } from "react-native";
-import { typography } from "../design/tokens";
+import { textStyles } from "../design/tokens";
 import { useOrbitTheme } from "../design/theme";
 import { DataCard } from "./DataCard";
 
@@ -14,9 +14,8 @@ export function EmptyState({ message, title }: EmptyStateProps) {
     <DataCard title={title}>
       <Text
         style={{
-          color: colors.muted,
-          fontSize: typography.small,
-          lineHeight: 20
+          ...textStyles.small,
+          color: colors.muted
         }}
       >
         {message}

@@ -1,0 +1,741 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-06T15:17:04.891Z",
+  "scope": "local working tree, not deployed runtime",
+  "head": "862cb54b4fe466c31119a31054af7e7139ac3c9f",
+  "branch": "chat-agent",
+  "webRouteCount": 43,
+  "appRouteCount": 58,
+  "webApiRouteFileCount": 199,
+  "missingAppRoutes": [],
+  "webRoutes": [
+    {
+      "route": "/",
+      "file": "repos/orbits/app/(app)/app/page.tsx"
+    },
+    {
+      "route": "/account/forgot-password",
+      "file": "repos/orbits/app/(app)/app/account/forgot-password/page.tsx"
+    },
+    {
+      "route": "/account/login",
+      "file": "repos/orbits/app/(app)/app/account/login/page.tsx"
+    },
+    {
+      "route": "/account/mobile-google",
+      "file": "repos/orbits/app/(app)/app/account/mobile-google/page.tsx"
+    },
+    {
+      "route": "/account/signup",
+      "file": "repos/orbits/app/(app)/app/account/signup/page.tsx"
+    },
+    {
+      "route": "/admin",
+      "file": "repos/orbits/app/(app)/app/admin/page.tsx"
+    },
+    {
+      "route": "/admin/access",
+      "file": "repos/orbits/app/(app)/app/admin/access/page.tsx"
+    },
+    {
+      "route": "/admin/events",
+      "file": "repos/orbits/app/(app)/app/admin/events/page.tsx"
+    },
+    {
+      "route": "/agent",
+      "file": "repos/orbits/app/(app)/app/agent/page.tsx"
+    },
+    {
+      "route": "/chat",
+      "file": "repos/orbits/app/(app)/app/chat/page.tsx"
+    },
+    {
+      "route": "/contacts",
+      "file": "repos/orbits/app/(app)/app/contacts/page.tsx"
+    },
+    {
+      "route": "/contacts/[id]",
+      "file": "repos/orbits/app/(app)/app/contacts/[id]/page.tsx"
+    },
+    {
+      "route": "/contacts/all-actions",
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/page.tsx"
+    },
+    {
+      "route": "/contacts/dashboard",
+      "file": "repos/orbits/app/(app)/app/contacts/dashboard/page.tsx"
+    },
+    {
+      "route": "/contacts/graph",
+      "file": "repos/orbits/app/(app)/app/contacts/graph/page.tsx"
+    },
+    {
+      "route": "/contacts/intros",
+      "file": "repos/orbits/app/(app)/app/contacts/intros/page.tsx"
+    },
+    {
+      "route": "/contacts/new",
+      "file": "repos/orbits/app/(app)/app/contacts/new/page.tsx"
+    },
+    {
+      "route": "/contacts/pipeline",
+      "file": "repos/orbits/app/(app)/app/contacts/pipeline/page.tsx"
+    },
+    {
+      "route": "/dashboard",
+      "file": "repos/orbits/app/(app)/app/dashboard/page.tsx"
+    },
+    {
+      "route": "/events",
+      "file": "repos/orbits/app/(app)/app/events/page.tsx"
+    },
+    {
+      "route": "/events/[id]",
+      "file": "repos/orbits/app/(app)/app/events/[id]/page.tsx"
+    },
+    {
+      "route": "/events/[id]/analytics",
+      "file": "repos/orbits/app/(app)/app/events/[id]/analytics/page.tsx"
+    },
+    {
+      "route": "/events/[id]/operations",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/page.tsx"
+    },
+    {
+      "route": "/events/[id]/operations/admission",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/admission/page.tsx"
+    },
+    {
+      "route": "/events/[id]/operations/check-in",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/check-in/page.tsx"
+    },
+    {
+      "route": "/events/[id]/operations/roles",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/roles/page.tsx"
+    },
+    {
+      "route": "/events/[id]/register",
+      "file": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx"
+    },
+    {
+      "route": "/events/center",
+      "file": "repos/orbits/app/(app)/app/events/center/page.tsx"
+    },
+    {
+      "route": "/followups",
+      "file": "repos/orbits/app/(app)/app/followups/page.tsx"
+    },
+    {
+      "route": "/home",
+      "file": "repos/orbits/app/(app)/app/home/page.tsx"
+    },
+    {
+      "route": "/home/events",
+      "file": "repos/orbits/app/(app)/app/home/events/page.tsx"
+    },
+    {
+      "route": "/login-admin",
+      "file": "repos/orbits/app/(app)/app/login-admin/page.tsx"
+    },
+    {
+      "route": "/o/[slug]",
+      "file": "repos/orbits/app/(app)/app/o/[slug]/page.tsx"
+    },
+    {
+      "route": "/party",
+      "file": "repos/orbits/app/(app)/app/party/page.tsx"
+    },
+    {
+      "route": "/party/checkin",
+      "file": "repos/orbits/app/(app)/app/party/checkin/page.tsx"
+    },
+    {
+      "route": "/party/graph",
+      "file": "repos/orbits/app/(app)/app/party/graph/page.tsx"
+    },
+    {
+      "route": "/platform",
+      "file": "repos/orbits/app/(app)/app/platform/page.tsx"
+    },
+    {
+      "route": "/profile",
+      "file": "repos/orbits/app/(app)/app/profile/page.tsx"
+    },
+    {
+      "route": "/register",
+      "file": "repos/orbits/app/(app)/app/register/page.tsx"
+    },
+    {
+      "route": "/schedule",
+      "file": "repos/orbits/app/(app)/app/schedule/page.tsx"
+    },
+    {
+      "route": "/schedule/events/[id]",
+      "file": "repos/orbits/app/(app)/app/schedule/events/[id]/page.tsx"
+    },
+    {
+      "route": "/settings",
+      "file": "repos/orbits/app/(app)/app/settings/page.tsx"
+    },
+    {
+      "route": "/today",
+      "file": "repos/orbits/app/(app)/app/today/page.tsx"
+    }
+  ],
+  "appOnlyRoutes": [
+    {
+      "route": "/[...legacy]",
+      "file": "repos/orbit-app/app/[...legacy].tsx"
+    },
+    {
+      "route": "/account",
+      "file": "repos/orbit-app/app/account.tsx"
+    },
+    {
+      "route": "/account/permissions",
+      "file": "repos/orbit-app/app/account/permissions.tsx"
+    },
+    {
+      "route": "/ai",
+      "file": "repos/orbit-app/app/(app)/ai.tsx"
+    },
+    {
+      "route": "/ai/[id]",
+      "file": "repos/orbit-app/app/ai/[id].tsx"
+    },
+    {
+      "route": "/chat/[id]",
+      "file": "repos/orbit-app/app/chat/[id].tsx"
+    },
+    {
+      "route": "/contacts/analysis/[dimension]/[bucketId]",
+      "file": "repos/orbit-app/app/contacts/analysis/[dimension]/[bucketId].tsx"
+    },
+    {
+      "route": "/contacts/list",
+      "file": "repos/orbit-app/app/contacts/list.tsx"
+    },
+    {
+      "route": "/events/[id]/attendees",
+      "file": "repos/orbit-app/app/events/[id]/attendees.tsx"
+    },
+    {
+      "route": "/inbox",
+      "file": "repos/orbit-app/app/(app)/inbox.tsx"
+    },
+    {
+      "route": "/inbox/[id]",
+      "file": "repos/orbit-app/app/inbox/[id].tsx"
+    },
+    {
+      "route": "/register/[code]",
+      "file": "repos/orbit-app/app/register/[code].tsx"
+    },
+    {
+      "route": "/settings/api",
+      "file": "repos/orbit-app/app/settings/api.tsx"
+    },
+    {
+      "route": "/tasks",
+      "file": "repos/orbit-app/app/tasks.tsx"
+    },
+    {
+      "route": "/tasks/[id]",
+      "file": "repos/orbit-app/app/tasks/[id].tsx"
+    }
+  ],
+  "copiedFiles": [
+    {
+      "source": "repos/orbits/shared/contract/contacts.ts",
+      "target": "repos/orbit-app/src/api/contract/contacts.ts",
+      "sha256": "77eb29279e68a5e9bb153802bacb6f655f19bf9a3ec5e800e54d265f8dabbbe0",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/envelope.ts",
+      "target": "repos/orbit-app/src/api/contract/envelope.ts",
+      "sha256": "01a7fa4bbe815d0e0656b8e9d0916f241d621051c6a396e06e3f4527a538841e",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/events.ts",
+      "target": "repos/orbit-app/src/api/contract/events.ts",
+      "sha256": "b98115d5a9ddd3574cafcd6d15fed19ad64d9956f450b5f14de712164cad62f9",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/followups.ts",
+      "target": "repos/orbit-app/src/api/contract/followups.ts",
+      "sha256": "14af48c4a97e542119fa2d3866fc8c565cadfb81fc41e1f4a12e94b74fbf52d9",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/index.ts",
+      "target": "repos/orbit-app/src/api/contract/index.ts",
+      "sha256": "b26886aec2465ecf7f432c30d1360f5db9aa91d14bce1542f97fee1f84bd77fd",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/industries.ts",
+      "target": "repos/orbit-app/src/api/contract/industries.ts",
+      "sha256": "d4ac7112031bb810579bb4bb4af9c612f6e82b6750b9b8b4a88250a7d4209247",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/language.ts",
+      "target": "repos/orbit-app/src/api/contract/language.ts",
+      "sha256": "f8bcff290cdbbfa0f399c49d2e443a270272efecb51122133fb356da3051ac33",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/orbit-ai.ts",
+      "target": "repos/orbit-app/src/api/contract/orbit-ai.ts",
+      "sha256": "7f4d703486dcf6150980cfde1d55b0c7a37c70c425f319b564dd424768d6a59b",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/profile.ts",
+      "target": "repos/orbit-app/src/api/contract/profile.ts",
+      "sha256": "eb69636900df8086179d5c72b429854cce24947e5c3b17d2d0c7cf4d93f71d59",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/reminders.ts",
+      "target": "repos/orbit-app/src/api/contract/reminders.ts",
+      "sha256": "2fd309973b0b09d8df9ea8a7a5283bad2fa3c2f368d3a62db5d6addb4cc1f330",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/source.ts",
+      "target": "repos/orbit-app/src/api/contract/source.ts",
+      "sha256": "824e8ebc83bcd857f314985ce5a6ed7e330b44f7b772f0be7eaa82c673efa139",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/contract/tasks.ts",
+      "target": "repos/orbit-app/src/api/contract/tasks.ts",
+      "sha256": "144686bb6d5f3aa3b6fa170718ec9186c08f62718af71267a8dd543ccccf701c",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/api-schema/mobile-contacts-dashboard.ts",
+      "target": "repos/orbit-app/src/api/schema/mobile-contacts-dashboard.ts",
+      "sha256": "9687ae55d6b64e6ffcbad6d498e45e47f5cf16bd139b816e6a2f38ba6017ea76",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/domain/industries.ts",
+      "target": "repos/orbit-app/src/api/domain/industries.ts",
+      "sha256": "584889e76457c5efd669331e22ab48de0f7bfbd769baadbe65fdbd33708b4894",
+      "equal": true
+    },
+    {
+      "source": "repos/orbits/shared/domain/language.ts",
+      "target": "repos/orbit-app/src/api/domain/language.ts",
+      "sha256": "c7d71a452dc11b8638654332a422cf21c0dbe6bc00572df5681981a6dd2a6b2b",
+      "equal": true
+    }
+  ],
+  "appWorkingTree": [
+    {
+      "status": " M",
+      "path": "repos/orbit-app/app.config.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/app/(app)/_layout.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/app/_layout.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/design-qa.md"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/AnalysisPieChart.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/AnalysisPieOrbitChart.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/AppErrorBoundary.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/AppScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/DataCard.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/EmptyState.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/ErrorState.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/LoadingState.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/MetricPill.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/OrbitRouteAccessBoundary.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/components/SectionHeader.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/design/tokens.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/admin/AdminLoginScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/admin/AdminScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/agent/AgentLedgerContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/agent/AgentLedgerScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/ai/AgentActionsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/ai/AiConversationScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/ai/AiScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/ai/OrbitNextActions.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/chat/RelationshipChatDetailScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/chat/RelationshipChatScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactIntrosScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactPipelineScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactStructureDetailScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactsDashboardScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactsGraphScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/contacts/ContactsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/dashboard/DashboardScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventAdmissionReviewContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventAdmissionReviewScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventAnalyticsContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventAnalyticsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventAttendeesScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventCenterContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventCenterScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventCheckInContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventCheckInScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventDetailScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventOperationsContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventOperationsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventRegistrationScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventRolesContent.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventRolesScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/events/EventsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/followups/FollowupsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/home/HomeScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/inbox/RelationshipInboxScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/organizer/OrganizerPublicScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/party/PartyModeScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/platform/PlatformScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/profile/AccountAuthScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/profile/AccountScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/profile/ProfileScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/register/RegisterInviteScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/schedule/ScheduleEventPreviewScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/schedule/ScheduleScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/settings/ApiSettingsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/settings/SettingsScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/tasks/TaskDetailScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/tasks/TasksScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/screens/today/TodayScreen.tsx"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/src/view-models/conversations.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/tests/ai-home-screen-copy.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/tests/conversation-view-model.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/tests/design-tokens.test.ts"
+    },
+    {
+      "status": " M",
+      "path": "repos/orbit-app/tests/mobile-route-access.test.ts"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/docs/designs/"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/docs/superpowers/plans/2026-09-06-reading-canvas-sites.md"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/docs/superpowers/plans/2026-09-06-visual-only-themes.md"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/docs/superpowers/specs/2026-09-06-reading-canvas-sites-design.md"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/prototypes/"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/src/design/theme.ts"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/tests/ai-reading-canvas-render.test.tsx"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/tests/native/"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/tests/theme-render.test.tsx"
+    },
+    {
+      "status": "??",
+      "path": "repos/orbit-app/tests/theme-wiring.test.ts"
+    }
+  ],
+  "webWorkingTree": [],
+  "checks": [
+    {
+      "name": "mobile contract/schema/domain/route parity",
+      "result": "passed",
+      "passed": 7,
+      "failed": 0,
+      "command": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/route-parity.test.ts tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/domain-sync.test.ts",
+      "cwd": "repos/orbit-app"
+    },
+    {
+      "name": "mobile full suite",
+      "result": "passed",
+      "passed": 752,
+      "failed": 0,
+      "skipped": 0,
+      "command": "npm test",
+      "cwd": "repos/orbit-app"
+    },
+    {
+      "name": "mobile typecheck",
+      "result": "passed",
+      "exitCode": 0,
+      "command": "npm run typecheck",
+      "cwd": "repos/orbit-app"
+    },
+    {
+      "name": "web typecheck",
+      "result": "passed",
+      "exitCode": 0,
+      "command": "npm run typecheck",
+      "cwd": "repos/orbits"
+    },
+    {
+      "name": "web contract and mobile dashboard",
+      "result": "passed",
+      "passed": 14,
+      "failed": 0,
+      "command": "node --test --import tsx tests/contract-surface.test.ts tests/api-schema/mobile-contacts-dashboard-schema.test.ts tests/services/mobile-contacts-dashboard-service.test.ts tests/api/mobile-contacts-dashboard-route.test.ts",
+      "cwd": "repos/orbits"
+    }
+  ],
+  "runtime": {
+    "node": "v25.8.1",
+    "productionRequiredNode": "22",
+    "liveCrossClientRoundTrip": "not_run",
+    "remoteDeployment": "not_verified",
+    "webFullSuite": "not_run",
+    "historicalWebFullSuite": {
+      "source": "repos/orbits/docs/operations/free-beta-launch.md",
+      "date": "2026-09-06",
+      "passed": 2216,
+      "failed": 21,
+      "skipped": 1
+    }
+  },
+  "countingNotes": [
+    "Web routes limited to exact page.tsx files under app/(app)/app, including its root; /app prefix removed only for comparison.",
+    "App routes exclude _layout.tsx and strip route groups; redirects and legacy catch-all count as route files, not feature implementations.",
+    "API route count is route.ts files, not HTTP operation count.",
+    "Git porcelain directory entries are not expanded file counts.",
+    "appOnlyRoutes means paths only; equivalent Web capabilities may exist in differently named pages.",
+    "Local working tree inspected; commit SHA alone does not reproduce uncommitted App code."
+  ]
+}

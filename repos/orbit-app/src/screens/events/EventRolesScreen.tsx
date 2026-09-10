@@ -5,7 +5,8 @@ import { Alert, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } f
 
 import { eventAccessAssignmentPath, eventAccessRolesPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -259,22 +260,50 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: { alignItems: "center", alignSelf: "flex-start", flexDirection: "row", gap: spacing.sm, minHeight: 44 },
   backButtonText: { color: colors.text2, fontSize: typography.small, fontWeight: "700" },
   disabled: { opacity: 0.55 },
-  editor: { gap: spacing.lg },
+  editor: {
+    gap: spacing.lg,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
+    padding: spacing.md
+  },
   fieldGroup: { gap: spacing.sm },
-  input: { backgroundColor: colors.surface, borderColor: colors.border2, borderRadius: radius.input, borderWidth: 1, color: colors.ink, fontSize: typography.body, minHeight: 48, paddingHorizontal: spacing.md },
+  input: {
+    ...createControlStyles(colors).input
+  },
   inputReadonly: { backgroundColor: colors.surface3, color: colors.text2 },
   label: { color: colors.text2, fontSize: typography.caption, fontWeight: "800" },
   notice: { backgroundColor: colors.amberSoft, borderRadius: radius.control, color: colors.caution, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
   pressed: { opacity: 0.68 },
   reasonInput: { minHeight: 88, paddingTop: spacing.md, textAlignVertical: "top" },
-  revokeButton: { alignItems: "center", borderColor: colors.rose, borderRadius: radius.control, borderWidth: 1, justifyContent: "center", minHeight: 48 },
-  revokeButtonText: { color: colors.rose, fontSize: typography.small, fontWeight: "800" },
-  roleOption: { borderColor: colors.border, borderRadius: radius.control, borderWidth: 1, gap: spacing.xs, minHeight: 64, padding: spacing.md, width: "48%" },
+  revokeButton: {
+    ...createControlStyles(colors).secondaryButton,
+    backgroundColor: colors.roseSoft
+  },
+  revokeButtonText: {
+    ...createControlStyles(colors).secondaryButtonText,
+    color: colors.rose
+  },
+  roleOption: {
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    borderWidth: 1,
+    gap: spacing.xs,
+    minHeight: 64,
+    padding: spacing.md,
+    width: "100%"
+  },
   roleOptionActive: { backgroundColor: colors.accentSofter, borderColor: colors.accent },
-  roleOptionDetail: { color: colors.text3, fontSize: 10, lineHeight: 14 },
+  roleOptionDetail: {
+    color: colors.text3,
+    ...textStyles.small
+  },
   roleOptionLabel: { color: colors.ink, fontSize: typography.small, fontWeight: "800" },
   roleOptionLabelActive: { color: colors.accent },
   roleOptions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  saveButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, justifyContent: "center", minHeight: 48 },
-  saveButtonText: { color: colors.onAccent, fontSize: typography.small, fontWeight: "800" }
+  saveButton: {
+    ...createControlStyles(colors).primaryButton
+  },
+  saveButtonText: {
+    ...createControlStyles(colors).primaryButtonText
+  }
 }));

@@ -19,7 +19,8 @@ import {
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -368,12 +369,7 @@ function TaskRow({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   addSuggestionButton: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
+    ...createControlStyles(colors).chip
   },
   addSuggestionText: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
   checkButton: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
@@ -382,30 +378,30 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   completedRow: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md },
   completedText: { color: colors.text2, flex: 1, fontSize: typography.body, fontWeight: "600" },
   dateBlock: { gap: spacing.xs, paddingHorizontal: spacing.xs },
-  dateLabel: { color: colors.ink, fontSize: typography.section, fontWeight: "700" },
+  dateLabel: { ...textStyles.section, color: colors.ink },
   divider: { borderTopColor: colors.border, borderTopWidth: 1 },
   dueDanger: { color: colors.rose },
   dueLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "600", paddingRight: spacing.md },
   emptyText: { color: colors.text3, fontSize: typography.body, padding: spacing.lg },
   errorText: { color: colors.rose, fontSize: typography.small },
-  group: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, overflow: "hidden" },
+  group: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
   headerAction: { alignItems: "center", flexDirection: "row", minHeight: 44, paddingLeft: spacing.md },
   headerActionText: { color: colors.text3, fontSize: typography.small },
   loadingDot: { backgroundColor: colors.accent, borderRadius: 3, height: 6, margin: 5, width: 6 },
   pressed: { opacity: 0.68 },
-  quickAdd: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border2, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", minHeight: 50, paddingHorizontal: spacing.md },
+  quickAdd: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border2, borderWidth: 1, flexDirection: "row", minHeight: 50, paddingHorizontal: spacing.md, borderRadius: radius.input },
   quickAddInput: { color: colors.text, flex: 1, fontSize: typography.body, minHeight: 48, paddingHorizontal: spacing.sm, paddingVertical: 0 },
   rowBorder: { borderBottomColor: colors.border, borderBottomWidth: 1 },
   rowCopy: { flex: 1, gap: 3, minWidth: 0 },
-  rowDetail: { color: colors.text3, fontSize: typography.caption, lineHeight: 17 },
+  rowDetail: { ...textStyles.caption, color: colors.text3 },
   rowMeta: { color: colors.text3, fontSize: typography.caption },
-  rowTitle: { color: colors.text, fontSize: typography.body, fontWeight: "600" },
+  rowTitle: { ...textStyles.listTitle, color: colors.text },
   savingText: { color: colors.text3, fontSize: typography.caption },
   scheduleRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   scheduleRule: { backgroundColor: colors.amber, borderRadius: 2, height: 34, width: 3 },
   scheduleTime: { color: colors.text2, fontSize: typography.small, fontVariant: ["tabular-nums"], width: 48 },
   sectionHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 44, paddingHorizontal: spacing.xs },
-  sectionTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "700" },
+  sectionTitle: { ...textStyles.section, color: colors.ink },
   suggestionIcon: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.control, height: 36, justifyContent: "center", width: 36 },
   suggestionRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 70, padding: spacing.md },
   summary: { color: colors.text3, fontSize: typography.small },

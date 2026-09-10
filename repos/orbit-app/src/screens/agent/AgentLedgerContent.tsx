@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { AgentLedgerTransitionContract } from "../../api/agent-ledger-contract";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import type {
   AgentLedgerEntryView,
@@ -268,13 +269,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   auditBox: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.md,
     gap: spacing.xxs,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   },
   auditText: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontFamily: "monospace",
     fontSize: typography.caption,
     lineHeight: 17
   },
@@ -342,11 +343,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   operation: {
     alignItems: "flex-start",
     borderColor: colors.border,
-    borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card,
+    minHeight: layout.control
   },
   operationBody: {
     flex: 1,
@@ -384,11 +386,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   operationTitle: {
+    ...textStyles.body,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 20
+    flex: 1
   },
   pressed: {
     opacity: 0.76
@@ -399,36 +399,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    justifyContent: "center",
-    minHeight: 44,
-    minWidth: 104,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).primaryButton,
+    minWidth: 104
   },
   primaryButtonText: {
+    ...createControlStyles(colors).primaryButtonText,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    flexShrink: 1
   },
   secondaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
+    ...createControlStyles(colors).secondaryButton,
     borderColor: colors.border,
-    borderRadius: radius.control,
     borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 44,
-    minWidth: 88,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    minWidth: 88
   },
   secondaryButtonText: {
+    ...createControlStyles(colors).secondaryButtonText,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    flexShrink: 1
   },
   section: {
     gap: spacing.sm
@@ -446,14 +434,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: spacing.xs
   },
   sectionTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "700"
+    ...textStyles.section,
+    color: colors.ink
   },
   whyBox: {
     backgroundColor: colors.accentSofter,
-    borderRadius: radius.md,
     gap: spacing.xs,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.card
   }
 }));

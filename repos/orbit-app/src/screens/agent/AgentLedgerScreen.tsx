@@ -109,7 +109,6 @@ export function AgentLedgerScreen({
 
   return (
     <AppScreen
-      eyebrow="Orbit Agent"
       refreshControl={
         <RefreshControl
           onRefresh={refresh}

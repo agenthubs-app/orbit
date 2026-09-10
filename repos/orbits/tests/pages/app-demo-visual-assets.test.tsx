@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getDemoEventSceneAsset } from "../../shared/demo-visual-assets";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
@@ -27,6 +27,7 @@ async function renderRootLanding(): Promise<string> {
 
 async function renderEventsPage(): Promise<string> {
   const routeModel = await loadAppEventsRouteViewModel();
+  const unexpectedNavigation = () => assert.fail("Static image rendering must not navigate.");
 
   assert.equal(routeModel.state, "success");
 
@@ -36,12 +37,9 @@ async function renderEventsPage(): Promise<string> {
 
   return renderToStaticMarkup(
     <AppRouterContext.Provider value={{
-      back: () => assert.fail("SSR must not navigate"),
-      forward: () => assert.fail("SSR must not navigate"),
-      refresh: () => assert.fail("SSR must not refresh"),
-      push: () => assert.fail("SSR must not navigate"),
-      replace: () => assert.fail("SSR must not navigate"),
-      prefetch: () => assert.fail("SSR must not prefetch"),
+      back: unexpectedNavigation, forward: unexpectedNavigation,
+      refresh: unexpectedNavigation, push: unexpectedNavigation,
+      replace: unexpectedNavigation, prefetch: unexpectedNavigation,
     }}>
       <PathnameContext.Provider value="/app/events">
         <SearchParamsContext.Provider value={new URLSearchParams()}>
@@ -200,6 +198,14 @@ test("event list and event detail render manifest scene images", async () => {
   assert.doesNotMatch(coverImages[0], /loading="lazy"/);
   assert.match(coverImages[1], /loading="lazy"/);
   for (const tag of coverImages) assert.match(tag, /data-nimg="fill"/);
+  // The manifest uses SVG artwork, for which Next omits raster sizes/srcset.
+  // Verify loading policy in the actual journey slots, not the old image count.
+  const heroImage = detailHtml.match(/class="detail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  const railImage = detailHtml.match(/class="cover cover-grain rail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  assert.ok(heroImage, "event detail must render responsive hero artwork");
+  assert.ok(railImage, "event detail must render artwork in its rail slot");
+  assert.doesNotMatch(heroImage, /loading="lazy"/);
+  assert.match(railImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
 });

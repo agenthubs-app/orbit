@@ -10,13 +10,8 @@ const screenSource = readFileSync(
 );
 const detailRoutePath = join(repoRoot, "app", "inbox", "[id].tsx");
 
-test("relationship inbox screen presents mobile inbox sections for alerts and threads", () => {
-  assert.match(screenSource, /type InboxSection = "alerts" \| "threads"/u);
-  assert.match(screenSource, /SegmentButton/u);
-  assert.match(screenSource, /activeSection/u);
-  assert.match(screenSource, /提醒/u);
-  assert.match(screenSource, /对话/u);
-});
+// Native route / HTTP boundary checks remain here. List, tabs, search, reading
+// and compose behavior are exercised in relationship-inbox-interactions.test.ts.
 
 test("relationship inbox alerts can be dismissed locally like the web inbox panel", () => {
   assert.match(screenSource, /dismissedAlertIds/u);
@@ -98,7 +93,7 @@ test("relationship inbox privacy controls never render raw implementation errors
 test("relationship inbox actions sanitize user-facing error text", () => {
   const screenActions = [
     {
-      end: "function MetricPill",
+      end: "function InboxSegmentedControl",
       fallback: "这条线索暂时确认不了。",
       name: "RelationshipSignalsCard",
       setter: "setActionError"
@@ -188,26 +183,4 @@ test("relationship inbox keeps non-persisted created threads as local previews",
   const onCreatedSource = screenSource.slice(onCreatedStart, onCreatedEnd);
 
   assert.doesNotMatch(onCreatedSource, /onOpenConversation/u);
-});
-
-test("relationship inbox opens to searchable conversation history like the web inbox panel", () => {
-  assert.match(screenSource, /useState<InboxSection>\("threads"\)/u);
-  assert.match(screenSource, /visibleConversations/u);
-  assert.match(screenSource, /placeholder="搜索对话"/u);
-
-  const searchIndex = screenSource.indexOf('placeholder="搜索对话"');
-  const listIndex = screenSource.indexOf("visibleConversations.map");
-
-  assert.notEqual(searchIndex, -1);
-  assert.notEqual(listIndex, -1);
-  assert.ok(searchIndex < listIndex);
-});
-
-test("relationship inbox labels the combined signal and reminder segment as pending work", () => {
-  assert.match(screenSource, /alertCount=\{visibleAlerts\.length \+ signalCount\}/u);
-  assert.match(screenSource, /label="待处理"/u);
-  assert.doesNotMatch(
-    screenSource,
-    /alertCount=\{visibleAlerts\.length \+ signalCount\}[\s\S]*label="提醒"/u
-  );
 });

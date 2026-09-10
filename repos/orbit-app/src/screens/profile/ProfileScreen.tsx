@@ -22,7 +22,8 @@ import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SectionHeader } from "../../components/SectionHeader";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, textStyles, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
   type ApiResourceState,
@@ -497,7 +498,7 @@ function ProfileDocumentExtractionCard({
   }
 
   return (
-    <DataCard detail="提取结果只用于复核，不会直接修改个人资料" title="补全资料">
+    <DataCard detail="提取结果只用于复核，不会直接修改个人资料" title="补全资料" variant="inset">
       <View style={styles.profileExtractionStack}>
         <ProfileTextInput
           label="名片文本或简历摘要"
@@ -579,7 +580,7 @@ function ProfileExtractionButton({
         pressed ? styles.pressed : null
       ]}
     >
-      <Ionicons color={colors.onAccent} name={icon} size={16} />
+      <Ionicons color={colors.text} name={icon} size={16} />
       <Text style={styles.profileExtractionButtonText}>{label}</Text>
     </Pressable>
   );
@@ -737,7 +738,7 @@ function ProfileManualEditCard({
   }
 
   return (
-    <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料">
+    <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料" variant="inset">
       <View style={styles.manualEditStack}>
         {acceptedPatchView ? (
           <ProfileAcceptedPatchNotice view={acceptedPatchView} />
@@ -881,9 +882,7 @@ function BusinessCardTagRow({
       <View style={styles.businessCardTags}>
         {group.values.map((value) => (
           <Text
-            ellipsizeMode="tail"
             key={value}
-            numberOfLines={1}
             style={styles.businessCardTag}
           >
             {value}
@@ -911,16 +910,12 @@ function OrbitBusinessCard({ profile }: { profile: ProfileSummary }) {
       </View>
       <View style={styles.businessCardIdentity}>
         <Text
-          ellipsizeMode="tail"
-          numberOfLines={1}
           style={styles.businessCardName}
         >
           {card.name}
         </Text>
         {card.headline ? (
           <Text
-            ellipsizeMode="tail"
-            numberOfLines={2}
             style={styles.businessCardHeadline}
           >
             {card.headline}
@@ -928,8 +923,6 @@ function OrbitBusinessCard({ profile }: { profile: ProfileSummary }) {
         ) : null}
         {card.metaLine ? (
           <Text
-            ellipsizeMode="tail"
-            numberOfLines={1}
             style={styles.businessCardMeta}
           >
             {card.metaLine}
@@ -1066,9 +1059,8 @@ function ProfileTagSection({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   acceptedPatchHeader: {
     gap: 3
@@ -1083,7 +1075,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   acceptedPatchNotice: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1111,23 +1103,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 19
   },
   businessCard: {
-    backgroundColor: "#17211F",
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.lg,
-    overflow: "hidden",
-    padding: spacing.xl
+    paddingVertical: spacing.lg
   },
   businessCardAvatar: {
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.10)",
-    borderColor: "rgba(255,255,255,0.14)",
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    height: 42,
+    minHeight: 44,
     justifyContent: "center",
-    width: 42
+    minWidth: 44,
+    padding: spacing.sm
   },
   businessCardHeader: {
     alignItems: "center",
@@ -1135,78 +1124,60 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   businessCardHeadline: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: typography.body,
-    fontWeight: "600",
-    lineHeight: 22
+    ...textStyles.body,
+    color: colors.text
   },
   businessCardIdentity: {
     gap: spacing.xs
   },
   businessCardInitial: {
-    color: "#FFFFFF",
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 21
+    ...textStyles.listTitle,
+    color: colors.accent
   },
   businessCardMark: {
-    color: "rgba(255,255,255,0.52)",
-    fontSize: typography.caption,
-    fontWeight: "800",
-    letterSpacing: 1.6,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text3
   },
   businessCardMeta: {
-    color: "rgba(255,255,255,0.52)",
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.small,
+    color: colors.text3
   },
   businessCardName: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 29
+    ...textStyles.title,
+    color: colors.text
   },
   businessCardOverflow: {
-    color: "rgba(255,255,255,0.62)",
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 15
+    ...textStyles.caption,
+    color: colors.text3
   },
   businessCardTag: {
-    backgroundColor: "rgba(255,255,255,0.09)",
-    borderRadius: radius.pill,
-    color: "rgba(255,255,255,0.84)",
+    ...textStyles.small,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.control,
+    color: colors.text2,
     flexShrink: 1,
-    fontSize: 11,
-    lineHeight: 15,
-    maxWidth: "42%",
-    overflow: "hidden",
-    paddingHorizontal: 9,
-    paddingVertical: 5
+    maxWidth: "100%",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
   },
   businessCardTagLabel: {
-    color: "rgba(255,255,255,0.42)",
-    fontSize: 11,
-    fontWeight: "700",
-    lineHeight: 15,
-    width: 28
+    ...textStyles.small,
+    color: colors.text3
   },
   businessCardTagRow: {
-    alignItems: "center",
-    flexDirection: "row",
+    alignItems: "flex-start",
     gap: spacing.sm,
     minWidth: 0
   },
   businessCardTags: {
     alignItems: "center",
-    flex: 1,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.xs,
     minWidth: 0
   },
   businessCardTagStack: {
-    borderTopColor: "rgba(255,255,255,0.08)",
+    borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
     paddingTop: spacing.md
@@ -1241,43 +1212,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   profileExtractionApplyButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderColor: colors.accent,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   profileExtractionApplyButtonText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    ...createControlStyles(colors).secondaryButtonText
   },
   profileExtractionButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
+    backgroundColor: colors.surface,
     flexDirection: "row",
     gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
+    flexGrow: 1,
+    maxWidth: "100%",
     minWidth: 116,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
   },
   profileExtractionButtonDisabled: {
     opacity: 0.55
   },
   profileExtractionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...createControlStyles(colors).secondaryButtonText
   },
   profileExtractionDraft: {
     gap: spacing.sm
@@ -1312,7 +1267,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   profileExtractionResult: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1320,6 +1275,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   profileExtractionResultHeader: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     justifyContent: "space-between"
   },
@@ -1350,88 +1306,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 19
   },
   profileInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).input
   },
   profileInputGroup: {
     gap: spacing.xs
   },
   profileInputLabel: {
+    ...textStyles.small,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   profileInputMultiline: {
     minHeight: 92
   },
   profileLoginButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   profileLoginButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   profileSaveButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   profileSaveButtonDisabled: {
     opacity: 0.55
   },
   profileSaveButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   suggestionActionButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.xs
   },
   suggestionActionButtonDisabled: {
     opacity: 0.55
   },
   suggestionActionButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   suggestionActionError: {
     color: colors.rose,
@@ -1448,7 +1364,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   suggestionCard: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1465,6 +1381,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   suggestionHeader: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     justifyContent: "space-between"
   },

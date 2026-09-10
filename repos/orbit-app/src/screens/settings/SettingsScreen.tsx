@@ -7,7 +7,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { spacing, typography } from "../../design/tokens";
+import { layout, spacing, textStyles, typography } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { revokeNotificationDevice } from "../../notifications/native-notifications";
 import { revokePushDeviceRegistrations } from "../../notifications/push-registration-queue";
@@ -138,21 +138,20 @@ export function SettingsScreen() {
             auth.signedIn
         )
         .map((destination) => (
-          <DataCard
-            detail={destination.detail}
+          <Pressable
+            accessibilityLabel={`打开${destination.title}`}
+            accessibilityRole="button"
             key={destination.href}
             onPress={() => router.push(destination.href as Href)}
-            title={destination.title}
+            style={({ pressed }) => [styles.destination, pressed ? styles.pressed : null]}
           >
-            <View style={styles.destination}>
-              <Ionicons
-                color={colors.accent}
-                name={destination.icon}
-                size={20}
-              />
-              <Text style={styles.destinationText}>打开{destination.title}</Text>
+            <Ionicons color={colors.accent} name={destination.icon} size={20} />
+            <View style={styles.destinationCopy}>
+              <Text style={styles.destinationText}>{destination.title}</Text>
+              <Text style={styles.destinationDetail}>{destination.detail}</Text>
             </View>
-          </DataCard>
+            <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+          </Pressable>
         ))}
     </AppScreen>
   );
@@ -161,13 +160,21 @@ export function SettingsScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   destination: {
     alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.md,
+    minHeight: layout.control,
+    paddingVertical: spacing.lg
+  },
+  destinationCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0
   },
   destinationText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "600"
+    ...textStyles.listTitle,
+    color: colors.text
   },
   notificationBody: {
     color: colors.text2,
@@ -193,5 +200,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onAccent,
     fontSize: typography.small,
     fontWeight: "700"
+  },
+  destinationDetail: {
+    ...textStyles.small,
+    color: colors.text3
+  },
+  pressed: {
+    opacity: 0.82
   }
 }));

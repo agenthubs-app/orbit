@@ -1,14 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { type PropsWithChildren, useCallback, useEffect, useState } from "react";
 import {
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ORBIT_API_ENDPOINTS,
   agentSignalPath,
@@ -16,12 +18,12 @@ import {
   notificationDeliveryPath,
   relationshipInboxPath
 } from "../../api/endpoints";
-import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -31,9 +33,7 @@ import {
   buildRelationshipRewriteRequest,
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
-  defaultRelationshipDraft,
   relationshipConversationIdForContact,
-  relationshipInboxBadgeCount,
   relationshipAlertsToView,
   relationshipInboxErrorText,
   relationshipInboxToView,
@@ -169,6 +169,7 @@ export function RelationshipInboxScreen() {
   );
   const [createdThread, setCreatedThread] =
     useState<RelationshipCreatedThreadView | null>(null);
+  const contentReady = state.kind === "success" || state.kind === "empty";
 
   useEffect(() => {
     if (!deliveryId) {
@@ -225,8 +226,7 @@ export function RelationshipInboxScreen() {
   }
 
   return (
-    <AppScreen
-      eyebrow="人脉消息"
+    <InboxLayout
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -238,7 +238,10 @@ export function RelationshipInboxScreen() {
           tintColor={colors.accent}
         />
       }
-      title="关系收件箱"
+      title={contentReady && composing ? "写消息" : contentReady && createdThread ? "草稿预览" : "收件箱"}
+      onCompose={contentReady && !composing && !createdThread ? () => setComposing(true) : undefined}
+      hideBack={contentReady && composing}
+      onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
       {deliveryState.kind === "loading" ? (
         <LoadingState />
@@ -291,7 +294,7 @@ export function RelationshipInboxScreen() {
           composing={composing}
         />
       ) : null}
-    </AppScreen>
+    </InboxLayout>
   );
 }
 
@@ -318,8 +321,7 @@ export function RelationshipInboxThreadScreen() {
       : null;
 
   return (
-    <AppScreen
-      eyebrow="关系收件箱"
+    <InboxLayout
       refreshControl={
         <RefreshControl
           onRefresh={state.refresh}
@@ -327,7 +329,7 @@ export function RelationshipInboxThreadScreen() {
           tintColor={colors.accent}
         />
       }
-      title="对话详情"
+      title="消息"
     >
       {!conversationId ? (
         <ErrorState message="缺少对话 ID。" title="打不开对话" />
@@ -348,11 +350,64 @@ export function RelationshipInboxThreadScreen() {
       ) : null}
       {conversationId && state.kind === "empty" ? (
         <EmptyState
-          message="这段关系对话还没有可显示的内容。"
-          title="暂无对话"
+          message="这段往来还没有可显示的消息。"
+          title="暂无消息"
         />
       ) : null}
-    </AppScreen>
+    </InboxLayout>
+  );
+}
+
+function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideBack = false }: PropsWithChildren<{
+  title: string;
+  refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
+  onCompose?: (() => void) | undefined;
+  onBack?: (() => void) | undefined;
+  hideBack?: boolean;
+}>) {
+  const { colors, styles } = useStyles();
+  const router = useRouter();
+  return (
+    <SafeAreaView edges={["top"]} style={styles.inboxSafeArea}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.inboxCanvas}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        refreshControl={refreshControl}
+      >
+        {!hideBack ? (
+          <View style={styles.mailToolbar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="返回"
+              onPress={onBack ?? (() => router.canGoBack()
+                ? router.back()
+                : router.replace("/ai" as Href))}
+              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
+            >
+              <Ionicons color={colors.accent} name="chevron-back" size={23} />
+              <Text style={styles.toolbarText}>返回</Text>
+            </Pressable>
+            {onCompose ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="写消息"
+                onPress={onCompose}
+                style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
+              >
+                <Ionicons color={colors.accent} name="create-outline" size={23} />
+                <Text style={styles.toolbarText}>写消息</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+        <Text accessibilityRole="header" style={styles.mailTitle}>
+          {title}
+        </Text>
+        {children}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -465,16 +520,14 @@ function InboxContent({
   signalsLoading: boolean;
   setComposing: (value: boolean) => void;
 }) {
-  const { styles } = useStyles();
+  const { colors, styles } = useStyles();
   const view = relationshipInboxToView(data);
   const alertsView = relationshipAlertsToView(notificationsData);
   const signalsView = relationshipSignalsToView(signalsData);
   const signalCount = signalsView.signals.length;
-  const pendingSignalCount = signalsView.signals.filter(
-    (signal) => signal.canConfirm
-  ).length;
   const conversations = uniqueConversations(view.conversations);
   const [activeSection, setActiveSection] = useState<InboxSection>("threads");
+  const [query, setQuery] = useState("");
   const [seedHandled, setSeedHandled] = useState(false);
   const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(
     () => new Set()
@@ -487,8 +540,6 @@ function InboxContent({
     alerts: visibleAlerts,
     summary: visibleAlerts.length ? `${visibleAlerts.length} 条提醒` : "暂无提醒"
   };
-  const badgeCount =
-    relationshipInboxBadgeCount(view, visibleAlertsView) + pendingSignalCount;
   const seededConversationId = relationshipConversationIdForContact(
     view,
     seed.contactId
@@ -522,35 +573,59 @@ function InboxContent({
     }
   }, [composing]);
 
+  if (composing || createdThread) {
+    return (
+      <NewThreadComposer
+        clientPost={clientPost}
+        clientGet={clientGet}
+        preview={createdThread}
+        onEdit={() => {
+          onSetCreatedThread(null);
+          setComposing(true);
+        }}
+        onCancel={() => setComposing(false)}
+        onCreated={(thread) => {
+          onSetCreatedThread(thread);
+          setComposing(false);
+        }}
+        seed={seed}
+      />
+    );
+  }
+
   return (
-    <>
-      <DataCard
-        detail={`${visibleAlertsView.summary} · ${view.summary}`}
-        title={view.title}
-      >
-        <View style={styles.inboxMetrics}>
-          <MetricPill label="待处理" value={String(badgeCount)} />
-          <MetricPill label="线索" value={String(signalCount)} />
-          <MetricPill label="提醒" value={String(visibleAlerts.length)} />
-          <MetricPill label="对话" value={String(conversations.length)} />
+    <View style={styles.mailContent}>
+      {activeSection === "threads" ? (
+        <View style={styles.searchBox}>
+          <Ionicons color={colors.text3} name="search-outline" size={20} />
+          <TextInput
+            accessibilityLabel="搜索姓名、主题或内容"
+            onChangeText={setQuery}
+            placeholder="搜索姓名、主题或内容"
+            placeholderTextColor={colors.text3}
+            returnKeyType="search"
+            style={styles.searchInput}
+            value={query}
+          />
         </View>
-        <InboxSegmentedControl
-          activeSection={activeSection}
-          alertCount={visibleAlerts.length + signalCount}
-          onChange={setActiveSection}
-          threadCount={conversations.length}
-        />
-      </DataCard>
+      ) : null}
+      <InboxSegmentedControl
+        activeSection={activeSection}
+        alertCount={visibleAlerts.length + signalCount}
+        onChange={setActiveSection}
+      />
 
       {activeSection === "alerts" ? (
         <>
-          <RelationshipSignalsCard
-            clientPost={clientPost}
-            error={signalsError}
-            loading={signalsLoading}
-            onConfirmed={onRefreshSignals}
-            view={signalsView}
-          />
+          {signalCount > 0 || signalsError || signalsLoading ? (
+            <RelationshipSignalsCard
+              clientPost={clientPost}
+              error={signalsError}
+              loading={signalsLoading}
+              onConfirmed={onRefreshSignals}
+              view={signalsView}
+            />
+          ) : null}
           <AlertsCard
             onDismissAlert={(id) =>
               setDismissedAlertIds((current) => {
@@ -565,53 +640,13 @@ function InboxContent({
       ) : null}
 
       {activeSection === "threads" ? (
-        <>
-          <ActionButton
-            icon="create-outline"
-            label="写一条新消息"
-            onPress={() => {
-              onSetCreatedThread(null);
-              setComposing(true);
-            }}
-          />
-
-          {composing ? (
-            <NewThreadComposer
-              clientPost={clientPost}
-              onCancel={() => setComposing(false)}
-              onCreated={(thread) => {
-                onSetCreatedThread(thread);
-                setComposing(false);
-              }}
-              seed={seed}
-            />
-          ) : null}
-
-          {createdThread ? (
-            <ThreadDetail
-              clientGet={clientGet}
-              clientPost={clientPost}
-              detail={createdThread.detail}
-              previewOnly
-            />
-          ) : null}
-
-          {conversations.length > 0 ? (
-            <ConversationList
-              conversations={conversations}
-              onSelect={onOpenConversation}
-            />
-          ) : (
-            <DataCard detail="新的关系往来会显示在这里" title="暂无对话">
-              <Text style={styles.bodyText}>
-                可以先写一段消息草稿，确认后再放进收件箱。
-              </Text>
-            </DataCard>
-          )}
-
-        </>
+        <ConversationList
+          conversations={conversations}
+          onSelect={onOpenConversation}
+          query={query}
+        />
       ) : null}
-    </>
+    </View>
   );
 }
 
@@ -686,7 +721,7 @@ function RelationshipSignalsCard({
       ) : null}
       {view.signals.length > 0 ? (
         <View style={styles.listStack}>
-          {view.signals.slice(0, 4).map((signal) => (
+          {view.signals.map((signal) => (
             <View key={signal.id} style={styles.alertRow}>
               <View style={styles.threadRowTop}>
                 <Text numberOfLines={1} style={styles.threadName}>
@@ -734,43 +769,28 @@ function RelationshipSignalsCard({
   );
 }
 
-function MetricPill({ label, value }: { label: string; value: string }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.metricPill}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function InboxSegmentedControl({
   activeSection,
   alertCount,
-  onChange,
-  threadCount
+  onChange
 }: {
   activeSection: InboxSection;
   alertCount: number;
   onChange: (section: InboxSection) => void;
-  threadCount: number;
 }) {
   const { styles } = useStyles();
   return (
-    <View style={styles.segmentedControl}>
+    <View accessibilityRole="tablist" style={styles.segmentedControl}>
+      <SegmentButton
+        active={activeSection === "threads"}
+        label="消息"
+        onPress={() => onChange("threads")}
+      />
       <SegmentButton
         active={activeSection === "alerts"}
         count={alertCount}
-        icon="notifications-outline"
-        label="待处理"
+        label="提醒"
         onPress={() => onChange("alerts")}
-      />
-      <SegmentButton
-        active={activeSection === "threads"}
-        count={threadCount}
-        icon="chatbubbles-outline"
-        label="对话"
-        onPress={() => onChange("threads")}
       />
     </View>
   );
@@ -778,21 +798,21 @@ function InboxSegmentedControl({
 
 function SegmentButton({
   active,
-  count,
-  icon,
+  count = 0,
   label,
   onPress
 }: {
   active: boolean;
-  count: number;
-  icon: keyof typeof Ionicons.glyphMap;
+  count?: number;
   label: string;
   onPress: () => void;
 }) {
-  const { colors, styles } = useStyles();
+  const { styles } = useStyles();
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="tab"
+      accessibilityLabel={count ? `${label} ${count}` : label}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.segmentButton,
@@ -800,11 +820,6 @@ function SegmentButton({
         pressed ? styles.pressed : null
       ]}
     >
-      <Ionicons
-        color={active ? colors.accent : colors.text3}
-        name={icon}
-        size={16}
-      />
       <Text
         style={[
           styles.segmentButtonText,
@@ -851,10 +866,11 @@ function AlertsCard({
 }) {
   const { colors, styles } = useStyles();
   return (
-    <DataCard detail={view.summary} title="提醒">
+    <View style={styles.remindersPane}>
+      <Text style={styles.threadPreview}>忽略仅对本次查看生效。</Text>
       {view.alerts.length > 0 ? (
         <View style={styles.listStack}>
-          {view.alerts.slice(0, 6).map((alert) => (
+          {view.alerts.map((alert) => (
             <View key={alert.id} style={styles.alertRow}>
               <View style={styles.threadRowTop}>
                 <Text numberOfLines={1} style={styles.threadName}>
@@ -895,19 +911,20 @@ function AlertsCard({
         </View>
       )}
       <Text style={styles.safetyText}>{view.safetyText}</Text>
-    </DataCard>
+    </View>
   );
 }
 
 function ConversationList({
   conversations,
-  onSelect
+  onSelect,
+  query
 }: {
   conversations: RelationshipConversationView[];
   onSelect: (conversationId: string) => void;
+  query: string;
 }) {
   const { colors, styles } = useStyles();
-  const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleConversations = normalizedQuery
     ? conversations.filter((conversation) =>
@@ -915,8 +932,7 @@ function ConversationList({
           conversation.name,
           conversation.organization,
           conversation.subject,
-          conversation.preview,
-          conversation.nextAction
+          conversation.preview
         ]
           .join(" ")
           .toLocaleLowerCase()
@@ -925,22 +941,12 @@ function ConversationList({
     : conversations;
 
   return (
-    <DataCard detail={`${conversations.length} 段`} title="对话">
-      <View style={styles.searchBox}>
-        <Ionicons color={colors.text3} name="search-outline" size={16} />
-        <TextInput
-          onChangeText={setQuery}
-          placeholder="搜索对话"
-          placeholderTextColor={colors.text4}
-          style={styles.searchInput}
-          value={query}
-        />
-      </View>
-      <View style={styles.listStack}>
+      <View style={styles.mailList}>
         {visibleConversations.length > 0 ? (
           visibleConversations.map((conversation) => (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`${conversation.name}，${conversation.subject}，${conversation.lastAt}，${conversation.preview}${conversation.unreadCount > 0 ? `，${conversation.unreadCount} 条未读` : ""}`}
               key={conversation.id}
               onPress={() => onSelect(conversation.id)}
               style={({ pressed }) => [
@@ -949,6 +955,9 @@ function ConversationList({
               ]}
             >
               <View style={styles.threadRowTop}>
+                {conversation.unreadCount > 0 ? (
+                  <Ionicons color={colors.accent} name="ellipse" size={8} />
+                ) : null}
                 <Text numberOfLines={1} style={styles.threadName}>
                   {conversation.name}
                 </Text>
@@ -960,25 +969,16 @@ function ConversationList({
               <Text numberOfLines={2} style={styles.threadPreview}>
                 {conversation.preview}
               </Text>
-              <View style={styles.metaRow}>
-                {conversation.unreadLabel ? (
-                  <Text style={styles.unreadTag}>{conversation.unreadLabel}</Text>
-                ) : null}
-                <Text numberOfLines={1} style={styles.nextActionText}>
-                  {conversation.nextAction}
-                </Text>
-              </View>
             </Pressable>
           ))
         ) : (
           <View style={styles.emptyInboxSection}>
             <Ionicons color={colors.text3} name="search-outline" size={22} />
-            <Text style={styles.emptyInboxTitle}>没有匹配对话</Text>
-            <Text style={styles.threadPreview}>换一个姓名、公司或主题试试。</Text>
+            <Text style={styles.emptyInboxTitle}>{query.trim() ? "没有找到消息" : "暂无消息"}</Text>
+            <Text style={styles.threadPreview}>{query.trim() ? "换个姓名、主题或关键词试试。" : "收到的消息会显示在这里。"}</Text>
           </View>
         )}
       </View>
-    </DataCard>
   );
 }
 
@@ -994,22 +994,34 @@ function ThreadDetail({
   previewOnly?: boolean;
 }) {
   const { styles } = useStyles();
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showEmptyRecords, setShowEmptyRecords] = useState(false);
+  const emptyCount = detail.messages.filter(message => message.body === "暂无消息正文").length;
+  const visibleMessages = showEmptyRecords
+    ? detail.messages
+    : detail.messages.filter(message => message.body !== "暂无消息正文");
   return (
-    <DataCard detail={detail.summary} title={detail.subject}>
-      {detail.sourceLabels.length > 0 ? (
-        <View style={styles.tagsRow}>
-          {detail.sourceLabels.map((label) => (
-            <Text key={label} style={styles.sourceTag}>
-              {label}
-            </Text>
-          ))}
+    <View style={styles.readingPane}>
+      <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>
+      {!previewOnly ? <Text style={styles.bodyText}>联系人：{detail.participantName}</Text> : null}
+      {emptyCount > 0 ? (
+        <View>
+          <Text style={styles.threadPreview}>{emptyCount} 条记录没有可显示的正文。</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showEmptyRecords }}
+            onPress={() => setShowEmptyRecords(value => !value)}
+            style={styles.privacyDisclosure}
+          >
+            <Text style={styles.threadPreview}>{showEmptyRecords ? "收起无正文记录" : "展开无正文记录"}</Text>
+          </Pressable>
         </View>
       ) : null}
       <View style={styles.messageStack}>
-        {detail.messages.map((message) => (
+        {visibleMessages.map((message) => (
           <View
             key={message.id}
-            style={[styles.messageBubble, message.fromMe ? styles.messageMine : null]}
+            style={styles.mailMessage}
           >
             <View style={styles.messageMeta}>
               <Text style={styles.messageSender}>{message.sender}</Text>
@@ -1020,18 +1032,17 @@ function ThreadDetail({
         ))}
       </View>
       {previewOnly ? (
-        <Text style={styles.safetyText}>{detail.safetyText}</Text>
+        <Text style={styles.safetyText}>仅在本页预览，尚未保存或发送。</Text>
       ) : (
         <>
-          <PrivacyControlsPanel
-            clientGet={clientGet}
-            clientPost={clientPost}
-            detail={detail}
-          />
           <ReplyComposer clientPost={clientPost} detail={detail} />
+          <Pressable accessibilityRole="button" accessibilityLabel="隐私设置" accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
+            <Text style={styles.threadPreview}>{showPrivacy ? "收起隐私设置" : "隐私设置"}</Text>
+          </Pressable>
+          {showPrivacy ? <PrivacyControlsPanel clientGet={clientGet} clientPost={clientPost} detail={detail} /> : null}
         </>
       )}
-    </DataCard>
+    </View>
   );
 }
 
@@ -1247,7 +1258,8 @@ function ReplyComposer({
   if (staged) {
     return (
       <View style={styles.stagedBox}>
-        <Text style={styles.stagedTitle}>已暂存待复核，未发送</Text>
+        <Text style={styles.stagedTitle}>回复预览</Text>
+        <Text style={styles.threadPreview}>仅在本页预览，尚未保存或发送。</Text>
         <Text style={styles.bodyText}>{staged}</Text>
         <ActionButton
           icon="pencil-outline"
@@ -1263,6 +1275,7 @@ function ReplyComposer({
     <View style={styles.composer}>
       <Text style={styles.fieldLabel}>回复草稿</Text>
       <TextInput
+        accessibilityLabel="回复正文"
         multiline
         onChangeText={(value) => {
           setBody(value);
@@ -1294,7 +1307,7 @@ function ReplyComposer({
         <ActionButton
           disabled={!body.trim()}
           icon="mail-unread-outline"
-          label="暂存待复核"
+          label="预览回复"
           onPress={() => setStaged(body.trim())}
         />
       </View>
@@ -1303,31 +1316,35 @@ function ReplyComposer({
 }
 
 function NewThreadComposer({
+  clientGet,
   clientPost,
+  preview,
+  onEdit,
   onCancel,
   onCreated,
   seed
 }: {
+  clientGet: ClientGet;
   clientPost: ClientPost;
+  preview: RelationshipCreatedThreadView | null;
+  onEdit: () => void;
   onCancel: () => void;
   onCreated: (thread: RelationshipCreatedThreadView) => void;
   seed: { contactId: string; organization: string; participantName: string };
 }) {
   const { colors, styles } = useStyles();
-  const initialDraft = defaultRelationshipDraft(seed);
   const [participantName, setParticipantName] = useState(seed.participantName);
   const [organization, setOrganization] = useState(seed.organization);
-  const [subject, setSubject] = useState(initialDraft.subject);
-  const [body, setBody] = useState(initialDraft.body);
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setParticipantName(seed.participantName);
     setOrganization(seed.organization);
-    const draft = defaultRelationshipDraft(seed);
-    setSubject(draft.subject);
-    setBody(draft.body);
+    setSubject("");
+    setBody("");
   }, [seed.contactId, seed.organization, seed.participantName]);
 
   async function createThread() {
@@ -1368,22 +1385,35 @@ function NewThreadComposer({
     }
   }
 
+  if (preview) {
+    return (
+      <View style={styles.readingPane}>
+        <Text style={styles.bodyText}>收件人：{preview.conversation.name}</Text>
+        <ThreadDetail clientGet={clientGet} clientPost={clientPost} detail={preview.detail} previewOnly />
+        <ActionButton icon="pencil-outline" label="继续编辑" onPress={onEdit} variant="secondary" />
+      </View>
+    );
+  }
+
   return (
-    <DataCard detail="确认前不会发送给对方" title="新消息草稿">
+    <View style={styles.readingPane}>
       <View style={styles.composer}>
         <LabeledInput
+          editable={!busy}
           label="收件人"
           onChangeText={setParticipantName}
           placeholder="联系人姓名"
           value={participantName}
         />
         <LabeledInput
+          editable={!busy}
           label="公司/组织"
           onChangeText={setOrganization}
           placeholder="选填"
           value={organization}
         />
         <LabeledInput
+          editable={!busy}
           label="主题"
           onChangeText={setSubject}
           placeholder="这次联系的主题"
@@ -1391,6 +1421,8 @@ function NewThreadComposer({
         />
         <Text style={styles.fieldLabel}>正文</Text>
         <TextInput
+          accessibilityLabel="正文"
+          editable={!busy}
           multiline
           onChangeText={setBody}
           placeholder="写下第一条消息。"
@@ -1399,11 +1431,12 @@ function NewThreadComposer({
           value={body}
         />
         <Text style={styles.safetyText}>
-          创建后只是放进收件箱复核，不会发送消息或创建日程。
+          下一步只预览草稿，不会保存或发送消息。
         </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <View style={styles.buttonRow}>
           <ActionButton
+            disabled={busy}
             icon="close-outline"
             label="取消"
             onPress={onCancel}
@@ -1412,21 +1445,23 @@ function NewThreadComposer({
           <ActionButton
             disabled={busy}
             icon="checkmark-outline"
-            label={busy ? "创建中" : "创建草稿"}
+            label={busy ? "正在准备" : "预览草稿"}
             onPress={createThread}
           />
         </View>
       </View>
-    </DataCard>
+    </View>
   );
 }
 
 function LabeledInput({
+  editable = true,
   label,
   onChangeText,
   placeholder,
   value
 }: {
+  editable?: boolean;
   label: string;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -1437,6 +1472,8 @@ function LabeledInput({
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
+        editable={editable}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.text4}
@@ -1493,36 +1530,77 @@ function ActionButton({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  actionButton: {
+  inboxSafeArea: {
+    backgroundColor: colors.surface,
+    flex: 1
+  },
+  inboxCanvas: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: layout.contentMax,
+    paddingBottom: layout.contentBottom,
+    paddingHorizontal: layout.pageInset
+  },
+  mailToolbar: {
     alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
+    justifyContent: "space-between",
+    minHeight: 52,
+    marginHorizontal: -6
+  },
+  toolbarButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
     minHeight: 44,
-    paddingHorizontal: spacing.lg
+    paddingHorizontal: 4
+  },
+  toolbarText: {
+    color: colors.accent,
+    fontSize: 17
+  },
+  mailTitle: {
+    ...textStyles.pageTitle,
+    color: colors.ink,
+    marginBottom: 12,
+    marginTop: 10
+  },
+  mailContent: { gap: 0 },
+  mailList: { gap: 0 },
+  readingPane: { gap: 20 },
+  remindersPane: { gap: 12, paddingTop: 16 },
+  readingSubject: { ...textStyles.title, color: colors.ink },
+  mailMessage: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 14,
+    paddingBottom: 24
+  },
+  privacyDisclosure: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
+  actionButton: {
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm
   },
   actionButtonSecondary: {
     backgroundColor: colors.surface,
     borderColor: colors.border2,
-    borderWidth: 1
+    borderWidth: 1,
+    minHeight: layout.control
   },
   actionButtonText: {
+    ...createControlStyles(colors).primaryButtonText,
     color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flexShrink: 1
   },
   actionButtonTextSecondary: {
     color: colors.text2
   },
   alertRow: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.xs,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   alertDismissButton: {
     alignItems: "center",
@@ -1565,7 +1643,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.lg
@@ -1576,7 +1654,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   fieldGroup: {
-    gap: spacing.xs
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: spacing.md
   },
   fieldLabel: {
     color: colors.text3,
@@ -1590,30 +1672,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     color: colors.text,
     fontSize: typography.body,
-    lineHeight: 21,
     minHeight: 128,
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
-    textAlignVertical: "top"
-  },
-  inboxMetrics: {
-    flexDirection: "row"
+    textAlignVertical: "top",
+    lineHeight: 23
   },
   listStack: {
     gap: spacing.sm
   },
   messageBody: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  messageBubble: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    gap: spacing.xs,
-    maxWidth: "92%",
-    padding: spacing.md
+    fontSize: 16,
+    lineHeight: 26
   },
   messageMeta: {
     flexDirection: "row",
@@ -1621,14 +1692,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     justifyContent: "space-between"
   },
-  messageMine: {
-    alignSelf: "flex-end",
-    backgroundColor: colors.accentSofter
-  },
   messageSender: {
     color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontSize: 16,
+    fontWeight: "600"
   },
   messageStack: {
     gap: spacing.md
@@ -1642,30 +1709,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
-  },
-  metricLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700"
-  },
-  metricPill: {
-    alignItems: "center",
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.sm
-  },
-  metricValue: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800"
-  },
-  nextActionText: {
-    color: colors.text3,
-    flexShrink: 1,
-    fontSize: typography.caption,
-    lineHeight: 17
   },
   pressed: {
     opacity: 0.78
@@ -1683,7 +1726,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   privacyBox: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
@@ -1691,7 +1734,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rewriteBox: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.accentSoft,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -1707,71 +1750,59 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchBox: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.input,
-    borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
     minHeight: 44,
-    paddingHorizontal: spacing.md
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.input
   },
   searchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: typography.small,
+    fontSize: 16,
     minWidth: 0,
+    minHeight: 44,
     paddingVertical: 0
   },
   segmentButton: {
     alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flex: 1,
+    borderBottomColor: "transparent",
+    borderBottomWidth: 2,
     flexDirection: "row",
-    gap: spacing.xs,
+    gap: 6,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: spacing.md
+    paddingHorizontal: 12
   },
   segmentButtonActive: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft
+    borderBottomColor: colors.accent
   },
   segmentButtonText: {
     color: colors.text3,
-    fontSize: typography.small,
-    fontWeight: "700"
+    fontSize: 16,
+    fontWeight: "500"
   },
   segmentButtonTextActive: {
     color: colors.accent
   },
   segmentCount: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    color: colors.onAccent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    minWidth: 20,
-    overflow: "hidden",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    textAlign: "center"
+    color: colors.text3,
+    fontSize: 14
   },
   segmentedControl: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: spacing.sm
+    marginTop: 8,
+    gap: spacing.lg
   },
   singleInput: {
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
     color: colors.text,
+    flex: 1,
     fontSize: typography.body,
+    minWidth: 0,
     minHeight: 44,
-    paddingHorizontal: 14,
     paddingVertical: spacing.sm
   },
   sourceTag: {
@@ -1787,7 +1818,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   stagedBox: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.md,
     padding: spacing.md
@@ -1803,27 +1834,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   threadName: {
+    ...textStyles.listTitle,
     color: colors.ink,
-    flex: 1,
-    fontSize: typography.small,
-    fontWeight: "700"
+    flex: 1
   },
   threadPreview: {
     color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 18
+    fontSize: 14,
+    lineHeight: 21
   },
   threadRow: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md
-  },
-  threadRowActive: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+    minHeight: 126,
+    paddingVertical: 22
   },
   threadRowTop: {
     alignItems: "center",
@@ -1831,9 +1856,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   threadSubject: {
-    color: colors.text,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...textStyles.body,
+    color: colors.text
   },
   threadTime: {
     color: colors.text3,

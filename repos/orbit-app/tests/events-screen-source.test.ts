@@ -49,11 +49,8 @@ test("events screen presents a compact image-backed activity stream", () => {
   assert.match(screenSource, /styles\.eventRowStatus/u);
   assert.match(screenSource, /publicEventStatus\(event\.status\)/u);
   assert.match(screenSource, /publicEventSubtitle\(event\.subtitle\)/u);
-  assert.match(screenSource, /numberOfLines=\{2\} style=\{styles\.eventRowTitle\}/u);
-  assert.match(
-    screenSource,
-    /eventRowImageFrame:\s*\{[^}]*height:\s*84[^}]*width:\s*112/su
-  );
+  // Complete titles, retained covers and narrow-screen row bounds are exercised
+  // by the real EventsScreen consumer in app-wide-events.test.ts.
   assert.doesNotMatch(screenSource, /height:\s*300/u);
   assert.doesNotMatch(screenSource, /function EventImageCard/u);
   assert.doesNotMatch(screenSource, /function EventImageList/u);
@@ -114,7 +111,7 @@ test("event discovery filters expose their selected state to VoiceOver", () => {
   const controlsSource = screenSource.slice(controlsStart, controlsEnd);
 
   assert.match(screenSource, /accessibilityState=\{\{ selected \}\}/u);
-  assert.match(screenSource, /discoveryChip:\s*\{[^}]*minHeight:\s*44/su);
+  // app-wide-events.test.ts measures the rendered chip target and selection state.
 });
 
 test("event discovery cleans implementation labels only on this screen", () => {
@@ -148,5 +145,6 @@ test("events screen renders recommendations as a horizontal image collection", (
     /source=\{\{ uri: assetUrl\(baseUrl, coverPath\) \}\}/u
   );
   assert.match(screenSource, /styles\.recommendationCoverOverlay/u);
-  assert.match(screenSource, /recommendationCard:\s*\{[^}]*width:\s*280/su);
+  // Real recommendation rail scrolling and action bounds are covered by
+  // app-wide-events.test.ts, without locking the card to one fixed width.
 });

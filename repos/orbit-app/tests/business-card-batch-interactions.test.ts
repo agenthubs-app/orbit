@@ -309,7 +309,7 @@ for (const [width, scheme] of [[390, "light"], [1280, "dark"]] as const) test(`r
   assert.equal(await p.locator('img[alt="名片图片"]').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0), true);
   const overflow = await p.evaluate(() => Array.from(document.querySelectorAll('[role="button"], input, textarea')).filter(element => { const box = element.getBoundingClientRect(); return box.width > 0 && (box.left < -1 || box.right > window.innerWidth + 1 || element.scrollWidth > element.clientWidth + 2); }).map(element => element.getAttribute("aria-label")));
   assert.deepEqual(overflow, []);
-  assert.equal(await p.locator("#root > div").evaluate(element => getComputedStyle(element).backgroundColor), scheme === "dark" ? "rgb(25, 28, 34)" : "rgb(247, 246, 243)");
+  assert.equal(await p.locator("#root > div").evaluate(element => getComputedStyle(element).backgroundColor), scheme === "dark" ? "rgb(34, 38, 46)" : "rgb(255, 254, 252)");
   if (process.env.TASK3_VISUAL === "1") console.log(`TASK3_IMAGE_${width}:` + (await p.screenshot({ fullPage: true })).toString("base64"));
-  await p.emulateMedia({ colorScheme: scheme === "light" ? "dark" : "light" }); await p.waitForFunction(expected => getComputedStyle(document.querySelector("#root > div")!).backgroundColor === expected, scheme === "light" ? "rgb(25, 28, 34)" : "rgb(247, 246, 243)"); assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Layout draft");
+  await p.emulateMedia({ colorScheme: scheme === "light" ? "dark" : "light" }); await p.waitForFunction(expected => getComputedStyle(document.querySelector("#root > div")!).backgroundColor === expected, scheme === "light" ? "rgb(34, 38, 46)" : "rgb(255, 254, 252)"); assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Layout draft");
 });

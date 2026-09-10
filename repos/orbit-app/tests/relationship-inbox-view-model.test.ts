@@ -109,7 +109,7 @@ test("relationshipInboxToView localizes async inbox payloads for mobile", () => 
     }
   });
 
-  assert.equal(view.title, "关系收件箱");
+  assert.equal(view.title, "收件箱");
   assert.equal(view.summary, "2 段对话 · 2 条新消息");
   assert.deepEqual(view.conversations[0], {
     contactId: "contact_demo_aoba",
@@ -256,7 +256,7 @@ test("createdRelationshipThreadToView maps a confirmed draft without implementat
 
   assert.equal(view.conversation.subject, "关于关西合作的跟进");
   assert.equal(view.conversation.unreadLabel, "");
-  assert.equal(view.detail.summary, "已生成一段待复核的关系对话，收件人是李明。");
+  assert.equal(view.detail.summary, "致 李明 · 草稿预览");
   assert.equal(view.detail.safetyText, "这里先写草稿。未经确认，不会发送消息或创建日程。");
   assert.deepEqual(view.detail.sourceLabels, ["待复核草稿"]);
 });
@@ -747,7 +747,7 @@ test("relationshipPrivacyControlsToView maps chat privacy controls for mobile", 
     privateNotesLabel: "2 条私密备注已隐藏",
     safetyText: "私密备注默认隐藏，不会进入分享预览。",
     shareLabel: "共享前需要确认",
-    sourceLabel: "关系收件箱预览",
+    sourceLabel: "草稿预览",
     summary: "允许关系分析 · 2 条私密备注已隐藏",
     title: "隐私控制",
     toggleLabel: "停止分析"

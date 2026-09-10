@@ -20,7 +20,8 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { MetricPill } from "../../components/MetricPill";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -423,10 +424,10 @@ function PartyConnectionMap({ party }: { party: PartyModeView }) {
                 />
               </View>
               <View style={styles.connectionNodeText}>
-                <Text numberOfLines={1} style={styles.connectionNodeName}>
+                <Text style={styles.connectionNodeName}>
                   {person.name}
                 </Text>
-                <Text numberOfLines={1} style={styles.connectionNodeMeta}>
+                <Text style={styles.connectionNodeMeta}>
                   {person.matchLabel} · {person.groupLabel}
                 </Text>
               </View>
@@ -444,7 +445,7 @@ function PartyConnectionMap({ party }: { party: PartyModeView }) {
 function CheckInBoundaryCard({ party }: { party: PartyModeView }) {
   const { styles } = useStyles();
   return (
-    <DataCard detail={party.checkIn.statusLabel} title="现场签到">
+    <DataCard variant="inset" detail={party.checkIn.statusLabel} title="现场签到">
       <View style={styles.ticketCompact}>
         <Text style={styles.checkInBoundaryTitle}>未生成签到码</Text>
         <Text style={styles.mutedText}>{party.checkIn.instruction}</Text>
@@ -605,14 +606,10 @@ function ActionButton({
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   actionButton: {
-    alignItems: "center",
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   actionGrid: {
     flexDirection: "row",
@@ -646,8 +643,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   checkInBoundary: {
     alignItems: "flex-start",
@@ -691,7 +687,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   connectionMapNodes: {
     flex: 1,
-    gap: spacing.sm
+    gap: spacing.sm,
+    minWidth: 150
   },
   connectionMapStage: {
     alignItems: "stretch",
@@ -702,7 +699,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 170,
-    padding: spacing.md
+    padding: spacing.md,
+    flexWrap: "wrap"
   },
   connectionNode: {
     alignItems: "center",
@@ -712,9 +710,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 42,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
+    paddingVertical: spacing.xs,
+    minHeight: 44
   },
   connectionNodeMarker: {
     alignItems: "center",
@@ -752,9 +750,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   connectionNodeName: {
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle
   },
   connectionNodePrimary: {
     backgroundColor: colors.liveSoft,
@@ -819,7 +815,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   matchRow: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -895,22 +891,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   primaryButton: {
-    backgroundColor: colors.accent
+    ...createControlStyles(colors).primaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    ...createControlStyles(colors).primaryButtonText
   },
   secondaryButton: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft,
-    borderWidth: 1
+    ...createControlStyles(colors).secondaryButton,
+    flexDirection: "row",
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "800"
+    ...createControlStyles(colors).secondaryButtonText
   },
   stack: {
     gap: spacing.md
@@ -938,7 +934,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   ticketCompact: {
     backgroundColor: colors.bgSunken,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md

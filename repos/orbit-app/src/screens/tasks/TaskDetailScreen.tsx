@@ -8,7 +8,8 @@ import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, t
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -247,18 +248,18 @@ export function TaskDetailScreen() {
             <View style={styles.metadataRow}>
               <Ionicons color={colors.accent} name="calendar-outline" size={19} />
               <Text style={styles.metadataLabel}>安排</Text>
-              <Text numberOfLines={1} style={styles.metadataValue}>{dateLabel(detail.dueAt ?? detail.plannedDate)}</Text>
+              <Text style={styles.metadataValue}>{dateLabel(detail.dueAt ?? detail.plannedDate)}</Text>
             </View>
             <Pressable accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
               <Ionicons color={colors.amber} name="notifications-outline" size={19} />
               <Text style={styles.metadataLabel}>提醒</Text>
-              <Text numberOfLines={1} style={styles.metadataValue}>{reminders[0]?.label ?? "未设置"}</Text>
+              <Text style={styles.metadataValue}>{reminders[0]?.label ?? "未设置"}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable>
             <View style={[styles.metadataRow, styles.metadataRowLast]}>
               <Ionicons color={colors.sky} name="link-outline" size={19} />
               <Text style={styles.metadataLabel}>关联</Text>
-              <Text numberOfLines={1} style={styles.metadataValue}>{detail.categoryLabel}</Text>
+              <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
             </View>
           </View>
 
@@ -324,27 +325,27 @@ export function TaskDetailScreen() {
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  completeButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50 },
-  completeButtonText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "800" },
+  completeButton: { ...createControlStyles(colors).primaryButton, flexDirection: "row", gap: spacing.sm },
+  completeButtonText: { ...createControlStyles(colors).primaryButtonText, color: colors.onAccent },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
   deleteText: { color: colors.rose, fontSize: typography.body, fontWeight: "700" },
-  editorGroup: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, overflow: "hidden" },
+  editorGroup: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, overflow: "hidden", borderRadius: radius.input },
   errorText: { color: colors.rose, fontSize: typography.small },
-  iconButton: { alignItems: "center", borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
-  metadataGroup: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, overflow: "hidden" },
-  metadataLabel: { color: colors.text2, fontSize: typography.body, fontWeight: "700", width: 54 },
-  metadataRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 54, paddingHorizontal: spacing.md },
+  iconButton: { alignItems: "center", justifyContent: "center", minHeight: layout.control, width: layout.control, borderRadius: radius.control },
+  metadataGroup: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
+  metadataLabel: { ...textStyles.body, color: colors.text2, fontWeight: "600", minWidth: 54, flexShrink: 0 },
+  metadataRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, minHeight: 54, paddingVertical: spacing.sm },
   metadataRowLast: { borderBottomWidth: 0 },
-  metadataValue: { color: colors.text3, flex: 1, fontSize: typography.small, textAlign: "right" },
+  metadataValue: { ...textStyles.small, color: colors.text3, flex: 1, minWidth: 140, textAlign: "right" },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   modalScrim: { backgroundColor: "rgba(16, 24, 40, 0.28)", ...StyleSheet.absoluteFill },
-  notesInput: { borderTopColor: colors.border, borderTopWidth: 1, color: colors.text2, fontSize: typography.body, lineHeight: 22, minHeight: 120, padding: spacing.md, textAlignVertical: "top" },
+  notesInput: { ...textStyles.body, borderTopColor: colors.border, borderTopWidth: 1, color: colors.text2, minHeight: 120, padding: spacing.md, textAlignVertical: "top" },
   pressed: { opacity: 0.68 },
-  reminderOption: { alignItems: "center", backgroundColor: colors.accentSofter, borderRadius: radius.control, flex: 1, justifyContent: "center", minHeight: 42, paddingHorizontal: spacing.xs },
-  reminderOptions: { flexDirection: "row", gap: spacing.sm },
-  reminderOptionText: { color: colors.accent, fontSize: typography.caption, fontWeight: "700", textAlign: "center" },
+  reminderOption: { ...createControlStyles(colors).chip, flex: 1 },
+  reminderOptions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
+  reminderOptionText: { ...textStyles.caption, color: colors.accent, textAlign: "center", flexShrink: 1 },
   reopenButton: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1 },
-  reopenButtonText: { color: colors.accent, fontSize: typography.body, fontWeight: "800" },
+  reopenButtonText: { ...createControlStyles(colors).secondaryButtonText, color: colors.accent },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "78%", overflow: "hidden" },
   sheetBody: { gap: spacing.sm, padding: spacing.lg, paddingTop: spacing.sm },
   sheetHeader: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 58, paddingHorizontal: spacing.lg },
@@ -353,9 +354,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sheetRowMeta: { color: colors.text3, fontSize: typography.caption },
   sheetRowText: { color: colors.text, flex: 1, fontSize: typography.small, fontWeight: "600" },
   sheetSection: { color: colors.text3, fontSize: typography.caption, fontWeight: "800", marginTop: spacing.md },
-  sheetTitle: { color: colors.ink, fontSize: typography.section, fontWeight: "800" },
+  sheetTitle: { ...textStyles.section, color: colors.ink },
   statusText: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
   successText: { color: colors.accent, fontSize: typography.small },
-  titleInput: { color: colors.ink, fontSize: typography.title, fontWeight: "700", lineHeight: 30, minHeight: 76, padding: spacing.md },
+  titleInput: { ...textStyles.title, color: colors.ink, minHeight: 76, padding: spacing.md },
   topBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 40 },
 }));

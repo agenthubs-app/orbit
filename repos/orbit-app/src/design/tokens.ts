@@ -80,9 +80,9 @@ export const darkColors: OrbitColors = {
 };
 
 export const radius = {
-  card: 16,
-  control: 12,
-  input: 14,
+  card: 12,
+  control: 8,
+  input: 10,
   lg: 18,
   md: 14,
   pill: 999,
@@ -105,10 +105,29 @@ export const spacing = {
 export const typography = {
   body: 15,
   caption: 12,
-  display: 24,
-  section: 17,
+  display: 28,
+  section: 18,
   small: 13,
-  title: 20
+  title: 22
+} as const;
+
+export const layout = {
+  pageInset: 22,
+  contentMax: 540,
+  toolbar: 44,
+  control: 44,
+  primaryControl: 50,
+  contentBottom: 48
+} as const;
+
+export const textStyles = {
+  pageTitle: { fontSize: typography.display, lineHeight: 36, fontWeight: "700" },
+  title: { fontSize: typography.title, lineHeight: 30, fontWeight: "600" },
+  section: { fontSize: typography.section, lineHeight: 26, fontWeight: "600" },
+  listTitle: { fontSize: 17, lineHeight: 24, fontWeight: "600" },
+  body: { fontSize: typography.body, lineHeight: 23 },
+  small: { fontSize: typography.small, lineHeight: 20 },
+  caption: { fontSize: typography.caption, lineHeight: 18 }
 } as const;
 
 export const shadows = {

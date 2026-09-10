@@ -223,15 +223,9 @@ test("home events route renders events as an image-first list", () => {
   assert.match(source, /styles\.homeEventImageMetaRow/u);
   assert.match(source, /event\.participantCountLabel/u);
   assert.match(source, /event\.actionLabel/u);
-  assert.match(
-    source,
-    /homeEventImageFrame:\s*\{[^}]*height:\s*300[^}]*width:\s*"100%"/su
-  );
+  // The real HomeScreen render in app-wide-events.test.ts checks the retained
+  // cover, complete title and growing text layout at 320pt.
   assert.doesNotMatch(source, /homeEventImageFrame:\s*\{[^}]*padding:/su);
-  assert.match(
-    source,
-    /homeEventImageContent:\s*\{[^}]*\.\.\.StyleSheet\.absoluteFill[^}]*padding:\s*spacing\.lg/su
-  );
   assert.doesNotMatch(source, /function EventModuleList/u);
   assert.doesNotMatch(source, /function EventModuleCard/u);
   assert.doesNotMatch(source, /styles\.homeEventModuleCoverFrame/u);

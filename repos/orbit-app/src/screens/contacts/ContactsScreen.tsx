@@ -25,10 +25,12 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { layout, radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { ContactPage } from "./ContactPage";
 import {
   buildContactsSearchRequest,
   contactAvatarFor,
@@ -417,6 +419,7 @@ function ContactFilterToolbar({
                 name={active ? "chevron-up" : "chevron-down"}
                 size={13}
               />
+              {item.id !== "more" ? <View style={styles.filterToolbarDivider} /> : null}
             </Pressable>
           );
         })}
@@ -1018,18 +1021,15 @@ function OverviewToolCard({
       ]}
     >
       <View
-        style={[
-          styles.overviewToolIcon,
-          { backgroundColor: toneStyle.backgroundColor }
-        ]}
+        style={styles.overviewToolIcon}
       >
         <Ionicons color={toneStyle.color} name={iconName} size={20} />
       </View>
       <View style={styles.overviewToolText}>
-        <Text numberOfLines={1} style={styles.overviewToolTitle}>
+        <Text style={styles.overviewToolTitle}>
           {title}
         </Text>
-        <Text numberOfLines={2} style={styles.overviewToolDetail}>
+        <Text style={styles.overviewToolDetail}>
           {detail}
         </Text>
       </View>
@@ -1063,7 +1063,7 @@ function ContactsLibraryEntry({
       </View>
       <View style={styles.contactsLibraryText}>
         <Text style={styles.contactsLibraryTitle}>联系人库</Text>
-        <Text numberOfLines={2} style={styles.contactsLibraryDetail}>
+        <Text style={styles.contactsLibraryDetail}>
           {contactsLabel}
         </Text>
       </View>
@@ -1104,10 +1104,10 @@ function NetworkPriorityCard({
         <Ionicons color={colors.accent} name={iconName} size={24} />
       </View>
       <View style={styles.contactsLibraryText}>
-        <Text numberOfLines={1} style={styles.contactsLibraryTitle}>
+        <Text style={styles.contactsLibraryTitle}>
           {title}
         </Text>
-        <Text numberOfLines={2} style={styles.contactsLibraryDetail}>
+        <Text style={styles.contactsLibraryDetail}>
           {detail}
         </Text>
       </View>
@@ -1143,31 +1143,29 @@ function ContactsOverviewContent({
       : "搜索、筛选、打开联系人详情";
 
   return (
-    <>
+    <OverviewToolGrid>
       <ContactsLibraryEntry
         contactsLabel={contactsLabel}
         onPress={() => router.push("/contacts/list" as Href)}
       />
       <PriorityNetworkTools />
-      <OverviewToolGrid>
-        <OverviewToolCard
-          action="看下一步"
-          detail="推进中、长期维护、已合作"
-          iconName="list-outline"
-          onPress={() => router.push("/contacts/pipeline" as Href)}
-          title="关系进展"
-          tone="amber"
-        />
-        <OverviewToolCard
-          action="开始添加"
-          detail="名片、QR、手动记录"
-          iconName="add-circle-outline"
-          onPress={() => router.push("/contacts/new")}
-          title="添加人脉"
-          tone="accent"
-        />
-      </OverviewToolGrid>
-    </>
+      <OverviewToolCard
+        action="看下一步"
+        detail="推进中、长期维护、已合作"
+        iconName="list-outline"
+        onPress={() => router.push("/contacts/pipeline" as Href)}
+        title="关系进展"
+        tone="amber"
+      />
+      <OverviewToolCard
+        action="开始添加"
+        detail="名片、QR、手动记录"
+        iconName="add-circle-outline"
+        onPress={() => router.push("/contacts/new")}
+        title="添加人脉"
+        tone="accent"
+      />
+    </OverviewToolGrid>
   );
 }
 
@@ -1252,6 +1250,7 @@ function ContactsListContent({
         <View style={styles.searchRow}>
           <Ionicons color={colors.text3} name="search-outline" size={18} />
           <TextInput
+            accessibilityLabel="搜索姓名、公司、资源"
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={onQueryChange}
@@ -1285,7 +1284,7 @@ function ContactsListContent({
             ]}
           >
             <Ionicons
-              color={colors.onAccent}
+              color={colors.accent}
               name="sparkles-outline"
               size={17}
             />
@@ -1711,8 +1710,7 @@ function ContactsListScreen() {
   }
 
   return (
-    <AppScreen
-      eyebrow="联系人"
+    <ContactPage
       refreshControl={
         <RefreshControl
           onRefresh={() => {
@@ -1771,7 +1769,7 @@ function ContactsListScreen() {
         selectedRelationshipProgress={selectedRelationshipProgress}
         state={state}
       />
-    </AppScreen>
+    </ContactPage>
   );
 }
 
@@ -1787,133 +1785,115 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   avatar: {
     alignItems: "center",
     borderRadius: radius.pill,
-    height: 44,
+    height: 46,
     justifyContent: "center",
     overflow: "hidden",
-    width: 44
+    width: 46
   },
   avatarImage: {
     height: "100%",
     width: "100%"
   },
   avatarText: {
-    fontSize: typography.section,
+    fontSize: 21,
     fontWeight: "800",
-    lineHeight: 22
+    lineHeight: 26
   },
   clearButton: {
     alignItems: "center",
-    height: 32,
+    height: 44,
     justifyContent: "center",
-    width: 32
+    width: 44
   },
-  filterToolbar: {
-    gap: spacing.sm
-  },
+  filterToolbar: { gap: spacing.sm },
   filterToolbarButton: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
     borderRadius: radius.control,
-    borderWidth: 1,
     flex: 1,
     flexDirection: "row",
-    gap: 3,
+    gap: 6,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: layout.control,
     minWidth: 0,
-    paddingHorizontal: spacing.xs
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm
   },
   filterToolbarButtonActive: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.accent
   },
-  filterToolbarButtonPressed: {
-    opacity: 0.8
-  },
+  filterToolbarButtonPressed: { opacity: 0.8 },
   filterToolbarButtonText: {
     color: colors.text2,
     flexShrink: 1,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
+    fontSize: 14,
+    fontWeight: "500",
+    lineHeight: 20
   },
-  filterToolbarButtonTextActive: {
-    color: colors.accent,
-  },
+  filterToolbarButtonTextActive: { color: colors.accent },
   filterToolbarCount: {
     color: colors.accent,
     fontSize: 11,
     fontWeight: "800",
     lineHeight: 15
   },
-  filterToolbarMoreSection: {
-    gap: spacing.xs
-  },
-  filterToolbarMoreSections: {
-    gap: spacing.md
-  },
+  filterToolbarMoreSection: { gap: spacing.xs },
+  filterToolbarMoreSections: { gap: spacing.md },
   filterToolbarPanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     gap: spacing.sm,
-    padding: spacing.sm
+    padding: spacing.md
   },
   filterToolbarPanelTitle: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
+    fontWeight: "600"
   },
   filterToolbarRow: {
     flexDirection: "row",
-    gap: spacing.xs
+    gap: 0
+  },
+  filterToolbarDivider: {
+    backgroundColor: colors.border,
+    height: 16,
+    position: "absolute",
+    right: 0,
+    width: StyleSheet.hairlineWidth
   },
   contactCard: {
-    borderBottomColor: colors.border2,
+    borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: 68,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    justifyContent: "center",
+    minHeight: 70,
+    paddingVertical: 12
   },
-  contactCardLast: {
-    borderBottomWidth: 0
-  },
-  contactCardPressed: {
-    backgroundColor: colors.surface2
-  },
+  contactCardLast: { borderBottomWidth: 0 },
+  contactCardPressed: { backgroundColor: colors.surface2 },
   contactDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.small,
+    color: colors.text3
   },
   contactHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm
+    gap: 16
   },
   contactList: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    overflow: "hidden"
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth
   },
   contactMatchScore: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    lineHeight: 17,
+    color: colors.text3,
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 20,
     minWidth: 24,
     textAlign: "right"
   },
   contactName: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   contactTitleBlock: {
     flex: 1,
@@ -1923,37 +1903,33 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   contactsLibraryAction: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 2
+    gap: 2,
+    maxWidth: 76
   },
   contactsLibraryActionText: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17
+    flexShrink: 1
   },
   contactsLibraryDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
+    ...textStyles.small,
+    color: colors.text3
   },
   contactsLibraryEntry: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 88,
-    padding: spacing.md
+    minHeight: 84,
+    paddingVertical: spacing.lg
   },
   contactsLibraryIcon: {
     alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    height: 46,
+    height: 36,
+    width: 36,
     justifyContent: "center",
-    width: 46
+    flexShrink: 0
   },
   contactsLibraryText: {
     flex: 1,
@@ -1961,49 +1937,42 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   contactsLibraryTitle: {
-    color: colors.text,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 22
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   deepSearchButton: {
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.control,
+    flex: 1,
     flexDirection: "row",
     gap: 7,
-    minHeight: 38,
-    paddingHorizontal: 14
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 10
   },
-  deepSearchButtonDisabled: {
-    opacity: 0.62
-  },
+  deepSearchButtonDisabled: { opacity: 0.62 },
   deepSearchButtonPressed: {
     opacity: 0.84,
     transform: [{ translateY: 0.5 }]
   },
   deepSearchButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 21
   },
   filterChip: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    ...createControlStyles(colors).chip,
     flexDirection: "row",
-    gap: 5,
-    minHeight: 34,
-    paddingHorizontal: 12
+    gap: spacing.xs,
+    maxWidth: "100%"
   },
   filterChipCount: {
+    ...textStyles.caption,
     color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600"
   },
   filterChipPressed: {
     opacity: 0.82,
@@ -2013,67 +1982,49 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: colors.accent,
     borderColor: colors.accent
   },
-  filterChipText: {
-    color: colors.text2,
-    fontSize: typography.small,
-    fontWeight: "700"
-  },
-  filterChipTextSelected: {
-    color: colors.onAccent
-  },
+  filterChipText: { ...createControlStyles(colors).chipText },
+  filterChipTextSelected: { color: colors.onAccent },
   filterList: {
     gap: spacing.sm,
     paddingRight: spacing.sm
   },
   nextActionText: {
-    color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text2
   },
   overviewToolActionRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 3,
-    marginTop: "auto"
+    gap: spacing.xxs,
+    maxWidth: 76
   },
   overviewToolActionText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.accent,
+    flexShrink: 1
   },
   overviewToolCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flexBasis: "48%",
-    flexGrow: 1,
-    gap: spacing.sm,
-    minHeight: 138,
-    padding: spacing.md
-  },
-  overviewToolCardPrimary: {
-    flexBasis: "100%",
-    minHeight: 116,
-    padding: spacing.lg
-  },
-  overviewToolDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
-  },
-  overviewToolGrid: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
+    gap: spacing.md,
+    minHeight: 84,
+    paddingVertical: spacing.lg,
+    width: "100%"
   },
+  overviewToolCardPrimary: { minHeight: 84 },
+  overviewToolDetail: {
+    ...textStyles.small,
+    color: colors.text3
+  },
+  overviewToolGrid: { gap: 0 },
   overviewToolIcon: {
     alignItems: "center",
-    borderRadius: radius.control,
-    height: 38,
+    height: 36,
+    width: 36,
     justifyContent: "center",
-    width: 38
+    flexShrink: 0
   },
   overviewToolText: {
     flex: 1,
@@ -2081,10 +2032,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   overviewToolTitle: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   recentRelationshipSearchChip: {
     alignItems: "center",
@@ -2102,24 +2051,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 8
   },
   recentRelationshipSearchDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text3
   },
   recentRelationshipSearchLabel: {
+    ...textStyles.caption,
     color: colors.text,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   recentRelationshipSearchList: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.xs
   },
-  recentRelationshipSearches: {
-    gap: spacing.xs
-  },
+  recentRelationshipSearches: { gap: spacing.xs },
   recentRelationshipSearchesHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -2127,15 +2072,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   recentRelationshipSearchesMeta: {
-    color: colors.text4,
-    fontSize: typography.caption,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text4
   },
   recentRelationshipSearchesTitle: {
+    ...textStyles.caption,
     color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   recentRelationshipSearchText: {
     flex: 1,
@@ -2143,38 +2086,37 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   relationshipText: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text
   },
   relationshipSearchButton: {
     alignItems: "center",
-    alignSelf: "flex-start",
     backgroundColor: colors.surface,
     borderColor: colors.accent,
     borderRadius: radius.control,
     borderWidth: 1,
+    flex: 1,
     flexDirection: "row",
     gap: 7,
-    minHeight: 38,
-    paddingHorizontal: 14
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 10
   },
   relationshipSearchButtonText: {
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 21
   },
   relationshipSearchEvidence: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    lineHeight: 18
+    ...textStyles.caption,
+    color: colors.text2
   },
   relationshipSearchScore: {
+    ...textStyles.small,
     color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "900",
-    lineHeight: 18
+    fontWeight: "600"
   },
   relationshipSearchScoreLabel: {
     color: colors.text3,
@@ -2193,26 +2135,22 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 5
   },
   relationshipSuggestionChip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.card,
     flexBasis: "100%",
     flexGrow: 1,
-    gap: 5,
-    minHeight: 104,
+    gap: spacing.xs,
+    minHeight: layout.control,
     padding: spacing.md
   },
   relationshipSuggestionDetail: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
+    fontWeight: "600"
   },
   relationshipSuggestionHint: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   relationshipSuggestionList: {
     flexDirection: "row",
@@ -2221,14 +2159,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingRight: spacing.sm
   },
   relationshipSuggestionQuery: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontWeight: "600"
   },
-  relationshipSuggestions: {
-    gap: spacing.sm
-  },
+  relationshipSuggestions: { gap: spacing.sm },
   relationshipSuggestionsHeader: {
     alignItems: "center",
     flexDirection: "row",
@@ -2236,68 +2171,58 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     justifyContent: "space-between"
   },
   relationshipSuggestionsMeta: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text3
   },
   relationshipSuggestionsNext: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
+    ...textStyles.caption,
+    color: colors.text3
   },
   relationshipSuggestionsTitle: {
+    ...textStyles.small,
     color: colors.ink,
-    fontSize: typography.small,
-    fontWeight: "800",
-    lineHeight: 18
+    fontWeight: "600"
   },
   searchInput: {
+    ...textStyles.body,
     color: colors.text,
     flex: 1,
-    fontSize: typography.body,
-    lineHeight: 20,
+    minWidth: 0,
+    minHeight: 44,
     paddingVertical: 10
   },
   searchActionRow: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm
+    gap: 18
   },
   searchEmptyText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text3
   },
   searchErrorText: {
+    ...textStyles.caption,
     color: colors.rose,
+    flexBasis: "100%",
     flexShrink: 1,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 18
+    fontWeight: "600"
   },
   searchFilterText: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 18
+    ...textStyles.caption,
+    color: colors.text3
   },
   searchPanel: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.md
+    gap: 8,
+    paddingBottom: 10
   },
   searchRow: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.input,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 46,
+    minHeight: layout.control,
     paddingHorizontal: spacing.md
   },
   searchResultAvatar: {
@@ -2314,14 +2239,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: "100%"
   },
   searchResultAvatarText: {
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 21
+    ...textStyles.body,
+    fontWeight: "600"
   },
   searchResultDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 18
+    ...textStyles.caption,
+    color: colors.text3
   },
   searchResultHeader: {
     alignItems: "flex-start",
@@ -2329,37 +2252,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   searchResultItem: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
-    padding: spacing.md
+    paddingVertical: spacing.md
   },
   searchResultItemPressed: {
     opacity: 0.84,
     transform: [{ translateY: 0.5 }]
   },
   searchResultLead: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.small,
+    color: colors.text
   },
   searchResultName: {
-    color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   },
   searchResultScore: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    lineHeight: 18
+    fontWeight: "600"
   },
-  searchResultStack: {
-    gap: spacing.sm
-  },
+  searchResultStack: { gap: spacing.sm },
   searchResultTitleBlock: {
     flex: 1,
     gap: 2,
@@ -2371,21 +2286,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: 6
   },
   tagText: {
+    ...textStyles.caption,
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
+    fontWeight: "600",
     overflow: "hidden",
     paddingHorizontal: 10,
     paddingVertical: 5
   },
   valueText: {
+    ...textStyles.caption,
     color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "900"
+    fontWeight: "600"
   },
   valuePill: {
     alignItems: "center",

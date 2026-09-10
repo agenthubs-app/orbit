@@ -12,7 +12,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { radius, spacing, textStyles, typography, type OrbitColors } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -235,7 +236,7 @@ function CalendarRequestCard({
 }) {
   const { styles } = useStyles();
   return (
-    <DataCard detail={view.statusLabel} title={view.title}>
+    <DataCard detail={view.statusLabel} title={view.title} variant="inset">
       <Text style={styles.bodyText}>{view.detail}</Text>
       <Text style={styles.safetyText}>{view.nextAction}</Text>
       <Text style={styles.evidenceText}>{view.requestId}</Text>
@@ -252,7 +253,7 @@ function PermissionCard({
   const color = toneColor(permission.tone, colors);
 
   return (
-    <DataCard detail={permission.requiredFor} title={permission.title}>
+    <DataCard detail={permission.requiredFor} title={permission.title} variant="inset">
       <View style={styles.permissionHeader}>
         <View
           style={[
@@ -286,14 +287,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 19
   },
   bodyText: {
+    ...textStyles.body,
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
   },
   errorText: {
     backgroundColor: colors.roseSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     color: colors.rose,
     fontSize: typography.small,
@@ -320,29 +320,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md
+    gap: spacing.sm
   },
   primaryButtonDisabled: {
     opacity: 0.68
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 18
+    ...createControlStyles(colors).primaryButtonText
   },
   safetyText: {
     backgroundColor: colors.accentSofter,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     color: colors.text,
     fontSize: typography.small,

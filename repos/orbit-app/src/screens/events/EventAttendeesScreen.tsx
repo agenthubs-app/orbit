@@ -25,7 +25,8 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography } from "../../design/tokens";
+import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -723,8 +724,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   bodyText: {
     color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
+    ...textStyles.body
   },
   disabled: {
     opacity: 0.54
@@ -737,7 +737,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   encounterBox: {
     backgroundColor: colors.surface2,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -745,7 +745,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   evidenceBox: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.md
@@ -763,16 +763,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 16
   },
   input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
-    minHeight: 82,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    ...createControlStyles(colors).input,
+    minHeight: 82
   },
   knownPill: {
     backgroundColor: colors.accentSofter,
@@ -787,7 +779,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   matchBlock: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.card,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md
@@ -812,46 +804,29 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     transform: [{ translateY: 0.5 }]
   },
   primaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).primaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   primaryButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).primaryButtonText
   },
   reasonText: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.md,
-    borderWidth: 1,
     color: colors.text,
     fontSize: typography.small,
     lineHeight: 20,
-    padding: spacing.md
+    backgroundColor: "transparent",
+    paddingVertical: spacing.md
   },
   secondaryButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
+    ...createControlStyles(colors).secondaryButton,
     flexDirection: "row",
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    gap: spacing.sm,
+    maxWidth: "100%"
   },
   secondaryButtonText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
+    ...createControlStyles(colors).secondaryButtonText
   },
   safetyText: {
     color: colors.text4,

@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { radius, spacing, typography } from "../design/tokens";
+import { spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
 
 interface MetricPillProps {
@@ -11,10 +11,10 @@ export function MetricPill({ label, value }: MetricPillProps) {
   const { styles } = useStyles();
   return (
     <View style={styles.pill}>
-      <Text numberOfLines={1} style={styles.value}>
+      <Text style={styles.value}>
         {value}
       </Text>
-      <Text numberOfLines={1} style={styles.label}>
+      <Text style={styles.label}>
         {label}
       </Text>
     </View>
@@ -23,23 +23,17 @@ export function MetricPill({ label, value }: MetricPillProps) {
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   label: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    lineHeight: 16
+    ...textStyles.caption,
+    color: colors.text2
   },
   pill: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    flexShrink: 1,
+    maxWidth: "100%",
     minWidth: 88,
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
   value: {
-    color: colors.accent,
-    fontSize: typography.body,
-    fontWeight: "700",
-    lineHeight: 20
+    ...textStyles.listTitle,
+    color: colors.ink
   }
 }));

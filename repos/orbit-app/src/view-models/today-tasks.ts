@@ -318,6 +318,39 @@ export function todayHomeSummary(
   };
 }
 
+export interface HomeQuestion {
+  kind: "tasks" | "followup" | "preparation" | "discovery";
+  label: string;
+}
+
+export function todayHomeQuestions(
+  payload: unknown,
+  now = new Date(),
+): readonly HomeQuestion[] {
+  const root = isRecord(payload) ? payload : {};
+  const tasks = (Array.isArray(root.tasks) ? root.tasks : [])
+    .map(taskFrom)
+    .filter((task): task is TaskItemContract => task !== null && task.status === "open");
+  const schedule = (Array.isArray(root.schedule) ? root.schedule : [])
+    .map(scheduleFrom)
+    .filter((item): item is ScheduleItemContract => item !== null);
+  const urgent = tasks.some((task) => task.priority === "high" ||
+    (typeof task.dueAt === "string" && Date.parse(task.dueAt) <= now.getTime()));
+  const preparation = schedule.some((item) =>
+    (item.kind === "meeting" || item.kind === "event") &&
+    item.state === "upcoming" && Date.parse(item.startsAt) > now.getTime());
+  const followup = tasks.some((task) => task.category === "relationship");
+  const primary: HomeQuestion = urgent
+    ? { kind: "tasks", label: "今天先处理哪些事？" }
+    : preparation
+      ? { kind: "preparation", label: "接下来的会面或活动，该准备什么？" }
+      : followup
+        ? { kind: "followup", label: "哪些人值得先跟进？" }
+        : { kind: "tasks", label: "今天先处理哪些事？" };
+
+  return [primary, { kind: "discovery", label: "最近有哪些活动适合我？" }];
+}
+
 export function tasksToListView(
   payload: unknown,
   view: "open" | "completed",

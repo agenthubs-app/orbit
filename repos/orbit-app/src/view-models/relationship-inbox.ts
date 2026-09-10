@@ -246,7 +246,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "Calendar hold from Orbit schedule context": "日程预留",
   "Event attendance record": "活动记录",
   "Generated relationship conversation": "关系上下文",
-  "Mock asynchronous relationship correspondence": "关系收件箱预览",
+  "Mock asynchronous relationship correspondence": "草稿预览",
   "Mock staged conversation created from a reviewed draft": "待复核草稿",
   "Robotics investor intro note": "机器人投资人介绍记录",
   "Staged from a reviewed message draft": "待复核草稿",
@@ -405,14 +405,26 @@ function localizeSourceLabels(values: unknown[]): string[] {
 function localizeSubject(conversationId: string, value: string): string {
   return (
     KNOWN_THREAD_COPY[conversationId]?.subject ??
-    userFacingText(value, "后续沟通")
+    (/^与.+的关系跟进$/u.test(value.trim())
+      ? "后续沟通"
+      : mailContent(value, "后续沟通"))
   );
+}
+
+// Correspondence is content, not UI copy. Keep real multilingual text intact;
+// only known synthetic instructions may become an explicit empty-content label.
+function mailContent(value: string, fallback: string): string {
+  const text = value.trim();
+  if (!text || /^(?:Generated relationship conversation|Review relationship context(?: before external follow-up)?|Follow up about .+ with a concrete next step\.|Review source evidence before recording another live-storage message\.|先复核上下文，再决定下一步[。.]?|复核关系上下文后再决定是否外发[。.]?)$/iu.test(text)) {
+    return fallback;
+  }
+  return text;
 }
 
 function localizePreview(conversationId: string, value: string): string {
   return (
     KNOWN_THREAD_COPY[conversationId]?.preview ??
-    userFacingText(value, "先复核上下文，再决定下一步。")
+    mailContent(value, "暂无消息正文")
   );
 }
 
@@ -430,7 +442,7 @@ function localizeSummary(conversationId: string, value: string): string {
 function localizeDraftReply(conversationId: string, value: string): string {
   return (
     KNOWN_THREAD_COPY[conversationId]?.draftReply ??
-    userFacingText(value, "先写一版草稿，确认后再发送。")
+    mailContent(value, "")
   );
 }
 
@@ -441,7 +453,7 @@ function localizeMessageBody(
 ): string {
   return (
     KNOWN_THREAD_COPY[conversationId]?.messages?.[messageId] ??
-    userFacingText(value, "这条消息需要先复核。")
+    mailContent(value, "暂无消息正文")
   );
 }
 
@@ -593,7 +605,7 @@ export function relationshipInboxToView(data: unknown): RelationshipInboxView {
       conversations: [],
       selected: null,
       summary: "暂无对话",
-      title: "关系收件箱"
+      title: "收件箱"
     };
   }
 
@@ -633,16 +645,16 @@ export function relationshipInboxToView(data: unknown): RelationshipInboxView {
     summary: conversations.length
       ? `${conversations.length} 段对话 · ${unreadTotal} 条新消息`
       : "暂无对话",
-    title: "关系收件箱"
+    title: "收件箱"
   };
 }
 
 function createdSummary(value: string, participantName: string): string {
   if (/new relationship thread staged from a reviewed draft/i.test(value)) {
-    return `已生成一段待复核的关系对话，收件人是${participantName}。`;
+    return `致 ${participantName} · 草稿预览`;
   }
 
-  return userFacingText(value, `已生成一段待复核的关系对话，收件人是${participantName}。`);
+  return userFacingText(value, `致 ${participantName} · 草稿预览`);
 }
 
 export function createdRelationshipThreadToView(
