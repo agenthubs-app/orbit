@@ -63,6 +63,47 @@ requests and do not access real accounts or replace native-device acceptance.
 - The app does not read Postgres, Supabase, `orbit_records`, or web localStorage.
 - Orbit AI remains the single assistant inbox, including proactive turns.
 
+## Business Card Batches
+
+The current native batch flow lives at `/contacts/new/batch2` and
+`/contacts/new/batch2/:id`, using the `/api/contact-drafts/business-card/batches/v2`
+API. Historical batches keep their separate `/contacts/new/batch/:id` review flow.
+
+- Select up to 100 original images, at most 10 MiB each. Uploads are explicit,
+  limited to two in flight, and attempt each eligible item once per trigger.
+  Failed uploads wait for another explicit trigger. Starting recognition,
+  excluding an upload, and cancelling a batch require confirmation.
+- Pending files contain only local URI metadata in memory, scoped to the server,
+  account and batch. After restart, reselect originals matching the manifest's
+  SHA-256, byte count and MIME type. Completion, cancellation, expiry and identity
+  changes clear pending files; they are not a durable offline queue.
+- Review extracted fields and additional contact values, or explicitly save a
+  manually filled terminal failure. Terminal failures offer manual retry even
+  when the worker will not retry that error automatically. Retry, skip and image
+  replacement remain explicit actions; successful item acknowledgments are
+  followed by authoritative batch refresh, never a local completion shortcut.
+- Duplicate review links to the existing contact. Creating another contact needs
+  separate consent for the unchanged item and edited form. Edits survive refresh,
+  backgrounding and version conflicts. Explicit field reload asks before discarding
+  them and cannot discard edits made while that reload is pending.
+- Replacement supports collecting/uploaded and processing-or-ready/terminal-failed
+  items. It rechecks original bytes and sends raw content with the accepted item
+  version in `If-Match`. The server preserves the initial upload manifest and
+  changes the derivative's image digest. Conflicts refresh authority before another
+  attempt, retaining local edits.
+- Only the selected review image is fetched through authenticated transport. Native
+  decoding failures expose an explicit image retry; obsolete image, selection,
+  account and server callbacks cannot apply to the current review.
+
+Batch tests mount the real screens, shared form, schemas, API client and image
+helpers with controlled native/router/network boundaries in Chromium. Together
+with model tests and typecheck, these verify payloads and state transitions, not
+simulator behavior or real HTTP/database persistence. Native selection/upload/
+display, local HTTP/DB create-to-confirm and resume, two-actor denial, stale-version
+rejection and cross-client readback still require the separate runtime acceptance
+phase with a local deterministic OCR provider. Production OCR, cloud storage and
+worker deployment are separate gates.
+
 ## First Screens
 
 - Orbit AI: reads `/api/ai/conversations`, opens conversation detail pages,

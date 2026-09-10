@@ -34,6 +34,42 @@ function detail(count = 1): IngestBatchDetailContract {
 }
 const ok = (data: unknown, status = 200) => ({ success: true as const, data, status, meta: { featureMode: null, privacy: null, runtimeBoundary: null } });
 
+test("Task5 replacement validates new image digest but preserves original manifest identity", () => {
+  for (const [batchStatus, itemStatus, nextStatus] of [["collecting", "uploaded", "uploaded"], ["processing", "terminal_failed", "queued"], ["ready_for_review", "terminal_failed", "queued"]] as const) {
+    const d = detail(); d.batch.status = batchStatus;
+    const old = { ...d.items[0]!, status: itemStatus };
+    const replacement = { ...file, clientDigest: "sha256:" + "b".repeat(64), rawSize: 100, mimeType: "image/jpeg" as const };
+    const item = { ...old, status: nextStatus, version: 2, imageDigest: replacement.clientDigest, derivativeObjectKey: "private/new", derivativeSize: 80 };
+    assert.equal(ingest.acceptedIngestReview(ok({ item }), d, old, "replace", replacement)?.state, "accepted");
+    for (const patch of [{ imageDigest: old.clientDigest }, { clientDigest: replacement.clientDigest }, { rawSize: 100 }, { rawMimeType: replacement.mimeType }, { derivativeObjectKey: null }, { derivativeSize: null }, { id: "other" }, { batchId: "other" }, { seq: 2 }, { version: 1 }, { status: "extracted" }]) {
+      assert.equal(ingest.acceptedIngestReview(ok({ item: { ...item, ...patch } }), d, old, "replace", replacement), null, JSON.stringify(patch));
+    }
+    assert.equal(ingest.acceptedIngestReview(ok({ item }, 503), d, old, "replace", replacement), null);
+  }
+});
+test("Task5 explicit retry covers every terminal error independently of automatic worker limits", () => {
+  for (const status of ["processing", "ready_for_review"] as const) for (const errorCode of ["IMAGE_INVALID", "LEASE_EXHAUSTED", "OCR_PROVIDER_FAILED", "OCR_PROVIDER_TIMEOUT", "OCR_INVALID_OUTPUT"] as const) {
+    const d = detail(); d.batch.status = status;
+    const old = { ...d.items[0]!, status: "terminal_failed" as const, errorCode, attemptCount: 999 };
+    assert.equal(ingest.canReviewIngest(d, old, "retry"), true);
+    assert.equal(ingest.canReviewIngest(d, old, "manual-entry"), true);
+    assert.equal(ingest.canReviewIngest(d, old, "confirm"), false);
+    assert.equal(ingest.acceptedIngestReview(ok({ item: { ...old, status: "queued", version: 2, attemptCount: 0, errorCode: null } }), d, old, "retry")?.state, "accepted");
+  }
+});
+test("Task5 review acknowledgments reject stale versions, state and contact inconsistencies", () => {
+  const d = detail(); d.batch.status = "ready_for_review";
+  const old = { ...d.items[0]!, status: "extracted" as const };
+  const item = { ...old, status: "confirmed" as const, version: 2, confirmedContactId: "contact" };
+  assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item }), d, old, "confirm")?.state, "accepted");
+  for (const patch of [{ id: "other" }, { batchId: "other" }, { version: 1 }, { version: 0 }, { seq: 2 }, { status: "extracted" }, { confirmedContactId: "other" }, { clientDigest: "sha256:" + "b".repeat(64) }]) {
+    assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item: { ...item, ...patch } }), d, old, "confirm"), null);
+  }
+  for (const status of ["completed", "cancelled", "expired", "collecting"] as const) {
+    assert.equal(ingest.canReviewIngest({ ...d, batch: { ...d.batch, status } }, old, "confirm"), false);
+  }
+});
+
 test("creation freezes manifest/key across ambiguous retry and changes key on manifest edits", () => {
   const files = [{ ...file }]; let keys = 0;
   const first = ingest.creationAttempt(files, null, () => "key-" + ++keys);

@@ -296,11 +296,43 @@ Task5 and the complete runtime phase remain required, not implied by route parit
 
 **Interfaces:** Current detail includes batch version/reviewGeneration and item versions. POST confirm/manual-entry accepts fixed fields and allowDuplicate. Confirm requires extracted; manual entry starts at terminal_failed. Retry/skip return `{ item }`. Replace is raw POST with If-Match. Complete/cancel/expired status comes only from accepted server detail/results, not local counts.
 
-- [ ] Add RED runtime tests for extracted review, preserved extra contact values, terminal failure manual entry, retry eligibility, replacement If-Match conflict, duplicate confirmation, edited fields preserved through background refresh, declined duplicate override, contact navigation, completed cleanup, and stale account/server/item/version responses. Test error acknowledgments and duplicate presses for every mutation family.
-- [ ] Render Task 3's form with current image and review issues. Offer legal retry/manual/replace/skip controls from the current item state; the server remains authoritative. Show nonretryable failures as such. Terminal failed items may be manually entered with explicit save, never auto-converted to contacts.
-- [ ] In duplicate review, show the existing contact link and a separate explicit create-anyway confirmation. Only that specific unchanged item/form may send allowDuplicate true. Validate created/contactId/item consistency; a transport 200 with malformed data is not success.
-- [ ] Preserve local edits on version conflicts and offer explicit reload; refresh the version before any retry or replacement. On completion/cancel/expiry clear pending files and selected image data. A poll must not revive an old form after completion or account change.
-- [ ] Run all batch/ingest/image/client/navigation tests and App typecheck. Run the full App suite; route parity should pass after password recovery and experience plans are also implemented. Record actual failures if prerequisites remain. Independent task and whole-feature review, change detection, and controller commit.
+- [x] Add RED runtime tests for extracted review, preserved extra contact values, terminal failure manual entry, retry eligibility, replacement If-Match conflict, duplicate confirmation, edited fields preserved through background refresh, declined duplicate override, contact navigation, completed cleanup, and stale account/server/item/version responses. Test error acknowledgments and duplicate presses for every mutation family.
+- [x] Render Task 3's form with current image and review issues. Offer legal retry/manual/replace/skip controls from the current item state; the server remains authoritative. Show nonretryable failures as such. Terminal failed items may be manually entered with explicit save, never auto-converted to contacts.
+- [x] In duplicate review, show the existing contact link and a separate explicit create-anyway confirmation. Only that specific unchanged item/form may send allowDuplicate true. Validate created/contactId/item consistency; a transport 200 with malformed data is not success.
+- [x] Preserve local edits on version conflicts and offer explicit reload; refresh the version before any retry or replacement. On completion/cancel/expiry clear pending files and selected image data. A poll must not revive an old form after completion or account change.
+- [x] Run all batch/ingest/image/client/navigation tests and App typecheck. Run the full App suite; route parity should pass after password recovery and experience plans are also implemented. Record actual failures if prerequisites remain. Independent task review, change detection, and controller commit.
+- [ ] Complete independent whole-feature review, including all four recorded rulings and cross-task interfaces. Resolve required findings through the bounded final-review workflow before runtime acceptance starts.
+
+### Task 5 Checkpoint
+
+Five App files extend the existing current-ingestion state owner with selected
+review, per-item dirty drafts, manual entry, retry/skip, duplicate consent and
+raw If-Match replacement. Shared Task3 form/mapping and Task2/Task4 helper APIs
+are unchanged. Replacement validates new imageDigest while retaining the original
+raw manifest. Mutations and images retain captured scope/item/version/draft and
+selection-attempt ownership; completion remains authoritative server state.
+
+Independent task review found one Important issue: after410 and failed recovery,
+the stale detail list could reopen cleared review and request an image. One
+two-file TDD fix round added scope-owned review invalidation while preserving
+canonical owner/version history. Only accepted nonregressed detail restores
+review authority. Scoped independent re-review closed I1 with zero new findings.
+Ordinary non410 failures retain dirty drafts; invalidated callbacks/projection/
+image effects cannot bypass cleanup.
+
+FixRED12tests4pass8fail became12/12GREEN9.468539666s; six-filecover247/247
+zeroFail/skip/cancel71.218926s andactualAppTCexit0diagnosticfree. Parentpostfix
+fullApp1191/1191zeroFail/skip/cancel73.820036458s andAppTCexit0diagnosticfree.
+Logs /tmp/orbit-completion-batch-task5-fix1-independent-{full-app,typecheck}-node22-20260910.log.
+Originalpre-fixfullApp1179/1179 is historical, notpostfixproof.
+
+BothunchangedWebtypechecks exit0. FullWebownedDBsuite2945tests2938pass7fail,
+zeroSkip/cancel94.221307458s. Exactfailuresremain6freshpublic/Party runtimecases
+andglobal87/123missing36(15mobile21Web), not new implementation failures.
+Log /tmp/orbit-completion-batch-pre-final-full-web-node22-20260910.log.
+No required evidence check was weakened. Native file/decoder/keyboard behavior,
+actual local HTTP/DB flows and populated cross-client readback remain pending.
+This task checkpoint is not whole-feature approval or runtime acceptance.
 
 ## Runtime Acceptance Still Required
 

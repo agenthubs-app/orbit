@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { OrbitApiClient } from "../api/client";
 import { readPreparedBatchImage, type BatchImageNative, type PreparedBatchImage } from "../api/batch-images";
 import type { BusinessCardBatchContract, IngestBatchContract, IngestBatchDetailContract, IngestItemContract, IngestManifestEntryContract } from "../api/contract/business-card-batch";
-import { businessCardBatchSchema, ingestBatchCollectionResponseSchema, ingestBatchCreateResponseSchema, ingestBatchDetailSchema, ingestManifestEntrySchema, ingestUploadResponseSchema } from "../api/schema/business-card-batch";
+import { businessCardBatchSchema, ingestBatchCollectionResponseSchema, ingestBatchCreateResponseSchema, ingestBatchDetailSchema, ingestConfirmationResponseSchema, ingestItemActionResponseSchema, ingestManifestEntrySchema, ingestUploadResponseSchema } from "../api/schema/business-card-batch";
 import type { ApiResult } from "../api/types";
 
 export const INGEST_COLLECTION_PATH = "/api/contact-drafts/business-card/batches/v2";
@@ -77,6 +77,30 @@ export function matchPendingFiles(detail: IngestBatchDetailContract, files: read
 }
 export function canFinalizeIngest(detail: IngestBatchDetailContract): boolean {
   return !ingestTerminal(detail) && detail.batch.status === "collecting" && detail.items.every(i => i.status === "uploaded" || i.status === "excluded") && detail.items.some(i => i.status === "uploaded");
+}
+
+export type IngestReviewAction = "confirm" | "manual-entry" | "retry" | "skip" | "replace";
+export function canReviewIngest(detail: IngestBatchDetailContract, item: IngestItemContract, action: IngestReviewAction): boolean {
+  if (ingestTerminal(detail) || item.batchId !== detail.batch.id) return false;
+  if (action === "replace" && detail.batch.status === "collecting") return item.status === "uploaded";
+  if (!["processing", "ready_for_review"].includes(detail.batch.status)) return false;
+  if (action === "confirm") return item.status === "extracted";
+  if (action === "skip") return item.status === "extracted" || item.status === "terminal_failed";
+  return item.status === "terminal_failed";
+}
+
+export function acceptedIngestReview(result: ApiResult<unknown>, detail: IngestBatchDetailContract, old: IngestItemContract, action: IngestReviewAction, replacement?: PreparedBatchImage): { state: "duplicate_review"; duplicateContactId: string } | { state: "accepted"; item: IngestItemContract } | null {
+  if (!isHttpSuccess(result) || !canReviewIngest(detail, old, action)) return null;
+  const parsed = action === "confirm" || action === "manual-entry" ? ingestConfirmationResponseSchema.safeParse(result.data) : ingestItemActionResponseSchema.safeParse(result.data);
+  if (!parsed.success) return null;
+  if ("state" in parsed.data && parsed.data.state === "duplicate_review") return parsed.data;
+  const item = parsed.data.item;
+  const expected = action === "replace" ? detail.batch.status === "collecting" ? "uploaded" : "queued" : action === "retry" ? "queued" : action === "skip" ? "skipped" : "confirmed";
+  if (item.id !== old.id || item.batchId !== detail.batch.id || item.seq !== old.seq || item.version <= old.version || item.status !== expected) return null;
+  if (item.clientDigest !== old.clientDigest || item.rawSize !== old.rawSize || item.rawMimeType !== old.rawMimeType) return null;
+  // Replacement changes the derivative identity, never the original upload manifest.
+  if (action === "replace" && (!replacement || item.imageDigest !== replacement.clientDigest || !item.derivativeObjectKey || !item.derivativeSize || item.extraction !== null)) return null;
+  return { state: "accepted", item };
 }
 
 export interface UploadPassOptions {

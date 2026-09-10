@@ -10,6 +10,13 @@ let script: string;
 // Real screens, schemas, client, preparation and uploads; native/router/providers,
 // clock and fetch are controlled. This is not actual HTTP/DB/simulator evidence.
 const fixture = "\nimport React, { useEffect, useSyncExternalStore } from \"react\";\nimport { View } from \"react-native-web\";\nconst listeners = new Set(); let revision = 0;\nconst observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);\nconst png = Uint8Array.from(atob(\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=\"), c => c.charCodeAt(0));\nconst hash = \"f3ec9e14b9c085b55edc96155f7bd26b6fdeda2462f02af4e0279d8319b365e3\";\nconst stamp = \"2026-09-10T00:00:00Z\";\nconst timers = new Map(); let timerId = 10000;\nwindow.setInterval = (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms }); return id; };\nwindow.clearInterval = id => timers.delete(id);\nconst appListeners = new Set();\nconst s = window.fixture = { screen: \"start\", actor: \"subject\", owner: \"canonical-owner\", ready: true, baseReady: true, signedIn: true, baseUrl: \"https://orbit.example\", cookieHeader: \"\", batchId: \"batch:/\", focused: true, mounted: true, appState: \"active\", requests: [], replies: [], picks: [], pickReplies: [], reads: [], readReplies: [], holdRead: false, alerts: [], navigation: [], presses: {}, now: 1800000000000, ...window.initialFixture,\n update(patch) { Object.assign(s, patch); if (patch.appState) appListeners.forEach(fn => fn(patch.appState)); revision++; listeners.forEach(fn => fn()); },\n tick() { [...timers.values()].forEach(t => t.fn()); }, timers() { return [...timers.values()].map(t => t.ms); },\n detail(patch = {}) { const statuses = patch.statuses ?? [\"awaiting_upload\"];\n const batch = { id: patch.id ?? s.batchId, actorId: patch.owner ?? s.owner, status: patch.status ?? \"collecting\", expectedItems: statuses.length, version: patch.version ?? 1, reviewGeneration: 0, idempotencyKey: patch.key ?? \"key-1\", manifestFingerprint: \"a\".repeat(64), statusReason: null, createdAt: stamp, updatedAt: stamp, finalizedAt: patch.status === \"processing\" ? stamp : null, expiresAt: patch.expired ? stamp : \"2099-01-01T00:00:00Z\" };\n const items = statuses.map((status, i) => ({ id: \"item:\" + i, batchId: batch.id, seq: i + 1, status, version: patch.itemVersion ?? 1, sourceFileName: \"card.png\", rawSize: png.length, rawMimeType: \"image/png\", clientDigest: \"sha256:\" + hash, imageDigest: null, derivativeObjectKey: null, derivativeSize: null, extraction: null, extractionSchemaVersion: null, reviewIssues: [], usage: null, confirmedContactId: status === \"confirmed\" ? \"contact\" : null, attemptCount: 0, nextRetryAt: null, leaseExpiresAt: null, errorStage: null, errorCode: null, createdAt: stamp, updatedAt: stamp }));\n return { batch, items }; },\n legacy() { return { id: \"legacy:/\", actorId: s.owner, status: \"ready_for_review\", totalItems: 1, processedItems: 1, failedItems: 0, confirmedItems: 0, skippedItems: 0, sourceFiles: [], createdAt: stamp, updatedAt: stamp, expiresAt: \"2099-01-01T00:00:00Z\" }; },\n reply(index, kind = \"ok\", patch = {}) { const r = s.requests[index]; let data = s.detail(patch);\n if (r.method === \"GET\" && r.path.endsWith(\"/v2\")) data = { batches: patch.empty ? [] : [data.batch] };\n else if (r.method === \"GET\" && r.path.endsWith(\"/batches\")) data = { batches: patch.empty ? [] : [s.legacy()] };\n else if (r.method === \"POST\" && r.path.endsWith(\"/v2\")) { data = { ...data, reused: patch.reused ?? false }; data.batch.idempotencyKey = patch.wrongKey ? \"wrong\" : r.body.idempotencyKey; data.items = r.body.manifest.map((m, i) => ({ ...data.items[0], id: \"item:\" + i, seq: m.seq, sourceFileName: m.fileName, clientDigest: m.clientDigest, rawSize: m.rawSize, rawMimeType: m.mimeType })); data.batch.expectedItems = data.items.length; }\n else if (r.path.endsWith(\"/content\") || r.path.endsWith(\"/exclude\")) { const id = decodeURIComponent(r.path.split(\"/\").at(-2)); data = { item: { ...data.items[0], id, status: r.method === \"PUT\" ? \"uploaded\" : \"excluded\", version: 2 }, ...(r.method === \"PUT\" ? { alreadyUploaded: false } : {}) }; }\n else if (r.path.endsWith(\"/finalize\")) data = { batch: { ...data.batch, status: \"processing\", version: 2, finalizedAt: stamp }, alreadyFinalized: false };\n else if (r.path.endsWith(\"/cancel\")) data = { batch: { ...data.batch, status: \"cancelled\", version: 2 } };\n if (kind === \"wrong\") { if (data.item) data.item.id = \"wrong\"; else if (data.batch) data.batch.id = \"wrong\"; }\n if (kind === \"malformed\") data = {};\n const status = kind === \"conflict\" ? 409 : kind === \"gone\" ? 410 : [\"fail\", \"http-error\"].includes(kind) ? 503 : 200;\n s.replies[index](new Response(JSON.stringify([\"fail\", \"conflict\", \"gone\"].includes(kind) ? { success: false, error: { code: \"FAILED\", message: \"temporary failure\" } } : { success: true, data }), { status, headers: { \"content-type\": \"application/json\" } })); },\n pick(index, count = 1, cancelled = false, patch = {}) { s.pickReplies[index]({ canceled: cancelled, assets: Array.from({ length: count }, (_, i) => ({ uri: \"file:///card-\" + i + \".png\", fileName: \"card.png\", mimeType: \"image/heic\", ...patch })) }); },\n confirm(index, cancel = false) { s.alerts[index].buttons.find(b => cancel ? b.style === \"cancel\" : b.style !== \"cancel\")?.onPress?.(); }\n};\nDate.now = () => s.now;\nwindow.fetch = (url, init) => { const r = { path: new URL(url).pathname, origin: new URL(url).origin, method: init.method, body: typeof init.body === \"string\" ? JSON.parse(init.body) : init.body ? [...init.body] : null, headers: init.headers, signal: init.signal, actor: s.actor }; s.requests.push(r); return new Promise(resolve => s.replies.push(resolve)); };\nexport const useFixture = () => { observe(); return s; };\nexport const useOrbitAuthSession = () => { observe(); return { ready: s.ready, signedIn: s.signedIn, user: s.actor ? { id: s.actor } : null, cookieHeader: s.cookieHeader }; };\nexport const useOrbitApiBaseUrl = () => { observe(); return { ready: s.baseReady, baseUrl: s.baseUrl }; };\nexport const useLocalSearchParams = () => { observe(); return { id: s.batchId }; };\nexport const useGlobalSearchParams = useLocalSearchParams;\nexport const usePathname = () => s.screen === \"start\" ? \"/contacts/new/batch2\" : \"/contacts/new/batch2/\" + encodeURIComponent(s.batchId);\nexport const useFocusEffect = fn => { observe(); useEffect(() => s.focused ? fn() : undefined, [fn, s.focused]); };\nexport const useRouter = () => ({ canGoBack: () => false, back() {}, push(href) { s.navigation.push(href); }, replace(href) { s.navigation.push(href); } });\nexport const Redirect = ({ href }) => <div role=\"status\">{href}</div>;\nexport const Stack = () => null;\nexport const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;\nexport const Ionicons = ({ size }) => <span aria-hidden=\"true\" style={{ display: \"inline-block\", width: size, height: size }} />;\nexport const AppState = { get currentState() { return s.appState; }, addEventListener(event, fn) { appListeners.add(fn); return { remove() { appListeners.delete(fn); } }; } };\nexport const UIImagePickerPreferredAssetRepresentationMode = { Current: \"current\" };\nexport const launchImageLibraryAsync = options => { s.picks.push(options); return new Promise(resolve => s.pickReplies.push(resolve)); };\nexport const File = class { constructor(uri) { this.uri = uri; } get exists() { return true; } get size() { return s.rawSize ?? png.length; } async bytes() { s.reads.push(this.uri); if (s.holdRead) await new Promise(resolve => s.readReplies.push(resolve)); return png; } };\nexport const CryptoDigestAlgorithm = { SHA256: \"SHA-256\" };\nexport const digest = async () => Uint8Array.from(hash.match(/../g), h => parseInt(h, 16)).buffer;\nlet key = 0; export const randomUUID = () => \"key-\" + ++key;\n";
+const reviewFixture = `
+const originalDetail = s.detail;
+const extraction = { fullName: "Misaki", nativeFullName: "林 美咲", romanizedFullName: "HAYASHI", organization: "Orbit", title: "Director", departments: ["Research"], emails: [{ label: null, value: "one@example.invalid" }, { label: "Personal", value: "two@example.invalid" }], contactPoints: [{ type: "mobile", label: null, value: "090" }, { type: "fax", label: null, value: "090" }, { type: "wechat", label: null, value: "chat" }], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"] };
+s.detail = (patch = {}) => { const d = originalDetail(patch); d.batch.reviewGeneration = patch.generation ?? 0; d.items.forEach(i => { i.extraction = i.status === "extracted" ? { ...extraction, organization: patch.organization ?? "Orbit" } : null; i.reviewIssues = i.status === "extracted" ? [{ code: "INVALID_EMAIL", field: "email", message: "核对邮箱" }] : []; i.errorCode = i.status === "terminal_failed" ? patch.errorCode ?? "IMAGE_INVALID" : null; }); return d; };
+s.respond = (index, data, status = 200) => s.replies[index](new Response(JSON.stringify({ success: true, data }), { status, headers: { "content-type": "application/json" } }));
+s.image = index => s.replies[index](new Response(png, { status: 200, headers: { "content-type": "image/png" } }));
+`;
 test.before(async () => {
   const start = existsSync(new URL("../src/screens/contacts/BusinessCardIngestStartScreen.tsx", import.meta.url));
   const detail = existsSync(new URL("../src/screens/contacts/BusinessCardIngestScreen.tsx", import.meta.url));
@@ -23,12 +30,326 @@ test.before(async () => {
   const result = await build({ stdin: { contents, resolveDir: process.cwd(), loader: "tsx" }, bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ingest-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ingest" }));
     plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-file-system|expo-crypto|expo-image-picker)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "ingest" }));
-    plugin.onLoad({ filter: /.*/, namespace: "ingest" }, args => ({ contents: args.path === "native" ? 'import React from "react"; import { Pressable as NativePressable } from "react-native-web"; export * from "react-native-web"; export { AppState } from "fixture"; export const Alert = { alert(title, message, buttons) { window.fixture.alerts.push({ title, message, buttons: buttons.slice(0, 3) }); } }; export const Pressable = props => { if (props.accessibilityLabel) window.fixture.presses[props.accessibilityLabel] = props.onPress; return <NativePressable {...props} />; };' : fixture, loader: "jsx", resolveDir: process.cwd() }));
+    plugin.onLoad({ filter: /.*/, namespace: "ingest" }, args => ({ contents: args.path === "native" ? 'import React from "react"; import { Pressable as NativePressable, Image as NativeImage } from "react-native-web"; export * from "react-native-web"; export { AppState } from "fixture"; export const Image = props => { (window.fixture.imageErrors ??= []).push(props.onError); (window.fixture.imageRenders ??= []).push(props.source.uri); return <NativeImage {...props} />; }; export const Alert = { alert(title, message, buttons) { window.fixture.alerts.push({ title, message, buttons: buttons.slice(0, 3) }); } }; export const Pressable = props => { if (props.accessibilityLabel) window.fixture.presses[props.accessibilityLabel] = props.onPress; return <NativePressable {...props} />; };' : fixture + reviewFixture, loader: "jsx", resolveDir: process.cwd() }));
     plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
   } }] });
   script = result.outputFiles[0]!.text; browser = await chromium.launch({ headless: true });
 });
 test.after(async () => { await browser?.close(); });
+async function review(t: Parameters<typeof open>[0], status = "extracted", batchStatus = "ready_for_review") {
+  const p = await open(t, { screen: "detail" });
+  await reply(p, 0, "ok", { status: batchStatus, statuses: [status] });
+  if (status !== "uploaded") {
+    assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 1, "current review must render the controlled form");
+    await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path.endsWith("/image")));
+    await p.evaluate(() => { const s = (window as any).fixture; s.image(s.requests.findIndex((r: any) => r.path.endsWith("/image"))); }); await settle(p);
+  }
+  return p;
+}
+async function respond(p: Page, index: number, action: string, status = 200, patch: Record<string, unknown> = {}) {
+  await p.evaluate(({ index, action, status, patch }) => { const s = (window as any).fixture; const item = s.detail({ status: "ready_for_review", statuses: [action === "retry" || action === "replace" ? "queued" : action === "skip" ? "skipped" : "confirmed"], itemVersion: 2 }).items[0]; Object.assign(item, patch); s.respond(index, action === "confirm" || action === "manual-entry" ? { state: "created", contactId: "contact", item } : { item }, status); }, { index, action, status, patch }); await settle(p);
+}
+test("Task5 extracted review preserves extra values, edits across refresh, and server-only completion", async t => {
+  const p = await review(t);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "林 美咲");
+  assert.match(await p.getByLabel("备注", { exact: true }).inputValue(), /two@example.invalid/);
+  assert.match(await p.getByLabel("备注", { exact: true }).inputValue(), /fax: 090/);
+  assert.equal(await p.getByText("核对邮箱", { exact: true }).count(), 1);
+  await p.getByLabel("公司", { exact: true }).fill("Edited");
+  await press(p, "刷新批次"); await reply(p, 2, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 2, organization: "Remote" });
+  assert.equal(await p.getByLabel("公司", { exact: true }).inputValue(), "Edited");
+  await direct(p, "确认收录"); assert.equal(await count(p), 4);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests[3].body.allowDuplicate), false);
+  await respond(p, 3, "confirm", 200, { version: 3 });
+  assert.equal(await p.getByText("已完成", { exact: true }).count(), 0);
+  await reply(p, 4, "ok", { status: "completed", statuses: ["confirmed"], itemVersion: 3, version: 2 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("img").count(), 0);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.timers()), []);
+  await press(p, "打开联系人 1"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/contacts/contact");
+});
+for (const action of ["confirm", "manual-entry", "retry", "skip"]) test("Task5 " + action + " rejects malformed/error/wrong acknowledgments and duplicate presses", async t => {
+  const p = await review(t, action === "confirm" || action === "skip" ? "extracted" : "terminal_failed");
+  const label = action === "retry" ? "重试识别" : action === "skip" ? "跳过名片" : "确认收录";
+  if (action === "manual-entry") await p.getByLabel("姓名", { exact: true }).fill("Manual");
+  for (const [n, kind] of ["http-error", "malformed", "wrong"].entries()) {
+    await direct(p, label);
+    if (action === "retry" || action === "skip") { await confirm(p, n * 2); await confirm(p, n * 2); }
+    const index = 2 + n * 2;
+    assert.equal(await count(p), index + 1);
+    if (kind === "http-error") await respond(p, index, action, 503);
+    else if (kind === "wrong") await respond(p, index, action, 200, { id: "wrong" });
+    else await p.evaluate(index => (window as any).fixture.respond(index, {}), index);
+    await settle(p); await reply(p, index + 1, "ok", { status: "ready_for_review", statuses: [action === "confirm" || action === "skip" ? "extracted" : "terminal_failed"] });
+    assert.equal(await p.getByRole("alert").count(), 1);
+    assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 1);
+  }
+});
+test("Task5 nonautomatic failure permits explicit retry and manual entry without auto writes", async t => {
+  const p = await review(t, "terminal_failed", "processing");
+  assert.match(await p.locator("body").innerText(), /不再自动重试/);
+  assert.equal(await p.getByRole("button", { name: "重试识别", exact: true }).isDisabled(), false);
+  assert.equal(await count(p), 2);
+  await p.getByLabel("姓名", { exact: true }).fill("Manual"); await press(p, "确认收录");
+  assert.match(await p.evaluate(() => (window as any).fixture.requests[2].path), /\/manual-entry$/);
+  await respond(p, 2, "manual-entry"); await reply(p, 3, "ok", { status: "completed", statuses: ["confirmed"], itemVersion: 2 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+});
+test("Task5 duplicate link and declined override never write; consent binds to exact draft", async t => {
+  const p = await review(t); await press(p, "确认收录");
+  await p.evaluate(() => (window as any).fixture.respond(2, { state: "duplicate_review", duplicateContactId: "contact:/" })); await settle(p);
+  await press(p, "查看重复联系人"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/contacts/contact%3A%2F");
+  await press(p, "仍然收录"); await confirm(p, 0, true); assert.equal(await count(p), 3);
+  await press(p, "仍然收录"); await p.getByLabel("姓名", { exact: true }).fill("New edit"); await confirm(p, 1); assert.equal(await count(p), 3);
+  await press(p, "确认收录"); await p.evaluate(() => (window as any).fixture.respond(3, { state: "duplicate_review", duplicateContactId: "contact:/" })); await settle(p);
+  await press(p, "仍然收录"); await confirm(p, 2); await confirm(p, 2);
+  assert.equal(await count(p), 5); assert.equal(await p.evaluate(() => (window as any).fixture.requests[4].body.allowDuplicate), true);
+  await respond(p, 4, "confirm", 200, { confirmedContactId: "inconsistent" }); await reply(p, 5, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "New edit");
+});
+for (const itemStatus of ["uploaded", "terminal_failed"]) test("Task5 replacement " + itemStatus + " uses original raw bytes/If-Match and retains edits on conflict", async t => {
+  const status = itemStatus === "uploaded" ? "collecting" : "ready_for_review";
+  const p = await review(t, itemStatus, status);
+  if (itemStatus !== "uploaded") await p.getByLabel("姓名", { exact: true }).fill("Keep");
+  await direct(p, "替换名片 1"); await confirm(p, 0); await confirm(p, 0);
+  await update(p, { appState: "background" }); await pick(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.reads.length), 0);
+  await update(p, { appState: "active" });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path.endsWith("/replace")));
+  const index = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.path.endsWith("/replace")));
+  assert.deepEqual(await p.evaluate(index => { const r = (window as any).fixture.requests[index]; return [r.method, r.headers["If-Match"], r.headers["Content-Type"], r.body.length]; }, index), ["POST", "1", "image/png", 68]);
+  await reply(p, index, "conflict"); await reply(p, index + 1, "ok", { status, statuses: [itemStatus], itemVersion: 3 });
+  if (itemStatus !== "uploaded") assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Keep");
+  await press(p, "替换名片 1"); await confirm(p, 2); await pick(p, 1);
+  assert.equal(await p.evaluate(index => (window as any).fixture.requests[index + 2].headers["If-Match"], index), "3");
+});
+for (const change of ["actor", "baseUrl", "batchId", "focused", "mounted"]) test("Task5 stale review mutation/consent is inert across " + change, async t => {
+  const p = await review(t); await press(p, "跳过名片"); await press(p, "确认收录");
+  await update(p, { [change]: ["focused", "mounted"].includes(change) ? false : "new-scope" });
+  const before = await count(p); await confirm(p); await respond(p, 2, "confirm");
+  assert.equal(await count(p), before);
+  assert.equal(await p.getByText("已收录。", { exact: true }).count(), 0);
+});
+test("Task5 explicit reload cannot discard newer edits while GET is pending", async t => {
+  const p = await review(t); await p.getByLabel("姓名", { exact: true }).fill("Old edit");
+  await press(p, "重新载入字段"); await confirm(p);
+  await p.getByLabel("姓名", { exact: true }).fill("New edit");
+  await reply(p, 2, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 2 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "New edit");
+});
+test("Task5 selected image aborts obsolete reads and ignores old native errors even for identical URI retries", async t => {
+  const p = await review(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldImageError = s.imageErrors.at(-1); s.oldImageError(); }); await settle(p);
+  await press(p, "重新读取图片");
+  await p.evaluate(() => (window as any).fixture.image(2)); await settle(p);
+  await p.evaluate(() => (window as any).fixture.oldImageError()); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "重新读取图片", exact: true }).count(), 0);
+  await press(p, "刷新批次"); await reply(p, 3, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  // A new scope supplies two valid items; changing the expected manifest in-place is rightly rejected.
+  await update(p, { batchId: "two-items" }); await reply(p, 4, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await press(p, "复核名片 2");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests[5].signal.aborted), true, "old selected image transport must be aborted");
+  await p.evaluate(() => (window as any).fixture.image(5)); await settle(p);
+  assert.equal(await p.getByRole("img").count(), 0);
+  await p.evaluate(() => (window as any).fixture.image(6)); await settle(p);
+  assert.equal(await p.locator('img[alt="名片图片"]').count(), 1);
+});
+test("Task5 accepted cancellation clears review immediately even when recovery GET fails", async t => {
+  const p = await review(t); await press(p, "取消批次"); await confirm(p); await reply(p, 2);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("img").count(), 0);
+  await reply(p, 3, "fail"); assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+});
+test("Task5 cancellation Gone clears selected image and draft before failed recovery", async t => {
+  const p = await review(t); await press(p, "取消批次"); await confirm(p); await reply(p, 2, "gone");
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("img").count(), 0);
+  await reply(p, 3, "fail"); assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+});
+test("Task5Fix1 I1 cancellation Gone followed by failed recovery cannot reopen stale review", async t => {
+  const p = await review(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.retainedSelect = s.presses["复核名片 1"]; });
+  await press(p, "取消批次"); await confirm(p); await reply(p, 2, "gone"); await reply(p, 3, "fail");
+  const before = await count(p);
+  // Exercise the actual DOM control (disabled controls are inert), then a retained native callback.
+  await p.getByRole("button", { name: "复核名片 1", exact: true }).evaluate((button: HTMLElement) => button.click()); await settle(p);
+  assert.equal(await count(p), before, "I1: stale selection must not start another image request");
+  await p.evaluate(() => (window as any).fixture.retainedSelect()); await settle(p);
+  assert.equal(await count(p), before);
+  assert.equal(await p.getByText("复核名片", { exact: true }).count(), 0, "even an empty review form must stay removed");
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("img").count(), 0);
+});
+for (const action of ["load", "confirm", "manual-entry", "retry", "skip", "replace"]) test("Task5Fix1 " + action + " Gone revokes retained selection and image retry through foreground/failed refresh", async t => {
+  const status = ["manual-entry", "retry", "replace"].includes(action) ? "terminal_failed" : "extracted";
+  const p = await review(t, status);
+  if (status === "terminal_failed") await p.getByLabel("姓名", { exact: true }).fill("Manual");
+  await p.evaluate(() => { const s = (window as any).fixture; s.imageErrors.at(-1)(); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.retainedSelect = s.presses["复核名片 1"]; s.retainedImageRetry = s.presses["重新读取图片"]; });
+  if (action === "load") await press(p, "刷新批次");
+  else if (action === "confirm" || action === "manual-entry") await press(p, "确认收录");
+  else { await press(p, action === "retry" ? "重试识别" : action === "skip" ? "跳过名片" : "替换名片 1"); await confirm(p); if (action === "replace") await pick(p); }
+  await reply(p, 2, "gone");
+  if (action !== "load") await reply(p, 3, "fail");
+  const before = await count(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.retainedSelect(); s.retainedImageRetry(); }); await settle(p);
+  assert.equal(await count(p), before, "retained callbacks must not reacquire image authority after Gone");
+  await update(p, { appState: "background" }); await update(p, { appState: "active" });
+  assert.equal(await count(p), before + 1, "foreground may request detail, never the invalidated image");
+  await reply(p, before, "fail");
+  await p.evaluate(() => { const s = (window as any).fixture; s.retainedSelect(); s.retainedImageRetry(); }); await settle(p);
+  assert.equal(await p.getByText(status === "extracted" ? "复核名片" : "手动填写名片", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("img").count(), 0);
+  await press(p, "刷新批次"); await reply(p, before + 1, "fail");
+  await direct(p, "复核名片 1");
+  assert.equal(await count(p), before + 2, "explicit failed detail retry still cannot restore an image request");
+});
+test("Task5Fix1 only accepted nonregressed canonical detail can restore review after Gone", async t => {
+  const p = await review(t); await p.getByLabel("姓名", { exact: true }).fill("Cleared at Gone");
+  await press(p, "刷新批次"); await reply(p, 2, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 3, generation: 2 });
+  await press(p, "取消批次"); await confirm(p); await reply(p, 3, "gone"); await reply(p, 4, "fail");
+  for (const [offset, patch] of [{ owner: "wrong-owner", itemVersion: 4, generation: 3 }, { itemVersion: 2, generation: 2 }, { itemVersion: 3, generation: 1 }].entries()) {
+    await press(p, "刷新批次"); await reply(p, 5 + offset, "ok", { status: "ready_for_review", statuses: ["extracted"], ...patch });
+    await direct(p, "复核名片 1");
+    assert.equal(await count(p), 6 + offset, "rejected recovery detail grants no image authority");
+    assert.equal(await p.getByText("复核名片", { exact: true }).count(), 0);
+  }
+  await press(p, "刷新批次"); await reply(p, 8, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 4, generation: 3 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "林 美咲", "accepted recovery initializes fresh fields, not the Gone-cleared draft");
+  assert.equal(await count(p), 10);
+  await p.evaluate(() => (window as any).fixture.image(9)); await settle(p);
+  assert.equal(await p.locator('img[alt="名片图片"]').count(), 1);
+});
+test("Task5Fix1 ordinary refresh failures preserve editable drafts and selected image recovery", async t => {
+  const p = await review(t); await p.getByLabel("备注", { exact: true }).fill("Keep ordinary failure edits");
+  await press(p, "刷新批次"); await reply(p, 2, "fail");
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Keep ordinary failure edits");
+  await p.getByLabel("姓名", { exact: true }).fill("Still editable");
+  await direct(p, "复核名片 1"); assert.equal(await count(p), 3);
+  await p.evaluate(() => (window as any).fixture.imageErrors.at(-1)()); await settle(p);
+  await press(p, "重新读取图片"); await p.evaluate(() => (window as any).fixture.image(3)); await settle(p);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Still editable");
+  assert.equal(await p.locator('img[alt="名片图片"]').count(), 1);
+});
+for (const change of ["actor", "baseUrl"]) test("Task5Fix1 old " + change + " Gone cannot revoke a new scope's review", async t => {
+  const p = await review(t); await press(p, "取消批次"); await confirm(p);
+  await update(p, { [change]: change === "actor" ? "new-subject" : "https://new.example" });
+  await reply(p, 3, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  await p.getByLabel("备注", { exact: true }).fill("New scope draft");
+  await reply(p, 2, "gone");
+  await p.evaluate(() => (window as any).fixture.image(4)); await settle(p);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "New scope draft");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), false);
+  assert.equal(await count(p), 5);
+});
+test("Task5Fix1 a batch scope change clears Gone invalidation only for the newly accepted batch", async t => {
+  const p = await review(t); await press(p, "取消批次"); await confirm(p); await reply(p, 2, "gone"); await reply(p, 3, "fail");
+  await update(p, { batchId: "new-batch" });
+  assert.equal(await p.getByText("复核名片", { exact: true }).count(), 0);
+  await reply(p, 4, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 1);
+  assert.equal(await count(p), 6);
+});
+test("Task5 item switches never render the preceding item's image even before effect cleanup", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await p.evaluate(() => (window as any).fixture.image(1)); await settle(p);
+  await p.evaluate(() => { (window as any).fixture.imageRenders = []; });
+  await press(p, "复核名片 2");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.imageRenders), [], "old data URI must not be passed to the newly selected native image");
+});
+test("Task5 leave-and-return item navigation invalidates delayed skip consent permanently", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await press(p, "跳过名片"); await press(p, "复核名片 2"); await press(p, "复核名片 1");
+  const before = await count(p); await confirm(p);
+  assert.equal(await count(p), before, "returning to the same item cannot revive old consent");
+});
+for (const action of ["retry", "skip"]) test("Task5 accepted " + action + " waits for authoritative detail and never sends legacy finish", async t => {
+  const failed = action === "retry";
+  const p = await review(t, failed ? "terminal_failed" : "extracted");
+  if (failed) await p.getByLabel("姓名", { exact: true }).fill("Retained manual edit");
+  await press(p, failed ? "重试识别" : "跳过名片"); await confirm(p); await respond(p, 2, action);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).count(), 0);
+  await reply(p, 3, "ok", { status: failed ? "processing" : "completed", statuses: [failed ? "queued" : "skipped"], itemVersion: 2, version: 2 });
+  if (failed) {
+    await p.evaluate(() => (window as any).fixture.tick()); await settle(p);
+    await reply(p, 4, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 3, version: 3 });
+    assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Retained manual edit");
+  }
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/finish") || r.path.endsWith("/finalize")).length), 0);
+});
+for (const status of ["uploaded", "terminal_failed"]) test("Task5 replacement " + status + " rejects error/malformed/wrong replies, accepts exact new derivative", async t => {
+  const batchStatus = status === "uploaded" ? "collecting" : "ready_for_review";
+  const p = await review(t, status, batchStatus);
+  if (status === "terminal_failed") await p.getByLabel("姓名", { exact: true }).fill("Keep through replacement");
+  for (const [n, kind] of ["http-error", "malformed", "wrong", "ok"].entries()) {
+    const before = await count(p); await direct(p, "替换名片 1"); await confirm(p, n * 2); await confirm(p, n * 2); await pick(p, n);
+    assert.equal(await count(p), before + 1);
+    const item = await p.evaluate(({ status, kind }) => { const s = (window as any).fixture; const item = s.detail({ statuses: [status === "uploaded" ? "uploaded" : "queued"], itemVersion: 2 }).items[0]; return { ...item, id: kind === "wrong" ? "wrong" : item.id, imageDigest: item.clientDigest, derivativeObjectKey: "private/replaced", derivativeSize: 60 }; }, { status, kind });
+    await p.evaluate(({ before, kind, item }) => (window as any).fixture.respond(before, kind === "malformed" ? {} : { item }, kind === "http-error" ? 503 : 200), { before, kind, item }); await settle(p);
+    if (kind === "ok") {
+      assert.equal(await p.getByText("已替换名片。", { exact: true }).count(), 1);
+      await reply(p, before + 1, "ok", { status: status === "uploaded" ? "collecting" : "processing", statuses: [status === "uploaded" ? "uploaded" : "queued"], itemVersion: 2 });
+    } else {
+      await reply(p, before + 1, "ok", { status: batchStatus, statuses: [status] });
+      assert.equal(await p.getByRole("alert").count(), 1);
+      if (status === "terminal_failed") assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Keep through replacement");
+    }
+  }
+});
+test("Task5 old replacement picker cannot unlock a newer operation and background preparation never sends bytes", async t => {
+  const p = await review(t, "uploaded", "collecting");
+  await press(p, "替换名片 1"); await confirm(p); await update(p, { appState: "background" });
+  await update(p, { focused: false }); await update(p, { focused: true, appState: "active" }); await reply(p, 1, "ok", { statuses: ["uploaded"] });
+  await press(p, "替换名片 1"); await confirm(p, 1); await pick(p, 0);
+  assert.equal(await p.getByRole("button", { name: "替换名片 1", exact: true }).isDisabled(), true);
+  assert.equal(await p.evaluate(() => (window as any).fixture.reads.length), 0);
+  await update(p, { holdRead: true }); await pick(p, 1);
+  await p.waitForFunction(() => (window as any).fixture.readReplies.length === 1);
+  await update(p, { appState: "background" }); await p.evaluate(() => (window as any).fixture.readReplies[0]()); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/replace")).length), 0);
+});
+test("Task5 background refresh preserves dirty notes and old version/generation cannot authorize consent", async t => {
+  const p = await review(t); await p.getByLabel("备注", { exact: true }).fill("Do not regenerate");
+  await press(p, "跳过名片"); await update(p, { appState: "background" }); await update(p, { appState: "active" });
+  await reply(p, 2, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 3, generation: 2 });
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Do not regenerate");
+  const before = await count(p); await confirm(p); assert.equal(await count(p), before);
+  await press(p, "刷新批次"); await reply(p, before, "ok", { status: "ready_for_review", statuses: ["extracted"], itemVersion: 3, generation: 1 });
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByLabel("备注", { exact: true }).inputValue(), "Do not regenerate");
+});
+test("Task5 obsolete item mutation cannot apply duplicate result to the newly selected form", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await press(p, "确认收录"); await press(p, "复核名片 2");
+  await p.evaluate(() => (window as any).fixture.respond(2, { state: "duplicate_review", duplicateContactId: "wrong-item-contact" })); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "查看重复联系人", exact: true }).count(), 0);
+  await reply(p, 4, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), false);
+});
+test("Task5 reload consent also expires when leaving and returning while GET is pending", async t => {
+  const p = await open(t, { screen: "detail" }); await reply(p, 0, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"] });
+  await p.getByLabel("姓名", { exact: true }).fill("Keep edit");
+  await press(p, "重新载入字段"); await confirm(p);
+  await press(p, "复核名片 2"); await press(p, "复核名片 1");
+  await reply(p, 2, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"], itemVersion: 2 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Keep edit");
+  await press(p, "重新载入字段"); await confirm(p, 1, true);
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "Keep edit");
+  const before = await count(p); await press(p, "重新载入字段"); await confirm(p, 2);
+  await reply(p, before, "ok", { status: "ready_for_review", statuses: ["extracted", "extracted"], itemVersion: 3 });
+  assert.equal(await p.getByLabel("姓名", { exact: true }).inputValue(), "林 美咲");
+});
+for (const change of ["actor", "baseUrl"]) test("Task5 replacement response cannot clear pending files or unlock the new " + change, async t => {
+  const p = await review(t, "uploaded", "collecting");
+  await press(p, "替换名片 1"); await confirm(p); await pick(p);
+  await update(p, { [change]: change === "actor" ? "new-subject" : "https://new.example" });
+  await reply(p, 2); await press(p, "重新选择名片"); await pick(p, 1);
+  await p.evaluate(() => { (window as any).inspectPending = (window as any).capturePending(); });
+  await press(p, "上传待传名片"); await reply(p, 1, "gone");
+  assert.equal(await p.evaluate(() => (window as any).inspectPending()), 1);
+  assert.equal(await p.getByRole("button", { name: "上传待传名片", exact: true }).isDisabled(), true);
+  assert.equal(await count(p), 4, "old response must not dispatch recovery in either scope");
+});
 for (const screen of ["start", "detail"]) test("Fix1 background during " + screen + " preparation cancels the returned picker", async t => {
   const p = await open(t, { screen, holdRead: true });
   if (screen === "start") await listed(p); else await reply(p, 0);
