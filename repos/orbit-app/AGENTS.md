@@ -24,3 +24,10 @@ This directory is the iOS-first Orbit mobile app.
   rendered yet (native modules, provider plumbing); say so in the test when that
   is the reason.
 - If a mobile screen needs missing backend behavior, document the API gap instead of duplicating business logic locally.
+
+## Sprint execution
+
+- For Sprint work, first read `docs/sprints/README.md`, `docs/sprints/RULES.md`, and the selected Sprint's `PLANNER.md`. The register's paused/active state and the user's current instruction control whether execution may start.
+- Each numbered Sprint uses its document as the Planner and one Generator run. Do not add an Evaluator, self-assessment model call, automatic regeneration loop, or a second implementation agent for that Sprint.
+- Follow the Planner's file allowlist and minimum necessary verification. Preserve required impact analysis, TDD, authorization and truthful failure reporting; minimal verification does not mean skipping required acceptance criteria.
+- Commit each verified feature with explicit paths, then create the Sprint's `REPORT.md` with actual commit/file/acceptance evidence and remaining work. Do not pre-create completion reports or mark blocked/failed criteria as passed.

@@ -1,0 +1,107 @@
+# Sprint 单次 Generator 执行规则
+
+## 1. 用户指定的 long-run-harness 简化版
+
+保留：SprintContract（可验证验收项）、Handoff（上下文交接）、existing-codebase 文件边界、证据归档、预算、逐功能提交和明确终止。
+取消：独立 Evaluator、打分／rubric、契约协商循环、self_assess 模型调用、REFINE/PIVOT、最小迭代次数、评审后自动再次 Generator。
+本规程是文档驱动，不新增 Python／TypeScript SDK 编排程序，不选择或安装额外 provider／模型。若以后要实现后台调度器，其语言、模型与权限需要另行设计，不能假定本文已授权。
+
+`已批准 PLANNER.md → 一个 Generator 执行 → 必要验证 → 逐功能 commit → REPORT.md／交接 → 结束`
+
+“一次”指同一契约的一次完整执行，不是只允许一次工具调用。Generator 可正常阅读、TDD、编辑、运行命令和有限修复；不能以自评分、外部 AI 评审或“再优化一版”为理由重开生成阶段。每个 Sprint 最多一次 Generator run，执行前登记为 run-01。
+
+## 2. 角色与并行
+
+- Planner 是每个 Sprint 的 `PLANNER.md`；本轮编制，不在运行时再启动 Planner 模型。它定义目标、输入、输出、范围、SC 验收项和必要检查。
+- Generator 是该 Sprint 唯一实现者，承担范围内实现和基于证据的自检；禁止再派另一个实现／评审代理形成隐式循环。
+- 协调者只领取就绪任务、管理文件／环境锁、维护登记表和统一 Git 提交，不增加一个模型评判阶段。Generator 就是当前主代理时可直接承担这些管理动作。
+- 默认逐个执行。确需并行时最多两个独立就绪 Sprint，各自一个 Generator；必须预先确认文件不重叠、没有依赖和共享运行环境争用。不是一个 Sprint 同时派两个 Generator。
+- 共享工作树中只有协调者操作暂存与 commit；通用 API/hooks、语言／时间基础设施和跨页共享 view-model 不并行修改。完整类型／全量测试前冻结全部相关写入者。
+- 同一 Simulator、浏览器账号、真实写入对象、付费账本和服务生命周期只有一个持有者。暂停一个界面步骤不等于允许另一个代理切换其账号。
+
+## 3. 编号、目录与唯一事实来源
+
+- 四位十进制编号从 `0001` 递增；已登记编号不复用、不重排。目录为 `NNNN-short-name/`，新增 Sprint 用下一个空号。
+- 本目录 `README.md` 是全局运行状态和 Sprint 生命周期的唯一登记表；每份 Planner 不复制一份可变运行状态。
+- `PLANNER.md` 是本 Sprint 的唯一契约。必须包括原需求编号、基线、依赖、白名单、排除范围、最多五项可验证 SC、测试映射、失败处置和交接。
+- 开始前记录 Planner SHA256；启动后 Generator 不得降低 SC、扩白名单或修改批准条件来制造成功。发现契约不成立，停止依赖部分并记录。
+- `REPORT.md` 仅在实际执行结束后创建；失败／受阻也必须报告。模板不能作为实际完成报告，不能提前填成功。
+- 中断时先保存脱敏 `checkpoint.md`：已改文件、已提交 SHA、未完成、活进程句柄、当前测试与预算。恢复同一未结束 run，不清空工作重开。完整报告已关闭该 run 后不得当“恢复”启动第二次生成。
+- 原计划继续保存全部 R-00～R-14 需求；新的 Sprint／报告只记录其自身范围，不把依赖移动等同需求删除。
+
+## 4. 启动前最小检查
+
+1. 读规则、本 Sprint Planner 和它声明的前序报告；不反复遍历全部历史。
+2. 查看当前 HEAD、`git status --short` 和计划涉及文件的 diff。未知用户改动不得覆盖；0001 只承接明确列出的既有四文件。
+3. 确认 Planner 已获适用批准，依赖／环境／对象／授权就绪，全局非 PAUSED。缺前置则标受阻，不消耗 Generator run，不尝试假接口。
+4. 分配唯一 owner／文件锁，登记 run-01、Planner 哈希和基线。没有此登记不开始编辑。
+5. 仅当旧结果不能证明当前版本或修改影响扩大时重跑基线。发现基线失败时，保留已有专项批准门槛，不自行跳过。
+6. 每个待改符号先 GitNexus upstream impact；固定 `repo: "/Users/xzhao/Projects/orbit"`，避免同名旧 worktree。HIGH/CRITICAL 先报告；索引未收录用源码补查，不能视为无影响。工具提示 stale 才按项目规则刷新，保留根 AGENTS 不被生成覆盖。
+
+## 5. 最小执行与测试设计
+
+每个 SC 必须对应一个可观察行为及一个主要验证方式。只测本轮改变的行为、直接受影响消费者和必须维持的不变量；不为“更放心”反复跑无关套件。优先复用现有真路由／HTTP 边界夹具，不能为管理规程新增产品调试页面或假数据接口。
+
+| 验证档 | 适用条件 | 必需检查 |
+| --- | --- | --- |
+| D 文档／只读盘点 | 不改变运行行为 | 路径／链接、需求与证据一致性、变更范围、diff check；不跑产品全量 |
+| L 局部实现 | 无共享基础设施／权限／写入语义影响，impact 为低／中且源码确认局限 | 修改行为 RED→GREEN、完整相关测试文件、直接消费者、typecheck、diff／暂存检查；仅为相关 SC 做原生检查 |
+| H 高风险／共享实现 | HIGH/CRITICAL，或涉及身份／权限／业务写入／幂等、通用 hook/client/cache、时区／语言基础设施、契约／依赖 | L 加受影响传递消费者和声明的失败／隔离场景，提交前一次全量；契约改变才加同步检查 |
+| I 集成收口 | 三个已提交 L 功能后、明确集成 Sprint 或最终主链路／后期验收 | 冻结同一版本，执行一次全量、类型、同步和本阶段实际业务／设备 SC |
+
+同版本一次通过可复用，不给多个 SC 重复跑同一命令；H 的最终全量可满足当时 I 门槛。不是每个文档 Sprint 都重跑全量；局部 Sprint 完成也不意味着整阶段已集成验收。若某 Sprint 声明的最小集不够实际 impact，Generator 必须扩大到必要消费者并报告理由，不能坚持最小数字牺牲正确性。
+
+本库当前 `npm test` 已包含 contract-sync、api-schema-sync 和 domain-sync。Planner 所列同步命令是需要单独定位或未被本次全量覆盖时的精确入口，不要求在同版本全量通过后再跑一遍；在报告中引用那次全量的对应结果即可。RED／局部修复阶段的定向测试仍用于定位改变的行为，不能省略失败观察。
+
+TDD 不是被取消的 Evaluator 循环：观察预期失败→最小实现→必要回归仍保留。已存在且版本未变的 RED 记录可承接。非预期失败先定位；同一失败最多两个本地修复轮次（内部循环上限，不是用户费用额度），每次只重跑失败用例及受影响最小集，仍不过则结束为 failed。既有“同一假设最多三次只读诊断”上限亦保留。不得提高任一用户硬预算。
+
+无需另跑 Lighthouse、axe、全平台截图、构建或全部用户旅程，除非 Planner 的 SC 或实际影响需要。原生体验用原生证据，跨端持久化用同记录双向回读；这些必要检查不能用低成本单测替代。跳过必需 SC 不等于 passed。
+
+## 6. 边界、预算与原始证据
+
+- 实施目录 `/Users/xzhao/Projects/orbit/repos/orbit-app`；只写 Planner 白名单及本 Sprint 报告。禁止直接改 `../orbits`、根 Bridge、业务数据库、浏览器 localStorage、环境密钥、生成契约副本和其他 Sprint 的文件。
+- 共享副本只走现有批准的 `npm run sync:contract`，不手改或扩大白名单。新增依赖、原生补丁、产品设计、迁移与真实副作用保留独立门槛。
+- 继续原地 `chat-agent`；不自动 worktree、merge、push、部署、重启服务、换号或清缓存。GET／导航若有初始化或保存副作用，按真实写入处理。
+- AI/OCR 累计 $5，原账本已记录 $0.012780；开始付费场景前确认账本与未结算预留，由一个 owner 管理，禁止按 Sprint／run 重置。
+- 当前运行证据统一放 `build/harness-state/evidence/sprint-NNNN/run-01/`，命令／截图／API 元数据／Git 分目录；日志放 `build/harness-logs/`。先确认 `build/` 仍被 Git 忽略；若不再忽略，先用受控临时目录并记录位置，不自行修改配置或提交证据。
+- 原始日志只留必要脱敏字段；不保留 Cookie/token/密钥或完整个人对话。报告引用证据路径、时间、命令、退出码及脱敏 ID／摘要；不是复制原始内容。
+- 不新建公开证据路由，不将截图／运行日志放 `src/`、`public/` 或文档目录。历史 `/tmp/` 证据只引用，不自动迁移／删除；不清空 `build/`。临时证据可能随本地清理失效，报告需保留足够的脱敏结果与复现步骤。
+- Python 工具始终经 `uv` 环境运行；本规程不需要 Python 编排器。
+
+## 7. 状态与失败终止
+
+| 状态 | 条件与允许下一步 |
+| --- | --- |
+| planned | 计划已写，未完成启动就绪／批准；不执行 |
+| ready | 进入条件与适用批准齐全，仍需全局 ACTIVE 才能领取 |
+| running | 唯一 Generator 的 run-01 正在执行 |
+| paused | 同一 run 因用户暂停或中断待恢复；先留 checkpoint，不默认重启未知活进程 |
+| completed | 本 Sprint 所有必需 SC 有同版本有效证据，功能提交与报告齐全；不代表所有 R 项完成 |
+| blocked | 缺外部条件；启动前 run_count=0 可在条件齐全后 ready；运行结束后 run_count=1 必须交报告，不能直接再运行 |
+| failed | Generator run 已结束，必需 SC 失败／预算到限；保留部分成果和报告，不自动二次生成 |
+
+completed 由验收清单逐项事实决定，不由 Generator 的信心、平均分或“看起来差不多”决定。failed／已结束 blocked 若需再实现，由 Planner 明确补新 Sprint（关联原失败 SC），复用仍有效的批准；重大变更重新审阅。不得自动克隆失败 Sprint 换编号绕过单次限制。原 Sprint 保留失败事实，新 Sprint 成功不能改写历史。
+
+## 8. 提交与总结
+
+每个独立功能完成对应验证立即路径限定提交，不等整 Sprint 合一个大 commit。建议消息 `fix(sprint-0001): preserve all event filters`；功能含多次提交时逐条记录，不把重复 WIP 提交当成果。
+
+提交前必须：
+- 对照白名单审查实际 diff 和行为覆盖；只暂存该功能明确文件，禁止 `git add .`／`git add -A`。
+- 执行 `gitnexus_detect_changes({repo: "/Users/xzhao/Projects/orbit", scope: "staged"})`，核对意外流程与其他 Sprint 改动，必要时补测。
+- 对当前提交版本完成 Planner 必需检查；保留失败历史，未满足必需功能门槛不提交成“已完成”。允许的已验证独立子功能仍可保留其 commit。
+- 在 `REPORT.md` 列：需求／SC→文件变更→功能 commit SHA→验证证据；未提交改动、失败、回退方式、其他端影响、下一步和预算单列。
+
+功能 commit 完成后再填写真实 SHA 并单独提交报告／登记表，如 `docs(sprint-0001): record execution report`。报告以最后功能提交作为被验收 HEAD，不要求写入包含报告自身的 commit SHA；它可由 Git 历史查到，避免自引用不断提交。部分失败、纯文档或“无需改代码”的 Sprint 也要报告，不能虚构功能 SHA。
+
+## 9. 对后续 AI 的启动指令
+
+```text
+执行 Sprint NNNN。先读 docs/sprints/README.md、RULES.md 和对应 PLANNER.md，
+确认全局已恢复及进入条件；未就绪只报告缺项。只做该 Planner 范围，
+本 Sprint 只进行一个 Generator run，不启动 Evaluator、self_assess 或返工循环。
+按 SC 运行最小必要测试；逐功能路径限定 commit；结束写 REPORT.md 并更新登记表。
+失败如实结束，不降低验收条件，不自动创建第二轮。
+```
+
+运行状态只以 README 登记表为准；以上是执行指令模板，本身不构成启动或扩大范围的授权。
