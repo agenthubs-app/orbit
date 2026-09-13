@@ -31,6 +31,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
 import {
   buildRelationshipSignalConfirmRequest,
   buildRelationshipPrivacyToggleRequest,
@@ -60,11 +61,13 @@ type ClientGet = (endpoint: string) => Promise<{
   data?: unknown;
   error?: { message: string };
   success: boolean;
+  status?: number;
 }>;
 type ClientPost = (endpoint: string, body: unknown) => Promise<{
   data?: unknown;
   error?: { message: string };
   success: boolean;
+  status?: number;
 }>;
 type ClientPatch = (endpoint: string, body: unknown) => Promise<{
   data?: unknown;
@@ -201,8 +204,19 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   const notificationsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.notifications,
     (data) => relationshipAlertsToView(data).alerts.length === 0,
-    { scopeKey }
+    { scopeKey, cachePolicy: "network-only" }
   );
+  const notificationsData = notificationsState.kind === "success" || notificationsState.kind === "empty"
+    ? notificationsState.data : null;
+  const notificationsReadable = inboxNotificationsReadable(notificationsData);
+  const currentNotifications = useRef<unknown>(null);
+  currentNotifications.current = notificationsReadable ? notificationsData : null;
+  const getCurrentNotifications = useCallback(() => isCurrent() ? currentNotifications.current : null, [isCurrent]);
+  function refreshNotifications() {
+    if (!isCurrent()) return;
+    currentNotifications.current = null;
+    notificationsState.refresh();
+  }
   const signalsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
     (data) => relationshipSignalsToView(data).signals.length === 0,
@@ -262,7 +276,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   function refreshAll() {
     if (!isCurrent()) return;
     state.refresh();
-    notificationsState.refresh();
+    refreshNotifications();
     signalsState.refresh();
   }
 
@@ -309,18 +323,19 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
         <InboxContent
           clientGet={clientGet}
           clientPost={clientPost}
+          getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
           data={state.kind === "success" ? state.data : null}
-          notificationsData={
-            notificationsState.kind === "success" ? notificationsState.data : null
-          }
+          notificationsData={notificationsData}
           notificationsError={
             notificationsState.kind === "failure" || notificationsState.kind === "offline"
               ? relationshipInboxErrorText(notificationsState.error.message, "提醒暂时不可用。")
-              : ""
+              : (notificationsState.kind === "success" || notificationsState.kind === "empty") && !notificationsReadable
+                ? "提醒内容暂时无法确认，请重新读取。" : ""
           }
           notificationsLoading={notificationsState.kind === "loading"}
-          onRefreshNotifications={notificationsState.refresh}
+          onRefreshNotifications={refreshNotifications}
+          onOpenNotificationTarget={(href) => { if (isCurrent()) router.push(href as Href); }}
           onOpenConversation={openConversation}
           onSetCreatedThread={setCreatedThread}
           onRefreshSignals={signalsState.refresh}
@@ -551,6 +566,7 @@ function NotificationDeliveryCard({
 function InboxContent({
   clientGet,
   clientPost,
+  getCurrentNotifications,
   composing,
   createdThread,
   data,
@@ -558,6 +574,7 @@ function InboxContent({
   notificationsError,
   notificationsLoading,
   onOpenConversation,
+  onOpenNotificationTarget,
   onSetCreatedThread,
   onRefreshNotifications,
   onRefreshSignals,
@@ -569,6 +586,7 @@ function InboxContent({
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  getCurrentNotifications: () => unknown;
   composing: boolean;
   createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
@@ -576,6 +594,7 @@ function InboxContent({
   notificationsError: string;
   notificationsLoading: boolean;
   onOpenConversation: (conversationId: string) => void;
+  onOpenNotificationTarget: (href: string) => void;
   onSetCreatedThread: (thread: RelationshipCreatedThreadView | null) => void;
   onRefreshNotifications: () => void;
   onRefreshSignals: () => void;
@@ -598,6 +617,54 @@ function InboxContent({
   const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [notificationPending, setNotificationPending] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState("");
+  const notificationLock = useRef(false);
+  const alertsActive = useRef(false);
+  alertsActive.current = activeSection === "alerts" && !composing && !createdThread;
+  useEffect(() => () => { alertsActive.current = false; }, []);
+
+  async function actOnAlert(id: string, state: "read" | "ignored") {
+    if (notificationLock.current || !alertsActive.current) return;
+    const source = getCurrentNotifications();
+    if (!source) return;
+    const action = inboxNotificationActions(source).get(id);
+    setNotificationError("");
+    if (!action || action.ignored) {
+      setNotificationError("这条提醒已变化，请重新读取后再操作。");
+      return;
+    }
+    if (state === "read" && !action.href) {
+      setNotificationError("此提醒的目标暂不支持在 App 中打开。");
+      return;
+    }
+    if (!action.canPersist && state === "ignored") {
+      setDismissedAlertIds(current => new Set([...current, id]));
+      return;
+    }
+    if (state === "read" && (!action.canPersist || action.read)) {
+      onOpenNotificationTarget(action.href!);
+      return;
+    }
+    notificationLock.current = true;
+    setNotificationPending(id);
+    try {
+      const result = await clientPost(`/api/notifications/${encodeURIComponent(id)}/state`, { state });
+      if (!alertsActive.current || getCurrentNotifications() !== source) return;
+      if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
+        || !inboxNotificationReceiptMatches(result.data, id, state)) {
+        setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
+        return;
+      }
+      onRefreshNotifications();
+      if (state === "read") onOpenNotificationTarget(action.href!);
+    } catch {
+      if (alertsActive.current && getCurrentNotifications() === source) setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
+    } finally {
+      notificationLock.current = false;
+      setNotificationPending(null);
+    }
+  }
   const visibleAlerts = alertsView.alerts.filter(
     (alert) => !dismissedAlertIds.has(alert.id)
   );
@@ -700,13 +767,10 @@ function InboxContent({
               <ActionButton icon="refresh-outline" label="重试读取提醒" onPress={onRefreshNotifications} variant="secondary" />
             </View>
           ) : <AlertsCard
-            onDismissAlert={(id) =>
-              setDismissedAlertIds((current) => {
-                const next = new Set(current);
-                next.add(id);
-                return next;
-              })
-            }
+            error={notificationError}
+            pendingId={notificationPending}
+            onDismissAlert={(id) => void actOnAlert(id, "ignored")}
+            onOpenAlert={(id) => void actOnAlert(id, "read")}
             view={visibleAlertsView}
           />}
         </>
@@ -908,9 +972,11 @@ function SegmentButton({
 }
 
 function AlertDismissButton({
+  disabled = false,
   label = "忽略",
   onPress
 }: {
+  disabled?: boolean;
   label?: string;
   onPress: () => void;
 }) {
@@ -919,9 +985,12 @@ function AlertDismissButton({
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.alertDismissButton,
+        disabled ? styles.disabled : null,
         pressed ? styles.pressed : null
       ]}
     >
@@ -932,17 +1001,26 @@ function AlertDismissButton({
 }
 
 function AlertsCard({
+  error,
+  pendingId,
   onDismissAlert,
+  onOpenAlert,
   view
 }: {
+  error: string;
+  pendingId: string | null;
   onDismissAlert: (id: string) => void;
+  onOpenAlert: (id: string) => void;
   view: RelationshipAlertsView;
 }) {
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   return (
     <View style={styles.remindersPane}>
-      <Text style={styles.threadPreview}>忽略仅对本次查看生效。</Text>
+      <Text style={styles.threadPreview}>{view.alerts.some(alert => alert.canPersistState)
+        ? "已读和忽略会保存在当前账号。" : "忽略仅对本次查看生效。"}</Text>
+      {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+      {pendingId ? <Text accessibilityLiveRegion="polite" style={styles.resourceStatus}>正在更新提醒。</Text> : null}
       {view.alerts.length > 0 ? (
         <View style={styles.listStack}>
           {view.alerts.map((alert) => (
@@ -968,11 +1046,23 @@ function AlertsCard({
                 >
                   {alert.priorityLabel}
                 </Text>
+                {alert.read ? <Text style={styles.alertDetail}>已读</Text> : null}
+                {alert.href ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`打开提醒：${alert.title}`}
+                    accessibilityState={{ disabled: pendingId !== null }} disabled={pendingId !== null}
+                    onPress={() => onOpenAlert(alert.id)}
+                    style={({ pressed }) => [styles.alertDismissButton, pendingId ? styles.disabled : null, pressed ? styles.pressed : null]}>
+                    <Ionicons color={colors.accent} name="arrow-forward-outline" size={15} />
+                    <Text style={styles.alertDismissText}>查看</Text>
+                  </Pressable>
+                ) : null}
                 <AlertDismissButton
+                  disabled={pendingId !== null}
                   label="忽略"
                   onPress={() => onDismissAlert(alert.id)}
                 />
               </View>
+              {alert.canPersistState && !alert.href ? <Text style={styles.alertDetail}>此提醒的目标暂不支持在 App 中打开。</Text> : null}
             </View>
           ))}
         </View>

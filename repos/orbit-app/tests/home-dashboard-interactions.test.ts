@@ -464,3 +464,25 @@ test("an invalid completion receipt neither reloads nor changes the home badge",
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /inbox|notifications/.test(r.path)).length), 2);
   assert.equal((await writes(p)).length, 1);
 });
+
+test("home badge re-reads persisted reminder states after returning from inbox", async t => {
+  const p = await open(t);
+  const reminders = ["notice:one", "notice:two", "notice:three"].map(reminderId => ({ reminderId, title: "准备资料", priority: "normal" }));
+  const indices = await p.evaluate(() => { const s = (window as any).fixture; return {
+    inbox: s.requests.findIndex((r: any) => /inbox/.test(r.path)),
+    notifications: s.requests.findIndex((r: any) => r.path === "/api/notifications"),
+  }; });
+  await reply(p, indices.inbox, { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } });
+  await reply(p, indices.notifications, { state: "success", reminders, notificationInteractions: {} }); await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "5");
+  await update(p, { focused: false }); await update(p, { focused: true });
+  const current = await p.evaluate(() => { const s = (window as any).fixture; return {
+    inbox: s.requests.findLastIndex((r: any) => /inbox/.test(r.path)),
+    notifications: s.requests.findLastIndex((r: any) => r.path === "/api/notifications"),
+  }; });
+  assert.ok(current.inbox > indices.inbox && current.notifications > indices.notifications);
+  await reply(p, current.inbox, { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } });
+  await reply(p, current.notifications, { state: "success", reminders, notificationInteractions: { "notice:one": "read", "notice:two": "ignored" } }); await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  assert.deepEqual(await writes(p), []);
+});

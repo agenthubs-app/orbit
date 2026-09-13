@@ -100,6 +100,22 @@ test("AI home uses the supplied brand asset", async t => {
   const p = await open(t); const mark = p.getByTestId("iorbit-brand-mark"); assert.equal(await mark.count(), 1);
   const logo = await mark.boundingBox(); assert.ok(logo && logo.width === 18 && logo.height === 18);
 });
+
+for (const [state, dotCount] of [[undefined, 1], ["read", 0], ["ignored", 0]] as const) test(`AI drawer unread indicator respects server reminder state: ${state}`, async t => {
+  const p = await open(t, { payloads: { ...aiReadPayloads,
+    "/api/chat/relationship-inbox": { inbox: { conversations: [] } },
+    "/api/notifications": { state: "success", reminders: [{ reminderId: "notice:one", title: "准备资料", priority: "normal" }],
+      notificationInteractions: state ? { "notice:one": state } : {} },
+  } });
+  await press(p, "更多操作"); await press(p, "常用入口");
+  const inbox = p.getByRole("button", { name: "打开收件箱", exact: true });
+  // The indicator is the only native View beside the icon in this button.
+  // Assert the rendered unread signal, without depending on theme colors.
+  assert.equal(await inbox.locator(":scope > div").count(), dotCount);
+  await press(p, "打开收件箱");
+  assert.deepEqual(await navigation(p), ["/inbox"]);
+  assert.deepEqual(await writes(p), []);
+});
 test("AI home uses the source section rhythm", async t => {
   const p = await open(t);
   const question = await p.getByRole("button", { name: "填入问题：回看与某位人脉的讨论", exact: true }).boundingBox();

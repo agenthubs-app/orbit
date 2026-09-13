@@ -19,14 +19,14 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false,
+  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   conversation() { return { conversationId: state.conversationId, contactId: "contact:one", participantName: state.actor, organization: "Example", subject: "会话主题", preview: "已有消息", unreadCount: 2, lastCorrespondenceAt: "2026-09-13T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }; },
   thread(body = "已有消息") { return { conversationId: state.conversationId, subject: "会话主题", summary: "", sourceContextLabels: [], messages: [{ messageId: "message:one", senderRole: "contact", senderName: state.actor, body, occurredAt: "2026-09-13T00:00:00Z" }] }; },
   data(path) {
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
-    if (path === "/api/notifications") return { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
+    if (path === "/api/notifications") return state.notifications !== undefined ? state.notifications : { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
     if (path.includes("relationship-signals")) return { signals: [] };
     return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: "" }, sideEffects: effects };
   },
@@ -45,7 +45,7 @@ export const useRouter = () => ({ canGoBack: () => true, back() { state.navigati
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
-export const readSnapshot = async () => null;
+export const readSnapshot = async (_baseUrl, _actorId, path) => path === "/api/notifications" && state.cachedNotifications ? { result: { success: true, status: 200, data: state.cachedNotifications, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null;
 export const writeSnapshot = async () => {};
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
@@ -176,4 +176,117 @@ test("missing thread identity shows an error without reading a generic inbox", a
   const p = await open(t, { detail: true, conversationId: "" });
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 0);
   assert.match(await p.locator("body").innerText(), /缺少对话 ID/u);
+});
+
+const persistentReminder = { reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z", href: "/tasks/task%3Aone" };
+const persistentNotifications = { state: "success", reminders: [persistentReminder], notificationInteractions: {} };
+const readReceipt = { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" };
+async function alerts(p: Page) { await p.getByRole("tab", { name: /^提醒/u }).click(); await settle(p); }
+
+test("opening a reminder waits for a single valid read receipt before navigating and rereading", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  assert.deepEqual(await writes(p), []);
+  await p.evaluate(() => { const s = (window as any).fixture; s.presses["打开提醒：需要准备资料"](); s.presses["打开提醒：需要准备资料"](); }); await settle(p);
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/notifications/reminder%3Aone/state", body: { state: "read" } }]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+  await p.evaluate(receipt => { const s = (window as any).fixture; s.notifications.notificationInteractions["reminder:one"] = "read"; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 200, receipt); }, readReceipt); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Aone"]);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/notifications").length), 2);
+  assert.equal(await p.getByText("已读", { exact: true }).count(), 1);
+});
+
+test("ignoring a persistent reminder waits for its receipt and confirms removal by GET", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.getByRole("button", { name: "忽略", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/notifications/reminder%3Aone/state", body: { state: "ignored" } }]);
+  await p.evaluate(() => { const s = (window as any).fixture; s.notifications = { state: "empty", reminders: [], notificationInteractions: { "reminder:one": "ignored" } }; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 200, { notificationId: "reminder:one", state: "ignored", updatedAt: "2026-09-13T00:01:00Z" }); }); await settle(p);
+  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 0);
+  assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/notifications").length), 2);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+for (const [status, receipt] of [
+  [500, readReceipt], [200, null], [200, {}],
+  [200, { ...readReceipt, notificationId: "reminder:other" }],
+  [200, { ...readReceipt, state: "ignored" }],
+  [200, { ...readReceipt, updatedAt: "not-a-date" }],
+  [200, { notificationId: "reminder:one", state: "read" }],
+] as const) test(`unconfirmed read keeps the reminder and never navigates: ${status} ${JSON.stringify(receipt)}`, async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).click(); await settle(p);
+  await p.evaluate(({ status, receipt }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), status, receipt); }, { status, receipt }); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("alert").count(), 1);
+  assert.equal(await p.getByText("已读", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).isEnabled(), true);
+});
+
+test("ignore failure does not turn into a local dismissal", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.getByRole("button", { name: "忽略", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 503); }); await settle(p);
+  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("alert").count(), 1);
+  assert.equal(await p.getByRole("button", { name: "忽略", exact: true }).isEnabled(), true);
+});
+
+test("already-read and legacy targets open without manufacturing a second state write", async t => {
+  for (const notifications of [
+    { ...persistentNotifications, notificationInteractions: { "reminder:one": "read" } },
+    { state: "success", reminders: [persistentReminder] },
+  ]) {
+    const p = await open(t, { notifications }); await alerts(p);
+    await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).click(); await settle(p);
+    assert.deepEqual(await writes(p), []);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Aone"]);
+  }
+});
+
+test("unsupported reminder targets are visible without being silently marked read", async t => {
+  const p = await open(t, { notifications: { ...persistentNotifications, reminders: [{ ...persistentReminder, href: "https://outside.example" }] } }); await alerts(p);
+  assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /目标暂不支持在 App 中打开/u);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByText("已读", { exact: true }).count(), 0);
+});
+
+test("refresh immediately revokes an old reminder callback and read failure stays visible", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = s.presses["打开提醒：需要准备资料"]; s.holdReads = true; s.refresh(); s.oldOpen(); }); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.path === "/api/notifications"), 503); }); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "重试读取提醒", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).count(), 0);
+  assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 0);
+});
+
+test("late reminder read across an account change cannot navigate or expire the new account", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); });
+  await update(p, { actor: "actor:two" });
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 401); }); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+});
+
+test("cached reminders cannot authorize persistent writes before a fresh network read", async t => {
+  const p = await open(t, { cachedNotifications: persistentNotifications, holdReads: true });
+  await p.evaluate(() => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (r.path !== "/api/notifications") s.reply(i); }); }); await settle(p);
+  await alerts(p);
+  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /正在读取提醒/u);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const notifications of [null, {}, { state: "pending", reminders: [], notificationInteractions: {} }, { ...persistentNotifications, notificationInteractions: { "reminder:one": "unknown" } }]) test(`invalid reminder read is an error, not a successful empty result: ${JSON.stringify(notifications)}`, async t => {
+  const p = await open(t, { notifications }); await alerts(p);
+  assert.equal(await p.getByRole("button", { name: "重试读取提醒", exact: true }).count(), 1);
+  assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
 });

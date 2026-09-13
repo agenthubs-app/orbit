@@ -683,6 +683,7 @@ Mobile now has a lightweight relationship inbox backed by:
 - `GET /api/relationship-signals/email-calendar`
 - `POST /api/relationship-signals/:id/confirm`
 - `GET /api/notifications`
+- `POST /api/notifications/:id/state` (when the fresh list advertises stored interaction states)
 - `GET /api/ai/proactive-turns`
 
 It opens relationship threads, shows source context, renders reminders and
@@ -699,6 +700,23 @@ boundary. The confirmation result is shown as evidence for future follow-up; it
 does not read message bodies, send messages, write contacts, deliver
 notifications, create calendar items, run deletion/share workflows, or persist a
 production message thread.
+
+Reminder interactions now consume the existing actor-scoped state endpoint.
+Opening a supported destination waits for a matching `read` receipt; ignoring
+waits for an `ignored` receipt and a fresh list. Failed or malformed receipts
+retain the reminder. Server-read reminders remain visible without contributing
+to the home/IORBIT unread count. Legacy lists without interaction storage keep
+the explicitly temporary ignore behavior. No message-read state is invented.
+
+Only explicit, supported reminder `href` destinations are opened. Missing links,
+external URLs, encoded path separators and Web-only participant/query targets
+remain unavailable; a reminder ID is never substituted for a task or contact ID.
+The interaction fields are not yet in the shared contract, so the App decodes
+only its consumed HTTP fields locally. The API owner still needs to publish the
+shared response and supply valid destinations for older reminders. The current
+Simulator list exposes storage support but its visible reminders have no usable
+App destination. Real read/ignore writes, deleted/forbidden target feedback,
+device push and Web/App readback remain unverified. See verification section 18.
 
 Remaining backend/product gaps before full web chat parity:
 

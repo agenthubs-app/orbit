@@ -3,6 +3,7 @@ import {
   chatPrivacyAnalysisTogglePath,
   relationshipSignalConfirmPath
 } from "../api/endpoints";
+import { inboxNotificationActions } from "./inbox-notification-actions";
 
 export interface RelationshipConversationView {
   contactId: string;
@@ -46,11 +47,14 @@ export interface RelationshipInboxView {
 }
 
 export interface RelationshipAlertView {
+  canPersistState?: boolean;
   detail: string;
   dueLabel: string;
+  href?: string;
   id: string;
   kind: "proactive" | "reminder";
   priorityLabel: string;
+  read?: boolean;
   title: string;
 }
 
@@ -1190,9 +1194,18 @@ export function relationshipAlertsToView(
   proactiveData?: unknown
 ): RelationshipAlertsView {
   const notificationRecord = isRecord(notificationsData) ? notificationsData : {};
+  const actions = inboxNotificationActions(notificationsData);
   const reminders = listField(notificationRecord, "reminders")
     .filter(isRecord)
-    .map(reminderAlert);
+    .flatMap(reminder => {
+      const alert = reminderAlert(reminder);
+      const action = actions.get(alert.id);
+      return action?.ignored ? [] : [{
+        ...alert,
+        ...(action?.href ? { href: action.href } : {}),
+        ...(action?.canPersist ? { canPersistState: true, read: action.read } : {}),
+      }];
+    });
   const proactive = isRecord(proactiveData) ? proactiveAlert(proactiveData) : null;
   const alerts = proactive ? [...reminders, proactive] : reminders;
 
@@ -1212,7 +1225,7 @@ export function relationshipInboxBadgeCount(
     0
   );
 
-  return unreadThreads + alerts.alerts.length;
+  return unreadThreads + alerts.alerts.filter(alert => !alert.read).length;
 }
 
 export function relationshipConversationIdForContact(

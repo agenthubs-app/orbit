@@ -629,3 +629,45 @@ TypeScript AST 对比确认仅改 4 个既有函数：两个页面入口、`refr
 原生列表显示已有会话和提醒；详情保留“无可显示正文”的记录提示、空回复草稿和隐私入口。截图 `/tmp/orbit-r11-inbox-after-scope-20260913.png`、`/tmp/orbit-r11-inbox-thread-scope-20260913.png` 均已查看，配套 AX 仅留本地。请求元数据在 `/tmp/orbit-web-api-gzip-evidence-20260913.log`，该时段只有 GET。没有输入、预览、润色、确认、忽略或发信。
 
 L1/L2 与本次 L5 列表／详情只读有证据。原生切号、权限撤销、真实写入、已读、有效通知目标、推送及 L4 跨端回读未验；自动化隔离测试不替代这些结论。完整 R-11/R-14 保持开放。后续继续消费已存在的通知状态能力，缺失契约交 Web/API／Bridge，未声称对方接单；根台账不在本次编辑范围。没有新增 AI/OCR 费用。
+
+## 18. R-11：提醒已读、忽略与目标
+
+### 18.1 现有接口与实施范围
+
+实施起点 `8e592c63d`。只读核对 Web/API 的通知列表 handler、状态 handler 和 interaction service：`GET /api/notifications` 在配置了交互存储时返回 `notificationInteractions`；`POST /api/notifications/:id/state` 接受 `read`／`ignored`，返回通知 ID、状态和更新时间。存储按 actor 隔离，列表保留已读条目并过滤忽略条目。这是源码确认，不是本轮真实写入的证据。
+
+App 原先只在当前页面隐藏提醒，角标对所有提醒计数。本次在既有提醒行增加“查看”和已读提示，不改页面结构。只有网络确认的有效列表可授权操作；不使用缓存、手拼通知 ID 或列表中不存在的对象。动作防重，并校验 HTTP 2xx、成功封装、通知 ID、目标状态及有效更新时间。失败保留原提醒，成功重读列表；已读回执确认后才打开目标，忽略不乐观删行。刷新立即撤销旧读取权限，账号／服务器／路由变化沿用上一节的请求取消与旧回调保护。
+
+提醒的 `href` 仅映射已存在的 App 路由：待办、日程、收件箱、Today，以及明确的联系人／活动详情。支持现有 `orbit://` 和 `/app/` 前缀；拒绝外站、查询／片段、编码路径分隔符、路径穿越和功能入口伪装成详情。Web participant 抽屉或活动上下文不是普通详情，不擅自丢参数跳转。没有合法目标时保留提醒并说明暂不支持，不能借 `followupTaskId` 或通知 ID 猜另一个资源。
+
+首页／IORBIT 继续使用统一 view-model：已读提醒仍可查看，但不计入未读；忽略提醒不展示。旧响应未宣告存储能力时，只保留原有本次查看有效的忽略，不冒充持久化。共享通知契约尚无这些字段，本次只新增 App 消费端解码，没有手改契约副本、复制 Web 业务代码、改默认共享缓存或实现消息已读／推送注册。
+
+### 18.2 测试、失败记录与审查
+
+新增用例覆盖实际私有路由、资源 hook、HTTP client、提醒状态与 view-model；只替换原生身份／导航／存储和远端 fetch 边界。覆盖单次点击、回执归属、HTTP 500 携带成功体、空／非法响应、缓存不能授权、刷新撤销、旧账号 401、旧服务兼容、安全目标、首页返回回读和 IORBIT 未读提示。原有消息、草稿与页面视觉断言保留。
+
+| 检查 | 结果 | 日志 |
+| --- | --- | --- |
+| 初次新用例 | 49 通过、21 失败；提醒 tab 被夹具误按 button 查找，不能把全部失败当业务 RED | `/tmp/orbit-r11-notification-state-red-20260913.log` |
+| 修正夹具并补缓存／非法读取后 RED | 49 通过、25 预期失败，26.779 秒，exit 1 | `/tmp/orbit-r11-notification-state-red-fixture-20260913.log` |
+| 第一轮 GREEN | 74/74，15.617 秒，exit 0 | `/tmp/orbit-r11-notification-state-green-20260913.log` |
+| 第一轮类型检查 | 失败：RN Text 不支持 `accessibilityRole="status"`；改用现有 `accessibilityLiveRegion="polite"` 后通过 | `/tmp/orbit-r11-notification-state-types-20260913.log`、`/tmp/orbit-r11-notification-state-types-native-20260913.log` |
+| 既有定向回归 | 217/217，32.707 秒，exit 0 | `/tmp/orbit-r11-notification-state-regression-20260913.log` |
+| 追加 null 读取 RED | 3 通过、1 失败，1.635 秒，exit 1；空成功体被误显示为暂无提醒 | `/tmp/orbit-r11-notification-state-null-red-20260913.log` |
+| null 修正后 | 75/75，16.261 秒，exit 0 | `/tmp/orbit-r11-notification-state-null-green-20260913.log` |
+| 首页返回与 IORBIT 角标专项 | 4/4，2.929 秒，exit 0 | `/tmp/orbit-r11-notification-badge-integration-20260913.log` |
+| 最终类型检查 | exit 0 | `/tmp/orbit-r11-notification-state-types-final-20260913.log` |
+| 最终定向／契约回归 | 232/232，0 失败／取消／跳过，56.116 秒，exit 0 | `/tmp/orbit-r11-notification-state-targeted-final-20260913.log` |
+| 全量回归 | 2499/2499，0 失败／取消／跳过，182.378 秒，exit 0 | `/tmp/orbit-r11-notification-state-full-20260913.log` |
+
+GitNexus 单符号检查：角标直接影响统一 badge hook，再传至首页和 IORBIT，风险 LOW。变更总检查为 HIGH、12 条读取流程，已告知用户并核对 56 个流程步骤，均为既有客户端／资源／快照链。AST 对比确认本次改变 5 个收件箱函数及 2 个 view-model 函数，新增动作／刷新函数与专用解码模块；两个路由入口、聊天详情、共享 HTTP client、资源 hook 和快照实现未改。旧行号重叠报告不作为真实改动清单。沿用单代理约定，按代码审查清单自审；不声称独立代理审查。提交前 staged 检查为 10 个 App 文件、27 个触及项、HIGH，仍是上述 12 条已核实流程。
+
+### 18.3 原生证据与未完成项
+
+同一 iPhone 17 Pro / iOS 26.4 Simulator，浅色普通字号，当前账号和 `http://localhost:3000` 不变；API 源树 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`。22:04:18 更新后通知 GET 为 200 JSON，请求 ID `7bdd689b-5db1-43ca-8294-6ecff6c772e2`。22:07 只点击提醒分区：显示 40 条提醒和账号级状态提示，当前可见记录均显示目标暂不支持。没有点击查看、忽略或其他写操作。
+
+22:08:05 从提醒页下拉刷新，三条 GET 均为 200 JSON：收件箱 `e35d3855-5f69-4d2c-9a9f-94f5798e53d8`、关系线索 `952b9c7e-294f-484e-aa1f-bd3d90ae8131`、通知 `703ec4c1-279d-4e37-b1d4-e9a977443bc2`。该操作时段无 POST/PATCH/DELETE；以实际请求确认刷新，不只依据手势命令退出码。
+
+已查看 `/tmp/orbit-r11-reminders-native-20260913.png`，配套 AX 仅留本地。首次列表截图捕获在转场中，不作为布局通过证据；稳定后的提醒页才用于本次观察。原始姓名／正文、截图、会话和日志不提交。HTTP 证据继续使用 `/tmp/orbit-web-api-gzip-evidence-20260913.log` 的脱敏元数据。
+
+本次可证明 L1/L2 列表读取及 L5 普通字号提醒页；不能证明 L3/L4 的真实状态写入／跨端回读。有效目标、删除／无权限目标反馈、消息已读、前后台重新读取、权限撤销、通知偏好、实体 token 与推送仍未完成。API 负责人需发布共享交互字段并补齐旧提醒的准确 App 目标；状态写入本身也仍需真实授权对象验收。仅提供 App 侧交接，未改 Web/API 或根 Bridge，未声称另一端接单。完整 R-11/R-14 继续开放，本次没有 AI/OCR 调用或费用。
