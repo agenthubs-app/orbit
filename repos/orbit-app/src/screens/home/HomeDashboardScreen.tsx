@@ -61,6 +61,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const singleColumn = fontScale >= 1.15 || width < 360;
   const wideQuickActions = fontScale >= 1.5 || width < 360;
   const [active, setActive] = useState(false);
+  const [inboxReadVersion, setInboxReadVersion] = useState(0);
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => new Date());
   const [selected, setSelected] = useState<string>();
@@ -122,6 +123,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   }, [capture, isCurrent, put, scope]);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
+    setInboxReadVersion(value => value + 1);
     invalidate(); setNow(new Date());
     sections.forEach(section => { void read(section); });
   }, [invalidate, isCurrent, read]);
@@ -160,6 +162,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
         // The row is removed only by a subsequent server read, not by an
         // optimistic checkbox or a generic HTTP 200 response.
         void read("tasks");
+        setInboxReadVersion(value => value + 1);
       } else setMutationError(result.success ? "未能确认待办已完成，请重新读取后再试。" : result.error.message);
     } finally { ticket.release(); }
   }
@@ -211,7 +214,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       <Pressable accessibilityRole="button" accessibilityLabel="收件箱" onPress={() => navigate("/inbox")} style={[styles.inbox, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.inboxSurface} />
         <HomeIcon name="inbox" color={colors.ink} size={18} />
-        {active ? <HomeInboxBadge scopeKey={String(scope.key)} /> : null}
+        {active ? <HomeInboxBadge scopeKey={JSON.stringify([scope.key, inboxReadVersion])} /> : null}
       </Pressable>
     </View>}>
     <View style={styles.dateRow}>

@@ -100,10 +100,11 @@ test.before(async () => {
         () => ({ path: "fixture", namespace: "home" }));
       plugin.onLoad({ filter: /.*/, namespace: "home" }, args => ({
         contents: args.path === "native" ? `
-import React from "react"; import { Pressable as NativePressable, StyleSheet, Text as NativeText, TextInput as NativeTextInput, useWindowDimensions as nativeDimensions } from "react-native-web";
+import React from "react"; import { Pressable as NativePressable, RefreshControl as NativeRefreshControl, StyleSheet, Text as NativeText, TextInput as NativeTextInput, useWindowDimensions as nativeDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web"; export { AppState } from "fixture";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...nativeDimensions(), width: s.width, fontScale: s.fontScale }; };
 export const Pressable = props => { if (props.accessibilityLabel) window.fixture.presses[props.accessibilityLabel] = props.onPress; return <NativePressable {...props} />; };
+export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <NativeRefreshControl {...props} />; };
 // RNW does not apply the OS font multiplier. Model that native boundary once
 // per declared font size, leaving nested inherited text and actual layout real.
 const scaled = (props, scale) => {
@@ -415,4 +416,51 @@ test("badge rejects counts carried by an HTTP 503 success envelope", async t => 
   await p.evaluate(index => (window as any).fixture.reply(index, { inbox: { conversations: [{ conversationId: "invalid-status", unreadCount: 9 }] } }, 503, true), index);
   await settle(p); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
+});
+
+test("pulling home refresh re-reads both badge sources and updates the visible count without writes", async t => {
+  const p = await open(t, { visual: true }); await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  const reads = await p.evaluate(() => (window as any).fixture.requests.slice(5).map((r: any) => r.path).sort());
+  assert.deepEqual(reads, ["/api/chat/relationship-inbox", "/api/contacts", "/api/notifications", "/api/schedule-items", "/api/tasks"]);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)));
+  await reply(p, index, { inbox: { conversations: [{ conversationId: "current", unreadCount: 8 }] } }); await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "8"); assert.deepEqual(await writes(p), []);
+});
+
+test("acknowledged home completion re-reads badge sources instead of decrementing them locally", async t => {
+  const p = await open(t);
+  const inbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /inbox/.test(r.path)));
+  await reply(p, inbox, { inbox: { conversations: [{ conversationId: "current", unreadCount: 3 }] } }); await hydrate(p);
+  await press(p, "完成待办：发送项目介绍");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  await reply(p, await writeIndex(p), { task: { id: "task:/one", status: "completed" } });
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(6).map((r: any) => r.path).sort()), ["/api/chat/relationship-inbox", "/api/notifications", "/api/tasks"]);
+  await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
+  assert.equal((await writes(p)).length, 1);
+});
+
+test("a newer home refresh revokes old badge responses before they can publish session expiry", async t => {
+  const p = await open(t, { visual: true }); await hydrate(p);
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  const oldReads = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, i: number) => i >= 5 && /inbox|notifications/.test(r.path) ? [i] : []));
+  assert.equal(oldReads.length, 2);
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.evaluate(indices => indices.every((i: number) => (window as any).fixture.requests[i].signal.aborted), oldReads), true);
+  for (const index of oldReads) await reply(p, index, {}, 401);
+  const inbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)));
+  await reply(p, inbox, { inbox: { conversations: [{ conversationId: "current", unreadCount: 2 }] } }); await hydrate(p);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "2");
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0); assert.deepEqual(await writes(p), []);
+});
+
+test("an invalid completion receipt neither reloads nor changes the home badge", async t => {
+  const p = await open(t, { visual: true }); await hydrate(p);
+  await press(p, "完成待办：发送项目介绍");
+  await reply(p, await writeIndex(p), { task: { id: "another-task", status: "completed" } });
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /inbox|notifications/.test(r.path)).length), 2);
+  assert.equal((await writes(p)).length, 1);
 });
