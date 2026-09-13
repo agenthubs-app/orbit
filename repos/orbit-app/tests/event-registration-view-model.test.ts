@@ -11,8 +11,28 @@ import {
   buildEventRegistrationAnswers,
   eventRegistrationAdaptiveStepToView,
   eventRegistrationPersonaToView,
+  eventRegistrationQuestionKey,
+  eventRegistrationReceiptMatches,
   eventRegistrationToView
 } from "../src/view-models/event-registration";
+
+test("registration question identity excludes answers but tracks published and legacy question changes", () => {
+  const view = eventRegistrationToView({ questionSet: { questionSetHash: "a".repeat(64), questionSetVersion: 1, questions: [{ id: "target_attendees", participantProfileField: "targetAttendees", prompt: "Who?", required: true, options: ["Founders"] }] } });
+  assert.equal(eventRegistrationQuestionKey(view), eventRegistrationQuestionKey({ ...view, questions: view.questions.map(question => ({ ...question, answer: "Different saved answer" })) }));
+  for (const patch of [{ questionSetHash: "b".repeat(64) }, { questionSetVersion: 2 }, { questions: view.questions.map(question => ({ ...question, prompt: "What?" })) }, { questions: [] }]) {
+    assert.notEqual(eventRegistrationQuestionKey(view), eventRegistrationQuestionKey({ ...view, ...patch }));
+  }
+});
+
+test("registration receipt must belong to the current actor and event with the intended status", () => {
+  const receipt = { id: "registration:1", eventId: "event:1", userId: "actor:1", status: "rsvped", participantProfileId: "profile:1", participantProfile: { id: "profile:1", eventId: "event:1", userId: "actor:1", answers: { targetAttendees: "Founders" } } };
+  assert.equal(eventRegistrationReceiptMatches(receipt, "event:1", "actor:1", "rsvped"), true);
+  assert.equal(eventRegistrationReceiptMatches({ ...receipt, status: "cancelled" }, "event:1", "actor:1", "cancelled"), true);
+  for (const patch of [{ id: "" }, { eventId: "other" }, { userId: "other" }, { status: "cancelled" }, { participantProfile: null }, { participantProfile: { ...receipt.participantProfile, userId: "other" } }, { participantProfileId: "other" }, { participantProfile: { ...receipt.participantProfile, answers: null } }]) {
+    assert.equal(eventRegistrationReceiptMatches({ ...receipt, ...patch }, "event:1", "actor:1", "rsvped"), false);
+  }
+  for (const data of [null, [], {}, "success"]) assert.equal(eventRegistrationReceiptMatches(data, "event:1", "actor:1", "rsvped"), false);
+});
 
 test("event registration endpoint helpers URL-encode ids", () => {
   assert.equal(

@@ -28,6 +28,7 @@ const events = recommendationMode ? [event, { ...event, id: "event:second", titl
 const recommendations = { state: "success", profile: { calendarFit: "open", goal: "拓展合作", industryPreference: "technology", location: "Tokyo" }, summary: "根据合作目标推荐活动", nextAction: "先看活动再确认安排", recommendations: events.map(e => ({ eventId: e.id, title: e.title, startsAt: e.startsAt, valueScore: 94, scoreBand: "high", venue: e.venue, location: "Tokyo", recommendedAction: "先看活动再确认安排", signals: [{ label: "目标一致", detail: "可以找到日本合作伙伴", weight: 1 }] })) };
 const homeHub = new URLSearchParams(location.search).get("screen") === "homeHub";
 const finalInsets = new URLSearchParams(location.search).get("insets") === "true";
+const signedIn = recommendationMode || finalInsets || new URLSearchParams(location.search).get("screen") === "registration";
 const profile = { profile: { displayName: "林悦", relationshipGoal: "认识日本零售伙伴", ...(homeHub ? { bio: "负责日本零售市场的合作伙伴拓展。", headline: "跨境合作负责人", role: "日本市场合作伙伴拓展负责人", industry: "跨境零售与企业软件合作", timezone: "Asia/Tokyo", organization: "东京伙伴社区", offering: ["日本渠道资源"], seeking: ["零售采购伙伴"], topics: ["企业软件合作"] } : {}) } };
 const contacts = { contacts: homeHub ? [{ id: "contact:sato", displayName: "佐藤 葵", organization: "东京零售协会", role: "合作负责人", status: "active" }, { id: "contact:li", displayName: "李 明", organization: "合作伙伴社区", role: "顾问", status: "dormant" }] : [] };
 const attendees = { event: { ...event, name: event.title }, attendees: [{ attendeeId: "participant:sato", displayName: "佐藤 葵", checkInStatus: "registered", organization: "东京零售协会", role: "合作负责人", relationshipContext: "共同关注日本市场", suggestedNextAction: "先当面确认合作时间", attendeeTags: [{ label: "零售合作" }], eligibleRecommendation: { isEligible: true, reasons: ["同样关注零售合作"], recommendationCandidateId: "recommendation:1", blockedByKnownContact: false } }] };
@@ -50,18 +51,19 @@ export const useApiResource = path => { useFixture(); return { kind: state.kind,
 export const useLocalSearchParams = () => ({ id: "event:style", eventId: "event:style", code: "event:style", slug: "event:style" });
 export const usePathname = () => "/events";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: recommendationMode || finalInsets });
-export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn, user: signedIn ? { id: "actor:style" } : null, cookieHeader: "" });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: true });
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
   if (finalInsets && method === "POST") {
-    if (path.endsWith("/encounters")) return { success: true, data: { participant: { displayName: "佐藤 葵" }, encounter: { encounterId: "encounter:style" }, note: { text: "现场确认采购需求" }, evidenceDraft: {}, nextAction: "先复核现场记录" } };
-    if (path.endsWith("/interview")) return { success: true, data: { done: false, question: { field: "targetAttendees", prompt: "你想认识哪类采购伙伴？", options: [] } } };
-    if (path.endsWith("/persona")) return { success: true, data: { persona: { tagline: "连接东京采购合作伙伴", tags: ["零售合作"], industryTags: ["零售"], seeking: "采购负责人", offering: "本地渠道经验", openers: [], energyStyle: "先倾听对方需求" } } };
+    if (path.endsWith("/encounters")) return { success: true, status: 200, data: { participant: { displayName: "佐藤 葵" }, encounter: { encounterId: "encounter:style" }, note: { text: "现场确认采购需求" }, evidenceDraft: {}, nextAction: "先复核现场记录" } };
+    if (path.endsWith("/interview")) return { success: true, status: 200, data: { done: false, question: { field: "targetAttendees", prompt: "你想认识哪类采购伙伴？", options: [] } } };
+    if (path.endsWith("/persona")) return { success: true, status: 200, data: { persona: { tagline: "连接东京采购合作伙伴", tags: ["零售合作"], industryTags: ["零售"], seeking: "采购负责人", offering: "本地渠道经验", openers: [], energyStyle: "先倾听对方需求" } } };
   }
-  return { success: false, error: { message: "暂时无法保存，请重试" } };
+  return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "暂时无法保存，请重试" } };
 };
-export const useOrbitApiClient = () => ({ post: record("POST"), put: record("PUT"), get: record("GET") });
+const client = { post: record("POST"), put: record("PUT"), get: record("GET") };
+export const useOrbitApiClient = () => client;
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size }} />;
 export const useRelationshipInboxBadgeCount = () => 0;

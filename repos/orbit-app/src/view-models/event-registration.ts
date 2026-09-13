@@ -18,6 +18,31 @@ export interface EventRegistrationView {
   statusLabel: string;
 }
 
+export function eventRegistrationQuestionKey(view: EventRegistrationView): string {
+  return JSON.stringify([
+    view.questionSetHash,
+    view.questionSetVersion,
+    view.questions.map(({ id, field, prompt, options, required }) =>
+      [id, field, prompt, options, required === true])
+  ]);
+}
+
+export function eventRegistrationReceiptMatches(
+  data: unknown,
+  eventId: string,
+  actorId: string,
+  status: "rsvped" | "cancelled"
+): boolean {
+  if (!isRecord(data) || !isRecord(data.participantProfile)) return false;
+  const profile = data.participantProfile;
+  return Boolean(
+    stringField(data, "id") && stringField(profile, "id") &&
+    data.eventId === eventId && data.userId === actorId && data.status === status &&
+    data.participantProfileId === profile.id && profile.eventId === eventId &&
+    profile.userId === actorId && isRecord(profile.answers)
+  );
+}
+
 export interface EventRegistrationInterviewTurn {
   answer: string;
   field: string;

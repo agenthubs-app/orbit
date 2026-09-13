@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -9,6 +10,8 @@ import {
   TextInput,
   View
 } from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   eventDetailPath,
   eventRegistrationCancelPath,
@@ -31,6 +34,8 @@ import {
   buildEventRegistrationAnswers,
   eventRegistrationAdaptiveStepToView,
   eventRegistrationPersonaToView,
+  eventRegistrationQuestionKey,
+  eventRegistrationReceiptMatches,
   type EventRegistrationAdaptiveQuestionView,
   type EventRegistrationInterviewTurn,
   type EventRegistrationPersonaView,
@@ -59,16 +64,32 @@ export function EventRegistrationScreen() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
-  const client = useOrbitApiClient();
-  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false);
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.user?.id ?? "";
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  const scopeKey = JSON.stringify([server.baseUrl, actorId, eventId, ready]);
+  const client = useOrbitApiClient({ scopeKey });
+  const scope = useMemo(() => ({ client, scopeKey }), [client, scopeKey]);
+  const currentScope = useRef(scope); currentScope.current = scope;
+  const previousScope = useRef(scope);
+  const mounted = useRef(true);
+  const request = useRef<AbortController | null>(null);
+  const dirty = useRef(false);
+  const editRevision = useRef(0);
+  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false, { scopeKey });
   const registrationState = useApiResource<unknown>(
     `${eventRegistrationPath(eventId)}?language=zh`,
-    () => false
+    () => false,
+    { scopeKey }
   );
-  const registrationView =
+  const loadedRegistrationView =
     registrationState.kind === "success" || registrationState.kind === "empty"
       ? eventRegistrationToView(registrationState.data)
       : null;
+  const latestView = useRef(loadedRegistrationView); latestView.current = loadedRegistrationView;
+  const [registrationView, setRegistrationView] = useState<EventRegistrationView | null>(null);
+  const formView = useRef(registrationView); formView.current = registrationView;
   const registrationData =
     registrationState.kind === "success" || registrationState.kind === "empty"
       ? registrationState.data
@@ -99,26 +120,105 @@ export function EventRegistrationScreen() {
     null
   );
 
-  useEffect(() => {
-    setAnswers(answersFromView(registrationView));
+  function resetDraft(view: EventRegistrationView | null, clearAnswers = false) {
+    dirty.current = clearAnswers;
+    editRevision.current++;
+    formView.current = view;
+    setRegistrationView(view);
+    const initialAnswers = answersFromView(view);
+    setAnswers(clearAnswers ? Object.fromEntries(Object.keys(initialAnswers).map(field => [field, ""])) : initialAnswers);
     setAdaptiveAnswer("");
     setAdaptiveError(null);
     setAdaptiveQuestion(null);
     setAdaptiveStatusText("继续补充画像");
     setAdaptiveTurns([]);
     setPersona(null);
-  }, [registrationData]);
+    setFeedback(null);
+    setSubmitError(null);
+  }
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; request.current?.abort(); request.current = null; };
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !registrationData) return;
+    const received = eventRegistrationToView(registrationData);
+    const previous = formView.current;
+    if (!previous) { resetDraft(received); return; }
+    if (eventRegistrationQuestionKey(previous) !== eventRegistrationQuestionKey(received)) {
+      setRegistrationView({ ...received, questions: previous.questions,
+        questionSetHash: previous.questionSetHash, questionSetVersion: previous.questionSetVersion });
+      return;
+    }
+    setRegistrationView(received);
+    if (!dirty.current) setAnswers(answersFromView(received));
+  }, [registrationData, scope]);
+
+  if (previousScope.current !== scope) {
+    previousScope.current = scope;
+    request.current?.abort(); request.current = null;
+    setPendingAction(null); setAdaptivePending(null);
+    resetDraft(null);
+    return null;
+  }
+
+  const questionsChanged = Boolean(registrationView && loadedRegistrationView &&
+    eventRegistrationQuestionKey(registrationView) !== eventRegistrationQuestionKey(loadedRegistrationView));
+  const renderedRevision = editRevision.current;
+
+  function isScopeCurrent() {
+    return mounted.current && currentScope.current === scope && ready;
+  }
+
+  function beginRequest(requireCurrentQuestions = true) {
+    if (!isScopeCurrent() || request.current || renderedRevision !== editRevision.current || !formView.current || !latestView.current ||
+      (requireCurrentQuestions && eventRegistrationQuestionKey(formView.current) !== eventRegistrationQuestionKey(latestView.current))) return null;
+    const controller = new AbortController(); request.current = controller;
+    return controller;
+  }
+
+  function finishRequest(controller: AbortController) {
+    if (!isScopeCurrent() || request.current !== controller) return;
+    request.current = null;
+    setPendingAction(null); setAdaptivePending(null);
+  }
+
+  function loadNewQuestions() {
+    const nextView = latestView.current;
+    if (!isScopeCurrent() || request.current || !nextView || !questionsChanged) return;
+    const intendedRevision = editRevision.current;
+    const intendedKey = eventRegistrationQuestionKey(nextView);
+    Alert.alert("载入新问题", "这会清空未提交的答案和辅助问答。请先复制需要保留的内容。", [
+      { text: "取消", style: "cancel" },
+      { text: "清空草稿并载入", style: "destructive", onPress: () => {
+        if (!isScopeCurrent() || request.current || editRevision.current !== intendedRevision ||
+          !latestView.current || eventRegistrationQuestionKey(latestView.current) !== intendedKey) return;
+        resetDraft(latestView.current, true);
+      } }
+    ]);
+  }
 
   function refresh() {
+    if (!isScopeCurrent() || request.current) return;
     eventState.refresh();
     registrationState.refresh();
   }
 
   function setAnswer(question: EventRegistrationQuestionView, value: string) {
+    if (!isScopeCurrent()) return;
+    dirty.current = true; editRevision.current++;
     setAnswers((current) => ({
       ...current,
       [question.field]: value
     }));
+  }
+
+  function changeAdaptiveAnswer(value: string) {
+    if (!isScopeCurrent()) return;
+    editRevision.current++;
+    setAdaptiveAnswer(value);
   }
 
   function adaptiveBody() {
@@ -134,11 +234,14 @@ export function EventRegistrationScreen() {
           ]
         : adaptiveTurns;
 
-    return buildEventRegistrationAdaptiveBody(
-      registrationView?.questions ?? [],
-      answers,
-      nextTurns
-    );
+    return {
+      body: buildEventRegistrationAdaptiveBody(
+        registrationView?.questions ?? [],
+        answers,
+        nextTurns
+      ),
+      turns: nextTurns
+    };
   }
 
   async function requestAdaptiveQuestion() {
@@ -146,27 +249,33 @@ export function EventRegistrationScreen() {
       return;
     }
 
-    const body = adaptiveBody();
+    const { body, turns } = adaptiveBody();
+    const controller = beginRequest();
+    if (!controller) return;
+    const revision = editRevision.current;
 
     setAdaptivePending("interview");
     setAdaptiveError(null);
 
     const result = await client.post<unknown>(
       eventRegistrationInterviewPath(eventId),
-      { body }
+      { body, signal: controller.signal }
     );
 
-    if (result.success) {
+    if (!isScopeCurrent() || request.current !== controller) return;
+
+    if (result.success && result.status >= 200 && result.status < 300) {
+      if (editRevision.current !== revision) { finishRequest(controller); return; }
       const nextStep = eventRegistrationAdaptiveStepToView(result.data);
-      setAdaptiveTurns(body.transcript);
+      setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
       setAdaptiveQuestion(nextStep.question);
       setAdaptiveStatusText(nextStep.statusText);
     } else {
-      setAdaptiveError(result.error.message);
+      setAdaptiveError(result.success ? "暂时无法生成问题，请重试。" : result.error.message);
     }
 
-    setAdaptivePending(null);
+    finishRequest(controller);
   }
 
   async function generateAdaptivePersona() {
@@ -174,42 +283,52 @@ export function EventRegistrationScreen() {
       return;
     }
 
-    const body = adaptiveBody();
+    const { body, turns } = adaptiveBody();
 
     if (body.transcript.length === 0) {
       setAdaptiveError("先回答一题，再生成活动画像。");
       return;
     }
+    const controller = beginRequest();
+    if (!controller) return;
+    const revision = editRevision.current;
 
     setAdaptivePending("persona");
     setAdaptiveError(null);
 
     const result = await client.post<unknown>(
       eventRegistrationPersonaPath(eventId),
-      { body }
+      { body, signal: controller.signal }
     );
 
-    if (result.success) {
-      setAdaptiveTurns(body.transcript);
+    if (!isScopeCurrent() || request.current !== controller) return;
+
+    if (result.success && result.status >= 200 && result.status < 300) {
+      if (editRevision.current !== revision) { finishRequest(controller); return; }
+      setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
       setPersona(eventRegistrationPersonaToView(result.data));
     } else {
-      setAdaptiveError(result.error.message);
+      setAdaptiveError(result.success ? "暂时无法生成活动画像，请重试。" : result.error.message);
     }
 
-    setAdaptivePending(null);
+    finishRequest(controller);
   }
 
   async function submitRegistration() {
     if (!registrationView) {
       return;
     }
+    const controller = beginRequest();
+    if (!controller) return;
+    const revision = editRevision.current;
 
     setPendingAction("register");
     setSubmitError(null);
     setFeedback(null);
 
     const result = await client.post<unknown>(eventRegistrationPath(eventId), {
+      signal: controller.signal,
       body: {
         answers: buildEventRegistrationAnswers(registrationView.questions, answers),
         ...(registrationView.questionSetHash &&
@@ -222,31 +341,42 @@ export function EventRegistrationScreen() {
       }
     });
 
-    if (result.success) {
+    if (!isScopeCurrent() || request.current !== controller) return;
+
+    if (result.success && result.status >= 200 && result.status < 300 &&
+      eventRegistrationReceiptMatches(result.data, eventId, actorId, "rsvped")) {
+      if (editRevision.current === revision) dirty.current = false;
       setFeedback("报名资料已保存。");
+      eventState.refresh();
       registrationState.refresh();
     } else {
-      setSubmitError(result.error.message);
+      setSubmitError(result.success ? "未能确认保存结果，答案已保留。请刷新后核对报名状态。" : result.error.message);
     }
 
-    setPendingAction(null);
+    finishRequest(controller);
   }
 
   async function cancelRegistration() {
+    const controller = beginRequest(false);
+    if (!controller) return;
     setPendingAction("cancel");
     setSubmitError(null);
     setFeedback(null);
 
-    const result = await client.post<unknown>(eventRegistrationCancelPath(eventId));
+    const result = await client.post<unknown>(eventRegistrationCancelPath(eventId), { signal: controller.signal });
 
-    if (result.success) {
+    if (!isScopeCurrent() || request.current !== controller) return;
+
+    if (result.success && result.status >= 200 && result.status < 300 &&
+      eventRegistrationReceiptMatches(result.data, eventId, actorId, "cancelled")) {
       setFeedback("已取消报名。");
+      eventState.refresh();
       registrationState.refresh();
     } else {
-      setSubmitError(result.error.message);
+      setSubmitError(result.success ? "未能确认取消结果，答案已保留。请刷新后核对报名状态。" : result.error.message);
     }
 
-    setPendingAction(null);
+    finishRequest(controller);
   }
 
   return (
@@ -282,7 +412,7 @@ export function EventRegistrationScreen() {
       {registrationState.kind === "failure" ? (
         <ErrorState message={registrationState.error.message} />
       ) : null}
-      {event && registrationView ? (
+      {ready && event && registrationView ? (
         <RegistrationForm
           adaptiveAnswer={adaptiveAnswer}
           adaptiveError={adaptiveError}
@@ -293,7 +423,7 @@ export function EventRegistrationScreen() {
           eventMeta={[event.startsAt, event.location].filter(Boolean).join(" · ")}
           eventTitle={event.title}
           feedback={feedback}
-          onAdaptiveAnswerChange={setAdaptiveAnswer}
+          onAdaptiveAnswerChange={changeAdaptiveAnswer}
           onBack={() =>
             router.push({
               params: { id: eventId },
@@ -303,11 +433,13 @@ export function EventRegistrationScreen() {
           onCancel={cancelRegistration}
           onGenerateAdaptivePersona={generateAdaptivePersona}
           onRequestAdaptiveQuestion={requestAdaptiveQuestion}
+          onLoadNewQuestions={loadNewQuestions}
           onSetAnswer={setAnswer}
           onSubmit={submitRegistration}
           pendingAction={pendingAction}
           persona={persona}
           registration={registrationView}
+          questionsChanged={questionsChanged}
           submitError={submitError}
         />
       ) : null}
@@ -330,11 +462,13 @@ function RegistrationForm({
   onCancel,
   onGenerateAdaptivePersona,
   onRequestAdaptiveQuestion,
+  onLoadNewQuestions,
   onSetAnswer,
   onSubmit,
   pendingAction,
   persona,
   registration,
+  questionsChanged,
   submitError
 }: {
   adaptiveAnswer: string;
@@ -351,11 +485,13 @@ function RegistrationForm({
   onCancel: () => void;
   onGenerateAdaptivePersona: () => void;
   onRequestAdaptiveQuestion: () => void;
+  onLoadNewQuestions: () => void;
   onSetAnswer: (question: EventRegistrationQuestionView, value: string) => void;
   onSubmit: () => void;
   pendingAction: "cancel" | "register" | null;
   persona: EventRegistrationPersonaView | null;
   registration: EventRegistrationView;
+  questionsChanged: boolean;
   submitError: string | null;
 }) {
   const { colors, styles } = useStyles();
@@ -379,6 +515,13 @@ function RegistrationForm({
         </Pressable>
       </DataCard>
       <DataCard variant="inset" detail="标记为必答的问题需要回答，其余问题可以跳过" title="参与资料">
+        {questionsChanged ? <>
+          <Text style={styles.errorText}>报名问题已更新，当前答案和辅助问答已保留。</Text>
+          <Pressable accessibilityRole="button" disabled={pendingAction !== null || adaptivePending !== null}
+            onPress={onLoadNewQuestions} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>载入新问题</Text>
+          </Pressable>
+        </> : null}
         {registration.questions.length === 0 ? (
           <EmptyState
             message="这场活动暂时没有需要补充的问题。"
@@ -398,7 +541,7 @@ function RegistrationForm({
         {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={pendingAction !== null}
+          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged}
           onPress={onSubmit}
           style={({ pressed }) => [
             styles.primaryButton,
@@ -414,7 +557,7 @@ function RegistrationForm({
         {registration.canCancel ? (
           <Pressable
             accessibilityRole="button"
-            disabled={pendingAction !== null}
+            disabled={pendingAction !== null || adaptivePending !== null}
             onPress={onCancel}
             style={({ pressed }) => [
               styles.cancelButton,
@@ -431,6 +574,7 @@ function RegistrationForm({
       </DataCard>
       <AdaptiveRegistrationCard
         answer={adaptiveAnswer}
+        disabled={pendingAction !== null || questionsChanged}
         error={adaptiveError}
         onAnswerChange={onAdaptiveAnswerChange}
         onGeneratePersona={onGenerateAdaptivePersona}
@@ -446,6 +590,7 @@ function RegistrationForm({
 
 function AdaptiveRegistrationCard({
   answer,
+  disabled,
   error,
   onAnswerChange,
   onGeneratePersona,
@@ -456,6 +601,7 @@ function AdaptiveRegistrationCard({
   statusText
 }: {
   answer: string;
+  disabled: boolean;
   error: string | null;
   onAnswerChange: (value: string) => void;
   onGeneratePersona: () => void;
@@ -494,7 +640,7 @@ function AdaptiveRegistrationCard({
       <View style={styles.adaptiveActionsRow}>
         <Pressable
           accessibilityRole="button"
-          disabled={pending !== null}
+          disabled={disabled || pending !== null}
           onPress={onRequestQuestion}
           style={({ pressed }) => [
             styles.secondaryButton,
@@ -509,7 +655,7 @@ function AdaptiveRegistrationCard({
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          disabled={pending !== null}
+          disabled={disabled || pending !== null}
           onPress={onGeneratePersona}
           style={({ pressed }) => [
             styles.primaryButton,

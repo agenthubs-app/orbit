@@ -406,6 +406,15 @@ event-specific question, then generate a local activity persona from answered
 turns. The persona preview stays on the registration page: it does not write the
 global profile, create accounts, send messages, or notify organizers.
 
+2026-09-13 原生只读复验仍有两个独立阻塞：同一已发布活动的公开详情
+GET 200，报名页使用的旧私有详情 GET 404；报名问卷 GET 500 且没有
+Content-Type。前者由 App 后续改为消费现有公开详情，后者还需 Web/API
+按请求 `d46f7916-b41f-490f-b548-067873cd2c9b` 排查，未联系负责人或确认接单。
+本轮不改 Web。报名资格、服务端时间／允许动作、列表／首页／日历回读及
+匹配确实消费答案仍缺完整验收，不能用草稿保护与当前页 GET 触发测试替代。
+具体版本、分层证据与限制见 `docs/verification/2026-09-13-app-connectivity.md`
+第十二节。
+
 ## Event Attendees And Want Connect
 
 Mobile now opens an event attendee workspace backed by:
