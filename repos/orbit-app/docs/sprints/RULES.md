@@ -62,7 +62,7 @@ TDD 不是被取消的 Evaluator 循环：观察预期失败→最小实现→�
 ## 6. 边界、预算与原始证据
 
 - 实施目录 `/Users/xzhao/Projects/orbit/repos/orbit-app`；只写 Planner 白名单及本 Sprint 报告。禁止直接改 `../orbits`、根 Bridge、业务数据库、浏览器 localStorage、环境密钥、生成契约副本和其他 Sprint 的文件。
-- 上条是既有 App Sprint 的默认边界。用户于 2026-09-14 指定当前代理负责相关 Web/API 后，新增跨端 Sprint 可在其经审阅 Planner 中逐项列出 Web/API 与 App 白名单，由同一个 Generator 串行执行；各端使用自己的 cwd 和本端路径，协调者管理根仓库 Git／交接。0020 当前只获准编制，不能按全局 ACTIVE 自动启动。此补充不扩张 0001～0019 的原白名单，也不放开密钥、迁移、部署或未批准真实写入。
+- 上条是既有 App Sprint 的默认边界。用户于 2026-09-14 指定当前代理负责相关 Web/API 后，新增跨端 Sprint 可在其经审阅 Planner 中逐项列出 Web/API 与 App 白名单，由同一个 Generator 串行执行；各端使用自己的 cwd 和本端路径，协调者管理根仓库 Git／交接。0020／0021 当前只编制，不能按全局 ACTIVE 自动启动。此补充不扩张 0001～0019 的原白名单，也不放开密钥、迁移、部署或未批准真实写入。
 - 共享副本只走现有批准的 `npm run sync:contract`，不手改或扩大白名单。新增依赖、原生补丁、产品设计、迁移与真实副作用保留独立门槛。
 - 继续原地 `chat-agent`；不自动 worktree、merge、push、部署、重启服务、换号或清缓存。GET／导航若有初始化或保存副作用，按真实写入处理。
 - AI/OCR 累计 $5，原账本已记录 $0.012780；开始付费场景前确认账本与未结算预留，由一个 owner 管理，禁止按 Sprint／run 重置。
