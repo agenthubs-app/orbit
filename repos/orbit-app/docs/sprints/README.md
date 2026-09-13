@@ -41,28 +41,36 @@ build/harness-logs/
 | Sprint | 目标 | 原范围 | 依赖／额外前置 | 状态 |
 | --- | --- | --- | --- | --- |
 | [0001](0001-event-discovery/PLANNER.md) | 活动筛选收尾 | R-09 | 无；接续当前四文件 | completed |
-| [0002](0002-readiness-handoff/PLANNER.md) | 接口、授权与原生验收就绪清单 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | running |
-| [0003](0003-profile-completion/PLANNER.md) | 注册与资料完成 | R-03 | 0002；B1/D2 | planned |
-| [0004](0004-registration/PLANNER.md) | 报名资格与答案回读 | R-04 | 0002、0003；B2／问卷服务 | planned |
-| [0005](0005-ai-session-reliability/PLANNER.md) | AI 幂等与跨端会话恢复 | R-00、R-02 | 0002；B3／Web 恢复风险 | planned |
-| [0006](0006-contact-mentions/PLANNER.md) | 类型化 @联系人与 AI 入口 | R-06 | 0005；B3 引用／D3 | planned |
-| [0007](0007-two-sided-cards/PLANNER.md) | 双面名片与一次创建 | R-07 | 0002；B5／OCR 环境 | planned |
-| [0008](0008-identity-chat/PLANNER.md) | 平台身份、邀请与合法聊天 | R-05 | 0002；B4／双用户 | planned |
-| [0009](0009-timezone/PLANNER.md) | 账号时区与跨日一致性 | R-09 | 0001、0002；时区决策 | planned |
-| [0010](0010-task-schedule-editing/PLANNER.md) | 待办、地点与个人日程编辑 | R-08 | 0009；B6 | planned |
-| [0011](0011-home-analysis/PLANNER.md) | 首页规格与人脉分析可信性 | R-09、R-10 | 0006；B7／首页／D4 | planned |
-| [0012](0012-message-state/PLANNER.md) | 消息已读、目标与前台更新 | R-11 | 0008；消息契约／通知环境 | planned |
-| [0013](0013-locale-foundation/PLANNER.md) | 三语基础与账号、首页、设置 | R-12 | 0009、0011；D6 | planned |
-| [0014](0014-locale-relationships-events/PLANNER.md) | 人脉、名片与活动三语 | R-12 | 0013、0004、0007、0008 | planned |
-| [0015](0015-locale-assistant-workflows/PLANNER.md) | AI、事项与收件箱三语 | R-12 | 0013、0006、0010、0012 | planned |
-| [0016](0016-native-navigation/PLANNER.md) | 导航、字号与原生验收 | R-09、R-12 | 0014、0015；原生审批／设备 | planned |
-| [0017](0017-cross-client-acceptance/PLANNER.md) | 真实业务与双向跨端收口 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | planned |
-| [0018](0018-notes-core/PLANNER.md) | 独立笔记、多人关联与旧入口切换 | R-13 | 0017；B8／D7／迁移设计 | planned |
-| [0019](0019-note-suggestions/PLANNER.md) | 笔记建议与完整范围验收 | R-13、R-14 | 0018；D5／B6／B8建议协议 | planned |
+| [0002](0002-readiness-handoff/PLANNER.md) | 接口、授权与原生验收就绪清单 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
+| [0003](0003-profile-completion/PLANNER.md) | 注册与资料完成 | R-03 | 0002；B1/D2 | blocked |
+| [0004](0004-registration/PLANNER.md) | 报名资格与答案回读 | R-04 | 0002、0003；B2／问卷服务 | blocked |
+| [0005](0005-ai-session-reliability/PLANNER.md) | AI 幂等与跨端会话恢复 | R-00、R-02 | 0002；B3／Web 恢复风险 | blocked |
+| [0006](0006-contact-mentions/PLANNER.md) | 类型化 @联系人与 AI 入口 | R-06 | 0005；B3 引用／D3 | blocked |
+| [0007](0007-two-sided-cards/PLANNER.md) | 双面名片与一次创建 | R-07 | 0002；B5／OCR 环境 | blocked |
+| [0008](0008-identity-chat/PLANNER.md) | 平台身份、邀请与合法聊天 | R-05 | 0002；B4／双用户 | blocked |
+| [0009](0009-timezone/PLANNER.md) | 账号时区与跨日一致性 | R-09 | 0001、0002；时区决策 | blocked |
+| [0010](0010-task-schedule-editing/PLANNER.md) | 待办、地点与个人日程编辑 | R-08 | 0009；B6 | blocked |
+| [0011](0011-home-analysis/PLANNER.md) | 首页规格与人脉分析可信性 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
+| [0012](0012-message-state/PLANNER.md) | 消息已读、目标与前台更新 | R-11 | 0008；消息契约／通知环境 | blocked |
+| [0013](0013-locale-foundation/PLANNER.md) | 三语基础与账号、首页、设置 | R-12 | 0009、0011；D6 | blocked |
+| [0014](0014-locale-relationships-events/PLANNER.md) | 人脉、名片与活动三语 | R-12 | 0013、0004、0007、0008 | blocked |
+| [0015](0015-locale-assistant-workflows/PLANNER.md) | AI、事项与收件箱三语 | R-12 | 0013、0006、0010、0012 | blocked |
+| [0016](0016-native-navigation/PLANNER.md) | 导航、字号与原生验收 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
+| [0017](0017-cross-client-acceptance/PLANNER.md) | 真实业务与双向跨端收口 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
+| [0018](0018-notes-core/PLANNER.md) | 独立笔记、多人关联与旧入口切换 | R-13 | 0017；B8／D7／迁移设计 | blocked |
+| [0019](0019-note-suggestions/PLANNER.md) | 笔记建议与完整范围验收 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
 这是当前已知范围的首批拆分，不是对未知接口的实现承诺。缺协议的 Planner 必须在启动前补入实际契约并审阅；原生补丁、公开活动集合等调查若发现本表未覆盖的必要实现，由 Planner 明确补计划／新编号，不留到最终验收时假定已完成，也不借新编号自动重跑失败 Generator。
+
+### 2026-09-14 启动前就绪检查
+
+协调者按各 Planner 的进入条件核对：0003～0019 均有尚未满足的直接或前序依赖，登记 `blocked`、`run_count = 0`。没有领取这些 Sprint，没有生成执行报告，也没有将缺项改为“不适用”。具体协议／运行失败／决策／环境／样本／授权分类见[0002交接清单](../verification/2026-09-13-app-connectivity.md#24-sprint-0002后续-sprint-就绪交接)。
+
+可单独解除的入口是0003（B1/D2）、0005（B3及Web恢复风险处理或隔离专测授权）、0007（B5与安全OCR环境／实体样本）、0008（B4与双用户）、0009（权威时区与DST／全天日期策略）。0002文档交接已完成；各项仍须具备自身声明的其余前置。其余按本表依赖推进，不要求等全部B1～B8都解决后才领取其中一项。
+
+恢复时只核对本 Sprint 的发布契约、批准、环境与样本，必要时补全并审阅 Planner；不要求该 Sprint 自己的实现／验收先完成。已批准的同动作／对象／环境权限继续复用，只有缺失或新增部分需要确认。当前 App 范围没有授权修改 Web/API、密钥或迁移，不能用“自主运行”跨过这些边界。
 
 ## 运行记录
 
@@ -80,8 +88,12 @@ build/harness-logs/
 - owner：`/root/sprint_0002_generator`；run_count：1；开始：2026-09-14 00:15 JST。
 - Planner revision：1；SHA256：`8efbf5aa556577c7c395fb170242c609ee1c2cb61d539d57ca8800f3fb45441a`。
 - 起始 HEAD：`bc6a6c1ed8e8946668d16a6923741569577b56ef`；三个业务文档启动前无未提交差异。
-- 文件锁：`docs/api-gaps.md`、`docs/verification/2026-09-13-app-connectivity.md`、`docs/superpowers/plans/2026-09-08-app-wide-native-qa-matrix.md` 及 0002 报告。只读源码，不接管 Simulator、API、账号、费用或 Git。
+- 结束：2026-09-14 00:38 JST；文档提交：`cced58bd7c30308e3e0ac21fcd7b3de6466b372a`；[执行报告](0002-readiness-handoff/REPORT.md)。
+- 验证：五项SC通过；14个相对链接、17行就绪条件和15处源码引用检查通过；暂存detect仅3个文档／16个Section／0受影响流程。D档，无产品测试、HTTP或原生操作。
+- 原文件锁：`docs/api-gaps.md`、`docs/verification/2026-09-13-app-connectivity.md`、`docs/superpowers/plans/2026-09-08-app-wide-native-qa-matrix.md` 及 0002 报告，现已释放。只读源码，未接管 Simulator、API、账号、费用或 Git。
 - 0002 不依赖0001结果；与0001收尾只并行处理无重叠文档，仍各自只有一个 Generator。
+
+当前没有正在运行或就绪的 Generator。0001／0002 已结束，不重新运行；0003～0019等待各自缺失输入。管理框架、19份Planner和0001报告提交为 `1a0c7086420a421169f63e8e4b0a04c6cc329315`；本报告／登记表提交可从Git历史查看，不在报告内追填自身SHA。
 
 ## 2026-09-13 暂停点（历史基线）
 
