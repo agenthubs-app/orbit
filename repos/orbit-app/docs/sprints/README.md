@@ -7,8 +7,8 @@
 ## 先读哪里
 
 1. [执行规则](RULES.md)：一次执行、边界、状态、最小测试、提交与失败处理。
-2. 本表选择 Sprint，再读其 `PLANNER.md`，以及它明确引用的前序 `REPORT.md`。不要载入整个历史对话或所有 Sprint。
-3. [Planner 模板](templates/PLANNER.md)、[总结模板](templates/REPORT.md)用于后续新增 Sprint；只有执行过才创建实际 `REPORT.md`。
+2. 本表选择 Sprint，先读 `GOAL.md` 了解要实现的结果；执行前再读 `PLANNER.md` 及它明确引用的前序 `REPORT.md`。不要载入整个历史对话或所有 Sprint。
+3. [目标模板](templates/GOAL.md)、[Planner 模板](templates/PLANNER.md)、[总结模板](templates/REPORT.md)用于后续新增 Sprint；只有执行过才创建实际 `REPORT.md`。
 4. 需求和历史证据仍见[原剩余计划](../superpowers/plans/2026-09-13-app-remaining-functionality-and-connectivity.md)与[连通性记录](../verification/2026-09-13-app-connectivity.md)。它们不再决定本目录的执行角色／频率。
 
 ## 目录契约
@@ -18,12 +18,15 @@ docs/sprints/
   README.md                  # 唯一运行状态和 Sprint 状态登记表
   RULES.md                   # 所有 Sprint 的执行规则
   templates/
+    GOAL.md                  # 易读目标模板；不记录完成状态
     PLANNER.md               # 计划模板；不是执行过的 Sprint
     REPORT.md                # 结果模板；不能预填通过
   0001-event-discovery/
+    GOAL.md                  # 要实现什么、做完能看到什么、怎么验收
     PLANNER.md               # 本 Sprint 的唯一验收契约
     REPORT.md                # 执行结束后新增；包括失败／受阻结果
   0002-readiness-handoff/
+    GOAL.md
     PLANNER.md
   ...
 build/harness-state/evidence/sprint-0001/run-01/
@@ -38,27 +41,29 @@ build/harness-logs/
 
 未列入下方运行记录的 Sprint 均为 `run_count = 0`、`report = 未产生`。表中的依赖是进入条件，不声称已满足。0001 接续既有四文件；0002 不依赖0001的功能结果。其余按依赖就绪执行，不以编号大小证明就绪。
 
-| Sprint | 目标 | 原范围 | 依赖／额外前置 | 状态 |
+每个 Sprint 的目标页都用具体操作说明预期结果。目标说明不等于完成声明；技术范围和 SC 仍以 `PLANNER.md` 为准，实际成果只看执行报告与下表状态。
+
+| Sprint | 要实现的结果 | 原范围 | 依赖／额外前置 | 状态 |
 | --- | --- | --- | --- | --- |
-| [0001](0001-event-discovery/PLANNER.md) | 活动筛选收尾 | R-09 | 无；接续当前四文件 | completed |
-| [0002](0002-readiness-handoff/PLANNER.md) | 接口、授权与原生验收就绪清单 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
-| [0003](0003-profile-completion/PLANNER.md) | 注册与资料完成 | R-03 | 0002；B1/D2 | blocked |
-| [0004](0004-registration/PLANNER.md) | 报名资格与答案回读 | R-04 | 0002、0003；B2／问卷服务 | blocked |
-| [0005](0005-ai-session-reliability/PLANNER.md) | AI 幂等与跨端会话恢复 | R-00、R-02 | 0002；B3／Web 恢复风险 | blocked |
-| [0006](0006-contact-mentions/PLANNER.md) | 类型化 @联系人与 AI 入口 | R-06 | 0005；B3 引用／D3 | blocked |
-| [0007](0007-two-sided-cards/PLANNER.md) | 双面名片与一次创建 | R-07 | 0002；B5／OCR 环境 | blocked |
-| [0008](0008-identity-chat/PLANNER.md) | 平台身份、邀请与合法聊天 | R-05 | 0002；B4／双用户 | blocked |
-| [0009](0009-timezone/PLANNER.md) | 账号时区与跨日一致性 | R-09 | 0001、0002；时区决策 | blocked |
-| [0010](0010-task-schedule-editing/PLANNER.md) | 待办、地点与个人日程编辑 | R-08 | 0009；B6 | blocked |
-| [0011](0011-home-analysis/PLANNER.md) | 首页规格与人脉分析可信性 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
-| [0012](0012-message-state/PLANNER.md) | 消息已读、目标与前台更新 | R-11 | 0008；消息契约／通知环境 | blocked |
-| [0013](0013-locale-foundation/PLANNER.md) | 三语基础与账号、首页、设置 | R-12 | 0009、0011；D6 | blocked |
-| [0014](0014-locale-relationships-events/PLANNER.md) | 人脉、名片与活动三语 | R-12 | 0013、0004、0007、0008 | blocked |
-| [0015](0015-locale-assistant-workflows/PLANNER.md) | AI、事项与收件箱三语 | R-12 | 0013、0006、0010、0012 | blocked |
-| [0016](0016-native-navigation/PLANNER.md) | 导航、字号与原生验收 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
-| [0017](0017-cross-client-acceptance/PLANNER.md) | 真实业务与双向跨端收口 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
-| [0018](0018-notes-core/PLANNER.md) | 独立笔记、多人关联与旧入口切换 | R-13 | 0017；B8／D7／迁移设计 | blocked |
-| [0019](0019-note-suggestions/PLANNER.md) | 笔记建议与完整范围验收 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
+| [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
+| [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
+| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 0002；B1/D2 | blocked |
+| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2／问卷服务 | blocked |
+| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 0002；B3／Web 恢复风险 | blocked |
+| [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
+| [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
+| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4／双用户 | blocked |
+| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 0001、0002；时区决策 | blocked |
+| [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
+| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
+| [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 0008；消息契约／通知环境 | blocked |
+| [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
+| [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
+| [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
+| [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
+| [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
+| [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
+| [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
