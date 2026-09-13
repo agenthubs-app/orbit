@@ -408,12 +408,15 @@ global profile, create accounts, send messages, or notify organizers.
 
 2026-09-13 原生只读复验仍有两个独立阻塞：同一已发布活动的公开详情
 GET 200，报名页使用的旧私有详情 GET 404；报名问卷 GET 500 且没有
-Content-Type。前者由 App 后续改为消费现有公开详情，后者还需 Web/API
+Content-Type。前者已由 App 改为消费现有公开详情并原生回读 200，后者还需 Web/API
 按请求 `d46f7916-b41f-490f-b548-067873cd2c9b` 排查，未联系负责人或确认接单。
 本轮不改 Web。报名资格、服务端时间／允许动作、列表／首页／日历回读及
 匹配确实消费答案仍缺完整验收，不能用草稿保护与当前页 GET 触发测试替代。
 具体版本、分层证据与限制见 `docs/verification/2026-09-13-app-connectivity.md`
 第十二节。
+随后原生显示已有问卷，但同期问卷 GET 仍为 500，不能作为最新资料读取成功。
+App 还需补齐过期数据提示与提交限制；匿名同路径明确返回 401 JSON，不是
+所有访问都在路由编译阶段失败，真实登录态 500 的内部原因仍未确认。
 
 ## Event Attendees And Want Connect
 

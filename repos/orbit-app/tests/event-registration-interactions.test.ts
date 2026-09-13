@@ -19,6 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const state = window.fixture = {
   actor: "actor-1", eventId: "event:1", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true,
   requests: [], pending: [], presses: {}, alerts: [], navigation: [], expiries: 0, holdReads: false,
+  eventStatus: 200, registrationStatus: 200,
   version: 1, hash: "a".repeat(64), prompt: "Who would you like to meet?", savedAnswer: "Saved answer", registered: true,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
@@ -42,7 +43,7 @@ onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input));
   state.requests.push({ method: init.method, path: url.pathname, query: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const response = new Promise(resolve => state.pending[index] = resolve);
-  if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index));
+  if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index, url.pathname.endsWith("/registration") ? state.registrationStatus : state.eventStatus));
   return response;
 };
 export const useFixture = () => { observe(); return state; };
@@ -80,13 +81,14 @@ export const Alert = { alert(title, message, buttons) { window.fixture.alerts.pu
 test.after(async () => { await browser?.close(); });
 
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
-async function open(t: { after(fn: () => Promise<void>): void }, patch = {}) {
+async function open(t: { after(fn: () => Promise<void>): void }, patch = {}, waitForForm = true) {
   const p = await browser.newPage({ viewport: { width: 390, height: 844 } });
   p.setDefaultTimeout(2000); const errors: string[] = []; p.on("pageerror", e => errors.push(e.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
   await p.evaluate(patch => { (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script });
-  await p.getByPlaceholder("写一句具体的补充。", { exact: true }).first().waitFor(); await settle(p); return p;
+  if (waitForForm) await p.getByPlaceholder("写一句具体的补充。", { exact: true }).first().waitFor();
+  await settle(p); return p;
 }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function fill(p: Page, value: string, index = 0) { await p.getByPlaceholder("写一句具体的补充。", { exact: true }).nth(index).fill(value); await settle(p); }
@@ -94,6 +96,24 @@ async function update(p: Page, patch: object) { await p.evaluate(patch => (windo
 async function refresh(p: Page) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "POST").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 async function reply(p: Page, status = 200, patch?: object) { await p.evaluate(({ status, patch }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method === "POST"); s.reply(i, status, patch === undefined ? (status === 200 ? s.receipt() : undefined) : patch); }, { status, patch }); await settle(p); }
+
+test("registration reads canonical public event context without a legacy private detail request", async t => {
+  const p = await open(t);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ method: r.method, path: r.path, query: r.query }))), [
+    { method: "GET", path: "/api/events/public/event%3A1", query: "" },
+    { method: "GET", path: "/api/events/event%3A1/registration", query: "?language=zh" }
+  ]);
+  assert.equal(await p.getByText("Networking meeting", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const failure of [{ eventStatus: 503 }, { registrationStatus: 500 }]) test(`registration read failure stays visible without a fallback or write ${JSON.stringify(failure)}`, async t => {
+  const p = await open(t, failure, false);
+  await p.getByText("页面暂时无法加载", { exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").count(), 0);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path)), ["/api/events/public/event%3A1", "/api/events/event%3A1/registration"]);
+  assert.deepEqual(await writes(p), []);
+});
 
 test("registration refresh preserves a dirty answer but still adopts clean server changes", async t => {
   const p = await open(t); assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Saved answer");
@@ -121,7 +141,7 @@ test("registration submission is single-flight and refreshes both current resour
   await p.evaluate(() => { const fn = (window as any).fixture.presses["更新报名资料"]; fn(); fn(); }); await settle(p);
   assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration", body: { answers: { targetAttendees: "Local answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
   await update(p, { savedAnswer: "Local answer" }); await reply(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1", "/api/events/event%3A1/registration"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByText("报名资料已保存。", { exact: true }).count(), 1);
 });
 
@@ -136,7 +156,7 @@ test("registration cancellation is single-flight and reads status and event agai
   await p.evaluate(() => { const fn = (window as any).fixture.presses["取消报名"]; fn(); fn(); }); await settle(p);
   assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration/cancel", body: null }]);
   await update(p, { registered: false }); await reply(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1", "/api/events/event%3A1/registration"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Keep unsaved answer");
   assert.equal(await p.getByRole("button", { name: "重新报名", exact: true }).count(), 1);
 });

@@ -35,7 +35,7 @@
   ```ts
   assert.deepEqual(writes, [{ method: "POST", path: "/api/events/event%3A1/registration",
     body: { answers: { targetAttendees: "Local answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
-  assert.deepEqual(readsAfterSave.sort(), ["/api/events/event%3A1", "/api/events/event%3A1/registration"]);
+  assert.deepEqual(readsAfterSave.sort(), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   ```
 
 - [x] 纯函数先红后绿：答案改变不改变问卷键，hash／version／问题内容改变会改变；回执缺身份、错误账号／活动／状态均 false。
@@ -58,3 +58,11 @@
 最终全量复跑 **2304/2304，0 失败／取消／跳过，180.165 秒、exit 0**；类型复跑 exit 0。日志 `/tmp/orbit-r04-registration-full-corrected-20260913.log`、`/tmp/orbit-r04-registration-types-corrected-20260913.log`。本地源码与受控验证子项可提交；上方原生验收继续未勾选。
 
 提交检查纠正：同名 `orbit` 实际选中旧工作树，先前无变更结果不采用。指定 `/Users/xzhao/Projects/orbit` 重新分析后为 HIGH、六条报名读取流程，已告知并逐条阅读；既有十个改动函数 upstream 重核仍 LOW。AST 对照确认 PersonaPreview、RegistrationQuestion、useStyles 未改，新 helper 无图节点，未称零风险。后续全部 GitNexus 调用固定使用绝对仓库路径。
+
+### 后续独立修复：公开活动详情
+
+草稿子功能已提交 `a0dff6171`。在同一 R-04 读取边界内，只将 Screen 的详情 GET 改用现有 `publicEventDetailPath`，沿用原公开 DTO 和报名权限；不回退旧私有接口，不替代问卷。根索引刷新 257.6 秒、exit 0；指定绝对仓库路径检查 Screen、fixture 和测试 open/reply，风险 LOW（Screen 无已识别直接调用者，测试 helper 仅本文件）。
+
+基线 32/32（10.923 秒）。有效红测 5 失败／1 通过，均捕获初次或保存／取消回读走旧路径；错误页用例先误找服务端英文原文，修正为实际错误区后重新取得路径红测，不改生产文案。两行生产修复后 35/35（10.454 秒）、类型 exit 0；全量 2307/2307、0 失败／取消／跳过、177.053 秒、exit 0。完整回归包含六项同步检查。日志 `/tmp/orbit-r04-public-detail-red-valid-20260913.log`、`/tmp/orbit-r04-public-detail-green-20260913.log`、`/tmp/orbit-r04-public-detail-types-20260913.log`、`/tmp/orbit-r04-public-detail-full-20260913.log`。
+
+原生公开 GET 200、旧私有 GET 不再出现；问卷仍 500，页面却显示已有问卷，故不算新鲜读取成功。后续单独补过期数据／提交边界，完整 R-04 仍开放；证据见连通性记录 12.3。

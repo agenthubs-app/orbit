@@ -13,7 +13,7 @@ import {
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
-  eventDetailPath,
+  publicEventDetailPath,
   eventRegistrationCancelPath,
   eventRegistrationInterviewPath,
   eventRegistrationPersonaPath,
@@ -77,7 +77,7 @@ export function EventRegistrationScreen() {
   const request = useRef<AbortController | null>(null);
   const dirty = useRef(false);
   const editRevision = useRef(0);
-  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false, { scopeKey });
+  const eventState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey });
   const registrationState = useApiResource<unknown>(
     `${eventRegistrationPath(eventId)}?language=zh`,
     () => false,
