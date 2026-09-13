@@ -684,6 +684,8 @@ Mobile now has a lightweight relationship inbox backed by:
 - `POST /api/relationship-signals/:id/confirm`
 - `GET /api/notifications`
 - `POST /api/notifications/:id/state` (when the fresh list advertises stored interaction states)
+- `GET /api/notifications/deliveries/:id`
+- `PATCH /api/agent/signals/:id` (existing delivery actions, not message reads)
 - `GET /api/ai/proactive-turns`
 
 It opens relationship threads, shows source context, renders reminders and
@@ -717,6 +719,21 @@ shared response and supply valid destinations for older reminders. The current
 Simulator list exposes storage support but its visible reminders have no usable
 App destination. Real read/ignore writes, deleted/forbidden target feedback,
 device push and Web/App readback remain unverified. See verification section 18.
+
+Delivery details now verify that the returned delivery, target and payload IDs
+match the requested route. Existing acknowledge/snooze/dismiss actions reject
+non-2xx or mismatched signal receipts, prevent concurrent submissions and stop
+using the old delivery after refresh. Refresh cancels its old GET/PATCH before
+late responses can affect the current account. The existing 24-hour snooze and
+inbox-only destination stay unchanged; acknowledging does not complete a task.
+
+The 2026-09-13 22:15 Simulator delivery probe returned HTTP 500: the API process
+lacks `ORBIT_PUSH_TOKEN_KEY` while the device database is configured. The
+delivery factory initializes the device service even for a detail GET. The API
+owner must restore the appropriate vault configuration or review that read-side
+dependency. No key was generated or replaced. Valid delivery reads, action
+persistence, device push and cross-client results remain blocked/unverified;
+only App error handling and controlled action tests passed. See section 19.
 
 Remaining backend/product gaps before full web chat parity:
 

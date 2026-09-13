@@ -25,6 +25,7 @@ const state = window.fixture = {
   conversation() { return { conversationId: state.conversationId, contactId: "contact:one", participantName: state.actor, organization: "Example", subject: "会话主题", preview: "已有消息", unreadCount: 2, lastCorrespondenceAt: "2026-09-13T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }; },
   thread(body = "已有消息") { return { conversationId: state.conversationId, subject: "会话主题", summary: "", sourceContextLabels: [], messages: [{ messageId: "message:one", senderRole: "contact", senderName: state.actor, body, occurredAt: "2026-09-13T00:00:00Z" }] }; },
   data(path) {
+    if (path.includes("/notifications/deliveries/") && state.delivery !== undefined) return state.delivery;
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
     if (path === "/api/notifications") return state.notifications !== undefined ? state.notifications : { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
     if (path.includes("relationship-signals")) return { signals: [] };
@@ -289,4 +290,98 @@ for (const notifications of [null, {}, { state: "pending", reminders: [], notifi
   assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 0);
   assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
+});
+
+const delivery = { deliveryId: "delivery:one", signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: "delivery:one" }, data: { deliveryId: "delivery:one" }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
+const signalReceipt = { signal: { signalId: "signal:one", status: "acknowledged", lastObservedAt: "2026-09-13T01:00:00Z" } };
+
+for (const [label, status, feedback] of [["查看建议", "acknowledged", "已记录为查看建议。"], ["稍后", "snoozed", "已稍后提醒。"], ["忽略", "dismissed", "已忽略这条建议。"]] as const) test(`delivery action ${status} is single-flight and requires a matching receipt`, async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  assert.deepEqual(await writes(p), []);
+  await p.evaluate(label => { const fn = (window as any).fixture.presses[label]; fn(); fn(); }, label); await settle(p);
+  const sent = await writes(p);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].method, "PATCH"); assert.equal(sent[0].path, "/api/agent/signals/signal%3Aone"); assert.equal(sent[0].body.status, status);
+  if (status === "snoozed") assert.ok(Math.abs(Date.parse(sent[0].body.snoozedUntil) - Date.now() - 86_400_000) < 60_000);
+  else assert.deepEqual(sent[0].body, { status });
+  assert.equal(await p.getByText(feedback, { exact: true }).count(), 0);
+  await p.evaluate(({ status, until }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), 200,
+    { signal: { signalId: "signal:one", status, lastObservedAt: "2026-09-13T01:00:00Z", ...(until ? { snoozedUntil: until } : {}) } }); }, { status, until: sent[0].body.snoozedUntil }); await settle(p);
+  assert.equal(await p.getByText(feedback, { exact: true }).count(), 1);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+for (const [status, receipt] of [[503, signalReceipt], [200, null], [200, {}],
+  [200, { signal: { ...signalReceipt.signal, signalId: "signal:other" } }],
+  [200, { signal: { ...signalReceipt.signal, status: "dismissed" } }],
+  [200, { signal: { ...signalReceipt.signal, lastObservedAt: "invalid" } }],
+  [200, { signal: { signalId: "signal:one", status: "acknowledged" } }],
+] as const) test(`delivery rejects an unconfirmed signal receipt: ${status} ${JSON.stringify(receipt)}`, async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  await p.evaluate(({ status, receipt }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), status, receipt); }, { status, receipt }); await settle(p);
+  assert.equal(await p.getByText("已记录为查看建议。", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("alert").count(), 1);
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).isEnabled(), true);
+});
+
+test("delivery snooze rejects a receipt for a different reminder time", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "稍后", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), 200,
+    { signal: { signalId: "signal:one", status: "snoozed", lastObservedAt: "2026-09-13T01:00:00Z", snoozedUntil: "2026-09-20T00:00:00Z" } }); }); await settle(p);
+  assert.equal(await p.getByText("已稍后提醒。", { exact: true }).count(), 0); assert.equal(await p.getByRole("alert").count(), 1);
+});
+
+for (const invalid of [null, {}, { ...delivery, deliveryId: "delivery:other" }, { ...delivery, target: { kind: "task", deliveryId: "delivery:one" } }, { ...delivery, data: { deliveryId: "delivery:other" } }]) test(`delivery identity must match the requested route before any action: ${JSON.stringify(invalid)}`, async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery: invalid });
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /提醒.*无法/u);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("delivery refresh revokes old actions immediately and failed reads do not restore them", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction = s.presses["查看建议"]; s.holdReads = true; s.refresh(); s.oldAction(); }); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path.includes("/notifications/deliveries/")));
+  assert.ok(index >= 4, "refresh must issue another delivery GET");
+  await p.evaluate(index => (window as any).fixture.reply(index, 503), index); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /提醒暂时打不开/u);
+});
+
+test("delivery refresh drops the old action receipt instead of reporting stale success", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "PATCH"); s.refresh(); }); await settle(p);
+  await p.evaluate(receipt => { const s = (window as any).fixture; s.reply(s.oldWrite, 200, receipt); }, signalReceipt); await settle(p);
+  assert.equal(await p.getByText("已记录为查看建议。", { exact: true }).count(), 0);
+});
+
+test("delivery HTTP failure cannot grant actions even with an otherwise valid success body", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery, holdReads: true });
+  await p.evaluate(delivery => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => s.reply(i, r.path.includes("/notifications/deliveries/") ? 503 : 200, r.path.includes("/notifications/deliveries/") ? delivery : undefined)); }, delivery); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /提醒暂时打不开/u);
+});
+
+test("delivery refresh cancels an in-flight action before its late 401 can expire the current account", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "PATCH"); s.refresh(); }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 401); }); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+});
+
+test("delivery clears an earlier success before reporting the next failed action", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  await p.evaluate(receipt => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), 200, receipt); }, signalReceipt); await settle(p);
+  await p.getByRole("button", { name: "忽略", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByText("已记录为查看建议。", { exact: true }).count(), 0);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), 503); }); await settle(p);
+  assert.equal(await p.getByRole("alert").count(), 1);
+  assert.equal(await p.getByText("已忽略这条建议。", { exact: true }).count(), 0);
 });

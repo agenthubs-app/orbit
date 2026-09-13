@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import type { NotificationDeliveryContract } from "../../api/contract/notifications";
 import {
   ORBIT_API_ENDPOINTS,
   agentSignalPath,
@@ -57,7 +58,7 @@ import {
 } from "../../view-models/relationship-inbox";
 
 type InboxSection = "alerts" | "threads";
-type ClientGet = (endpoint: string) => Promise<{
+type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<{
   data?: unknown;
   error?: { message: string };
   success: boolean;
@@ -69,10 +70,11 @@ type ClientPost = (endpoint: string, body: unknown) => Promise<{
   success: boolean;
   status?: number;
 }>;
-type ClientPatch = (endpoint: string, body: unknown) => Promise<{
+type ClientPatch = (endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => Promise<{
   data?: unknown;
   error?: { message: string };
   success: boolean;
+  status?: number;
 }>;
 
 function useInboxIdentity(routeKey: string) {
@@ -98,21 +100,24 @@ function useInboxRequests(scopeKey: string) {
     };
   }, []);
   const isCurrent = useCallback(() => active.current, []);
-  const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown): ReturnType<ClientGet> => {
+  const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown, signal?: AbortSignal): ReturnType<ClientGet> => {
     const inactive = { success: false, error: { message: "这次操作已失效，请返回后重试。" } };
-    if (!active.current) return inactive;
+    if (!active.current || signal?.aborted) return inactive;
     const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
     controllers.current.add(controller);
     try {
       const result = await client[method]<unknown>(endpoint, { body, signal: controller.signal });
       return active.current && !controller.signal.aborted ? result : inactive;
     } finally {
+      signal?.removeEventListener("abort", abort);
       controllers.current.delete(controller);
     }
   }, [client]);
-  const clientGet = useCallback((endpoint: string) => request("get", endpoint), [request]);
+  const clientGet = useCallback((endpoint: string, options?: { signal?: AbortSignal }) => request("get", endpoint, undefined, options?.signal), [request]);
   const clientPost = useCallback((endpoint: string, body: unknown) => request("post", endpoint, body), [request]);
-  const clientPatch = useCallback((endpoint: string, body: unknown) => request("patch", endpoint, body), [request]);
+  const clientPatch = useCallback((endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => request("patch", endpoint, body, options?.signal), [request]);
   return { clientGet, clientPost, clientPatch, isCurrent };
 }
 
@@ -132,9 +137,11 @@ interface DeliveryView {
   title: string;
 }
 
-function notificationDeliveryToView(value: unknown): DeliveryView | null {
+function notificationDeliveryToView(value: unknown, deliveryId: string): DeliveryView | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
+  const record = value as Partial<NotificationDeliveryContract>;
+  if (record.deliveryId !== deliveryId || record.data?.deliveryId !== deliveryId
+    || record.target?.deliveryId !== deliveryId || record.target?.kind !== "inbox") return null;
   const title = typeof record.title === "string" ? record.title : "Orbit 提醒";
   const body = typeof record.body === "string" ? record.body : "你有一条待处理提醒。";
   const rawSignalId = typeof record.signalId === "string" ? record.signalId : "";
@@ -190,11 +197,15 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   const { colors } = useOrbitTheme();
   const router = useRouter();
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
+  const [deliveryAttempt, setDeliveryAttempt] = useState(0);
+  const currentDelivery = useRef<DeliveryView | null>(null);
+  const deliveryController = useRef<AbortController | null>(null);
+  const getCurrentDelivery = useCallback(() => isCurrent() ? currentDelivery.current : null, [isCurrent]);
   const [deliveryState, setDeliveryState] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
     | { kind: "failure"; message: string }
-    | { data: DeliveryView; kind: "success" }
+    | { data: DeliveryView; kind: "success"; signal: AbortSignal }
   >({ kind: "idle" });
   const state = useApiResource<unknown>(
     relationshipInboxPath(null),
@@ -230,37 +241,49 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   const contentReady = state.kind === "success" || state.kind === "empty";
 
   useEffect(() => {
+    currentDelivery.current = null;
     if (!deliveryId) {
       setDeliveryState({ kind: "idle" });
       return;
     }
-    let active = true;
+    const controller = new AbortController();
+    deliveryController.current = controller;
     setDeliveryState({ kind: "loading" });
-    void clientGet(notificationDeliveryPath(deliveryId)).then((result) => {
-      if (!active) return;
-      if (!result.success) {
+    void clientGet(notificationDeliveryPath(deliveryId), { signal: controller.signal }).then((result) => {
+      if (controller.signal.aborted) return;
+      if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300) {
         setDeliveryState({
           kind: "failure",
-          message: result.error?.message ?? "这条提醒暂时无法读取。"
+          message: "这条提醒暂时无法读取。"
         });
         return;
       }
-      const view = notificationDeliveryToView(result.data);
+      const view = notificationDeliveryToView(result.data, deliveryId);
+      currentDelivery.current = view;
       setDeliveryState(
-        view ? { data: view, kind: "success" } : {
+        view ? { data: view, kind: "success", signal: controller.signal } : {
           kind: "failure",
           message: "提醒内容暂时无法识别。"
         }
       );
     }).catch(() => {
-      if (active) {
+      if (!controller.signal.aborted) {
         setDeliveryState({ kind: "failure", message: "这条提醒暂时无法读取。" });
       }
     });
     return () => {
-      active = false;
+      currentDelivery.current = null;
+      controller.abort();
     };
-  }, [clientGet, deliveryId]);
+  }, [clientGet, deliveryId, deliveryAttempt]);
+
+  function refreshDelivery() {
+    if (!isCurrent() || !deliveryId) return;
+    currentDelivery.current = null;
+    deliveryController.current?.abort();
+    setDeliveryState({ kind: "loading" });
+    setDeliveryAttempt(value => value + 1);
+  }
 
   useEffect(() => {
     if (seedContactId) {
@@ -275,6 +298,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
 
   function refreshAll() {
     if (!isCurrent()) return;
+    refreshDelivery();
     state.refresh();
     refreshNotifications();
     signalsState.refresh();
@@ -291,7 +315,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={
-            state.refreshing ||
+            state.refreshing || deliveryState.kind === "loading" ||
             notificationsState.refreshing ||
             signalsState.refreshing
           }
@@ -310,7 +334,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
         <ErrorState message={deliveryState.message} title="提醒暂时打不开" />
       ) : null}
       {deliveryState.kind === "success" ? (
-        <NotificationDeliveryCard clientPatch={clientPatch} view={deliveryState.data} />
+        <NotificationDeliveryCard clientPatch={clientPatch} getCurrentDelivery={getCurrentDelivery} signal={deliveryState.signal} view={deliveryState.data} />
       ) : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
@@ -487,27 +511,44 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
 
 function NotificationDeliveryCard({
   clientPatch,
+  getCurrentDelivery,
+  signal,
   view
 }: {
   clientPatch: ClientPatch;
+  getCurrentDelivery: () => DeliveryView | null;
+  signal: AbortSignal;
   view: DeliveryView;
 }) {
   const { styles } = useStyles();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [actionStatus, setActionStatus] = useState("");
+  const actionLock = useRef(false);
 
   async function updateSignal(status: "acknowledged" | "dismissed" | "snoozed") {
-    if (!view.signalId) return;
+    if (!view.signalId || actionLock.current || signal.aborted || getCurrentDelivery() !== view) return;
+    actionLock.current = true;
     setPendingAction(status);
     setActionError("");
-    const result = await clientPatch(agentSignalPath(view.signalId), {
-      status,
-      ...(status === "snoozed"
-        ? { snoozedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
-        : {})
-    });
-    if (result.success) {
+    setActionStatus("");
+    const snoozedUntil = status === "snoozed" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined;
+    try {
+      const result = await clientPatch(agentSignalPath(view.signalId), {
+        status, ...(snoozedUntil ? { snoozedUntil } : {})
+      }, { signal });
+      if (signal.aborted || getCurrentDelivery() !== view) return;
+      const data = result.data && typeof result.data === "object" && !Array.isArray(result.data)
+        ? result.data as Record<string, unknown> : null;
+      const receipt = data?.signal && typeof data.signal === "object" && !Array.isArray(data.signal)
+        ? data.signal as Record<string, unknown> : null;
+      if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
+        || receipt?.signalId !== view.signalId || receipt.status !== status
+        || typeof receipt.lastObservedAt !== "string" || !Number.isFinite(Date.parse(receipt.lastObservedAt))
+        || (snoozedUntil !== undefined && receipt.snoozedUntil !== snoozedUntil)) {
+        setActionError("提醒状态尚未确认，请重试。");
+        return;
+      }
       setActionStatus(
         status === "acknowledged"
           ? "已记录为查看建议。"
@@ -515,10 +556,12 @@ function NotificationDeliveryCard({
             ? "已稍后提醒。"
             : "已忽略这条建议。"
       );
-    } else {
-      setActionError(result.error?.message ?? "提醒状态暂时没有更新。");
+    } catch {
+      if (!signal.aborted && getCurrentDelivery() === view) setActionError("提醒状态尚未确认，请重试。");
+    } finally {
+      actionLock.current = false;
+      if (!signal.aborted && getCurrentDelivery() === view) setPendingAction(null);
     }
-    setPendingAction(null);
   }
 
   return (
@@ -558,7 +601,7 @@ function NotificationDeliveryCard({
         </View>
       ) : null}
       {actionStatus ? <Text style={styles.safetyText}>{actionStatus}</Text> : null}
-      {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
+      {actionError ? <Text accessibilityRole="alert" style={styles.errorText}>{actionError}</Text> : null}
     </DataCard>
   );
 }
