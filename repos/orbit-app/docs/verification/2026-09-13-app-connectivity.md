@@ -808,3 +808,53 @@ App `BusinessCardIngestStartScreen` 的 refresh 会同时读取 V2 与 legacy co
 下一责任方为 Web/API 与运行环境负责人，尚未声称接单：确认获准的已初始化环境，或评审并提供不隐式迁移的读取边界，再复验真实批次 GET／非空复核。现有进度／取消／重试的 App 保护保留；此前原生失败仍需精确失败请求及日志，不能仅凭这个风险判定其根因，也不把它重新归因于已恢复的缺失依赖。
 
 本次只更新三个 App 文档，不修改接口、配置、生成副本、已有视觉或根 Bridge。2546 项是上一功能的回归基线，本节未新增业务实现或执行双面测试；L1–L5 的真实双面 OCR、一次创建、实体相机及两端回读仍受阻／未执行。无新增 AI/OCR 费用，未运行迁移或真实业务写入。
+
+## 23. R-11：收件箱正文前后台恢复
+
+### 23.1 实施范围与检查点
+
+实施起点 `b8a152fa6`。22:52 曾先记录“源码和定向验证完成、全量与原生进行中、未提交”，没有提前宣布通过；22:55 已取得下述最终结果。生产修改仅 `RelationshipInboxScreen.tsx`，不改共享客户端、内容快照策略、Web/API、生成契约或根 Bridge。
+
+列表与会话仅在焦点／前台及既有身份作用域有效时读取，后台同步取消旧请求，快速 inactive→active 也重读；旧 401、预览、润色、提醒状态、线索确认和隐私回执不能更新新的前台状态。返回时重新确认内容与权限，不采用上一次前台或本地快照作为已确认内容。普通手动刷新继续保留原有内容／草稿行为。
+
+同一账号和目标的编辑组件保留挂载，服务端内容未确认时隐藏；新建输入和已编辑回复不会被返回后的服务端草稿覆盖，未编辑回复仍接收新的服务端草稿。暂停的写操作不自动重放，用户仍需明确重试。账号／Cookie／服务器／目标变化继续清空旧稿。已打开的隐私面板随有效详情重新读取。
+
+### 23.2 测试与失败记录
+
+新增 28 项实际私有路由交互，边界替身仅控制原生状态／焦点、身份、网络与快照；不调用真实写接口、模型或 OCR。三个原有页面测试夹具补焦点并改为给实际读取逻辑提供 HTTP 数据，保留原业务断言；刷新断言改查实际 GET 次数，不再依赖已不用的资源 hook 替身。
+
+| 检查 | 结果 | 日志 |
+| --- | --- | --- |
+| 初始 21 项 RED | 21 个预期失败，6.552 秒，exit 1 | `/tmp/orbit-r11-inbox-foreground-red-20260913.log` |
+| 第一轮新测试 | 20 通过、1 失败；测试误把 RNW 的 accessibilityState 当 aria-selected，改用实际面板和可用控件断言 | `/tmp/orbit-r11-inbox-foreground-green-20260913.log` |
+| 第一轮页面回归 | 87 通过、67 失败，26.726 秒，exit 1；三个旧夹具缺 useIsFocused，另有上述新测试断言问题；补齐焦点与真实读取输入后复跑 | `/tmp/orbit-r11-inbox-foreground-first-target-20260913.log` |
+| 第二轮页面回归 | 151 通过、3 失败；两个旧刷新计数改查实际 HTTP；另一个揭示隐藏容器仍保留列表内容，修正为未确认时移除列表，仅保留编辑组件 | `/tmp/orbit-r11-inbox-foreground-targeted-20260913.log` |
+| 追加五项边界 | 4 通过、1 个脏稿覆盖失败；新增已编辑标记，保留用户草稿 | `/tmp/orbit-r11-inbox-foreground-extra-red-20260913.log` |
+| 修正后四套页面回归 | 159/159，29.577 秒，exit 0 | `/tmp/orbit-r11-inbox-foreground-targeted-final-20260913.log` |
+| StrictMode 追加 RED | 两项都失败；effect 重放保留已中止控制器导致空白，setup 重新建立有效控制器 | `/tmp/orbit-r11-inbox-foreground-strict-red-20260913.log` |
+| 全部新增边界 GREEN | 28/28，8.421 秒，exit 0 | `/tmp/orbit-r11-inbox-foreground-green-final-20260913.log` |
+| 最终定向／契约回归 | 231/231，0 失败／取消／跳过，29.783 秒，exit 0 | `/tmp/orbit-r11-inbox-foreground-final-target-20260913.log` |
+| 类型检查 | exit 0 | `/tmp/orbit-r11-inbox-foreground-types-verified-20260913.log` |
+| 全量回归 | 2574/2574，0 失败／取消／跳过，172.904 秒，exit 0 | `/tmp/orbit-r11-inbox-foreground-full-20260913.log` |
+
+GitNexus 逐符号编辑前检查为 LOW 或未收录的 UNKNOWN；整体变更分析 HIGH，涉及列表和详情各六条既有读取流程，已提示风险。按单代理约定对照代码审查清单自审，不声称独立代理审查。除逐段 diff，还用 TypeScript AST 比较确认实际只改 15 个已有函数（包含嵌套动作）及新增本地 `useInboxResource`；工具列出的其他“touched”符号包含旧行号覆盖范围，不能当成实际改动数。两个路由入口、共享客户端／资源／快照、通知详情动作组件和样式函数本轮未改；提交前仍核对暂存范围。
+
+### 23.3 Simulator 只读复验与交接
+
+同一 iPhone 17 Pro / iOS 26.4 Simulator、浅色普通字号，当前账号和 `http://localhost:3000` 不变。API 源树仍为 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，既有服务进程未重启。22:52 收件箱三来源 GET 均 200，实际列表非空；通过系统 Home 进入桌面，再将同一 App 进程带回前台。之后点开已有会话，同样执行一次真实后台返回，没有输入、润色、预览、已读／忽略、隐私切换或推送注册操作。
+
+| 时间（JST） | 实际 GET 场景 | 状态 | 请求 ID |
+| --- | --- | --- | --- |
+| 22:53:41.422 | 列表恢复 `/api/chat/relationship-inbox` | 200 JSON | `25acda81-982a-42bb-a042-2bbac3397454` |
+| 22:53:41.712 | 列表恢复 `/api/relationship-signals/email-calendar` | 200 JSON | `2b26615b-109b-4946-b50a-a828dbcd3767` |
+| 22:53:41.716 | 既有本地提醒协调器 `/api/reminders` | 200 JSON | `ab0a43c8-6bf6-420b-aa7e-befc1bbce292` |
+| 22:53:41.720 | 列表恢复 `/api/notifications` | 200 JSON | `056750b6-a926-47c3-b965-b4acbd377f0b` |
+| 22:54:06.620 | 打开已有会话 `/api/chat/relationship-inbox` | 200 JSON | `7211a708-b793-41ff-8903-acb2a2f3a36e` |
+| 22:54:58.317 | 会话恢复 `/api/chat/relationship-inbox` | 200 JSON | `3c526798-2dc6-4cb9-811c-6ef80a02e596` |
+| 22:54:58.319 | 既有本地提醒协调器 `/api/reminders` | 200 JSON | `4b591262-dd72-44ab-a230-dae058862bd9` |
+
+已查看本地截图前缀 `/tmp/orbit-r11-inbox-foreground-native-` 的 list、background、list-resume、thread、thread-background、thread-resume 六张 `-20260913.png`；AX／截图／HTTP 元数据不入库。两个后台截图均为系统桌面，恢复截图分别保持列表和同一会话。详情样本显示 13 条无正文记录，空回复输入未改变；不能算作非空原生正文或原生输入保留验收。脱敏 HTTP 日志不记录 query 或业务原文，详情归属以实际导航和页面核对，不编造 query 日志证据。
+
+该时段 HTTP 记录没有业务写请求；额外的 `/api/reminders` 来自未修改的本地提醒协调器，不归入收件箱三来源或详情单次读取。其设备级调度状态未独立验收。后台旧正文隐藏、未发送稿保留、权限变化与迟到回执的细粒度时序由受控真实路由测试覆盖，最终原生截图不冒充这些全过程的证据。
+
+本次关闭 App 收件箱前后台恢复子步骤的源码、回归与上述 L1/L2/L5 只读范围。L3/L4 的真实已读／忽略与 Web 回读、真实权限撤销、有效投递配置、非空正文、实体推送及持续前台实时更新仍开放。完整 R-11/R-14 不关闭，仅提供 App 交接，不改根 Bridge、不称 API 负责人已接单。没有新增 AI/OCR 费用。

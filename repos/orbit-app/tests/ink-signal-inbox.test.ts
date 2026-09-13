@@ -15,7 +15,7 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 let revision = 0, uuid = 0; const listeners = new Set();
-const state = window.fixture = { width: 390, fontScale: 1, kind: "success", notificationsKind: "success", signalsKind: "success", hasHistory: false, detail: false, requests: [], navigation: [], refreshes: [], ...window.initialFixture,
+const state = window.fixture = { width: 390, fontScale: 1, kind: "success", notificationsKind: "success", signalsKind: "success", hasHistory: false, detail: false, requests: [], resourceReads: [], navigation: [], refreshes: [], ...window.initialFixture,
  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
@@ -25,9 +25,10 @@ const conversations = names.map((name, i) => ({ conversationId: "thread:" + i, c
 const reminders = [{ reminderId: "reminder:1", title: "周末产品交流会需要准备资料", organization: "星野社区", priority: "normal", dueAt: "2026-09-12T18:00:00+09:00" }, { reminderId: "reminder:2", title: "给程川发送项目介绍", organization: "山海科技", priority: "high", dueAt: "2026-09-13T18:00:00+09:00" }];
 const signal = { id: "signal:mail", displayName: "田中由纪", organization: "星野社区", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "对方希望先了解合作的范围与时间安排。", suggestedNextAction: "先核对邮件中的背景信息，再决定下一步。", occurredAt: "2026-09-11T10:24:00+09:00", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "邮件标题提到了上次交流的主题。" }] };
 export const useLocalSearchParams = () => { useFixture(); return state.detail ? { id: "thread:0" } : {}; };
+export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => state.hasHistory, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useApiResource = path => {
- useFixture(); const part = path.includes("notifications") ? "notifications" : path.includes("signals") ? "signals" : "inbox";
+ const part = path.includes("notifications") ? "notifications" : path.includes("signals") ? "signals" : "inbox";
  const kind = part === "inbox" ? state.kind : state[part + "Kind"];
  const items = state.long ? conversations.map(c => ({ ...c, participantName: c.participantName + "与跨国项目的合作负责人", subject: c.subject + "：确认项目的分工和下一次讨论安排", preview: "请核对全部事项，确认时间后再安排下一步，不要遗漏约定的合作范围。" })) : conversations;
  const data = part === "notifications" ? { reminders: kind === "empty" ? [] : reminders }
@@ -35,8 +36,17 @@ export const useApiResource = path => {
   : { inbox: { conversations: kind === "empty" ? [] : items }, selectedThread: state.detail ? { conversationId: "thread:0", subject: "周末产品交流会", summary: "", messages: [{ messageId: "message:0", senderRole: "contact", senderName: "林悦", body: "周末交流会安排在下午，请带上资料。", occurredAt: "2026-09-11T10:24:00+09:00" }] } : null, currentUser: { displayName: "我" }, draftReply: { body: "" }, sideEffects: effects };
  return { kind, data, error: { message: part === "notifications" ? "提醒读取失败，请重试。" : part === "signals" ? "关系线索读取失败，请重试。" : "消息读取失败，请重试。" }, refreshing: false, refresh() { state.refreshes.push(part); } };
 };
-const client = { async get(path) { state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } }; }, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: true, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false } }; }, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
-export const useOrbitApiClient = () => client;
+// The same presentation fixture now feeds the screen's real network resource.
+// Keep auxiliary/action requests separate from its initial content reads.
+const client = { async get(path) {
+ if (path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
+  state.resourceReads.push(path);
+  const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
+  return { success: resource.kind === "success" || resource.kind === "empty", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+ }
+ state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } };
+}, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: true, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false } }; }, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
+export const useOrbitApiClient = () => { useFixture(); return React.useMemo(() => ({ ...client }), [revision]); };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-style-actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const randomUUID = () => "inbox-style-" + (++uuid);
@@ -139,7 +149,7 @@ for (const kind of ["failure", "loading"]) test(`reminder ${kind} is not present
   assert.equal(await page.getByText("暂无提醒", { exact: true }).count(), 0);
   if (kind === "failure") {
     await page.getByRole("button", { name: "重试读取提醒", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["notifications"]);
+    assert.equal(await page.evaluate(() => (window as any).fixture.resourceReads.filter((path: string) => path === "/api/notifications").length), 2);
   }
   assert.deepEqual(await requests(page), []); await shot(page, `reminders-${kind}`);
 });
@@ -157,7 +167,7 @@ test("reminders and relationship signals keep real counts, local dismiss and exp
   const calls = await requests(page); assert.equal(calls.length, 1); assert.equal(calls[0].method, "POST");
   assert.equal(calls[0].path, "/api/relationship-signals/signal%3Amail/confirm");
   assert.deepEqual(calls[0].body, { actorLabel: "Orbit iOS" });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["signals"]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.resourceReads.filter((path: string) => path === "/api/relationship-signals/email-calendar").length), 2);
 });
 
 test("unavailable relationship signals do not claim the source is empty", async t => {

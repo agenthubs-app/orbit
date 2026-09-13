@@ -28,10 +28,10 @@ const state = window.fixture = { requests: [], navigation: [], detail: false, fa
   update(patch) { Object.assign(state, patch); emit(); }
 };
 export const useLocalSearchParams = () => { rerender(); return state.detail ? { id: "thread:wei" } : state.seed; };
+export const useIsFocused = () => true;
 export const usePathname = () => "/inbox";
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useApiResource = path => {
-  rerender();
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", dueAt: "2026-09-09T13:00:00+09:00" })) }
     : path.includes("signals") ? { signals: [] }
@@ -39,7 +39,13 @@ export const useApiResource = path => {
   return { kind: "success", data, refreshing: false, refresh() {} };
 };
 const client = {
-  async get() { return { success: false, error: { message: "暂时不可用" } }; },
+  async get(path) {
+    if (path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
+      const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
+      return { success: resource.kind === "success", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+    }
+    return { success: false, error: { message: "暂时不可用" } };
+  },
   async post(path, options) {
     state.requests.push({ path, body: options.body });
     if (state.hold) await new Promise(resolve => { state.release = resolve; });
@@ -48,7 +54,7 @@ const client = {
     return { success: true, data: { inboxItem: { ...conversations[0], participantName: draft.participantName, subject: draft.subject }, thread: { ...thread, subject: draft.subject, messages: [{ ...thread.messages[0], senderRole: "orbit_user", body: draft.body }] }, sideEffects: effects } };
   }
 };
-export const useOrbitApiClient = () => client;
+export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-test-actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const randomUUID = () => "inbox-test-" + (++uuid);

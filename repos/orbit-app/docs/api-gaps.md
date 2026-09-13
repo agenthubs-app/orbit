@@ -773,8 +773,20 @@ new network reads. Cached or previous counts cannot reappear after failure.
 The two sources still contribute independently, and IORBIT's unsent composer
 is not remounted by a badge refresh. This is not a realtime subscription:
 updates while continuously foregrounded still require an existing refresh or
-leaving/returning. Inbox content lifecycle, device registration and actual
-cross-client read-state writes remain separate. See verification section 20.
+leaving/returning. Device registration and actual cross-client read-state writes
+remain separate. See verification section 20.
+
+Inbox list/thread content now uses its own foreground/focus read lifetime too.
+It revokes pending reads and actions immediately on background, ignores old
+receipts, and requires fresh network content after returning. Same-account and
+same-target unsent drafts survive; changed server drafts cannot overwrite edited
+replies, while unedited replies accept the fresh draft. Interrupted preview,
+rewrite, reminder, signal and privacy writes are not automatically replayed.
+Disclosed privacy controls are re-read after the current detail is confirmed.
+Shared caches and API contracts are unchanged. Simulator list and existing
+thread resume GETs returned 200, but the thread sample had no displayable message
+bodies. Real permission revocation, read/ignore persistence, nonempty native
+messages and two-client readback remain unverified. See verification section 23.
 
 Only explicit, supported reminder `href` destinations are opened. Missing links,
 external URLs, encoded path separators and Web-only participant/query targets

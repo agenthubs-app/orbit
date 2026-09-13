@@ -53,6 +53,10 @@ function dataFor(path) {
 }
 export const useApiResource = path => { rerender(); return { kind: state.kind, data: dataFor(path), error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(method => [method, async (path, options) => {
+  if ((screen === "inbox" || screen === "inboxThread") && method === "get" && (path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals"))) {
+    if (state.kind === "loading") return new Promise(() => {});
+    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+  }
   state.requests.push({ method, path, body: options?.body });
   if (finalInsets) {
     if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
@@ -65,8 +69,9 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   }
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
-export const useOrbitApiClient = () => client;
+export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
 export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one" });
+export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });

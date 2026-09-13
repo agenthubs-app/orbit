@@ -14,22 +14,24 @@ const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import { onSessionExpired } from "./src/api/session-expiry";
-const listeners = new Set(); let revision = 0, uuid = 0;
+const listeners = new Set(); const nativeListeners = new Set(); let revision = 0, uuid = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined,
+  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active",
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
+  emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
   conversation() { return { conversationId: state.conversationId, contactId: "contact:one", participantName: state.actor, organization: "Example", subject: "会话主题", preview: "已有消息", unreadCount: 2, lastCorrespondenceAt: "2026-09-13T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }; },
   thread(body = "已有消息") { return { conversationId: state.conversationId, subject: "会话主题", summary: "", sourceContextLabels: [], messages: [{ messageId: "message:one", senderRole: "contact", senderName: state.actor, body, occurredAt: "2026-09-13T00:00:00Z" }] }; },
   data(path) {
     if (path.includes("/notifications/deliveries/") && state.delivery !== undefined) return state.delivery;
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
     if (path === "/api/notifications") return state.notifications !== undefined ? state.notifications : { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
-    if (path.includes("relationship-signals")) return { signals: [] };
-    return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: "" }, sideEffects: effects };
+    if (path.includes("relationship-signals")) return state.signals || { signals: [] };
+    if (path === "/api/chat/privacy") return { conversationId: state.conversationId, participantName: state.actor, organization: "Example", analysisOptIn: { enabled: state.allowPrivateAnalysis ?? true, status: state.allowPrivateAnalysis === false ? "opted_out" : "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], provenance: { sourceLabel: "对话记录" }, state: "success" };
+    return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: state.serverDraftReply || "" }, sideEffects: effects };
   },
   preview() { const r = state.requests.findLast(r => r.method === "POST"); return { inboxItem: { ...state.conversation(), participantName: r.body.participantName, subject: r.body.subject }, thread: { ...state.thread(r.body.body), subject: r.body.subject }, sideEffects: effects }; },
   reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
@@ -37,6 +39,8 @@ const state = window.fixture = {
 onSessionExpired(() => state.expiries++);
 window.fetch = (input, init) => { const url = new URL(String(input)); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
 export const useFixture = () => { observe(); return state; };
+export const useIsFocused = () => { observe(); return state.focused; };
+export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { observe(); return state.detail ? { id: state.conversationId } : state.seed; };
@@ -46,7 +50,7 @@ export const useRouter = () => ({ canGoBack: () => true, back() { state.navigati
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
-export const readSnapshot = async (_baseUrl, _actorId, path) => path === "/api/notifications" && state.cachedNotifications ? { result: { success: true, status: 200, data: state.cachedNotifications, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null;
+export const readSnapshot = async (_baseUrl, _actorId, path) => { const cached = path === "/api/notifications" ? state.cachedNotifications : state.cachedInbox; return cached ? { result: { success: true, status: 200, data: cached, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async () => {};
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
@@ -54,7 +58,7 @@ export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
@@ -62,6 +66,7 @@ test.before(async () => {
       plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-lifecycle" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
+export { AppState } from "fixture";
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
 export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <RealRefreshControl {...props} />; };
 ` : fixture, loader: "jsx", resolveDir: process.cwd() }));
@@ -384,4 +389,210 @@ test("delivery clears an earlier success before reporting the next failed action
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "PATCH"), 503); }); await settle(p);
   assert.equal(await p.getByRole("alert").count(), 1);
   assert.equal(await p.getByText("已忽略这条建议。", { exact: true }).count(), 0);
+});
+
+// Foreground regression: removing the screen's native revocation or reusing a
+// previous read lifetime would allow old content/actions or discard local input.
+for (const detail of [false, true]) {
+  test(`inbox foreground permits the committed ${detail ? "thread" : "list"} read after Strict Mode effect replay`, async t => {
+    const p = await open(t, { detail, strict: true });
+    assert.match(await p.locator("body").innerText(), /已有消息/u);
+    assert.deepEqual(await writes(p), []);
+  });
+
+  for (const patch of [{ focused: false }, { appState: "background" }, { appState: "inactive" }]) test(`inbox foreground waits while ${detail ? "thread" : "list"} is inactive ${JSON.stringify(patch)}`, async t => {
+    const p = await open(t, { detail, ...patch });
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 0);
+    assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
+  });
+
+  test(`inbox foreground revokes pending ${detail ? "thread" : "list"} GET synchronously and ignores its 401`, async t => {
+    const p = await open(t, { detail, holdReads: true });
+    const revoked = await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); const allAborted = s.requests.every((r: any) => r.signal?.aborted); s.requests.forEach((_r: any, i: number) => s.reply(i, 401)); return allAborted; });
+    assert.equal(revoked, true);
+    await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+    assert.deepEqual(await writes(p), []);
+  });
+
+  test(`inbox foreground rereads ${detail ? "thread" : "list"} after background without restoring unconfirmed content`, async t => {
+    const p = await open(t, { detail });
+    assert.match(await p.locator("body").innerText(), /已有消息/u);
+    await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
+    assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
+    await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+    const count = detail ? 1 : 3;
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
+    assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
+    await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
+    assert.match(await p.locator("body").innerText(), /已有消息/u);
+    assert.deepEqual(await writes(p), []);
+  });
+
+  test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
+    const p = await open(t, { detail });
+    await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+  });
+
+  test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
+    const p = await open(t, { detail });
+    await update(p, { focused: false });
+    assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
+    await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 3);
+    await update(p, { focused: true });
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.match(await p.locator("body").innerText(), /已有消息/u);
+  });
+}
+
+test("inbox foreground never authorizes a cached conversation while the network is unconfirmed", async t => {
+  const p = await open(t, { detail: true, holdReads: true, cachedInbox: { inbox: { conversations: [{ conversationId: "thread:one", participantName: "缓存联系人", subject: "缓存主题" }] }, selectedThread: { conversationId: "thread:one", subject: "缓存主题", messages: [] }, draftReply: { body: "缓存回复" } } });
+  assert.doesNotMatch(await p.locator("body").innerText(), /缓存联系人|缓存主题|缓存回复/u);
+  assert.equal(await p.getByRole("button", { name: "润色草稿", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("inbox foreground preserves an unsent composer and never replays an interrupted preview", async t => {
+  const p = await open(t); await preview(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldReceipt = s.preview(); s.oldAction = s.presses["正在准备"]; s.emit("background"); }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "不能进入另一个账号的正文");
+  assert.equal(await p.getByRole("textbox", { name: "主题", exact: true }).inputValue(), "需要保留的主题");
+  assert.equal(await p.getByRole("button", { name: "预览草稿", exact: true }).isEnabled(), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 200, s.oldReceipt); }); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  assert.equal(await p.getByRole("heading", { name: "草稿预览", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "不能进入另一个账号的正文");
+  await p.getByRole("button", { name: "预览草稿", exact: true }).click(); await settle(p);
+  assert.equal((await writes(p)).length, 2);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 200, s.preview()); }); await settle(p);
+  assert.equal(await p.getByRole("heading", { name: "草稿预览", exact: true }).count(), 1);
+});
+
+test("inbox foreground preserves reply input and makes an interrupted rewrite retryable without late overwrite", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("离开前未发送的回复");
+  await p.getByRole("button", { name: "润色草稿", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["润色草稿"]; s.emit("inactive"); }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "离开前未发送的回复");
+  assert.equal(await p.getByRole("button", { name: "润色草稿", exact: true }).isEnabled(), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 401); }); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "离开前未发送的回复");
+});
+
+test("inbox foreground rejects old conversation callbacks even after the next read succeeds", async t => {
+  const p = await open(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one，"))?.[1]; s.emit("background"); s.oldOpen(); }); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+test("inbox foreground cancels a reminder read action and requires current state after resume", async t => {
+  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
+  await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.holdReads = true; s.emit("background"); }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.reply(s.oldWrite, 200, { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" }); }); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+  assert.doesNotMatch(await p.locator("body").innerText(), /需要准备资料/u);
+  await p.evaluate(() => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (i > s.oldWrite && r.method === "GET") s.reply(i); }); }); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "搜索姓名、主题或内容", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "打开提醒：需要准备资料", exact: true }).isEnabled(), true);
+});
+
+test("inbox foreground invalidates a delivery action before a late 401 and rereads its detail", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" }, delivery });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  const revoked = await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "PATCH"); s.emit("background"); const aborted = s.requests[s.oldWrite].signal.aborted; s.reply(s.oldWrite, 401); return aborted; });
+  assert.equal(revoked, true); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.doesNotMatch(await p.locator("body").innerText(), /确认提醒内容/u);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.includes("/notifications/deliveries/")).length), 2);
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).isEnabled(), true);
+  assert.equal((await writes(p)).length, 1);
+});
+
+test("inbox foreground read failure keeps the reply draft recoverable without showing old messages", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("读取失败也要保留的回复");
+  await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 403); }); await settle(p);
+  assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
+  assert.match(await p.locator("body").innerText(), /暂不可用/u);
+  assert.deepEqual(await writes(p), []);
+  await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = false; s.refresh(); }); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "读取失败也要保留的回复");
+  assert.match(await p.locator("body").innerText(), /已有消息/u);
+});
+
+test("inbox foreground preserves a dirty reply when the reread contains a different server draft", async t => {
+  const p = await open(t, { detail: true, serverDraftReply: "原来的服务端草稿" });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("本机还没提交的回复");
+  await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.serverDraftReply = "另一端更新了草稿"; }); await settle(p);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "本机还没提交的回复");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("inbox foreground accepts a fresh server draft when the reply was never edited", async t => {
+  const p = await open(t, { detail: true, serverDraftReply: "原来的服务端草稿" });
+  await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.serverDraftReply = "另一端更新了草稿"; }); await settle(p);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "另一端更新了草稿");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("inbox foreground refreshes disclosed privacy controls and rejects its interrupted toggle", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("保留我的回复");
+  await p.getByRole("button", { name: "隐私设置", exact: true }).click(); await settle(p);
+  await p.getByRole("button", { name: "停止分析", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldPrivacy = s.data("/api/chat/privacy"); s.emit("background"); s.allowPrivateAnalysis = false; }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/chat/privacy").length), 2);
+  assert.equal(await p.getByRole("button", { name: "允许分析", exact: true }).isEnabled(), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 200, s.oldPrivacy); }); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "允许分析", exact: true }).isEnabled(), true);
+  assert.equal(await p.getByRole("button", { name: "停止分析", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "保留我的回复");
+  assert.equal((await writes(p)).length, 1);
+});
+
+test("inbox foreground revokes a relationship signal confirmation and rereads the current list", async t => {
+  const signal = { id: "signal:mail", displayName: "待核对联系人", organization: "Example", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "需要核对交流背景", suggestedNextAction: "确认来源", occurredAt: "2026-09-13T00:00:00Z", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "已有交流记录" }] };
+  const p = await open(t, { signals: { signals: [signal] } }); await alerts(p);
+  await p.getByRole("button", { name: "确认线索", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["确认线索"]; s.emit("background"); }); await settle(p);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "确认线索", exact: true }).isEnabled(), true);
+  await p.evaluate(signal => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 200, { confirmedSignal: signal, confirmedAt: "2026-09-13T00:00:00Z", externalActionExecuted: false, relationshipWriteExecuted: false }); }, signal); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  assert.equal(await p.getByText("线索已确认", { exact: true }).count(), 0);
+});
+
+test("inbox foreground clears the hidden draft when identity changes in the background", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("原账号的回复");
+  await p.evaluate(() => (window as any).fixture.emit("background")); await settle(p);
+  await update(p, { actor: "actor:two" });
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 1);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
+  assert.match(await p.locator("body").innerText(), /actor:two/u);
+  assert.doesNotMatch(await p.locator("body").innerText(), /actor:one/u);
 });

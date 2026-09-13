@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
-import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { NotificationDeliveryContract } from "../../api/contract/notifications";
+import type { ApiResult } from "../../api/types";
 import {
   ORBIT_API_ENDPOINTS,
   agentSignalPath,
@@ -30,8 +32,9 @@ import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
+import type { ApiResourceState } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
 import {
   buildRelationshipSignalConfirmRequest,
@@ -58,12 +61,7 @@ import {
 } from "../../view-models/relationship-inbox";
 
 type InboxSection = "alerts" | "threads";
-type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<{
-  data?: unknown;
-  error?: { message: string };
-  success: boolean;
-  status?: number;
-}>;
+type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
 type ClientPost = (endpoint: string, body: unknown) => Promise<{
   data?: unknown;
   error?: { message: string };
@@ -88,37 +86,88 @@ function useInboxIdentity(routeKey: string) {
 }
 
 function useInboxRequests(scopeKey: string) {
-  const client = useOrbitApiClient({ scopeKey });
-  const active = useRef(true);
-  const controllers = useRef(new Set<AbortController>());
+  const focused = useIsFocused();
+  const [foreground, setForeground] = useState(AppState.currentState === "active");
+  const [resumeIndex, setResumeIndex] = useState(0);
+  const nativeActive = useRef(foreground);
+  const scope = useMemo(() => ({ key: randomUUID(), ready: focused && foreground, controller: new AbortController() }),
+    [scopeKey, focused, foreground, resumeIndex]);
+  const latest = useRef(scope);
+  latest.current = scope;
+  const client = useOrbitApiClient({ scopeKey: scope.key });
   useEffect(() => {
-    active.current = true;
+    const listener = AppState.addEventListener("change", state => {
+      const active = state === "active";
+      // Revoke before React commits so a late 401 cannot expire this session.
+      if (!active) latest.current.controller.abort();
+      if (active && !nativeActive.current) setResumeIndex(value => value + 1);
+      nativeActive.current = active;
+      setForeground(active);
+    });
     return () => {
-      active.current = false;
-      controllers.current.forEach(controller => controller.abort());
-      controllers.current.clear();
+      listener.remove();
+      latest.current.controller.abort();
     };
   }, []);
-  const isCurrent = useCallback(() => active.current, []);
+  useEffect(() => {
+    // React may replay mount effects; that setup needs a new live controller.
+    if (scope.controller.signal.aborted) scope.controller = new AbortController();
+    return () => scope.controller.abort();
+  }, [scope]);
+  const isCurrent = useCallback(() => latest.current === scope && scope.ready && !scope.controller.signal.aborted, [scope]);
   const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown, signal?: AbortSignal): ReturnType<ClientGet> => {
-    const inactive = { success: false, error: { message: "这次操作已失效，请返回后重试。" } };
-    if (!active.current || signal?.aborted) return inactive;
+    const inactive: ApiResult<unknown> = { success: false, status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_INACTIVE_REQUEST", message: "这次操作已失效，请返回后重试。" } };
+    if (!isCurrent() || signal?.aborted) return inactive;
     const controller = new AbortController();
     const abort = () => controller.abort();
     signal?.addEventListener("abort", abort, { once: true });
-    controllers.current.add(controller);
+    scope.controller.signal.addEventListener("abort", abort, { once: true });
     try {
       const result = await client[method]<unknown>(endpoint, { body, signal: controller.signal });
-      return active.current && !controller.signal.aborted ? result : inactive;
+      return isCurrent() && !controller.signal.aborted ? result : inactive;
     } finally {
       signal?.removeEventListener("abort", abort);
-      controllers.current.delete(controller);
+      scope.controller.signal.removeEventListener("abort", abort);
     }
-  }, [client]);
+  }, [client, isCurrent, scope]);
   const clientGet = useCallback((endpoint: string, options?: { signal?: AbortSignal }) => request("get", endpoint, undefined, options?.signal), [request]);
   const clientPost = useCallback((endpoint: string, body: unknown) => request("post", endpoint, body), [request]);
   const clientPatch = useCallback((endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => request("patch", endpoint, body, options?.signal), [request]);
   return { clientGet, clientPost, clientPatch, isCurrent };
+}
+
+// Inbox permissions/content must be confirmed by this foreground lifetime.
+// Keep ordinary refresh behavior without changing other screens' cache policy.
+function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
+  clientGet: ClientGet, isCurrent: () => boolean, clearOnRefresh = false): ApiResourceState<unknown> {
+  const [attempt, setAttempt] = useState(0);
+  const pending = useRef<AbortController | null>(null);
+  const emptyRef = useRef(isEmpty);
+  emptyRef.current = isEmpty;
+  const [snapshot, setSnapshot] = useState<{ clientGet: ClientGet; state: RouteState<unknown>; refreshing: boolean } | null>(null);
+  const refresh = useCallback(() => {
+    if (!isCurrent()) return;
+    pending.current?.abort();
+    setSnapshot(previous => ({ clientGet, state: !clearOnRefresh && previous?.clientGet === clientGet ? previous.state : { kind: "loading" }, refreshing: true }));
+    setAttempt(value => value + 1);
+  }, [clearOnRefresh, clientGet, isCurrent]);
+  useEffect(() => {
+    if (!isCurrent()) return;
+    const controller = new AbortController();
+    pending.current = controller;
+    void clientGet(path, { signal: controller.signal }).then(received => {
+      if (!isCurrent() || controller.signal.aborted) return;
+      const result = received.success && (received.status < 200 || received.status >= 300)
+        ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } } : received;
+      setSnapshot({ clientGet, state: resultToRouteState(result, emptyRef.current), refreshing: false });
+    }).catch(() => {
+      if (!isCurrent() || controller.signal.aborted) return;
+      setSnapshot({ clientGet, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: "请求暂时无法完成，请稍后重试。" } }, refreshing: false });
+    });
+    return () => controller.abort();
+  }, [attempt, clientGet, isCurrent, path]);
+  return { ...(isCurrent() && snapshot?.clientGet === clientGet ? snapshot.state : { kind: "loading" as const }), refresh,
+    refreshing: isCurrent() && snapshot?.clientGet === clientGet ? snapshot.refreshing : false };
 }
 
 function firstParam(value: string | string[] | undefined): string {
@@ -207,15 +256,15 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
     | { kind: "failure"; message: string }
     | { data: DeliveryView; kind: "success"; signal: AbortSignal }
   >({ kind: "idle" });
-  const state = useApiResource<unknown>(
+  const state = useInboxResource(
     relationshipInboxPath(null),
     (data) => relationshipInboxToView(data).conversations.length === 0,
-    { scopeKey }
+    clientGet, isCurrent
   );
-  const notificationsState = useApiResource<unknown>(
+  const notificationsState = useInboxResource(
     ORBIT_API_ENDPOINTS.notifications,
     (data) => relationshipAlertsToView(data).alerts.length === 0,
-    { scopeKey, cachePolicy: "network-only" }
+    clientGet, isCurrent, true
   );
   const notificationsData = notificationsState.kind === "success" || notificationsState.kind === "empty"
     ? notificationsState.data : null;
@@ -228,10 +277,10 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
     currentNotifications.current = null;
     notificationsState.refresh();
   }
-  const signalsState = useApiResource<unknown>(
+  const signalsState = useInboxResource(
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
     (data) => relationshipSignalsToView(data).signals.length === 0,
-    { scopeKey }
+    clientGet, isCurrent
   );
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -239,9 +288,18 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   const [createdThread, setCreatedThread] =
     useState<RelationshipCreatedThreadView | null>(null);
   const contentReady = state.kind === "success" || state.kind === "empty";
+  const retainedContent = useRef<{ data: unknown } | null>(null);
+  if (contentReady) retainedContent.current = { data: state.data };
+  const currentContent = useRef(contentReady);
+  currentContent.current = contentReady;
+  const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
 
   useEffect(() => {
     currentDelivery.current = null;
+    if (!isCurrent()) {
+      setDeliveryState({ kind: "idle" });
+      return;
+    }
     if (!deliveryId) {
       setDeliveryState({ kind: "idle" });
       return;
@@ -250,7 +308,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
     deliveryController.current = controller;
     setDeliveryState({ kind: "loading" });
     void clientGet(notificationDeliveryPath(deliveryId), { signal: controller.signal }).then((result) => {
-      if (controller.signal.aborted) return;
+      if (!isCurrent() || controller.signal.aborted) return;
       if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300) {
         setDeliveryState({
           kind: "failure",
@@ -267,7 +325,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
         }
       );
     }).catch(() => {
-      if (!controller.signal.aborted) {
+      if (isCurrent() && !controller.signal.aborted) {
         setDeliveryState({ kind: "failure", message: "这条提醒暂时无法读取。" });
       }
     });
@@ -275,7 +333,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
       currentDelivery.current = null;
       controller.abort();
     };
-  }, [clientGet, deliveryId, deliveryAttempt]);
+  }, [clientGet, deliveryId, deliveryAttempt, isCurrent]);
 
   function refreshDelivery() {
     if (!isCurrent() || !deliveryId) return;
@@ -333,7 +391,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
       {deliveryState.kind === "failure" ? (
         <ErrorState message={deliveryState.message} title="提醒暂时打不开" />
       ) : null}
-      {deliveryState.kind === "success" ? (
+      {isCurrent() && deliveryState.kind === "success" ? (
         <NotificationDeliveryCard clientPatch={clientPatch} getCurrentDelivery={getCurrentDelivery} signal={deliveryState.signal} view={deliveryState.data} />
       ) : null}
       {state.kind === "loading" ? <LoadingState /> : null}
@@ -343,13 +401,16 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "success" || state.kind === "empty" ? (
+      {retainedContent.current ? (
+        <View style={!contentReady ? { display: "none" } : undefined}>
         <InboxContent
           clientGet={clientGet}
           clientPost={clientPost}
+          isCurrent={isContentCurrent}
+          contentReady={contentReady}
           getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
-          data={state.kind === "success" ? state.data : null}
+          data={retainedContent.current.data}
           notificationsData={notificationsData}
           notificationsError={
             notificationsState.kind === "failure" || notificationsState.kind === "offline"
@@ -385,6 +446,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
           setComposing={setComposing}
           composing={composing}
         />
+        </View>
       ) : null}
     </InboxLayout>
   );
@@ -401,16 +463,22 @@ export function RelationshipInboxThreadScreen() {
 
 function ScopedRelationshipInboxThreadScreen({ conversationId, scopeKey }: { conversationId: string; scopeKey: string }) {
   const { colors } = useOrbitTheme();
-  const { clientGet, clientPost } = useInboxRequests(scopeKey);
-  const state = useApiResource<unknown>(
+  const { clientGet, clientPost, isCurrent } = useInboxRequests(scopeKey);
+  const state = useInboxResource(
     relationshipInboxPath(conversationId),
     (data) => relationshipInboxToView(data).selected === null,
-    { scopeKey }
+    clientGet, isCurrent
   );
   const view =
     state.kind === "success" || state.kind === "empty"
       ? relationshipInboxToView(state.data)
       : null;
+  const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
+  if (view?.selected) retainedDetail.current = view.selected;
+  const contentReady = Boolean(view?.selected);
+  const currentContent = useRef(contentReady);
+  currentContent.current = contentReady;
+  const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
 
   return (
     <InboxLayout
@@ -433,12 +501,15 @@ function ScopedRelationshipInboxThreadScreen({ conversationId, scopeKey }: { con
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {conversationId && view?.selected ? (
+      {conversationId && retainedDetail.current ? (
+        <View style={!view?.selected ? { display: "none" } : undefined}>
         <ThreadDetail
           clientGet={clientGet}
           clientPost={clientPost}
-          detail={view.selected}
+          isCurrent={isContentCurrent}
+          detail={retainedDetail.current}
         />
+        </View>
       ) : null}
       {conversationId && state.kind === "empty" ? (
         <EmptyState
@@ -609,6 +680,8 @@ function NotificationDeliveryCard({
 function InboxContent({
   clientGet,
   clientPost,
+  isCurrent,
+  contentReady,
   getCurrentNotifications,
   composing,
   createdThread,
@@ -629,6 +702,8 @@ function InboxContent({
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  isCurrent: () => boolean;
+  contentReady: boolean;
   getCurrentNotifications: () => unknown;
   composing: boolean;
   createdThread: RelationshipCreatedThreadView | null;
@@ -666,9 +741,10 @@ function InboxContent({
   const alertsActive = useRef(false);
   alertsActive.current = activeSection === "alerts" && !composing && !createdThread;
   useEffect(() => () => { alertsActive.current = false; }, []);
+  useEffect(() => { notificationLock.current = false; setNotificationPending(null); setNotificationError(""); }, [isCurrent]);
 
   async function actOnAlert(id: string, state: "read" | "ignored") {
-    if (notificationLock.current || !alertsActive.current) return;
+    if (!isCurrent() || notificationLock.current || !alertsActive.current) return;
     const source = getCurrentNotifications();
     if (!source) return;
     const action = inboxNotificationActions(source).get(id);
@@ -693,7 +769,7 @@ function InboxContent({
     setNotificationPending(id);
     try {
       const result = await clientPost(`/api/notifications/${encodeURIComponent(id)}/state`, { state });
-      if (!alertsActive.current || getCurrentNotifications() !== source) return;
+      if (!isCurrent() || !alertsActive.current || getCurrentNotifications() !== source) return;
       if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
         || !inboxNotificationReceiptMatches(result.data, id, state)) {
         setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
@@ -702,10 +778,9 @@ function InboxContent({
       onRefreshNotifications();
       if (state === "read") onOpenNotificationTarget(action.href!);
     } catch {
-      if (alertsActive.current && getCurrentNotifications() === source) setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
+      if (isCurrent() && alertsActive.current && getCurrentNotifications() === source) setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
     } finally {
-      notificationLock.current = false;
-      setNotificationPending(null);
+      if (isCurrent()) { notificationLock.current = false; setNotificationPending(null); }
     }
   }
   const visibleAlerts = alertsView.alerts.filter(
@@ -754,6 +829,7 @@ function InboxContent({
       <NewThreadComposer
         clientPost={clientPost}
         clientGet={clientGet}
+        isCurrent={isCurrent}
         preview={createdThread}
         onEdit={() => {
           onSetCreatedThread(null);
@@ -768,6 +844,8 @@ function InboxContent({
       />
     );
   }
+
+  if (!contentReady) return null;
 
   return (
     <View style={styles.mailContent}>
@@ -796,6 +874,7 @@ function InboxContent({
           {signalCount > 0 || signalsError || signalsLoading ? (
             <RelationshipSignalsCard
               clientPost={clientPost}
+              isCurrent={isCurrent}
               error={signalsError}
               loading={signalsLoading}
               onConfirmed={onRefreshSignals}
@@ -832,12 +911,14 @@ function InboxContent({
 
 function RelationshipSignalsCard({
   clientPost,
+  isCurrent,
   error,
   loading,
   onConfirmed,
   view
 }: {
   clientPost: ClientPost;
+  isCurrent: () => boolean;
   error: string;
   loading: boolean;
   onConfirmed: () => void;
@@ -849,8 +930,10 @@ function RelationshipSignalsCard({
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmation, setConfirmation] =
     useState<RelationshipSignalConfirmView | null>(null);
+  useEffect(() => { setPendingSignalId(null); setActionError(null); setConfirmation(null); }, [isCurrent]);
 
   async function onConfirmSignal(id: string) {
+    if (!isCurrent()) return;
     const request = buildRelationshipSignalConfirmRequest(id);
 
     if (!request.success) {
@@ -863,6 +946,7 @@ function RelationshipSignalsCard({
 
     try {
       const result = await clientPost(request.request.endpoint, request.request.body);
+      if (!isCurrent()) return;
 
       if (!result.success) {
         setActionError(
@@ -877,11 +961,12 @@ function RelationshipSignalsCard({
       setConfirmation(relationshipSignalConfirmToView(result.data));
       onConfirmed();
     } catch (requestError) {
+      if (!isCurrent()) return;
       setActionError(
         relationshipInboxErrorText(requestError, "这条线索暂时确认不了。")
       );
     } finally {
-      setPendingSignalId(null);
+      if (isCurrent()) setPendingSignalId(null);
     }
   }
 
@@ -1193,11 +1278,13 @@ function ConversationList({
 function ThreadDetail({
   clientGet,
   clientPost,
+  isCurrent,
   detail,
   previewOnly = false
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
 }) {
@@ -1243,11 +1330,11 @@ function ThreadDetail({
         <Text style={styles.safetyText}>仅在本页预览，尚未保存或发送。</Text>
       ) : (
         <>
-          <ReplyComposer clientPost={clientPost} detail={detail} />
+          <ReplyComposer clientPost={clientPost} isCurrent={isCurrent} detail={detail} />
           <Pressable accessibilityRole="button" accessibilityLabel="隐私设置" accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
             <Text style={styles.threadPreview}>{showPrivacy ? "收起隐私设置" : "隐私设置"}</Text>
           </Pressable>
-          {showPrivacy ? <PrivacyControlsPanel clientGet={clientGet} clientPost={clientPost} detail={detail} /> : null}
+          {showPrivacy ? <PrivacyControlsPanel clientGet={clientGet} clientPost={clientPost} isCurrent={isCurrent} detail={detail} /> : null}
         </>
       )}
     </View>
@@ -1257,10 +1344,12 @@ function ThreadDetail({
 function PrivacyControlsPanel({
   clientGet,
   clientPost,
+  isCurrent,
   detail
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
 }) {
   const { styles } = useStyles();
@@ -1272,11 +1361,13 @@ function PrivacyControlsPanel({
   const [privacyToggling, setPrivacyToggling] = useState(false);
 
   async function loadPrivacyControls() {
+    if (!isCurrent()) return;
     setPrivacyLoading(true);
     setPrivacyError(null);
 
     try {
       const result = await clientGet(chatPrivacyControlsPath(detail.conversationId));
+      if (!isCurrent()) return;
 
       if (result.success) {
         setPrivacy(relationshipPrivacyControlsToView(result.data));
@@ -1289,21 +1380,24 @@ function PrivacyControlsPanel({
         );
       }
     } catch (requestError) {
+      if (!isCurrent()) return;
       setPrivacyError(
         relationshipInboxErrorText(requestError, "隐私控制暂时不可用。")
       );
     } finally {
-      setPrivacyLoading(false);
+      if (isCurrent()) setPrivacyLoading(false);
     }
   }
 
   useEffect(() => {
     setPrivacy(null);
+    setPrivacyToggling(false);
+    setPrivacyLoading(false);
     void loadPrivacyControls();
-  }, [detail.conversationId]);
+  }, [detail.conversationId, isCurrent]);
 
   async function toggleAnalysis() {
-    if (!privacy) {
+    if (!privacy || !isCurrent()) {
       return;
     }
 
@@ -1322,6 +1416,7 @@ function PrivacyControlsPanel({
 
     try {
       const result = await clientPost(request.request.endpoint, request.request.body);
+      if (!isCurrent()) return;
 
       if (result.success) {
         setPrivacy(relationshipPrivacyControlsToView(result.data));
@@ -1334,11 +1429,12 @@ function PrivacyControlsPanel({
         );
       }
     } catch (requestError) {
+      if (!isCurrent()) return;
       setPrivacyError(
         relationshipInboxErrorText(requestError, "隐私控制暂时更新不了。")
       );
     } finally {
-      setPrivacyToggling(false);
+      if (isCurrent()) setPrivacyToggling(false);
     }
   }
 
@@ -1393,20 +1489,25 @@ function PrivacyControlsPanel({
 
 function ReplyComposer({
   clientPost,
+  isCurrent,
   detail
 }: {
   clientPost: ClientPost;
+  isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
 }) {
   const { colors, styles } = useStyles();
   const [body, setBody] = useState(detail.draftReply);
+  const draftEdited = useRef(false);
   const [rewriteDraftView, setRewriteDraftView] =
     useState<RelationshipRewriteDraftView | null>(null);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   const [rewriting, setRewriting] = useState(false);
   const [staged, setStaged] = useState("");
+  useEffect(() => { setRewriting(false); setRewriteError(null); }, [isCurrent]);
 
   useEffect(() => {
+    if (draftEdited.current) return;
     setBody(detail.draftReply);
     setRewriteDraftView(null);
     setRewriteError(null);
@@ -1414,6 +1515,7 @@ function ReplyComposer({
   }, [detail.conversationId, detail.draftReply]);
 
   async function rewriteDraft() {
+    if (!isCurrent()) return;
     const request = buildRelationshipRewriteRequest({
       conversationId: detail.conversationId,
       organization: "",
@@ -1434,6 +1536,7 @@ function ReplyComposer({
         ORBIT_API_ENDPOINTS.chatAssistRewrite,
         request.request.body
       );
+      if (!isCurrent()) return;
 
       if (!result.success) {
         setRewriteError(
@@ -1453,13 +1556,15 @@ function ReplyComposer({
       }
 
       setBody(rewrite.body);
+      draftEdited.current = true;
       setRewriteDraftView(rewrite);
     } catch (requestError) {
+      if (!isCurrent()) return;
       setRewriteError(
         relationshipInboxErrorText(requestError, "这段草稿暂时润色不了。")
       );
     } finally {
-      setRewriting(false);
+      if (isCurrent()) setRewriting(false);
     }
   }
 
@@ -1486,6 +1591,7 @@ function ReplyComposer({
         accessibilityLabel="回复正文"
         multiline
         onChangeText={(value) => {
+          draftEdited.current = true;
           setBody(value);
           setRewriteDraftView(null);
         }}
@@ -1516,7 +1622,7 @@ function ReplyComposer({
           disabled={!body.trim()}
           icon="mail-unread-outline"
           label="预览回复"
-          onPress={() => setStaged(body.trim())}
+          onPress={() => { draftEdited.current = true; setStaged(body.trim()); }}
         />
       </View>
     </View>
@@ -1526,6 +1632,7 @@ function ReplyComposer({
 function NewThreadComposer({
   clientGet,
   clientPost,
+  isCurrent,
   preview,
   onEdit,
   onCancel,
@@ -1534,6 +1641,7 @@ function NewThreadComposer({
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  isCurrent: () => boolean;
   preview: RelationshipCreatedThreadView | null;
   onEdit: () => void;
   onCancel: () => void;
@@ -1547,6 +1655,7 @@ function NewThreadComposer({
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setBusy(false); setError(null); }, [isCurrent]);
 
   useEffect(() => {
     setParticipantName(seed.participantName);
@@ -1556,6 +1665,7 @@ function NewThreadComposer({
   }, [seed.contactId, seed.organization, seed.participantName]);
 
   async function createThread() {
+    if (!isCurrent()) return;
     const draft = buildRelationshipThreadDraftRequest({
       body,
       contactId: seed.contactId,
@@ -1574,6 +1684,7 @@ function NewThreadComposer({
 
     try {
       const result = await clientPost(draft.request.endpoint, draft.request.body);
+      if (!isCurrent()) return;
       if (result.success) {
         onCreated(createdRelationshipThreadToView(result.data));
       } else {
@@ -1585,11 +1696,12 @@ function NewThreadComposer({
         );
       }
     } catch (requestError) {
+      if (!isCurrent()) return;
       setError(
         relationshipInboxErrorText(requestError, "这段草稿暂时创建不了。")
       );
     } finally {
-      setBusy(false);
+      if (isCurrent()) setBusy(false);
     }
   }
 
@@ -1597,7 +1709,7 @@ function NewThreadComposer({
     return (
       <View style={styles.readingPane}>
         <Text style={styles.bodyText}>收件人：{preview.conversation.name}</Text>
-        <ThreadDetail clientGet={clientGet} clientPost={clientPost} detail={preview.detail} previewOnly />
+        <ThreadDetail clientGet={clientGet} clientPost={clientPost} isCurrent={isCurrent} detail={preview.detail} previewOnly />
         <ActionButton icon="pencil-outline" label="继续编辑" onPress={onEdit} variant="secondary" />
       </View>
     );
