@@ -220,7 +220,7 @@ test("HTTP evidence explicitly skips oversized or encoded responses and ignores 
     const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");const zlib=require("node:zlib");
     const server=http.createServer((req,res)=>{res.setHeader("content-type","application/json");let body=JSON.stringify({success:false,error:{code:"PRIVATE_CODE",message:"raw-provider-output private-person"}});
       if(req.url.endsWith("large"))body=JSON.stringify({success:true,data:{text:"private-person".repeat(20000)}});
-      if(req.url.endsWith("encoded")){res.setHeader("content-encoding","gzip");res.end(zlib.gzipSync(body));}else res.end(req.url.endsWith("invalid")?"not JSON private-person":body);});
+      if(req.url.endsWith("encoded")){res.setHeader("content-encoding","unknown-coding");res.end(zlib.gzipSync(body));}else res.end(req.url.endsWith("invalid")?"not JSON private-person":body);});
     server.listen(0,"127.0.0.1",async()=>{const base="http://127.0.0.1:"+server.address().port;for(const p of ["/api/ai/conversations/large","/api/ai/conversations/encoded","/api/ai/conversations/invalid","/api/ai/conversations/unknown","/api/account/me"]){await (await realFetch(base+p)).text();}server.close();});
   `);
   const output = child.stdout + child.stderr;
@@ -240,4 +240,21 @@ test("HTTP observation preserves a native end(null) call and its completion call
     server.listen(0,"127.0.0.1",async()=>{const r=await realFetch("http://127.0.0.1:"+server.address().port+"/api/ai/conversations");if(r.status!==204||await r.text()!=="")throw Error("RESPONSE_CHANGED");server.close();});
   `);
   assert.match(child.stdout, /NULL_END_CALLBACK/); assert.match(child.stdout, /"status":204/);
+});
+
+test("HTTP evidence decodes real API gzip within the limit without leaking text or accepting oversized expansion", async t => {
+  const file = workspace(t);
+  const child = await runChild(file, `
+    const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");const zlib=require("node:zlib");
+    const small=JSON.stringify({success:false,error:{code:"SERVICE_UNAVAILABLE",message:"deepseek planner output did not match the Orbit Agent schema.",context:{secret:"private-person"}}});
+    const large=JSON.stringify({success:true,data:{text:"private-person".repeat(20000)}});
+    const server=http.createServer((req,res)=>{res.setHeader("content-type","application/json");res.setHeader("content-encoding","gzip");res.end(req.url.endsWith("invalid")?"invalid compressed private-person":zlib.gzipSync(req.url.endsWith("large")?large:small));});
+    server.listen(0,"127.0.0.1",async()=>{const base="http://127.0.0.1:"+server.address().port;for(const suffix of ["small","large","invalid"]){const r=await realFetch(base+"/api/ai/conversations/"+suffix);try{const body=await r.text();if(body!==(suffix==="large"?large:small))throw Error("RESPONSE_CHANGED");}catch(e){if(suffix!=="invalid")throw e;}}server.close();});
+  `);
+  const output = child.stdout + child.stderr; assert.doesNotMatch(output, /private-person|planner output/);
+  const events = output.split("\n").filter(line => line.startsWith('{"orbitQa":')).map(line => JSON.parse(line).orbitQa).filter(item => item.event === "http");
+  assert.deepEqual(events.map(item => item.responseEvidence), [
+    { state: "parsed", envelopeSuccess: false, errorCode: "SERVICE_UNAVAILABLE", reason: "provider_schema_invalid" },
+    { state: "skipped_too_large" }, { state: "invalid_encoding" }
+  ]);
 });

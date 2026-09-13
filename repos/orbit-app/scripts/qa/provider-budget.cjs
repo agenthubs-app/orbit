@@ -5,6 +5,7 @@ const path = require("node:path");
 const { randomUUID, createHash } = require("node:crypto");
 const { AsyncLocalStorage } = require("node:async_hooks");
 const http = require("node:http");
+const { gunzipSync } = require("node:zlib");
 
 // QA-only ceiling; these conservative rates exceed the public Flash peak price
 // checked on 2026-09-13. Re-verify pricing/context limits before a later run.
@@ -124,9 +125,12 @@ function sanitizeRoute(raw) {
     ":id-" + createHash("sha256").update(part).digest("hex").slice(0, 8)).join("/");
 }
 
-function responseEvidence(body, tooLarge, encoded) {
+function responseEvidence(body, tooLarge, encoding) {
   if (tooLarge) return { state: "skipped_too_large" };
-  if (encoded) return { state: "skipped_encoded" };
+  if (encoding === "gzip") {
+    try { body = gunzipSync(body, { maxOutputLength: 128 * 1024 }); }
+    catch (error) { return { state: error.code === "ERR_BUFFER_TOO_LARGE" ? "skipped_too_large" : "invalid_encoding" }; }
+  } else if (encoding) return { state: "skipped_encoded" };
   let payload;
   try { payload = JSON.parse(body.toString("utf8")); }
   catch { return { state: "invalid_json" }; }
@@ -184,7 +188,7 @@ function installBudgetObservation(log) {
     }
     response.once("finish", () => log({ event: "http", requestId, method: request.method, route,
       status: response.statusCode, contentType: String(response.getHeader("content-type") ?? "").split(";")[0],
-      ...(collect ? { responseEvidence: responseEvidence(Buffer.concat(chunks), tooLarge, Boolean(response.getHeader("content-encoding"))) } : {}),
+      ...(collect ? { responseEvidence: responseEvidence(Buffer.concat(chunks), tooLarge, String(response.getHeader("content-encoding") ?? "").trim().toLowerCase()) } : {}),
       redirected: Boolean(response.getHeader("location")), at: new Date().toISOString() }));
     return requestContext.run(requestId, () => original.call(this, event, ...args));
   };

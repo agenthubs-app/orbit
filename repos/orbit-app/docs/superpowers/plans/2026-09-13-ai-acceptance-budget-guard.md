@@ -79,3 +79,9 @@
 补充验证：索引刷新 259.5 秒、exit 0；installBudgetObservation 为 LOW，仅 preload 一个直接调用者、0 个流程；测试 helper 为 LOW，仅本测试文件引用；新解析器／局部 observe 为 UNKNOWN。新增三项红测均因缺 evidence 失败，实现后 33/33。自审发现 Node 合法的 end(null) 路径会触发 Buffer.from(null)，新增红测复现后修复；本机 Next send-payload.js 也使用该调用，未忽略该兼容性。最终 34/34，1.358 秒、exit 0；类型 exit 0、同步 6/6，1.808 秒、exit 0。服务端 failure() 会用 provider 的具体错误文字覆盖通用目录文字，白名单同时覆盖已读的固定 schema 失败文字；其他消息仅记 unclassified，不打印原文。
 
 全量 2280/2280，184.223 秒、exit 0，0 失败／取消／跳过。日志 `/tmp/orbit-r00-response-evidence-red-20260913.log`、`/tmp/orbit-r00-response-null-red-20260913.log`、`/tmp/orbit-r00-response-evidence-final-20260913.log`、`/tmp/orbit-r00-response-evidence-typecheck-20260913.log`、`/tmp/orbit-r00-response-evidence-contracts-20260913.log`、`/tmp/orbit-r00-response-evidence-full-20260913.log`。未改变费用预留／结算逻辑、产品代码或 Web 文件。
+
+### gzip 运行兼容性补充
+
+观测提交 `fbab545e5` 后，只读预检发现真实 API 的 401 JSON 使用 gzip，按初版策略被明确标为 skipped_encoded，因此没有继续付费重试。仅补 Node 内置 gunzipSync，解压输出同样硬限 128 KiB；未知编码仍跳过，损坏编码记 invalid_encoding，压缩膨胀超限记 skipped_too_large。原响应仍由调用方正常读取，不改 Accept-Encoding 或 Web 压缩设置。
+
+编辑前 impact：installBudgetObservation LOW、仍只影响一个 preload；responseEvidence 在当前图未收录为 UNKNOWN，源码直接引用范围已核对，没有将该次检查说成重新建图。新增实际 gzip HTTP 用例先失败，再通过；完整费用／响应观测回归 35/35，1.487 秒、exit 0；类型与六项同步检查 exit 0。此次只有 QA gzip 分支与对应测试，采用这组定向验证；前段 2280 全量属于 gzip 补充前的版本，不冒充本次重新全量运行。日志 `/tmp/orbit-r00-response-gzip-red-20260913.log`、`/tmp/orbit-r00-response-gzip-green-20260913.log`、`/tmp/orbit-r00-response-gzip-types-20260913.log`、`/tmp/orbit-r00-response-gzip-contracts-20260913.log`。累计仍为 1 个真实模型请求、2893 microUSD，同一账本未重新初始化。

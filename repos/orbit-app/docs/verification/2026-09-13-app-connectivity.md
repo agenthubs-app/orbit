@@ -328,3 +328,5 @@ R-03 剩余：新用户资料完成／Google 回跳／两端写回尚未执行�
 upstream impact：观测函数 LOW，一个 preload 调用者、0 个流程；新解析器未收录为 UNKNOWN。三项缺证据红测与一个 end(null) 兼容性红测均复现后修复，最终 34/34；类型 exit 0、契约 6/6；全量 2280/2280，184.223 秒、exit 0，0 失败／取消／跳过。具体日志见[执行计划](../superpowers/plans/2026-09-13-ai-acceptance-budget-guard.md)。未运行新的付费重试，累计仍 2893 microUSD。
 
 API 源码范围另核：`repos/orbits` 最后涉及提交为 `8b38b4eb8`，当前 tree `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，无该目录 tracked diff。运行依赖已恢复但源文件没有改；App 的新增 QA 提交不冒充 API 业务修复版本。
+
+14:16，观测版本 `fbab545e5` 重启后只读检查发现实际 JSON 使用 gzip，证据状态为 skipped_encoded，未误标业务解析成功，也没有付费重试。随后仅补有 128 KiB 解压输出上限的 gzip 观测；未知编码、损坏或超限仍显式未解析，原始网络响应与 Web 设置不变。新增红绿用例与整个 QA 套件 35/35、类型和 6 项同步检查通过；此小补充没有重跑产品全量，2280 全量是此前观测版本的证据。费用账本仍为 2893 microUSD／1 次，重试尚未执行。
