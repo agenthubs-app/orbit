@@ -158,6 +158,38 @@ field review. QR camera scans only fill the QR text field; the user still
 submits the result through the existing contact-draft API and reviews the
 candidate before confirmation.
 
+## Two-Sided Business Cards and Batch Read Side Effects (2026-09-13)
+
+The existing batch protocols process one image per item. V2 manifest parsing
+projects only `fileName`, `mimeType`, `rawSize`, `seq`, and `clientDigest`; its
+repository creates one item per manifest entry and confirms one item into one
+contact. The shared contract/schema has one extraction and image reference per
+item, not a card group with front/back sources. Existing duplicate review and
+single-image review issues do not supply two-sided merging. App must not invent
+grouping fields, upload a second side as a second contact, or join OCR results
+locally as authoritative business data.
+
+B5 must define a single card identity, optional back side, per-field source and
+conflict review, one-contact confirmation/idempotency, duplicate handling, and
+image retention/access. Current V2 confirmation queues image cleanup and clears
+the derivative reference, so post-confirmation source-image access also needs an
+explicit policy. Publish the approved shared contract/schema before App adds
+the two-sided capture/review surface.
+
+Read-only QA is separately blocked by runtime initialization: authenticated V2
+collection/detail GET resolves `getConfiguredIngestV2`, whose first use starts
+database migrations before the handler reads data. The App batch start page
+automatically loads both V2 and legacy collections. Legacy reads also call an
+optional `prepareWrites`; with private-blob storage it runs migrations and can
+install a trigger. The local filesystem branch does not have that legacy
+preparation hook, but this does not make the combined start page read-only.
+
+No batch GET, upload, OCR, migration, trigger installation, or contact write was
+issued for this audit. API/operations must establish an approved initialized
+environment or a genuinely read-only route before live batch-read QA resumes;
+this finding is not proof of the cause of an earlier native load failure.
+See [R-07 evidence](verification/2026-09-13-app-connectivity.md#22-r-07双面名片契约与读取副作用).
+
 ## Contact Detail Status
 
 Mobile contact detail is backed by:

@@ -780,3 +780,31 @@ GitNexus 确认根发送 parser 的直接调用者为该路由 POST，并已人�
 4. 提供上述失败用例与同一 ID 的往返证据；源契约发布后，App 仅通过既有同步命令更新副本，再实现并验证选择／发送／历史。
 
 本次只更新 App 交接文档，不编造字段、不把联系人库塞入 prompt、不新增不能工作的 @ 控件、不改 Web/API 或根 Bridge。原有一般提问与已验续聊能力不受影响。R-06 的 L2–L5 业务验收保持受阻／未执行；前节的 2546 项通过是此前实现的基线，不是 @ 功能通过证明。没有新 AI/OCR 费用。
+
+## 22. R-07：双面名片契约与读取副作用
+
+核对版本：App `fe918f6f6`；Web/API 源树 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865` 不变。本节仅源码和 GitNexus 调用关系核对，未打开批次页、发名片相关 HTTP、访问业务数据库、上传图片或调用 OCR。
+
+### 22.1 B5 的实际缺口
+
+| 源码入口 | 已确认行为 |
+| --- | --- |
+| App `src/view-models/business-card-ingest.ts` 的 `creationAttempt` | 每个已准备图片生成一个 manifest 条目；没有同卡或正反面分组 |
+| Web `app/api/contact-drafts/business-card/batches/v2/handlers.ts` 的 `parseManifest` | 只投影 fileName、mimeType、rawSize、seq、clientDigest；擅加分组字段不会传给 repository |
+| Web `features/acquisition/business-card-ingest-v2/repository.ts` 的 `createBatch` | expected_items 为 manifest 长度，逐条生成独立 item ID；不能把第二面当成另一个独立 item 后宣称已合并 |
+| 共享 `business-card-batch` contract/schema | 单条目仅一个 extraction、imageDigest／derivative 引用与 confirmedContactId；已有 reviewIssues／重复确认分支不代表双面字段来源协议 |
+| 同 repository 的 `confirmItem` | 锁定并校验单个 item，调用一次 createContact，更新该条目；同时排队清理图片并清空 derivative 引用，没有同卡两面的合并确认／确认后原图访问协议 |
+
+因此 App 不能自行拼接 OCR 结果成为权威数据，也不新增只能上传两条独立名片的“双面”控件。B5 需先提供同卡稳定身份、正面必选／反面可选、每个字段的图片来源与冲突选择、一次联系人确认及重复／重试规则，以及原图可见阶段、过期和清理策略。保留单面与旧批次兼容，经批准发布共享类型和 Schema 后只走现有同步渠道接入。
+
+### 22.2 GET 的运行时写入边界
+
+V2 读取路径为 `createIngestV2CollectionHandlers.GET`（详情 GET 同理）→ `withAuthedRuntime` → `resolveRuntime` → `getConfiguredIngestV2` → 等待 `runtime.ready` → repository 读取。GitNexus 确认 `resolveRuntime` 调用配置工厂，配置工厂调用 `runBusinessCardIngestV2Migrations`；当前源码确认第一条配置请求立即建立异步 ready，而非只在 POST 启动迁移。
+
+迁移函数会提交含 advisory lock、`CREATE TABLE IF NOT EXISTS` 的 bootstrap；缺少对应版本时执行迁移 SQL 并写版本记录。即使 HTTP 方法是 GET，也不能在未知初始化状态下按“只读检查”调用。没有通过直接查询数据库、触发请求或假设进程缓存已就绪来绕过这个边界。
+
+App `BusinessCardIngestStartScreen` 的 refresh 会同时读取 V2 与 legacy collection，故只打开 `/contacts/new/batch2` 也可触发上述路径。旧版 `createTransactionalBusinessCardBatchService` 的所有操作（包含 list/get）先调用可选 prepare；配置工厂传入 `images.prepareWrites`。private-blob 分支最终到 `prepareV1CardImageJournal`，既执行 V2 迁移，也可安装 `orbit_records` 图片 journal trigger。文件系统图片分支未提供此 prepare；不能据此把所有旧版部署一概称作迁移路径，也不能把同时读取 V2 的页面视为安全探针。
+
+下一责任方为 Web/API 与运行环境负责人，尚未声称接单：确认获准的已初始化环境，或评审并提供不隐式迁移的读取边界，再复验真实批次 GET／非空复核。现有进度／取消／重试的 App 保护保留；此前原生失败仍需精确失败请求及日志，不能仅凭这个风险判定其根因，也不把它重新归因于已恢复的缺失依赖。
+
+本次只更新三个 App 文档，不修改接口、配置、生成副本、已有视觉或根 Bridge。2546 项是上一功能的回归基线，本节未新增业务实现或执行双面测试；L1–L5 的真实双面 OCR、一次创建、实体相机及两端回读仍受阻／未执行。无新增 AI/OCR 费用，未运行迁移或真实业务写入。
