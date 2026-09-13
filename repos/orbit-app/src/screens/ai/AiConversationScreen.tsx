@@ -328,9 +328,11 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (!owns()) return;
     const message = draftValue.current.trim();
     if (!message) return;
-    const sendPath = resolvedConversationId ? aiConversationPath(resolvedConversationId)
-      : isDraftConversation || isStoredAgentSession ? ORBIT_API_ENDPOINTS.conversations : path;
-    await submitRequest({ path: sendPath, message, revision: draftRevision.current, history: isStoredAgentSession && !resolvedConversationId ? conversationHistoryForRequest() : undefined });
+    const usesSessionHistory = isDraftConversation || isStoredAgentSession || Boolean(previousSession);
+    const history = previousSession ? conversationHistoryForRequest() : undefined;
+    const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
+      : resolvedConversationId ? aiConversationPath(resolvedConversationId) : path;
+    await submitRequest({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined });
   }
 
   useEffect(() => {

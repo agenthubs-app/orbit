@@ -288,3 +288,13 @@ R-03 剩余：新用户资料完成／Google 回跳／两端写回尚未执行�
 13:24 左右，同一 iPhone 17 Pro / iOS 26.4 Simulator 和现有会话打开 `orbit://ai/new`，实际显示“新会话”、空输入框与发送按钮；402×874 画面中输入框高 44，发送按钮 44×44，底边约 832.7，在屏内。服务日志对应 conversations、profile、events、tasks、contacts 五个 GET 均 200，没有读取虚构的 `/api/ai/conversations/new` 详情。未点击发送、编辑真实资料或切换账号；原生 UI 树仅保存在 `/tmp/orbit-r02-native-empty-20260913.json`，不提交原始内容。
 
 带初始文本的原设备深链、真实首页付费生成、跨端续聊和服务端 B3 幂等仍未验收。已有前端一次性意图不是服务端请求 ID／超时幂等；两类 POST 当前解析仍没有生成幂等字段。不能据此关闭 R-00、完整 R-02 或 R-14。
+
+## 10. R-02：每轮续聊携带已确认历史
+
+在显式发送提交 `eef661284` 基础上，只调整 `AiConversationScreen.sendMessage()` 的路径优先级及历史参数。只读 Web 证据：根 POST 接收 history，带 ID POST 不接收；原 App 在第一次回复后已有 resolvedConversationId，第二轮错误转到带 ID 路径。App 保留最近八条 user/assistant 消息，与 live runtime 的最终八条窗口一致；根 route 的十二条解析上限不是模型实际使用窗口。
+
+编辑前刷新根 GitNexus 索引成功（259.9 秒、exit 0），AiConversationScreen、对应 sendMessage、测试 open/fixture 的 upstream impact 均 LOW、0 个已识别直接调用者／流程。新红测明确捕获已保存会话和草稿第二轮路径错误／缺历史，首次失败后编辑重发的保护测试保持通过；修复后新增三项全部通过。保存仍用同一 session ID、自定义标题、置顶及完整保存消息，生成失败重试保持原冻结请求，较新未发送草稿不混入历史。
+
+验证：两文件原基线 104/104；新增红测 2 失败／1 通过（预期）；绿测 3/3，2.262 秒；行为回归加契约同步 113/113，65.255 秒；类型检查 exit 0；全量 2246/2246，189.429 秒、exit 0，0 失败／取消／跳过。日志与具体场景见[子计划](../superpowers/plans/2026-09-13-ai-session-continuation-history.md)。这批测试仅替换网络／设备边界，不发真实模型请求，累计付费验收仍为 0 次。
+
+未修改 Web、contract/schema 字典或权限；没有新增服务端幂等。实际模型、超时结果未知、Web/App 双向续聊及真实持久化回读仍是 R-00/R-02/R-14 独立未完成项。
