@@ -671,6 +671,30 @@ The event panel also prioritizes events whose title, venue, status, attendee
 line, or topic tags match the question, so a query about Kansai or Osaka business
 events brings those event cards ahead of unrelated activity cards.
 
+## Typed Contact Mentions in IORBIT
+
+R-06 remains blocked at the current conversation HTTP contract, not at the
+contact picker. On the verified 2026-09-13 source version, root conversation
+`readSendInput` forwards only conversation ID, history, locale, message/prompt
+and scenario; the ID route forwards an even smaller set. Neither accepts a
+selected contact reference. `OrbitAgentSendMessageInput` and shared
+`OrbitAiMessageContract` do not define typed contact mentions.
+
+The server already resolves the actor and constructs actor-scoped artifact
+reads, so this is not evidence that all contact tools are unavailable. Session
+message normalization also preserves arbitrary JSON fields; that alone does
+not define reference ownership, tool authorization or stable historical
+rendering. Sending an invented `contactIds` field would be discarded by the
+current send parser, and embedding names in prose cannot satisfy same-name
+disambiguation or revoked/deleted reference handling.
+
+The API owner must publish a typed reference request/response and history
+contract, validate each selected ID for the authenticated actor, and define
+deleted/forbidden and tool-unavailable outcomes before App enables the picker
+or transfers contact-specific analysis to this channel. No extra client actor,
+memory or permission field can be trusted. See verification section 21 for
+source anchors and the remaining acceptance gates.
+
 ## Relationship Inbox
 
 Mobile now has a lightweight relationship inbox backed by:

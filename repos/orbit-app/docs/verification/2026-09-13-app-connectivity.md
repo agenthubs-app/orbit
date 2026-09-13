@@ -756,3 +756,27 @@ GitNexus 编辑前风险 LOW，直接调用者为首页 `HomeInboxBadge` 和 IOR
 已查看 `/tmp/orbit-r11-badge-ai-drawer-20260913.png`、`/tmp/orbit-r11-badge-background-20260913.png`、`/tmp/orbit-r11-badge-ai-resume-20260913.png`，AX 和 HTTP 元数据仅留本地。原生此次没有输入文本；草稿保留结论来自实际路由的受控测试，不冒充原生文本输入验证。
 
 本次 L1/L2 网络读取与 L5 实际后台返回有证据。持续前台时没有新增实时订阅，仍通过现有刷新或离开／回来更新；收件箱正文的前后台处理、真实已读／忽略的 L3/L4、跨端权限撤销、有效投递与实体推送继续开放。仅提供 App 交接，未改 Web/API 或根 Bridge，未称对方已接单。完整 R-11/R-14 不关闭，没有新增 AI/OCR 费用。
+
+## 21. R-06：类型化联系人引用接口核对
+
+核对版本：App `84336a61d`；Web/API 源树 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`。本节仅静态源码与调用图检查，没有调用发送、模型、联系人写入或数据库。
+
+| 源码（相对 `repos/orbits`） | 当前行为与结论 |
+| --- | --- |
+| `app/api/ai/conversations/route.ts`，`readSendInput`／`POST` | 只转发 conversationId、history、locale、message/prompt、scenario；POST 将该输入交给服务，没有联系人引用解析 |
+| `app/api/ai/conversations/[id]/route.ts`，`readSendInput` | 只接收路径会话 ID、locale、message/prompt、scenario；不能作为 @ 引用的备用入口 |
+| `features/orbit-ai/conversation-contract.ts`，`OrbitAgentSendMessageInput` | 没有联系人引用字段；memory/outcomes 明确为服务端可信上下文，不能接受客户端伪造 |
+| `shared/contract/orbit-ai.ts`，`OrbitAiMessageContract` | 消息只定义 ID、角色、正文、时间和证据 ID，没有类型化联系人引用及回看协议 |
+| `features/orbit-ai/service-factory.ts`，`createOrbitAgentConversationServiceForActor` | 已通过服务器解析出的 actor 构造 artifact 读取服务；不能据此说所有联系人工具都不可用，也不能推出已验证任意客户端选择的联系人 |
+| `app/api/ai/conversations/sessions/handler.ts` 与 `features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts` 的 `normalizeMessage` | 保存由已认证 actor 隔离，消息会保留额外 JSON 字段，但没有定义引用有效性、权限撤销或历史展现的语义 |
+
+GitNexus 确认根发送 parser 的直接调用者为该路由 POST，并已人工核对完整发送分支。根据 parser 的明确字段投影，客户端自行增加 `contactIds`／`mentions` 会在发送服务前被丢弃；这是源码推断，没有为验证已知投影而发付费请求。
+
+下一责任方为 Web/API 会话与工具契约负责人，尚未声称接单。进入 App picker 实施前需要：
+
+1. 发布被正式接受的稳定联系人引用 DTO，覆盖发送、响应、session 保存／历史回看与旧 App 兼容。
+2. 每个 ID 按当前已认证 actor 验证；同名选择保持准确，删除、无权限和跨账号引用在调用工具前有明确结果。联系人页面可读不自动授予 Agent 工具权限。
+3. 明确工具不可用、真实空结果和读取失败的区别，以及联系人特定分析／邮件草稿进入 IORBIT 后如何保留上下文；不自动对外发送。
+4. 提供上述失败用例与同一 ID 的往返证据；源契约发布后，App 仅通过既有同步命令更新副本，再实现并验证选择／发送／历史。
+
+本次只更新 App 交接文档，不编造字段、不把联系人库塞入 prompt、不新增不能工作的 @ 控件、不改 Web/API 或根 Bridge。原有一般提问与已验续聊能力不受影响。R-06 的 L2–L5 业务验收保持受阻／未执行；前节的 2546 项通过是此前实现的基线，不是 @ 功能通过证明。没有新 AI/OCR 费用。
