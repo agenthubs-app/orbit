@@ -1,6 +1,6 @@
 # App 连通性执行记录：R-00 / R-01
 
-状态：进行中。已定位本地 API 依赖缺失造成的编译失败，尚未恢复环境或证明 AI 生成／保存可用；没有完成任何整项功能验收。
+状态：进行中。12:35 已按授权恢复本地 API 锁定依赖并重启，实际 Simulator 的首页资源与 AI 历史读取恢复；新回答生成／保存仍未验，没有完成任何整项功能验收。下文早间证据保留采集时状态，最新结果见 2.5。
 
 关联：[剩余功能计划](../superpowers/plans/2026-09-13-app-remaining-functionality-and-connectivity.md) R-00、R-01、R-14；原 APP-00、APP-04、APP-15。
 
@@ -96,6 +96,29 @@
 
 未关闭：原 App 失败发送的响应关联与最终 URL、同账号 Web 对照、真实生成／工具／保存／跨端回读，以及 R-02 显式发送与服务端幂等。受控 HTML 500 用例不能倒推原始请求一定返回 500；不能据此宣布 R-00 完成。
 
+### 2.5 授权后恢复本地依赖与原设备回读
+
+2026-09-13 12:32 JST，用户明确授权继续自行处理；本次据此执行此前提出的本地依赖恢复／必要重启方案。范围仅为 `repos/orbits` 现有锁文件，不升级、不改 API 业务代码、数据库、鉴权或部署。此前的等待授权状态至此结束。
+
+- 12:33–12:35：核实旧 Next 进程的 PID、命令与工作目录后结束该服务；将原 `node_modules` 移到 `/tmp/orbit-web-deps-restore.PiVj1w/node_modules`，保留可回滚备份，未删除。
+- `npm ci --ignore-scripts --no-audit --no-fund`：exit 0，安装 306 个包；16/16 声明运行依赖均能解析，包括早间缺失的六项。没有擅自执行依赖安装脚本；随后对 canvas、HEIC 转换模块加载、sharp 1×1 PNG 处理及 esbuild 转换作本地运行检查，四项通过。这不等于所有原生包／所有路由都已验收。
+- `package.json` SHA-256 仍为 `63676e44b156652d201735e16c14c1a89a968404ee327bdfec4fddaaac432675`，`package-lock.json` 仍为 `ecc94a6b254bcd9a5ff68cf48325f1aa00a168c0d78166c271d461081f6a1298`，前后相同；根仓库的 Web tracked diff 为空。Web 内另有旧独立 Git 工作树及既有差异，未重置、暂存或提交。
+- 同一地址启动 Next.js 16.2.9，监听 `127.0.0.1:3000`，新服务 PID 93130。仍使用当前本地 Node 25.8.1／npm 11.11.0，不当作生产 Node 22 的验证。启动日志 `/tmp/orbit-web-api-restored-20260913.log`，安装日志 `/tmp/orbit-web-deps-restore-20260913.log`，均不提交。
+- App 源码起点 `0908a196c7028670bfbe0f1b1904db99fc517f6a`；沿用同一 iPhone 17 Pro / iOS 26.4 Simulator、会话与 localhost 地址，未登录、切号、清缓存或改草稿。未采集运行中 JS bundle 哈希，API 未提供路由版本戳，仍不把源码 SHA 当运行产物哈希。
+
+12:36–12:38 的复验结果：
+
+| 场景 | 触发与证据 | 本次分层结果／限制 |
+| --- | --- | --- |
+| CON-R01 健康 | Mac GET `/api/health`，200、`application/json`、success=true，无跳转 | L1／公开健康协议通过；没有执行模型 |
+| CON-R02 首页 | 原设备打开 `orbit://home`；新服务记录 GET `/api/schedule-items`、`/api/tasks?status=open`、`/api/contacts` 各 200 | L1 及原设备已有会话的私有读取恢复；画面有 10 个待办、当日 0 日程，原先三个错误状态不再出现。未采集完整响应 schema／请求 ID，不能标为全模块 L2–L5 完成 |
+| CON-R03 AI 历史 | 原设备打开 `orbit://ai`；GET `/api/ai/conversations`、`/api/ai/conversations/sessions`、`/api/today?timeZone=Asia%2FTokyo` 各 200；实际画面有旧会话与待办 | AI 路由可编译并完成私有读取，不再出现此前缺包编译失败；新模型生成、工具执行、保存与跨端回读未执行 |
+| CON-R04 伴随读取 | 同次 App 导航产生 GET `/api/chat/relationship-inbox` 与 `/api/notifications`，均 200 | 只证明这些现有会话 GET 返回成功状态；未验证已读写入、目标导航或推送 |
+
+上述 App 请求的状态来自新启动服务日志，响应头／最终 URL／原始 envelope 未额外截获，不伪造 Content-Type、账号角色或请求关联 ID。没有读取或导出认证凭据。截图仅本地保留：`/tmp/orbit-r00-restored-start-20260913.png`、`/tmp/orbit-r00-restored-home-20260913.png`、`/tmp/orbit-r00-restored-ai-20260913.png`；已逐张查看，不提交个人画面或原始内容。
+
+本次仅恢复开发环境及只读连通性；未发送 AI/OCR、创建事项、报名或发信。R-00 新回答／工具／持久化和 Web 同账号对照仍开放，付费验收累计硬预算等待明确。早间 2202 项测试及类型检查属于此前代码基线，本环境恢复检查点没有改 App 代码，也不冒称重新执行了全量测试。
+
 ## 3. R-01：本轮匿名 HTTP 记录
 
 统一参数：Mac 发起，目标 `http://localhost:3000`，GET，`Accept: application/json`，不带 Cookie，`redirect: manual`，每次 10 秒超时。以下 11 项均在 `2026-09-13T00:10:23.617Z` 至 `00:10:24.657Z` 开始；全部 Content-Type 为 `application/json`，响应 URL 与请求相同，`redirected=false`，Location 和 `x-request-id` 均未提供。
@@ -147,12 +170,12 @@
 
 | ID | 已确认事实 | 责任端／下一动作 | 关闭所需证据 |
 | --- | --- | --- | --- |
-| CON-B01 | AI 会话导入链无法解析锁定的 @vercel/queue | 本地 Web/API 环境；待授权恢复现有 lockfile 依赖，或对应负责人处理 | 模块可解析，实际路由能编译；原场景 App 发送、工具、保存、重开回读通过 |
-| CON-B02 | 名片／信号导入链无法解析 heic-convert；另有 ingest v2 queue 缺失 | 同上；恢复后先只读非空批次／图片，再按授权做 OCR | 原生批次读取与协议通过；后续真实导入闭环另验 |
-| CON-B03 | 原生首页三个资源都显示非 JSON 错误文案，但缺对应响应元数据 | App/API 联合排查；先恢复环境，保留状态与原账号 | 分别记录 schedule/tasks/contacts 的实际响应并成功读取；不以单个健康结果代替 |
+| CON-B01 | 早间 AI 会话导入链缺少 @vercel/queue；12:35 已恢复解析，原设备会话与历史 GET 均 200 | 环境依赖阻塞解除；继续新生成／工具／保存验收，不把 GET 当作生成通过 | 原场景 App 发送、工具、保存、重开回读通过 |
+| CON-B02 | 早间 heic-convert／ingest v2 queue 缺失；锁定包已恢复 | 依赖解析通过；原生名片批次／图片业务仍待复验 | 原生批次读取与协议通过；后续真实导入闭环另验 |
+| CON-B03 | 早间首页三个资源显示非 JSON 错误；12:36 同设备三个 GET 均 200，非空待办恢复 | 可见首页读取故障已恢复；保留旧失败元数据缺口 | 原失败响应不能倒推；后续补完整协议及功能层验证 |
 | CON-B04 | Web 同账号对照、AI/OCR 调用预算、真实写对象未确定 | 需要用户提供／批准场景；不代表另一端已接单 | 环境、账号角色、对象、费用硬上限明确后执行并保留回读证据 |
 
-建议恢复操作只限本地 `repos/orbits` 已声明／已锁定依赖，必要时重启这一 Next 服务；不升级 package/lock、不改 API 业务源码、不改数据库／鉴权／provider、不部署。**这是待授权方案，本轮未执行。** 若安装发现锁文件冲突或新构建问题，先报告，不自行扩展到升级或重写接口。
+恢复操作已于 12:35 按授权完成，实际范围和回滚位置见 2.5。未升级 package/lock、未改 API 业务源码、数据库／鉴权／provider 或部署；后续新问题仍逐一诊断，不自行扩展到升级或重写接口。
 
 R-00 关闭之前还须捕获同环境实际失败／成功响应，并以真实新回复、工具结果、保存确认和两端回读完成验证。依赖安装成功不是功能完成。R-01 和其余 R-02–R-14 均保持开放。
 
