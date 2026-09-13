@@ -517,6 +517,39 @@ external send routes, or persisted reminder writes. Full parity with the web
 followups workspace still needs explicit confirmation before sending anything
 outside the app.
 
+## Task Dates And Personal Schedule Editing (2026-09-13)
+
+The task detail settings now edit `plannedDate` and `dueAt` through the existing
+`PATCH /api/tasks/:id` update action, with `expectedUpdatedAt` and a stable
+retry `idempotencyKey`. Dates are saved separately from unsaved title/notes.
+Failures retain input; a newer revision requires explicit draft discard.
+Only a 2xx response with the matching task/account/owner, a valid version, and
+the requested date values acknowledges the save. It then rereads the detail,
+activities, and reminders; starting those reads is not proof of persistence.
+
+The current server accepts a valid `YYYY-MM-DD` planned date and a complete ISO
+datetime for `dueAt`; the PATCH parser rejects empty strings/null. The UI therefore
+does not clear existing dates or invent a midnight deadline when only an arranged
+day is known. Deadline date/time are paired and explicitly labelled Tokyo time.
+The global account/device timezone policy remains R-09 work.
+
+Remaining server/coordination gaps are explicit:
+
+- Task updates have no location field. Personal `schedule-items` currently exposes
+  GET only, without an App write contract for creation/editing.
+- Date updates do not reschedule existing reminder plans; the editor says so and
+  leaves reminders untouched. No notification or external calendar permission is
+  requested by date editing.
+- Clearing dates, reminder rescheduling, and location editing need agreed server
+  semantics. The App does not patch generated contracts or write storage directly.
+- Controlled route/HTTP tests cover input, versions, retries and scope isolation.
+  Simulator checks use an existing task read-only; actual task writes, home/list/
+  calendar readback, Web↔App persistence and physical-device acceptance remain open.
+
+See [the date-editing plan](superpowers/plans/2026-09-13-task-date-editing.md) and
+[R-08 connectivity evidence](verification/2026-09-13-app-connectivity.md#13-r-08待办日期与截止时间编辑)
+for the exact verified scope. This feature does not close the full R-08 task.
+
 ## Schedule Event Preview
 
 Mobile now supports `/schedule/events/:id` as a read-only schedule preview

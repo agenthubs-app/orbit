@@ -6,6 +6,8 @@ import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInp
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -17,6 +19,7 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
 import { taskActivitiesToView, taskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
+import { buildTaskDatePatch, taskDateDraftFromView, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -52,14 +55,19 @@ export function TaskDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const taskId = first(params.id);
   const router = useRouter();
-  const client = useOrbitApiClient();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.user?.id ?? "";
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  const scopeKey = JSON.stringify([server.baseUrl, actorId, taskId, ready]);
+  const client = useOrbitApiClient({ scopeKey });
   const detailPath = useMemo(() => taskPath(taskId), [taskId]);
   const activitiesPath = useMemo(() => taskActivitiesPath(taskId), [taskId]);
   const reminderResourcePath = useMemo(() => remindersPath("task", taskId), [taskId]);
-  const detailState = useApiResource<unknown>(detailPath, () => false);
-  const activitiesState = useApiResource<unknown>(activitiesPath, () => false);
-  const remindersState = useApiResource<unknown>(reminderResourcePath, () => false);
-  const detail = detailState.kind === "success" || detailState.kind === "empty" ? taskDetailToView(detailState.data) : null;
+  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
+  const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
+  const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
+  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? taskDetailToView(detailState.data) : null;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data).filter((item) => item.status === "scheduled")
@@ -67,6 +75,9 @@ export function TaskDetailScreen() {
   const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date()), []);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [dateDraft, setDateDraft] = useState(() => taskDateDraftFromView(null));
+  const dateDraftRef = useRef(dateDraft);
+  dateDraftRef.current = dateDraft;
   const [baseline, setBaseline] = useState<TaskDetailView | null>(null);
   const [latest, setLatest] = useState<TaskDetailView | null>(null);
   const latestRef = useRef(latest);
@@ -75,9 +86,18 @@ export function TaskDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
-  const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>() }), [client, taskId]);
+  const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>(), controller: new AbortController() }), [client, scopeKey]);
   const scopeRef = useRef(mutationScope);
   scopeRef.current = mutationScope;
+  const [editorScope, setEditorScope] = useState(mutationScope);
+  if (editorScope !== mutationScope) {
+    // Reset before the new scope is committed, including same-ID/same-version
+    // tasks from another account. An effect-only reset can expose the old form.
+    setEditorScope(mutationScope);
+    setBaseline(null); setLatest(null); setTitle(""); setNotes("");
+    setDateDraft(taskDateDraftFromView(null));
+    setMoreOpen(false); setSaving(false); setMutationError(null); setReminderMessage(null);
+  }
 
   useEffect(() => {
     mutationScope.active = true;
@@ -85,7 +105,7 @@ export function TaskDetailScreen() {
     setMutationError(null);
     setReminderMessage(null);
     setMoreOpen(false);
-    return () => { mutationScope.active = false; mutationScope.keys.clear(); };
+    return () => { mutationScope.active = false; mutationScope.controller.abort(); mutationScope.keys.clear(); };
   }, [mutationScope]);
 
   async function mutate(
@@ -93,9 +113,10 @@ export function TaskDetailScreen() {
     path: string,
     body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
     onSuccess: (data: unknown) => void,
+    accepts?: (data: unknown) => boolean,
   ) {
     const scope = mutationScope;
-    const isCurrent = () => scope.active && scopeRef.current === scope;
+    const isCurrent = () => ready && scope.active && scopeRef.current === scope;
     if (!isCurrent() || scope.busy) return;
     scope.busy = true;
     setSaving(true);
@@ -106,9 +127,13 @@ export function TaskDetailScreen() {
       const fingerprint = JSON.stringify([method, path, payload]);
       const key = scope.keys.get(fingerprint) ?? mutationKey();
       scope.keys.set(fingerprint, key);
-      const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key } });
+      const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key }, signal: scope.controller.signal });
       if (!isCurrent()) return;
       if (result.success) {
+        if (accepts && (result.status < 200 || result.status >= 300 || !accepts(result.data))) {
+          setMutationError("未能确认日期已保存，草稿已保留。请重试或重新读取待办。");
+          return;
+        }
         scope.keys.delete(fingerprint);
         onSuccess(result.data);
       } else setMutationError(result.error.message);
@@ -122,23 +147,61 @@ export function TaskDetailScreen() {
 
   useEffect(() => {
     if (!detail) return;
+    latestRef.current = detail;
     setLatest(detail);
     if (!baseline || baseline.id !== detail.id || (
-      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes
+      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes && buildTaskDatePatch(baseline, dateDraft).kind === "unchanged"
     )) {
       setBaseline(detail);
       setTitle(detail.title);
       setNotes(detail.notes);
+      dateDraftRef.current = taskDateDraftFromView(detail);
+      setDateDraft(dateDraftRef.current);
     }
     // Only a newly received revision may replace the editor. A successful
     // write can arrive before the GET resource refreshes its older snapshot.
-  }, [detail?.id, detail?.updatedAt]);
+  }, [detail?.id, detail?.updatedAt, mutationScope]);
   const staleDraft = !!baseline && !!latest && baseline.id === latest.id && baseline.updatedAt !== latest.updatedAt;
+  const displayedDate = (latest ?? detail)?.dueAt ?? (latest ?? detail)?.plannedDate;
 
   function refresh() {
     detailState.refresh();
     activitiesState.refresh();
     remindersState.refresh();
+  }
+
+  function discardDraft() {
+    if (!latest || saving) return;
+    setBaseline(latest); setTitle(latest.title); setNotes(latest.notes);
+    dateDraftRef.current = taskDateDraftFromView(latest);
+    setDateDraft(dateDraftRef.current); setMutationError(null);
+  }
+
+  function changeDate(field: keyof TaskDateDraft, value: string) {
+    if (scopeRef.current !== mutationScope || !mutationScope.active || mutationScope.busy || latestRef.current?.status === "cancelled") return;
+    dateDraftRef.current = { ...dateDraftRef.current, [field]: value };
+    setDateDraft(dateDraftRef.current);
+  }
+
+  async function saveDates() {
+    if (!ready || scopeRef.current !== mutationScope || !mutationScope.active || dateDraftRef.current !== dateDraft) return;
+    if (!detail || !baseline || baseline.id !== taskId || detail.status === "cancelled" || staleDraft || saving) return;
+    if (latestRef.current?.id !== baseline.id || latestRef.current.updatedAt !== baseline.updatedAt) return;
+    const change = buildTaskDatePatch(baseline, dateDraft);
+    if (change.kind === "invalid") { setMutationError(change.message); return; }
+    if (change.kind === "unchanged") { setMutationError(null); return; }
+    const revisionAtStart = latest?.updatedAt;
+    await mutate("patch", taskPath(taskId), {
+      action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
+    }, data => {
+      const updated = taskDetailToView(data)!; // Accepted below before acknowledging.
+      if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
+      setBaseline(updated);
+      dateDraftRef.current = taskDateDraftFromView(updated);
+      setDateDraft(dateDraftRef.current);
+      // Title and notes may still be unsaved. Their draft belongs to the user.
+      refresh();
+    }, data => taskDateReceiptMatches(data, taskId, actorId, change.patch));
   }
 
   async function save() {
@@ -254,26 +317,24 @@ export function TaskDetailScreen() {
                 style={[styles.titleInput, { height: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
                 <Text style={styles.statusText}>{detail.status === "open" ? "未完成" : detail.statusLabel}</Text>
-                {detail.dueAt || detail.plannedDate ? <Text style={styles.dateBadge}>{taskDateLabel(detail.dueAt ?? detail.plannedDate)}</Text> : null}
+                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate)}</Text> : null}
               </View>
             </View>
           </View>
 
-          {staleDraft ? <View>
+          {staleDraft && !moreOpen ? <View>
             <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
-            <Pressable accessibilityRole="button" disabled={saving} onPress={() => {
-              if (!latest) return;
-              setBaseline(latest); setTitle(latest.title); setNotes(latest.notes); setMutationError(null);
-            }} style={styles.sheetRow}>
+            <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
               <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
             </Pressable>
           </View> : null}
 
           <View style={styles.metadataGroup}>
-            <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{detail.dueAt ? "截止" : "安排"}</Text>
-              <Text style={styles.metadataValue}>{taskDateLabel(detail.dueAt ?? detail.plannedDate)}</Text>
-            </View>
+            <Pressable accessibilityLabel="编辑日期和时间" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>{(latest ?? detail).dueAt ? "截止" : "安排"}</Text>
+              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate)}</Text>
+              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+            </Pressable>
             {detail.relatedContactId ? <Pressable accessibilityLabel="查看关联人脉" accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>相关人脉</Text>
               <Text style={[styles.metadataValue, styles.linkValue]}>查看关联人脉</Text>
@@ -324,8 +385,32 @@ export function TaskDetailScreen() {
                     <Ionicons color={colors.text2} name="close" size={21} />
                   </Pressable>
                 </View>
-                <ScrollView contentContainerStyle={styles.sheetBody}>
+                <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody}>
                   {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
+                  {staleDraft ? <View>
+                    <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
+                    <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
+                      <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
+                    </Pressable>
+                  </View> : null}
+                  <Text style={styles.sheetSection}>日期和时间</Text>
+                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用东京时间。</Text>
+                  {([
+                    ["plannedDate", "安排日期", "YYYY-MM-DD"],
+                    ["dueDate", "截止日期", "YYYY-MM-DD"],
+                    ["dueTime", "截止时间（东京）", "HH:mm"],
+                  ] as const).map(([field, label, placeholder]) => <View key={field} style={styles.dateField}>
+                    <Text style={styles.dateFieldLabel}>{label}</Text>
+                    <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
+                      onChangeText={value => changeDate(field, value)}
+                      placeholder={placeholder} placeholderTextColor={colors.text4} style={styles.dateInput} value={dateDraft[field]} />
+                  </View>)}
+                  <Text style={styles.dateHint}>修改日期不会自动调整已有提醒。</Text>
+                  {detail.status === "cancelled" ? <Text style={styles.dateHint}>已取消的待办不能修改日期。</Text> : null}
+                  <Pressable accessibilityLabel="保存日期和时间" accessibilityRole="button" disabled={saving || staleDraft || detail.status === "cancelled"} onPress={saveDates}
+                    style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
+                    <Text style={styles.completeButtonText}>{saving ? "正在保存…" : "保存日期和时间"}</Text>
+                  </Pressable>
                   <Text style={styles.sheetSection}>提醒选项</Text>
                   {reminders.map((item) => (
                     <Pressable key={item.id} onPress={() => void cancelReminder(item.id)} style={styles.sheetRow}>
@@ -405,6 +490,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   contentHeading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
   contentSection: { gap: 6 },
   dateBadge: { color: colors.surface, backgroundColor: colors.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9, fontSize: 11, lineHeight: 16, fontWeight: "700" },
+  dateField: { gap: 6, marginTop: spacing.sm },
+  dateFieldLabel: { color: colors.text2, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  dateHint: { color: colors.text3, fontSize: 13, lineHeight: 20 },
+  dateInput: { color: colors.ink, fontSize: 16, lineHeight: 24, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.control, paddingHorizontal: 12, paddingVertical: 10 },
+  dateSaveButton: { ...createControlStyles(colors).primaryButton, minHeight: 48, marginTop: spacing.sm },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
   deleteText: { color: colors.rose, fontSize: typography.body, fontWeight: "700" },
   editButton: { ...createControlStyles(colors).secondaryButton, minHeight: 46 },

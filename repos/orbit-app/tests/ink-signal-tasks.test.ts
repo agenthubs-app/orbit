@@ -31,6 +31,8 @@ export const useApiResource = path => { useFixture(); if (!state.reads.includes(
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; return { success: true, data: { task: { ...state.task, ...options.body.patch, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o), delete: (p, o) => request("DELETE", p, o) };
 export const useOrbitApiClient = () => client;
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "test" }, cookieHeader: "" });
+export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useLocalSearchParams = () => { useFixture(); return state.screen === "detail" ? { id: state.task.id } : { view: state.view }; };
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
 export const usePathname = () => { useFixture(); return state.screen === "detail" ? "/tasks/" + state.task.id : "/tasks"; };
@@ -47,7 +49,7 @@ test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { TasksScreen } from "./src/screens/tasks/TasksScreen"; import { TaskDetailScreen } from "./src/screens/tasks/TaskDetailScreen"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.screen === "detail" ? <TaskDetailScreen /> : <TasksScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "task-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-tasks" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|useRelationshipInboxBadgeCount|native-notifications)$/ }, () => ({ path: "fixture", namespace: "ink-tasks" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useRelationshipInboxBadgeCount|native-notifications)$/ }, () => ({ path: "fixture", namespace: "ink-tasks" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-tasks" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
