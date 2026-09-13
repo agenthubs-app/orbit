@@ -366,3 +366,39 @@ test("AI refresh keeps the existing transcript until a fresh conversation replac
   await p.evaluate(payload => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "GET" && r.path === "/api/ai/conversations/conversation%3A1"), 200, payload); }, replyPayload("再想一个方案", "来自另一端的新回复。")); await settle(p);
   assert.equal(await p.getByText("来自另一端的新回复。", { exact: true }).count(), 1); assert.equal(await p.getByRole("textbox").inputValue(), "刷新时保留草稿");
 });
+
+// Exercise the real route, client and screen with raw HTTP failures, not the
+// JSON-only reply helper. Clearing drafts, auto-retrying or saving would fail.
+for (const failure of [
+  { name: "HTML login page", status: 200, contentType: "text/html", body: "<html>Sign in</html>", code: "ORBIT_APP_NON_JSON_RESPONSE" },
+  { name: "HTML server error", status: 500, contentType: "text/html", body: "<html>Error: Synthetic compile failure at /srv/ai.ts</html>", code: "ORBIT_APP_NON_JSON_RESPONSE" },
+  { name: "plain-text gateway error", status: 502, contentType: "text/plain", body: "Error: Synthetic gateway failure at /srv/proxy.ts", code: "ORBIT_APP_NON_JSON_RESPONSE" },
+  { name: "JSON business error", status: 503, contentType: "application/json", body: '{"success":false,"error":{"code":"SERVICE_UNAVAILABLE","message":"Error: Synthetic service failure at /srv/ai.ts"}}', code: "SERVICE_UNAVAILABLE" },
+]) test("AI raw failure preserves recovery and the newer draft: " + failure.name, async t => {
+  const p = await open(t);
+  const input = p.getByRole("textbox", { name: "消息", exact: true });
+  await input.fill("检查明天的安排");
+  await press(p, "发送消息");
+  const submitted = [{ method: "POST", path: "/api/ai/conversations/conversation%3A1", body: { locale: "zh", message: "检查明天的安排" } }];
+  assert.deepEqual(await writes(p), submitted);
+  await input.fill("这条草稿尚未发送");
+  await p.evaluate(failure => {
+    const state = (window as any).fixture;
+    const index = state.requests.findLastIndex((request: any) => request.method === "POST");
+    state.requests[index].replied = true;
+    state.pending[index](new Response(failure.body, { status: failure.status, headers: { "Content-Type": failure.contentType } }));
+  }, failure);
+  await settle(p);
+  assert.equal(await p.getByText("这次回答没有生成", { exact: true }).count(), 1);
+  assert.equal(await p.getByText(failure.code, { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "重新生成", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 0);
+  assert.doesNotMatch(await p.locator("body").innerText(), /<html|Synthetic|\/srv\/|ORBIT_APP_NETWORK_ERROR/u);
+  assert.equal(await input.inputValue(), "这条草稿尚未发送");
+  await update(p, { focused: false });
+  await update(p, { focused: true });
+  assert.equal(await input.inputValue(), "这条草稿尚未发送");
+  assert.equal(await p.getByText(failure.code, { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), submitted, "focus changes must not retry generation or save a failed answer");
+  assert.deepEqual(await navigation(p), []);
+});

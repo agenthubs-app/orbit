@@ -67,6 +67,35 @@
 - App `src/api/client.ts` 会保留非 JSON 响应的 HTTP 状态并返回 `ORBIT_APP_NON_JSON_RESPONSE`；现有客户端测试覆盖 HTML 502。没有发现应把 HTML 当成成功 JSON 的理由。
 - 正常 JSON 业务错误、HTML 登录页、HTML 500、传输失败仍须分别验证；本轮没有新增这些测试，也未声称既有 HTML 502 测试已覆盖全部 R-00 条件。
 
+### 2.4 后续追加：客户端受控错误回归
+
+源码起点 `de05f3d7c19a83984a703ef6d0d6cf13398874f9`，生产代码未变。以下为同日后续测试提交的范围，不改写 09:04–09:11 的运行时证据。此时本地 Next PID 69257 仍在监听，`@vercel/queue` 与 `heic-convert` 仍解析失败；依赖恢复与服务重启尚未获准。
+
+新增 12 项真实 App 代码的受控测试，仅替换外部网络传输，未使用真实账号、模型或业务对象：
+
+| 场景 | 受控输入 | 验证的客户端行为 |
+| --- | --- | --- |
+| CON-U01–U04 | AI POST 收到 HTML 200 登录页、HTML 500、text/plain 502、HTML 401 | 拒绝当作成功回答；保留 HTTP 状态、NON_JSON 错误码与 meta；不泄露原始错误正文、不自动重发；只有 HTTP 401 广播过期 |
+| CON-U05–U08 | AI POST 收到 JSON 401、403、429、503 业务错误 | 保留各自业务错误码及状态；不归为网络断开；不泄露合成英文堆栈、不自动重发；401 过期与其他业务失败分开 |
+| CON-U09–U12 | 实际 AI 路由／Screen 收到 HTML 200、HTML 500、text/plain 502、JSON 503 | 显示失败及正确错误码，保留发送期间输入的新草稿和重试入口；失焦／回焦不重发、不保存失败回答、不导航；不展示 HTML／合成堆栈 |
+
+客户端状态断言在 `tests/api-client.test.ts`；路由、HTTP client、hooks 与 Screen 联动断言在 `tests/ink-signal-ai-conversation.test.ts`。后者绕过既有只生成 JSON envelope 的回复 helper，直接向待处理 fetch 提供原始 Response；其余 App 消费链保持真实。原生鉴权／设备能力、外部传输及本地快照 I/O 仍是测试边界，因此不算 L1、真实 L3/L4 或 L5 通过。
+
+这些用例对既有实现首跑通过，证明本次没有必要为这几类受控响应修改生产逻辑；不是一次后端修复，也不标成新功能的 TDD 红绿实现。另以 esbuild `write: false` 在独立测试进程的内存中做了四种故障注入，磁盘源码和运行中 App 不变：
+
+| 内存中故意引入的退化 | 被新增回归捕获 |
+| --- | --- |
+| 把非 JSON 错误码改成网络错误 | U01–U04 均失败 |
+| 把非 JSON 响应状态抹成 0 | U01–U04 均失败 |
+| 不再广播 HTTP 401 过期 | U04、U05 失败 |
+| 把 JSON 业务错误码改成网络错误 | U05–U08 均失败 |
+
+四个故障注入子进程均按预期 exit 1，验证脚本确认相应用例失败后 exit 0；不是普通回归失败。第一次汇总脚本误按 TAP 解析实际 spec reporter，未识别已出现的失败；修正输出匹配后重新验证四项。生产文件未被写入，也没有借用当前运行服务注入故障。
+
+本检查点验证：两文件修改前 80/80、修改后 92/92，均 0 失败／取消／跳过；修改后耗时 26.438 秒、exit 0。类型检查 exit 0。日志分别为 `/tmp/orbit-r00-error-baseline-20260913.log`、`/tmp/orbit-r00-error-regression-20260913.log`、`/tmp/orbit-r00-error-typecheck-20260913.log`。随后全量 `npm test` 为 2202/2202，0 失败／取消／跳过，166.670 秒、exit 0，日志 `/tmp/orbit-r00-error-full-20260913.log`。未新增原生或真实业务通过结论。
+
+未关闭：原 App 失败发送的响应关联与最终 URL、同账号 Web 对照、真实生成／工具／保存／跨端回读，以及 R-02 显式发送与服务端幂等。受控 HTML 500 用例不能倒推原始请求一定返回 500；不能据此宣布 R-00 完成。
+
 ## 3. R-01：本轮匿名 HTTP 记录
 
 统一参数：Mac 发起，目标 `http://localhost:3000`，GET，`Accept: application/json`，不带 Cookie，`redirect: manual`，每次 10 秒超时。以下 11 项均在 `2026-09-13T00:10:23.617Z` 至 `00:10:24.657Z` 开始；全部 Content-Type 为 `application/json`，响应 URL 与请求相同，`redirected=false`，Location 和 `x-request-id` 均未提供。

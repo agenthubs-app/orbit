@@ -509,3 +509,53 @@ test("Orbit API client reports network failures as offline failures", async () =
   assert.doesNotMatch(result.error.message, /Network request failed/u);
   assert.equal(result.status, 0);
 });
+
+// R-00 regression boundaries: losing status, treating every failure as offline,
+// leaking an HTML/stack body, replaying a POST, or expiring on non-401 must fail.
+// Only transport is controlled; request construction and response decoding are real.
+for (const fixture of [
+  { name: "HTML login page with HTTP 200", status: 200, contentType: "text/html; charset=utf-8", body: "<html><form>Sign in</form></html>", code: "ORBIT_APP_NON_JSON_RESPONSE", expiries: 0 },
+  { name: "HTML compilation failure with HTTP 500", status: 500, contentType: "text/html", body: "<html>Error: Synthetic compile failure at /srv/app/route.ts</html>", code: "ORBIT_APP_NON_JSON_RESPONSE", expiries: 0 },
+  { name: "plain-text gateway failure", status: 502, contentType: "text/plain", body: "Error: Synthetic gateway failure at /srv/proxy.ts", code: "ORBIT_APP_NON_JSON_RESPONSE", expiries: 0 },
+  { name: "HTML unauthorized response", status: 401, contentType: "text/html", body: "<html>Sign in</html>", code: "ORBIT_APP_NON_JSON_RESPONSE", expiries: 1 },
+  { name: "JSON unauthorized business error", status: 401, contentType: "application/json", body: '{"success":false,"error":{"code":"UNAUTHORIZED","message":"Authentication required"}}', code: "UNAUTHORIZED", expiries: 1 },
+  { name: "JSON forbidden business error", status: 403, contentType: "application/json", body: '{"success":false,"error":{"code":"FORBIDDEN","message":"Access denied"}}', code: "FORBIDDEN", expiries: 0 },
+  { name: "JSON rate-limit business error", status: 429, contentType: "application/json", body: '{"success":false,"error":{"code":"RATE_LIMITED","message":"Too many requests"}}', code: "RATE_LIMITED", expiries: 0 },
+  { name: "JSON unavailable business error", status: 503, contentType: "application/json", body: '{"success":false,"error":{"code":"SERVICE_UNAVAILABLE","message":"Error: Synthetic service failure at /srv/ai.ts"}}', code: "SERVICE_UNAVAILABLE", expiries: 0 },
+]) test("AI POST retains failure identity without replaying: " + fixture.name, async () => {
+  let calls = 0;
+  let expiries = 0;
+  const unsubscribe = onSessionExpired(() => { expiries += 1; });
+  try {
+    const client = createOrbitApiClient({
+      baseUrl: "https://orbit.example",
+      fetchImpl: async (input, init) => {
+        calls += 1;
+        assert.equal(String(input), "https://orbit.example/api/ai/conversations");
+        assert.equal(init?.method, "POST");
+        assert.deepEqual(JSON.parse(String(init?.body)), { message: "检查明天的安排", locale: "zh" });
+        return new Response(fixture.body, {
+          status: fixture.status,
+          headers: {
+            "Content-Type": fixture.contentType,
+            "X-Orbit-Feature-Mode": "live",
+            "X-Orbit-Privacy": "private",
+            "X-Orbit-Runtime-Boundary": "request-error"
+          }
+        });
+      }
+    });
+    const result = await client.post("/api/ai/conversations", { body: { message: "检查明天的安排", locale: "zh" } });
+    assert.equal(result.success, false);
+    if (result.success) assert.fail("An error response must not become a generated answer");
+    assert.equal(result.status, fixture.status);
+    assert.equal(result.error.code, fixture.code);
+    assert.match(result.error.message, /[\u3400-\u9fff]/u);
+    assert.doesNotMatch(result.error.message, /<html|<form|Synthetic|\/srv\/|Error:/u);
+    assert.deepEqual(result.meta, { featureMode: "live", privacy: "private", runtimeBoundary: "request-error" });
+    assert.equal(calls, 1, "failed AI POSTs must not replay automatically");
+    assert.equal(expiries, fixture.expiries, "only an actual HTTP 401 signals expiry");
+  } finally {
+    unsubscribe();
+  }
+});
