@@ -257,10 +257,8 @@ test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent 
 test("Orbit AI drawer combines the signed-in account and settings in its footer", () => {
   assert.match(screenSource, /useOrbitAuthSession/u);
   assert.match(screenSource, /mobileUserDisplayName/u);
-  assert.match(
-    screenSource,
-    /accountName=\{mobileUserDisplayName\(auth\.user, "小雨"\)\}/u
-  );
+  // Real login names and the missing-name fallback are rendered and exercised
+  // through the real drawer in ink-signal-ai-home.test.ts.
   assert.match(screenSource, /styles\.drawerFooter/u);
   assert.match(screenSource, /styles\.drawerAccount/u);
   assert.match(screenSource, /onOpenCapability\("\/profile" as Href\)/u);

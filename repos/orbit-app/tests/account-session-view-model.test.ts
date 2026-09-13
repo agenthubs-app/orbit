@@ -184,7 +184,7 @@ test("accountSessionToView prefers the validated mobile session identity", () =>
   assert.deepEqual(view.authActions, []);
 });
 
-test("accountSessionToView names the canonical agenthubs identity Xiaoyu", () => {
+test("accountSessionToView preserves the actual name even for a formerly aliased account", () => {
   const view = accountSessionToView(
     {
       account: { workspaceName: "Orbit" },
@@ -200,7 +200,7 @@ test("accountSessionToView names the canonical agenthubs identity Xiaoyu", () =>
     }
   );
 
-  assert.equal(view.displayName, "小雨");
+  assert.equal(view.displayName, "agenthubs");
 });
 
 test("account screen renders the signed-out boundary before API failure states", () => {

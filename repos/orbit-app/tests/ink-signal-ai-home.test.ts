@@ -21,7 +21,7 @@ let revision = 0; const listeners = new Set();
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const NativeDate = Date;
 window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
@@ -31,7 +31,7 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
   if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" ? 503 : (state.failPaths?.includes(url.pathname) ? 503 : 200))); return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: "程川", email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useGlobalSearchParams = () => ({});
@@ -138,6 +138,22 @@ test("AI home returns to the real home without any data write", async t => { con
 test("AI home more menu retains scanning and the existing capability drawer", async t => {
   const p = await open(t); await press(p, "更多操作"); await press(p, "扫名片"); assert.deepEqual(await navigation(p), ["/contacts/new"]);
   await press(p, "更多操作"); await press(p, "常用入口"); await press(p, "打开个人档案"); assert.deepEqual(await navigation(p), ["/contacts/new", "/profile"]);
+});
+for (const [actor, name, expected] of [
+  ["user_mry5y200_58jpi8", "Alex Chen", "Alex Chen"],
+  ["actor-1", "  ", "账号"],
+  ["user_mry5y200_58jpi8", "", "账号"]
+]) test(`AI drawer shows the real login identity or a generic fallback: ${actor} ${expected}`, async t => {
+  const p = await open(t, { actor, name });
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("尚未发送的问题");
+  await press(p, "更多操作"); await press(p, "常用入口");
+  const account = p.getByRole("button", { name: "打开个人档案", exact: true });
+  assert.equal(await account.getByText(expected!, { exact: true }).count(), 1);
+  assert.equal(await account.getByText("小雨", { exact: true }).count(), 0);
+  await press(p, "打开个人档案");
+  assert.deepEqual(await navigation(p), ["/profile"]);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "尚未发送的问题");
+  assert.deepEqual(await writes(p), []);
 });
 test("AI opening and closing history preserves draft and history search is real", async t => {
   const p = await open(t); await p.getByRole("textbox", { name: "消息", exact: true }).fill("尚未发送"); await press(p, "全部会话");

@@ -454,7 +454,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         </View>
       </View>
       <OrbitAiDrawer
-        accountName={mobileUserDisplayName(auth.user, "小雨")}
+        accountName={mobileUserDisplayName(auth.user, "账号")}
         inboxBadge={inboxBadge}
         historyItems={historyItems}
         historyNotices={historyNotices}

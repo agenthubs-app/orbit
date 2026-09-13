@@ -60,13 +60,9 @@ test("profile editor preserves field labels for assistive technology", () => {
 });
 
 test("profile screen prioritizes the signed-in public profile editor", () => {
-  assert.match(screenSource, /profileSummaryForMobileUser/u);
-  assert.match(screenSource, /authUser=\{auth\.user\}/u);
+  // Server-name precedence and unmodified multilingual/empty fields are tested
+  // through the real route in ink-signal-profile.test.ts, not helper wiring.
   assert.match(screenSource, /const storedProfile = profileToSummary\(data\)/u);
-  assert.match(
-    screenSource,
-    /const displayProfile = profileSummaryForMobileUser\(\s*storedProfile,/u
-  );
   assert.match(screenSource, /<OrbitBusinessCard profile=\{displayProfile\}/u);
   assert.match(
     screenSource,

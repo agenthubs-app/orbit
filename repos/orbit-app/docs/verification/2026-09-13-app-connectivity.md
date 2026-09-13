@@ -187,3 +187,43 @@ R-00 关闭之前还须捕获同环境实际失败／成功响应，并以真实
 - 契约／Schema／字典同步检查、API client、base URL、AI 会话六个测试文件：89/89，0 失败／取消／跳过，24.675 秒，exit 0；日志 `/tmp/orbit-r00-boundaries-20260913.log`。没有执行同步写操作或付费请求。
 - `git diff --check`：exit 0；新文档的相对链接、矩阵条目及暂存差异在提交前复核。没有更改早期设计原件的既有格式。
 - 提交只包含本计划进度及脱敏验证文档；不包含截图、原始日志、认证数据、依赖目录、独立 prototype 或 Web 改动。不推送。
+
+## 7. R-03 追加：资料原文与账号名保真
+
+此节是后续独立功能修复，不改写第六节早间只读文档提交的边界。源码起点 `e56a71f38`，沿用 12:32 对此前具体方案的授权；[实施计划](../superpowers/plans/2026-09-13-profile-server-truth.md)。
+
+### 7.1 实现及影响
+
+- 删除 `mobile-profile.ts` 中固定账号 ID、资料模板与语言检测替换 helper。`ProfileCard` 直接消费已存在的 `profileToSummary(data)`，不再用登录名覆盖公开资料名，也不补造空的公司、简介或标签。
+- `mobileUserDisplayName` 只取当前登录名并去除首尾空白；AI 侧栏缺名复用“账号”。账号页继续调用既有 account view-model，不改鉴权逻辑。
+- 不改服务端数据、API、共享副本、保存请求或编辑状态管理；保留现有布局。公司／职位在当前编辑器没有独立输入控件，本项只验证其预览原文，没有顺手增加控件。
+- 逐符号 GitNexus upstream impact 均 LOW；账号名 helper 的直接调用者为资料替换 helper、account view-model 与 AiScreen（3 个），ProfileCard 直接调用者为 ProfileScreen；未列出受影响流程。图未给出资料替换 helper 的实际 JSX 调用边，源码检查补上；两个新的页面测试文件为 UNKNOWN，不记为零风险。
+
+提交前首次变更检查暴露旧索引行号错位：错误列入两个未修改的资料提取函数。TypeScript AST 对比确认这两个函数与 HEAD 内容完全相同；CLI 随后明确报告索引过期（09-10／`8b38b4e`）。按项目规则执行 `npx gitnexus analyze --skip-agents-md`，12:53 成功，277.9 秒、exit 0；390355 节点、559402 边、300 流程。未改根 AGENTS/CLAUDE、未生成 embeddings；默认跳过 52 个超过 512KB 的大文件，本项源码／测试均不在此大小范围。刷新后的 context 已定位当前 ProfileCard，staged detect_changes 为 12 文件、LOW、无列出的受影响流程；20 个匹配项包含文档章节及测试常量，不是 20 个生产函数。已删除 helper 的风险仍结合修改前 impact 和实际 diff，不把新图中不存在的符号算作无风险。日志 `/tmp/orbit-r03-gitnexus-refresh-20260913.log` 仅本地保留。
+
+### 7.2 自动化证据
+
+| 检查 | 结果 | 本地日志 |
+| --- | --- | --- |
+| 七文件原基线 | 263/263，80.858 秒，exit 0 | `/tmp/orbit-r03-identity-baseline-20260913.log` |
+| 新行为红测 | 21 项中 16 个预期断言失败、5 个已有行为通过；exit 1 | `/tmp/orbit-r03-identity-red-20260913.log` |
+| 首次绿测／类型检查 | 13/21；8 个新增测试错误地寻找不存在的公司／职位输入框，另有 tuple label 类型错误；未算通过 | `/tmp/orbit-r03-identity-green-20260913.log`、`/tmp/orbit-r03-identity-typecheck-20260913.log` |
+| 修正测试定位后的绿测 | 21/21，6.018 秒，exit 0；没有为测试增加表单或更改生产逻辑 | `/tmp/orbit-r03-identity-green-corrected-20260913.log` |
+| 类型检查复跑 | exit 0 | `/tmp/orbit-r03-identity-typecheck-corrected-20260913.log` |
+| 七文件完整回归 | 281/281，153.482 秒，exit 0 | `/tmp/orbit-r03-identity-regression-20260913.log` |
+| 契约／Schema／字典同步检查 | 6/6，2.045 秒，exit 0；未执行同步写操作 | `/tmp/orbit-r03-identity-sync-20260913.log` |
+| 全量 `npm test` | 2220/2220，209.922 秒，exit 0 | `/tmp/orbit-r03-identity-full-20260913.log` |
+
+最终通过的测试运行均 0 失败／取消／跳过；首轮测试编写错误如表中单独保留。按原先选择的单代理执行，自审源码／测试 diff，没有另行声称经过独立代理审查。
+
+新用例覆盖旧特判账号与普通账号的中／日／英服务端资料、不同登录名、空 profile／空字段、未提交草稿经刷新和预览切换后保留，以及 AI 侧栏真实名／通用占位与未发送草稿。旧“应显示固定人物资料”的测试被真实行为回归替换，过时的 helper 接线断言移除；其余保存失败、错误回执、账号／服务器切换等回归保留。HTTP／原生能力仍是受控边界，不算真实写入或 OAuth 验收。
+
+### 7.3 原设备只读复验与限制
+
+同一 Simulator、localhost API 和已有会话，12:40–12:43 进入资料与账号页；新服务记录 GET `/api/profile`、`/api/profile/update-suggestions`、`/api/account/me` 均 200，资料统计的三个 GET 也为 200。没有发 PUT、登录／退出、清缓存或编辑真实资料。
+
+已逐张查看本地截图：`/tmp/orbit-r03-profile-before-20260913.png`、`/tmp/orbit-r03-profile-after-20260913.png`、`/tmp/orbit-r03-account-after-20260913.png`。资料页不再显示此前模板填入的身份、简介和标签，而显示接口原公司名称及真实缺项；不提交原始个人内容。账号页可读，公开资料名与登录名允许不同；本轮没有导出登录会话原文或运行中 bundle 哈希，因此该截图本身不是身份来源完整比对证据。
+
+12:51 再打开 `orbit://ai?drawer=1`，查看 `/tmp/orbit-r03-ai-drawer-after-20260913.png` 确认原生侧栏与历史入口可见；没有发送新问题。该账号不属于缺名场景，通用占位的缺名分支由上述受控回归验证。
+
+R-03 剩余：新用户资料完成／Google 回跳／两端写回尚未执行。只读源码确认现有 live profile 的 completeness 依据是 displayName、headline、relationshipGoal、homeMarket、targetRelationshipTypes、preferredIntroChannels 六项，industry 不在其中；这不等于已经批准的“姓名＋行业”准入规则。需要独立解决 B1/D2，不能在本次展示修复中强制用户补齐关系目标等字段。R-00 新生成、R-01 完整矩阵及 R-14 仍开放。

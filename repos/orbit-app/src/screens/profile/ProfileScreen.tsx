@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import type { MobileAuthUser } from "../../api/mobile-auth";
 import {
   ORBIT_API_ENDPOINTS,
   profileUpdateSuggestionAcceptPath
@@ -36,7 +35,6 @@ import {
   useApiResource
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { profileSummaryForMobileUser } from "../../view-models/mobile-profile";
 import {
   buildProfileDocumentExtractionRequest,
   buildProfileUpdateRequest,
@@ -408,7 +406,6 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
           actionMessage={suggestionActionMessage}
           acceptedProfilePatch={acceptedProfilePatch}
           appliedProfileExtraction={appliedProfileExtraction}
-          authUser={auth.user}
           data={data}
           onAcceptSuggestion={onAcceptSuggestion}
           onApplyExtraction={onApplyProfileExtraction}
@@ -440,7 +437,6 @@ function ProfileCard({
   actionMessage,
   acceptedProfilePatch,
   appliedProfileExtraction,
-  authUser,
   data,
   onAcceptSuggestion,
   onApplyExtraction,
@@ -464,7 +460,6 @@ function ProfileCard({
   actionMessage: string | null;
   acceptedProfilePatch: AcceptedProfileSuggestion | null;
   appliedProfileExtraction: ProfileExtraction | null;
-  authUser: MobileAuthUser | null;
   data: ProfileDetail;
   onAcceptSuggestion: (id: string) => void;
   onApplyExtraction: () => void;
@@ -486,10 +481,7 @@ function ProfileCard({
   const [editing, setEditing] = useState(false);
   const [editorMounted, setEditorMounted] = useState(false);
   const storedProfile = profileToSummary(data);
-  const displayProfile = profileSummaryForMobileUser(
-    storedProfile,
-    authUser
-  );
+  const displayProfile = storedProfile;
 
   return (
     <>

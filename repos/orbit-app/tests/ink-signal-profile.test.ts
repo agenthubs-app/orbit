@@ -118,6 +118,45 @@ test("profile overview follows the approved hierarchy with real statistics and n
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-profile-390-" + (process.env.PROFILE_QA_PASS ?? "round1") + ".png" });
 });
 
+for (const actor of ["user_mry5y200_58jpi8", "actor-1"]) {
+  for (const fields of [
+    { displayName: "林悦", industry: "音乐", organization: "蓝桥工作室", role: "制作人", bio: "寻找一起做音乐的伙伴。", offering: ["录音制作"], seeking: ["演出伙伴"], topics: ["独立音乐"], relationshipGoal: "认识独立创作者" },
+    { displayName: "さくら", industry: "おんがく", organization: "はるスタジオ", role: "プロデューサー", bio: "いっしょにおんがくをつくりたい。", offering: ["レコーディング"], seeking: ["コラボレーター"], topics: ["ライブ"], relationshipGoal: "パートナーをさがす" },
+    { displayName: "Alex Chen", industry: "Audio", organization: "Live Music Studio", role: "Producer", bio: "I build generated sound tools for live music.", offering: ["Recording"], seeking: ["Music partners"], topics: ["Live audio"], relationshipGoal: "Meet independent creators" }
+  ]) test(`profile preserves server identity and original fields for every account: ${actor} ${fields.displayName}`, async t => {
+    const payload = { ...profilePayload, profile: { ...profilePayload.profile, ...fields } };
+    const p = await open(t, { actor, name: "Different login name", payloads: { ...profileReadPayloads, "/api/profile": payload } });
+    for (const value of [fields.displayName, fields.industry, fields.organization, fields.role, fields.bio, fields.relationshipGoal, ...fields.offering, ...fields.seeking, ...fields.topics]) {
+      assert.equal(await p.getByText(value, { exact: true }).count(), 1, value);
+    }
+    assert.equal(await p.getByText("Different login name", { exact: true }).count(), 0);
+    await press(p, "编辑资料");
+    for (const [label, value] of [["名字", fields.displayName], ["简介", fields.bio], ["我能提供", fields.offering[0]], ["我想认识", fields.seeking[0]]] as const) {
+      assert.equal(await p.getByRole("textbox", { name: label, exact: true }).inputValue(), value);
+    }
+    await p.getByRole("textbox", { name: "简介", exact: true }).fill("Unsubmitted draft · まだ保存していない");
+    await refresh(p); await press(p, "返回资料预览");
+    assert.equal(await p.getByText(fields.displayName, { exact: true }).count(), 1);
+    await press(p, "编辑资料");
+    assert.equal(await p.getByRole("textbox", { name: "简介", exact: true }).inputValue(), "Unsubmitted draft · まだ保存していない");
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
+for (const profile of [null, { ...profilePayload.profile, displayName: "", headline: "", industry: "", organization: "", role: "", bio: "", relationshipGoal: "", offering: [], seeking: [], topics: [] }]) {
+  test(`profile keeps absent fields empty for the formerly aliased account: ${profile === null ? "missing" : "blank"}`, async t => {
+    const payload = profile === null ? emptyProfilePayload : { ...profilePayload, profile };
+    const p = await open(t, { actor: "user_mry5y200_58jpi8", name: "Actual login name", payloads: { ...profileReadPayloads, "/api/profile": payload } });
+    assert.equal(await p.getByText("尚未填写个人资料", { exact: true }).count(), 1);
+    assert.equal(await p.getByText("未填写", { exact: true }).count(), 4);
+    for (const value of ["小雨", "Actual login name", "Orbit", "企业 AI 场景梳理与落地"]) assert.equal(await p.getByText(value, { exact: true }).count(), 0);
+    for (const label of ["我能提供", "我想寻找", "想聊的话题"]) assert.equal(await p.getByLabel(label, { exact: true }).innerText(), "");
+    await press(p, "编辑资料");
+    for (const label of ["名字", "简介", "我能提供", "我想认识"]) assert.equal(await p.getByRole("textbox", { name: label, exact: true }).inputValue(), "");
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
 test("profile counters occupy three equal columns despite different labels and numbers", async t => {
   const p = await open(t);
   const boxes = await Promise.all(["人脉 2", "今日待办 3", "近期日程 2"].map(label => p.getByRole("button", { name: label, exact: true }).boundingBox()));
