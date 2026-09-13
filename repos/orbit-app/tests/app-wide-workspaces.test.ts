@@ -21,6 +21,8 @@ const finalInsets = new URLSearchParams(location.search).get("insets") === "true
 const aiThread = { ...aiConversationPayload, activeConversationId: "thread-one", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "thread-one" }] };
 const task = { id: "task-one", taskId: "task-one", accountId: "reader", ownerUserId: "reader", title: "确认合作时间", notes: "带上合作资料", category: "relationship", status: "open", priority: "normal", plannedDate: "2026-09-08", dueAt: "2026-09-08T10:00:00+09:00", createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", contactName: "林悦", organization: "Orbit", source: "manual" };
 const conversation = { conversationId: "thread-one", participantContactId: "person-one", participantName: "林悦", organization: "Orbit", title: "合作讨论", status: "needs_followup", unreadCount: 1, lastMessagePreview: "周四讨论合作资料", lastMessageAt: "2026-09-07T01:00:00Z" };
+const chatBoundary = { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready", realtimeTransportRequested: false, websocketSubscriptionRequested: false, productionMessageStorageRequested: false, externalSendRequested: false };
+const chatMessage = { messageId: "message-one", conversationId: "thread-one", body: "周四讨论合作资料", senderRole: "contact", senderName: "林悦", createdAt: "2026-09-07T01:00:00Z", deliveryState: "mock_received", source: { type: "manual", id: "source:style" }, evidenceIds: ["evidence:style"], realtimeTransportRequested: false, websocketSubscriptionRequested: false, productionMessageStorageRequested: false, externalNetworkRequested: false, liveDatabaseReadExecuted: true, liveDatabaseWriteExecuted: false, aiProviderRequested: false, emailSendRequested: false, calendarWriteRequested: false, notificationSendRequested: false, devicePushRequested: false };
 const event = { id: "event-one", eventId: "event-one", title: "合作交流会", startsAt: "2026-09-08T14:00:00+09:00", endsAt: "2026-09-08T15:00:00+09:00", date: "2026-09-08", location: "东京", venue: "东京", status: "published" };
 const entry = { entryId: "action-one", runId: "run-one", workflowKey: "post_event_followup_v1", contactName: "林悦", organization: "Orbit", title: "建立会后待办", preview: "确认合作资料", whyNow: "延续活动讨论", status: "awaiting_confirmation", riskLevel: "write", undoable: true, createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", evidenceIds: [], evidenceChips: [], sourceRefs: [], operations: [{ operationId: "operation-one", operationType: "create_followup_task", title: "创建会后待办", effectSummary: "创建任务，不会自动发送消息。", status: "pending", selectedByDefault: true, autoSendCapable: false, idempotencyKey: "operation-one:v1" }] };
 function dataFor(path) {
@@ -38,7 +40,7 @@ function dataFor(path) {
   if (path.startsWith("/api/ai/conversations")) return screen === "conversation" ? { ...aiThread, messages: [{ ...aiConversationPayload.messages[1], conversationId: "thread-one", messageId: "reply", role: "assistant", content: "可以先确认周四的合作时间。", createdAt: "2026-09-07T01:00:00Z" }], proposedToolIntents: [] } : {};
   if (path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论", preview: "周四讨论合作资料", lastCorrespondenceAt: "2026-09-07T01:00:00Z", nextActionLabel: "", sourceContextLabels: [] }] }, currentUser: { displayName: "我" }, selectedThread: null, sideEffects: {} };
   if (path.includes("extractions")) return {};
-  if (path.startsWith("/api/chat/conversations/")) return { conversation, messages: [{ messageId: "message-one", body: "周四讨论合作资料", senderRole: "contact", senderName: "林悦", createdAt: "2026-09-07T01:00:00Z" }], sendMessageState: { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready" } };
+  if (path.startsWith("/api/chat/conversations/")) return { state: state.empty ? "empty" : "success", conversation, messages: state.empty ? [] : [chatMessage], sendMessageState: chatBoundary };
   if (path === "/api/chat/conversations") return { conversations: state.empty ? [] : [conversation] };
   if (path.includes("activities")) return { activities: [] };
   if (path.startsWith("/api/tasks/")) return { task };
@@ -54,7 +56,10 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   state.requests.push({ method, path, body: options?.body });
   if (finalInsets) {
     if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
-    if (method === "post" && path === "/api/chat/conversations/thread-one/messages") return { success: true, data: { conversationId: "thread-one", oneToOneContext: { participantName: "林悦", contactId: "person-one", organization: "Orbit" }, messages: [{ messageId: "draft:style", body: options.body.body, senderRole: "orbit_user", createdAt: "2026-09-08T03:00:00Z" }], sendMessageState: { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready" } } };
+    if (method === "post" && path === "/api/chat/conversations/thread-one/messages") {
+      const message = { ...chatMessage, messageId: "draft:style", body: options.body.body, senderRole: "orbit_user", senderName: "我", createdAt: "2026-09-08T03:00:00Z", deliveryState: "mock_recorded_locally", liveDatabaseWriteExecuted: true };
+      return { success: true, status: 201, data: { state: "success", conversationId: "thread-one", oneToOneContext: { participantName: "林悦", contactId: "person-one", organization: "Orbit" }, message, messages: [chatMessage, message], sendMessageState: chatBoundary } };
+    }
     if (method === "get" && path === "/api/chat/privacy?conversationId=thread-one") return { success: true, data: { conversationId: "thread-one", participantName: "林悦", organization: "Orbit", analysisOptIn: { enabled: true, status: "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], state: "success" } };
     if (method === "post" && path === "/api/chat/assist/rewrite") return { success: true, data: { assists: [{ assistId: "assist:style", label: "润色建议", rationale: "先核对时间", source: { label: "合作讨论" }, suggestedText: "周四可以一起核对合作资料。" }], state: "success" } };
   }
@@ -134,9 +139,9 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "保存草稿", exact: true }).click();
     const result = page.getByText("回复草稿已保存", { exact: true }).locator(".."); await result.waitFor();
     radii.push(await result.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/chat/conversations/thread-one/messages", body: { body: "周四可以" } }]);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/chat/conversations/thread-one/messages", body: { body: "周四可以", requestId: "test-uuid" } }]);
     assert.equal(await draft.inputValue(), "");
-    await page.getByText("已记录为本地草稿，尚未真正发出。", { exact: true }).waitFor();
+    await page.getByText("草稿已保存，未发送给对方。", { exact: true }).waitFor();
     assert.deepEqual(radii, ["12px", "12px"], "signalRow, draftResult");
   });
   test(`${scheme}: final inset inbox empty feedback has the shared boundary`, async t => {
@@ -236,7 +241,7 @@ test("chat list and detail retain navigation, messages and a failed draft withou
   assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
   const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写一版给对方的回复"); await draft.fill("周四可以");
   await fits(detail.getByRole("button", { name: "保存草稿", exact: true }), 50);
-  await detail.getByRole("button", { name: "保存草稿", exact: true }).click(); await detail.getByText("操作暂时失败", { exact: true }).waitFor();
+  await detail.getByRole("button", { name: "保存草稿", exact: true }).click(); await detail.getByText("草稿暂时保存不了，输入已保留。请重试。", { exact: true }).waitFor();
   assert.equal(await draft.inputValue(), "周四可以");
   assert.equal(await detail.evaluate(() => (window as any).fixture.requests.length), 1);
 });

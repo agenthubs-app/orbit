@@ -489,3 +489,60 @@ R-08 仍缺地点、个人日程创建／修改协议、清空日期与提醒联
 | task activities（同一引用） | 06:45:50.494 | `7d710f96-c29e-4193-ad44-d9a63abb9f72` |
 
 截图均已逐张查看，只留本地，不提交原文、截图或 AX。未触碰完成框、未输入／保存任何字段、未发起提醒、删除或 AI/OCR；对应时段元数据无非 GET 请求。本项证明普通字号的既有长标题原生显示修复，不证明持久化写入、实体 iPhone、VoiceOver、全 App 三语或运行中 Dynamic Type 双向热切换。后者共享 RN 测量路径仍需独立审批方案，整包原生和完整 R-12／R-14 均未关闭；无需 Web/API 协议变更，根 Bridge 由协调者更新。
+
+## 15. R-05：回复草稿的写入边界
+
+源码起点 `eb3c4f968`；沿用已批准 R-05 的草稿／真实发送区分和原有界面，未增加真实发信能力。只编辑 App，Web/API 源码树仍为 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，没有修改接口、认证、数据、依赖或根 Bridge。
+
+### 15.1 已确认原因与实现范围
+
+原详情页只检查 HTTP envelope 的 `success`，即使载荷为空、属于另一会话或只表示 pending，也会展示“回复草稿已保存”并清空输入。`sendMessageState` 只用于文字，没有阻止 blocked/pending/unknown 写入；空线程反而没有输入框。状态级 pending 不能拦住同一帧双击，成功 POST 的线程覆盖值又会遮住后续 GET。账号、会话、服务地址变化没有撤销请求，默认读取快照也不能证明当前写权限。
+
+当前实现：
+
+- 当前线程必须从网络读到，ID、载荷状态和消息数组相符；只用既有 `ready`、`canSendInMock`、确认边界及未对外发送标志决定能否保存预览，不视为平台聊天资格。
+- 未保存草稿在普通刷新和读取失败后保留，失败／读取中暂停保存。刷新开始立即撤销旧回调的写权限；新 GET 可更新已显示消息，不被 POST 的旧线程永久覆盖。有效空线程仍能写草稿。
+- 同一版未确认成功的草稿重试复用请求体 `requestId`；同步请求锁防双击，旧正文回调不能提交后改输入。2xx、业务 success、相同会话／正文／记录 ID、本人角色、已记录草稿、明确未对外发送及返回消息列表同时匹配，才清空输入。有效确认后重读线程与提取结果。
+- 账号、Cookie 会话、服务器、路由和就绪状态各自界定独立生命周期；切换／卸载 abort 旧请求，迟到响应不触发旧账号过期事件或填回页面。摘要继续由用户主动触发，并使用同一生命周期及单次请求保护，不增加自动生成。
+- 提示明确“联系人资料不代表已验证的平台账号”和“仅保存草稿，不会发给联系人”。未引入身份猜测、接收方匹配、邀请或外部投递逻辑。
+
+后端只读核实：`features/chat/service-factory.ts` 的 live 路径使用账号作用域 provider；`live-service.ts` 和 `storage/chat-conversation-live-record-provider.ts` 实际可持久化预览记录，并用 workspace/account/conversation/requestId 生成稳定记录 ID。此行为不等于外部投递；现有共享契约没有 B4 的已验证接收方资格，不能凭手填联系人直接启用发信。这里是源码证据，不是本轮真实写入或服务端并发验收。
+
+### 15.2 自动化与失败历史
+
+真实 private route、Screen、hooks、HTTP client 和 view-model 运行于 RNW/Playwright；只替换设备／认证／快照边界和外部 fetch，不连业务服务、不发送 AI/OCR。
+
+| 检查 | 结果 | 日志 |
+| --- | --- | --- |
+| 首轮业务 RED | 27/27 按预期失败：权限、双击、误清稿、缓存与身份撤销 | `/tmp/orbit-r05-chat-draft-red-20260913.log` |
+| 首轮实施复跑 | 测试设备替身错误：about:blank 不支持 `crypto.randomUUID`，页面未挂载；不算业务 GREEN | `/tmp/orbit-r05-chat-draft-green-20260913.log` |
+| 仅修正 Expo UUID 替身后 | 27/27 通过，0 失败／取消／跳过，10.782 秒 | `/tmp/orbit-r05-chat-draft-green-fixture-20260913.log` |
+| 追加异常载荷／既有回归 | 41 通过、5 失败：3 个新增边界缺陷，2 个旧源文本断言绑定旧调用格式 | `/tmp/orbit-r05-chat-draft-regression-red-20260913.log` |
+| 修复后聊天定向套件 | 47/47 通过，0 失败／取消／跳过，13.671 秒 | `/tmp/orbit-r05-chat-draft-targeted-20260913.log` |
+| 最终 `npm run typecheck` | exit 0 | `/tmp/orbit-r05-chat-draft-types-delivery-20260913.log` |
+| 首轮 `npm test` | 2411 通过、5 失败，0 取消／跳过，191.992 秒；均为旧跨页面聊天夹具及旧预期 | `/tmp/orbit-r05-chat-draft-full-20260913.log` |
+| 补齐旧夹具后的受影响回归 | 91/91 通过，0 失败／取消／跳过，21.364 秒 | `/tmp/orbit-r05-chat-draft-regression-final-20260913.log` |
+| 最终 `npm test` | 2416/2416 通过，0 失败／取消／跳过，194.187 秒，exit 0 | `/tmp/orbit-r05-chat-draft-full-final-20260913.log` |
+
+追加回归中，3 个业务问题是缺失／外部发送边界仍获成功、null 载荷没有可见错误，均先 RED 再修复。旧 POST 源码格式断言已由真实路由交互覆盖：检查具体端点和正文、显式摘要、回执显示及刷新；其余旧断言保留，不跳过失败。新增套件共 37 个场景。UUID 替身问题已记入 App 本地学习记录，与此前 R08 的同类错误关联。
+
+首轮全量的 5 个失败全部在 `app-wide-workspaces.test.ts`：两个浅／深色草稿布局、失败保稿、按钮字重、空线程反馈。该旧夹具缺少 thread 的 `state`／发送边界、POST 的状态码及完整 `message`，且 empty 仍返回非空消息。已按实际协议补齐夹具，精确请求预期包含 `requestId`，新提示文案与保稿断言同步；原有圆角、字重、触控、导航和空／加载态检查均保留。没有为旧夹具放宽生产校验。
+
+GitNexus：详情页／草稿组件及相关回调为 LOW；共享 `relationshipChatThreadToView` 的预查为 HIGH（3 个直接调用点），该函数及其展示映射未修改。新增验证器和作用域容器尚未被现有图收录，UNKNOWN 不当零风险；已逐处核对实际调用及完整路由交互。按用户既有单代理要求使用代码审查清单自审，不声称独立代理审查。提交前 staged 检查为 8 个 App 文件、32 个触及项、MEDIUM、2 条已核实的快照读取流程；触及项含文档、常量和旧行号重叠，不是 32 个实际改动函数。
+
+TypeScript AST 对比确认：现有 Screen 文件改动 7 个函数、新增作用域容器和编辑回调，没有移除函数；view-model 的所有既有函数保持原文，只新增 3 个校验器。图中被旧行号重叠列出的 `firstParam`、提取／按钮展示函数、`relationshipChatMessageSendToView` 等并未改动。未暂存检查列出 2 条快照流程；资源链接无法定位时，使用根仓库绝对路径的图查询核实两条均经过 `useApiResource → readSnapshot`，本功能显式选择 network-only，默认快照实现没有修改。
+
+### 15.3 实际 Simulator 只读结果与交接
+
+同一 iPhone 17 Pro / iOS 26.4，UDID `9BF990F2-45B8-42CE-8543-E583B941DA17`，浅色普通字号。原有当前会话和 `http://localhost:3000`，没有改账号、地址或会话资料。
+
+| 时间（JST） | 操作／原生结果 | HTTP／请求 ID |
+| --- | --- | --- |
+| 15:58:33 | 打开关系对话，列表真实为空，显示“暂无关系对话” | GET `/api/chat/conversations`，200 JSON，`453c1ec9-8780-46c8-b137-f6ead3f98d09` |
+| 15:59:47–48 | 读取专用不存在会话的负向路径；详情显示内容不存在，没有草稿／摘要写入口 | detail GET 404 JSON，`fa48aa4e-a61a-4a05-bd2c-9bf1af342ebc`；extractions GET 404 JSON，`3e038965-f46d-4231-8c88-03e1ab6eca35`；脱敏会话段 `:id-9e130791` |
+
+AX 与截图 `/tmp/orbit-r05-chat-list-native-20260913.{json,png}`、`/tmp/orbit-r05-chat-missing-native-20260913.{json,png}` 已实际查看，均不提交。请求元数据来源 `/tmp/orbit-web-api-gzip-evidence-20260913.log`，本时段只有上述 GET，没有 POST。
+
+L1/L2：原账号读取列表 200，负向详情 404 的协议与错误呈现有证据。L3/L4：没有可用非空会话，不制造真实记录，未执行保存、摘要、发送／接收、持久化或跨端回读。L5：本次只覆盖空列表及不存在会话的原生错误状态；有效输入、键盘、长草稿和真实保存仍未验。完整 R-05、R-01、R-14 保持开放。
+
+交接给 Web/API／Bridge（建议下一责任方，未联系、未接单）：提供 B4 的验证绑定、资格／撤销、有效邀请、授权的两账号样本及真实投递契约后，再做邀请→绑定→资格刷新→收发／拒绝与 Web/App 同记录回读。App 不凭联系人 ID 或现有预览标志补写这些能力。此次无 AI/OCR 调用，累计 $5 预算不变；根 Bridge 由协调者更新。

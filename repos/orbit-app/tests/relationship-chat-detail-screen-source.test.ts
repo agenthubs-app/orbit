@@ -18,10 +18,8 @@ test("relationship chat detail loads extraction signals and can request a summar
     screenSource,
     /useApiResource<unknown>\(\s*chatConversationExtractionsPath\(conversationId \|\| "missing"\)/u
   );
-  assert.match(
-    screenSource,
-    /client\.post<unknown>\(chatConversationSummaryPath\(view\.conversationId\)\)/u
-  );
+  // Request shape, explicit generation and response rendering are exercised
+  // by relationship-chat-draft-interactions.test.ts, not source formatting.
   assert.match(screenSource, /label="生成摘要"/u);
   assert.match(screenSource, /title="提取结果"/u);
 });
@@ -32,10 +30,8 @@ test("relationship chat detail can save a review-only reply draft", () => {
   assert.match(screenSource, /relationshipChatMessageSendToView/u);
   assert.match(screenSource, /draftBody/u);
   assert.match(screenSource, /sendMessageDraft/u);
-  assert.match(
-    screenSource,
-    /client\.post<unknown>\(\s*request\.request\.endpoint,\s*request\.request\.options\s*\)/u
-  );
+  // Saving, receipt validation and the no-external-send boundary now have
+  // real route/HTTP interaction coverage in the companion suite.
   assert.match(screenSource, /title="回复草稿"/u);
   assert.match(screenSource, /保存草稿/u);
   assert.match(screenSource, /本地草稿/u);

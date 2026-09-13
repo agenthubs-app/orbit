@@ -524,6 +524,39 @@ export function buildRelationshipChatMessageRequest(
   };
 }
 
+export function relationshipChatThreadMatches(data: unknown, conversationId: string): boolean {
+  if (!isRecord(data) || !conversationId || !Array.isArray(data.messages)) return false;
+  return (data.state === "success" || data.state === "empty") &&
+    nestedRecord(data, "conversation").conversationId === conversationId;
+}
+
+export function relationshipChatDraftAllowed(data: unknown, conversationId: string): boolean {
+  if (!isRecord(data) || !relationshipChatThreadMatches(data, conversationId)) return false;
+  const boundary = nestedRecord(data, "sendMessageState");
+  // This legacy capability permits recording a preview, not contacting a
+  // verified platform recipient. Never interpret it as external-send authority.
+  return boundary.status === "ready" && boundary.canSendInMock === true &&
+    boundary.confirmationRequiredBeforeLiveSend === true && boundary.externalSendRequested === false;
+}
+
+export function relationshipChatDraftReceiptMatches(
+  data: unknown,
+  conversationId: string,
+  body: string
+): boolean {
+  if (!isRecord(data) || data.state !== "success" || data.conversationId !== conversationId ||
+    !conversationId || !body.trim()) return false;
+  const boundary = nestedRecord(data, "sendMessageState");
+  if (boundary.externalSendRequested !== false || boundary.confirmationRequiredBeforeLiveSend !== true) return false;
+  const message = nestedRecord(data, "message");
+  const matches = (candidate: UnknownRecord) =>
+    Boolean(stringField(candidate, "messageId")) && candidate.conversationId === conversationId &&
+    candidate.body === body.trim() && candidate.senderRole === "orbit_user" &&
+    candidate.deliveryState === "mock_recorded_locally" && candidate.externalNetworkRequested === false;
+  return matches(message) && listField(data, "messages").some(candidate =>
+    candidate.messageId === message.messageId && matches(candidate));
+}
+
 export function relationshipChatMessageSendToView(
   data: unknown
 ): RelationshipChatMessageSendView {

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { randomUUID } from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -9,6 +10,8 @@ import {
   TextInput,
   View
 } from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   chatConversationExtractionsPath,
   chatConversationPath,
@@ -26,15 +29,17 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   buildRelationshipChatMessageRequest,
+  relationshipChatDraftAllowed,
+  relationshipChatDraftReceiptMatches,
   relationshipChatExtractionToView,
   relationshipChatMessageSendToView,
   relationshipChatSummaryToView,
   relationshipChatThreadToView,
+  relationshipChatThreadMatches,
   type RelationshipChatExtractionItemView,
   type RelationshipChatMessageSendView,
   type RelationshipChatSummaryView,
-  type RelationshipChatMessageView,
-  type RelationshipChatThreadView
+  type RelationshipChatMessageView
 } from "../../view-models/relationship-chat";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -46,12 +51,27 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function RelationshipChatDetailScreen() {
-  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.user?.id ?? "";
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  // Rotate an opaque identity for each account/session/server/route lifetime;
+  // cookies themselves never become cache keys or visible identifiers.
+  const scopeKey = useMemo(() => randomUUID(), [server.baseUrl, actorId, auth.cookieHeader, conversationId, ready]);
+
+  if (!ready) return <AppScreen title="对话详情"><LoadingState /></AppScreen>;
+  if (!conversationId) return <AppScreen title="对话详情"><ErrorState message="缺少对话 ID。" title="打不开对话" /></AppScreen>;
+  return <ScopedChatDetailScreen key={scopeKey} conversationId={conversationId} scopeKey={scopeKey} />;
+}
+
+function ScopedChatDetailScreen({ conversationId, scopeKey }: { conversationId: string; scopeKey: string }) {
+  const { colors } = useOrbitTheme();
   const state = useApiResource<unknown>(
     chatConversationPath(conversationId || "missing"),
-    (data) => relationshipChatThreadToView(data).messages.length === 0
+    () => false,
+    { scopeKey, cachePolicy: "network-only" }
   );
   const extractionState = useApiResource<unknown>(
     chatConversationExtractionsPath(conversationId || "missing"),
@@ -64,10 +84,15 @@ export function RelationshipChatDetailScreen() {
           view.profileSuggestions.length ===
         0
       );
-    }
+    },
+    { scopeKey, cachePolicy: "network-only" }
   );
+  const loadedData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const freshData = useRef<unknown>(null);
+  freshData.current = relationshipChatThreadMatches(loadedData, conversationId) ? loadedData : null;
 
   function refreshAll() {
+    freshData.current = null;
     state.refresh();
     extractionState.refresh();
   }
@@ -94,15 +119,15 @@ export function RelationshipChatDetailScreen() {
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {conversationId && state.kind === "empty" ? (
-        <EmptyState
-          message="这段关系对话还没有可显示的消息。"
-          title="暂无消息"
-        />
+      {(state.kind === "success" || state.kind === "empty") && !freshData.current ? (
+        <ErrorState message="没有读到当前会话，请刷新后重试。" />
       ) : null}
-      {conversationId && state.kind === "success" ? (
+      {conversationId ? (
         <ThreadContent
-          data={state.data}
+          conversationId={conversationId}
+          scopeKey={scopeKey}
+          freshData={freshData}
+          onSaved={refreshAll}
           extractionData={
             extractionState.kind === "success" ? extractionState.data : null
           }
@@ -120,23 +145,35 @@ export function RelationshipChatDetailScreen() {
 }
 
 function ThreadContent({
-  data,
+  conversationId,
+  scopeKey,
+  freshData,
+  onSaved,
   extractionData,
   extractionError,
   extractionLoading
 }: {
-  data: unknown;
+  conversationId: string;
+  scopeKey: string;
+  freshData: RefObject<unknown>;
+  onSaved: () => void;
   extractionData: unknown;
   extractionError: string;
   extractionLoading: boolean;
 }) {
   const { colors, styles } = useStyles();
-  const client = useOrbitApiClient();
+  const client = useOrbitApiClient({ scopeKey });
   const router = useRouter();
-  const [sentThread, setSentThread] =
-    useState<RelationshipChatThreadView | null>(null);
-  const view = sentThread ?? relationshipChatThreadToView(data);
+  const lastRead = useRef<unknown>(null);
+  if (freshData.current) lastRead.current = freshData.current;
+  const view = lastRead.current ? relationshipChatThreadToView(lastRead.current) : null;
+  const mounted = useRef(true);
+  const draftRequest = useRef<AbortController | null>(null);
+  const summaryRequest = useRef<AbortController | null>(null);
+  const draftAttempt = useRef<{ body: string; requestId: string } | null>(null);
   const [draftBody, setDraftBody] = useState("");
+  const currentBody = useRef(draftBody);
+  currentBody.current = draftBody;
   const [draftError, setDraftError] = useState("");
   const [draftPending, setDraftPending] = useState(false);
   const [draftResult, setDraftResult] =
@@ -147,15 +184,28 @@ function ThreadContent({
   const [summaryError, setSummaryError] = useState("");
   const [summaryPending, setSummaryPending] = useState(false);
 
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      draftRequest.current?.abort();
+      summaryRequest.current?.abort();
+    };
+  }, []);
+
   async function requestSummary() {
+    if (!mounted.current || summaryRequest.current || !relationshipChatThreadMatches(freshData.current, conversationId)) return;
+    const controller = new AbortController();
+    summaryRequest.current = controller;
     setSummaryPending(true);
     setSummaryError("");
 
     try {
-      const result = await client.post<unknown>(chatConversationSummaryPath(view.conversationId));
+      const result = await client.post<unknown>(chatConversationSummaryPath(conversationId), { signal: controller.signal });
+      if (!mounted.current || controller.signal.aborted) return;
 
-      if (!result.success) {
-        setSummaryError(result.error.message || "摘要暂时生成不了。");
+      if (!result.success || result.status < 200 || result.status >= 300) {
+        setSummaryError(!result.success ? result.error.message : "摘要暂时生成不了。");
         return;
       }
 
@@ -168,17 +218,23 @@ function ThreadContent({
 
       setSummary(nextSummary);
     } catch (error) {
+      if (!mounted.current || controller.signal.aborted) return;
       setSummaryError(
         error instanceof Error ? error.message : "摘要暂时生成不了。"
       );
     } finally {
-      setSummaryPending(false);
+      if (mounted.current && summaryRequest.current === controller) {
+        summaryRequest.current = null;
+        setSummaryPending(false);
+      }
     }
   }
 
   async function sendMessageDraft() {
+    if (!mounted.current || draftRequest.current || currentBody.current !== draftBody ||
+      !relationshipChatDraftAllowed(freshData.current, conversationId)) return;
     const request = buildRelationshipChatMessageRequest(
-      view.conversationId,
+      conversationId,
       draftBody
     );
 
@@ -190,31 +246,57 @@ function ThreadContent({
       return;
     }
 
+    const body = request.request.options.body.body;
+    const attempt = draftAttempt.current?.body === body ? draftAttempt.current : { body, requestId: randomUUID() };
+    draftAttempt.current = attempt;
+    const controller = new AbortController();
+    draftRequest.current = controller;
     setDraftPending(true);
 
     try {
       const result = await client.post<unknown>(
         request.request.endpoint,
-        request.request.options
+        { body: { body, requestId: attempt.requestId }, signal: controller.signal }
       );
+      if (!mounted.current || controller.signal.aborted) return;
 
-      if (!result.success) {
-        setDraftError(result.error.message || "草稿暂时保存不了。");
+      if (!result.success || result.status < 200 || result.status >= 300) {
+        setDraftError("草稿暂时保存不了，输入已保留。请重试。");
+        return;
+      }
+      if (!relationshipChatDraftReceiptMatches(result.data, conversationId, body)) {
+        setDraftError("尚未确认草稿已保存，输入已保留。请刷新核对后重试。");
         return;
       }
 
       const nextResult = relationshipChatMessageSendToView(result.data);
-      setSentThread(nextResult.thread);
-      setDraftResult(nextResult);
+      setDraftResult({ ...nextResult, summary: "草稿已保存，未发送给对方。", nextAction: "可继续编辑下一版草稿。" });
+      draftAttempt.current = null;
+      currentBody.current = "";
       setDraftBody("");
+      onSaved();
     } catch (error) {
-      setDraftError(
-        error instanceof Error ? error.message : "草稿暂时保存不了。"
-      );
+      if (!mounted.current || controller.signal.aborted) return;
+      setDraftError("草稿暂时保存不了，输入已保留。请重试。");
     } finally {
-      setDraftPending(false);
+      if (mounted.current && draftRequest.current === controller) {
+        draftRequest.current = null;
+        setDraftPending(false);
+      }
     }
   }
+
+  function changeDraftBody(value: string) {
+    if (!mounted.current || draftRequest.current) return;
+    currentBody.current = value;
+    draftAttempt.current = null;
+    setDraftBody(value);
+    setDraftResult(null);
+  }
+
+  if (!view) return null;
+  const canSaveDraft = relationshipChatDraftAllowed(freshData.current, conversationId);
+  const sendBoundary = canSaveDraft ? "这里仅保存回复草稿，不会发给联系人。" : "暂时不能保存草稿。请刷新确认会话状态。";
 
   return (
     <>
@@ -222,7 +304,7 @@ function ThreadContent({
         <Text style={styles.bodyText}>{view.context}</Text>
         <View style={styles.callout}>
           <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
-          <Text style={styles.calloutText}>{view.sendBoundary}</Text>
+          <Text style={styles.calloutText}>联系人资料不代表已验证的平台账号。这里仅供复核和保存草稿，不会发给联系人。</Text>
         </View>
         {view.contactId ? (
           <Pressable
@@ -240,6 +322,7 @@ function ThreadContent({
         ) : null}
       </DataCard>
       <DataCard detail={`${view.messages.length} 条消息`} title="消息">
+        {view.messages.length === 0 ? <EmptyState message="可以先写一版回复草稿。" title="暂无消息" /> : null}
         <View style={styles.messageList}>
           {view.messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
@@ -248,14 +331,16 @@ function ThreadContent({
       </DataCard>
       <ChatDraftComposerCard
         body={draftBody}
+        canSave={canSaveDraft}
         error={draftError}
-        onChangeBody={setDraftBody}
+        onChangeBody={changeDraftBody}
         onSave={sendMessageDraft}
         pending={draftPending}
         result={draftResult}
-        sendBoundary={view.sendBoundary}
+        sendBoundary={sendBoundary}
       />
       <ChatSummaryCard
+        available={Boolean(freshData.current)}
         error={summaryError}
         onRequestSummary={requestSummary}
         pending={summaryPending}
@@ -272,6 +357,7 @@ function ThreadContent({
 
 function ChatDraftComposerCard({
   body,
+  canSave,
   error,
   onChangeBody,
   onSave,
@@ -280,6 +366,7 @@ function ChatDraftComposerCard({
   sendBoundary
 }: {
   body: string;
+  canSave: boolean;
   error: string;
   onChangeBody: (value: string) => void;
   onSave: () => void;
@@ -292,6 +379,7 @@ function ChatDraftComposerCard({
     <DataCard detail="本地草稿" title="回复草稿">
       <Text style={styles.mutedText}>{sendBoundary}</Text>
       <TextInput
+        accessibilityLabel="回复草稿"
         editable={!pending}
         multiline
         numberOfLines={4}
@@ -311,7 +399,7 @@ function ChatDraftComposerCard({
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <ChatActionButton
-        disabled={pending}
+        disabled={pending || !canSave || !body.trim()}
         icon="document-text-outline"
         label={pending ? "保存中" : "保存草稿"}
         onPress={onSave}
@@ -321,11 +409,13 @@ function ChatDraftComposerCard({
 }
 
 function ChatSummaryCard({
+  available,
   error,
   onRequestSummary,
   pending,
   summary
 }: {
+  available: boolean;
   error: string;
   onRequestSummary: () => void;
   pending: boolean;
@@ -352,7 +442,7 @@ function ChatSummaryCard({
       )}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <ChatActionButton
-        disabled={pending}
+        disabled={pending || !available}
         icon="sparkles-outline"
         label="生成摘要"
         onPress={onRequestSummary}

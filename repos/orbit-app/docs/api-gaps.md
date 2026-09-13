@@ -709,7 +709,7 @@ Remaining backend/product gaps before full web chat parity:
 
 ## Relationship Chat
 
-Mobile now has a read-only relationship chat workspace backed by:
+Mobile has a draft-only relationship chat workspace backed by:
 
 - `GET /api/chat/conversations`
 - `GET /api/chat/conversations/:id`
@@ -726,9 +726,30 @@ review surfaces: saved drafts are not live external sends, and extracted needs,
 tasks, and profile suggestions are shown for inspection only and are not written
 back to the relationship profile.
 
-Remaining parity gap:
+2026-09-13 draft safety update: the App requires a fresh, matching thread and
+the existing preview-write capability before saving. Empty threads remain
+editable when authorized. Account, session, server and route changes revoke
+pending work; refresh failures preserve the current draft but disable writes.
+Saves are single-flight and retries of an unchanged draft reuse the existing
+`requestId` field. A 2xx envelope alone is insufficient: the receipt must identify
+the same conversation, body and recorded draft, with no external-send request,
+before the input clears. Accepted saves re-read the thread and extractions.
 
-- mobile-safe confirmation API for a real external send
+The current live API uses account-scoped storage to append these drafts. It
+does not deliver them to another user; `canSendInMock` and
+`mock_recorded_locally` are legacy preview flags, not verified-recipient
+authority. The App does not infer a platform identity from a private contact ID,
+name or photograph. No real draft write or two-account delivery was performed
+in this verification pass; native list reads were empty.
+
+Remaining parity gaps:
+
+- B4: verified platform binding, conflicts, permission revocation, communication
+  eligibility, and a valid server-issued invitation link
+- authenticated delivery and receipt semantics for two authorized users; a
+  confirmation button alone is not a delivery transport
+- native nonempty draft editing and persistence/readback with authorized data,
+  and Web/App cross-client validation
 
 ## Dashboard
 
