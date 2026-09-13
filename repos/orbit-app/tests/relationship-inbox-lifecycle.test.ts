@@ -1,0 +1,179 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import test from "node:test";
+import { build } from "esbuild";
+import { chromium, type Browser, type Page } from "playwright";
+
+const require = createRequire(import.meta.url);
+let browser: Browser;
+let script: string;
+
+// Keep the private routes, resources, client and screen real. Native identity,
+// navigation, snapshots and the remote HTTP service are the test boundaries.
+const fixture = `
+import React, { useSyncExternalStore } from "react";
+import { View } from "react-native-web";
+import { onSessionExpired } from "./src/api/session-expiry";
+const listeners = new Set(); let revision = 0, uuid = 0;
+const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
+const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
+const state = window.fixture = {
+  actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
+  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false,
+  ...window.initialFixture,
+  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
+  conversation() { return { conversationId: state.conversationId, contactId: "contact:one", participantName: state.actor, organization: "Example", subject: "会话主题", preview: "已有消息", unreadCount: 2, lastCorrespondenceAt: "2026-09-13T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }; },
+  thread(body = "已有消息") { return { conversationId: state.conversationId, subject: "会话主题", summary: "", sourceContextLabels: [], messages: [{ messageId: "message:one", senderRole: "contact", senderName: state.actor, body, occurredAt: "2026-09-13T00:00:00Z" }] }; },
+  data(path) {
+    if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
+    if (path === "/api/notifications") return { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
+    if (path.includes("relationship-signals")) return { signals: [] };
+    return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: "" }, sideEffects: effects };
+  },
+  preview() { const r = state.requests.findLast(r => r.method === "POST"); return { inboxItem: { ...state.conversation(), participantName: r.body.participantName, subject: r.body.subject }, thread: { ...state.thread(r.body.body), subject: r.body.subject }, sideEffects: effects }; },
+  reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
+};
+onSessionExpired(() => state.expiries++);
+window.fetch = (input, init) => { const url = new URL(String(input)); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
+export const useFixture = () => { observe(); return state; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useLocalSearchParams = () => { observe(); return state.detail ? { id: state.conversationId } : state.seed; };
+export const useGlobalSearchParams = useLocalSearchParams;
+export const usePathname = () => state.detail ? "/inbox/" + encodeURIComponent(state.conversationId) : "/inbox";
+export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
+export const Redirect = () => <div role="status">Sign in</div>;
+export const Stack = () => null;
+export const randomUUID = () => "test-inbox-scope-" + (++uuid);
+export const readSnapshot = async () => null;
+export const writeSnapshot = async () => {};
+export const Ionicons = () => <span aria-hidden="true" />;
+export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
+`;
+
+test.before(async () => {
+  const result = await build({
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
+      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "inbox-lifecycle" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
+      plugin.onLoad({ filter: /.*/, namespace: "inbox-lifecycle" }, args => ({ contents: args.path === "native" ? `
+import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
+export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
+export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <RealRefreshControl {...props} />; };
+` : fixture, loader: "jsx", resolveDir: process.cwd() }));
+      plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
+    } }]
+  });
+  script = result.outputFiles[0]!.text;
+  browser = await chromium.launch({ headless: true });
+});
+test.after(async () => { await browser?.close(); });
+async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
+async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
+  const p = await browser.newPage({ viewport: { width: 390, height: 844 } }); p.setDefaultTimeout(1500);
+  const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
+  t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
+  await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
+  await p.evaluate(patch => { (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script }); await settle(p); return p;
+}
+async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
+async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+async function preview(p: Page) {
+  await p.getByRole("button", { name: "写消息", exact: true }).click();
+  await p.getByRole("textbox", { name: "收件人", exact: true }).fill("旧账号联系人");
+  await p.getByRole("textbox", { name: "主题", exact: true }).fill("需要保留的主题");
+  await p.getByRole("textbox", { name: "正文", exact: true }).fill("不能进入另一个账号的正文");
+  await p.getByRole("button", { name: "预览草稿", exact: true }).click(); await settle(p);
+}
+
+for (const detail of [false, true]) {
+  for (const patch of [{ ready: false }, { baseReady: false }, { actor: "" }]) test(`inbox ${detail ? "thread" : "list"} waits for full identity ${JSON.stringify(patch)}`, async t => {
+    const p = await open(t, { detail, ...patch });
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 0);
+    assert.equal(await p.getByRole("textbox").count(), 0);
+  });
+
+  test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
+    const p = await open(t, { detail, holdReads: true });
+    const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
+    assert.equal(oldCount, detail ? 1 : 3);
+    await update(p, { actor: "actor:two" });
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
+    await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+    await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = oldCount; i < s.requests.length; i++) s.reply(i); }, oldCount); await settle(p);
+    assert.match(await p.locator("body").innerText(), /actor:two/);
+    assert.doesNotMatch(await p.locator("body").innerText(), /actor:one/);
+  });
+
+  for (const patch of [{ cookieHeader: "session=two" }, { baseUrl: "https://other.example" }, { ready: false }, { baseReady: false }, { mounted: false }]) test(`inbox ${detail ? "thread" : "list"} aborts late reads ${JSON.stringify(patch)}`, async t => {
+    const p = await open(t, { detail, holdReads: true });
+    const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
+    await update(p, patch);
+    assert.equal(await p.evaluate(oldCount => (window as any).fixture.requests.slice(0, oldCount).every((r: any) => r.signal?.aborted), oldCount), true);
+    await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
+    assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
+for (const patch of [{ actor: "actor:two" }, { seed: { participantName: "新目标" } }, { seed: { deliveryId: "delivery:two" } }, { cookieHeader: "session=two" }]) test(`old preview cannot publish into the new inbox ${JSON.stringify(patch)}`, async t => {
+  const p = await open(t); await preview(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldPreview = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["正在准备"]; s.oldReceipt = s.preview(); });
+  await update(p, patch);
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldPreview].signal?.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldPreview, 200, s.oldReceipt); }); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  assert.doesNotMatch(await p.locator("body").innerText(), /不能进入另一个账号的正文/);
+  assert.equal(await p.getByRole("heading", { name: "草稿预览", exact: true }).count(), 0);
+});
+
+test("ordinary inbox refresh retains the in-progress preview and its draft", async t => {
+  const p = await open(t); await preview(p);
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "不能进入另一个账号的正文");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "POST").signal?.aborted), false);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 200, s.preview()); }); await settle(p);
+  assert.equal(await p.getByRole("heading", { name: "草稿预览", exact: true }).count(), 1);
+});
+
+test("a retained inbox conversation callback cannot navigate after account change", async t => {
+  const p = await open(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one，"))?.[1]; });
+  await update(p, { actor: "actor:two" });
+  await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+test("a notification target change revokes the old delivery action and late expiry", async t => {
+  const p = await open(t, { seed: { deliveryId: "delivery:one" } });
+  await p.getByRole("button", { name: "查看建议", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "PATCH"); s.oldAction = s.presses["处理中"]; });
+  await update(p, { seed: { deliveryId: "delivery:two" } });
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal?.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 401); }); await settle(p);
+  assert.equal((await writes(p)).length, 1); assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.equal(await p.getByText("已记录为查看建议。", { exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).isEnabled(), true);
+});
+
+test("moving to another thread revokes rewrite results and clears the previous local reply", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("旧会话回复");
+  await p.getByRole("button", { name: "润色草稿", exact: true }).click(); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); });
+  await update(p, { conversationId: "thread:two" });
+  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal?.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 401); }); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+});
+
+test("missing thread identity shows an error without reading a generic inbox", async t => {
+  const p = await open(t, { detail: true, conversationId: "" });
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 0);
+  assert.match(await p.locator("body").innerText(), /缺少对话 ID/u);
+});

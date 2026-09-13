@@ -14,7 +14,7 @@ let url: string;
 // view-models, styles and RN Web handlers execute in Chromium.
 const fixture = `
 import React, { useSyncExternalStore } from "react";
-const listeners = new Set(); let revision = 0;
+const listeners = new Set(); let revision = 0, uuid = 0;
 const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener); };
 const emit = () => { revision++; listeners.forEach(listener => listener()); };
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
@@ -49,6 +49,9 @@ const client = {
   }
 };
 export const useOrbitApiClient = () => client;
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-test-actor" }, cookieHeader: "" });
+export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
+export const randomUUID = () => "inbox-test-" + (++uuid);
 export const SafeAreaView = ({ children, edges, ...props }) => <div>{children}</div>;
 export const Ionicons = () => <span aria-hidden="true" />;
 `;
@@ -60,7 +63,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "inbox-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

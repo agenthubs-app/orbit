@@ -14,7 +14,7 @@ const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
-let revision = 0; const listeners = new Set();
+let revision = 0, uuid = 0; const listeners = new Set();
 const state = window.fixture = { width: 390, fontScale: 1, kind: "success", notificationsKind: "success", signalsKind: "success", hasHistory: false, detail: false, requests: [], navigation: [], refreshes: [], ...window.initialFixture,
  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
@@ -37,6 +37,9 @@ export const useApiResource = path => {
 };
 const client = { async get(path) { state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } }; }, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: true, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false } }; }, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
 export const useOrbitApiClient = () => client;
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-style-actor" }, cookieHeader: "" });
+export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
+export const randomUUID = () => "inbox-style-" + (++uuid);
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, { paddingTop: edges?.includes("top") ? 48 : 0 }]} />;
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ fontFamily: "OrbitTestIonicons", fontSize: size, color, width: size, height: size, flexShrink: 0, lineHeight: 1 }}>{String.fromCodePoint(glyphs[name])}</span>;
 `;
@@ -44,7 +47,7 @@ export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" styl
 test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { RelationshipInboxScreen, RelationshipInboxThreadScreen } from "./src/screens/inbox/RelationshipInboxScreen"; function App() { const s = useFixture(); return s.detail ? <RelationshipInboxThreadScreen /> : <RelationshipInboxScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-inbox-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-inbox" }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider)$/ }, () => ({ path: "fixture", namespace: "ink-inbox" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-inbox" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };

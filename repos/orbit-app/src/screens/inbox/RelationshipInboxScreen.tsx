@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
+import { randomUUID } from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { type PropsWithChildren, useCallback, useEffect, useState } from "react";
+import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -12,6 +13,8 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   ORBIT_API_ENDPOINTS,
   agentSignalPath,
@@ -69,6 +72,47 @@ type ClientPatch = (endpoint: string, body: unknown) => Promise<{
   success: boolean;
 }>;
 
+function useInboxIdentity(routeKey: string) {
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const actorId = auth.user?.id ?? "";
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  // Opaque keys isolate reads and local drafts without storing credentials.
+  const scopeKey = useMemo(() => randomUUID(), [actorId, auth.cookieHeader, server.baseUrl, ready, routeKey]);
+  return { ready, scopeKey };
+}
+
+function useInboxRequests(scopeKey: string) {
+  const client = useOrbitApiClient({ scopeKey });
+  const active = useRef(true);
+  const controllers = useRef(new Set<AbortController>());
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+      controllers.current.forEach(controller => controller.abort());
+      controllers.current.clear();
+    };
+  }, []);
+  const isCurrent = useCallback(() => active.current, []);
+  const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown): ReturnType<ClientGet> => {
+    const inactive = { success: false, error: { message: "这次操作已失效，请返回后重试。" } };
+    if (!active.current) return inactive;
+    const controller = new AbortController();
+    controllers.current.add(controller);
+    try {
+      const result = await client[method]<unknown>(endpoint, { body, signal: controller.signal });
+      return active.current && !controller.signal.aborted ? result : inactive;
+    } finally {
+      controllers.current.delete(controller);
+    }
+  }, [client]);
+  const clientGet = useCallback((endpoint: string) => request("get", endpoint), [request]);
+  const clientPost = useCallback((endpoint: string, body: unknown) => request("post", endpoint, body), [request]);
+  const clientPatch = useCallback((endpoint: string, body: unknown) => request("patch", endpoint, body), [request]);
+  return { clientGet, clientPost, clientPatch, isCurrent };
+}
+
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -122,8 +166,6 @@ function uniqueConversations(
 }
 
 export function RelationshipInboxScreen() {
-  const { colors } = useOrbitTheme();
-  const router = useRouter();
   const params = useLocalSearchParams<{
     contactId?: string | string[];
     deliveryId?: string | string[];
@@ -134,19 +176,17 @@ export function RelationshipInboxScreen() {
   const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
-  const client = useOrbitApiClient();
-  const clientGet = useCallback(
-    (endpoint: string) => client.get<unknown>(endpoint),
-    [client]
-  );
-  const clientPost = useCallback(
-    (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
-    [client]
-  );
-  const clientPatch = useCallback(
-    (endpoint: string, body: unknown) => client.patch<unknown>(endpoint, { body }),
-    [client]
-  );
+  const { ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
+  if (!ready) return <InboxLayout title="收件箱"><LoadingState /></InboxLayout>;
+  return <ScopedRelationshipInboxScreen key={scopeKey} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
+}
+
+function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
+  scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
+}) {
+  const { colors } = useOrbitTheme();
+  const router = useRouter();
+  const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
   const [deliveryState, setDeliveryState] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -155,15 +195,18 @@ export function RelationshipInboxScreen() {
   >({ kind: "idle" });
   const state = useApiResource<unknown>(
     relationshipInboxPath(null),
-    (data) => relationshipInboxToView(data).conversations.length === 0
+    (data) => relationshipInboxToView(data).conversations.length === 0,
+    { scopeKey }
   );
   const notificationsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.notifications,
-    (data) => relationshipAlertsToView(data).alerts.length === 0
+    (data) => relationshipAlertsToView(data).alerts.length === 0,
+    { scopeKey }
   );
   const signalsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
-    (data) => relationshipSignalsToView(data).signals.length === 0
+    (data) => relationshipSignalsToView(data).signals.length === 0,
+    { scopeKey }
   );
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -179,7 +222,7 @@ export function RelationshipInboxScreen() {
     }
     let active = true;
     setDeliveryState({ kind: "loading" });
-    void client.get<unknown>(notificationDeliveryPath(deliveryId)).then((result) => {
+    void clientGet(notificationDeliveryPath(deliveryId)).then((result) => {
       if (!active) return;
       if (!result.success) {
         setDeliveryState({
@@ -203,7 +246,7 @@ export function RelationshipInboxScreen() {
     return () => {
       active = false;
     };
-  }, [client, deliveryId]);
+  }, [clientGet, deliveryId]);
 
   useEffect(() => {
     if (seedContactId) {
@@ -217,12 +260,14 @@ export function RelationshipInboxScreen() {
   }, [seedContactId, seedName, seedOrganization]);
 
   function refreshAll() {
+    if (!isCurrent()) return;
     state.refresh();
     notificationsState.refresh();
     signalsState.refresh();
   }
 
   function openConversation(conversationId: string) {
+    if (!isCurrent()) return;
     router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href);
   }
 
@@ -307,21 +352,21 @@ export function RelationshipInboxScreen() {
 }
 
 export function RelationshipInboxThreadScreen() {
-  const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
-  const client = useOrbitApiClient();
-  const clientGet = useCallback(
-    (endpoint: string) => client.get<unknown>(endpoint),
-    [client]
-  );
-  const clientPost = useCallback(
-    (endpoint: string, body: unknown) => client.post<unknown>(endpoint, { body }),
-    [client]
-  );
+  const { ready, scopeKey } = useInboxIdentity(conversationId);
+  if (!ready) return <InboxLayout title="消息"><LoadingState /></InboxLayout>;
+  if (!conversationId) return <InboxLayout title="消息"><ErrorState message="缺少对话 ID。" title="打不开对话" /></InboxLayout>;
+  return <ScopedRelationshipInboxThreadScreen key={scopeKey} conversationId={conversationId} scopeKey={scopeKey} />;
+}
+
+function ScopedRelationshipInboxThreadScreen({ conversationId, scopeKey }: { conversationId: string; scopeKey: string }) {
+  const { colors } = useOrbitTheme();
+  const { clientGet, clientPost } = useInboxRequests(scopeKey);
   const state = useApiResource<unknown>(
     relationshipInboxPath(conversationId),
-    (data) => relationshipInboxToView(data).selected === null
+    (data) => relationshipInboxToView(data).selected === null,
+    { scopeKey }
   );
   const view =
     state.kind === "success" || state.kind === "empty"
