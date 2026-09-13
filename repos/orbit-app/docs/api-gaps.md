@@ -710,6 +710,16 @@ retain the reminder. Server-read reminders remain visible without contributing
 to the home/IORBIT unread count. Legacy lists without interaction storage keep
 the explicitly temporary ignore behavior. No message-read state is invented.
 
+Home and IORBIT badges now read only while the page is focused, the app is
+foregrounded and the account/server are ready. Backgrounding cancels pending
+reads immediately; returning, changing identity or explicitly refreshing starts
+new network reads. Cached or previous counts cannot reappear after failure.
+The two sources still contribute independently, and IORBIT's unsent composer
+is not remounted by a badge refresh. This is not a realtime subscription:
+updates while continuously foregrounded still require an existing refresh or
+leaving/returning. Inbox content lifecycle, device registration and actual
+cross-client read-state writes remain separate. See verification section 20.
+
 Only explicit, supported reminder `href` destinations are opened. Missing links,
 external URLs, encoded path separators and Web-only participant/query targets
 remain unavailable; a reminder ID is never substituted for a task or contact ID.

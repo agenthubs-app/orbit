@@ -72,6 +72,7 @@ export const useOrbitAuthSession = () => { observe(); return { ready: state.read
   user: state.actor ? { id: state.actor } : null }; };
 export const usePathname = () => "/home";
 export const useGlobalSearchParams = () => ({});
+export const useIsFocused = () => { observe(); return state.focused; };
 export const useFocusEffect = fn => { observe(); useEffect(() => state.focused ? fn() : undefined, [fn, state.focused]); };
 const router = { canGoBack: () => false, back() {}, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } };
 export const useRouter = () => router;

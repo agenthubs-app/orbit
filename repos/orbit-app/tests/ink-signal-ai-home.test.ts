@@ -17,12 +17,12 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
-let revision = 0; const listeners = new Set();
+let revision = 0; const listeners = new Set(); const nativeListeners = new Set();
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const NativeDate = Date;
 window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
-  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, appState: "active", mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
+  update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
@@ -34,6 +34,7 @@ export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useIsFocused = () => { observe(); return state.focused; };
+export const AppState = { get currentState() { return state.appState; }, addEventListener(event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
 export const useGlobalSearchParams = () => ({});
 export const useLocalSearchParams = () => ({});
 export const usePathname = () => "/ai";
@@ -57,7 +58,7 @@ test.before(async () => {
       plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
       plugin.onLoad({ filter: /.*/, namespace: "ai" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
-import { useFixture } from "fixture"; export * from "react-native-web";
+import { useFixture } from "fixture"; export * from "react-native-web"; export { AppState } from "fixture";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
 export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <RealRefreshControl {...props} />; };
@@ -164,6 +165,28 @@ for (const [label, target] of [["交流会准备", "/ai/conversation%3A1"], ["�
   const p = await open(t); await press(p, "继续会话：" + label); assert.deepEqual(await navigation(p), [target]); assert.deepEqual(await writes(p), []);
 });
 test("AI home returns to the real home without any data write", async t => { const p = await open(t); await press(p, "首页"); assert.deepEqual(await navigation(p), ["/home"]); assert.deepEqual(await writes(p), []); });
+test("AI foreground badge refresh leaves the unsent composer intact and does not read other sources again", async t => {
+  const p = await open(t, { payloads: { ...aiReadPayloads,
+    "/api/chat/relationship-inbox": { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } },
+    "/api/notifications": { reminders: [] },
+  } });
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("切回应用后仍未发送的问题");
+  await press(p, "更多操作"); await press(p, "常用入口");
+  const inbox = p.getByRole("button", { name: "打开收件箱", exact: true });
+  assert.equal(await inbox.locator(":scope > div").count(), 1);
+  const before = await p.evaluate(() => (window as any).fixture.requests.length);
+  await update(p, { appState: "background", holdReads: true });
+  assert.equal(await inbox.locator(":scope > div").count(), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), before);
+  await update(p, { appState: "active" });
+  assert.equal(await inbox.locator(":scope > div").count(), 0);
+  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]).sort(), before), [["GET", "/api/chat/relationship-inbox"], ["GET", "/api/notifications"]]);
+  await p.evaluate(before => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (i >= before) s.reply(i); }); }, before); await settle(p);
+  assert.equal(await inbox.locator(":scope > div").count(), 1);
+  await p.getByRole("button", { name: "关闭侧栏", exact: true }).last().click(); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "切回应用后仍未发送的问题");
+  assert.deepEqual(await writes(p), []); assert.deepEqual(await navigation(p), []);
+});
 test("AI home more menu retains scanning and the existing capability drawer", async t => {
   const p = await open(t); await press(p, "更多操作"); await press(p, "扫名片"); assert.deepEqual(await navigation(p), ["/contacts/new"]);
   await press(p, "更多操作"); await press(p, "常用入口"); await press(p, "打开个人档案"); assert.deepEqual(await navigation(p), ["/contacts/new", "/profile"]);

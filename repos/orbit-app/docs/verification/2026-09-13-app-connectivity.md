@@ -709,3 +709,50 @@ GitNexus 单符号检查：角标直接影响统一 badge hook，再传至首页
 原生页面显示“提醒暂时打不开／这条提醒暂时无法读取”，不出现这张投递的三个动作；原消息列表仍可显示。已查看 `/tmp/orbit-r11-delivery-missing-20260913.png`，AX 与请求元数据仅留本地，不提交个人正文或截图。App 的实际错误呈现有 L5 证据，L2/L3 的有效详情与动作和 L4 持久化／跨端仍受阻或未执行。
 
 下一责任方为 Web/API 配置负责人：恢复与已有设备数据一致的 token vault 配置，或评审详情只读路径对设备写服务的依赖；随后提供有效投递样本与真实动作验收条件。App 消费修正可独立提交，完整 R-11/R-14 保持开放，根 Bridge 由协调者登记；未声称对方已接单。没有 AI/OCR 费用。
+
+## 20. R-11：角标前后台与网络真值
+
+### 20.1 范围
+
+实施起点 `bbdbfcd9b`。旧 badge hook 使用内容快照，且自身不感知 App 前后台；首页已有焦点包装，但 IORBIT 的后台返回不会重读角标。新增用例实际复现后台／未就绪仍读取、缓存计数被展示、返回后不重读和旧 401 未及时撤销。
+
+只修改 `useRelationshipInboxBadgeCount`，复用现有 `useIsFocused`、`AppState` 和带作用域的 HTTP client。当前页面、前台、账号及服务器都就绪才读取消息和通知。后台同步取消旧请求；回到前台、换账号／Cookie／服务器、外部 refresh scope 改变均要求新的网络结果。快速 inactive→active 连续事件也会更新读取代次；重复 active 事件不重复 GET。计数不走本地快照，失败不恢复旧数。
+
+两路来源继续独立贡献已确认的计数；一路慢或失败不挡住另一路，也不借用上一次读取的结果。已读／忽略排除规则、零值隐藏及 99 上限保持不变。该 hook 不重挂载 IORBIT、清空草稿、触发模型、注册设备或发送通知；共享客户端／资源 hook／快照和两端 API 均未修改。
+
+### 20.2 红绿、回归与审查
+
+新增 25 项实际 hook／客户端／view-model 交互和 1 项实际 IORBIT 私有路由交互。身份、原生焦点／生命周期、网络和快照 I/O 是受控边界；已有首页和 IORBIT 断言保留，仅补齐新用到的原生焦点／AppState 夹具。
+
+| 检查 | 结果 | 日志 |
+| --- | --- | --- |
+| 新增生命周期 RED | 10 通过、15 个预期失败，5.732 秒，exit 1 | `/tmp/orbit-r11-badge-lifecycle-red-20260913.log` |
+| 生命周期第一轮 GREEN | 25/25，6.507 秒，exit 0 | `/tmp/orbit-r11-badge-lifecycle-green-20260913.log` |
+| 第一轮类型检查 | 4 处新测试的隐式 any；为网络读取 helper 补返回类型后通过 | `/tmp/orbit-r11-badge-lifecycle-types-20260913.log`、`/tmp/orbit-r11-badge-lifecycle-types-fixed-20260913.log` |
+| 第一轮页面回归 | 139 通过、1 失败，31.949 秒，exit 1 | `/tmp/orbit-r11-badge-lifecycle-targeted-20260913.log` |
+| IORBIT 前后台草稿专项 | 1/1，1.367 秒，exit 0 | `/tmp/orbit-r11-badge-ai-foreground-20260913.log` |
+| 修正后的定向／契约回归 | 162/162，0 失败／取消／跳过，34.150 秒，exit 0 | `/tmp/orbit-r11-badge-lifecycle-targeted-final-20260913.log` |
+| 最终类型检查 | exit 0 | `/tmp/orbit-r11-badge-lifecycle-types-final-20260913.log` |
+| 全量回归 | 2546/2546，0 失败／取消／跳过，182.627 秒，exit 0 | `/tmp/orbit-r11-badge-lifecycle-full-20260913.log` |
+
+页面回归失败揭示首版 `Promise.all` 会等待较慢的通知读取，延迟展示已经确认的消息数；按原有独立来源语义修复，不改旧断言。专项测试确认前后台只新增两个 badge GET、保留未发送草稿且不产生写请求。
+
+GitNexus 编辑前风险 LOW，直接调用者为首页 `HomeInboxBadge` 和 IORBIT `AiScreen`，共 5 个上游触及点、没有列出的受影响流程；新测试 helper 未收录时按 UNKNOWN 核对。变更检查 LOW，生产修改限于 badge hook。按既有单代理约定使用代码审查清单自审，不声称独立代理审查。
+
+### 20.3 Simulator 只读复验与交接
+
+同一 iPhone 17 Pro / iOS 26.4 Simulator，浅色普通字号，当前账号和 `http://localhost:3000` 不变；API 源树 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`。代码更新期间的初次导航受 Fast Refresh 影响回到首页，不把该转场当验收。稳定后重新进入 IORBIT，打开常用入口，确认侧栏有未读点。
+
+22:27:11 按系统 Home 进入后台，截图确认已在系统桌面；22:27:29 将同一运行中的 App 带回前台，侧栏仍打开。没有发送、读／忽略写入、清空草稿或更换账号。回前台时实际请求如下：
+
+| 时间（JST） | GET | 状态 | 请求 ID |
+| --- | --- | --- | --- |
+| 22:27:35.491 | `/api/chat/relationship-inbox` | 200 JSON | `f3ced904-d960-4505-b7ad-8d72594c19b1` |
+| 22:27:36.304 | `/api/reminders`，既有原生协调器 | 200 JSON | `0f6baa4b-cc56-41e6-a1eb-a4be6e5baddf` |
+| 22:27:36.404 | `/api/notifications` | 200 JSON | `c9d0fd88-cd59-47d3-bf82-85ff6a9ed94b` |
+
+该时段无业务写接口或模型调用。`/api/reminders` 来自原有本地提醒协调器，不归入 badge 两个 GET；本轮没有独立验收系统定时提醒变更或设备注册。返回后截图仍有未读点；网络完成前的短暂无角标由受控测试覆盖，未用最终截图冒称观察到了整个加载过程。
+
+已查看 `/tmp/orbit-r11-badge-ai-drawer-20260913.png`、`/tmp/orbit-r11-badge-background-20260913.png`、`/tmp/orbit-r11-badge-ai-resume-20260913.png`，AX 和 HTTP 元数据仅留本地。原生此次没有输入文本；草稿保留结论来自实际路由的受控测试，不冒充原生文本输入验证。
+
+本次 L1/L2 网络读取与 L5 实际后台返回有证据。持续前台时没有新增实时订阅，仍通过现有刷新或离开／回来更新；收件箱正文的前后台处理、真实已读／忽略的 L3/L4、跨端权限撤销、有效投递与实体推送继续开放。仅提供 App 交接，未改 Web/API 或根 Bridge，未称对方已接单。完整 R-11/R-14 不关闭，没有新增 AI/OCR 费用。
