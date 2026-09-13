@@ -54,3 +54,28 @@
 - 日志：`/tmp/orbit-budget-guard-red-20260913.log`、`/tmp/orbit-budget-guard-green-20260913.log`、`/tmp/orbit-budget-guard-extra-red-20260913.log`、`/tmp/orbit-budget-guard-final-20260913.log`、`/tmp/orbit-budget-guard-typecheck-final-20260913.log`、`/tmp/orbit-budget-guard-contracts-20260913.log`、`/tmp/orbit-budget-guard-full-20260913.log`。
 - 沿用已选单代理执行，按 code-review 检查项进行自审，不声称独立审查。安全边界的未知费用、请求透传与并发预留均有行为断言；没有新增依赖或改产品文件。仅本次已核定供应商／模型／时点适用，未来重新验收必须重新核对价格和上界，但不得清零本次累计账本。
 - 提交前 staged detect_changes 报告 6 文件、LOW、0 个已列出的受影响流程；图只映射到 5 个文档段落，新增 CJS／测试尚未收录。实际新增三份脚本／测试的完整代码已自审并运行，不用图中缺项作为通过证据。
+
+## R-00 运行中补充：脱敏响应证据
+
+14:03 原生单一会面准备问题已到达真实 provider，完整 usage 为 3195 输入／1126 输出，保守费用 2893 microUSD；同一 requestId 的业务根 POST 却返回 503 JSON。App 将服务端 SERVICE_UNAVAILABLE 统一显示为通用文字；不能由当前屏幕断言模型 schema 失败。本段补足原 R-00 要求的失败原因／生成来源／保存回读证据，不改产品行为。
+
+- [x] 刷新当前 commit 后索引，对 `installBudgetObservation`、拟新增 `responseEvidence`、测试 helper 做 upstream impact，保留新增未知节点记录。
+- [x] 扩展 `tests/provider-budget.test.ts`：真实 HTTP 子进程分别返回分段 503 JSON、成功模型 provenance、session 保存／回读；断言原响应字节未改变、日志只有固定错误分类／白名单元数据及 session 哈希。非 AI 路由、未知错误内容、非 JSON／编码响应、超出 128 KiB 的响应都不输出原文；未解析必须明示，不写成空成功。先看到缺少 evidence 的断言失败，再实现。
+- [x] 仅改 QA `installBudgetObservation`，对 AI conversations 路径透明旁观 `write`／`end`，保留原参数、回调、返回值；最多暂存 128 KiB，结束后解析白名单，不落原始文件。`responseEvidence` 只返回 success、固定 error code／精确已知目录文字对应的原因、允许的 provider/model/generationMethod、布尔 safety／persisted、会话 ID 哈希／消息数量／正文摘要哈希。其他任意文字均不得进入日志。
+
+  ```ts
+  assert.equal(httpEvent.responseEvidence.errorCode, "SERVICE_UNAVAILABLE");
+  assert.equal(httpEvent.responseEvidence.reason, "provider_schema_invalid");
+  assert.equal(receipt.responseEvidence.sessionRef, reread.responseEvidence.sessionRef);
+  assert.equal(receipt.responseEvidence.messagesDigest, reread.responseEvidence.messagesDigest);
+  assert.doesNotMatch(log, /private-cookie|private-person|raw-provider-output/);
+  ```
+
+- [x] 运行定向／类型／同步／全量回归，自审和 staged detect_changes 后单独提交。
+- [ ] 沿用原服务命令重新加载观测与**同一账本**，不得重新初始化。随后至多一次先重试当前冻结问题以获取精确原因；失败仍保留，是否继续依据新证据与既有最多三次同假设限制决定，不修改服务端安全校验或切换模型制造通过。
+
+现有运行账本：`/Volumes/ORICO/Dev/MacMovedData/orbit-validation-20260913.7c2lIC/ai-ocr-budget-ledger-20260913.json`；当前 1 个已结算模型请求、累计 2893 microUSD。源码当前 `bf1baa1e2`；新观测验证不会调用模型。
+
+补充验证：索引刷新 259.5 秒、exit 0；installBudgetObservation 为 LOW，仅 preload 一个直接调用者、0 个流程；测试 helper 为 LOW，仅本测试文件引用；新解析器／局部 observe 为 UNKNOWN。新增三项红测均因缺 evidence 失败，实现后 33/33。自审发现 Node 合法的 end(null) 路径会触发 Buffer.from(null)，新增红测复现后修复；本机 Next send-payload.js 也使用该调用，未忽略该兼容性。最终 34/34，1.358 秒、exit 0；类型 exit 0、同步 6/6，1.808 秒、exit 0。服务端 failure() 会用 provider 的具体错误文字覆盖通用目录文字，白名单同时覆盖已读的固定 schema 失败文字；其他消息仅记 unclassified，不打印原文。
+
+全量 2280/2280，184.223 秒、exit 0，0 失败／取消／跳过。日志 `/tmp/orbit-r00-response-evidence-red-20260913.log`、`/tmp/orbit-r00-response-null-red-20260913.log`、`/tmp/orbit-r00-response-evidence-final-20260913.log`、`/tmp/orbit-r00-response-evidence-typecheck-20260913.log`、`/tmp/orbit-r00-response-evidence-contracts-20260913.log`、`/tmp/orbit-r00-response-evidence-full-20260913.log`。未改变费用预留／结算逻辑、产品代码或 Web 文件。

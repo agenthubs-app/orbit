@@ -308,3 +308,23 @@ R-03 剩余：新用户资料完成／Google 回跳／两端写回尚未执行�
 验证：首轮 24 项红测失败后 24/24；自审新增 4 项红测捕获未知计费字段／原 Request 被消耗，修复后连同缺账本启动、OCR 三阶段等共 30/30。真实临时文件、12 个独立并发进程和实际本地 HTTP 服务参与测试；只在最外部供应商网络边界返回合成响应。最终类型 exit 0、契约 6/6、全量 2276/2276，180.585 秒、exit 0，0 失败／取消／跳过。精确日志见子计划。
 
 源码影响：基于 `1bf649904` 刷新根图成功；所有新增脚本／函数未收录，upstream 为 UNKNOWN，而非已证明零风险。产品 app/src 没有引用该工具，未修改 Web、API DTO、provider 参数、权限或 UI。观测仅输出脱敏路由、状态、类型、时间与关联 ID，不含请求内容和凭证。当前还未启用到本地 API、未初始化真实验收账本、未触发付费请求；启用后的实际结果另记，R-00 不提前关闭。
+
+### 11.1 14:00 启用与真实请求：仍未通过生成验收
+
+工具提交 `bf1baa1e2` 后，仅以独占创建初始化一次本次账本，cap 5000000 microUSD、初值 0。按既有授权停止本轮自己的 Next 父进程 93129，确认旧 93130 不再监听；按相同 Next dev／webpack／127.0.0.1:3000 命令增加显式 preload 重新启动。新父进程 25115、服务 25124 和随后 worker 25456 均输出 ready，监听端仍为 localhost 原地址。Web 源码、环境文件、依赖锁定版本和产品参数未改；旧服务正常退出。
+
+同一 Simulator／既有账号只读请求：health 200；匿名 events/conversations 401 单列权限边界；原生登录态 conversations/profile/tasks/events/contacts/sessions 均 200 JSON。14:01 普通旧 `initialMessage` 深链在原生输入框预填，未触发 POST，账本仍 0；这是新增真实原生证据，不仅是受控测试。
+
+14:02 首页显式发送一条合成会面准备问题：根 POST 200 JSON（`44fb3f94-69ae-4845-9bfe-80ed8171c97a`），随后 sessions POST 200（`f9407d5d-122e-4372-9864-5c7e92a945a2`），canonical session GET 200（会话路径摘要 `9c906c52`）。回复实际为本地多意图澄清，明确未调用模型；“不要发送消息”的否定限制也被识别为另一个方向。费用仍 0，不作为真实生成通过，也未更改本地规则。保存与重开已发生，但这轮只有本地澄清的内容，不能覆盖完整 L3/L4 验收。
+
+14:03 按提示收敛为单一会面开场问题，在同一 session 继续发送。provider 预留记录 `a92319eb-1e46-4bae-83a6-73264c86dffa` 与业务请求 `2ab97f6d-6d3f-4b8d-8ed4-0b0c15081f80` 关联；已获取 HTTP 200、已知模型和完整 usage，3195 输入／1126 输出，保守结算 2893 microUSD（$0.002893）。该业务根 POST 于 05:03:37.166 UTC 返回 **503 application/json、无重定向**，App 显示 SERVICE_UNAVAILABLE；未出现本轮保存 POST，旧 session 保留。模型响应的实际内容／schema 和具体业务失败原因尚未采集，不能把 provider 200 写成回答成功。
+
+原 NON_JSON 故障与本轮 503 JSON 分开：锁定依赖恢复后路由编译及 JSON 响应恢复已有证据，但真实生成仍失败。已暂停盲目重试，补充仅含白名单类别的响应观测后再按预算和重试上限获取原因。日志 `/tmp/orbit-web-api-budgeted-20260913.log`；原生 AX 证据保存在本地 `/tmp/orbit-r02-native-prefill-budgeted-20260913.json`、`/tmp/orbit-r00-native-single-intent-pending-20260913.json`，不提交原文。累计 1 个真实模型请求、2893 microUSD，账本跨重启保持；不是用户整个账户的结算审计。
+
+### 11.2 脱敏响应观测补充
+
+仅在 QA 工具中对 AI conversations 路径收集至多 128 KiB 的临时响应分段，解析后只输出固定错误类别、白名单生成来源／模型／safety、保存确认、会话 ID 哈希及消息摘要哈希；不记录任意错误原文、回答、Cookie 或 token。编码、过大、非 JSON 情况明确标为未解析。原始 write/end 参数和完成回调不变，不拦截非 AI 路径正文；账本规则不变。
+
+upstream impact：观测函数 LOW，一个 preload 调用者、0 个流程；新解析器未收录为 UNKNOWN。三项缺证据红测与一个 end(null) 兼容性红测均复现后修复，最终 34/34；类型 exit 0、契约 6/6；全量 2280/2280，184.223 秒、exit 0，0 失败／取消／跳过。具体日志见[执行计划](../superpowers/plans/2026-09-13-ai-acceptance-budget-guard.md)。未运行新的付费重试，累计仍 2893 microUSD。
+
+API 源码范围另核：`repos/orbits` 最后涉及提交为 `8b38b4eb8`，当前 tree `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，无该目录 tracked diff。运行依赖已恢复但源文件没有改；App 的新增 QA 提交不冒充 API 业务修复版本。

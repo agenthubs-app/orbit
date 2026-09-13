@@ -179,3 +179,65 @@ test("OCR transcription, structuring and optional verification are all charged i
   assert.equal(calls, 3); assert.equal(readLedger(file).entries.length, 3);
   assert.equal(readLedger(file).accountedMicroUsd, 1_101_144);
 });
+
+test("HTTP evidence classifies a chunked provider failure without logging private response text", async t => {
+  const file = workspace(t);
+  const body = JSON.stringify({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "deepseek planner output did not match the Orbit Agent schema.", context: { recovery: "raw-provider-output private-person" } } });
+  const child = await runChild(file, `
+    const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");const body=${JSON.stringify(body)};
+    const server=http.createServer((req,res)=>{res.statusCode=503;res.setHeader("content-type","application/json");res.write(body.slice(0,35));res.end(body.slice(35),()=>console.log("END_CALLBACK"));});
+    server.listen(0,"127.0.0.1",async()=>{const r=await realFetch("http://127.0.0.1:"+server.address().port+"/api/ai/conversations");if(await r.text()!==body)throw Error("RESPONSE_CHANGED");server.close();});
+  `);
+  const output = child.stdout + child.stderr;
+  assert.match(output, /END_CALLBACK/); assert.doesNotMatch(output, /raw-provider-output|private-person|planner output/);
+  const event = output.split("\n").filter(line => line.startsWith('{"orbitQa":')).map(line => JSON.parse(line).orbitQa).find(item => item.event === "http");
+  assert.deepEqual(event.responseEvidence, { state: "parsed", envelopeSuccess: false, errorCode: "SERVICE_UNAVAILABLE", reason: "provider_schema_invalid" });
+});
+
+test("HTTP evidence records generation and matching persisted session digests without session text", async t => {
+  const file = workspace(t);
+  const session = { id: "private-session", title: "private-person", messages: [{ role: "user", text: "private question" }, { role: "assistant", text: "private answer" }] };
+  const generated = { success: true, data: { provenance: { generationMethod: "model-provider-live-agent-reply", safety: { aiProviderRequested: true, domainToolCallsExecuted: false } }, diagnostics: { model: "deepseek-v4-flash", provider: "deepseek" } } };
+  const child = await runChild(file, `
+    const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");const session=${JSON.stringify(session)};
+    const server=http.createServer((req,res)=>{res.setHeader("content-type","application/json");res.end(JSON.stringify(req.url==="/api/ai/conversations"?${JSON.stringify(generated)}:{success:true,data:{session: req.url.endsWith("changed")?{...session,id:"another-session",messages:[{role:"user",text:"changed private text"}]}:session,storage:{configured:true,persisted:true}}}));});
+    server.listen(0,"127.0.0.1",async()=>{const base="http://127.0.0.1:"+server.address().port;for(const p of ["/api/ai/conversations","/api/ai/conversations/sessions","/api/ai/conversations/sessions/private-session","/api/ai/conversations/sessions/changed"]){await (await realFetch(base+p)).text();}server.close();});
+  `);
+  const output = child.stdout + child.stderr;
+  assert.doesNotMatch(output, /private-person|private-session|private question|private answer|changed private text/);
+  const events = output.split("\n").filter(line => line.startsWith('{"orbitQa":')).map(line => JSON.parse(line).orbitQa).filter(item => item.event === "http");
+  assert.deepEqual(events[0].responseEvidence, { state: "parsed", envelopeSuccess: true, generationMethod: "model-provider-live-agent-reply", provider: "deepseek", model: "deepseek-v4-flash", aiProviderRequested: true, domainToolsExecuted: false });
+  const receipt = events[1].responseEvidence; const reread = events[2].responseEvidence; const changed = events[3].responseEvidence;
+  assert.equal(receipt.persisted, true); assert.equal(receipt.messageCount, 2);
+  assert.equal(receipt.sessionRef, "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd");
+  assert.equal(receipt.sessionRef, reread.sessionRef); assert.equal(receipt.messagesDigest, reread.messagesDigest);
+  assert.notEqual(receipt.sessionRef, changed.sessionRef); assert.notEqual(receipt.messagesDigest, changed.messagesDigest);
+});
+
+test("HTTP evidence explicitly skips oversized or encoded responses and ignores non-AI bodies", async t => {
+  const file = workspace(t);
+  const child = await runChild(file, `
+    const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");const zlib=require("node:zlib");
+    const server=http.createServer((req,res)=>{res.setHeader("content-type","application/json");let body=JSON.stringify({success:false,error:{code:"PRIVATE_CODE",message:"raw-provider-output private-person"}});
+      if(req.url.endsWith("large"))body=JSON.stringify({success:true,data:{text:"private-person".repeat(20000)}});
+      if(req.url.endsWith("encoded")){res.setHeader("content-encoding","gzip");res.end(zlib.gzipSync(body));}else res.end(req.url.endsWith("invalid")?"not JSON private-person":body);});
+    server.listen(0,"127.0.0.1",async()=>{const base="http://127.0.0.1:"+server.address().port;for(const p of ["/api/ai/conversations/large","/api/ai/conversations/encoded","/api/ai/conversations/invalid","/api/ai/conversations/unknown","/api/account/me"]){await (await realFetch(base+p)).text();}server.close();});
+  `);
+  const output = child.stdout + child.stderr;
+  assert.doesNotMatch(output, /raw-provider-output|private-person|PRIVATE_CODE/);
+  const events = output.split("\n").filter(line => line.startsWith('{"orbitQa":')).map(line => JSON.parse(line).orbitQa).filter(item => item.event === "http");
+  assert.deepEqual(events.map(item => item.responseEvidence), [
+    { state: "skipped_too_large" }, { state: "skipped_encoded" }, { state: "invalid_json" },
+    { state: "parsed", envelopeSuccess: false, errorCode: "unrecognized", reason: "unclassified" }, undefined
+  ]);
+});
+
+test("HTTP observation preserves a native end(null) call and its completion callback", async t => {
+  const file = workspace(t);
+  const child = await runChild(file, `
+    const realFetch=global.fetch;require(${JSON.stringify(preloadPath)});const http=require("node:http");
+    const server=http.createServer((req,res)=>{res.statusCode=204;res.end(null,()=>console.log("NULL_END_CALLBACK"));});
+    server.listen(0,"127.0.0.1",async()=>{const r=await realFetch("http://127.0.0.1:"+server.address().port+"/api/ai/conversations");if(r.status!==204||await r.text()!=="")throw Error("RESPONSE_CHANGED");server.close();});
+  `);
+  assert.match(child.stdout, /NULL_END_CALLBACK/); assert.match(child.stdout, /"status":204/);
+});

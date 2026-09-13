@@ -124,6 +124,43 @@ function sanitizeRoute(raw) {
     ":id-" + createHash("sha256").update(part).digest("hex").slice(0, 8)).join("/");
 }
 
+function responseEvidence(body, tooLarge, encoded) {
+  if (tooLarge) return { state: "skipped_too_large" };
+  if (encoded) return { state: "skipped_encoded" };
+  let payload;
+  try { payload = JSON.parse(body.toString("utf8")); }
+  catch { return { state: "invalid_json" }; }
+  const evidence = { state: "parsed", envelopeSuccess: typeof payload?.success === "boolean" ? payload.success : null };
+  if (payload?.success === false) {
+    const codes = new Set(["VALIDATION_ERROR", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INTERNAL_ERROR", "SERVICE_UNAVAILABLE"]);
+    const reasons = new Map([
+      ["The configured model provider returned an Orbit Agent planner response outside the allowed schema.", "provider_schema_invalid"],
+      ["deepseek planner output did not match the Orbit Agent schema.", "provider_schema_invalid"],
+      ["The configured model provider did not return a usable Orbit Agent response.", "provider_unusable_response"],
+      ["deepseek response did not include output text.", "provider_missing_output"],
+      ["A configured model provider API key is required before the live Orbit Agent can reply.", "provider_key_missing"],
+      ["BUDGET_EXHAUSTED", "budget_exhausted"], ["BUDGET_UNPRICED_REQUEST", "budget_unpriced_request"],
+      ["BUDGET_LEDGER_INVALID", "budget_ledger_invalid"], ["BUDGET_LEDGER_LOCKED", "budget_ledger_locked"]
+    ]);
+    return { ...evidence, errorCode: codes.has(payload.error?.code) ? payload.error.code : "unrecognized",
+      reason: reasons.get(payload.error?.message) ?? "unclassified" };
+  }
+  const data = payload?.data; const provenance = data?.provenance;
+  const methods = new Set(["fixture", "rule-based-agent-reply", "rule-based-agent-state", "gemini-live-agent-reply", "gemini-live-agent-state", "model-provider-live-agent-reply", "model-provider-live-agent-state"]);
+  if (methods.has(provenance?.generationMethod)) evidence.generationMethod = provenance.generationMethod;
+  if (["deepseek", "gemini", "openai"].includes(data?.diagnostics?.provider)) evidence.provider = data.diagnostics.provider;
+  if (RESPONSE_MODELS.has(data?.diagnostics?.model)) evidence.model = data.diagnostics.model;
+  if (typeof provenance?.safety?.aiProviderRequested === "boolean") evidence.aiProviderRequested = provenance.safety.aiProviderRequested;
+  if (typeof provenance?.safety?.domainToolCallsExecuted === "boolean") evidence.domainToolsExecuted = provenance.safety.domainToolCallsExecuted;
+  if (typeof data?.storage?.persisted === "boolean") evidence.persisted = data.storage.persisted;
+  if (typeof data?.session?.id === "string") evidence.sessionRef = createHash("sha256").update(data.session.id).digest("hex");
+  if (Array.isArray(data?.session?.messages)) {
+    evidence.messageCount = data.session.messages.length;
+    evidence.messagesDigest = createHash("sha256").update(JSON.stringify(data.session.messages.map(message => [message?.role, message?.text]))).digest("hex");
+  }
+  return evidence;
+}
+
 function installBudgetObservation(log) {
   const original = http.Server.prototype.emit;
   http.Server.prototype.emit = function (event, ...args) {
@@ -131,8 +168,23 @@ function installBudgetObservation(log) {
     const [request, response] = args;
     const requestId = randomUUID();
     const route = sanitizeRoute(request.url);
+    const collect = /^\/api\/ai\/conversations(?:\/|\?|$)/.test(request.url);
+    let chunks = []; let byteLength = 0; let tooLarge = false;
+    if (collect) {
+      const originalWrite = response.write; const originalEnd = response.end;
+      const observe = (chunk, encoding) => {
+        if (tooLarge || chunk === null || chunk === undefined || typeof chunk === "function") return;
+        const bytes = typeof chunk === "string" ? Buffer.from(chunk, typeof encoding === "string" ? encoding : "utf8") : Buffer.from(chunk);
+        byteLength += bytes.length;
+        if (byteLength > 128 * 1024) { tooLarge = true; chunks = []; }
+        else chunks.push(bytes);
+      };
+      response.write = function (chunk, ...rest) { observe(chunk, rest[0]); return originalWrite.call(this, chunk, ...rest); };
+      response.end = function (chunk, ...rest) { observe(chunk, rest[0]); return originalEnd.call(this, chunk, ...rest); };
+    }
     response.once("finish", () => log({ event: "http", requestId, method: request.method, route,
       status: response.statusCode, contentType: String(response.getHeader("content-type") ?? "").split(";")[0],
+      ...(collect ? { responseEvidence: responseEvidence(Buffer.concat(chunks), tooLarge, Boolean(response.getHeader("content-encoding"))) } : {}),
       redirected: Boolean(response.getHeader("location")), at: new Date().toISOString() }));
     return requestContext.run(requestId, () => original.call(this, event, ...args));
   };
