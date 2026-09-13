@@ -330,3 +330,26 @@ upstream impact：观测函数 LOW，一个 preload 调用者、0 个流程；�
 API 源码范围另核：`repos/orbits` 最后涉及提交为 `8b38b4eb8`，当前 tree `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，无该目录 tracked diff。运行依赖已恢复但源文件没有改；App 的新增 QA 提交不冒充 API 业务修复版本。
 
 14:16，观测版本 `fbab545e5` 重启后只读检查发现实际 JSON 使用 gzip，证据状态为 skipped_encoded，未误标业务解析成功，也没有付费重试。随后仅补有 128 KiB 解压输出上限的 gzip 观测；未知编码、损坏或超限仍显式未解析，原始网络响应与 Web 设置不变。新增红绿用例与整个 QA 套件 35/35、类型和 6 项同步检查通过；此小补充没有重跑产品全量，2280 全量是此前观测版本的证据。费用账本仍为 2893 microUSD／1 次，重试尚未执行。
+
+### 11.3 14:18–14:22：真实生成、工具、续聊与原生重开通过
+
+App/QA 版本 `60443e36a`，业务续聊实现 `1bf649904`，Web/API 仍为上述未改动 tree；同一 iPhone 17 Pro / iOS 26.4 Simulator、原登录用户（普通 App 会话，未提升权限）、`http://localhost:3000`。正常停止本轮自己的旧 Next 后以同一命令、同一账本重启；父进程 31565／服务 31574 均 ready。14:18 匿名 conversations GET 401 的真实 gzip JSON 成功解析为 UNAUTHORIZED；先确认观测有效，再点击一次原失败问题的“重新生成”，没有编辑问题或放宽服务端校验。
+
+以下响应均为 application/json、无重定向，时间为 UTC（JST +9 小时）：
+
+| 场景 | 时间 | 请求关联 ID | HTTP／业务证据 |
+| --- | --- | --- | --- |
+| 原冻结问题重试 | 05:20:16.371 | `598618cb-647e-4a9a-88b3-4cfa65915ca3` | 根 POST 200；success true；generationMethod=model-provider-live-agent-reply；provider=deepseek、model=deepseek-v4-flash；aiProviderRequested=true、domainToolsExecuted=true |
+| 保存第一次真实回答 | 05:20:17.018 | `fb1c5688-c2be-459e-b7d2-c225a71207d6` | sessions POST 200；persisted=true；同一 session，4 条消息 |
+| 返回 AI 首页后从最近会话重开 | 05:20:42.575 | `0b599d74-297e-41b6-961a-873a1244d388` | session GET 200；persisted=true；4 条消息；sessionRef 和 messagesDigest 与保存回执一致 |
+| 重开后只问前文中的项目代号 | 05:21:13.618 | `101ba69e-0bad-4716-a57e-f367eba4494a` | 根 POST 200；真实模型回复来源，aiProviderRequested=true、domainToolsExecuted=false；原生回答与此前合成代号一致，新问题未重复提供答案 |
+| 保存续聊 | 05:21:13.655 | `87b408bc-d652-4662-b2d6-34c930506510` | sessions POST 200；persisted=true；原 session 增至 6 条消息 |
+| 再次离开重开 | 05:22:29.629 | `7bd80ea8-65a2-411d-a374-8781d7be2b60` | session GET 200；persisted=true；6 条消息；sessionRef 和 messagesDigest 与本轮保存回执一致；原生显示正确代号、空输入框、无失败重试按钮 |
+
+会话脱敏引用为 `9c906c5272943a3bbb27a869b50ef98c626cb82246217149f0e9bb4ab281201c`。4 条消息的摘要为 `97d36c0bf90f776e71ff62016283e34c06aeb9daf76514ba4fc36400ead60a65`，6 条为 `8f0a89696e03f7356cc5cd4b369cb8aa2f712b7c8e931e3d9b517a77c32682e4`；摘要按保存／回读的有序 role/text 计算，不记录原文或原始 session ID。重开没有新增模型请求。原生普通字号下输入框 343×44、发送 44×44，键盘收起时底边 832.7，位于 402×874 屏内；不推广成 Dynamic Type 或实体设备验收。
+
+费用账本覆盖此次重试的三个真实供应商请求（3195/998、3273/1945、1078/757 输入/输出 token，保守计 2724、4008、1474 microUSD）及代号续聊一次（3538/94，1681 microUSD）。加上原失败调用，累计 **5 次供应商请求、12780 microUSD，即 $0.012780 保守估算**，没有未结算预留；仍使用累计 $5 硬上限的原账本。一次 UI 请求可包含多次模型调用，未按按钮次数计费。
+
+分层结论：本次同账号 Simulator 的 L1/L2、真实生成与工具读取 L3，以及 App 保存→服务端回读 L4 子场景通过；L5 仅上述原生路径。请求与回执证据在本地 `/tmp/orbit-web-api-gzip-evidence-20260913.log` 的 orbitQa 白名单记录中，原始日志不提交。没有报名、创建任务、修改资料、发信或运行 OCR。
+
+失败记录没有被成功重试覆盖：14:03 的 503 内部原因仍未知，不能断言是 planner schema 或宣称消除了偶发 provider 失败；这次没有改 API 业务逻辑。Web 同环境同账号生成及双向写回未运行、服务端 B3 幂等和超时结果未知仍未解决、实体 iPhone 未验，因此完整 R-00/R-02/R-14 不关闭。下一责任方建议为 Web/API（未联系、未接单），需结合请求 `2ab97f6d-6d3f-4b8d-8ed4-0b0c15081f80` 定位首次 503，并提供幂等与跨端验收；App 可继续独立功能，不再为复现同一未知问题盲目付费重发。

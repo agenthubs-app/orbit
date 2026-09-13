@@ -69,3 +69,7 @@
 - 全量 `npm test` 2246/2246，189.429 秒、exit 0；0 失败／取消／跳过。
 - 提交前 staged detect_changes：5 文件、LOW、0 个列出的受影响流程；25 个触及项含文档、常量及旧行号重叠，并非 25 个改动函数。实际生产 diff 仅 sendMessage 的路径／history 选择，测试仅增加三个场景，没有修改既有断言或 fixture。
 - 日志：`/tmp/orbit-r02-history-red-20260913.log`、`/tmp/orbit-r02-history-green-20260913.log`、`/tmp/orbit-r02-history-regression-20260913.log`、`/tmp/orbit-r02-history-typecheck-20260913.log`、`/tmp/orbit-r02-history-full-20260913.log`。
+
+## 原生真实续聊补验（14:20–14:22）
+
+同一 Simulator、原账号与本地 live API 上，真实模型回答保存 4 条消息后从首页重开，服务端 GET 的 sessionRef／消息摘要与保存回执完全一致。随后发送不含答案的前文代号问题，模型正确作答；根 POST 200、真实模型来源、保存 persisted=true 且 6 条消息，再次重开 GET 与该回执摘要一致。具体请求 ID、时间和费用见[连通性记录 11.3](../../verification/2026-09-13-app-connectivity.md)。这补齐了 App→API→保存→原生重开的子场景，不代表 Web 双向续聊、服务端幂等或此前一次 503 的根因已解决。
