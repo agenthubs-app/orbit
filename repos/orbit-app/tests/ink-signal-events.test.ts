@@ -298,6 +298,52 @@ test("public list expands 8 to 16 to all, collapses, and resets pagination for e
   assert.deepEqual(await writes(p), []);
 });
 
+for (const dimension of ["location", "topic"] as const) test("discovery keeps options beyond eight and filters records beyond the first page: " + dimension, async t => {
+  const p = await open(t);
+  await p.evaluate(() => {
+    const s = (window as any).fixture;
+    s.events = Array.from({ length: 17 }, (_, index) => ({ ...s.events[0], id: "discovery:" + index, title: "筛选交流 " + index, venue: "会场 " + String(index).padStart(2, "0"), tags: ["主题 " + String(index).padStart(2, "0")] }));
+    s.refresh();
+  });
+  await settle(p);
+  const rows = p.getByRole("button", { name: /^筛选交流 \d+，/ });
+  assert.equal(await rows.count(), 8);
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "17");
+  await press(p, dimension === "location" ? "筛选活动地点" : "筛选活动主题");
+  const prefix = dimension === "location" ? "会场" : "主题";
+  assert.equal(await p.getByRole("button", { name: new RegExp("^" + prefix + " \\d+$") }).count(), 17);
+  await press(p, prefix + " 08");
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "1");
+  assert.equal(await p.getByRole("button", { name: /^筛选交流 8，/ }).count(), 1);
+  await press(p, dimension === "location" ? "筛选活动地点" : "筛选活动主题");
+  await press(p, prefix + " 16");
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "1");
+  await p.getByRole("button", { name: /^筛选交流 16，/ }).click();
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [{ pathname: "/events/[id]", params: { id: "discovery:16" } }]);
+  await press(p, dimension === "location" ? "筛选活动地点" : "筛选活动主题");
+  await press(p, dimension === "location" ? "全部地点" : "全部主题");
+  assert.equal(await rows.count(), 8);
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "17");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("discovery can search and select a tag beyond the first three topics", async t => {
+  const p = await open(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.events = s.events.map((event: any, index: number) => index === 3 ? { ...event, industry: "第一行业", theme: "第二主题", tags: ["第三标签", "第四标签", "第四标签", " "] } : event); s.refresh(); });
+  await settle(p);
+  await p.getByPlaceholder("搜索活动、地点或主题").fill("第四标签");
+  await settle(p);
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "1");
+  assert.equal(await p.getByRole("button", { name: /^产品与工程圆桌，/ }).count(), 1);
+  await press(p, "清空活动搜索");
+  await press(p, "筛选活动主题");
+  assert.equal(await p.getByRole("button", { name: "第四标签", exact: true }).count(), 1);
+  await press(p, "第四标签");
+  assert.equal(await p.getByTestId("events-result-count").innerText(), "1");
+  assert.equal(await p.getByRole("button", { name: /^产品与工程圆桌，/ }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-cookie-2" }, { baseUrl: "https://second.example" }, { focused: false }, { mounted: false }, { signedIn: false }]) test("retained public row, operations and refresh callbacks cannot navigate or read after scope change " + JSON.stringify(patch), async t => {
   const p = await open(t); await p.evaluate(() => { const s = (window as any).fixture; s.oldRow = Object.entries(s.presses).find(([label]) => label.startsWith("周末产品交流会，"))?.[1]; s.oldCenter = s.presses["打开活动运营中心"]; s.oldRefresh = s.refresh; });
   await update(p, patch); const before = await p.evaluate(() => (window as any).fixture.requests.length);

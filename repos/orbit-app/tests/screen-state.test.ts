@@ -158,7 +158,7 @@ test("eventsToSummaries exposes image-list metadata for event lists", () => {
     startsAt: "8月12日 周三 19:00",
     status: "已确认",
     subtitle: "AI 落地 · Orbit",
-    topics: ["企业 AI", "AI 落地", "中日商务"],
+    topics: ["企业 AI", "AI 落地", "中日商务", "渠道合作"],
     title: "关西企业 AI 交流会"
   });
   assert.equal(summaries[1]?.actionLabel, "查看");
@@ -225,13 +225,16 @@ test("filterEventSummaries supports event discovery search, status, and topic ch
     ended: 1,
     upcoming: 1
   });
-  assert.deepEqual(eventDiscoveryTopics(summaries).slice(0, 6), [
+  assert.deepEqual(eventDiscoveryTopics(summaries), [
     "企业 AI",
     "晚宴",
     "AI 落地",
+    "渠道合作",
     "跨境商务",
     "关西渠道",
-    "渠道合作"
+    "电商",
+    "创业",
+    "复盘"
   ]);
   assert.deepEqual(
     filterEventSummaries(summaries, {

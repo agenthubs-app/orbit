@@ -51,7 +51,7 @@ export function eventDiscoveryFilterCounts(
 }
 
 export function eventDiscoveryTopics(events: EventSummary[]): string[] {
-  return uniqueStrings(events.flatMap((event) => event.topics)).slice(0, 8);
+  return uniqueStrings(events.flatMap((event) => event.topics));
 }
 
 function eventDiscoverySearchText(event: EventSummary): string {
@@ -711,7 +711,7 @@ function eventTopics(event: Record<string, unknown>): string[] {
     userFacingText(stringField(event, "industry"), ""),
     userFacingText(stringField(event, "theme"), ""),
     ...stringListField(event, "tags").map((tag) => userFacingText(tag, ""))
-  ]).slice(0, 3);
+  ]);
 }
 
 function eventActionLabel(rawStatus: string): string {

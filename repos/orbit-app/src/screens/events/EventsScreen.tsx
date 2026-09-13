@@ -155,8 +155,7 @@ function discoveryTopicsForEvent(event: EventSummary): string[] {
 
 function eventDiscoveryLocations(events: EventSummary[]): string[] {
   return [...new Set(events.map((event) => event.location.trim()).filter(Boolean))]
-    .sort((left, right) => left.localeCompare(right, "zh-CN"))
-    .slice(0, 8);
+    .sort((left, right) => left.localeCompare(right, "zh-CN"));
 }
 
 function publicEventStatus(status: string): string {
@@ -520,7 +519,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
   const allFilteredEventsVisible = visibleEventCount >= filteredEvents.length;
   const discoveryTopics = [
     ...new Set(discoveryEvents.flatMap((event) => event.topics))
-  ].slice(0, 8);
+  ];
   const discoveryLocations = eventDiscoveryLocations(discoveryEvents);
   const discoveryCounts = {
     all: events.length,
