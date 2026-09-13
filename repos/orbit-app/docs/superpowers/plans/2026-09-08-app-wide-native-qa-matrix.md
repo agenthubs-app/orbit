@@ -148,28 +148,34 @@
 | Event operations | `event_signup_01` | `EVENT_OPERATIONS_E2E_EVENT_ID`；只说明种子目标。成功仍取决于当前 actor 具备 owner/role 数据，未满足时只能验权限态。 |
 | Party variants | `/party?eventId=event_signup_03`（checkin/graph 同 query） | `initial-route.test.ts` 验证 query 保留；若需完全 mock 的 event/attendee 数据，可改用 `demo-event-1`，但仍需受控服务状态。 |
 
-## 现有真实 render/interaction 证据
+## 当前真实 render/interaction 证据（更新至 2026-09-14）
 
-以下只列真实 React screen/content render 或 RN Web/Playwright interaction；source/view-model tests 未计为视觉成功。
+2026-09-08 初版后的新增测试已经纳入当前功能基线；这里按当前仓库重列，不再把后来已跟踪的文件或已存在的完整 screen render 写成缺项。以下只计真实 React screen/content render 或 RN Web/Playwright interaction；source/view-model tests 不计视觉成功，Sprint 0002 也没有重跑这些套件。
 
-| 页面族 | success | empty/loading/offline/failure | 仍缺 |
+| 页面族 | 当前受控 render／interaction | 当前仍缺；不重复建设已有测试 |
+| --- | --- | --- |
+| AI 与 Agent | `ink-signal-ai-home.test.ts`、`ink-signal-ai-conversation.test.ts` 和 `app-wide-workspaces.test.ts` 已覆盖真实 home/detail、新会话与 session 分支、失败恢复、窄屏／大字／深色以及 Agent actions/ledger 的受控状态。较早的 `ai-home-guidance-render.test.tsx` 也已跟踪。 | B3 的服务端幂等／未知结果和 Web 双向恢复不是 render 缺口；设备层仍缺完整 drawer／系统返回／深链矩阵。 |
+| 人脉、分析与采集 | `app-wide-contacts.test.ts`、`ink-signal-contacts.test.ts`、`ink-signal-contact-detail.test.ts`、`contacts-redesign-interactions.test.ts` 及 business-card suites 已覆盖 overview/list/detail、acquisition、dashboard、pipeline、structure、intros、graph、窄屏／主题和受控相机权限；后者已跟踪。 | 实体相机、双面同卡、真实 OCR／上传／一次创建及跨端回读仍缺；`/contacts/graph` 路由仍绑定 dashboard 而非测试中单独可渲染的 `ContactsGraphScreen`。 |
+| 活动与运营 | `ink-signal-events.test.ts`、`ink-signal-event-detail.test.ts`、`event-registration-interactions.test.ts`、`app-wide-events.test.ts` 与 operations render suites 已覆盖 catalogue/detail/register/attendees/center/party/organizer/invite、运营内容、状态、320pt／大字／主题。 | 问卷 500、真实角色／非空对象、报名／取消／运营写入及原生 58 路由导航仍缺；受控 RNW 不能证明实际 actor 权限或系统回跳。 |
+| 收件箱与聊天 | `ink-signal-inbox.test.ts`、`relationship-inbox-interactions.test.ts`、`relationship-chat-draft-interactions.test.ts` 和 `app-wide-workspaces.test.ts` 已覆盖真实 inbox list/thread、chat list/detail、草稿、刷新／失败、窄屏与主题；inbox suite 已跟踪。 | B4 真实身份绑定／投递、持续前台状态、真实已读、有效通知目标、实体推送及跨端回读仍缺。 |
+| 今日、任务、日程与跟进 | `ink-signal-tasks.test.ts`、`task-detail-interactions.test.ts`、`task-date-interactions.test.ts`、`ink-signal-schedule.test.ts`、`ink-signal-followups.test.ts` 和 `app-wide-workspaces.test.ts` 已覆盖完整 Tasks/Today/Schedule/preview/Followups screens、日周月、错误、草稿、320pt／大字／主题。 | B6 个人日程／地点／清空／提醒协议、授权真实写回，以及 0009 的时区／DST／全天／草稿决策仍缺；不是补已有 screen render。 |
+| 账号、资料、设置、Admin 与 Platform | `ink-signal-auth.test.ts`、`ink-signal-profile.test.ts`、`ink-signal-settings-account.test.ts` 和 `app-wide-account.test.ts` 已覆盖真实 auth/profile/account/settings/API settings/permissions/admin/admin login/platform screens 的受控状态、错误、导航、320pt／大字／主题。`app-wide-primitives.test.ts` 也已跟踪，但只作为补充。 | Google 系统回跳、真实角色／账号切换、B1/D2 资料完成语义与写回仍缺；设备导航和 VoiceOver 另列。 |
+| Redirect／legacy | `initial-route.test.ts`、`mobile-route-access.test.ts` 仍是纯函数／source 证据，unsupported 回退有单测。 | 原生冷启动 redirect loop、catch-all URL/query/hash、登录系统回跳、通知直达及无历史返回仍未形成同版本设备矩阵。 |
+
+## 最小设备与导航矩阵（2026-09-14 增量）
+
+下表只登记现有证据和真实缺测；不同运行层不能互相替代。Sprint 0002 没有重跑其中任何一项，也没有把“待执行”填成通过。
+
+| 运行层／设备 | 现有证据 | 仍需执行的最小导航场景 | 执行前置 |
 | --- | --- | --- | --- |
-| AI home `/ai` | `ai-home-guidance-render.test.tsx` 多种成功内容；真实 `AiScreen` | Today 的 empty/loading/failure/offline 只验证问题建议 fallback | AI conversation API 本身的 top-level state、drawer/history/menu、320pt/大字；该测试当前为工作区未跟踪文件，不能当已提交基线 |
-| AI detail `/ai/[id]` | `ai-reading-canvas-render.test.tsx` 真实 `AiConversationScreen`，浅/深色、消息和 record links | 只测空 composer；resource 始终 success | loading/empty/offline/failure、`source=session`、`id=new`、键盘/窄屏 |
-| Agent/ledger | `agent-ledger-screen-render.test.tsx` 仅 `AgentLedgerContent` success | 无 | `/agent` 和 `/contacts/all-actions` 完整 screen；empty/loading/error/交互/窄屏 |
-| Contacts list/detail | `contacts-redesign-interactions.test.ts` 真实 screens：搜索、过滤、详情、编辑展开、320pt | list/detail offline 返回；mutation failure 保留草稿 | top-level loading/empty/failure；深色/大字；当前测试为工作区未跟踪文件 |
-| Contact acquisition | `business-card-review-interactions.test.ts` 真实 screen，扫码审阅/确认流程 | 业务风险/失败分支，非统一 resource states | loading/offline/empty、320pt/大字、其它采集模式视觉 |
-| Contact pipeline | `contact-pipeline-render.test.tsx` 真实 screen success | 无 | empty/loading/offline/failure、交互、窄屏 |
-| Contact dashboard/analysis | `analysis-pie-orbit-chart-render.test.tsx` 仅 chart component success/selection/wrapping | 无完整 screen state | `/contacts/dashboard`、graph alias、structure detail、intros 全屏；四维 success + empty/error；窄屏/大字 |
-| Event operations contents | admission、center、check-in、roles content：success + empty + failure；operations content：success + failure；analytics content：success | 见左列 | 都不是 route wrapper；operations 缺 empty；analytics 缺 empty/error；role/permission、320pt/大字、实际参数/API wiring |
-| Event discovery/detail flows | 无真实 screen render | 无 | `/events`、detail、register、attendees、party 3 variants、public organizer、invite、home/events 全部状态 |
-| Inbox | `relationship-inbox-interactions.test.ts` 真实 list/thread、搜索、草稿、提醒、隐私、pending | loading/offline/failure；空 body history | 真正 empty inbox/thread-not-found、深色/大字、320pt；当前测试为工作区未跟踪文件 |
-| Relationship chat | 无 | 无 | `/chat`、`/chat/[id]` success/empty/loading/offline/failure、composer/keyboard/窄屏 |
-| Tasks | `task-detail-interactions.test.ts` 真实 detail screen，多轮保存/刷新/权限/并发 | mutation failure/throw；resource 恒 success | `/tasks` 列表所有状态；detail top-level loading/empty/offline/failure；窄屏/深色/大字 |
-| Today | `orbit-next-actions-screen-render.test.tsx` 仅子组件 success | 子组件 loading/empty/error + refresh failure | 完整 `/today` screen、交互、窄屏/主题 |
-| Schedule/followups | 无真实完整 screen render | 无 | `/schedule` calendar 日/周/月、event preview、`/followups` 全状态和交互 |
-| Account/settings/admin/platform/profile | 无已提交完整 screen render；generic `theme-render.test.tsx` 仅 shared state/cards | generic Empty/Loading/Error 两主题 | 所有完整页面；auth 输入错误保留、settings navigation、permissions、admin role states、320pt/大字。`app-wide-primitives.test.ts` 正在工作区生成，不计既有基线 |
-| Redirect/legacy | `initial-route.test.ts`、`mobile-route-access.test.ts` 是纯函数/source 证据 | unsupported 回退有单测 | 原生 redirect loop、catch-all URL/query/hash 的实机可达性 |
+| RN Web／受控 Playwright | 上表当前 suites 已对六大页面族提供广泛的真实 screen/content interaction；Sprint 0001 报告还记录 `/events` 受控路由 render。它证明对应 React 状态和交互，不证明原生 router、手势、系统回跳或设备权限。 | 不再安排重建 chat、schedule/followups、event detail/register、profile/settings 等已有 render。仅在某个后续实现实际改变对应页面且现有 suite 缺直接状态时补局部回归；设备导航缺口交给下列独立层。 | 可控 fixture、固定 viewport/theme/font scale；禁止把业务服务数据或写操作混入视觉夹具。 |
+| iOS Simulator | 既有连通性记录已在 iPhone 17 Pro / iOS 26.4 对 AI 新会话／生成与重开、资料、任务日期、首页／IORBIT／收件箱前后台恢复等做过局部原生检查；Sprint 0001 对 `/events` 记录 13→上海 3→清空 13。 | 冷启动 `/`、`/home` 和未知 legacy 回退；底部根页与 IORBIT 往返；每类动态深链成功／无权限／不存在；登录成功与取消回跳；通知目标直达；模态、键盘、系统返回、浅深色和运行中字号切换。现有局部页面不能算 58 路由总矩阵。 | 冻结 App/API 版本与账号；为动态页准备脱敏有效 ID 和权限角色；只读轮禁止点击会写入的按钮。 |
+| 实体 iPhone：相机／相册 | 无实体相机证据；现有名片审阅只是受控 RNW，连通性记录也明确双面 OCR、上传和一次创建未执行。 | 首次拒绝、稍后授权、相机取消、相册选择、正反面替换、单面／双面／重复卡、上传中断与恢复；最终一次确认只创建一个联系人，并做两端回读。 | B5 契约、已初始化且授权的 OCR 环境、隔离图片／联系人、相机与相册权限、迁移／上传／OCR／联系人写入批准；费用沿用原总账本。 |
+| 实体 iPhone：通知／推送 | Simulator 仅覆盖列表、角标、后台返回和受控动作语义；没有实体 token、系统通知到达或点击启动证据。 | 拒绝→授权、token 注册／轮换／解绑、前台／后台／终止态到达、冷启动点击目标、无效／无权限／已删除目标、安全回退、已读／忽略后 Web/App 回读。 | B4 与消息／投递契约、可读取的 vault 配置、有效投递和准确目标、双用户与实体设备；注册、解绑、动作写入和真实推送分别授权。 |
+| Android 实体机或受支持 Emulator | 无 Android 运行证据。 | 冷启动与根页、tab／drawer 往返、硬件/系统 back 的 detail→list→root 顺序、深链与登录回跳、模态／键盘 back、通知点击和无效目标回退；再抽查 320dp 与大字。 | 明确受支持 Android 版本和构建；冻结同版本服务与账号；准备有效动态 ID／通知样本。若产品不支持 Android，应由批准规格移除，而不是记作通过。 |
+| iOS VoiceOver（实体机优先） | 无 VoiceOver 走查证据；测试中的 accessibility 属性断言不等于读屏顺序和手势。 | 冷启动、底部导航、IORBIT 打开／关闭、列表→详情→返回、表单错误、弹层焦点圈闭／恢复、动态内容更新提示、通知直达；核对名称／角色／状态／顺序和大字组合。 | 批准辅助功能走查范围；准备非空动态页和不触发写入的账号／样本；需要修原生补丁时另行审批。 |
+
+最小判定单位是“设备／版本 + App/API 版本 + 账号角色 + 路由／样本 + 结果”。缺任一项时只登记未测或受阻；RNW 通过不能填入 Simulator、实体 iPhone、Android 或 VoiceOver 栏。
 
 ## 建议的只读全路由 QA 顺序
 

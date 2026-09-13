@@ -5,15 +5,17 @@ API support instead of copying backend business logic locally.
 
 ## Profile
 
-`GET /api/profile` can return the demo operator profile (`小雨`,
-`profile_orbit_generated_operator`) while the mobile product needs the current
-user profile for 小雨, Orbit founder, and Chinese-facing relationship exchange
-copy.
+`GET /api/profile` is the current signed-in actor's profile boundary. Mobile no
+longer recognizes a fixed profile ID or replaces the stored name, company, role,
+bio, or tags with a product persona. `ProfileCard` renders
+`profileToSummary(data)` directly. The login name remains separate and is used
+only on account-facing surfaces and the Orbit AI account label.
 
-Mobile currently maps the known demo payload to 小雨's Chinese founder profile so
-the screen does not show the wrong person. The backend should expose a stable
-current-user profile or workspace profile endpoint with locale-ready display
-fields.
+The current profile view-model accepts the contract's `homeMarket` as a fallback
+for its legacy `timezone` display field. That compatibility mapping is not proof
+that `homeMarket` is an IANA timezone or that an account/device timezone policy
+has been approved. B1/D2 still need an agreed completion rule and required-field
+boundary before registration can gate on profile completeness.
 
 Mobile now also reads the profile signal review queue:
 
@@ -51,6 +53,9 @@ fields were saved.
 
 Remaining parity gaps:
 
+- approved B1/D2 profile-completion and required-field semantics; the current
+  six-field completeness score is existing service behavior, not the approved
+  registration gate
 - production OCR/parser-backed extraction; the current live web service remains
   policy-only until a reviewed provider is connected
 
@@ -677,14 +682,24 @@ audit history.
 
 ## Orbit AI Conversation Detail
 
-Mobile now opens Orbit AI conversation threads through
-`GET /api/ai/conversations/:id` and can continue a selected thread with
-`POST /api/ai/conversations/:id`. The native conversation screen also renders
-common AI markdown as mobile blocks, including paragraphs, bullet lists,
-numbered lists, task-list markers, block quotes, links, bold text, and inline
-code. When the latest user question is about events, people, follow-ups,
-schedule, or profile, mobile inserts the matching native content module inside
-the conversation so the user can jump directly to the relevant workflow.
+Mobile opens ordinary Orbit AI conversation threads through
+`GET /api/ai/conversations/:id`. It can append to an ordinary backend-owned
+conversation with `POST /api/ai/conversations/:id`, but that ID-route parser
+does not accept a client-supplied history array. It must not be described as the
+history-bearing continuation contract.
+
+App-created or restored Agent sessions continue through root
+`POST /api/ai/conversations` with up to eight confirmed user/assistant messages,
+then save the updated snapshot separately through
+`POST /api/ai/conversations/sessions`. This is the path covered by the recorded
+App continuation and reopen evidence. B3 still needs server idempotency and
+unknown-result semantics, plus Web/App bidirectional recovery. The native
+conversation screen also renders common AI markdown as mobile blocks, including
+paragraphs, bullet lists, numbered lists, task-list markers, block quotes,
+links, bold text, and inline code. When the latest user question is about events,
+people, follow-ups, schedule, or profile, mobile inserts the matching native
+content module inside the conversation so the user can jump directly to the
+relevant workflow.
 
 The Orbit AI home side drawer also reads web Orbit Agent history through
 `GET /api/ai/conversations/sessions`, opens a selected session with
@@ -1026,3 +1041,28 @@ policies, password reset delivery, production permission providers, production
 external-send confirmation, and admin write flows. Some of these are
 desktop/admin workflows and should not be copied one-to-one into the iOS tab
 structure without mobile-safe contracts.
+
+## Sprint 0002 Readiness Classification (2026-09-14)
+
+Not every blocked item in B1-B8 is a missing endpoint. Later Sprint planning
+must keep six causes separate: protocol, runtime failure, product decision,
+environment, usable sample, and authorization. Authorization means a specific
+missing action, object, environment, or version confirmation; an existing
+approval remains reusable for the same scope. It does not mean that all prior
+AI/OCR permission is absent. The detailed Sprint-by-Sprint gate is in the
+[connectivity handoff](verification/2026-09-13-app-connectivity.md#24-sprint-0002后续-sprint-就绪交接).
+
+| Boundary | Current classification | Concrete unblock condition |
+| --- | --- | --- |
+| B1 profile completion | Protocol + product decision | Publish the authoritative completion/required-field rule and approve D2. Do not promote the current six-field score or a name-and-industry proposal into a gate without that review. |
+| B2 registration | Protocol + runtime + sample + authorization | Publish lifecycle, eligibility, server-time, questionnaire-version, allowed-action and readback semantics; diagnose the authenticated questionnaire 500; provide an eligible event/account and approve isolated registration writes. |
+| B3 Agent reliability/references | Protocol + runtime | Define request idempotency, timeout/unknown-result recovery, typed contact references, actor-scoped tool authorization and history behavior. Investigate the earlier 503 and the Web restore auto-save risk without treating either as proven data loss. |
+| B4 identity/chat | Protocol + sample + authorization | Provide verified platform binding, conflict/revocation and invitation/delivery semantics, plus two authorized users and permission to exercise invitation and message writes. |
+| B5 two-sided cards | Protocol + environment + sample + authorization | Publish card grouping/source/conflict/one-contact confirmation and image-retention semantics; provide an initialized OCR environment and isolated front/back/duplicate samples; approve capture, upload, OCR and contact writes. |
+| B6 tasks/schedule/suggestions | Protocol + product decision + sample + authorization | Define location, clearing dates, personal schedule writes, reminder/version behavior and the later note-suggestion boundary; provide isolated records and approve each real write class. |
+| B7 discovery/analysis | Protocol + product decision + sample | Define public-catalogue scope, recommendation evidence, analysis timestamp/version and goal-field ownership; decide the home/Pipeline surfaces; provide nonempty reports and role-correct event samples. |
+| B8 notes | Protocol + product decision + sample + authorization | Approve D7 and publish note identity, multi-contact links, privacy, version/idempotency and migration/compatibility rules; provide old-content and multi-user samples before any migration or note write. |
+
+These gates keep all original R-00-R-14 requirements open where evidence is
+missing. Missing external protocols make the dependent later Sprint not ready;
+they do not block this document-only Sprint from completing its handoff.
