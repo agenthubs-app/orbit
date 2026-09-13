@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import Module from "node:module";
 import test from "node:test";
 import React from "react";
@@ -13,6 +14,7 @@ const originalLoad = loader._load;
 // Replace only native routing, auth/storage and HTTP boundaries. The actual
 // home, Today decoding, Next Actions, question selection and composer render.
 loader._load = (name, ...args) => {
+  if (name === "expo-crypto") return { randomUUID };
   if (name === "expo-router") return {
     useLocalSearchParams: () => ({}), useRouter: () => ({ push() {} })
   };

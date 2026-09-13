@@ -173,7 +173,7 @@
 | CON-B01 | 早间 AI 会话导入链缺少 @vercel/queue；12:35 已恢复解析，原设备会话与历史 GET 均 200 | 环境依赖阻塞解除；继续新生成／工具／保存验收，不把 GET 当作生成通过 | 原场景 App 发送、工具、保存、重开回读通过 |
 | CON-B02 | 早间 heic-convert／ingest v2 queue 缺失；锁定包已恢复 | 依赖解析通过；原生名片批次／图片业务仍待复验 | 原生批次读取与协议通过；后续真实导入闭环另验 |
 | CON-B03 | 早间首页三个资源显示非 JSON 错误；12:36 同设备三个 GET 均 200，非空待办恢复 | 可见首页读取故障已恢复；保留旧失败元数据缺口 | 原失败响应不能倒推；后续补完整协议及功能层验证 |
-| CON-B04 | Web 同账号对照、AI/OCR 调用预算、真实写对象未确定 | 需要用户提供／批准场景；不代表另一端已接单 | 环境、账号角色、对象、费用硬上限明确后执行并保留回读证据 |
+| CON-B04 | AI/OCR 累计硬预算后续已确认为 5 美元；同账号 Web 对照、逐调用费用控制和具体测试对象仍待落实 | 按后续自主执行授权核实；预算确认不等于已执行，也不代表另一端已接单 | 同环境／账号／隔离对象及费用边界落实后执行并保留回读证据 |
 
 恢复操作已于 12:35 按授权完成，实际范围和回滚位置见 2.5。未升级 package/lock、未改 API 业务源码、数据库／鉴权／provider 或部署；后续新问题仍逐一诊断，不自行扩展到升级或重写接口。
 
@@ -227,3 +227,64 @@ R-00 关闭之前还须捕获同环境实际失败／成功响应，并以真实
 12:51 再打开 `orbit://ai?drawer=1`，查看 `/tmp/orbit-r03-ai-drawer-after-20260913.png` 确认原生侧栏与历史入口可见；没有发送新问题。该账号不属于缺名场景，通用占位的缺名分支由上述受控回归验证。
 
 R-03 剩余：新用户资料完成／Google 回跳／两端写回尚未执行。只读源码确认现有 live profile 的 completeness 依据是 displayName、headline、relationshipGoal、homeMarket、targetRelationshipTypes、preferredIntroChannels 六项，industry 不在其中；这不等于已经批准的“姓名＋行业”准入规则。需要独立解决 B1/D2，不能在本次展示修复中强制用户补齐关系目标等字段。R-00 新生成、R-01 完整矩阵及 R-14 仍开放。
+
+## 8. 真实 AI/OCR 预算与自主执行追加
+
+2026-09-13，用户先明确“上限设置为5美元吧”，随后要求外出期间按计划自行调查、判断并执行，不再逐项问询。本节承接该授权，不将此前建议的 10 美元或未提交的选项当成批准。
+
+- 范围：本次剩余计划验收中由执行者触发的真实 AI/OCR，跨功能、重试、重启与后续续跑合计最多 5 美元。不是整个供应商账号的支出控制，也没有修改供应商账单设置。
+- 不新增付费服务、不充值、不自动提高上限。调用前覆盖该操作的全部模型阶段；并发、超时和结果未知均占用保守预留，不能把未返回 usage 的请求计为零。
+- 此次预检没有发起生成、OCR、上传、工具执行或真实资料写入，已触发付费验收请求数为 0；这不是对用户账号其他费用的审计。
+- 只读检查本地 `.env` 与 `.env.local` 中允许的配置项：会话为 live、显式 DeepSeek、`deepseek-v4-flash`，DeepSeek 凭证存在；不输出或保存凭证。文件结果不等同于读取运行中进程的完整有效环境。
+- 当前 `business-card-ocr-provider-selection.ts` 优先 DeepSeek。默认图像／文本模型分别为 `deepseek-v4-flash-vision-exp` 和 `deepseek-v4-flash`；`extract` 分别调用转录与结构化，`verifyHighRiskFields` 可另发一次请求。主结果 usage 仅合计前两次，复核返回中没有该次 usage，不能仅凭主结果计算完整费用。
+- 会话 `createGeminiOrbitAgentPlanner` 的 plan/synthesize 请求没有传入 `maxTokens`；runtime 的步骤限制不是美元限额，工具还可能另行调用模型。检查到的调用链没有针对本次验收的累计费用拦截。因此预算获准不意味着可以直接批量重放。
+
+公开计价参考：[DeepSeek Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/)。初次搜索返回旧表格，网页打开通道又超时；随后用本机 Node 直接读取相同官方地址，HTTP 200、最终 URL 不变，发现 Flash 已更新为 DeepSeek-V4.1-Flash。页面说明 `deepseek-v4-flash` 与 `deepseek-v4-flash-vision-exp` 旧名仍被接受，但由 V4.1 Flash 服务并按 Flash 计费；本次不更改项目配置。
+
+当前公开峰值未命中输入为 $0.30／百万 tokens、输出为 $1.20／百万 tokens，低谷为 $0.15／$0.60；上下文 1M、最大输出 384K。不能混用搜索缓存中的旧 $0.44／$1.32 表格，也不把公开表格说成已核对账户结算。预算按较高时段和保守预留；调用前仍须证明完整操作的上界，未知 usage 不回收预留。
+
+下一步先收敛 R-02 的无意发送风险，再以可验证的逐调用费用控制执行少量真实场景。预算到达上限或调用上界不可证明时暂停付费部分，继续不付费工作；被暂停场景不标通过。5 美元约束跨上述步骤保持，不因开新会话或重启清零。
+
+### 8.1 索引刷新遇到磁盘满：可恢复迁移
+
+预算预检后的索引刷新因 `lbug.wal` 写入 `No space left on device` 退出 1。内盘可用空间一度为 116 MiB，部分生成的索引不能用于影响分析或提交验证；依赖步骤先暂停。日志 `/tmp/orbit-budget-gitnexus-refresh-20260913.log` 保留，不算成功。
+
+只迁移生成物与本次已有备份：`.gitnexus` 和 `/tmp/orbit-web-deps-restore.PiVj1w/node_modules` 移到私有目录 `/Volumes/ORICO/Dev/MacMovedData/orbit-validation-20260913.7c2lIC/` 下的 `gitnexus`、`web-node-modules-backup`，原路径保留软链接。没有删除源码、当前依赖、资料或会话。递归相对路径／文件内容／软链接目标校验前后一致：索引 37 文件、530598226 字节，旧依赖 15507 文件／17 链接、389367526 字节；不是用目录大小近似替代内容校验。内盘恢复约 2 GiB；外盘约 883 GiB 可用。回滚材料继续从原备份路径访问，外盘须保持挂载。
+
+在外盘重新运行相同的 `npx gitnexus analyze --skip-agents-md`；日志 `/tmp/orbit-budget-gitnexus-external-20260913.log`。完成前不把索引恢复或后续符号检查写为通过。
+
+第二次运行确认原磁盘满留下的 WAL checkpoint 损坏，COPY 阶段仍失败，未算通过。将该次生成目录保留为同一外盘目录下的 `gitnexus-failed-wal`，停止已报错的本次索引进程，再从空的 `gitnexus` 目录重建；没有删旧资料。第三次日志 `/tmp/orbit-budget-gitnexus-fresh-20260913.log`，完成状态另记。迁移后只读复查本地 health 与公开活动 GET 均 200、application/json、success true，未触发模型。
+
+第三次重建于 13:18:48 JST 成功，260.9 秒、exit 0；390303 节点、559399 边、300 流程。根仓库路径的索引指向当前 `5539c0658`，后续影响分析成功；没有使用同名旧 worktree 的索引，也未改根 AGENTS/CLAUDE 或创建 embeddings。原失败目录和依赖备份继续保留。
+
+## 9. R-02：显式发送意图与空会话
+
+按[独立实施计划](../superpowers/plans/2026-09-13-ai-explicit-send-intent.md)实施，不变更已批准的页面布局。旧 `initialMessage` 链接与业务上下文只预填；`/ai/new` 没有初始问题时也有输入框。首页点击发送登记单个内存意图，并绑定登录用户、服务器和问题；会话路由精确消费一次后继续该次发送。仅 URL 参数不授予生成权限，重启不恢复待发送意图。
+
+### 9.1 影响范围与回归
+
+编辑前根索引 upstream impact：AiConversationRoute、AiConversationScreen、claimInitialPrompt 和首页 sendMessage 均为 LOW、0 个已识别调用者／流程；AiScreen 为 LOW、1 个直接调用者 AiMainRoute、0 个流程。新模块、测试内嵌 fixture 和匿名 loader 无可用图节点，记录为 UNKNOWN，结合源码调用范围和真实路由测试补验，不解释为零风险。没有修改 Web、共享生成副本或业务权限。
+
+- 三文件基线 156/156，31.066 秒、exit 0。
+- 旧链接／空会话／身份切换红测 7/7 按预期失败：自动 POST 或缺少输入框；首页联测因没有 sendIntent 失败。纯意图模块在未实现消费时 3 项正向断言失败，不用缺失导入充当红测。
+- 初次行为绿测 18/18，4.111 秒、exit 0；随后三文件加新意图测试完整回归 175/175，32.178 秒、exit 0。双击、刷新、前后台、整路由重挂载、保存重试、较新草稿及账号／服务器隔离的旧断言保留；原初始生成用例改为真实点击发送后再验证，未放宽结果要求。
+- 类型检查 exit 0；契约／Schema／字典同步检查 6/6，0.507 秒、exit 0，没有同步写操作。
+- 首次全量回归 2230 项中 2229 通过、1 失败，182.855 秒、exit 1：旧首页服务端渲染测试未替换新引用的原生 expo-crypto，加载时 `__DEV__ is not defined`。该文件的 10 个用例没有运行，不与失败轮次总数混算。仅在该测试既有设备边界用 Node randomUUID 替代，未修改生产行为或跳过断言；该文件复跑 10/10、exit 0。最终全量结果另记。
+
+自审新增边界也先保留失败证据：重复 URL 参数导致数组 trim 异常；延迟首页跳转跨账号／服务器虽不 POST 却泄漏原草稿，两个用例失败；首页跳转前清空草稿的断言失败。路由统一读取参数首项，最近一条意图保留来源／消费状态以取消错误身份导航，首页交接前保留输入。随机数失败恢复还经临时移除本项新增 catch 的故障对照，随即还原后通过。复跑相关五文件 189/189，34.918 秒、exit 0；之后增加的首页草稿保留断言与随机数失败用例复跑 2/2，1.544 秒、exit 0。最终类型检查 exit 0。
+
+第二次完整运行 2243 项中 2242 通过、1 失败，181.087 秒、exit 1：未修改的 `ink-signal-inbox.test.ts` narrow-large 场景在 `scrollIntoViewIfNeeded` 等待控件稳定时超过 1.5 秒。先暂停提交，确认该文件与 HEAD 无差异并单独复现；不删除用例、放宽阈值或把这次失败改记为通过。日志 `/tmp/orbit-r02-intent-full-final-20260913.log`。
+
+该收件箱用例单独运行通过，1/1、1.459 秒、exit 0；未修改代码、断言或超时阈值。随后以相同 `npm test` 完整复跑，**2243/2243，0 失败／取消／跳过，177.379 秒、exit 0**。日志 `/tmp/orbit-r02-inbox-isolated-20260913.log`、`/tmp/orbit-r02-intent-full-retry-20260913.log`；当前仅有一次全量超时与随后单独／全量通过的证据，不把环境负载猜测写成已确认根因。
+
+对应日志：`/tmp/orbit-r02-array-param-red-20260913.log`、`/tmp/orbit-r02-deferred-scope-red-20260913.log`、`/tmp/orbit-r02-native-random-red-20260913.log`、`/tmp/orbit-r02-draft-handoff-red-20260913.log`、`/tmp/orbit-r02-draft-handoff-green-20260913.log`、`/tmp/orbit-r02-intent-regression-final-20260913.log`。
+
+提交前 `npx gitnexus analyze --skip-agents-md` 返回 Already up to date、exit 0；此次 CLI 以 HEAD 为准，没有声称重新建立未提交新增模块的图。最终 staged detect_changes 报告 11 个文件、LOW、没有列出的受影响流程；58 个触及项含文档／常量和旧行号重叠，不是 58 个改动函数。TypeScript AST 与 HEAD 对比确认实际只改 AiConversationRoute（含 intent／claim）、AiScreen（含 sendMessage）、AiConversationScreen，并新增三个纯内存意图函数；工具额外列出的 startNewChat、scope、isScopeCurrent 均内容不变。新模块结合两处生产引用与真实路由回归验收，不用图中缺项代替检查。按既有单代理选择自审，没有声称独立代理审查。
+
+本地日志：`/tmp/orbit-r02-intent-red-20260913.log`、`/tmp/orbit-r02-home-intent-red-20260913.log`、`/tmp/orbit-r02-intent-green-20260913.log`、`/tmp/orbit-r02-intent-regression-20260913.log`、`/tmp/orbit-r02-intent-typecheck-20260913.log`、`/tmp/orbit-r02-intent-full-20260913.log`。通过项均 0 失败／取消／跳过，失败轮次单独保留。
+
+### 9.2 原生只读检查与未完成项
+
+13:24 左右，同一 iPhone 17 Pro / iOS 26.4 Simulator 和现有会话打开 `orbit://ai/new`，实际显示“新会话”、空输入框与发送按钮；402×874 画面中输入框高 44，发送按钮 44×44，底边约 832.7，在屏内。服务日志对应 conversations、profile、events、tasks、contacts 五个 GET 均 200，没有读取虚构的 `/api/ai/conversations/new` 详情。未点击发送、编辑真实资料或切换账号；原生 UI 树仅保存在 `/tmp/orbit-r02-native-empty-20260913.json`，不提交原始内容。
+
+带初始文本的原设备深链、真实首页付费生成、跨端续聊和服务端 B3 幂等仍未验收。已有前端一次性意图不是服务端请求 ID／超时幂等；两类 POST 当前解析仍没有生成幂等字段。不能据此关闭 R-00、完整 R-02 或 R-14。

@@ -139,18 +139,18 @@ function rawSessionThread(session: AiSession): ConversationThreadView {
   };
 }
 
-export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, journal: providedJournal }: {
-  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; journal?: AiConversationJournal;
+export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, journal: providedJournal }: {
+  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; journal?: AiConversationJournal;
 } = {}) {
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
-  const { id, initialMessage, source } = useLocalSearchParams<{
-    id?: string | string[]; initialMessage?: string | string[]; source?: string | string[];
+  const { id, initialMessage, initialMessageConsumed, source } = useLocalSearchParams<{
+    id?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[];
   }>();
   const conversationId = firstParam(id);
-  const initialPrompt = optionalParam(initialMessage).trim();
+  const initialPrompt = allowInitialPrompt ? optionalParam(initialMessage).trim() : "";
   const isStoredAgentSession = optionalParam(source) === "session";
-  const isDraftConversation = conversationId === "new" && !!initialPrompt;
+  const isDraftConversation = conversationId === "new";
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
@@ -164,7 +164,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }).tasks.length === 0, readOptions);
   const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, readOptions);
-  const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", "");
+  const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialPrompt : "");
   const draftValue = useRef(draftMessage);
   const draftRevision = useRef(journal.draftRevision ?? 0);
   const [latestData, setLatestData] = useJournalState(journal, "latestData", null);
@@ -224,7 +224,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
   const generatedThread = latestData ? rawConversationThread(latestData) : null;
-  const initialThread = isDraftConversation ? pendingConversationThreadView(initialPrompt) : null;
+  const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
+  const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage)
+    : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: "新会话" };
   const thread = generatedThread
     ? previousSession ? { ...generatedThread, title: rawSessionThread(previousSession).title, messages: rawSessionThread(previousSession).messages } : generatedThread
     : loadedSession ? rawSessionThread(loadedSession)
@@ -332,15 +334,15 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   }
 
   useEffect(() => {
-    if (!owns() || !isDraftConversation || submittedInitialPrompt.current === initialPrompt) return;
-    if (claimInitialPrompt && !claimInitialPrompt()) {
-      if (!latestData && !failedRequest) {
+    if (!owns() || !isDraftConversation || !initialPrompt || submittedInitialPrompt.current === initialPrompt) return;
+    submittedInitialPrompt.current = initialPrompt;
+    if (!claimInitialPrompt?.()) {
+      if (optionalParam(initialMessageConsumed) === "1" && !latestData && !failedRequest) {
         setFailedRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
         setSendError("这条问题已提交过，结果尚未确认。你可以重试或编辑问题。");
       }
       return;
     }
-    submittedInitialPrompt.current = initialPrompt;
     void submitRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
   }, [client, initialPrompt, isDraftConversation]);
 

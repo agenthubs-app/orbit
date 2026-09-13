@@ -44,6 +44,7 @@ export const useSafeAreaInsets = () => ({ top: 48, bottom: 24, left: 0, right: 0
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, edges?.includes?.("top") && { paddingTop: 48 }, edges?.includes?.("bottom") && { paddingBottom: 24 }]} />;
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size, fontFamily: "OrbitTestIonicons", fontSize: size, lineHeight: 1, color }}>{String.fromCodePoint(glyphs[name])}</span>;
 export const readSnapshot = async () => null; export const writeSnapshot = async () => {};
+export const randomUUID = () => { if (state.failIntent) throw new Error("Device random source unavailable"); return "test-send-intent"; };
 `;
 test.before(async () => {
   const result = await build({
@@ -53,7 +54,7 @@ test.before(async () => {
     plugins: [{ name: "ai-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ai" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
       plugin.onLoad({ filter: /.*/, namespace: "ai" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -128,7 +129,19 @@ test("AI home prompt selection never sends and its editable draft submits only o
   const input = p.getByRole("textbox", { name: "消息", exact: true }); assert.equal(await input.inputValue(), "今天先处理哪些事？");
   assert.deepEqual(await writes(p), []); assert.deepEqual(await navigation(p), []);
   await input.fill("  我自己修改的问题  "); await twice(p, "发送");
-  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: "new", initialMessage: "我自己修改的问题" } }]); assert.deepEqual(await writes(p), []);
+  assert.equal(await input.inputValue(), "  我自己修改的问题  ", "retain the draft until navigation hands it to the conversation");
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: "new", initialMessage: "我自己修改的问题", sendIntent: "test-send-intent" } }]); assert.deepEqual(await writes(p), []);
+});
+
+test("AI home preserves the draft when a send intent cannot be created", async t => {
+  const p = await open(t, { failIntent: true });
+  const input = p.getByRole("textbox", { name: "消息", exact: true });
+  await input.fill("这条问题不能丢"); await press(p, "发送");
+  assert.equal(await input.inputValue(), "这条问题不能丢");
+  assert.equal(await p.getByText("暂时无法发送，问题已保留，请重试。", { exact: true }).count(), 1);
+  assert.deepEqual(await navigation(p), []); assert.deepEqual(await writes(p), []);
+  await update(p, { failIntent: false }); await press(p, "发送");
+  assert.equal((await navigation(p)).length, 1);
 });
 
 for (const [label, target] of [["交流会准备", "/ai/conversation%3A1"], ["产品试点讨论", { pathname: "/ai/[id]", params: { id: "session:1", source: "session" } }]] as const) test("AI recent row preserves its real source " + label, async t => {

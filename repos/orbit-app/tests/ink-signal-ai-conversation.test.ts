@@ -38,7 +38,8 @@ export const useIsFocused = () => { observe(); return state.focused; };
 export const useGlobalSearchParams = () => { observe(); return state.params; };
 export const useLocalSearchParams = () => { observe(); return state.params; };
 export const usePathname = () => "/ai/" + state.params.id;
-export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); }, setParams(patch) { state.update({ params: { ...state.params, ...patch } }); } });
+export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); if (state.followNavigation && href.pathname === "/ai/[id]") state.update({ screen: "conversation", params: href.params }); }, setParams(patch) { state.update({ params: { ...state.params, ...patch } }); } });
+export const randomUUID = () => "test-send-" + ++state.intentSequence;
 export const Redirect = ({ href }) => <div role="status">{href}</div>;
 export const Stack = () => null;
 export const useSafeAreaInsets = () => ({ top: 48, bottom: 24, left: 0, right: 0 });
@@ -48,13 +49,13 @@ export const readSnapshot = async () => null; export const writeSnapshot = async
 `;
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import HomeRoute from "./app/(app)/ai"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.screen === "home" ? <HomeRoute /> : <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ai-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ai" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
       plugin.onLoad({ filter: /.*/, namespace: "ai" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -79,9 +80,15 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const cover = readFileSync("../orbits/public/orbit-covers/meeting.jpg");
   await p.route("**/*", r => r.request().url().endsWith("/orbit-covers/meeting.jpg") ? r.fulfill({ contentType: "image/jpeg", body: cover }) : r.abort());
   await p.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
-  await p.evaluate(patch => { (window as any).initialFixture = patch; }, { holdWrites: true, payloads: conversationReadPayloads, ...patch }); await p.addScriptTag({ content: script }); await settle(p); await p.evaluate(() => document.fonts.ready); return p;
+  await p.evaluate(patch => { (window as any).initialFixture = patch; }, { holdWrites: true, intentSequence: 0, payloads: conversationReadPayloads, ...patch }); await p.addScriptTag({ content: script }); await settle(p); assert.deepEqual(errors, [], "route must render without runtime errors"); await p.evaluate(() => document.fonts.ready); return p;
 }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
+async function openAndSend(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown>) {
+  const p = await open(t, patch);
+  assert.deepEqual(await writes(p), []);
+  await press(p, "发送消息");
+  return p;
+}
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 async function navigation(p: Page) { return p.evaluate(() => (window as any).fixture.navigation); }
@@ -102,6 +109,82 @@ function replyPayload(question = "再想一个方案", answer = "可以先讨论
 async function replyLastWrite(p: Page, data: unknown, status = 200) {
   await p.evaluate(({ data, status }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method !== "GET"), status, data); }, { data, status }); await settle(p);
 }
+
+test("AI home click issues a scoped one-use intent and continues without another send", async t => {
+  const p = await open(t, { screen: "home", followNavigation: true });
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("  首页明确发送的问题  ");
+  await twice(p, "发送");
+  const target = (await navigation(p))[0];
+  assert.equal((await navigation(p)).length, 1);
+  assert.equal(target.params.sendIntent, "test-send-1");
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
+  await update(p, { mounted: false }); await update(p, { mounted: true, params: target.params });
+  assert.equal((await writes(p)).length, 1, "reopening even the original unconsumed URL cannot replay the click");
+});
+
+test("AI home submitted question retains explicit unknown-result recovery after route remount", async t => {
+  const p = await open(t, { screen: "home", followNavigation: true });
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("结果需要确认的问题");
+  await press(p, "发送");
+  assert.equal(await p.evaluate(() => (window as any).fixture.params.initialMessageConsumed), "1");
+  await replyLastWrite(p, undefined, 503);
+  await update(p, { mounted: false }); await update(p, { mounted: true });
+  assert.equal((await writes(p)).length, 1);
+  assert.equal(await p.getByRole("button", { name: "重新生成", exact: true }).count(), 1);
+  assert.equal(await p.getByText("结果需要确认的问题", { exact: true }).count(), 1);
+  await press(p, "编辑问题");
+  assert.equal(await p.getByRole("textbox").inputValue(), "结果需要确认的问题");
+  assert.equal((await writes(p)).length, 1);
+});
+
+for (const replacement of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI deferred home navigation never transfers its draft across identity " + JSON.stringify(replacement), async t => {
+  const p = await open(t, { screen: "home" });
+  await p.getByRole("textbox", { name: "消息", exact: true }).fill("原账号待发送的背景");
+  await press(p, "发送");
+  const target = (await navigation(p))[0];
+  await update(p, { ...replacement, screen: "conversation", params: target.params });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox").inputValue(), "");
+  await update(p, { mounted: false }); await update(p, { mounted: true });
+  assert.equal(await p.getByRole("textbox").inputValue(), "");
+  await update(p, { actor: "actor-1", baseUrl: "https://orbit.example" });
+  assert.deepEqual(await writes(p), [], "returning to the first identity must not resume a cancelled click");
+});
+
+for (const extra of [{}, { source: "business" }, { source: "send", sendIntent: "unregistered" }, { initialMessage: ["先核对活动背景", "另一个参数"], sendIntent: ["unregistered"] }]) test("AI initial links only prefill without generation " + JSON.stringify(extra), async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "先核对活动背景", ...extra } });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox").inputValue(), "先核对活动背景");
+  assert.equal(await p.getByText("正在处理", { exact: true }).count(), 0);
+  await p.getByRole("textbox").fill("我修改后的问题");
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  await update(p, { focused: false }); await update(p, { focused: true });
+  await update(p, { cookieHeader: "session=renewed" });
+  assert.equal(await p.getByRole("textbox").inputValue(), "我修改后的问题");
+  assert.deepEqual(await writes(p), []);
+  await twice(p, "发送消息");
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
+});
+for (const initialMessage of [undefined, "   "]) test("AI empty new conversation accepts its first explicit question " + JSON.stringify(initialMessage), async t => {
+  const p = await open(t, { params: { id: "new", initialMessage } });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox").count(), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/ai/conversations/new")), false);
+  await p.getByRole("textbox").fill("再想一个方案"); await twice(p, "发送消息");
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "再想一个方案" } }]);
+  await replyLastWrite(p, replyPayload());
+  const session = (await writes(p))[1].body.session;
+  await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
+});
+for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI prefilled question does not transfer to another identity " + JSON.stringify(patch), async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "原账号的活动背景" } });
+  assert.deepEqual(await writes(p), []);
+  await update(p, patch);
+  assert.equal(await p.getByRole("textbox").inputValue(), "");
+  assert.equal(await p.getByText("原账号的活动背景", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
 
 test("AI conversation uses the source hierarchy with flat messages and retained shortcuts", async t => {
   const p = await open(t);
@@ -144,7 +227,7 @@ test("AI failed send retries the submitted request and never consumes a newer dr
   await replyLastWrite(p, replyPayload()); assert.equal(await input.inputValue(), "另一条草稿");
 });
 test("AI failed initial question can be edited without automatically resubmitting", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "帮我准备交流会" } });
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "帮我准备交流会" } });
   assert.equal((await writes(p)).length, 1); await replyLastWrite(p, undefined, 503); await press(p, "编辑问题");
   assert.equal(await p.getByRole("textbox").inputValue(), "帮我准备交流会"); assert.equal((await writes(p)).length, 1);
 });
@@ -157,13 +240,13 @@ test("AI stored session preserves raw multiline history and its custom title", a
   assert.deepEqual((await writes(p))[0], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
 });
 test("AI initial generation awaits a persisted matching session receipt before canonical navigation", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
   const pending = await writes(p); assert.equal(pending.length, 2); assert.equal(pending[1].path, "/api/ai/conversations/sessions"); assert.deepEqual(await navigation(p), []);
   const session = pending[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
 });
 for (const kind of ["unpersisted", "wrong-id", "missing-message", "http-failure"]) test("AI save failure retries only the same snapshot without generating again " + kind, async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
   const submitted = (await writes(p))[1]; const session = submitted.body.session;
   const receipt = { session: kind === "wrong-id" ? { ...session, id: "another" } : kind === "missing-message" ? { ...session, messages: session.messages.slice(0, 1) } : session,
     storage: { ...aiSessionListPayload.storage, persisted: kind !== "unpersisted" } };
@@ -173,12 +256,12 @@ for (const kind of ["unpersisted", "wrong-id", "missing-message", "http-failure"
   await replyLastWrite(p, { session, storage: aiSessionListPayload.storage }); assert.equal((await navigation(p)).length, 1);
 });
 test("AI generated reply keeps a newer draft when its session is saved", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("还没发送的下一条"); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("还没发送的下一条"); await replyLastWrite(p, replyPayload());
   const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   assert.equal(await p.getByRole("textbox").inputValue(), "还没发送的下一条"); assert.deepEqual(await navigation(p), []);
 });
 for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }, { cookieHeader: "session=changed" }, { focused: false }, { signedIn: false }, { mounted: false }, { params: { id: "new-route" } }]) test("AI stale send cannot publish, save or navigate after scope replacement " + JSON.stringify(patch), async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } });
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } });
   const writeIndex = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.method === "POST"));
   await update(p, patch); await p.evaluate(({ writeIndex, payload }) => (window as any).fixture.reply(writeIndex, 200, payload), { writeIndex, payload: replyPayload() }); await settle(p);
   assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted ?? false, writeIndex), true);
@@ -186,7 +269,7 @@ for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" },
   assert.equal((await writes(p)).filter((r: any) => r.path === "/api/ai/conversations/sessions").length, 0); assert.deepEqual(await navigation(p), []);
 });
 test("AI refresh cannot erase a failed draft or submit its initial prompt twice", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
   await p.getByRole("textbox").fill("编辑后的草稿"); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await p.getByRole("textbox").inputValue(), "编辑后的草稿"); assert.equal((await writes(p)).length, 1);
 });
@@ -268,12 +351,12 @@ test("AI conversation composer stays compact then grows without covering the sen
   assert.ok(box && box.height > 44 && box.height <= 120 && send && send.y >= box.y + box.height && send.height >= 44);
 });
 test("AI failure identifies the assistant and keeps the question editable", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
   if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-failure-390.png" });
   assert.equal(await p.getByText("IORBIT", { exact: true }).count(), 2); await press(p, "编辑问题"); assert.equal(await p.getByRole("textbox").inputValue(), sourceQuestion);
 });
 test("AI failed generation stops showing a pending answer and puts recovery beside the question", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
   assert.equal(await p.getByText("正在整理相关上下文。", { exact: true }).count(), 0);
   assert.equal(await p.getByText("正在处理", { exact: true }).count(), 0);
   const failure = await p.getByText("这次回答没有生成", { exact: true }).boundingBox(); assert.ok(failure && failure.y < 270);
@@ -294,23 +377,23 @@ for (const variant of [{ width: 320, fontScale: 1.6, suffix: "320" }, { width: 8
   await press(p, "打开快捷入口"); await press(p, "打开快捷入口"); assert.equal(await input.inputValue(), "第一行草稿\n第二行草稿\n第三行草稿\n第四行草稿\n第五行草稿\n第六行草稿"); assert.deepEqual(await writes(p), []);
 });
 test("AI saved initial reply and newer draft survive a focus round trip", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("尚未发送的新草稿"); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("尚未发送的新草稿"); await replyLastWrite(p, replyPayload());
   const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   await update(p, { focused: false }); await update(p, { focused: true });
   assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 1); assert.equal(await p.getByRole("textbox").inputValue(), "尚未发送的新草稿"); assert.equal((await writes(p)).length, 2);
 });
 test("AI consumed initial question cannot automatically replay on a full route remount", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
   await update(p, { mounted: false }); await update(p, { mounted: true }); assert.equal((await writes(p)).length, 1);
 });
 test("AI successful session persistence accepts protocol-normalized reply text", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "  完整回复保留段落。\n\n第二段。\n"));
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "  完整回复保留段落。\n\n第二段。\n"));
   const session = (await writes(p))[1].body.session;
   await replyLastWrite(p, { session: { ...session, messages: session.messages.map((message: any) => ({ ...message, text: message.text.trim().slice(0, 12000) })) }, storage: aiSessionListPayload.storage });
   assert.equal((await navigation(p)).length, 1); assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 0);
 });
 test("AI canonical navigation adopts the saved receipt ID after server normalization", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } });
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } });
   await replyLastWrite(p, { ...replyPayload(), aiRuns: [{ runId: "run-" + "r".repeat(180) }] });
   const expected = (await writes(p))[1].body.session; const saved = { ...expected, id: expected.id.slice(0, 160) };
   assert.ok(expected.id.length > 160);
@@ -324,7 +407,7 @@ test("AI session receipt follows title, message and history protocol limits with
   assert.equal(aiSessionReceiptMatches({ session: { ...normalized, messages: normalized.messages.map((item, index) => index === 99 ? { ...item, text: "错误回复" } : item) }, storage: aiSessionListPayload.storage }, expected), false);
 });
 test("AI truncated session persistence is visibly limited and does not silently navigate", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "很长的回答。".repeat(2100)));
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "很长的回答。".repeat(2100)));
   const expected = (await writes(p))[1].body.session;
   await replyLastWrite(p, { session: { ...expected, messages: expected.messages.map((m: any) => ({ ...m, text: m.text.slice(0, 12000) })) }, storage: aiSessionListPayload.storage });
   assert.equal(await p.getByText("会话已保存，但超出上限的内容已截断。服务最多保留最近 100 条消息，每条 12,000 字、标题 120 字。", { exact: true }).count(), 1);
@@ -334,28 +417,28 @@ test("AI truncated session persistence is visibly limited and does not silently 
   assert.equal(await p.getByText(/会话已保存，但超出上限的内容已截断/).count(), 1);
 });
 test("AI interrupted session save resumes only saving and retains its draft after refocus", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("稍后再问"); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("稍后再问"); await replyLastWrite(p, replyPayload());
   const save = (await writes(p))[1]; await update(p, { focused: false }); await update(p, { focused: true }); await press(p, "重试保存");
   assert.deepEqual((await writes(p))[2], save); await replyLastWrite(p, { session: save.body.session, storage: aiSessionListPayload.storage });
   assert.equal(await p.getByRole("textbox").inputValue(), "稍后再问"); assert.deepEqual(await navigation(p), []);
 });
 test("AI saved suggestion remains actionable after a focus round trip", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, { ...replyPayload(), taskInteraction: suggestedPayload.taskInteraction });
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, { ...replyPayload(), taskInteraction: suggestedPayload.taskInteraction });
   const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   await update(p, { focused: false }); await update(p, { focused: true }); await press(p, "加入待办"); await replyLastWrite(p, acceptedReceipt);
   assert.equal((await writes(p)).length, 3); assert.equal((await navigation(p))[0].params.id, session.id);
 });
 test("AI saved reply and draft never transfer to another actor", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("账户一的草稿"); await replyLastWrite(p, replyPayload());
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("账户一的草稿"); await replyLastWrite(p, replyPayload());
   const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage }); await update(p, { actor: "actor-2" });
   assert.equal(await p.getByRole("textbox").inputValue(), ""); assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 0); assert.equal((await writes(p)).length, 2);
 });
 test("AI interrupted initial request restores explicit recovery without an automatic replay", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await update(p, { focused: false }); await update(p, { focused: true });
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await update(p, { focused: false }); await update(p, { focused: true });
   assert.equal(await p.getByRole("button", { name: "重新生成", exact: true }).count(), 1); assert.equal(await p.getByText("正在处理", { exact: true }).count(), 0); assert.equal((await writes(p)).length, 1);
 });
 test("AI refresh during generation leaves the owned write running", async t => {
-  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "POST").signal.aborted), false);
   await replyLastWrite(p, replyPayload()); assert.equal((await writes(p)).length, 2);
 });

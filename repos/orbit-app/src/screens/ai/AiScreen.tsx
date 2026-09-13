@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { randomUUID } from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,6 +31,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionListSchema } from "../../api/ai-history-contract";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
+import { registerAiSendIntent } from "../../data/ai-send-intent";
 import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -300,7 +302,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   }
 
   function sendMessage() {
-    if (!owns() || navigationLock.current) return;
+    if (!owns() || navigationLock.current || !auth.user?.id) return;
     const message = draftMessage.trim();
 
     if (!message) {
@@ -308,11 +310,18 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       return;
     }
 
+    let sendIntent: string;
+    try {
+      sendIntent = randomUUID();
+    } catch {
+      setSendError("暂时无法发送，问题已保留，请重试。");
+      return;
+    }
+    registerAiSendIntent({ id: sendIntent, actorId: auth.user.id, baseUrl, message });
     setSendError(null);
     navigationLock.current = true;
-    setDraftMessage("");
     router.push({
-      params: { id: "new", initialMessage: message },
+      params: { id: "new", initialMessage: message, sendIntent },
       pathname: "/ai/[id]"
     });
   }
