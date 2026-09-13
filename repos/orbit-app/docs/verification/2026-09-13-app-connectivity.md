@@ -455,3 +455,37 @@ AX 与本地截图共同确认：日期行 370×48，三个输入内框约 368×
 分层结论：此既有任务的 L1/L2/L3 只读与 L5 新日期输入布局有实际证据；真实 PATCH、服务端持久化、首页／待办／日历同记录回读、Web↔App 双向修改和实体 iPhone 未执行。没有授权隔离业务对象，不为验收制造真实任务。累计 AI/OCR 账本仍 5 次已结算、12780 microUSD、无未结算预留，$5 硬上限不变。
 
 R-08 仍缺地点、个人日程创建／修改协议、清空日期与提醒联动语义，以及全局时区策略和跨端闭环。下一责任方建议 Web/API（未联系、未接单）补 B6 协议；App 不修改生成副本、不写根 Bridge。本子功能不关闭完整 R-08 或 R-14。
+
+## 14. R-12：普通字号待办长标题
+
+### 14.1 原生失败、原因与最小修复
+
+实施起点 `5b454f73bc233d07d8ebd744412d78c7145a33d3`；沿用已批准 R-12 与待办视觉、单代理、原目录和逐功能 commit。此项是既有布局的局部修复，没有新设计、文案、业务协议或依赖变更；`frontend-design` 约束为保持现有字体、字号、颜色与操作布局。GitNexus upstream：TaskDetailScreen LOW、0 个图中直接调用者／流程，实际路由仍为 `app/tasks/[id].tsx`；useStyles LOW、1 个直接 Screen 调用者／0 流程。本轮只修改 Screen 的标题高度约束，不修改 useStyles 或共享原生实现。
+
+15:44 在同一 iPhone 17 Pro / iOS 26.4 Simulator，系统 content_size=large（普通字号）、appearance=light，重新采集原先失败任务：完整值已进入 TextArea，框高 `32.000000000000014pt`，截图末尾不可见。既有 `tests/native/task-title-layout.mjs` 在相同标题／64pt 最小值上再次 exit 1；不是直接复用昨日失败日志。
+
+源码确认：标题在内容尺寸尚未正确报告时设置精确 `height=32`；本地 React Native 的 `BaseTextInputShadowNode::measureContent` 按外部尺寸约束测量并 clamp，`RCTTextInputComponentView::updateLayoutMetrics` 再据布局赋值输入框 frame 和发布内容尺寸。只将 `height` 改为 `minHeight`，保留原来每行最低高度、onContentSizeChange、字体缩放、内容和焦点／保存处理。该单变量改动后，原生首次更新即为 64pt；返回列表，再从真实同一任务详情入口重开，仍为 64pt，截图均确认全文可见。没有增加固定两行、隐藏溢出、关闭缩放或重挂载整屏。
+
+| 检查 | 结果 | 本地证据 |
+| --- | --- | --- |
+| 最新原生 RED | 完整值；32pt < 64pt，exit 1，截图裁切 | `/tmp/orbit-r12-task-title-native-red-20260913.log`、`/tmp/orbit-r12-task-title-before-20260913.{json,png}` |
+| 同页更新后的原生 GREEN | 完整值、64pt，exit 0，截图全文可见 | `/tmp/orbit-r12-task-title-minimum-result-20260913.log`、`/tmp/orbit-r12-task-title-minimum-20260913.{json,png}` |
+| 返回列表后重开 | 完整值、64pt，exit 0，截图全文可见 | `/tmp/orbit-r12-task-title-remounted-result-20260913.log`、`/tmp/orbit-r12-task-title-remounted-20260913.{json,png}` |
+| 日期／待办交互与样式回归 | 60/60，0 失败／取消／跳过，19.844 秒、exit 0 | `/tmp/orbit-r12-task-title-minimum-regression-20260913.log` |
+| 类型检查 | exit 0 | `/tmp/orbit-r12-task-title-types-20260913.log` |
+| 最终全量 `npm test` | 2379/2379，0 失败／取消／跳过，180.060 秒、exit 0；包含六项同步检查 | `/tmp/orbit-r12-task-title-full-20260913.log` |
+
+既有原生脚本本身已能捕获此退化，未通过改变断言或阈值使其通过；RNW 回归不能替代这项原生尺寸与目视检查。按 code-review 清单单代理复查：仅一处高度约束变化，保留输入、草稿、焦点和保存语义，未发现本修复范围内的重要遗留问题，不称独立代理审查。最终 staged GitNexus 为 4 个 App 文件、LOW、0 条列出的受影响流程，8 个匹配项包含文档章节而非 8 个生产函数；实际源码仅一行差异。`git diff --cached --check` exit 0。
+
+### 14.2 真实读取与验收边界
+
+仍使用原 App 开发服务与 `http://localhost:3000` 的同一普通账号，没有重建二进制、重启 API、改服务器或登录。Web tree 仍为 `b1bcc6df622c9122b7a1a435aca3cbe8963d3865`，无 Web 改动。返回列表及重开详情的 QA 元数据如下，均 GET、200、application/json，时间 UTC：
+
+| 读取 | 时间 | 请求 ID |
+| --- | --- | --- |
+| `/api/tasks` | 06:45:35.419 | `be92d746-dbf1-4f42-a3e6-ba4490a63728` |
+| reminders（脱敏段 `a53ebed8`） | 06:45:50.482 | `190047c4-0139-4fde-bb28-c5469708cf04` |
+| task detail（任务引用 `65fa8f24`） | 06:45:50.490 | `08dc211a-2f3d-4883-884b-ab59ee027e30` |
+| task activities（同一引用） | 06:45:50.494 | `7d710f96-c29e-4193-ad44-d9a63abb9f72` |
+
+截图均已逐张查看，只留本地，不提交原文、截图或 AX。未触碰完成框、未输入／保存任何字段、未发起提醒、删除或 AI/OCR；对应时段元数据无非 GET 请求。本项证明普通字号的既有长标题原生显示修复，不证明持久化写入、实体 iPhone、VoiceOver、全 App 三语或运行中 Dynamic Type 双向热切换。后者共享 RN 测量路径仍需独立审批方案，整包原生和完整 R-12／R-14 均未关闭；无需 Web/API 协议变更，根 Bridge 由协调者更新。

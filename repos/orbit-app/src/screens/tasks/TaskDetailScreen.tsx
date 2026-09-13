@@ -314,7 +314,7 @@ export function TaskDetailScreen() {
             <View style={styles.heroBody}>
               <TextInput ref={titleInputRef} accessibilityLabel="待办标题" editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
                 onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
-                style={[styles.titleInput, { height: Math.max(32 * fontScale, titleHeight) }]} value={title} />
+                style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
                 <Text style={styles.statusText}>{detail.status === "open" ? "未完成" : detail.statusLabel}</Text>
                 {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate)}</Text> : null}
